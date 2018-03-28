@@ -1,0 +1,10 @@
+[package]
+name = "nerpalog"
+version = "0.1.0"
+authors = ["Leonid Ryzhyk <lryzhyk@vmware.com>"]
+
+description = "An in-memory incremental Datalog engine based on Differential Dataflow"
+
+[dependencies]
+nom = ">=3.2"
+num = ">=0.1.40"
