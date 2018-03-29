@@ -1,0 +1,34 @@
+name:                differential-datalog
+version:             0.1.0.0
+synopsis:            Incremental datalog engine based on differential dataflow
+-- description:
+-- license:
+license-file:        LICENSE
+author:              Leonid Ryzhyk
+maintainer:          lryzhyk@vmware.com
+-- copyright:
+category:            Language
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+executable datalogc
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  -- other-modules:
+  other-extensions:    FlexibleContexts, TypeSynonymInstances, FlexibleInstances, RecordWildCards
+  build-depends:       base >=4.7 ,
+                       mtl >=2.2 ,
+                       parsec >=3.1 ,
+                       filepath >= 1.4 ,
+                       pretty >= 1.1.3 ,
+                       directory >= 1.3 ,
+                       containers >= 0.5 ,
+                       binary >= 0.8,
+                       bytestring >= 0.10,
+                       fgl >=5.5
+
+  -- hs-source-dirs:
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fno-warn-missing-signatures
+  ghc-prof-options:    -auto-all
