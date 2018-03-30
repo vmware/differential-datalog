@@ -19,7 +19,7 @@ syn match  dlDelimiter         ":-"
 syn match  dlDelimiter	        "[\[\]!?@#\~&|\^=<>%+-,;\:\.@]"
 
 "Regular keywords
-syn keyword dlStatement        and bool function not or relation match var switch
+syn keyword dlStatement        and bool function not or ground relation match var switch
 
 syn keyword dlTodo             contained TODO FIXME XXX
 

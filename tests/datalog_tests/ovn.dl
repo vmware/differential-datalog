@@ -1,31 +1,105 @@
-typedef uuid = 
+typedef uuid = bit<128>
 
-ground relation NB_Global
+typedef StructWithConstructor = Constructor1 {field1: type1, field2: type2}
+                              | Constructor2 {}
 
+/*
+"NB_Global": {
+    "columns": {
+        "nb_cfg": {"type": {"key": "integer"}},
+        "sb_cfg": {"type": {"key": "integer"}},
+        "hv_cfg": {"type": {"key": "integer"}},
+        "external_ids": {
+            "type": {"key": "string", "value": "string",
+                     "min": 0, "max": "unlimited"}},
+        "connections": {
+            "type": {"key": {"type": "uuid",
+                             "refTable": "Connection"},
+                             "min": 0,
+                             "max": "unlimited"}},
+        "ssl": {
+            "type": {"key": {"type": "uuid",
+                             "refTable": "SSL"},
+                             "min": 0, "max": 1}}},
+    "maxRows": 1,
+    "isRoot": true},
+*/
+
+ground relation NB_Global (
+    nb_cfg: int,
+    sb_cfg: int,
+    hv_cfg: int
+)
+
+ground relation NB_Global_external_ids (
+    key:   string,
+    value: string
+)
+
+ground relation NB_Global_ssl (
+    ssl:    uuid /*refTable: SSL*/
+)
+
+/*
+"Connection": {
+    "columns": {
+        "target": {"type": "string"},
+        "max_backoff": {"type": {"key": {"type": "integer",
+                                 "minInteger": 1000},
+                                 "min": 0,
+                                 "max": 1}},
+        "inactivity_probe": {"type": {"key": "integer",
+                                      "min": 0,
+                                      "max": 1}},
+        "other_config": {"type": {"key": "string",
+                                  "value": "string",
+                                  "min": 0,
+                                  "max": "unlimited"}},
+        "external_ids": {"type": {"key": "string",
+                         "value": "string",
+                         "min": 0,
+                         "max": "unlimited"}},
+        "is_connected": {"type": "boolean", "ephemeral": true},
+        "status": {"type": {"key": "string",
+                            "value": "string",
+                            "min": 0,
+                            "max": "unlimited"},
+                            "ephemeral": true}},
+    "indexes": [["target"]]},
+*/
+ground relation Connection (
+    id:           uuid,
+    target:       string,
+    is_connected: bool
+)
+
+ground relation Connection_max_backoff (
+    connection:  uuid,
+    max_backoff: int
+)
+
+ground relation Connection_inactivity_probe (
+    connection:  uuid,
+    inactivity_probe: int
+)
+
+ground relation Connection_other_config (
+    connection:   uuid,
+    other_config: string
+)
+
+ground relation Connection_external_ids (
+    connection: uuid,
+    value:      string
+)
+
+
+/*
 {
     "name": "OVN_Northbound",
     "version": "5.10.0",
     "cksum": "626737541 17810",
     "tables": {
-        "NB_Global": {
-            "columns": {
-                "nb_cfg": {"type": {"key": "integer"}},
-                "sb_cfg": {"type": {"key": "integer"}},
-                "hv_cfg": {"type": {"key": "integer"}},
-                "external_ids": {
-                    "type": {"key": "string", "value": "string",
-                             "min": 0, "max": "unlimited"}},
-                "connections": {
-                    "type": {"key": {"type": "uuid",
-                                     "refTable": "Connection"},
-                                     "min": 0,
-                                     "max": "unlimited"}},
-                "ssl": {
-                    "type": {"key": {"type": "uuid",
-                                     "refTable": "SSL"},
-                                     "min": 0, "max": 1}}},
-            "maxRows": 1,
-            "isRoot": true},
         "Logical_Switch": {
             "columns": {
                 "name": {"type": "string"},
@@ -281,31 +355,6 @@ ground relation NB_Global
                     "type": {"key": "string", "value": "string",
                              "min": 0, "max": "unlimited"}}},
             "isRoot": true},
-        "Connection": {
-            "columns": {
-                "target": {"type": "string"},
-                "max_backoff": {"type": {"key": {"type": "integer",
-                                         "minInteger": 1000},
-                                         "min": 0,
-                                         "max": 1}},
-                "inactivity_probe": {"type": {"key": "integer",
-                                              "min": 0,
-                                              "max": 1}},
-                "other_config": {"type": {"key": "string",
-                                          "value": "string",
-                                          "min": 0,
-                                          "max": "unlimited"}},
-                "external_ids": {"type": {"key": "string",
-                                 "value": "string",
-                                 "min": 0,
-                                 "max": "unlimited"}},
-                "is_connected": {"type": "boolean", "ephemeral": true},
-                "status": {"type": {"key": "string",
-                                    "value": "string",
-                                    "min": 0,
-                                    "max": "unlimited"},
-                                    "ephemeral": true}},
-            "indexes": [["target"]]},
         "DNS": {
             "columns": {
                 "records": {"type": {"key": "string",
@@ -346,3 +395,4 @@ ground relation NB_Global
             "indexes": [["name"]],
             "isRoot": false}}
     }
+*/

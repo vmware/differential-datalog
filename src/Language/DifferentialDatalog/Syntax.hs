@@ -193,6 +193,9 @@ data Relation = Relation { relPos         :: Pos
                          , relArgs        :: [Field]
                          }
 
+instance Eq Relation where
+    (==) (Relation _ g1 n1 as1) (Relation _ g2 n2 as2) = g1 == g2 && n1 == n2 && as1 == as2
+
 instance WithPos Relation where
     pos = relPos
     atPos r p = r{relPos = p}
@@ -201,7 +204,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = ("relation" <+> pp relName <+> "(") $$ 
+    pp Relation{..} = ((if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(") $$ 
                       (nest' $ (vcat $ punctuate comma $ map pp relArgs) <> ")")
 
 instance Show Relation where
@@ -213,6 +216,8 @@ data Atom = Atom { atomPos      :: Pos
                  , atomArgs     :: [(String, Expr)]
                  }
 
+instance Eq Atom where
+    (==) (Atom _ r1 as1) (Atom _ r2 as2) = r1 == r2 && as1 == as2
 
 instance WithPos Atom where
     pos = atomPos
@@ -232,9 +237,26 @@ data Rule = Rule { rulePos         :: Pos
                  , ruleRHSConds    :: [Expr]
                  }
 
+instance Eq Rule where
+    (==) (Rule _ lhs1 rlits1 rconds1) (Rule _ lhs2 rlits2 rconds2) = 
+        lhs1 == lhs2 && rlits1 == rlits2 && rconds1 == rconds2
+
 instance WithPos Rule where
     pos = rulePos
     atPos r p = r{rulePos = p}
+
+ppLit :: (Bool, Atom) -> Doc
+ppLit (True, a)  = pp a
+ppLit (False, a) = "not" <+> pp a
+
+instance PP Rule where
+    pp Rule{..} = (vcat $ map pp ruleLHS) <+> ":-" <+> 
+                  (hsep $ punctuate comma $ 
+                    map ppLit ruleRHSLiterals ++
+                    map pp ruleRHSConds)
+
+instance Show Rule where
+    show = render . pp
 
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
@@ -364,6 +386,10 @@ data Function = Function { funcPos   :: Pos
                          , funcDef   :: Maybe Expr
                          }
 
+instance Eq Function where
+    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) = 
+        n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
+
 instance WithPos Function where
     pos = funcPos
     atPos f p = f{funcPos = p}
@@ -387,3 +413,17 @@ data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progRelations :: M.Map String Relation
                                      , progRules     :: [Rule]
                                      }
+                      deriving (Eq)
+
+instance PP DatalogProgram where
+    pp DatalogProgram{..} = vcat $ punctuate "" $ 
+                            ((map pp $ M.elems progTypedefs)
+                             ++
+                             (map pp $ M.elems progFunctions)
+                             ++
+                             (map pp $ M.elems progRelations)
+                             ++
+                             (map pp $ progRules))
+
+instance Show DatalogProgram where
+    show = render . pp

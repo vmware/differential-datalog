@@ -6,7 +6,7 @@ import System.FilePath.Posix
 import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
-import Text.Parsec
+--import Text.Parsec
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Parse
@@ -72,10 +72,7 @@ main = do
 
 readValidate :: FilePath -> IO DatalogProgram
 readValidate fname = do
-    fdata <- readFile fname
-    prog <- case parse datalogGrammar fname fdata of
-                 Left  e    -> error $ "Failed to parse input file: "
-                 Right prog -> return prog
+    prog <- parseDatalogFile fname
 --    case validate prog of
 --         Left e  -> error $ "Validation error: " ++ e
 --         Right _ -> return ()

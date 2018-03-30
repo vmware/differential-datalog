@@ -1,0 +1,5 @@
+typedef uuid = bit<128>
+ground relation NB_Global (
+    nb_cfg: int,
+    sb_cfg: int,
+    hv_cfg: int)
