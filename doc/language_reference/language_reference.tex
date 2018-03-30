@@ -1,0 +1,432 @@
+\documentclass{report}
+
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage[usenames]{xcolor}
+\usepackage{tikz}
+\usepackage{amsmath,amssymb}
+\usepackage{xspace}
+
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{stmaryrd}
+\newcommand\sem[1]{\llbracket #1\rrbracket}
+\newcommand{\pkt}{\ensuremath{pkt}}
+\newcommand{\env}{\ensuremath{env}}
+\newcommand{\args}{\ensuremath{args}}
+\newcommand{\true}{\texttt{true}}
+\newcommand{\false}{\texttt{false}}
+\newcommand{\ERROR}{\texttt{ERROR}}
+
+\newcommand{\lang}{Datalog\xspace}
+
+\usepackage[letterpaper, left=25mm, right=25mm]{geometry} 
+
+% New definitions
+\algnewcommand\algorithmicswitch{\textbf{case}}
+\algnewcommand\algorithmiccase{\textbf{}}
+% New "environments"
+\algdef{SE}[SWITCH]{Switch}{EndSwitch}[1]{\algorithmicswitch\ #1\ {\bf of}}{\algorithmicend\ \algorithmicswitch}%
+\algdef{SE}[CASE]{Case}{EndCase}[1]{\algorithmiccase\ #1 :}{\algorithmicend\ \algorithmiccase}%
+\algtext*{EndSwitch}%
+\algtext*{EndCase}%
+
+%\usepackage[T1]{fontenc}
+
+\definecolor{lgray}{gray}{0.9}
+\definecolor{lyellow}{cmyk}{0,0,0.3,0}
+
+\usepackage{listings}
+
+\lstnewenvironment{dllisting}[1]
+{\vspace{3mm}
+ \lstset{
+    backgroundcolor=\color{lyellow},
+    basicstyle=\small\ttfamily, 
+%    keywordstyle=\bfseries,
+    keywordstyle=\underbar,
+    identifierstyle=,
+    commentstyle=\slshape,
+    stringstyle=,
+    showstringspaces=false,
+    keywords={ and
+             , bool 
+             , bit
+             , default
+             , false
+             , function 
+             , not 
+             , or 
+             , relation
+             , struct 
+             , switch
+             , if 
+             , else
+             , int
+             , string
+             , true
+             , typedef},
+    sensitive=false,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    numberstyle=\tiny,
+    stepnumber=1,
+    numbersep=1pt,
+    emphstyle=\bfseries,
+    belowskip=0pt,
+    aboveskip=0pt,
+    #1
+}}{\vspace{3mm}}
+
+\lstnewenvironment{bnflisting}[1]
+{\vspace{3mm}
+ \lstset{
+    backgroundcolor=\color{lgray},
+    basicstyle=\small\ttfamily,
+    keywordstyle=\underbar,
+    identifierstyle=,
+    commentstyle=\slshape,
+    stringstyle=,
+    showstringspaces=false,
+    keywords=,
+    sensitive=false,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    numberstyle=\tiny,
+    stepnumber=1,
+    numbersep=1pt,
+    emphstyle=\bfseries,
+    belowskip=0pt,
+    aboveskip=0pt,
+    #1
+}}{\vspace{3mm}}
+
+
+\newcommand{\src}[1]{\texttt{#1}}
+
+\newcommand{\comment}[1]{{\textit{\textbf{#1}}}}
+
+
+\title{\lang Language Reference}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\chapter{Syntax reference}\label{s:reference}
+
+\section{Identifiers}
+
+\lang is case-sensitive.  Relation and constructor
+names must start with upper-case ASCII letters; and variable, function, 
+and argument names must start with lower-case ASCII letters or
+underscore.  A type names can start with either an upper-case or a lower-case letter.
+
+\begin{bnflisting}{}
+    <uc_identifier> := [A..Z][a..zA..Z0..9_]*
+    <lc_identifier> := [a..z_][a..zA..Z0..9_]*
+
+    <rel_name> := <uc_identifier>
+    <cons_name> := <uc_identifier>
+
+    <var_name> := <lc_identifier>
+    <field_name> := <lc_identifier>
+    <arg_name> := <lc_identifier>
+    <func_name> := <lc_identifier>
+
+    <type_name> := <lc_identifier> | <uc_identifier>
+\end{bnflisting}
+
+
+\section{Top-level declarations}
+
+A \lang program is a list of type definitions, functions, relations, and rules.
+The ordering of declarations does not matter, e.g., a type can be used
+before being defined.
+
+\begin{bnflisting}{}
+<datalog> := <decl>*
+
+<decl> := <typedef>
+        | <function>
+        | <relation>
+        | <rule>
+\end{bnflisting}
+
+\subsection*{Example}
+
+\section{Types}
+
+Type definition introduces a new user-defined type.
+
+\begin{bnflisting}{}
+<typedef> := "typedef" <type_name> = <type_spec>
+\end{bnflisting}
+
+\begin{bnflisting}{}
+/* A full form of typespec. Used in typedef's only. */
+<type_spec> := <int_type>
+             | <bool_type>
+             | <string_type>
+             | <bitvector_type>
+             | <tuple_type>
+             | <union_type>     /* tagged union */
+             | <type_name>      /* type alias */
+
+/* A restricted form of typespec that does not declare new tagged
+    unions (and hence does not introduce new contructor named to
+    the namespace.  Used in argument, field, variable declarations. */
+<simple_type_spec> := <int_type>
+                    | <bool_type>
+                    | <string_type>
+                    | <bitvector_type>
+                    | <tuple_type>
+                    | <type_name>
+
+\end{bnflisting}
+
+\begin{bnflisting}{}
+<int_type>         := "int" /* unbounded mathematical integer */
+<bool_type>        := "bool"
+<string_type>      := "string" /* UTF-8 string */
+<bitvector_type>   := "bit" "<" <decimal> ">"
+<tuple_type>       := "(" <simple_type_spec>* ")"
+<union_type>      := (<constructor> "|")* <constructor>
+
+<constructor>      := <cons_name> /* constructor without fields */
+                    | <cons_name> "{" [<field> ("," <field>)*] "}"
+<field> := <field_name> ":" <simple_type_spec> 
+\end{bnflisting}
+
+\subsection*{Example}
+
+\section{Functions}
+
+Functions are pure (side-effect-free computations).  A function can have 
+optional definition.  A function without definition refers to a
+foreign function implemented outside of \lang.
+
+\begin{bnflisting}{}
+<function> := "function" <func_name> "(" [<arg>(,<arg>)*]")"
+              ":" <simple_type_spec> /* return type */
+              ["=" <expr>]    /* optional function definition */
+\end{bnflisting}
+
+\begin{bnflisting}{}
+<arg> := <arg_name> ":" <simple_type_spec>
+\end{bnflisting}
+
+\subsection*{Examples}
+
+
+\section{Relations}
+
+\begin{bnflisting}{}
+<relation> := ["ground"] "relation" <rel_name> "(" [<arg> ","] <arg> ")"
+\end{bnflisting}
+
+\section{Expressions}
+
+
+\begin{bnflisting}{}
+<expr> := <term>
+        | <expr> "["<decimal> "," <decimal>"]"  /*bit slice (e[h:l])*/
+        | <expr> ":" <simple_type_spec>         /*explicit type signature*/
+        | <expr> "." <identifier>               /* struct field */
+        | "~" <expr>                            /*bitwise negation*/
+        | "not" <expr>                          /*boolean negation*/
+        | "(" <expr> ")"                        /*grouping*/
+        | "{" <expr> "}"                        /*grouping (alternative syntax)*/
+        | <expr> "%" <expr>                     /*remainder*/
+        | <expr> "+" <expr>
+        | <expr> "-" <expr>
+        | <expr> ">>" <expr>                    /*right shift*/
+        | <expr> "<<" <expr>                    /*left shift*/
+        | <expr> "++" <expr>                    /*bitvector concatenation*/
+        | <expr> "==" <expr>
+        | <expr> "!=" <expr>
+        | <expr> "<" <expr>
+        | <expr> "<=" <expr>
+        | <expr> ">" <expr>
+        | <expr> ">=" <expr>
+        | <expr> "&" <expr>                     /*bitwise and*/
+        | <expr> "|" <expr>                     /*bitwise or*/
+        | <expr> "and" <expr>                   /*logical and*/
+        | <expr> "or" <expr>                    /*logical or*/
+        | <expr> "=>" <expr>                    /*implication*/
+        | <expr> "=" <expr>                     /*assignment*/
+        | <expr> ";" <expr>                     /*sequential composition*/
+\end{bnflisting}
+
+\begin{bnflisting}{}
+<term> := <structTerm>   // struct given by listing its fields
+        | <applyTerm>    // user-defined function call
+        | <builtinTerm>  // builtin function call
+        | <instanceTerm> // role instance (used in send statements)
+        | <intTerm>      // integer constant
+        | <boolTerm>     // boolean constant
+        | <packetTerm>   // special packet variable
+        | <varTerm>      // variable reference: role key or local var
+        | <dotvarTerm>   // dot-variable reference
+        | <condTerm>     // case split
+\end{bnflisting}
+
+\begin{bnflisting}{}
+<structTerm>   := <identifier> "{" <expr> (,<expr>)* "}"
+<applyTerm>    := <identifier> "(" [<expr> (,<expr>)*] ")"
+<builtinTerm>  := <identifier> "!" "(" [<expr> (,<expr>)*] ")"
+<instanceTerm> := <identifier> "[" [<expr> (,<expr>)*] "]"
+<boolTerm>     := "true" | "false"
+<packetTerm>   := "pkt"
+<varTerm>      := <identifier>
+<dotvarTerm>   := "." <identifier>
+<condTerm>     := "case" "{"
+                  (<expr> ":" <expr> ";")*
+                  "default" ":" <expr> ";"
+                  "}"
+<intTerm>      := [<width>] "'d" <decimal>
+                | [<width>] "'h" <hexadecimal>
+                | [<width>] "'o" <octal>
+                | [<width>] "'b" <binary>
+<width> := <decimal>
+\end{bnflisting}
+
+\section{Roles}
+
+\begin{bnflisting}{}
+<roleDecl> := "role" <identifier> 
+              "["[<arg>(,<arg>)*]"]" // role keys
+              ["|" <expr>]    // constraint on role keys
+              ["/" <expr>]    // constraint on input packets
+              "=" <stat>      // role body
+\end{bnflisting}
+
+\subsection*{Example}
+
+\begin{dllisting}{}
+(* Role with two keys *)
+role VSwitchIn[HostId hst, uint<16> vport] | iVSwitchPort(hst, vport) = 
+    (* Local variable declaration: binding *)
+    let VHPortId from_vhport = vSw2HLink(hst, vport);
+    if (iNFVHost(from_vhport.vhost) and (not (pkt.eth.dstAddr == bCastMAC()))) or 
+       pkt.eth.srcAddr == vHPort2Mac(from_vhport) then {
+        let VNetId vnet = vSwPortVNet(hst, vport);
+        if bCastMAC() == pkt.eth.dstAddr then {
+            fork(HostId dhst | iHost(dhst) and hHostsVNet(dhst, vnet)) {
+                if dhst == hst then {
+                    pkt.vlan.vid := 12'd0;
+                    fork(VHPortId vhport | iVHostPort(vhport) and 
+                                           vHPortVNet(vhport) == vnet and 
+                                           vHostLocation(vhport.vhost) == hst and 
+                                           vH2SwLink(vhport) != vport and
+                                           connection(from_vhport, vhport)) {
+                        send VSwitchOut[hst, vH2SwLink(vhport)]
+                    }
+                } else {
+                    pkt.vlan.vid := vnet;
+                    send VSwitchTunOut[hst, tunPort(hst, dhst)]
+                }
+            }
+        } else {
+            let VHPortId to_vhport = nextHop(pkt.eth, from_vhport);
+            if iVHostPort(to_vhport) and connection(from_vhport, to_vhport) then {
+                if (vHostLocation(to_vhport.vhost) == hst) then { 
+                    (* Local destination -- deliver *)
+                    pkt.vlan.vid := 12'd0;
+                    pkt.vlan.pcp := 3'd0;
+                    send VSwitchOut[hst, vH2SwLink(to_vhport)]
+                } else {
+                    (* Remote destination -- encapsulate *)
+                    pkt.vlan.vid := vnet;
+                    pkt.vlan.pcp := label(pkt.eth, from_vhport);
+                    send VSwitchTunOut[hst, 
+                                       tunPort(hst, 
+                                               vHostLocation(to_vhport.vhost))]
+
+                }
+            }
+        }
+    }
+\end{dllisting}
+
+\section{Statements}
+
+\begin{bnflisting}{}
+<stat> := <test> 
+        | <ite>
+        | <send>
+        | <sendNondet>
+        | <set>
+        | <havoc>
+        | <assume>
+        | <let>           // local variable declaration
+        | <fork>
+        | "{" <stat> "}"
+        | "(" <stat> ")"
+        | <stat> ";" <stat>
+
+<test>       := "filter" <expr>
+<sendNondet> := "?" "send" <identifier> "[" <expr> "]"
+<send>       := "send" <expr> // expression must return role instance
+<set>        := <expr> ":=" <expr>
+<ite>        := "if" <expr> "then" <stat> ["else" <stat>]
+<havoc>      := "havoc" <expr>
+<assume>     := "assume" <expr>
+<let>        := "let" <typeSpec> <identifier> "=" <expr>
+<fork>       := "fork" "(" <arg> (,<arg>)* "|" <expr> ")" <stat>
+\end{bnflisting}
+
+Note:
+\begin{itemize}
+    \item Only fields of the special \texttt{pkt} variable can be modified 
+        with \texttt{:=} or \texttt{havoc}.
+    \item Every field can be modified at most once by a role.  Packet fields
+        that are not modified by the role keep their input values.        
+    \item Local variables are declared and assigned at the same time using 
+        \texttt{let}.  Their values never change.
+\end{itemize}
+
+\subsection*{Examples}
+
+\begin{dllisting}{}
+filter false (* drop all packets *)
+\end{dllisting}
+
+\begin{dllisting}{}
+filter true (* no-op *)
+\end{dllisting}
+
+\begin{dllisting}{}
+(* Role with two keys: as and port *)
+role ASSDXIn[ASId as, ASPort port] | iASPort(as, port) = filter false
+
+...
+
+(* Multicast packet to all instances of role ASSDXIn, whose "as" key satisfies the
+   condition prefixMatch(.as, pkt.ip4.dst), where .as refers to the as key
+   of ASSDXIn, and pkt.ip4.dst is the destination IP of the packet.  *)
+?send ASSDXIn[prefixMatch(.as, pkt.ip4.dst)]
+
+(* Unicast to a single instance of ASSDXIn *)
+send ASSDXIn[defdst, inboundPolicy(defdst, pkt.ip4)]
+\end{dllisting}
+
+\begin{dllisting}{}
+(* Assign the mtag header of the packet *)
+pkt.mtag := computeMTag(pod, tor, dstAddr)
+\end{dllisting}
+
+\section{Nodes}
+
+There are two types of nodes: switches and hosts.  
+
+\begin{bnflisting}{}
+<nodeDecl> := ("switch" | "host") <identifier> "(" 
+              "(" <identifier> "," <identifier> ")" // list of in/out port pairs
+              ("," "(" <identifier> "," <identifier> ")")*
+              ")"
+\end{bnflisting}
+
+\end{document}
