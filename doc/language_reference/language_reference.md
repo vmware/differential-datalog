@@ -1,6 +1,6 @@
-#Datalog Language Reference
+# Datalog Language Reference
 
-##Identifiers
+## Identifiers
 
 Datalog is case-sensitive.  Relation and constructor
 names must start with upper-case ASCII letters; and variable, function, 
@@ -22,7 +22,7 @@ underscore.  A type name can start with either an upper-case or a lower-case let
     <type_name> := <lc_identifier> | <uc_identifier>
 ```
 
-##Top-level declarations
+## Top-level declarations
 
 A Datalog program is a list of type definitions, functions, relations, and rules.
 The ordering of declarations does not matter, e.g., a type can be used
@@ -37,7 +37,7 @@ before being defined.
         | <rule>
 ```
 
-##Types
+## Types
 
 Type definition introduces a new user-defined type.
 
@@ -80,7 +80,7 @@ Type definition introduces a new user-defined type.
 <field> := <field_name> ":" <simple_type_spec> 
 ```
 
-##Functions
+## Functions
 
 Functions are pure (side-effect-free computations).  A function can have 
 optional definition.  A function without definition refers to a
@@ -96,13 +96,13 @@ foreign function implemented outside of Datalog.
 <arg> := <arg_name> ":" <simple_type_spec>
 ```
 
-##Relations
+## Relations
 
 ```EBNF
 <relation> := ["ground"] "relation" <rel_name> "(" [<arg> ","] <arg> ")"
 ```
 
-##Expressions
+## Expressions
 
 
 ```EBNF
@@ -137,27 +137,23 @@ foreign function implemented outside of Datalog.
 
 The following table lists operators order by decreasing priority.
 
-\begin{tabular}{|l|l|}
-    \hline
-    \textbf{priority} & \textbf{operators} \\
-    \hline\hline
-    Highest & \src{e[h:l], x:t, x.f} \\
-            & \src{\~} \\
-            & \src{not} \\
-            & \src{\%} \\
-            & \src{+, -} \\
-            & \src{>>, <<} \\
-            & \src{++} \\
-            & \src{==, !=, <, <=, >, >=} \\
-            & \src{\&} \\
-            & \src{|} \\
-            & \src{and} \\
-            & \src{or} \\
-            & \src{=>} \\
-            & \src{=} \\
-    Lowest  & \src{;} \\
-    \hline
-\end{tabular}
+|**priority** | **operators**       |
+| ------ |:-----------------------:|
+| Highest| e[h:l], x:t, x.f        |
+|        | ~                       |
+|        | not                     |
+|        | %                       |
+|        | +, -                    |
+|        | >>, <<                  |
+|        | ++                      |
+|        | ==, !=, <, <=, >, >=    |
+|        | &                       |
+|        | &#124;                  |
+|        | and                     |
+|        | or                      |
+|        | =>                      |
+|        | =                       |
+| Lowest | ;                       |
 
 ```EBNF
 <term> := "_"                 /* wildcard */
@@ -172,8 +168,8 @@ The following table lists operators order by decreasing priority.
         | <vardecl_term>      /* local variable declaration */
 ```
 
-{\color{red}Integer literal syntax is currently arcane and will be changed to
-C-style syntax.}
+**Integer literal syntax is currently arcane and will be changed to
+C-style syntax.**
 
 ```EBNF
 <int_literal>  := <decimal>
@@ -184,9 +180,9 @@ C-style syntax.}
 <width> := <decimal>
 ```
 
-{\color{red}We rely on parsec's standard parser for strings, which
+**We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
-functionality.}
+functionality.**
 
 ```EBNF
 <string_literal>   := '"' <UTF-8 string with escaping> '"' 
@@ -222,7 +218,7 @@ Other terms:
            | "_"             /* wildcard, matches any value */
 ```
 
-##Rules
+## Rules
 
 A Datalog rule consists of one or more lefthand-side atoms (multiple 
 LHS atoms are used to abbreviate rules with identical right-hand 
