@@ -1,0 +1,58 @@
+name:                differential-datalog
+version:             0.1.0.0
+github:              "ryzhyk/differential-datalog"
+license:             BSD3
+author:              "Leonid Ryzhyk"
+maintainer:          "lryzhyk@vmware.com"
+copyright:           "VMware, Inc"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Incremental Datalog engine based on differential dataflow
+# category:            Language
+
+description:         Please see the README on Github at <https://github.com/ryzhyk/differential-datalog#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- base
+- mtl
+- parsec
+- pretty
+- directory
+- containers
+- binary
+- bytestring
+- fgl
+
+library:
+  source-dirs: src
+executables:
+  differential-datalog-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - differential-datalog
+    - filepath
+
+tests:
+  differential-datalog-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - differential-datalog
+    - tasty
+    - HUnit
+    - tasty-golden
+    - filepath

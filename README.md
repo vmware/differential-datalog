@@ -19,12 +19,6 @@ wget -qO- https://get.haskellstack.org/ | sh
 
 # Building
 
-The first time you compile you need to initialize the project:
-
-```
-stack init
-```
-
 To build the software execute:
 
 ```
@@ -34,7 +28,7 @@ stack build
 To run the tests execute:
 
 ```
-cabal test
+stack test
 ```
 
 # Using IntelliJ IDEA
