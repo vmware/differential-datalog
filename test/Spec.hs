@@ -10,7 +10,7 @@ main = defaultMain =<< goldenTests
 
 goldenTests :: IO TestTree
 goldenTests = do
-  dlFiles <- findByExtension [".dl"] "./tests/datalog_tests"
+  dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
   return $ testGroup "datalog parser tests"
     [ goldenVsFile (takeBaseName dlFile) expect output (testParser dlFile output)
     | dlFile <- dlFiles 
