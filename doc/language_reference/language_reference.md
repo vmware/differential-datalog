@@ -1,130 +1,13 @@
-\documentclass{report}
+#Datalog Language Reference
 
-\usepackage{hyperref}
-\usepackage{color}
-\usepackage[usenames]{xcolor}
-\usepackage{tikz}
-\usepackage{amsmath,amssymb}
-\usepackage{xspace}
+##Identifiers
 
-\usepackage{algorithm}
-\usepackage{algpseudocode}
-\usepackage{stmaryrd}
-\newcommand\sem[1]{\llbracket #1\rrbracket}
-\newcommand{\pkt}{\ensuremath{pkt}}
-\newcommand{\env}{\ensuremath{env}}
-\newcommand{\args}{\ensuremath{args}}
-\newcommand{\true}{\texttt{true}}
-\newcommand{\false}{\texttt{false}}
-\newcommand{\ERROR}{\texttt{ERROR}}
-
-\newcommand{\lang}{Datalog\xspace}
-
-\usepackage[letterpaper, left=25mm, right=25mm]{geometry} 
-
-% New definitions
-\algnewcommand\algorithmicswitch{\textbf{case}}
-\algnewcommand\algorithmiccase{\textbf{}}
-% New "environments"
-\algdef{SE}[SWITCH]{Switch}{EndSwitch}[1]{\algorithmicswitch\ #1\ {\bf of}}{\algorithmicend\ \algorithmicswitch}%
-\algdef{SE}[CASE]{Case}{EndCase}[1]{\algorithmiccase\ #1 :}{\algorithmicend\ \algorithmiccase}%
-\algtext*{EndSwitch}%
-\algtext*{EndCase}%
-
-%\usepackage[T1]{fontenc}
-
-\definecolor{lgray}{gray}{0.9}
-\definecolor{lyellow}{cmyk}{0,0,0.3,0}
-
-\usepackage{listings}
-
-\lstnewenvironment{dllisting}[1]
-{\vspace{3mm}
- \lstset{
-    backgroundcolor=\color{lyellow},
-    basicstyle=\small\ttfamily, 
-%    keywordstyle=\bfseries,
-    keywordstyle=\underbar,
-    identifierstyle=,
-    commentstyle=\slshape,
-    stringstyle=,
-    showstringspaces=false,
-    keywords={ and
-             , bool 
-             , bit
-             , default
-             , false
-             , function 
-             , not 
-             , or 
-             , relation
-             , struct 
-             , switch
-             , if 
-             , else
-             , int
-             , string
-             , true
-             , typedef},
-    sensitive=false,
-    morecomment=[l]{//},
-    morecomment=[s]{/*}{*/},
-    numberstyle=\tiny,
-    stepnumber=1,
-    numbersep=1pt,
-    emphstyle=\bfseries,
-    belowskip=0pt,
-    aboveskip=0pt,
-    #1
-}}{\vspace{3mm}}
-
-\lstnewenvironment{bnflisting}[1]
-{\vspace{3mm}
- \lstset{
-    backgroundcolor=\color{lgray},
-    basicstyle=\small\ttfamily,
-    keywordstyle=\underbar,
-    identifierstyle=,
-    commentstyle=\slshape,
-    stringstyle=,
-    showstringspaces=false,
-    keywords=,
-    sensitive=false,
-    morecomment=[l]{//},
-    morecomment=[s]{/*}{*/},
-    numberstyle=\tiny,
-    stepnumber=1,
-    numbersep=1pt,
-    emphstyle=\bfseries,
-    belowskip=0pt,
-    aboveskip=0pt,
-    #1
-}}{\vspace{3mm}}
-
-
-\newcommand{\src}[1]{\texttt{#1}}
-
-\newcommand{\comment}[1]{{\textit{\textbf{#1}}}}
-
-
-\title{\lang Language Reference}
-
-\begin{document}
-
-\maketitle
-
-\tableofcontents
-
-\chapter{Syntax reference}\label{s:reference}
-
-\section{Identifiers}
-
-\lang is case-sensitive.  Relation and constructor
+Datalog is case-sensitive.  Relation and constructor
 names must start with upper-case ASCII letters; and variable, function, 
 and argument names must start with lower-case ASCII letters or
-underscore.  A type names can start with either an upper-case or a lower-case letter.
+underscore.  A type name can start with either an upper-case or a lower-case letter.
 
-\begin{bnflisting}{}
+```
     <uc_identifier> := [A..Z][a..zA..Z0..9_]*
     <lc_identifier> := [a..z_][a..zA..Z0..9_]*
 
@@ -137,35 +20,32 @@ underscore.  A type names can start with either an upper-case or a lower-case le
     <func_name> := <lc_identifier>
 
     <type_name> := <lc_identifier> | <uc_identifier>
-\end{bnflisting}
+```
 
+##Top-level declarations
 
-\section{Top-level declarations}
-
-A \lang program is a list of type definitions, functions, relations, and rules.
+A Datalog program is a list of type definitions, functions, relations, and rules.
 The ordering of declarations does not matter, e.g., a type can be used
 before being defined.
 
-\begin{bnflisting}{}
+```EBNF
 <datalog> := <decl>*
 
 <decl> := <typedef>
         | <function>
         | <relation>
         | <rule>
-\end{bnflisting}
+```
 
-\subsection*{Example}
-
-\section{Types}
+##Types
 
 Type definition introduces a new user-defined type.
 
-\begin{bnflisting}{}
+```EBNF
 <typedef> := "typedef" <type_name> = <type_spec>
-\end{bnflisting}
+```
 
-\begin{bnflisting}{}
+```EBNF
 /* A full form of typespec. Used in typedef's only. */
 <type_spec> := <int_type>
              | <bool_type>
@@ -185,9 +65,9 @@ Type definition introduces a new user-defined type.
                     | <tuple_type>
                     | <type_name>
 
-\end{bnflisting}
+```
 
-\begin{bnflisting}{}
+```EBNF
 <int_type>         := "int" /* unbounded mathematical integer */
 <bool_type>        := "bool"
 <string_type>      := "string" /* UTF-8 string */
@@ -198,39 +78,34 @@ Type definition introduces a new user-defined type.
 <constructor>      := <cons_name> /* constructor without fields */
                     | <cons_name> "{" [<field> ("," <field>)*] "}"
 <field> := <field_name> ":" <simple_type_spec> 
-\end{bnflisting}
+```
 
-\subsection*{Example}
-
-\section{Functions}
+##Functions
 
 Functions are pure (side-effect-free computations).  A function can have 
 optional definition.  A function without definition refers to a
-foreign function implemented outside of \lang.
+foreign function implemented outside of Datalog.
 
-\begin{bnflisting}{}
+```EBNF
 <function> := "function" <func_name> "(" [<arg>(,<arg>)*]")"
               ":" <simple_type_spec> /* return type */
               ["=" <expr>]    /* optional function definition */
-\end{bnflisting}
+```
 
-\begin{bnflisting}{}
+```EBNF
 <arg> := <arg_name> ":" <simple_type_spec>
-\end{bnflisting}
+```
 
-\subsection*{Examples}
+##Relations
 
-
-\section{Relations}
-
-\begin{bnflisting}{}
+```EBNF
 <relation> := ["ground"] "relation" <rel_name> "(" [<arg> ","] <arg> ")"
-\end{bnflisting}
+```
 
-\section{Expressions}
+##Expressions
 
 
-\begin{bnflisting}{}
+```EBNF
 <expr> := <term>
         | <expr> "["<decimal> "," <decimal>"]"  /*bit slice (e[h:l])*/
         | <expr> ":" <simple_type_spec>         /*explicit type signature*/
@@ -258,7 +133,7 @@ foreign function implemented outside of \lang.
         | <expr> "=>" <expr>                    /*implication*/
         | <expr> "=" <expr>                     /*assignment*/
         | <expr> ";" <expr>                     /*sequential composition*/
-\end{bnflisting}
+```
 
 The following table lists operators order by decreasing priority.
 
@@ -284,7 +159,7 @@ The following table lists operators order by decreasing priority.
     \hline
 \end{tabular}
 
-\begin{bnflisting}{}
+```EBNF
 <term> := "_"                 /* wildcard */
         | <int_literal>       /* integer literal */
         | <bool_literal>      /* Boolean literal */
@@ -295,31 +170,31 @@ The following table lists operators order by decreasing priority.
         | <match_term>        /* match term */
         | <ite_term>          /* if-then-else term */
         | <vardecl_term>      /* local variable declaration */
-\end{bnflisting}
+```
 
 {\color{red}Integer literal syntax is currently arcane and will be changed to
 C-style syntax.}
 
-\begin{bnflisting}{}
+```EBNF
 <int_literal>  := <decimal>
                 | [<width>] "'d" <decimal>
                 | [<width>] "'h" <hexadecimal>
                 | [<width>] "'o" <octal>
                 | [<width>] "'b" <binary>
 <width> := <decimal>
-\end{bnflisting}
+```
 
 {\color{red}We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
 functionality.}
 
-\begin{bnflisting}{}
+```EBNF
 <string_literal>   := '"' <UTF-8 string with escaping> '"' 
-\end{bnflisting}
+```
 
 Other terms:
 
-\begin{bnflisting}{}
+```EBNF
 <bool_literal> := "true" | "false"
 <cons_term>    := /* positional arguments */
                   <cons_name> ["{" [<expr> (,<expr>)*] "}"]
@@ -332,9 +207,9 @@ Other terms:
 
 <match_term>   := "match" "(" <expr> ")" "{" <match_clause> [(,<match_clause>)*]"}"
 <match_clause> := <pattern> "->" <expr>
-\end{bnflisting}
+```
 
-\begin{bnflisting}{}
+```EBNF
 /* match pattern */
 <pattern> := /* tuple pattern */
              "(" [<pattern> (,<pattern>)* ")"                      
@@ -345,15 +220,15 @@ Other terms:
                              (,<field_name>":"<pattern>)*] "}"
            | <var_decl_term> /* variable declaration inside pattern */
            | "_"             /* wildcard, matches any value */
-\end{bnflisting}
+```
 
-\section{Rules}
+##Rules
 
 A Datalog rule consists of one or more lefthand-side atoms (multiple 
 LHS atoms are used to abbreviate rules with identical right-hand 
 sides), zero or more . 
 
-\begin{bnflisting}{}
+```EBNF
 <rule> := <atom> [(,<atom>)*] ":-" <atom'> [(,<atom'>)*]
 
 <atom> := <rel_name> "(" <expr> [(,<expr>)*] ")"
@@ -363,6 +238,4 @@ sides), zero or more .
          | "not" <atom>  /* negated atom */
          | <expr>        /* condition */
 
-\end{bnflisting}
-
-\end{document}
+```
