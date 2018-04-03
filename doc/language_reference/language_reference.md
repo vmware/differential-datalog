@@ -107,31 +107,31 @@ relation ::= ["ground"] "relation" rel_name "(" [arg ","] arg ")"
 ```EBNF
 expr ::= term
        | expr "["decimal "," decimal"]"  (*bit slice (e[h:l])*)
-       | expr ":" simple_type_spec         (*explicit type signature*)
-       | expr "." identifier               (*struct field*)
-       | "~" expr                            (*bitwise negation*)
-       | "not" expr                          (*boolean negation*)
-       | "(" expr ")"                        (*grouping*)
-       | "{" expr "}"                        (*grouping (alternative syntax)*)
-       | expr "%" expr                     (*remainder*)
+       | expr ":" simple_type_spec       (*explicit type signature*)
+       | expr "." identifier             (*struct field*)
+       | "~" expr                        (*bitwise negation*)
+       | "not" expr                      (*boolean negation*)
+       | "(" expr ")"                    (*grouping*)
+       | "{" expr "}"                    (*grouping (alternative syntax)*)
+       | expr "%" expr                   (*remainder*)
        | expr "+" expr
        | expr "-" expr
        | expr "" expr                    (*right shift*)
        | expr "" expr                    (*left shift*)
-       | expr "++" expr                    (*bitvector concatenation*)
+       | expr "++" expr                  (*bitvector concatenation*)
        | expr "==" expr
        | expr "!=" expr
        | expr "" expr
        | expr "=" expr
        | expr "" expr
        | expr "=" expr
-       | expr "&" expr                     (*bitwise and*)
-       | expr "|" expr                     (*bitwise or*)
-       | expr "and" expr                   (*logical and*)
-       | expr "or" expr                    (*logical or*)
-       | expr "=" expr                    (*implication*)
-       | expr "=" expr                     (*assignment*)
-       | expr ";" expr                     (*sequential composition*)
+       | expr "&" expr                   (*bitwise and*)
+       | expr "|" expr                   (*bitwise or*)
+       | expr "and" expr                 (*logical and*)
+       | expr "or" expr                  (*logical or*)
+       | expr "=" expr                   (*implication*)
+       | expr "=" expr                   (*assignment*)
+       | expr ";" expr                   (*sequential composition*)
 ```
 
 The following table lists operators order by decreasing priority.
@@ -155,7 +155,7 @@ The following table lists operators order by decreasing priority.
 | Lowest | ;                       |
 
 ```EBNF
-term ::= "_"                 (* wildcard *)
+term ::= "_"               (* wildcard *)
        | int_literal       (* integer literal *)
        | bool_literal      (* Boolean literal *)
        | string_literal    (* string literal *)
