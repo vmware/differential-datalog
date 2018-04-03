@@ -234,7 +234,7 @@ foreign function implemented outside of \lang.
 <expr> := <term>
         | <expr> "["<decimal> "," <decimal>"]"  /*bit slice (e[h:l])*/
         | <expr> ":" <simple_type_spec>         /*explicit type signature*/
-        | <expr> "." <identifier>               /* struct field */
+        | <expr> "." <identifier>               /*struct field*/
         | "~" <expr>                            /*bitwise negation*/
         | "not" <expr>                          /*boolean negation*/
         | "(" <expr> ")"                        /*grouping*/
@@ -260,173 +260,109 @@ foreign function implemented outside of \lang.
         | <expr> ";" <expr>                     /*sequential composition*/
 \end{bnflisting}
 
-\begin{bnflisting}{}
-<term> := <structTerm>   // struct given by listing its fields
-        | <applyTerm>    // user-defined function call
-        | <builtinTerm>  // builtin function call
-        | <instanceTerm> // role instance (used in send statements)
-        | <intTerm>      // integer constant
-        | <boolTerm>     // boolean constant
-        | <packetTerm>   // special packet variable
-        | <varTerm>      // variable reference: role key or local var
-        | <dotvarTerm>   // dot-variable reference
-        | <condTerm>     // case split
-\end{bnflisting}
+The following table lists operators order by decreasing priority.
+
+\begin{tabular}{|l|l|}
+    \hline
+    \textbf{priority} & \textbf{operators} \\
+    \hline\hline
+    Highest & \src{e[h:l], x:t, x.f} \\
+            & \src{\~} \\
+            & \src{not} \\
+            & \src{\%} \\
+            & \src{+, -} \\
+            & \src{>>, <<} \\
+            & \src{++} \\
+            & \src{==, !=, <, <=, >, >=} \\
+            & \src{\&} \\
+            & \src{|} \\
+            & \src{and} \\
+            & \src{or} \\
+            & \src{=>} \\
+            & \src{=} \\
+    Lowest  & \src{;} \\
+    \hline
+\end{tabular}
 
 \begin{bnflisting}{}
-<structTerm>   := <identifier> "{" <expr> (,<expr>)* "}"
-<applyTerm>    := <identifier> "(" [<expr> (,<expr>)*] ")"
-<builtinTerm>  := <identifier> "!" "(" [<expr> (,<expr>)*] ")"
-<instanceTerm> := <identifier> "[" [<expr> (,<expr>)*] "]"
-<boolTerm>     := "true" | "false"
-<packetTerm>   := "pkt"
-<varTerm>      := <identifier>
-<dotvarTerm>   := "." <identifier>
-<condTerm>     := "case" "{"
-                  (<expr> ":" <expr> ";")*
-                  "default" ":" <expr> ";"
-                  "}"
-<intTerm>      := [<width>] "'d" <decimal>
+<term> := "_"                 /* wildcard */
+        | <int_literal>       /* integer literal */
+        | <bool_literal>      /* Boolean literal */
+        | <string_literal>    /* string literal */
+        | <cons_term>         /* type constructor invocation */
+        | <apply_term>        /* function application */
+        | <var_term>          /* variable reference */
+        | <match_term>        /* match term */
+        | <ite_term>          /* if-then-else term */
+        | <vardecl_term>      /* local variable declaration */
+\end{bnflisting}
+
+{\color{red}Integer literal syntax is currently arcane and will be changed to
+C-style syntax.}
+
+\begin{bnflisting}{}
+<int_literal>  := <decimal>
+                | [<width>] "'d" <decimal>
                 | [<width>] "'h" <hexadecimal>
                 | [<width>] "'o" <octal>
                 | [<width>] "'b" <binary>
 <width> := <decimal>
 \end{bnflisting}
 
-\section{Roles}
+{\color{red}We rely on parsec's standard parser for strings, which
+supports unicode and escaping. TODO: check and document its exact
+functionality.}
 
 \begin{bnflisting}{}
-<roleDecl> := "role" <identifier> 
-              "["[<arg>(,<arg>)*]"]" // role keys
-              ["|" <expr>]    // constraint on role keys
-              ["/" <expr>]    // constraint on input packets
-              "=" <stat>      // role body
+<string_literal>   := '"' <UTF-8 string with escaping> '"' 
 \end{bnflisting}
 
-\subsection*{Example}
-
-\begin{dllisting}{}
-(* Role with two keys *)
-role VSwitchIn[HostId hst, uint<16> vport] | iVSwitchPort(hst, vport) = 
-    (* Local variable declaration: binding *)
-    let VHPortId from_vhport = vSw2HLink(hst, vport);
-    if (iNFVHost(from_vhport.vhost) and (not (pkt.eth.dstAddr == bCastMAC()))) or 
-       pkt.eth.srcAddr == vHPort2Mac(from_vhport) then {
-        let VNetId vnet = vSwPortVNet(hst, vport);
-        if bCastMAC() == pkt.eth.dstAddr then {
-            fork(HostId dhst | iHost(dhst) and hHostsVNet(dhst, vnet)) {
-                if dhst == hst then {
-                    pkt.vlan.vid := 12'd0;
-                    fork(VHPortId vhport | iVHostPort(vhport) and 
-                                           vHPortVNet(vhport) == vnet and 
-                                           vHostLocation(vhport.vhost) == hst and 
-                                           vH2SwLink(vhport) != vport and
-                                           connection(from_vhport, vhport)) {
-                        send VSwitchOut[hst, vH2SwLink(vhport)]
-                    }
-                } else {
-                    pkt.vlan.vid := vnet;
-                    send VSwitchTunOut[hst, tunPort(hst, dhst)]
-                }
-            }
-        } else {
-            let VHPortId to_vhport = nextHop(pkt.eth, from_vhport);
-            if iVHostPort(to_vhport) and connection(from_vhport, to_vhport) then {
-                if (vHostLocation(to_vhport.vhost) == hst) then { 
-                    (* Local destination -- deliver *)
-                    pkt.vlan.vid := 12'd0;
-                    pkt.vlan.pcp := 3'd0;
-                    send VSwitchOut[hst, vH2SwLink(to_vhport)]
-                } else {
-                    (* Remote destination -- encapsulate *)
-                    pkt.vlan.vid := vnet;
-                    pkt.vlan.pcp := label(pkt.eth, from_vhport);
-                    send VSwitchTunOut[hst, 
-                                       tunPort(hst, 
-                                               vHostLocation(to_vhport.vhost))]
-
-                }
-            }
-        }
-    }
-\end{dllisting}
-
-\section{Statements}
+Other terms:
 
 \begin{bnflisting}{}
-<stat> := <test> 
-        | <ite>
-        | <send>
-        | <sendNondet>
-        | <set>
-        | <havoc>
-        | <assume>
-        | <let>           // local variable declaration
-        | <fork>
-        | "{" <stat> "}"
-        | "(" <stat> ")"
-        | <stat> ";" <stat>
+<bool_literal> := "true" | "false"
+<cons_term>    := /* positional arguments */
+                  <cons_name> ["{" [<expr> (,<expr>)*] "}"]
+                  /* named arguments */
+                | <cons_name> ["{" <field_name>":"<expr> (,<field_name>":"<expr>)* "}"]
+<apply_term>   := <func_name> "(" [<expr> (,<expr>)*] ")"
+<var_term>     := <var_name>
+<ite_term>     := "if" <term> <term> "else" <term>
+<vardecl_term> := "var" <var_name>
 
-<test>       := "filter" <expr>
-<sendNondet> := "?" "send" <identifier> "[" <expr> "]"
-<send>       := "send" <expr> // expression must return role instance
-<set>        := <expr> ":=" <expr>
-<ite>        := "if" <expr> "then" <stat> ["else" <stat>]
-<havoc>      := "havoc" <expr>
-<assume>     := "assume" <expr>
-<let>        := "let" <typeSpec> <identifier> "=" <expr>
-<fork>       := "fork" "(" <arg> (,<arg>)* "|" <expr> ")" <stat>
+<match_term>   := "match" "(" <expr> ")" "{" <match_clause> [(,<match_clause>)*]"}"
+<match_clause> := <pattern> "->" <expr>
 \end{bnflisting}
 
-Note:
-\begin{itemize}
-    \item Only fields of the special \texttt{pkt} variable can be modified 
-        with \texttt{:=} or \texttt{havoc}.
-    \item Every field can be modified at most once by a role.  Packet fields
-        that are not modified by the role keep their input values.        
-    \item Local variables are declared and assigned at the same time using 
-        \texttt{let}.  Their values never change.
-\end{itemize}
+\begin{bnflisting}{}
+/* match pattern */
+<pattern> := /* tuple pattern */
+             "(" [<pattern> (,<pattern>)* ")"                      
+             /* constructor pattern with positional arguments */
+           | <cons_name> ["{" [<pattern> (,<pattern>)*] "}"]   
+             /* constructor pattern with named arguments */
+           | <cons_name> "{" [<field_name>":"<pattern> 
+                             (,<field_name>":"<pattern>)*] "}"
+           | <var_decl_term> /* variable declaration inside pattern */
+           | "_"             /* wildcard, matches any value */
+\end{bnflisting}
 
-\subsection*{Examples}
+\section{Rules}
 
-\begin{dllisting}{}
-filter false (* drop all packets *)
-\end{dllisting}
-
-\begin{dllisting}{}
-filter true (* no-op *)
-\end{dllisting}
-
-\begin{dllisting}{}
-(* Role with two keys: as and port *)
-role ASSDXIn[ASId as, ASPort port] | iASPort(as, port) = filter false
-
-...
-
-(* Multicast packet to all instances of role ASSDXIn, whose "as" key satisfies the
-   condition prefixMatch(.as, pkt.ip4.dst), where .as refers to the as key
-   of ASSDXIn, and pkt.ip4.dst is the destination IP of the packet.  *)
-?send ASSDXIn[prefixMatch(.as, pkt.ip4.dst)]
-
-(* Unicast to a single instance of ASSDXIn *)
-send ASSDXIn[defdst, inboundPolicy(defdst, pkt.ip4)]
-\end{dllisting}
-
-\begin{dllisting}{}
-(* Assign the mtag header of the packet *)
-pkt.mtag := computeMTag(pod, tor, dstAddr)
-\end{dllisting}
-
-\section{Nodes}
-
-There are two types of nodes: switches and hosts.  
+A Datalog rule consists of one or more lefthand-side atoms (multiple 
+LHS atoms are used to abbreviate rules with identical right-hand 
+sides), zero or more . 
 
 \begin{bnflisting}{}
-<nodeDecl> := ("switch" | "host") <identifier> "(" 
-              "(" <identifier> "," <identifier> ")" // list of in/out port pairs
-              ("," "(" <identifier> "," <identifier> ")")*
-              ")"
+<rule> := <atom> [(,<atom>)*] ":-" <atom'> [(,<atom'>)*]
+
+<atom> := <rel_name> "(" <expr> [(,<expr>)*] ")"
+        | <rel_name> "(" <arg_name>":"<expr> [(,<arg_name>":"<expr>)*] ")"
+
+<atom'> := <atom>        /* atom */
+         | "not" <atom>  /* negated atom */
+         | <expr>        /* condition */
+
 \end{bnflisting}
 
 \end{document}
