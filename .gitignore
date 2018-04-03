@@ -20,3 +20,6 @@ cabal.sandbox.config
 .stack-work/
 cabal.project.local
 .HTF/
+test/datalog_tests/*.expected
+.idea/
+out/
