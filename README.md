@@ -28,7 +28,7 @@ stack build
 To run the tests execute:
 
 ```
-cabal test
+stack test
 ```
 
 # Using IntelliJ IDEA
