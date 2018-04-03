@@ -19,12 +19,6 @@ wget -qO- https://get.haskellstack.org/ | sh
 
 # Building
 
-The first time you compile you need to initialize the project:
-
-```
-stack init
-```
-
 To build the software execute:
 
 ```
