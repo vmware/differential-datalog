@@ -16,7 +16,10 @@ cabal.sandbox.config
 *.hp
 *.eventlog
 *.swp
-*.ast
 .stack-work/
 cabal.project.local
 .HTF/
+test/datalog_tests/*.ast
+.idea/
+out/
+*.cabal

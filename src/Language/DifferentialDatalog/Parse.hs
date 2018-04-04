@@ -6,6 +6,7 @@ module Language.DifferentialDatalog.Parse (
     exprGrammar) where
 
 import Control.Applicative hiding (many,optional,Const)
+import qualified Control.Exception as E
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.Expr
 import Text.Parsec.Language
@@ -25,7 +26,7 @@ parseDatalogFile :: FilePath -> IO DatalogProgram
 parseDatalogFile fname = do
     fdata <- readFile fname
     case parse datalogGrammar fname fdata of
-         Left  e    -> error $ "Failed to parse input file: " ++ show e
+         Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "+", "-", ".", "->", "=>", "<=", "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
