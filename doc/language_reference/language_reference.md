@@ -121,15 +121,15 @@ expr ::= term
        | expr "++" expr                  (*bitvector concatenation*)
        | expr "==" expr
        | expr "!=" expr
-       | expr "" expr
-       | expr "=" expr
-       | expr "" expr
-       | expr "=" expr
+       | expr ">" expr
+       | expr ">=" expr
+       | expr "<" expr
+       | expr "<=" expr
        | expr "&" expr                   (*bitwise and*)
        | expr "|" expr                   (*bitwise or*)
        | expr "and" expr                 (*logical and*)
        | expr "or" expr                  (*logical or*)
-       | expr "=" expr                   (*implication*)
+       | expr "=>" expr                  (*implication*)
        | expr "=" expr                   (*assignment*)
        | expr ";" expr                   (*sequential composition*)
 ```
@@ -194,7 +194,8 @@ bool_literal ::= "true" | "false"
 cons_term    ::= (* positional arguments *)
                  cons_name ["{" [expr (,expr)*] "}"]
                  (* named arguments *)
-               | cons_name ["{" field_name":"expr (,field_name":"expr)* "}"]
+               | cons_name ["{" "." field_name "=" expr 
+                            ("," "." field_name "=" expr)* "}"]
 apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
 ite_term     ::= "if" term term "else" term
@@ -211,8 +212,8 @@ pattern ::= (* tuple pattern *)
             (* constructor pattern with positional arguments *)
           | cons_name ["{" [pattern (,pattern)*] "}"]   
             (* constructor pattern with named arguments *)
-          | cons_name "{" [field_name":"pattern 
-                            (,field_name":"pattern)*] "}"
+          | cons_name "{" ["." field_name "=" pattern 
+                           ("," "." field_name "=" pattern)*] "}"
           | var_decl_term (* variable declaration inside pattern *)
           | "_"             (* wildcard, matches any value *)
 ```
@@ -227,7 +228,7 @@ sides), zero or more .
 rule ::= atom [(,atom)*] ":-" atom' [(,atom')*]
 
 atom ::= rel_name "(" expr [(,expr)*] ")"
-       | rel_name "(" arg_name":"expr [(,arg_name":"expr)*] ")"
+       | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
 
 atom' ::= atom        (* atom *)
         | "not" atom  (* negated atom *)

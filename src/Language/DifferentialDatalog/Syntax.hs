@@ -271,7 +271,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EMatch        {exprPos :: Pos, exprMatchExpr :: e, exprCases :: [(e, e)]}
                 | EVarDecl      {exprPos :: Pos, exprVName :: String}
                 | ESeq          {exprPos :: Pos, exprLeft :: e, exprRight :: e}
-                | EITE          {exprPos :: Pos, exprCond :: e, exprThen :: e, exprElse :: Maybe e}
+                | EITE          {exprPos :: Pos, exprCond :: e, exprThen :: e, exprElse :: e}
                 | ESet          {exprPos :: Pos, exprLVal :: e, exprRVal :: e}
                 | EBinOp        {exprPos :: Pos, exprBOp :: BOp, exprLeft :: e, exprRight :: e}
                 | EUnOp         {exprPos :: Pos, exprUOp :: UOp, exprOp :: e}
@@ -322,11 +322,11 @@ instance PP e => PP (ExprNode e) where
                                                          $ (map (\(c,v) -> pp c <> colon <+> pp v) cs))
     pp (EVarDecl _ v)        = "var" <+> pp v
     pp (ESeq _ l r)          = parens $ (pp l <> semi) $$ pp r
-    pp (EITE _ c t me)       = ("if" <+> pp c <+> lbrace)
+    pp (EITE _ c t e)        = ("if" <+> pp c <+> lbrace)
                                $$
                                (nest' $ pp t)
                                $$
-                               rbrace <+> (maybe empty (\e -> ("else" <+> lbrace) $$ (nest' $ pp e) $$ rbrace) me)
+                               rbrace <+> (("else" <+> lbrace) $$ (nest' $ pp e) $$ rbrace)
     pp (ESet _ l r)          = pp l <+> "=" <+> pp r
     pp (EBinOp _ op e1 e2)   = parens $ pp e1 <+> pp op <+> pp e2
     pp (EUnOp _ op e)        = parens $ pp op <+> pp e

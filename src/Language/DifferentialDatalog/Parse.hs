@@ -214,6 +214,7 @@ term  =  elhs
      <|> term'
 term' = withPos $
          eapply
+     <|> epholder
      <|> estruct
      <|> eint
      <|> ebool
@@ -264,7 +265,7 @@ eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
                                                    v <- sradval
                                                    mkLit w v)
 
-eite    = eITE     <$ reserved "if" <*> term <*> term <*> (optionMaybe $ reserved "else" *> term)
+eite    = eITE     <$ reserved "if" <*> term <*> term <*> (reserved "else" *> term)
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 
