@@ -70,7 +70,7 @@ simple_type_spec ::= int_type
 int_type         ::= "int" (* unbounded mathematical integer *)
 bool_type        ::= "bool"
 string_type      ::= "string" (* UTF-8 string *)
-bitvector_type   ::= "bit" "" decimal ""
+bitvector_type   ::= "bit" "<" decimal ">"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
 

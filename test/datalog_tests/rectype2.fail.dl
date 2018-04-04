@@ -1,0 +1,3 @@
+typedef t = t1
+typedef t1 = ( t, t )
+

@@ -1,0 +1,3 @@
+Failed to parse input file: "./test/datalog_tests/nestedConstr.fail.dl" (line 1, column 34):
+unexpected "{"
+expecting "," or "}"
