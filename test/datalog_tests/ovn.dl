@@ -789,3 +789,26 @@ ground relation Gateway_Chassis_options (
     key:                string,
     value:              string
 )
+
+
+/*****************************************/
+
+typedef port_t = bit<16>
+typedef opt_port_t = SomePort{port: port_t}
+                   | NoPort
+
+typedef ip_port_t = IPPort {ip: string, port: opt_port_t}
+
+
+/* Load_Balancer.ip_addresses
+ */
+relation Load_Balancer_ip_addresses (
+    load_balancer:  uuid,
+    ip_address:     string
+)
+
+// external function
+function ip_address_and_port_from_lb_key(key: string): ip_port_t
+
+Load_Balancer_ip_addresses(lb, ip_address_and_port_from_lb_key(key).ip) 
+    :- Load_Balancer_vips(lb, key, _)

@@ -1,5 +1,9 @@
 typedef StructWithConstructor = Constructor1{field1: type1, field2: type2} | Constructor2{}
+typedef ip_port_t = IPPort{ip: string, port: opt_port_t}
+typedef opt_port_t = SomePort{port: port_t} | NoPort{}
+typedef port_t = bit<16>
 typedef uuid = bit<128>
+function ip_address_and_port_from_lb_key (key: string): ip_port_t
 ground relation ACL (
     id: uuid,
     logical_switch: uuid,
@@ -92,6 +96,9 @@ ground relation Load_Balancer_external_ids (
     load_balancer: uuid,
     key: string,
     value: string)
+relation Load_Balancer_ip_addresses (
+    load_balancer: uuid,
+    ip_address: string)
 ground relation Load_Balancer_protocol (
     load_balancer: uuid,
     protocol: string)
@@ -263,3 +270,4 @@ ground relation SSL_external_ids (
     ssl: uuid,
     key: string,
     value: string)
+Load_Balancer_ip_addresses (lb, ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips (lb, key, _)
