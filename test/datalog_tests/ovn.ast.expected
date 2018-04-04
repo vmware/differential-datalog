@@ -1,5 +1,33 @@
 typedef StructWithConstructor = Constructor1{field1: type1, field2: type2} | Constructor2{}
 typedef uuid = bit<128>
+ground relation ACL (
+    id: uuid,
+    logical_switch: uuid,
+    priority: int,
+    direction: string,
+    _match: string,
+    action: string,
+    log: bool)
+ground relation ACL_external_ids (
+    acl: uuid,
+    key: string,
+    value: string)
+ground relation ACL_name (
+    acl: uuid,
+    name: string)
+ground relation ACL_severity (
+    acl: uuid,
+    severity: string)
+ground relation Address_Set (
+    id: uuid,
+    name: string)
+ground relation Address_Set_addresses (
+    address_set: uuid,
+    address: string)
+ground relation Address_Set_external_ids (
+    address_set: uuid,
+    key: string,
+    value: string)
 ground relation Connection (
     id: uuid,
     target: string,
@@ -16,6 +44,189 @@ ground relation Connection_max_backoff (
 ground relation Connection_other_config (
     connection: uuid,
     other_config: string)
+ground relation Connection_status (
+    connection: uuid,
+    key: string,
+    value: string)
+ground relation DHCP_Options (
+    id: uuid,
+    cidr: string)
+ground relation DHCP_Options_external_ids (
+    dhcp_options: uuid,
+    key: string,
+    value: string)
+ground relation DHCP_Options_options (
+    dhcp_options: uuid,
+    key: string,
+    value: string)
+ground relation DNS (
+    id: uuid,
+    logical_switch: uuid)
+ground relation DNS_external_ids (
+    dns: uuid,
+    key: string,
+    value: string)
+ground relation DNS_records (
+    dns: uuid,
+    key: string,
+    value: string)
+ground relation Gateway_Chassis (
+    id: uuid,
+    logical_router: uuid,
+    name: string,
+    chassis_name: string,
+    priority: int)
+ground relation Gateway_Chassis_external_ids (
+    gateway_chassis: uuid,
+    key: string,
+    value: string)
+ground relation Gateway_Chassis_options (
+    gateway_chassis: uuid,
+    key: string,
+    value: string)
+ground relation Load_Balancer (
+    id: uuid,
+    logical_switch: uuid,
+    name: string)
+ground relation Load_Balancer_external_ids (
+    load_balancer: uuid,
+    key: string,
+    value: string)
+ground relation Load_Balancer_protocol (
+    load_balancer: uuid,
+    protocol: string)
+ground relation Load_Balancer_vips (
+    load_balancer: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router (
+    id: uuid,
+    name: string)
+ground relation Logical_Router_Port (
+    id: uuid,
+    logical_router: uuid,
+    name: string,
+    mac: string)
+ground relation Logical_Router_Port_enabled (
+    logical_router_port: uuid,
+    enabled: bool)
+ground relation Logical_Router_Port_external_ids (
+    logical_router_port: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router_Port_ipv6_ra_configs (
+    logical_router_port: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router_Port_networks (
+    logical_router_port: uuid,
+    network: string)
+ground relation Logical_Router_Port_options (
+    logical_router_port: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router_Port_peer (
+    logical_router_port: uuid,
+    peer: string)
+ground relation Logical_Router_Static_Route (
+    id: uuid,
+    logical_router: uuid,
+    ip_prefix: string,
+    nexthop: string)
+ground relation Logical_Router_Static_Route_external_ids (
+    logical_router_static_route: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router_Static_Route_output_port (
+    logical_router_static_route: uuid,
+    output_port: string)
+ground relation Logical_Router_Static_Route_policy (
+    logical_router_static_route: uuid,
+    policy: string)
+ground relation Logical_Router_enabled (
+    logical_router: uuid,
+    enabled: bool)
+ground relation Logical_Router_external_ids (
+    logical_router: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Router_options (
+    logical_router: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Switch (
+    id: uuid,
+    name: string,
+    type: string)
+ground relation Logical_Switch_Port (
+    id: uuid,
+    logical_switch: uuid,
+    name: string,
+    type: string)
+ground relation Logical_Switch_Port_addresses (
+    logical_switch_port: uuid,
+    address: string)
+ground relation Logical_Switch_Port_dhcpv4_options (
+    logical_switch_port: uuid,
+    dhcp_options: uuid)
+ground relation Logical_Switch_Port_dhcpv6_options (
+    logical_switch_port: uuid,
+    dhcp_options: uuid)
+ground relation Logical_Switch_Port_dynamic_addresses (
+    logical_switch_port: uuid,
+    dynamic_address: string)
+ground relation Logical_Switch_Port_enabled (
+    logical_switch_port: uuid,
+    enabled: bool)
+ground relation Logical_Switch_Port_external_ids (
+    logical_switch_port: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Switch_Port_options (
+    logical_switch_port: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Switch_Port_parent (
+    logical_switch_port: uuid,
+    parent_name: string)
+ground relation Logical_Switch_Port_port_security (
+    logical_switch_port: uuid,
+    port_security: string)
+ground relation Logical_Switch_Port_tag (
+    logical_switch_port: uuid,
+    tag: int)
+ground relation Logical_Switch_Port_tag_request (
+    logical_switch_port: uuid,
+    tag_request: int)
+ground relation Logical_Switch_Port_up (
+    logical_switch_port: uuid,
+    up: bool)
+ground relation Logical_Switch_external_ids (
+    logical_switch: uuid,
+    key: string,
+    value: string)
+ground relation Logical_Switch_other_config (
+    logical_switch: uuid,
+    key: string,
+    value: string)
+ground relation NAT (
+    id: uuid,
+    logical_router: uuid,
+    external_ip: string,
+    logical_ip: string)
+ground relation NAT_external_ids (
+    nat: uuid,
+    key: string,
+    value: string)
+ground relation NAT_external_mac (
+    nat: uuid,
+    external_mac: string)
+ground relation NAT_logical_port (
+    nat: uuid,
+    logical_port: string)
+ground relation NAT_type (
+    nat: uuid,
+    type: string)
 ground relation NB_Global (
     nb_cfg: int,
     sb_cfg: int,
@@ -23,5 +234,32 @@ ground relation NB_Global (
 ground relation NB_Global_external_ids (
     key: string,
     value: string)
-ground relation NB_Global_ssl (
-    ssl: uuid)
+ground relation QoS (
+    id: uuid,
+    logical_switch: uuid,
+    priority: int,
+    direction: string,
+    _match: string)
+ground relation QoS_action (
+    qos: uuid,
+    key: string,
+    value: int)
+ground relation QoS_bandwidth (
+    qos: uuid,
+    key: string,
+    value: int)
+ground relation QoS_external_ids (
+    qos: uuid,
+    key: string,
+    value: string)
+ground relation SSL (
+    id: uuid,
+    private_key: string,
+    certificate: string,
+    bootstrap_ca_cert: bool,
+    ssl_protocols: string,
+    ssl_ciphers: string)
+ground relation SSL_external_ids (
+    ssl: uuid,
+    key: string,
+    value: string)
