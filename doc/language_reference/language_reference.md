@@ -230,7 +230,11 @@ rule ::= atom [(,atom)*] ":-" atom' [(,atom')*]
 atom ::= rel_name "(" expr [(,expr)*] ")"
        | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
 
-atom' ::= atom        (* atom *)
-        | "not" atom  (* negated atom *)
-        | expr        (* condition *)
+atom' ::= atom                                      (* atom *)
+        | "not" atom                                (* negated atom *)
+        | expr                                      (* condition *)
+        | "FlatMap" "(" var_name "=" expr ")"       (* flat map *)
+        | "Aggregate" "("                           (* aggregation *)
+          "(" [var_name [("," var_name)*]] ")" "," 
+          var_name "=" expr ")"
 ```
