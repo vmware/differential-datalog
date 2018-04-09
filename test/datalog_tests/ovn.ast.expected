@@ -1,5 +1,12 @@
 typedef StructWithConstructor = Constructor1{field1: type1, field2: type2} | Constructor2{}
+typedef ip4_addr_t = bit<32>
+typedef ip4_subnet_t = IP4Subnet{addr: ip4_addr_t, mask: ip4_addr_t}
+typedef ip6_addr_t = bit<128>
+typedef ip6_subnet_t = IP6Subnet{addr: ip6_addr_t, mask: ip6_addr_t}
+typedef ip_addr_t = IPAddr4{addr4: ip4_addr_t} | IPAddr6{addr6: ip6_addr_t}
 typedef ip_port_t = IPPort{ip: string, port: opt_port_t}
+typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet: ip6_subnet_t}
+typedef mac_addr_t = bit<48>
 typedef opt_port_t = SomePort{port: port_t} | NoPort{}
 typedef port_t = bit<16>
 typedef uuid = bit<128>
@@ -59,10 +66,25 @@ ground relation DHCP_Options_external_ids (
     dhcp_options: uuid,
     key: string,
     value: string)
+relation DHCP_Options_netmask (
+    dhcp_options: uuid,
+    netmask: string)
+relation DHCP_Options_option_args (
+    dhcp_options: uuid,
+    option: string)
 ground relation DHCP_Options_options (
     dhcp_options: uuid,
     key: string,
     value: string)
+relation DHCP_Options_server_ip (
+    dhcp_options: uuid,
+    server_ip: string)
+relation DHCP_Options_server_mac (
+    dhcp_options: uuid,
+    server_mac: mac_addr_t)
+relation DHCP_Options_stateful (
+    dhcp_options: uuid,
+    stateful: bool)
 ground relation DNS (
     id: uuid,
     logical_switch: uuid)
@@ -189,6 +211,13 @@ ground relation Logical_Switch_Port_external_ids (
     logical_switch_port: uuid,
     key: string,
     value: string)
+relation Logical_Switch_Port_ips (
+    logical_switch_port: uuid,
+    mac: bit<48>,
+    ip: ip_addr_t)
+relation Logical_Switch_Port_macs (
+    logical_switch_port: uuid,
+    mac: bit<48>)
 ground relation Logical_Switch_Port_options (
     logical_switch_port: uuid,
     key: string,
@@ -199,6 +228,13 @@ ground relation Logical_Switch_Port_parent (
 ground relation Logical_Switch_Port_port_security (
     logical_switch_port: uuid,
     port_security: string)
+relation Logical_Switch_Port_ps_ips (
+    logical_switch_port: uuid,
+    mac: mac_addr_t,
+    ip: ip_subnet_t)
+relation Logical_Switch_Port_ps_macs (
+    logical_switch_port: uuid,
+    mac: mac_addr_t)
 ground relation Logical_Switch_Port_tag (
     logical_switch_port: uuid,
     tag: int)
@@ -212,6 +248,8 @@ ground relation Logical_Switch_external_ids (
     logical_switch: uuid,
     key: string,
     value: string)
+relation Logical_Switch_has_stateful_acl (
+    logical_switch: uuid)
 ground relation Logical_Switch_other_config (
     logical_switch: uuid,
     key: string,
@@ -271,3 +309,17 @@ ground relation SSL_external_ids (
     key: string,
     value: string)
 Load_Balancer_ip_addresses (lb, ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips (lb, key, _)
+Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_addresses (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_ips(ips, (), ip)
+Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_dynamic_addresses (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_ips(ips, (), ip)
+Logical_Switch_Port_macs (lsp, mac) :- Logical_Switch_Port_ips (lsp, mac, _)
+Logical_Switch_has_stateful_acl_action (ls) :- ACL (.logical_switch=ls, .action="allow-related")
+Logical_Switch_Port_ps_ips (lsp, mac, subnet) :- Logical_Switch_Port_port_security (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_subnets(ips, (), subnet)
+Logical_Switch_Port_ps_macs (lsp, mac) :- Logical_Switch_Port_ps_ips (lsp, mac, _)
+DHCP_Options_option_args (opts, ((key ++ "=") ++ value)) :- DHCP_Options_options (opts, key, value), ((key != "server_mac") and (key != "dhcpv6_stateless"))
+DHCP_Options_server_mac (opts, mac) :- DHCP_Options_options (opts, "server_mac", val), SomeMAC{mac} = eth_addr_from_string(val)
+DHCP_Options_server_mac (opts, mac) :- DHCP_Options_options (opts, "server_id", val), SomeMAC{mac} = eth_addr_from_string(val)
+DHCP_Options_server_ip (opts, val) :- DHCP_Options_options (opts, "server_id", val), FlatMap(optip4 = ip_parse(val)), SomeIP4Addr{ip4} = optip4
+DHCP_Options_server_ip (opts, ipv6_string_mapped(lla)) :- DHCP_Options_options (opts, "server_id", val), NoIP4Addr{} = ip_parse(val), SomeMAC{mac} = eth_addr_from_string(val), lla = in6_generate_lla(mac)
+DHCP_Options_netmask (opts, build_dhcp_netmask(cidr)) :- DHCP_Options (opts, cidr)
+DHCP_Options_stateful (opts, true) :- DHCP_Options_options (opts, "dhcpv6_stateless", "false")
+DHCP_Options_stateful (opts, false) :- DHCP_Options_options (opts, "dhcpv6_stateless", "true")
