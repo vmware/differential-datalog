@@ -309,8 +309,8 @@ ground relation SSL_external_ids (
     key: string,
     value: string)
 Load_Balancer_ip_addresses (lb, ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips (lb, key, _)
-Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_addresses (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_ips(ips, (), ip)
-Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_dynamic_addresses (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_ips(ips, (), ip)
+Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_addresses (lsp, addrs), (mac, ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips))
+Logical_Switch_Port_ips (lsp, mac, ip) :- Logical_Switch_Port_dynamic_addresses (lsp, addrs), (mac, ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips))
 Logical_Switch_Port_macs (lsp, mac) :- Logical_Switch_Port_ips (lsp, mac, _)
 Logical_Switch_has_stateful_acl_action (ls) :- ACL (.logical_switch=ls, .action="allow-related")
 Logical_Switch_Port_ps_ips (lsp, mac, subnet) :- Logical_Switch_Port_port_security (lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_subnets(ips, (), subnet)
@@ -318,7 +318,7 @@ Logical_Switch_Port_ps_macs (lsp, mac) :- Logical_Switch_Port_ps_ips (lsp, mac, 
 DHCP_Options_option_args (opts, ((key ++ "=") ++ value)) :- DHCP_Options_options (opts, key, value), ((key != "server_mac") and (key != "dhcpv6_stateless"))
 DHCP_Options_server_mac (opts, mac) :- DHCP_Options_options (opts, "server_mac", val), SomeMAC{mac} = eth_addr_from_string(val)
 DHCP_Options_server_mac (opts, mac) :- DHCP_Options_options (opts, "server_id", val), SomeMAC{mac} = eth_addr_from_string(val)
-DHCP_Options_server_ip (opts, val) :- DHCP_Options_options (opts, "server_id", val), FlatMap(optip4 = ip_parse(val)), SomeIP4Addr{ip4} = optip4
+DHCP_Options_server_ip (opts, val) :- DHCP_Options_options (opts, "server_id", val), SomeIP4Addr{ip4} = ip_parse(val)
 DHCP_Options_server_ip (opts, ipv6_string_mapped(lla)) :- DHCP_Options_options (opts, "server_id", val), NoIP4Addr{} = ip_parse(val), SomeMAC{mac} = eth_addr_from_string(val), lla = in6_generate_lla(mac)
 DHCP_Options_netmask (opts, build_dhcp_netmask(cidr)) :- DHCP_Options (opts, cidr)
 DHCP_Options_stateful (opts, true) :- DHCP_Options_options (opts, "dhcpv6_stateless", "false")
