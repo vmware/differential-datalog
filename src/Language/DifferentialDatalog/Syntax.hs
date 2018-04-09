@@ -53,8 +53,8 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
 
-data Field = Field { fieldPos  :: Pos 
-                   , fieldName :: String 
+data Field = Field { fieldPos  :: Pos
+                   , fieldName :: String
                    , fieldType :: Type
                    }
 
@@ -127,9 +127,9 @@ instance WithPos Type where
 
 instance PP Type where
     pp (TBool _)        = "bool"
-    pp (TInt _)         = "int" 
-    pp (TString _)      = "string" 
-    pp (TBit _ w)       = "bit<" <> pp w <> ">" 
+    pp (TInt _)         = "int"
+    pp (TString _)      = "string"
+    pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ hsep $ punctuate comma $ map pp as
     pp (TUser _ n)      = pp n
@@ -167,7 +167,7 @@ data Constructor = Constructor { consPos :: Pos
 instance Eq Constructor where
     (==) (Constructor _ n1 as1) (Constructor _ n2 as2) = n1 == n2 && as1 == as2
 
-instance WithName Constructor where 
+instance WithName Constructor where
     name = consName
 
 instance WithPos Constructor where
@@ -181,7 +181,7 @@ instance Show Constructor where
     show = render . pp
 {-
 consType :: Refine -> String -> TypeDef
-consType r c = fromJust 
+consType r c = fromJust
                $ find (\td -> case tdefType td of
                                    Just (TStruct _ cs) -> any ((==c) . name) cs
                                    _                   -> False)
@@ -225,7 +225,7 @@ instance WithPos Atom where
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp Atom{..} = pp atomRelation <+>
+    pp Atom{..} = pp atomRelation <>
                   (parens $ hsep $ punctuate comma
                    $ map (\(n, e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) atomArgs)
 
@@ -251,11 +251,10 @@ instance PP RuleRHS where
     pp (RHSLiteral True a)  = pp a
     pp (RHSLiteral False a) = "not" <+> pp a
     pp (RHSCondition c)     = pp c
-    pp (RHSAggregate g v e) = "Aggregate" <> "(" <> 
+    pp (RHSAggregate g v e) = "Aggregate" <> "(" <>
                               (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
-                              pp v <+> "=" <+> pp e <> ")" 
-    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <>
                               pp v <+> "=" <+> pp e <> ")"
+    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <> pp v <+> "=" <+> pp e <> ")"
 
 instance Show RuleRHS where
     show = render . pp
@@ -266,7 +265,7 @@ data Rule = Rule { rulePos :: Pos
                  }
 
 instance Eq Rule where
-    (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) = 
+    (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
         lhs1 == lhs2 && rhs1 == rhs2
 
 instance WithPos Rule where
@@ -274,8 +273,10 @@ instance WithPos Rule where
     atPos r p = r{rulePos = p}
 
 instance PP Rule where
-    pp Rule{..} = (vcat $ map pp ruleLHS) <+> ":-" <+> 
-                  (hsep $ punctuate comma $ map pp ruleRHS)
+    pp Rule{..} = (vcat $ map pp ruleLHS) <+>
+                  (if null ruleRHS
+                      then empty
+                      else ":-" <+> (hsep $ punctuate comma $ map pp ruleRHS)) <> "."
 
 instance Show Rule where
     show = render . pp
@@ -333,7 +334,7 @@ instance PP e => PP (ExprNode e) where
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
-    pp (EString _ s)         = "\"" <> pp s <> "\""
+    pp (EString _ s)         = pp (show s)
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ hsep $ punctuate comma
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
@@ -409,7 +410,7 @@ data Function = Function { funcPos   :: Pos
                          }
 
 instance Eq Function where
-    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) = 
+    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) =
         n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
 
 instance WithPos Function where
@@ -438,7 +439,7 @@ data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                       deriving (Eq)
 
 instance PP DatalogProgram where
-    pp DatalogProgram{..} = vcat $ punctuate "" $ 
+    pp DatalogProgram{..} = vcat $ punctuate "" $
                             ((map pp $ M.elems progTypedefs)
                              ++
                              (map pp $ M.elems progFunctions)

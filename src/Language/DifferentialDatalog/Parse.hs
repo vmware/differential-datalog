@@ -160,14 +160,14 @@ relation = withPos $ Relation nopos <$> ((True <$ reserved "ground" <* reserved 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 rule = withPos $ Rule nopos <$>
-                 (commaSep1 atom <* reservedOp ":-") <*>
-                 (commaSep rulerhs)
+                 (commaSep1 atom) <*>
+                 (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> symbol "("
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
        <|> (RHSCondition <$> expr)
-       <|> (RHSAggregate <$ reserved "Aggregate" <*> 
-                            (symbol "(" *> (parens $ commaSep varIdent)) <*> 
+       <|> (RHSAggregate <$ reserved "Aggregate" <*>
+                            (symbol "(" *> (parens $ commaSep varIdent)) <*>
                             (comma *> varIdent) <*>
                             (reservedOp "=" *> expr)) <*
                             symbol ")"
@@ -330,7 +330,10 @@ postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosi
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition
 slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (colon *> natural)
 
-field = dot *> varIdent
+field = isfield *> dot *> varIdent
+    where isfield = try $ lookAhead $ do
+                        _ <- dot
+                        varIdent
 dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
                         _ <- dot
