@@ -862,7 +862,7 @@ relation Logical_Switch_has_stateful_acl (
     logical_switch:     uuid
 )
 
-Logical_Switch_acl_action(ls) :- 
+Logical_Switch_has_stateful_acl_action(ls) :- 
     ACL(.logical_switch=ls, .action="allow-related")
 
 /* Logical_Switch_Port.ps_addrs
@@ -923,7 +923,8 @@ relation DHCP_Options_server_ip (
 
 DHCP_Options_server_ip(opts, val) :-
     DHCP_Options_options(opts, "server_id", val),
-    SomeIP4Addr{ip4} = ip_parse(val)
+    FlatMap(optip4 = ip_parse(val)),
+    SomeIP4Addr{ip4} = optip4
 
 DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :-
     DHCP_Options_options(opts, "server_id", val),
@@ -953,5 +954,3 @@ DHCP_Options_stateful(opts, true) :-
 
 DHCP_Options_stateful(opts, false) :-
     DHCP_Options_options(opts, "dhcpv6_stateless", "true")
-
-
