@@ -31,6 +31,8 @@ parseDatalogFile fname = do
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "+", "-", ".", "->", "=>", "<=", "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
 reservedNames = ["_",
+                 "Aggregate",
+                 "FlatMap",
                  "and",
                  "bit",
                  "bool",
@@ -80,7 +82,7 @@ commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
 symbol       = T.symbol lexer
 --semi         = T.semi lexer
---comma        = T.comma lexer
+comma        = T.comma lexer
 braces       = T.braces lexer
 parens       = T.parens lexer
 angles       = T.angles lexer
@@ -157,22 +159,25 @@ relation = withPos $ Relation nopos <$> ((True <$ reserved "ground" <* reserved 
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
-rule = withPos $ mkRule <$>
+rule = withPos $ Rule nopos <$>
                  (commaSep1 atom <* reservedOp ":-") <*>
-                 (commaSep $
-                     ((Left <$> do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> symbol "("
-                                   (,) <$> (option True (False <$ reserved "not")) <*> atom)
-                      <|>
-                      (Right <$> expr)))
+                 (commaSep rulerhs)
+
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> symbol "("
+               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
+       <|> (RHSCondition <$> expr)
+       <|> (RHSAggregate <$ reserved "Aggregate" <*> 
+                            (symbol "(" *> (parens $ commaSep varIdent)) <*> 
+                            (comma *> varIdent) <*>
+                            (reservedOp "=" *> expr)) <*
+                            symbol ")"
+       <|> (RHSFlatMap <$ reserved "FlatMap" <*> (symbol "(" *> varIdent) <*>
+                          (reservedOp "=" *> expr <* symbol ")"))
 
 atom = withPos $ Atom nopos <$> relIdent <*> (parens $ commaSep (namedarg <|> anonarg))
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
-
-mkRule :: [Atom] -> [Either (Bool, Atom) Expr] -> Rule
-mkRule lhsAtoms rhs = Rule nopos lhsAtoms atoms exprs
-    where (atoms, exprs) = partitionEithers rhs
 
 typeSpec = withPos $
             bitType

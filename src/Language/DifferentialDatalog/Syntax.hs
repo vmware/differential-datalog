@@ -13,6 +13,7 @@ module Language.DifferentialDatalog.Syntax (
         TypeDef(..),
         Constructor(..),
         Relation(..),
+        RuleRHS(..),
         Atom(..),
         Rule(..),
         ExprNode(..),
@@ -231,29 +232,50 @@ instance PP Atom where
 instance Show Atom where
     show = render . pp
 
-data Rule = Rule { rulePos         :: Pos
-                 , ruleLHS         :: [Atom]
-                 , ruleRHSLiterals :: [(Bool, Atom)]
-                 , ruleRHSConds    :: [Expr]
+-- The RHS of a rule consists of relational atoms with
+-- positive/negative polarity, Boolean conditions, aggregation and
+-- disaggregation (flatmap) operations.  The last two must occur after
+-- all atoms.
+data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
+             | RHSCondition {rhsExpr :: Expr}
+             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggExpr :: Expr}
+             | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
+
+instance Eq RuleRHS where
+    (==) (RHSLiteral p1 a1)      (RHSLiteral p2 a2)      = p1 == p2 && a1 == a2
+    (==) (RHSCondition c1)       (RHSCondition c2)       = c1 == c2
+    (==) (RHSAggregate g1 v1 a1) (RHSAggregate g2 v2 a2) = v1 == v2 && g1 == g2 && a1 == a2
+    (==) (RHSFlatMap v1 e1)      (RHSFlatMap v2 e2)      = v1 == v2 && e1 == e2
+
+instance PP RuleRHS where
+    pp (RHSLiteral True a)  = pp a
+    pp (RHSLiteral False a) = "not" <+> pp a
+    pp (RHSCondition c)     = pp c
+    pp (RHSAggregate g v e) = "Aggregate" <> "(" <> 
+                              (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
+                              pp v <+> "=" <+> pp e <> ")" 
+    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <>
+                              pp v <+> "=" <+> pp e <> ")"
+
+instance Show RuleRHS where
+    show = render . pp
+
+data Rule = Rule { rulePos :: Pos
+                 , ruleLHS :: [Atom]
+                 , ruleRHS :: [RuleRHS]
                  }
 
 instance Eq Rule where
-    (==) (Rule _ lhs1 rlits1 rconds1) (Rule _ lhs2 rlits2 rconds2) = 
-        lhs1 == lhs2 && rlits1 == rlits2 && rconds1 == rconds2
+    (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) = 
+        lhs1 == lhs2 && rhs1 == rhs2
 
 instance WithPos Rule where
     pos = rulePos
     atPos r p = r{rulePos = p}
 
-ppLit :: (Bool, Atom) -> Doc
-ppLit (True, a)  = pp a
-ppLit (False, a) = "not" <+> pp a
-
 instance PP Rule where
     pp Rule{..} = (vcat $ map pp ruleLHS) <+> ":-" <+> 
-                  (hsep $ punctuate comma $ 
-                    map ppLit ruleRHSLiterals ++
-                    map pp ruleRHSConds)
+                  (hsep $ punctuate comma $ map pp ruleRHS)
 
 instance Show Rule where
     show = render . pp
