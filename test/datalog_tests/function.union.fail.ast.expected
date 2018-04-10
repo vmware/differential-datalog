@@ -1,0 +1,3 @@
+Failed to parse input file: "./test/datalog_tests/function.union.fail.dl" (line 3, column 9):
+unexpected "("
+expecting end of "function" or identifier

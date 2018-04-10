@@ -29,7 +29,8 @@ parseDatalogFile fname = do
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 
-reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "+", "-", ".", "->", "=>", "<=", "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
+reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
 reservedNames = ["_",
                  "Aggregate",
                  "FlatMap",
@@ -301,7 +302,9 @@ mkLit (Just w) v | w == 0              = fail "Unsigned literals must have width
 etable = [[postf $ choice [postSlice, postApply, postField, postType]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
-         ,[binary "%" Mod AssocLeft]
+         ,[binary "%" Mod AssocLeft,
+           binary "*" Times AssocLeft,
+           binary "/" Div AssocLeft]
          ,[binary "+" Plus AssocLeft,
            binary "-" Minus AssocLeft]
          ,[binary ">>" ShiftR AssocLeft,
