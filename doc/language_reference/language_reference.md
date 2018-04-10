@@ -39,10 +39,14 @@ decl ::= typedef
 
 ## Types
 
-Type definition introduces a new user-defined type.
+Type definition introduces a new user-defined type, optionally
+parameterized by one or more type arguments.  Type given without
+definition is an *opaque* type implemented outside of the language.
 
 ```EBNF
-typedef ::= "typedef" type_name = type_spec
+typedef ::= "typedef" type_name (* unique type name *)
+            ["<" typevar_name [("," typevar_name)*] ">"] (* optional type arguments *)
+            ["=" type_spec] (* optional type definition *)
 ```
 
 ```EBNF
@@ -53,7 +57,8 @@ type_spec ::= int_type
             | bitvector_type
             | tuple_type
             | union_type     (* tagged union *)
-            | type_name      (* type alias *)
+            | type_alias     (* reference to user-defined type *)
+            | typevar_name   (* type variable *)
 
 (* A restricted form of typespec that does not declare new tagged
     unions (and hence does not introduce new contructor named to
@@ -63,7 +68,7 @@ simple_type_spec ::= int_type
                    | string_type
                    | bitvector_type
                    | tuple_type
-                   | type_name
+                   | type_alias
 ```
 
 ```EBNF
@@ -73,10 +78,12 @@ string_type      ::= "string" (* UTF-8 string *)
 bitvector_type   ::= "bit" "<" decimal ">"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
+type_alias       ::= type_name           (* type name declared using typedef*)
+                     ["<" type_spec [("," type_spec)*] ">"] (* type arguments *)
 
 constructor      ::= cons_name (* constructor without fields *)
                    | cons_name "{" [field ("," field)*] "}"
-field            ::= field_name ":" simple_type_spec 
+field            ::= field_name ":" simple_type_spec
 ```
 
 ## Functions
