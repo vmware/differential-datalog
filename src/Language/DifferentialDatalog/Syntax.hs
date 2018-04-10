@@ -13,6 +13,7 @@ module Language.DifferentialDatalog.Syntax (
         TypeDef(..),
         Constructor(..),
         Relation(..),
+        RuleRHS(..),
         Atom(..),
         Rule(..),
         ExprNode(..),
@@ -52,8 +53,8 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
 
-data Field = Field { fieldPos  :: Pos 
-                   , fieldName :: String 
+data Field = Field { fieldPos  :: Pos
+                   , fieldName :: String
                    , fieldType :: Type
                    }
 
@@ -126,9 +127,9 @@ instance WithPos Type where
 
 instance PP Type where
     pp (TBool _)        = "bool"
-    pp (TInt _)         = "int" 
-    pp (TString _)      = "string" 
-    pp (TBit _ w)       = "bit<" <> pp w <> ">" 
+    pp (TInt _)         = "int"
+    pp (TString _)      = "string"
+    pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ hsep $ punctuate comma $ map pp as
     pp (TUser _ n)      = pp n
@@ -166,7 +167,7 @@ data Constructor = Constructor { consPos :: Pos
 instance Eq Constructor where
     (==) (Constructor _ n1 as1) (Constructor _ n2 as2) = n1 == n2 && as1 == as2
 
-instance WithName Constructor where 
+instance WithName Constructor where
     name = consName
 
 instance WithPos Constructor where
@@ -180,7 +181,7 @@ instance Show Constructor where
     show = render . pp
 {-
 consType :: Refine -> String -> TypeDef
-consType r c = fromJust 
+consType r c = fromJust
                $ find (\td -> case tdefType td of
                                    Just (TStruct _ cs) -> any ((==c) . name) cs
                                    _                   -> False)
@@ -224,36 +225,58 @@ instance WithPos Atom where
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp Atom{..} = pp atomRelation <+>
+    pp Atom{..} = pp atomRelation <>
                   (parens $ hsep $ punctuate comma
-                   $ map (\(n, e) -> (if null n then empty else (pp n <> "=")) <> pp e) atomArgs)
+                   $ map (\(n, e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) atomArgs)
 
 instance Show Atom where
     show = render . pp
 
-data Rule = Rule { rulePos         :: Pos
-                 , ruleLHS         :: [Atom]
-                 , ruleRHSLiterals :: [(Bool, Atom)]
-                 , ruleRHSConds    :: [Expr]
+-- The RHS of a rule consists of relational atoms with
+-- positive/negative polarity, Boolean conditions, aggregation and
+-- disaggregation (flatmap) operations.  The last two must occur after
+-- all atoms.
+data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
+             | RHSCondition {rhsExpr :: Expr}
+             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggExpr :: Expr}
+             | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
+
+instance Eq RuleRHS where
+    (==) (RHSLiteral p1 a1)      (RHSLiteral p2 a2)      = p1 == p2 && a1 == a2
+    (==) (RHSCondition c1)       (RHSCondition c2)       = c1 == c2
+    (==) (RHSAggregate g1 v1 a1) (RHSAggregate g2 v2 a2) = v1 == v2 && g1 == g2 && a1 == a2
+    (==) (RHSFlatMap v1 e1)      (RHSFlatMap v2 e2)      = v1 == v2 && e1 == e2
+
+instance PP RuleRHS where
+    pp (RHSLiteral True a)  = pp a
+    pp (RHSLiteral False a) = "not" <+> pp a
+    pp (RHSCondition c)     = pp c
+    pp (RHSAggregate g v e) = "Aggregate" <> "(" <>
+                              (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
+                              pp v <+> "=" <+> pp e <> ")"
+    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <> pp v <+> "=" <+> pp e <> ")"
+
+instance Show RuleRHS where
+    show = render . pp
+
+data Rule = Rule { rulePos :: Pos
+                 , ruleLHS :: [Atom]
+                 , ruleRHS :: [RuleRHS]
                  }
 
 instance Eq Rule where
-    (==) (Rule _ lhs1 rlits1 rconds1) (Rule _ lhs2 rlits2 rconds2) = 
-        lhs1 == lhs2 && rlits1 == rlits2 && rconds1 == rconds2
+    (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
+        lhs1 == lhs2 && rhs1 == rhs2
 
 instance WithPos Rule where
     pos = rulePos
     atPos r p = r{rulePos = p}
 
-ppLit :: (Bool, Atom) -> Doc
-ppLit (True, a)  = pp a
-ppLit (False, a) = "not" <+> pp a
-
 instance PP Rule where
-    pp Rule{..} = (vcat $ map pp ruleLHS) <+> ":-" <+> 
-                  (hsep $ punctuate comma $ 
-                    map ppLit ruleRHSLiterals ++
-                    map pp ruleRHSConds)
+    pp Rule{..} = (vcat $ map pp ruleLHS) <+>
+                  (if null ruleRHS
+                      then empty
+                      else ":-" <+> (hsep $ punctuate comma $ map pp ruleRHS)) <> "."
 
 instance Show Rule where
     show = render . pp
@@ -311,10 +334,10 @@ instance PP e => PP (ExprNode e) where
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
-    pp (EString _ s)         = pp s
+    pp (EString _ s)         = pp (show s)
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ hsep $ punctuate comma
-                                        $ map (\(n,e) -> (if null n then empty else (pp n <> "=")) <> pp e) fs)
+                                        $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ hsep $ punctuate comma $ map pp fs
     pp (ESlice _ e h l)      = pp e <> (brackets $ pp h <> colon <> pp l)
     pp (EMatch _ e cs)       = "match" <+> pp e <+> (braces $ vcat
@@ -387,7 +410,7 @@ data Function = Function { funcPos   :: Pos
                          }
 
 instance Eq Function where
-    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) = 
+    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) =
         n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
 
 instance WithPos Function where
@@ -416,7 +439,7 @@ data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                       deriving (Eq)
 
 instance PP DatalogProgram where
-    pp DatalogProgram{..} = vcat $ punctuate "" $ 
+    pp DatalogProgram{..} = vcat $ punctuate "" $
                             ((map pp $ M.elems progTypedefs)
                              ++
                              (map pp $ M.elems progFunctions)

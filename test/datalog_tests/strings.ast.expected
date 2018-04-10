@@ -1,0 +1,10 @@
+ground relation Strings (
+    s: string)
+Strings("foo").
+Strings("bar\n").
+Strings("\t\tbar").
+Strings("\"buzz").
+Strings("\r\abuzz").
+Strings("\\buzz").
+Strings("\\buzz").
+Strings("bar\916").

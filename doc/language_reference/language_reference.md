@@ -230,7 +230,68 @@ rule ::= atom [(,atom)*] ":-" atom' [(,atom')*]
 atom ::= rel_name "(" expr [(,expr)*] ")"
        | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
 
-atom' ::= atom        (* atom *)
-        | "not" atom  (* negated atom *)
-        | expr        (* condition *)
+atom' ::= atom                                      (* 1.atom *)
+        | "not" atom                                (* 2.negated atom *)
+        | expr                                      (* 3.condition *)
+        | expr "=" expr                             (* 4.condition *)
+        | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
+        | "Aggregate" "("                           (* 6.aggregation *)
+          "(" [var_name [("," var_name)*]] ")" "," 
+          var_name "=" expr ")"
+```
+
+We briefly discuss each form of right-hand-side clause (`atom'`). The
+first two forms (`atom` and `"not" atom`) represent a *literal*, i.e.,
+an atomic predicate or its negation:
+
+```
+Cousins(x,y) :- Parent(z,x),
+                Parent(q,y),
+                Siblings(z,q),
+                not Siblings(x,y)
+```
+
+The third form is a Boolean expression over variables introduced in the 
+RHS of the rule. It filters the result of the query.
+
+```
+Siblings(x,y) :- Parent(z,x), Parent(z,y), x != y
+```
+
+The fourth form is an assignment expression that may introduce new
+variables as well as filter the query by pattern matching, e.g.,:
+
+```
+DHCP_Options_server_ip(opts, ipv6_string_mapped(in6_generate_lla(mac))) :-
+    DHCP_Options_options(opts, "server_id", val),
+    NoIP4Addr = ip_parse(val),
+    SomeMAC{mac} = eth_addr_from_string(val)
+```
+
+Here we first filter the relation, only keeping records where
+`ip_parse(val) == NoIP4Addr`. Next we extract Ethernet address from 
+`val` and bind the result to new variable `mac`, while filtering out 
+those values that do not parse to a valid Ethernet address.
+
+The fifth form is a flat map operation, which expands each record in
+the relation computed so far to a set of records, computes a union of 
+all sets and binds a record in the resulting relation to a fresh
+variable, e.g.:
+
+```
+Logical_Switch_Port_ips(lsp, mac, ip) :-
+    Logical_Switch_Port_addresses(lsp, addrs),
+    (mac, ips) = extract_mac(addrs),
+    FlatMap(ip = extract_ips(ips))
+```
+
+Here, `extract_ips` must return a *set* of IP addresses.
+
+The sixth form groups records computed so far by a subset of fields,
+computes an aggreagate for each group using specified aggregate function 
+(*requirements on aggregate function signature to be specified*), and
+binds the result to a new variable:
+
+```
+ShortestPath(x,y, c) :- Path(x,y,cost), Aggregate((x,y), c = min(cost))
 ```
