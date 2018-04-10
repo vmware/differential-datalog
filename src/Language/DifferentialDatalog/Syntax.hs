@@ -356,9 +356,13 @@ instance PP e => PP (ExprNode e) where
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ hsep $ punctuate comma $ map pp fs
     pp (ESlice _ e h l)      = pp e <> (brackets $ pp h <> colon <> pp l)
-    pp (EMatch _ e cs)       = "match" <+> pp e <+> (braces $ vcat
-                                                         $ punctuate comma
-                                                         $ (map (\(c,v) -> pp c <> colon <+> pp v) cs))
+    pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"
+                               $$
+                               (nest' $ vcat
+                                      $ punctuate comma
+                                      $ (map (\(c,v) -> pp c <+> "->" <+> pp v) cs))
+                               $$
+                               "}"
     pp (EVarDecl _ v)        = "var" <+> pp v
     pp (ESeq _ l r)          = parens $ (pp l <> semi) $$ pp r
     pp (EITE _ c t e)        = ("if" <+> pp c <+> lbrace)
