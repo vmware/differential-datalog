@@ -22,7 +22,7 @@ import Language.DifferentialDatalog.Type
 validate :: (MonadError String me) => DatalogProgram -> me ()
 validate d@DatalogProgram{..} = do
     mapM_ (typedefValidate d) $ M.elems progTypedefs
-    mapM_ (funcValidate1 r) $ M.elems progFunctions
+    --mapM_ (funcValidate1 r) $ M.elems progFunctions
     uniqNames ("Multiple definitions of constructor " ++) 
               $ progConstructors d
     return ()
