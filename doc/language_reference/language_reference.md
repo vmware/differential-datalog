@@ -268,15 +268,15 @@ DHCP_Options_server_ip(opts, ipv6_string_mapped(in6_generate_lla(mac))) :-
     SomeMAC{mac} = eth_addr_from_string(val)
 ```
 
-Here we first filter our values of `val` such that `ip_parse(val) !=
-NoIP4Addr`. Next we extract Ethernet address from `val` and bind the
-result to new variable `mac`, while filtering out those values that do
-not parse to a valid Ethernet address.
+Here we first filter the relation, only keeping records where
+`ip_parse(val) == NoIP4Addr`. Next we extract Ethernet address from 
+`val` and bind the result to new variable `mac`, while filtering out 
+those values that do not parse to a valid Ethernet address.
 
 The fifth form is a flat map operation, which expands each record in
 the relation computed so far to a set of records, computes a union of 
 all sets and binds a record in the resulting relation to a fresh
-variable, e.g.,:
+variable, e.g.:
 
 ```
 Logical_Switch_Port_ips(lsp, mac, ip) :-
@@ -284,6 +284,8 @@ Logical_Switch_Port_ips(lsp, mac, ip) :-
     (mac, ips) = extract_mac(addrs),
     FlatMap(ip = extract_ips(ips))
 ```
+
+Here, `extract_ips` must return a *set* of IP addresses.
 
 The sixth form groups records computed so far by a subset of fields,
 computes an aggreagate for each group using specified aggregate function 
