@@ -96,10 +96,11 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-consIdent   = ucIdentifier
-relIdent    = ucIdentifier
-varIdent    = lcIdentifier
-funcIdent   = lcIdentifier
+consIdent    = ucIdentifier
+relIdent     = ucIdentifier
+varIdent     = lcIdentifier
+typevarIdent = lcIdentifier
+funcIdent    = lcIdentifier
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
@@ -144,7 +145,9 @@ decl =  (SpType         <$> typeDef)
     <|> (SpFunc         <$> func)
     <|> (SpRule         <$> rule)
 
-typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*> (reservedOp "=" *> typeSpec)
+typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
+                                       (option [] (symbol "<" *> (commaSep typevarIdent) <* symbol ">")) <*>
+                                       (optionMaybe $ reservedOp "=" *> typeSpec)
 
 func = withPos $ Function nopos <$  reserved "function"
                                 <*> funcIdent
@@ -200,7 +203,7 @@ bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decima
 intType    = TInt    nopos <$ reserved "int"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
-userType   = TUser   nopos <$> identifier
+userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
     where isstruct = try $ lookAhead $ consIdent *> (symbol "{" <|> symbol "|")
 tupleType  = (\fs -> case fs of

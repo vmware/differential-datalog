@@ -81,7 +81,9 @@ data Type = TBool     {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
           | TTuple    {typePos :: Pos, typeArgs :: [Type]}
-          | TUser     {typePos :: Pos, typeName :: String}
+          | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
+          | TVar      {typePos :: Pos, tvarName :: String}
+          | TOpaque   {typePos :: Pos, typeName :: String}
 
 tBool     = TBool     nopos
 tInt      = TInt      nopos
@@ -90,6 +92,8 @@ tBit      = TBit      nopos
 tStruct   = TStruct   nopos
 tTuple    = TTuple    nopos
 tUser     = TUser     nopos
+tVar      = TVar      nopos
+tOpaque   = TOpaque   nopos
 
 {-
 structGetField :: [Constructor] -> String -> Field
@@ -118,7 +122,9 @@ instance Eq Type where
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
-    (==) (TUser _ n1)       (TUser _ n2)        = n1 == n2
+    (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
+    (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
+    (==) (TOpaque _ t1)     (TOpaque _ t2)      = t1 == t2
     (==) _                  _                   = False
 
 instance WithPos Type where
@@ -132,14 +138,20 @@ instance PP Type where
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ hsep $ punctuate comma $ map pp as
-    pp (TUser _ n)      = pp n
+    pp (TUser _ n as)   = pp n <>
+                          if null as
+                             then empty
+                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
+    pp (TVar _ v)       = pp v
+    pp (TOpaque _ t)    = pp t
 
 instance Show Type where
     show = render . pp
 
 data TypeDef = TypeDef { tdefPos  :: Pos
                        , tdefName :: String
-                       , tdefType :: Type
+                       , tdefArgs :: [String]
+                       , tdefType :: Maybe Type
                        }
 
 instance WithPos TypeDef where
@@ -150,7 +162,11 @@ instance WithName TypeDef where
     name = tdefName
 
 instance PP TypeDef where
-    pp TypeDef{..} = "typedef" <+> pp tdefName <+> "=" <+> pp tdefType
+    pp TypeDef{..} = "typedef" <+> pp tdefName <>
+                     (if null tdefArgs
+                         then empty
+                         else "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">") <+>
+                     maybe empty (("=" <+>) . pp) tdefType
 
 instance Show TypeDef where
     show = render . pp
