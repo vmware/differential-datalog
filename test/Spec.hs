@@ -3,6 +3,7 @@ import Test.Tasty.Golden
 import System.FilePath
 import Test.HUnit
 import Data.List
+import Data.List.Split
 import Control.Exception
 
 import Language.DifferentialDatalog.Parse
@@ -21,22 +22,32 @@ goldenTests = do
     , let output = replaceExtension dlFile ".ast"]
 
 
+-- compile a program that is supposed to fail compilation
+compileFailingProgram :: String -> String -> IO String
+compileFailingProgram file program =
+    (show <$> parseDatalogString program file) `catch`
+             (\e -> return $ show (e::SomeException))
+
 -- test Datalog parser and pretty printer.
 -- as a side-effect it must create the file with the name specified
 testParser :: FilePath -> FilePath -> IO ()
 testParser fname ofname = do
     -- if a file contains .fail. in it's name it indicates a test
     -- that is supposed to fail during compilation.
-    let shouldFail = isInfixOf ".fail." fname
+    body <- readFile fname
+    let shouldFail = ".fail." `isInfixOf` fname
     if shouldFail
       then do
+        -- To allow multiple negative tests in a single dl file
+        -- we treat the file as multiple files separated by this comment
+        let parts = splitOn "//---" body
         -- if the file should fail we expect an exception.
         -- the exception message is the expected output
-        out <- (show <$> parseDatalogFile fname) `catch` (\e -> return $ show (e::SomeException))
-        writeFile ofname out
+        out <- mapM (compileFailingProgram fname) parts
+        writeFile ofname (intercalate "" out)
       else do
         -- parse Datalog file and output its AST
-        prog <- parseDatalogFile fname
+        prog <- parseDatalogString body fname
         writeFile ofname (show prog)
         -- parse reference output
         prog' <- parseDatalogFile ofname

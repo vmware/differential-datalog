@@ -40,15 +40,5 @@ Start IntelliJ.
 
 Install the IntelliJ-Hakell plugin: (File/Settings/Plugins -- search).
 
-The first time: open the project: File/New/Project from existing sources, select
-the top-level folder.
-
-For project SDK choose "Haskell Tool Stack".
-
-You may need to change the project settings: (File/Project/Structure):
-
-- change the project SDK to be Haskell
-- change the platform SDK to be Haskell
-
-
-
+Follow the instructions here: https://github.com/rikvdkleij/intellij-haskell to 
+get started with the plugin.

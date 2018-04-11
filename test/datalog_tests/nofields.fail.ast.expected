@@ -1,3 +1,0 @@
-Failed to parse input file: "./test/datalog_tests/nofields.fail.dl" (line 1, column 13):
-unexpected "{"
-expecting "bit", "int", "string", "bool", identifier or "("

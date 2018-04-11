@@ -113,11 +113,13 @@ expr ::= term
        | "not" expr                      (*boolean negation*)
        | "(" expr ")"                    (*grouping*)
        | "{" expr "}"                    (*grouping (alternative syntax)*)
+       | expr "*" expr                   (* multiplication *)
+       | expr "/" expr                   (* division *)
        | expr "%" expr                   (*remainder*)
        | expr "+" expr
        | expr "-" expr
-       | expr "" expr                    (*right shift*)
-       | expr "" expr                    (*left shift*)
+       | expr ">>" expr                  (*right shift*)
+       | expr "<<" expr                  (*left shift*)
        | expr "++" expr                  (*bitvector concatenation*)
        | expr "==" expr
        | expr "!=" expr
@@ -141,7 +143,7 @@ The following table lists operators order by decreasing priority.
 | Highest| e[h:l], x:t, x.f        |
 |        | ~                       |
 |        | not                     |
-|        | %                       |
+|        | %  / *                  |
 |        | +, -                    |
 |        | <<, >>                  |
 |        | ++                      |

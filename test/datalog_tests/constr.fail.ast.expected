@@ -1,3 +1,9 @@
-Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 1, column 23):
+Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, column 23):
 unexpected '{'
-expecting "typedef", "ground", "relation", "function", identifier or end of input
+expecting "typedef", "ground", "relation", "function", identifier or end of inputtypedef t = C{f: int} | C{f: string}Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):
+unexpected "("
+expecting end of "function" or identifierFailed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
+unexpected "{"
+expecting "," or "}"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
+unexpected "F"
+expecting identifier

@@ -2,6 +2,7 @@
 
 module Language.DifferentialDatalog.Parse (
     parseDatalogFile,
+    parseDatalogString,
     datalogGrammar,
     exprGrammar) where
 
@@ -22,14 +23,21 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
 
+-- parse a file containing a datalog program and produce the intermediate representation
 parseDatalogFile :: FilePath -> IO DatalogProgram
 parseDatalogFile fname = do
     fdata <- readFile fname
-    case parse datalogGrammar fname fdata of
+    parseDatalogString fdata fname
+
+-- parse a string containing a datalog program and produce the intermediate representation
+parseDatalogString :: String -> String -> IO DatalogProgram
+parseDatalogString program file = do
+  case parse datalogGrammar file program of
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 
-reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "+", "-", ".", "->", "=>", "<=", "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
+reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
 reservedNames = ["_",
                  "Aggregate",
                  "FlatMap",
@@ -301,7 +309,9 @@ mkLit (Just w) v | w == 0              = fail "Unsigned literals must have width
 etable = [[postf $ choice [postSlice, postApply, postField, postType]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
-         ,[binary "%" Mod AssocLeft]
+         ,[binary "%" Mod AssocLeft,
+           binary "*" Times AssocLeft,
+           binary "/" Div AssocLeft]
          ,[binary "+" Plus AssocLeft,
            binary "-" Minus AssocLeft]
          ,[binary ">>" ShiftR AssocLeft,

@@ -18,6 +18,8 @@ data BOp = Eq
          | Plus
          | Minus
          | Mod
+         | Times
+         | Div
          | ShiftR
          | ShiftL
          | BAnd
@@ -37,6 +39,8 @@ instance PP BOp where
     pp Impl   = "=>"
     pp Plus   = "+"
     pp Minus  = "-"
+    pp Times  = "*"
+    pp Div    = "/"
     pp Mod    = "%"
     pp ShiftR = ">>"
     pp ShiftL = "<<"
