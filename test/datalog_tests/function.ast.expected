@@ -1,0 +1,40 @@
+typedef Alt = C0{x: bit<32>} | C1{x: bit<16>}
+function a0 (): int =
+    1
+function a1 (): int =
+    (1 + 2)
+function a2 (): bit<32> =
+    (32'd0 + 32'd1)
+function a3 (): bit<32> =
+    (0: bit<32>)
+function a4 (): bit<32> =
+    (0: bit<64>)[40:9]
+function a5 (a: bit<32>,b: bit<32>): bit<32> =
+    ((((((a & b) | (a | b)) | (~ a)) | (a << 5)) | (a >> 5)) | (a[15:0] ++ a[31:16]))
+function a6 (a: bit<16>,b: bit<16>): bit<16> =
+    (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
+function a7 (a: bit<16>,b: bit<16>): bool =
+    (((((((a < b) or (a > b)) or (a <= b)) or (a >= b)) or (a == b)) or (a != b)) or (a < b))
+function a8 (): bit<32> =
+    (((32'd125 | 32'd255) | 32'd511) | 32'd683)
+function b0 (): bool =
+    (true and false)
+function b1 (a: bool): bool =
+    ((((a and true) or (a or false)) or (a => false)) or (not a))
+function c0 (a: bit<32>,b: bit<16>): bit<16> =
+    (a;
+     b)
+function f (): int
+function g (a: int): int
+function h (a: (int, int)): (int, int)
+function s0 (): string =
+    "Some string"
+function s1 (): string =
+    "\t\r\n\"\\\a"
+function v (): string =
+    ((var v1: string) = "hello";
+     var v2 = "there")
+function v2 (): bool =
+    b1(true)
+function x (): Alt =
+    C0{32'd5}

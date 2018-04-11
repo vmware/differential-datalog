@@ -1,2 +1,8 @@
+// two fields with the same name
 type t = Constr { f: int, f: int }
 
+//---
+
+// Two symbols with the same name
+typedef f = int
+function f(): int

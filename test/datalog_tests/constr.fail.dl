@@ -1,2 +1,23 @@
+// constructor names have to uppercase
 typedef t = lowercase { field: int }
 
+//---
+
+// constructor names have to be unique
+typedef t = C { f: int } |
+            C { f: string }
+
+//---
+
+// Union types must be specified by name
+function(x : Constructor{}): int
+
+//---
+
+// nested constructors must use names
+typedef t19 = Const { f0: Const1 { f2: int } }
+
+//---
+
+// function names have to be lowercase
+function F(): int

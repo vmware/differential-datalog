@@ -1,3 +1,4 @@
-Failed to parse input file: "./test/datalog_tests/dupfield.fail.dl" (line 1, column 1):
+Failed to parse input file: "./test/datalog_tests/dupfield.fail.dl" (line 2, column 1):
 unexpected 't'
-expecting "typedef", "ground", "relation", "function", identifier or end of input
+expecting "typedef", "ground", "relation", "function", identifier or end of inputtypedef f = int
+function f (): int
