@@ -1,0 +1,21 @@
+// recursive type definitions
+
+typedef t = t
+
+//---
+
+typedef t = ( t, t )
+
+//---
+
+typedef t = t1
+typedef t1 = (t, t)
+
+//---
+
+typedef f = undef
+
+//---
+
+// Type with no fields
+typedef t = { }

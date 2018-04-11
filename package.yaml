@@ -27,6 +27,7 @@ dependencies:
 - binary
 - bytestring
 - fgl
+- split
 
 library:
   source-dirs: src

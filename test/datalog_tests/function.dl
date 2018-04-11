@@ -43,7 +43,6 @@ function v2(): bool
 function c0(a: bit<32>, b: bit<16>): bit<16>
     = a; b
 
-/*
 function s0(): string
     = "Some string"
 
@@ -53,7 +52,6 @@ function s1(): string
 function v(): string =
     var v1: string = "hello";
     var v2 = "there"
-*/
 
 typedef Alt = C0{x: bit<32>}
             | C1{x: bit<16>}

@@ -27,6 +27,13 @@ function c0 (a: bit<32>,b: bit<16>): bit<16> =
 function f (): int
 function g (a: int): int
 function h (a: (int, int)): (int, int)
+function s0 (): string =
+    "Some string"
+function s1 (): string =
+    "\t\r\n\"\\\a"
+function v (): string =
+    ((var v1: string) = "hello";
+     var v2 = "there")
 function v2 (): bool =
     b1(true)
 function x (): Alt =

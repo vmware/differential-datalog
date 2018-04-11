@@ -2,6 +2,7 @@
 
 module Language.DifferentialDatalog.Parse (
     parseDatalogFile,
+    parseDatalogString,
     datalogGrammar,
     exprGrammar) where
 
@@ -22,10 +23,16 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
 
+-- parse a file containing a datalog program and produce the intermediate representation
 parseDatalogFile :: FilePath -> IO DatalogProgram
 parseDatalogFile fname = do
     fdata <- readFile fname
-    case parse datalogGrammar fname fdata of
+    parseDatalogString fdata fname
+
+-- parse a string containing a datalog program and produce the intermediate representation
+parseDatalogString :: String -> String -> IO DatalogProgram
+parseDatalogString program file = do
+  case parse datalogGrammar file program of
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 

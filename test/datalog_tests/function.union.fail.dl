@@ -1,3 +1,0 @@
-// Union types must be specified by name
-
-function(x : Constructor{}): int

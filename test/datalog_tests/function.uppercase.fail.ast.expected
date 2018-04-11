@@ -1,3 +1,0 @@
-Failed to parse input file: "./test/datalog_tests/function.uppercase.fail.dl" (line 2, column 10):
-unexpected "F"
-expecting identifier
