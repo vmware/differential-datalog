@@ -1,21 +1,21 @@
-typedef option_t<a> = None
-                    | Some {value : a}
+typedef option_t<'A> = None
+                    | Some {value : 'A}
 
-function is_none(x: option_t<a>): bool = {
+function is_none(x: option_t<'A>): bool = {
     match (x) {
         None -> true,
         _    -> false
     }
 }
 
-function is_some(x: option_t<a>): bool = {
+function is_some(x: option_t<'A>): bool = {
     match (x) {
         Some{} -> true,
         _      -> false
     }
 }
 
-typedef set_t<a>
+typedef set_t<'A>
 
 typedef uuid = bit<128>
 

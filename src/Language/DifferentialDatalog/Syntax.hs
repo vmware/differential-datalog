@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
 
 module Language.DifferentialDatalog.Syntax (
         Type(..),
@@ -42,10 +42,13 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eTyped,
         Function(..),
-        DatalogProgram(..))
+        DatalogProgram(..),
+        progStructs,
+        progConstructors)
 where
 
 import Text.PrettyPrint
+import Data.Maybe
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -83,7 +86,7 @@ data Type = TBool     {typePos :: Pos}
           | TTuple    {typePos :: Pos, typeArgs :: [Type]}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
           | TVar      {typePos :: Pos, tvarName :: String}
-          | TOpaque   {typePos :: Pos, typeName :: String}
+          | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
 
 tBool     = TBool     nopos
 tInt      = TInt      nopos
@@ -124,7 +127,7 @@ instance Eq Type where
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
     (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
     (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
-    (==) (TOpaque _ t1)     (TOpaque _ t2)      = t1 == t2
+    (==) (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = t1 == t2 && as1 == as2
     (==) _                  _                   = False
 
 instance WithPos Type where
@@ -142,8 +145,11 @@ instance PP Type where
                           if null as
                              then empty
                              else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
-    pp (TVar _ v)       = pp v
-    pp (TOpaque _ t)    = pp t
+    pp (TVar _ v)       = "'" <> pp v
+    pp (TOpaque _ t as) = pp t <>
+                          if null as
+                             then empty
+                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
 
 instance Show Type where
     show = render . pp
@@ -165,7 +171,7 @@ instance PP TypeDef where
     pp TypeDef{..} = "typedef" <+> pp tdefName <>
                      (if null tdefArgs
                          then empty
-                         else "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">") <+>
+                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
                      maybe empty (("=" <+>) . pp) tdefType
 
 instance Show TypeDef where
@@ -470,3 +476,13 @@ instance PP DatalogProgram where
 
 instance Show DatalogProgram where
     show = render . pp
+
+progStructs :: DatalogProgram -> M.Map String TypeDef
+progStructs DatalogProgram{..} = 
+    M.filter ((\case
+                Just TStruct{} -> True
+                _              -> False) . tdefType)
+             progTypedefs
+
+progConstructors :: DatalogProgram -> [Constructor]
+progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs

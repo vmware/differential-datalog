@@ -7,18 +7,18 @@ typedef ip_addr_t = IPAddr4{addr4: ip4_addr_t} | IPAddr6{addr6: ip6_addr_t}
 typedef ip_port_t = IPPort{ip: string, port: option_t<port_t>}
 typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet: ip6_subnet_t}
 typedef mac_addr_t = bit<48>
-typedef option_t<a> = None{} | Some{value: a}
+typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
-typedef set_t<a>
+typedef set_t<'A>
 typedef uuid = bit<128>
 function extract_ips (str: string): set_t<ip_addr_t>
 function ip_address_and_port_from_lb_key (key: string): ip_port_t
-function is_none (x: option_t<a>): bool =
+function is_none (x: option_t<'A>): bool =
     match (x) {
         None{} -> true,
         _ -> false
     }
-function is_some (x: option_t<a>): bool =
+function is_some (x: option_t<'A>): bool =
     match (x) {
         Some{} -> true,
         _ -> false
