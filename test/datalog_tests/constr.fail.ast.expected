@@ -4,6 +4,6 @@ expecting "typedef", "ground", "relation", "function", identifier or end of inpu
 unexpected "("
 expecting end of "function" or identifierFailed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
 unexpected "{"
-expecting "," or "}"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
+expecting "<", "," or "}"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
 unexpected "F"
 expecting identifier

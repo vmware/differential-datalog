@@ -1,3 +1,22 @@
+typedef option_t<'A> = None
+                    | Some {value : 'A}
+
+function is_none(x: option_t<'A>): bool = {
+    match (x) {
+        None -> true,
+        _    -> false
+    }
+}
+
+function is_some(x: option_t<'A>): bool = {
+    match (x) {
+        Some{} -> true,
+        _      -> false
+    }
+}
+
+typedef set_t<'A>
+
 typedef uuid = bit<128>
 
 typedef mac_addr_t = bit<48>
@@ -82,19 +101,11 @@ ground relation NB_Global_external_ids (
     "indexes": [["target"]]},
 */
 ground relation Connection (
-    id:           uuid,
-    target:       string,
-    is_connected: bool
-)
-
-ground relation Connection_max_backoff (
-    connection:  uuid,
-    max_backoff: int
-)
-
-ground relation Connection_inactivity_probe (
-    connection:  uuid,
-    inactivity_probe: int
+    id:                 uuid,
+    target:             string,
+    is_connected:       bool,
+    max_backoff:        option_t<int>,
+    inactivity_probe:   option_t<int>
 )
 
 ground relation Connection_other_config (
@@ -221,29 +232,22 @@ ground relation Logical_Switch_external_ids (
 ground relation Logical_Switch_Port (
     id:                     uuid,
     logical_switch:         uuid,
+    parent:                 option_t<string>,
+    tag_request:            option_t<int>,
+    tag:                    option_t<int>,
+    /* can up and enabled fields really be missing? */
+    up:                     option_t<bool>,
+    enabled:                option_t<bool>,
+    dhcpv4_options:         option_t<uuid>,
+    dhcpv6_options:         option_t<uuid>,
     name:                   string,
-    type:                   string    
+    type:                   string
 )
 
 ground relation Logical_Switch_Port_options (
     logical_switch_port:    uuid,
     key:                    string,
     value:                  string
-)
-
-ground relation Logical_Switch_Port_parent (
-    logical_switch_port:    uuid,
-    parent_name:            string
-)
-
-ground relation Logical_Switch_Port_tag_request (
-    logical_switch_port:    uuid,
-    tag_request:            int
-)
-
-ground relation Logical_Switch_Port_tag (
-    logical_switch_port:    uuid,
-    tag:                    int
 )
 
 ground relation Logical_Switch_Port_addresses (
@@ -261,31 +265,10 @@ ground relation Logical_Switch_Port_port_security (
     port_security:          string
 )
 
-/* can up and enabled fields really be missing */
-ground relation Logical_Switch_Port_up (
-    logical_switch_port:    uuid,
-    up:                     bool
-)
-
-ground relation Logical_Switch_Port_enabled (
-    logical_switch_port:    uuid,
-    enabled:                bool
-)
-
 ground relation Logical_Switch_Port_external_ids (
     logical_switch_port:    uuid,
     key:                    string,
     value:                  string
-)
-
-ground relation Logical_Switch_Port_dhcpv6_options (
-    logical_switch_port:    uuid,
-    dhcp_options:           uuid
-)
-
-ground relation Logical_Switch_Port_dhcpv4_options (
-    logical_switch_port:    uuid,
-    dhcp_options:           uuid
 )
 
 /*
@@ -338,12 +321,8 @@ ground relation Address_Set_external_ids (
 ground relation Load_Balancer (
     id:             uuid,
     logical_switch: uuid,
+    protocol:       option_t<string>,
     name:           string
-)
-
-ground relation Load_Balancer_protocol (
-    load_balancer:  uuid,
-    protocol:       string
 )
 
 ground relation Load_Balancer_vips (
@@ -387,22 +366,14 @@ ground relation Load_Balancer_external_ids (
 
 ground relation ACL (
     id:                 uuid,
+    name:               option_t<string>,
     logical_switch:     uuid,
     priority:           int,
     direction:          string,
     _match:             string,
     action:             string,
-    log:                bool    
-)
-
-ground relation ACL_name (
-    acl:                uuid,
-    name:               string
-)
-
-ground relation ACL_severity (
-    acl:                uuid,
-    severity:           string
+    log:                bool,
+    severity:           option_t<string>
 )
 
 ground relation ACL_external_ids (
@@ -443,7 +414,7 @@ ground relation QoS (
     logical_switch: uuid,
     priority:       int,
     direction:      string,
-    _match:         string    
+    _match:         string
 )
 
 ground relation QoS_action (
@@ -501,14 +472,9 @@ ground relation QoS_external_ids (
 */
 ground relation Logical_Router (
     id:             uuid,
+    enabled:        option_t<bool>,
     name:           string
 )
-
-ground relation Logical_Router_enabled (
-    logical_router: uuid,
-    enabled:        bool
-)
-
 
 ground relation Logical_Router_options (
     logical_router: uuid,
@@ -557,7 +523,9 @@ ground relation Logical_Router_Port (
     id:                     uuid,
     logical_router:         uuid,
     name:                   string,
-    mac:                    string
+    mac:                    string,
+    peer:                   option_t<string>,
+    enabled:                option_t<bool>
 )
 
 ground relation Logical_Router_Port_options (
@@ -570,17 +538,6 @@ ground relation Logical_Router_Port_networks (
     logical_router_port:    uuid,
     network:                string
 )
-
-ground relation Logical_Router_Port_peer (
-    logical_router_port:    uuid,
-    peer:                   string
-)
-
-ground relation Logical_Router_Port_enabled (
-    logical_router_port:    uuid,
-    enabled:                bool
-)
-
 
 ground relation Logical_Router_Port_ipv6_ra_configs (
     logical_router_port:    uuid,
@@ -613,17 +570,9 @@ ground relation Logical_Router_Static_Route (
     id:                             uuid,
     logical_router:                 uuid,
     ip_prefix:                      string,
-    nexthop:                        string
-)
-
-ground relation Logical_Router_Static_Route_policy (
-    logical_router_static_route:    uuid,
-    policy:                         string
-)
-
-ground relation Logical_Router_Static_Route_output_port (
-    logical_router_static_route:    uuid,
-    output_port:                    string
+    policy:                         option_t<string>,
+    nexthop:                        string,
+    output_port:                    option_t<string>
 )
 
 ground relation Logical_Router_Static_Route_external_ids (
@@ -655,25 +604,11 @@ ground relation NAT (
     id:             uuid,
     logical_router: uuid,
     external_ip:    string,
-    logical_ip:     string
+    external_mac:   option_t<string>,
+    logical_ip:     string,
+    logical_port:   option_t<string>,
+    type:           option_t<string>
 )
-
-ground relation NAT_external_mac (
-    nat:            uuid,
-    external_mac:   string
-)
-
-ground relation NAT_logical_port (
-    nat:            uuid,
-    logical_port:   string
-)
-
-
-ground relation NAT_type (
-    nat:            uuid,
-    type:           string
-)
-
 
 ground relation NAT_external_ids (
     nat:            uuid,
@@ -811,10 +746,8 @@ ground relation Gateway_Chassis_options (
 /*****************************************/
 
 typedef port_t = bit<16>
-typedef opt_port_t = SomePort{port: port_t}
-                   | NoPort
 
-typedef ip_port_t = IPPort {ip: string, port: opt_port_t}
+typedef ip_port_t = IPPort {ip: string, port: option_t<port_t>}
 
 
 /* Load_Balancer.ip_addresses
@@ -842,6 +775,8 @@ relation Logical_Switch_Port_macs (
     logical_switch_port: uuid,
     mac:                 bit<48>
 )
+
+function extract_ips(str: string): set_t<ip_addr_t>
 
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
@@ -908,11 +843,11 @@ relation DHCP_Options_server_mac (
 
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_mac", val),
-    SomeMAC{mac} = eth_addr_from_string(val).
+    Some{mac} = eth_addr_from_string(val).
 
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_id", val),
-    SomeMAC{mac} = eth_addr_from_string(val).
+    Some{mac} = eth_addr_from_string(val).
 
 /* DHCP_Options.server_ip
  */
@@ -923,12 +858,12 @@ relation DHCP_Options_server_ip (
 
 DHCP_Options_server_ip(opts, val) :-
     DHCP_Options_options(opts, "server_id", val),
-    SomeIP4Addr{ip4} = ip_parse(val).
+    Some{ip4} = ip_parse(val).
 
 DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :-
     DHCP_Options_options(opts, "server_id", val),
-    NoIP4Addr = ip_parse(val),
-    SomeMAC{mac} = eth_addr_from_string(val),
+    None = ip_parse(val),
+    Some{mac} = eth_addr_from_string(val),
     lla = in6_generate_lla(mac).
 
 /* DHCP_Options.netmask

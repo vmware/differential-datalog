@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
 
 module Language.DifferentialDatalog.Syntax (
         Type(..),
@@ -42,10 +42,13 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eTyped,
         Function(..),
-        DatalogProgram(..))
+        DatalogProgram(..),
+        progStructs,
+        progConstructors)
 where
 
 import Text.PrettyPrint
+import Data.Maybe
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -81,7 +84,9 @@ data Type = TBool     {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
           | TTuple    {typePos :: Pos, typeArgs :: [Type]}
-          | TUser     {typePos :: Pos, typeName :: String}
+          | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
+          | TVar      {typePos :: Pos, tvarName :: String}
+          | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
 
 tBool     = TBool     nopos
 tInt      = TInt      nopos
@@ -90,6 +95,8 @@ tBit      = TBit      nopos
 tStruct   = TStruct   nopos
 tTuple    = TTuple    nopos
 tUser     = TUser     nopos
+tVar      = TVar      nopos
+tOpaque   = TOpaque   nopos
 
 {-
 structGetField :: [Constructor] -> String -> Field
@@ -118,7 +125,9 @@ instance Eq Type where
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
-    (==) (TUser _ n1)       (TUser _ n2)        = n1 == n2
+    (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
+    (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
+    (==) (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = t1 == t2 && as1 == as2
     (==) _                  _                   = False
 
 instance WithPos Type where
@@ -132,14 +141,23 @@ instance PP Type where
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ hsep $ punctuate comma $ map pp as
-    pp (TUser _ n)      = pp n
+    pp (TUser _ n as)   = pp n <>
+                          if null as
+                             then empty
+                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
+    pp (TVar _ v)       = "'" <> pp v
+    pp (TOpaque _ t as) = pp t <>
+                          if null as
+                             then empty
+                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
 
 instance Show Type where
     show = render . pp
 
 data TypeDef = TypeDef { tdefPos  :: Pos
                        , tdefName :: String
-                       , tdefType :: Type
+                       , tdefArgs :: [String]
+                       , tdefType :: Maybe Type
                        }
 
 instance WithPos TypeDef where
@@ -150,7 +168,11 @@ instance WithName TypeDef where
     name = tdefName
 
 instance PP TypeDef where
-    pp TypeDef{..} = "typedef" <+> pp tdefName <+> "=" <+> pp tdefType
+    pp TypeDef{..} = "typedef" <+> pp tdefName <>
+                     (if null tdefArgs
+                         then empty
+                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
+                     maybe empty (("=" <+>) . pp) tdefType
 
 instance Show TypeDef where
     show = render . pp
@@ -340,9 +362,13 @@ instance PP e => PP (ExprNode e) where
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ hsep $ punctuate comma $ map pp fs
     pp (ESlice _ e h l)      = pp e <> (brackets $ pp h <> colon <> pp l)
-    pp (EMatch _ e cs)       = "match" <+> pp e <+> (braces $ vcat
-                                                         $ punctuate comma
-                                                         $ (map (\(c,v) -> pp c <> colon <+> pp v) cs))
+    pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"
+                               $$
+                               (nest' $ vcat
+                                      $ punctuate comma
+                                      $ (map (\(c,v) -> pp c <+> "->" <+> pp v) cs))
+                               $$
+                               "}"
     pp (EVarDecl _ v)        = "var" <+> pp v
     pp (ESeq _ l r)          = parens $ (pp l <> semi) $$ pp r
     pp (EITE _ c t e)        = ("if" <+> pp c <+> lbrace)
@@ -450,3 +476,13 @@ instance PP DatalogProgram where
 
 instance Show DatalogProgram where
     show = render . pp
+
+progStructs :: DatalogProgram -> M.Map String TypeDef
+progStructs DatalogProgram{..} = 
+    M.filter ((\case
+                Just TStruct{} -> True
+                _              -> False) . tdefType)
+             progTypedefs
+
+progConstructors :: DatalogProgram -> [Constructor]
+progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs

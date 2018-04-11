@@ -2,24 +2,26 @@
 
 ## Identifiers
 
-Datalog is case-sensitive.  Relation and constructor
-names must start with upper-case ASCII letters; and variable, function, 
+Datalog is case-sensitive.  Relation, constructor, and type variable
+names must start with upper-case ASCII letters; variable, function,
 and argument names must start with lower-case ASCII letters or
-underscore.  A type name can start with either an upper-case or a lower-case letter.
+underscore.  A type name can start with either an upper-case or a lower-case letter
+or underscore.
 
 ```
     uc_identifier ::= [A..Z][a..zA..Z0..9_]*
     lc_identifier ::= [a..z_][a..zA..Z0..9_]*
 
-    rel_name   ::= uc_identifier
-    cons_name  ::= uc_identifier
+    rel_name     ::= uc_identifier
+    cons_name    ::= uc_identifier
+    typevar_name ::= uc_identifier
 
-    var_name   ::= lc_identifier
-    field_name ::= lc_identifier
-    arg_name   ::= lc_identifier
-    func_name  ::= lc_identifier
+    var_name     ::= lc_identifier
+    field_name   ::= lc_identifier
+    arg_name     ::= lc_identifier
+    func_name    ::= lc_identifier
 
-    type_name  ::= lc_identifier | uc_identifier
+    type_name    ::= lc_identifier | uc_identifier
 ```
 
 ## Top-level declarations
@@ -37,12 +39,21 @@ decl ::= typedef
        | rule
 ```
 
+### Constraints
+1. Type names must be globally unique
+1. Function names must be globally unique
+1. Relation names must be globally unique
+
 ## Types
 
-Type definition introduces a new user-defined type.
+Type definition introduces a new user-defined type, optionally
+parameterized by one or more type arguments.  Type given without
+definition is an *opaque* type implemented outside of the language.
 
 ```EBNF
-typedef ::= "typedef" type_name = type_spec
+typedef ::= "typedef" type_name (* unique type name *)
+            ["<" typevar_name [("," typevar_name)*] ">"] (* optional type arguments *)
+            ["=" type_spec] (* optional type definition *)
 ```
 
 ```EBNF
@@ -53,17 +64,19 @@ type_spec ::= int_type
             | bitvector_type
             | tuple_type
             | union_type     (* tagged union *)
-            | type_name      (* type alias *)
+            | type_alias     (* reference to user-defined type *)
+            | typevar_name   (* type variable *)
 
 (* A restricted form of typespec that does not declare new tagged
-    unions (and hence does not introduce new contructor named to
+    unions (and hence does not introduce new constructor names to
     the namespace.  Used in argument, field, variable declarations. *)
 simple_type_spec ::= int_type
                    | bool_type
                    | string_type
                    | bitvector_type
                    | tuple_type
-                   | type_name
+                   | type_alias
+                   | typevar_name
 ```
 
 ```EBNF
@@ -73,11 +86,33 @@ string_type      ::= "string" (* UTF-8 string *)
 bitvector_type   ::= "bit" "<" decimal ">"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
+type_alias       ::= type_name           (* type name declared using typedef*)
+                     ["<" type_spec [("," type_spec)*] ">"] (* type arguments *)
 
 constructor      ::= cons_name (* constructor without fields *)
                    | cons_name "{" [field ("," field)*] "}"
-field            ::= field_name ":" simple_type_spec 
+field            ::= field_name ":" simple_type_spec
 ```
+
+### Constraints
+1. Type argument names must be unique within a typedef, e.g.,
+`typedef t1<A,A,B>` is invalid.
+1. The number of bits in a bitvector type must be greater than 0, e.g.,
+`bit<0>` is invalid.
+1. Type constructor names must be globally unique.
+1. If multiple type constructors for the same type have arguments with
+identical names, their types must be identical, e.g., the following is invalid:
+    ```
+    typedef type1 = Constr1{field1: string, field2: bool} | Constr2{field1: int}
+    ```
+1. A type must be instantiated with the number of type
+arguments matching its declaration:
+    ```
+    typedef type1<A,B>
+    function f(): bool = {
+        var x: type1<int> // error: not enough type arguments
+    }
+    ```
 
 ## Functions
 

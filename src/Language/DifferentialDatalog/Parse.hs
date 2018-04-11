@@ -8,6 +8,7 @@ module Language.DifferentialDatalog.Parse (
 
 import Control.Applicative hiding (many,optional,Const)
 import qualified Control.Exception as E
+import Control.Monad.Except
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.Expr
 import Text.Parsec.Language
@@ -104,10 +105,11 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-consIdent   = ucIdentifier
-relIdent    = ucIdentifier
-varIdent    = lcIdentifier
-funcIdent   = lcIdentifier
+consIdent    = ucIdentifier
+relIdent     = ucIdentifier
+varIdent     = lcIdentifier
+typevarIdent = ucIdentifier
+funcIdent    = lcIdentifier
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
@@ -120,39 +122,43 @@ data SpecItem = SpType         TypeDef
               | SpRule         Rule
               | SpFunc         Function
 
+
 datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
-spec = mkProgram <$> (many decl)
-
-mkProgram :: [SpecItem] -> DatalogProgram
-mkProgram items = DatalogProgram types funcs relations rules
-    where relations = M.fromList $
-                      mapMaybe (\i -> case i of
-                                           SpRelation r -> Just (name r, r)
-                                           _            -> Nothing) items
-          types = M.fromList $
-                  mapMaybe (\i -> case i of
-                                       SpType t -> Just (name t, t)
-                                       _        -> Nothing) items
-                  -- ++
-                  -- map (\Relation{..} -> (relName, TypeDef relPos relName $ Just $ TStruct relPos
-                  --                                 $ [Constructor relPos relName relArgs])) relations
-          funcs = M.fromList $
-                  mapMaybe (\i -> case i of
-                                       SpFunc f -> Just (name f, f)
-                                       _        -> Nothing) items
-          rules = mapMaybe (\i -> case i of
-                                       SpRule r -> Just r
-                                       _        -> Nothing) items
-
+spec = do
+    items <- many decl
+    let relations = mapMaybe (\i -> case i of
+                                         SpRelation r -> Just (name r, r)
+                                         _            -> Nothing) items
+    let types = mapMaybe (\i -> case i of
+                                     SpType t -> Just (name t, t)
+                                     _        -> Nothing) items
+    let funcs = mapMaybe (\i -> case i of
+                                     SpFunc f -> Just (name f, f)
+                                     _        -> Nothing) items
+    let rules = mapMaybe (\i -> case i of
+                                     SpRule r -> Just r
+                                     _        -> Nothing) items
+    let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
+                 uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
+                 uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
+                 return $ DatalogProgram (M.fromList types)
+                                         (M.fromList funcs)
+                                         (M.fromList relations)
+                                         rules
+    case res of
+         Left err   -> error err
+         Right prog -> return prog
 
 decl =  (SpType         <$> typeDef)
     <|> (SpRelation     <$> relation)
     <|> (SpFunc         <$> func)
     <|> (SpRule         <$> rule)
 
-typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*> (reservedOp "=" *> typeSpec)
+typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
+                                       (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                                       (optionMaybe $ reservedOp "=" *> typeSpec)
 
 func = withPos $ Function nopos <$  reserved "function"
                                 <*> funcIdent
@@ -194,6 +200,7 @@ typeSpec = withPos $
         <|> boolType
         <|> structType
         <|> userType
+        <|> typeVar
         <|> tupleType
 
 typeSpecSimple = withPos $
@@ -203,12 +210,14 @@ typeSpecSimple = withPos $
               <|> boolType
               <|> tupleType
               <|> userType
+              <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
 intType    = TInt    nopos <$ reserved "int"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
-userType   = TUser   nopos <$> identifier
+userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
+typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
     where isstruct = try $ lookAhead $ consIdent *> (symbol "{" <|> symbol "|")
 tupleType  = (\fs -> case fs of
