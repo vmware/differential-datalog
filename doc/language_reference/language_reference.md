@@ -61,7 +61,7 @@ type_spec ::= int_type
 simple_type_spec ::= int_type
                    | bool_type
                    | string_type
-                   | bitvector_type1
+                   | bitvector_type
                    | tuple_type
                    | type_name
 ```
