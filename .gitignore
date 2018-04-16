@@ -23,3 +23,6 @@ test/datalog_tests/*.ast
 .idea/
 out/
 *.cabal
+cabal.config
+differential-datalog.iml
+
