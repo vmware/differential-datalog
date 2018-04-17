@@ -238,7 +238,7 @@ var_term     ::= var_name
 ite_term     ::= "if" term term "else" term
 vardecl_term ::= "var" var_name
 
-match_term   ::= "match" "(" expr ")" "{" match_clause [(,match_clause)*]"}"
+match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"
 match_clause ::= pattern "-" expr
 ```
 
@@ -262,9 +262,9 @@ LHS atoms are used to abbreviate rules with identical right-hand
 sides), zero or more . 
 
 ```EBNF
-rule ::= atom [(,atom)*] ":-" atom' [(,atom')*]
+rule ::= atom (,atom)* ":-" atom' (,atom')*
 
-atom ::= rel_name "(" expr [(,expr)*] ")"
+atom ::= rel_name "(" expr (,expr)* ")"
        | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
 
 atom' ::= atom                                      (* 1.atom *)
@@ -273,7 +273,7 @@ atom' ::= atom                                      (* 1.atom *)
         | expr "=" expr                             (* 4.condition *)
         | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
         | "Aggregate" "("                           (* 6.aggregation *)
-          "(" [var_name [("," var_name)*]] ")" "," 
+          "(" [var_name ("," var_name)*] ")" "," 
           var_name "=" expr ")"
 ```
 
@@ -331,4 +331,27 @@ binds the result to a new variable:
 
 ```
 ShortestPath(x,y, c) :- Path(x,y,cost), Aggregate((x,y), c = min(cost))
+```
+
+# FTL syntax
+
+FTL is an imperative language for expressing datalog relations, with a syntax based on FLWOR
+https://en.wikipedia.org/wiki/FLWOR.
+
+```
+rule ::= forStatement
+
+forStatement ::= "for" "(" expr "in" rel_name ")" statement
+             | "for" "(" expr "in" rel_name "if" expression ")" statement           
+
+statement ::= forStatement
+          | ifStatement
+          | letStatement
+          | insertStatement
+          
+ifStatement ::= "if" "(" expression ")" statement
+             
+letStatement ::= "let" expression "=" expression (, expression "=" expression )* "in" statement
+
+insertStatement ::= rel_name "." "insert" "(" expression ")"             
 ```
