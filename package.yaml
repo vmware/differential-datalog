@@ -28,6 +28,7 @@ dependencies:
 - bytestring
 - fgl
 - split
+- MissingH
 
 library:
   source-dirs: src

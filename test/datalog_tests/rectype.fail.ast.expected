@@ -1,4 +1,3 @@
-typedef t = ttypedef t = (t, t)typedef t = t1
-typedef t1 = (t, t)typedef f = undefFailed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
+error: "Dependency cycle among types: t -> t"error: "Dependency cycle among types: t -> t"error: "Dependency cycle among types: t -> t1 -> t"error: "./test/datalog_tests/rectype.fail.dl:3:13-5:1: Unknown type: undef"Failed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
 unexpected "{"
 expecting "bit", "int", "string", "bool", identifier, "'" or "("

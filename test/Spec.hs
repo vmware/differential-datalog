@@ -8,6 +8,7 @@ import Control.Exception
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Validate
 
 main :: IO ()
 main = defaultMain =<< goldenTests
@@ -21,11 +22,17 @@ goldenTests = do
     , let expect = replaceExtension dlFile ".ast.expected"
     , let output = replaceExtension dlFile ".ast"]
 
+parseValidate :: FilePath -> String -> IO DatalogProgram
+parseValidate file program = do 
+    d <- parseDatalogString program file
+    case validate d of 
+         Left e  -> errorWithoutStackTrace $ "error: " ++ show e
+         Right _ -> return d 
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
 compileFailingProgram file program =
-    (show <$> parseDatalogString program file) `catch`
+    (show <$> parseValidate file program) `catch`
              (\e -> return $ show (e::SomeException))
 
 -- test Datalog parser and pretty printer.
@@ -47,7 +54,7 @@ testParser fname ofname = do
         writeFile ofname (intercalate "" out)
       else do
         -- parse Datalog file and output its AST
-        prog <- parseDatalogString body fname
+        prog <- parseValidate fname body
         writeFile ofname (show prog)
         -- parse reference output
         prog' <- parseDatalogFile ofname

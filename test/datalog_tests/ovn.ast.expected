@@ -1,4 +1,3 @@
-typedef StructWithConstructor = Constructor1{field1: type1, field2: type2} | Constructor2{}
 typedef ip4_addr_t = bit<32>
 typedef ip4_subnet_t = IP4Subnet{addr: ip4_addr_t, mask: ip4_addr_t}
 typedef ip6_addr_t = bit<128>

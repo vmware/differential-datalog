@@ -34,11 +34,6 @@ typedef ip6_subnet_t = IP6Subnet { addr : ip6_addr_t
 typedef ip_subnet_t = IPSubnet4 {ip4_subnet : ip4_subnet_t}
                     | IPSubnet6 {ip6_subnet : ip6_subnet_t}
 
-
-
-typedef StructWithConstructor = Constructor1 {field1: type1, field2: type2}
-                              | Constructor2 {}
-
 /*
 "NB_Global": {
     "columns": {

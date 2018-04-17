@@ -2,6 +2,7 @@
 
 module Language.DifferentialDatalog.Syntax (
         Type(..),
+        typeTypeVars,
         tBool,
         tInt,
         tString,
@@ -9,15 +10,19 @@ module Language.DifferentialDatalog.Syntax (
         tStruct,
         tTuple,
         tUser,
+        tVar,
+        tOpaque,
         Field(..),
         TypeDef(..),
         Constructor(..),
+        consType,
         Relation(..),
         RuleRHS(..),
         Atom(..),
         Rule(..),
         ExprNode(..),
         Expr(..),
+        ENode,
         enode,
         eVar,
         eApply,
@@ -42,19 +47,35 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eTyped,
         Function(..),
+        funcTypeVars,
         DatalogProgram(..),
         progStructs,
-        progConstructors)
+        progConstructors,
+        ECtx(..),
+        ctxParent,
+        ctxAncestors,
+        ctxIsRuleL,
+        ctxInRuleL,
+        ctxIsMatchPat,
+        ctxInMatchPat,
+        ctxIsSetL,
+        ctxInSetL,
+        ctxIsSeq1,
+        ctxInSeq1,
+        ctxIsTyped)
 where
 
 import Text.PrettyPrint
 import Data.Maybe
+import Data.List
+import Data.String.Utils
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
+
 
 data Field = Field { fieldPos  :: Pos
                    , fieldName :: String
@@ -83,7 +104,7 @@ data Type = TBool     {typePos :: Pos}
           | TString   {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
-          | TTuple    {typePos :: Pos, typeArgs :: [Type]}
+          | TTuple    {typePos :: Pos, typeTupArgs :: [Type]}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
           | TVar      {typePos :: Pos, tvarName :: String}
           | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
@@ -154,6 +175,20 @@ instance PP Type where
 instance Show Type where
     show = render . pp
 
+
+-- Type variables used in type declaration
+typeTypeVars :: Type -> [String]
+typeTypeVars TBool{}     = []
+typeTypeVars TInt{}      = []
+typeTypeVars TString{}   = []
+typeTypeVars TBit{}      = []
+typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType) 
+                               $ concatMap consArgs typeCons
+typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
+typeTypeVars TUser{..}   = nub $ concatMap typeTypeVars typeArgs
+typeTypeVars TVar{..}    = [tvarName]
+typeTypeVars TOpaque{..} = nub $ concatMap typeTypeVars typeArgs
+
 data TypeDef = TypeDef { tdefPos  :: Pos
                        , tdefName :: String
                        , tdefArgs :: [String]
@@ -180,7 +215,6 @@ instance Show TypeDef where
 instance Eq TypeDef where
     (==) t1 t2 = name t1 == name t2 && tdefType t1 == tdefType t2
 
-
 data Constructor = Constructor { consPos :: Pos
                                , consName :: String
                                , consArgs :: [Field]
@@ -201,14 +235,14 @@ instance PP Constructor where
 
 instance Show Constructor where
     show = render . pp
-{-
-consType :: Refine -> String -> TypeDef
-consType r c = fromJust
-               $ find (\td -> case tdefType td of
-                                   Just (TStruct _ cs) -> any ((==c) . name) cs
-                                   _                   -> False)
-               $ refineTypes r
--}
+
+consType :: DatalogProgram -> String -> TypeDef
+consType d c = 
+    fromJust
+    $ find (\td -> case tdefType td of
+                        Just (TStruct _ cs) -> any ((==c) . name) cs
+                        _                   -> False)
+    $ progTypedefs d
 
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
@@ -457,6 +491,10 @@ instance PP Function where
 instance Show Function where
     show = render . pp
 
+-- Type variables used in function declaration
+funcTypeVars :: Function -> [String]
+funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs 
+
 data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
                                      , progRelations :: M.Map String Relation
@@ -486,3 +524,160 @@ progStructs DatalogProgram{..} =
 
 progConstructors :: DatalogProgram -> [Constructor]
 progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs
+
+-- | Expression's syntactic context determines the kinds of
+-- expressions that can appear at this location in the Datalog program, 
+-- expected type of the expression, and variables visible withing the
+-- given scope.
+--
+-- Below, 'X' indicates the position of the expression addressed by
+-- context.
+--
+-- Most 'ECtx' constructors take reference to parent expression
+-- ('ctxParExpr') and parent context ('ctxPar').
+data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
+            -- Expressions cannot appear directly in this context.
+            CtxTop
+            -- | Function definition: 'function f(...) = {X}'
+          | CtxFunc           {ctxFunc::Function, ctxPar::ECtx}
+            -- | Argument to an atom in the left-hand side of a rule:
+            -- 'Rel1(X,y,x)'.
+            --
+            -- 'ctxAtomIdx' is the index of the LHS atom where the
+            -- expression appears
+            --
+            -- 'ctxField' is the field within the atom.
+          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+            -- | Argument to a right-hand-side atom
+          | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+            -- | Filter or assignment expression the RHS of a rule
+          | CtxRuleRCond      {ctxRule::Rule, ctxIdx::Int}
+            -- | FlatMap clause in the RHS of a rule
+          | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
+            -- | Aggregate clause in the RHS of a rule
+          | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
+            -- | Argument passed to a function
+          | CtxApply          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | Field expression: 'X.f'
+          | CtxField          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument passed to a type constructor: 'Cons(X, y, z)'
+          | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::String}
+            -- | Argument passed to a tuple expression: '(X, y, z)'
+          | CtxTuple          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | Bit slice: 'X[h:l]'
+          | CtxSlice          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a match expression: 'match (X) {...}'
+          | CtxMatchExpr      {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Match pattern: 'match (...) {X: e1, ...}'
+          | CtxMatchPat       {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | Value returned by a match clause: 'match (...) {p1: X, ...}'
+          | CtxMatchVal       {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | First expression in a sequence 'X; y'
+          | CtxSeq1           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Second expression in a sequence 'y; X'
+          | CtxSeq2           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'if (X) ... else ...'
+          | CtxITEIf          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'if (cond) X else ...'
+          | CtxITEThen        {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'if (cond) ... else X'
+          | CtxITEElse        {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Left-hand side of an assignment: 'X = y'
+          | CtxSetL           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Righ-hand side of an assignment: 'y = X'
+          | CtxSetR           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | First operand of a binary operator: 'X op y'
+          | CtxBinOpL         {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Second operand of a binary operator: 'y op X'
+          | CtxBinOpR         {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Operand of a unary operator: 'op X'
+          | CtxUnOp           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a typed expression 'X: t'
+          | CtxTyped          {ctxParExpr::ENode, ctxPar::ECtx}
+
+instance PP ECtx where
+    pp CtxTop        = "CtxTop"
+    pp ctx = (pp $ ctxParent ctx) $$ ctx'
+        where
+        epar = short $ ctxParExpr ctx
+        rule = short $ pp $ ctxRule ctx
+        mlen = 100
+        short :: (PP a) => a -> Doc
+        short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
+        ctx' = case ctx of
+                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
+                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
+                    CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
+                    CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
+                    CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
+                    CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
+                    CtxApply{..}          -> "CtxApply          " <+> epar <+> pp ctxIdx
+                    CtxField{..}          -> "CtxField          " <+> epar
+                    CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp ctxArg
+                    CtxTuple{..}          -> "CtxTuple          " <+> epar <+> pp ctxIdx
+                    CtxSlice{..}          -> "CtxSlice          " <+> epar
+                    CtxMatchExpr{..}      -> "CtxMatchExpr      " <+> epar
+                    CtxMatchPat{..}       -> "CtxMatchPat       " <+> epar <+> pp ctxIdx
+                    CtxMatchVal{..}       -> "CtxMatchVal       " <+> epar <+> pp ctxIdx
+                    CtxSeq1{..}           -> "CtxSeq1           " <+> epar
+                    CtxSeq2{..}           -> "CtxSeq2           " <+> epar
+                    CtxITEIf{..}          -> "CtxITEIf          " <+> epar
+                    CtxITEThen{..}        -> "CtxITEThen        " <+> epar
+                    CtxITEElse{..}        -> "CtxITEElse        " <+> epar
+                    CtxSetL{..}           -> "CtxSetL           " <+> epar
+                    CtxSetR{..}           -> "CtxSetR           " <+> epar
+                    CtxBinOpL{..}         -> "CtxBinOpL         " <+> epar
+                    CtxBinOpR{..}         -> "CtxBinOpR         " <+> epar
+                    CtxUnOp{..}           -> "CtxUnOp           " <+> epar
+                    CtxTyped{..}          -> "CtxTyped          " <+> epar
+                    CtxTop                -> error "pp CtxTop"
+
+instance Show ECtx where
+    show = render . pp
+
+ctxParent :: ECtx -> ECtx
+ctxParent CtxRuleL{}          = CtxTop
+ctxParent CtxRuleRAtom{}      = CtxTop
+ctxParent CtxRuleRCond{}      = CtxTop
+ctxParent CtxRuleRFlatMap{}   = CtxTop
+ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent ctx                 = ctxPar ctx
+
+ctxAncestors :: ECtx -> [ECtx]
+ctxAncestors CtxTop = [CtxTop]
+ctxAncestors ctx    = ctx : (ctxAncestors $ ctxParent ctx)
+
+ctxIsRuleL :: ECtx -> Bool
+ctxIsRuleL CtxRuleL{} = True
+ctxIsRuleL _          = False
+
+ctxInRuleL :: ECtx -> Bool
+ctxInRuleL ctx = any ctxIsRuleL $ ctxAncestors ctx
+
+ctxIsMatchPat :: ECtx -> Bool
+ctxIsMatchPat CtxMatchPat{} = True
+ctxIsMatchPat _             = False
+
+ctxInMatchPat :: ECtx -> Bool
+ctxInMatchPat ctx = isJust $ ctxInMatchPat' ctx
+
+ctxInMatchPat' :: ECtx -> Maybe ECtx
+ctxInMatchPat' ctx = find ctxIsMatchPat $ ctxAncestors ctx
+
+ctxIsSetL :: ECtx -> Bool
+ctxIsSetL CtxSetL{} = True
+ctxIsSetL _         = False
+
+ctxInSetL :: ECtx -> Bool
+ctxInSetL ctx = any ctxIsSetL $ ctxAncestors ctx
+
+ctxIsSeq1 :: ECtx -> Bool
+ctxIsSeq1 CtxSeq1{} = True
+ctxIsSeq1 _         = False
+
+ctxInSeq1 :: ECtx -> Bool
+ctxInSeq1 ctx = any ctxIsSeq1 $ ctxAncestors ctx
+
+ctxIsTyped :: ECtx -> Bool
+ctxIsTyped CtxTyped{} = True
+ctxIsTyped _          = False
