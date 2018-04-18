@@ -17,6 +17,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.Either
 import Numeric
+import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Pos
@@ -50,11 +51,15 @@ reservedNames = ["_",
                  "false",
                  "function",
                  "if",
+                 "in",
+                 "insert",
                  "int",
+                 "let",
                  "match",
                  "not",
                  "or",
                  "relation",
+                 "skip",
                  "string",
                  "true",
                  "typedef",
@@ -84,13 +89,13 @@ reserved     = T.reserved lexer
 identifier   = T.identifier lexer
 lcIdentifier = T.identifier lcLexer
 ucIdentifier = T.identifier ucLexer
---semiSep    = T.semiSep lexer
+semiSep      = T.semiSep lexer
 --semiSep1   = T.semiSep1 lexer
 colon        = T.colon lexer
 commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
 symbol       = T.symbol lexer
---semi         = T.semi lexer
+semi         = T.semi lexer
 comma        = T.comma lexer
 braces       = T.braces lexer
 parens       = T.parens lexer
@@ -115,13 +120,13 @@ removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-withPos x = (\s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
+withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
 
 data SpecItem = SpType         TypeDef
               | SpRelation     Relation
               | SpRule         Rule
               | SpFunc         Function
-
+              | SpStatement    Statement
 
 datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
@@ -140,6 +145,9 @@ spec = do
     let rules = mapMaybe (\i -> case i of
                                      SpRule r -> Just r
                                      _        -> Nothing) items
+    let statements = mapMaybe (\i -> case i of
+                                     SpStatement r -> Just r
+                                     _             -> Nothing) items
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
@@ -147,6 +155,7 @@ spec = do
                                          (M.fromList funcs)
                                          (M.fromList relations)
                                          rules
+                                         statements
     case res of
          Left err   -> error err
          Right prog -> return prog
@@ -155,6 +164,7 @@ decl =  (SpType         <$> typeDef)
     <|> (SpRelation     <$> relation)
     <|> (SpFunc         <$> func)
     <|> (SpRule         <$> rule)
+    <|> (SpStatement    <$> parseForStatement)
 
 typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                                        (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
@@ -172,6 +182,38 @@ relation = withPos $ Relation nopos <$> ((True <$ reserved "ground" <* reserved 
                                        <*> relIdent <*> (parens $ commaSep arg)
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
+
+parseForStatement = withPos $ ForStatement nopos <$ reserved "for"
+                                                 <*> (symbol "(" *> expr)
+                                                 <*> (reserved "in" *> identifier)
+                                                 <*> (optionMaybe (reserved "if" *> expr))
+                                                 <*> (symbol ")" *> statement)
+
+statement = parseForStatement
+        <|> parseEmptyStatement
+        <|> parseIfStatement
+        <|> parseLetStatement
+        <|> parseInsertStatement
+        <|> parseBlockStatement
+
+parseAssignment = withPos $ (Assignment nopos) <$> identifier
+                                               <*> (reserved "=" *> expr)
+
+parseEmptyStatement = withPos $ (EmptyStatement nopos) <$ reserved "skip"
+
+parseBlockStatement = withPos $ (BlockStatement nopos) <$> (braces $ semiSep statement)
+
+parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
+                                                <*> (symbol "(" *> expr)
+                                                <*> (symbol ")" *> statement)
+
+parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
+                                                  <*> commaSep parseAssignment
+                                                  <*> (reserved "in" *> statement)
+
+parseInsertStatement = withPos $ (InsertStatement nopos) <$ (reserved "insert")
+                                                        <*> (symbol "(" *> identifier)
+                                                        <*> (symbol "," *> expr <* symbol ")")
 
 rule = withPos $ Rule nopos <$>
                  (commaSep1 atom) <*>

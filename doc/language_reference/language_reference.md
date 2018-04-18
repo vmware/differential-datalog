@@ -348,10 +348,16 @@ statement ::= forStatement
           | ifStatement
           | letStatement
           | insertStatement
+          | blockStatement
+          | emptyStatement
           
 ifStatement ::= "if" "(" expression ")" statement
              
-letStatement ::= "let" expression "=" expression (, expression "=" expression )* "in" statement
+letStatement ::= "let" identifier "=" expression (, identifier "=" expression )* in" statement
 
-insertStatement ::= rel_name "." "insert" "(" expression ")"             
+insertStatement ::= "insert" rel_name "," expression
+
+blockStatement ::= "{" statement ( ";" statement )* "}"
+
+emptyStatement ::= "skip"            
 ```
