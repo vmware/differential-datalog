@@ -10,7 +10,7 @@ function a3 (): bit<32> =
 function a4 (): bit<32> =
     (0: bit<64>)[40:9]
 function a5 (a: bit<32>,b: bit<32>): bit<32> =
-    ((((((a & b) | (a | b)) | (~ a)) | (a << 5)) | (a >> 5)) | (a[15:0] ++ a[31:16]))
+    ((((((a & b) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
 function a6 (a: bit<16>,b: bit<16>): bit<16> =
     (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
 function a7 (a: bit<16>,b: bit<16>): bool =
@@ -33,7 +33,8 @@ function s1 (): string =
     "\t\r\n\"\\\a"
 function v (): string =
     ((var v1: string) = "hello";
-     var v2 = "there")
+     (var v2 = "there";
+      v2))
 function v2 (): bool =
     b1(true)
 function x (): Alt =

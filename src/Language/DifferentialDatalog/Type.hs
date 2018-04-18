@@ -9,7 +9,8 @@ module Language.DifferentialDatalog.Type(
     exprTraverseTypeM,
     typ', typ'',
     isBool, isBit, isInt, isStruct, isTuple,
---    matchType, matchType',
+    checkTypesMatch,
+    typesMatch,
     ctxExpectType
 --    typeSubtypes,
 --    typeSubtypesRec,
@@ -57,9 +58,48 @@ typeIsPolymorphic TVar{}      = True
 typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 
 
--- | 
+-- | Matches function parameter types against concrete argument types, e.g.,
+-- given
+-- > [(t<'A>, t<q<'B>>)]
+-- derives
+-- > 'A = q<'B>
+-- 
+-- Returns mapping from type variables to concrete types or 'Nothing'
+-- if no such mapping was found due to a conflict, e.g.:
+-- > [(t<'A>, t<q<'B>>), ('A, int)] // conflict
+--
+-- Note that concrete argument types can contain type variables.
+-- Concrete and abstract type variables belong to different
+-- namespaces (i.e., the same name represents different variables in
+-- concrete and abstract types). 
 unifyTypes :: DatalogProgram -> [(Type, Type)] -> Maybe (M.Map String Type)
-unifyTypes = undefined
+unifyTypes d ts = do
+    m0 <- M.unionsWith (++) <$> mapM ((M.map return <$>) . unifyTypes' d) ts
+    M.traverseWithKey (\_ ts -> checkConflicts d ts) m0
+
+checkConflicts :: DatalogProgram -> [Type] -> Maybe Type
+checkConflicts d (t:ts) = do
+    mapM (\t' -> when (not $ typesMatch d t t') Nothing) ts
+    return t
+
+unifyTypes' :: DatalogProgram -> (Type, Type) -> Maybe (M.Map String Type)
+unifyTypes' d (a, c) =
+    case (a',c') of
+        (TBool{}         , TBool{})          -> Just M.empty
+        (TInt{}          , TInt{})           -> Just M.empty
+        (TString{}       , TString{})        -> Just M.empty
+        (TBit _ w1       , TBit _ w2)        | w1 == w2 
+                                             -> Just M.empty 
+        (TTuple _ as1    , TTuple _ as2)     | length as1 == length as2 
+                                             -> unifyTypes d $ zip as1 as2
+        (TUser _ n1 as1  , TUser _ n2 as2)   | n1 == n2
+                                             -> unifyTypes d $ zip as1 as2
+        (TOpaque _ n1 as1, TOpaque _ n2 as2) | n1 == n2
+                                             -> unifyTypes d $ zip as1 as2
+        (TVar _ n1       , t)                -> Just $ M.singleton n1 t
+        _                                    -> Nothing
+    where a' = typ'' d a
+          c' = typ'' d c
 
 -- | Visitor pattern implementation that carries type information
 -- through the syntax tree.
@@ -88,11 +128,16 @@ funcTypeArgSubsts :: DatalogProgram -> String -> [Type] -> Maybe (M.Map String T
 funcTypeArgSubsts d fname argtypes = unifyTypes d (zip (map typ funcArgs) argtypes)
     where Function{..} = getFunc d fname
 
-structTypeArgs :: DatalogProgram -> String -> [(String, Type)] -> Maybe [Type]
-structTypeArgs d cname argtypes = do
+structTypeArgs :: DatalogProgram -> ECtx -> String -> [(String, Type)] -> Maybe [Type]
+structTypeArgs d ctx cname argtypes = do
     let TypeDef{..} = consType d cname
         Constructor{..} = getConstructor d cname
-    subst <- unifyTypes d $ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
+    let -- Try to extract type variable bindings from expected type;
+        exp = case ctxExpectType'' d ctx of
+                   Just (TUser _ n as) | n == tdefName 
+                                       -> zip (map tVar tdefArgs) as
+                   _                   -> []
+    subst <- unifyTypes d $ exp ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
     mapM (\a -> M.lookup a subst) tdefArgs
 
 exprNodeType' :: DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> Maybe Type
@@ -115,7 +160,7 @@ exprNodeType' d _   (EField _ (Just e) f) = do
 exprNodeType' _ _   (EBool _ _)           = Just tBool
 
 exprNodeType' d ctx (EInt _ _)            = do
-    expect <- typ' d <$> ctxExpectType d ctx
+    expect <- ctxExpectType' d ctx
     case expect of
          t@(TBit _ _) -> return t
          t@(TInt _)   -> return t
@@ -127,7 +172,7 @@ exprNodeType' _ _   (EBit _ w _)          = Just $ tBit w
 exprNodeType' d ctx (EStruct _ c mas)     = do
     let tdef = consType d c
     as <- mapM (\(f, mt) -> (f,) <$> mt) mas
-    targs <- structTypeArgs d c as
+    targs <- structTypeArgs d ctx c as
     return $ tUser (name tdef) targs
 
 exprNodeType' _ _   (ETuple _ fs)         = fmap tTuple $ sequence fs
@@ -152,9 +197,11 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
          Impl   -> Just tBool
          Plus   -> Just $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
          Minus  -> Just $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
+         Mod    -> Just t1
+         Times  -> Just t1
+         Div    -> Just t1
          ShiftR -> Just t1
          ShiftL -> Just t1
-         Mod    -> Just t1
          BAnd   -> Just t1
          BOr    -> Just t1
          Concat -> Just $ tBit (typeWidth t1 + typeWidth t2)
@@ -176,7 +223,7 @@ exprNodeType' _ _   (ETyped _ _ t)         = Just t
 -- | Expand typedef's down to actual type definition, substituting
 -- type arguments along the way
 typ' :: (WithType a) => DatalogProgram -> a -> Type
-typ' d x = typ' d (typ x)
+typ' d x = _typ' d (typ x)
 
 _typ' :: DatalogProgram -> Type -> Type
 _typ' d (TUser _ n as) = 
@@ -238,32 +285,33 @@ isTuple d a = case typ' d a of
                    TTuple _ _ -> True
                    _          -> False
 
---matchType :: (MonadError String me, WithType a, WithType b) => Pos -> Refine -> a -> b -> me ()
---matchType p r x y = assertR r (matchType' r x y) p $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
---
---
---matchType' :: (WithType a, WithType b) => Refine -> a -> b -> Bool
---matchType' r x y =
---    case (t1, t2) of
---         (TLocation _      , TLocation _)      -> True
---         (TBool _          , TBool _)          -> True
---         (TBit _ w1        , TBit _ w2)        -> w1==w2
---         (TInt _           , TInt _)           -> True
---         (TString _        , TString _)        -> True
---         (TSink _          , TSink _)          -> True
---         (TArray _ a1 l1   , TArray _ a2 l2)   -> matchType' r a1 a2 && l1 == l2
---         (TStruct _ cs1    , TStruct _ cs2)    -> (length cs1 == length cs2) &&
---                                                  (all (\(c1, c2) -> consName c1 == consName c2) $ zip cs1 cs2)
---         (TTuple _ fs1     , TTuple _ fs2)     -> (length fs1 == length fs2) &&
---                                                  (all (\(f1, f2) -> matchType' r f1 f2) $ zip fs1 fs2)
---         (TUser _ u1       , TUser _ u2)       -> u1 == u2
---         (TLambda _ as1 r1 , TLambda _ as2 r2) -> (length as1 == length as2) &&
---                                                  (all (\(a1, a2) -> matchType' r a1 a2) $ zip as1 as2) &&
---                                                  (matchType' r r1 r2)
---         _                                     -> False
---    where t1 = typ' r x
---          t2 = typ' r y
---
+-- | Check if 'a' and 'b' have idential types up to type aliasing;
+-- throw exception if they don't.
+checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()
+checkTypesMatch p d x y = 
+    assert (typesMatch d x y) p 
+           $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
+
+
+-- | True iff 'a' and 'b' have idential types up to type aliasing.
+typesMatch :: (WithType a, WithType b) => DatalogProgram -> a -> b -> Bool
+typesMatch d x y =
+    case (t1, t2) of
+         (TBool _          , TBool _)          -> True
+         (TBit _ w1        , TBit _ w2)        -> w1 == w2
+         (TInt _           , TInt _)           -> True
+         (TString _        , TString _)        -> True
+         (TTuple _ fs1     , TTuple _ fs2)     -> (length fs1 == length fs2) &&
+                                                  (all (\(f1, f2) -> typesMatch d f1 f2) $ zip fs1 fs2)
+         (TUser _ t1 as1   , TUser _ t2 as2)   -> t1 == t2 &&
+                                                  (all (\(a1, a2) -> typesMatch d a1 a2) $ zip as1 as2)
+         (TOpaque _ t1 as1 , TOpaque _ t2 as2) -> t1 == t2 &&
+                                                  (all (\(a1, a2) -> typesMatch d a1 a2) $ zip as1 as2)
+         (TVar _ v1        , TVar _ v2)        -> v1 == v2
+         _                                     -> False
+    where t1 = typ'' d x
+          t2 = typ'' d y
+
 
 -- User-defined types that appear in type expression
 typeUserTypes :: Type -> [String]
@@ -305,37 +353,12 @@ typeUserTypes' _           = []
 ---- Sort list of types in dependency order; list must be closed under the typeSubtypes operation
 --typeSort :: Refine -> [Type] -> [Type]
 --typeSort r types  = reverse $ G.topsort' $ typeGraph r types
---
---
---{-
---typeDomainSize :: Refine -> Type -> Integer
---typeDomainSize r t =
---    case typ' r undefined t of
---         TBool _       -> 2
---         TUInt _ w     -> 2^w
---         TStruct _ fs  -> product $ map (typeDomainSize r . fieldType) fs
---         TArray _ t' l -> fromIntegral l * typeDomainSize r t'
---         TUser _ _     -> error "Type.typeDomainSize TUser"
---         TLocation _   -> error "Not implemented: Type.typeDomainSize TLocation"
---
---typeEnumerate :: Refine -> Type -> [Expr]
---typeEnumerate r t =
---    case typ' r undefined t of
---         TBool _      -> [EBool nopos False, EBool nopos True]
---         TUInt _ w    -> map (EInt nopos w) [0..2^w-1]
---         TStruct _ fs -> map (EStruct nopos sname) $ fieldsEnum fs
---         TArray _ _ _ -> error "Not implemented: Type.typeEnumerate TArray"
---         TUser _ _    -> error "Type.typeEnumerate TUser"
---         TLocation _  -> error "Not implemented: Type.typeEnumerate TLocation"
---    where TUser _ sname = typ'' r undefined t
---          fieldsEnum []     = [[]]
---          fieldsEnum (f:fs) = concatMap (\vs -> map (:vs) $ typeEnumerate r $ fieldType f) $ fieldsEnum fs
----}
 
--- | Rudimentary type inference engine. Infers expected type from context.   
+
+-- | Rudimentary type inference engine. Infers expected type from context. 
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType _ CtxTop                               = Nothing
-ctxExpectType _ (CtxFunc f _)                        = Just $ funcType f
+ctxExpectType _ (CtxFunc f)                          = Just $ funcType f
 ctxExpectType d (CtxRuleL Rule{..} i fname)          = 
     let rel = getRelation d (atomRelation $ ruleLHS !! i)
     in fmap fieldType $ find ((== fname) . name) $ relArgs rel
@@ -365,8 +388,8 @@ ctxExpectType d (CtxStruct (EStruct _ c _) ctx arg)  = do
     -- to fields to be able to detemine their type.  Otherwise, return
     -- Nothing.  We will validate field types later, when performing
     -- type unification in exprNodeType.
-    expect <- ctxExpectType d ctx
-    case typ' d expect of
+    expect <- ctxExpectType' d ctx
+    case expect of
          TStruct _ cs -> do 
              cons <- find ((==c) . name) cs
              f <- find ((==arg) . name) $ consArgs cons
@@ -414,6 +437,8 @@ ctxExpectType d (CtxBinOpL e ctx)                    =
          ShiftR -> Nothing
          ShiftL -> Nothing
          Mod    -> Nothing
+         Times  -> trhs
+         Div    -> trhs
          BAnd   -> trhs
          BOr    -> trhs
          Concat -> Nothing
@@ -434,6 +459,8 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
          ShiftR -> Nothing
          ShiftL -> Nothing
          Mod    -> Nothing
+         Times  -> tlhs
+         Div    -> tlhs
          BAnd   -> tlhs
          BOr    -> tlhs
          Concat -> Nothing
@@ -441,3 +468,10 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
 ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
 ctxExpectType d (CtxUnOp (EUnOp _ BNeg _) ctx)       = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
+
+
+ctxExpectType'' :: DatalogProgram -> ECtx -> Maybe Type
+ctxExpectType'' d ctx = typ'' d <$> ctxExpectType d ctx
+
+ctxExpectType' :: DatalogProgram -> ECtx -> Maybe Type
+ctxExpectType' d ctx = typ' d <$> ctxExpectType d ctx

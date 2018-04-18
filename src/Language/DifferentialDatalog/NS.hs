@@ -101,7 +101,7 @@ ctxMVars :: DatalogProgram -> ECtx -> ([MField], [MField])
 ctxMVars d ctx =
     case ctx of
          CtxTop                   -> ([], [])
-         CtxFunc f _              -> ([], map f2mf $ funcArgs f)
+         CtxFunc f                -> ([], map f2mf $ funcArgs f)
          CtxRuleL rl _ _          -> ([], map f2mf $ ruleVars rl)
          CtxRuleRAtom rl i _      -> ([], map f2mf $ ruleRHSVars rl i)
          CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars rl i)

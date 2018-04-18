@@ -12,6 +12,9 @@ module Language.DifferentialDatalog.Syntax (
         tUser,
         tVar,
         tOpaque,
+        structFields,
+        structGetField,
+        structFieldGuarded,
         Field(..),
         TypeDef(..),
         Constructor(..),
@@ -119,20 +122,22 @@ tUser     = TUser     nopos
 tVar      = TVar      nopos
 tOpaque   = TOpaque   nopos
 
+structGetField :: Type -> String -> Field
+structGetField t f = fromJust $ find ((==f) . name) $ structFields t
+
+structFields :: Type -> [Field]
+structFields (TStruct _ cs) = nub $ concatMap consArgs cs
+structFields t              = error $ "structFields " ++ show t
+
+-- True iff the field is not defined in some constructors
+structFieldGuarded :: Type -> String -> Bool
+structFieldGuarded (TStruct _ cs) f = any (isNothing . find ((==f) . name) . consArgs) cs
+structFieldGuarded t              _ = error $ "structFieldGuarded " ++ show t
+
 {-
-structGetField :: [Constructor] -> String -> Field
-structGetField cs f = fromJust $ find ((==f) . name) $ concatMap consArgs cs
-
-structFields :: [Constructor] -> [Field]
-structFields cs = nub $ concatMap consArgs cs
-
 -- All constructors that contain the field
 structFieldConstructors :: [Constructor] -> String -> [Constructor]
 structFieldConstructors cs f = filter (isJust . find ((==f) . name) . consArgs) cs
-
--- True iff the field is not defined in some constructors
-structFieldGuarded :: [Constructor] -> String -> Bool
-structFieldGuarded cs f = any (isNothing . find ((==f) . name) . consArgs) cs
 
 structTypeDef :: Refine -> Type -> TypeDef
 structTypeDef r TStruct{..} = consType r $ name $ head typeCons
@@ -491,7 +496,7 @@ instance PP Function where
 instance Show Function where
     show = render . pp
 
--- Type variables used in function declaration
+-- | Type variables used in function declaration
 funcTypeVars :: Function -> [String]
 funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs 
 
@@ -539,7 +544,7 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- Expressions cannot appear directly in this context.
             CtxTop
             -- | Function definition: 'function f(...) = {X}'
-          | CtxFunc           {ctxFunc::Function, ctxPar::ECtx}
+          | CtxFunc           {ctxFunc::Function}
             -- | Argument to an atom in the left-hand side of a rule:
             -- 'Rel1(X,y,x)'.
             --
@@ -641,6 +646,7 @@ ctxParent CtxRuleRAtom{}      = CtxTop
 ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx
 
 ctxAncestors :: ECtx -> [ECtx]

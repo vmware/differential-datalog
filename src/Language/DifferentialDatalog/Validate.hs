@@ -31,6 +31,7 @@ validate d@DatalogProgram{..} = do
     checkAcyclicTypes d
     -- Validate function prototypes
     mapM_ (funcValidateProto d) $ M.elems progFunctions
+    mapM_ (funcValidateDefinition d) $ M.elems progFunctions
     -- Validate relation declarations
     mapM_ (relValidate d) $ M.elems progRelations
     return ()
@@ -40,7 +41,6 @@ validate d@DatalogProgram{..} = do
 --          (\cyc -> errR r (pos $ getRelation r $ snd $ head cyc)
 --                     $ "Dependency cycle among relations: " ++ (intercalate ", " $ map (name . snd) cyc))
 --          $ (grCycle $ relGraph r)
---    mapM_ (funcValidate2 r)  refineFuncs
 --    mapM_ (relValidate3 r)   refineRels
 --    validateFinal r
 --
@@ -116,11 +116,11 @@ funcValidateProto d f@Function{..} = do
     mapM_ (typeValidate d tvars . fieldType) funcArgs
     typeValidate d tvars funcType
 
---funcValidate2 :: (MonadError String me) => Refine -> Function -> me ()
---funcValidate2 r f@Function{..} = do
---    case funcDef of
---         Nothing  -> return ()
---         Just def -> exprValidate r (CtxFunc f CtxRefine) def
+funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me ()
+funcValidateDefinition d f@Function{..} = do
+    case funcDef of
+         Nothing  -> return ()
+         Just def -> exprValidate d (funcTypeVars f) (CtxFunc f) def
 
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
 relValidate d Relation{..} = do 
@@ -165,7 +165,7 @@ relValidate d Relation{..} = do
 exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> Expr -> me ()
 exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ show ctx) $ -} do 
     exprTraverseCtxM (exprValidate1 d tvars) ctx e
-    -- exprTraverseTypeME r (exprValidate2 d) ctx e
+    exprTraverseTypeME d (exprValidate2 d) ctx e
 
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
@@ -186,11 +186,12 @@ exprValidate1 d _ _   (EStruct p c as)    = do cons <- checkConstructor p d c
 exprValidate1 _ _ _   (ETuple _ _)        = return ()
 exprValidate1 _ _ _   (ESlice _ _ _ _)    = return ()
 exprValidate1 _ _ _   (EMatch _ _ _)      = return ()
-exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx = 
-                                               checkNoVar p d ctx v
-                                     | otherwise = do assert (ctxIsTyped ctx) p "Variable declared without a type"
-                                                      assert (ctxIsSeq1 $ ctxParent ctx) p 
-                                                             "Variable declaration is not allowed in this context"
+exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
+                                          = checkNoVar p d ctx v
+                                     | otherwise 
+                                          = do assert (ctxIsTyped ctx) p "Variable declared without a type"
+                                               assert (ctxIsSeq1 $ ctxParent ctx) p 
+                                                      "Variable declaration is not allowed in this context"
 exprValidate1 _ _ _   (ESeq _ _ _)        = return ()
 exprValidate1 _ _ _   (EITE _ _ _ _)      = return ()
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
@@ -206,79 +207,77 @@ checkNoVar p d ctx v = assert (isNothing $ lookupVar d ctx v) p
 
 -- Traverse again with types.  This pass ensures that all sub-expressions
 -- have well-defined types that match their context
---exprTraverseTypeME :: (MonadError String me) => Refine -> (ECtx -> ExprNode Type -> me ()) -> ECtx -> Expr -> me ()
---exprTraverseTypeME r = exprTraverseCtxWithM (\ctx e -> do 
---    let e' = exprMap Just e
---    --trace ("exprTraverseTypeME " ++ show ctx ++ "\n    " ++ show e) $ return ()
---    case exprNodeType r ctx e' of
---         Just t  -> do case ctxExpectType r ctx of
---                            Nothing -> return ()
---                            Just t' -> assertR r (matchType' r t t') (pos e) 
---                                               $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t {-++ " (context: " ++ show ctx ++ ")"-}
---                       return t
---         Nothing -> error $ "Expression " ++ show e ++ " has unknown type in " ++ show ctx) 
+exprTraverseTypeME :: (MonadError String me) => DatalogProgram -> (ECtx -> ExprNode Type -> me ()) -> ECtx -> Expr -> me ()
+exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do 
+    let e' = exprMap Just e
+    --trace ("exprTraverseTypeME " ++ show ctx ++ "\n    " ++ show e) $ return ()
+    case exprNodeType d ctx e' of
+         Just t  -> do case ctxExpectType d ctx of
+                            Nothing -> return ()
+                            Just t' -> assert (typesMatch d t t') (pos e) 
+                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t
+                                                {-++ " (context: " ++ show ctx ++ ")"-}
+                       return t
+         Nothing -> err (pos e) $ "Expression " ++ show e ++ " has unknown type in " ++ show ctx) 
 
---exprValidate2 :: (MonadError String me) => Refine -> ECtx -> ExprNode Type -> me ()
---exprValidate2 r ctx e@(EBuiltin _ f _)  = do let fun = getBuiltin f
---                                             (bfuncValidate2 fun) r ctx e
---exprValidate2 r ctx (EField p e f)      = do case typ' r e of
---                                                  t@TStruct{} -> assertR r (isJust $ find ((==f) . name) $ structArgs t) p
---                                                                           $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t 
---                                                  _           -> errR r (pos e) $ "Expression is not a struct"
---                                             when (ctxInQueryCond ctx)
---                                                  $ assertR r (not $ structFieldGuarded (typeCons $ typ' r e) f) p $ "Guarded field " ++ f ++ " accessed in query condition"
---                                                       
---exprValidate2 r _   (ESlice p e h l)    = case typ' r e of
---                                               TBit _ w -> do assertR r (h >= l) p 
---                                                                      $ "Upper bound of the slice must be greater than lower bound"
---                                                              assertR r (h < w) p
---                                                                      $ "Upper bound of the slice cannot exceed argument width"
---                                               _        -> errR r (pos e) $ "Expression is not a bit vector"
---exprValidate2 r _   (EMatch _ _ cs)     = let cs' = filter ((/= tSink) . typ' r . snd) cs 
---                                              t = snd $ head cs' in
---                                          mapM_ ((\e -> matchType (pos e) r t e) . snd) cs'
---                                          -- TODO: pattern structure matches 
---exprValidate2 r _   (ESeq _ e1 e2)      = assertR r (e1 /= tSink) (pos e2) $ "Expression appears after a sink expression"
---exprValidate2 r _   (EBinOp p op e1 e2) = do case op of 
---                                                  Eq     -> m
---                                                  Neq    -> m
---                                                  Lt     -> do {m; isint1}
---                                                  Gt     -> do {m; isint1}
---                                                  Lte    -> do {m; isint1}
---                                                  Gte    -> do {m; isint1}
---                                                  And    -> do {m; isbool}
---                                                  Or     -> do {m; isbool}
---                                                  Impl   -> do {m; isbool}
---                                                  Plus   -> do {m; isint1} 
---                                                  Minus  -> do {m; isint1}
---                                                  ShiftR -> do {isint1; isint2} 
---                                                  ShiftL -> do {isint1; isint2}
---                                                  Mod    -> do {isint1; isint2}
---                                                  BAnd   -> do {m; isbit1}
---                                                  BOr    -> do {m; isbit1}
---                                                  Concat -> do {isbit1; isbit2}
---                                             --when (elem op [Lt, Gt, Lte, Gte, Plus, Minus, Mod] && isBit r e1) $
---                                             --     assertR r ((typeWidth $ typ' r e1) <= sqlMaxIntWidth) p 
---                                             --              $ "Cannot perform arithmetic operations on bit vectors wider than " ++ show sqlMaxIntWidth ++ " bits"
---    where m = matchType p r e1 e2
---          isint1 = assertR r (isInt r e1 || isBit r e1) (pos e1) $ "Not an integer"
---          isint2 = assertR r (isInt r e2 || isBit r e2) (pos e2) $ "Not an integer"
---          isbit1 = assertR r (isBit r e1) (pos e1) $ "Not a bit vector"
---          isbit2 = assertR r (isBit r e2) (pos e2) $ "Not a bit vector"
---          isbool = assertR r (isBool r e1) (pos e1) $ "Not a Boolean"
---exprValidate2 r _   (EUnOp _ BNeg e)    = assertR r (isBit r e) (pos e) "Not a bit vector"
---exprValidate2 r ctx (EVarDecl p x)      = assertR r (isJust $ ctxExpectType r ctx) p $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
---exprValidate2 r _  (EITE _ _ t e)       = let e' = maybe (tTuple []) id e
---                                              cs' = filter ((/= tSink) . typ' r) [e', t] in
---                                          mapM_ (\x -> matchType (pos x) r (head cs') x) cs'
---exprValidate2 _ _   _                   = return ()
+exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me ()
+exprValidate2 d ctx (EField p e f)      = do 
+    case typ' d e of
+         t@TStruct{} -> assert (isJust $ find ((==f) . name) $ structFields t) p
+                               $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t 
+         _           -> err (pos e) $ "Expression is not a struct"
+    assert (not $ structFieldGuarded (typ' d e) f) p 
+           $ "Guarded field " ++ f ++ " accessed in query condition"
+                                                       
+exprValidate2 d _   (ESlice p e h l)    = 
+    case typ' d e of
+        TBit _ w -> do assert (h >= l) p 
+                           $ "Upper bound of the slice must be greater than lower bound"
+                       assert (h < w) p
+                           $ "Upper bound of the slice cannot exceed argument width"
+        _        -> err (pos e) $ "Expression is not a bit vector"
+
+exprValidate2 d _   (EMatch _ _ cs)     = do
+    let t = snd $ head cs
+    mapM_ ((\e -> checkTypesMatch (pos e) d t e) . snd) cs
+    -- TODO: check completeness of patterns
+
+exprValidate2 d _   (EBinOp p op e1 e2) = do 
+    case op of 
+        Eq     -> m
+        Neq    -> m
+        Lt     -> do {m; isint1}
+        Gt     -> do {m; isint1}
+        Lte    -> do {m; isint1}
+        Gte    -> do {m; isint1}
+        And    -> do {m; isbool}
+        Or     -> do {m; isbool}
+        Impl   -> do {m; isbool}
+        Plus   -> do {m; isint1} 
+        Minus  -> do {m; isint1}
+        ShiftR -> do {isint1; isint2} 
+        ShiftL -> do {isint1; isint2}
+        Mod    -> do {isint1; isint2}
+        Times  -> do {isint1; isint2}
+        Div    -> do {isint1; isint2}
+        BAnd   -> do {m; isbit1}
+        BOr    -> do {m; isbit1}
+        Concat -> do {isbit1; isbit2}
+    where m = checkTypesMatch p d e1 e2
+          isint1 = assert (isInt d e1 || isBit d e1) (pos e1) $ "Not an integer"
+          isint2 = assert (isInt d e2 || isBit d e2) (pos e2) $ "Not an integer"
+          isbit1 = assert (isBit d e1) (pos e1) $ "Not a bit vector"
+          isbit2 = assert (isBit d e2) (pos e2) $ "Not a bit vector"
+          isbool = assert (isBool d e1) (pos e1) $ "Not a Boolean"
+
+exprValidate2 d _   (EUnOp _ BNeg e)    = 
+    assert (isBit d e) (pos e) "Not a bit vector"
+--exprValidate2 d ctx (EVarDecl p x)      = assert (isJust $ ctxExpectType d ctx) p 
+--                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
+exprValidate2 d _  (EITE p _ t e)       = checkTypesMatch p d t e
+exprValidate2 _ _   _                   = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
 checkLExpr d ctx e = 
     assert (isLExpr d ctx e) (pos e) 
            $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
-
-
---structArgs :: Type -> [Field]
---structArgs (TStruct _ cs) = nub $ concatMap consArgs cs
---structArgs t              = error $ "structArgs " ++ show t
