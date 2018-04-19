@@ -1,0 +1,27 @@
+/* Tests for match pattern analysis logic.  Checks that:
+   patterns are exhaustive (cover all possible values of the given
+   type) and non-redundant. */
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T2 = C21{f1: T1, f2: int}
+           | C22{f3: (bool, T1)}
+
+function f1(x: T1, y: T2) : bool = {
+    match (x) {
+        C11 -> true,
+        _   -> false
+    };
+
+    match (x) {
+        C11 -> true,
+        C12 -> false
+    };
+
+    match (y) {
+        C21{_,_}        -> true,
+        C22{(_, C11{})} -> true,
+        _               -> false
+    }
+}

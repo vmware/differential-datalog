@@ -42,3 +42,13 @@ Install the IntelliJ-Hakell plugin: (File/Settings/Plugins -- search).
 
 Follow the instructions here: https://github.com/rikvdkleij/intellij-haskell to 
 get started with the plugin.
+
+# Debugging with GHCi
+
+To run the test suite with the GHCi debugger:
+
+```
+stack ghci --ghci-options -isrc --ghci-options -itest differential-datalog:differential-datalog-test
+```
+
+and type `do main` in the command prompt.

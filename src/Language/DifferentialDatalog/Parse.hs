@@ -324,6 +324,7 @@ ematch = eMatch <$ reserved "match" <*> parens expr
 pattern = withPos $
           eTuple   <$> (parens $ commaSep pattern)
       <|> eVarDecl <$> varIdent
+      <|> eVarDecl <$ reserved "var" <*> varIdent
       <|> epholder
       <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
 

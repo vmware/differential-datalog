@@ -5,7 +5,8 @@
 Datalog is case-sensitive.  Relation, constructor, and type variable
 names must start with upper-case ASCII letters; variable, function,
 and argument names must start with lower-case ASCII letters or
-underscore.  A type name can start with either an upper-case or a lower-case letter
+underscore.  A type variable name must be prefixed with a tick (').
+A type name can start with either an upper-case or a lower-case letter
 or underscore.
 
 ```
@@ -14,7 +15,7 @@ or underscore.
 
     rel_name     ::= uc_identifier
     cons_name    ::= uc_identifier
-    typevar_name ::= uc_identifier
+    typevar_name ::= 'uc_identifier
 
     var_name     ::= lc_identifier
     field_name   ::= lc_identifier
@@ -39,7 +40,7 @@ decl ::= typedef
        | rule
 ```
 
-### Constraints
+### Constraints on top-level declarations
 1. Type names must be globally unique
 1. Function names must be globally unique
 1. Relation names must be globally unique
@@ -94,9 +95,15 @@ constructor      ::= cons_name (* constructor without fields *)
 field            ::= field_name ":" simple_type_spec
 ```
 
-### Constraints
+### Constraints on types
 1. Type argument names must be unique within a typedef, e.g.,
-`typedef t1<A,A,B>` is invalid.
+`typedef t1<'A,'A,'B>` is invalid.
+1. All type arguments of a `typedef` must be used in the type definition:
+    ```
+    // error: type argument 'D not used in type definition
+    typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
+                                       | Option2{y: 'B, z: 'C}
+    ```
 1. The number of bits in a bitvector type must be greater than 0, e.g.,
 `bit<0>` is invalid.
 1. Type constructor names must be globally unique.
@@ -108,11 +115,43 @@ identical names, their types must be identical, e.g., the following is invalid:
 1. A type must be instantiated with the number of type
 arguments matching its declaration:
     ```
-    typedef type1<A,B>
+    typedef type1<'A,'B>
     function f(): bool = {
         var x: type1<int> // error: not enough type arguments
     }
     ```
+1. Recursive type definitions are not allowed.
+1. A type variable must be declared in the syntactic scope where it is
+   used.  There are two types of syntactic scopes that can contain
+   type variables: `typedef`'s and functions.  In a typedef, type
+   variables are declared using angle brackets following type name.
+   These variables can be referred in the type expression to the right
+   of "=":
+   ```
+   typedef type2<'A,'B> = Cons1{field1: 'A, field2: type2<'B>}
+                  |                      |                 |
+                  |                       \---used here---/
+                  \- type variables declared here
+   ```
+   
+   In a function declaration, type variables are declared implicitly
+   by referring to them in function arguments.  They are used in the
+   return type of the function and in its body:
+   ```
+   function f(arg1: 'A, arg2: type2<'A,'B>): 'A = {
+       var x: 'A = arg1;
+       x
+   }
+   ```
+   Examples of invalid use of type variables in functions:
+   ```
+   function f(arg: 'A): 'B = /*error: type variable 'B is not defined here*/
+   {
+       var x: 'C; /* error: type variable 'C is not defined here */
+   }
+   ```
+1. Rules and relations are defined over concrete types and cannot
+   refer to type variables.
 
 ## Functions
 
@@ -130,14 +169,24 @@ function ::= "function" func_name "(" [arg(,arg)*]")"
 arg ::= arg_name ":" simple_type_spec
 ```
 
+
+### Constraints on functions
+
+1. The body of the function must be a valid expression whose type
+   matches the return type of the function.
+1. Recursive functions are not allowed.
+
 ## Relations
 
 ```EBNF
 relation ::= ["ground"] "relation" rel_name "(" [arg ","] arg ")"
 ```
 
-## Expressions
+### Constraints of relations
+1. Column names must be unique within a relation
+1. Column types cannot use type variables
 
+## Expressions
 
 ```EBNF
 expr ::= term
@@ -255,9 +304,88 @@ pattern ::= (* tuple pattern *)
           | "_"             (* wildcard, matches any value *)
 ```
 
+### Constraints on expressions
+
+1. Number and types of arguments to a function must match function
+   declaration.  
+1. Variable declarations can occur in the left-hand side of an
+   assignment or as a separate statement followed by another
+   statement.  In the latter case variable type must be explicitly 
+   specified:
+   ```
+   typedef C = C{x: string}
+   typedef TwoFields = TwoFields{f1: string, f2: string}
+   ...
+
+   // ok: type of x specified explicitly
+   var x: int; 
+
+   // error: variable declared without a type
+   var x;
+
+   // ok: the type of y is derived from the right-hand side 
+   // of the assignment
+   var y = C{.x = "foo"};
+
+   // ok: no harm in specifying type explicitly even if it could
+   // be inferred automatically.
+   var z: C = C{.x = "bar"};
+
+   // ok: assigning multiple variables simultaneously
+   (var a, var b) = (x+5, x-5);
+   C{var c} = y;
+
+   // ok 
+   var t = TwoFields{.f1 = "foo", .f2 = "bar"};
+
+   // ok: field f2 omitted in the left-hand side of an assignment
+   TwoFields{.f1 = var g} = t;
+
+   // error: field f2 omitted in the right-hand side of an assignment
+   var h = TwoFields{.f1 = "foo"}
+   ```
+1. A variable declaration cannot shadow existing variables visible
+   in the local scope.  Variables visible inside the body of a function 
+   include: function arguments, local variables declared using `var`, and 
+   variables introduced through `match` patterns:
+   ```
+   var i: bit<32> = match (a) {
+       C0{.x = v} -> v, // variable v bound inside match pattern
+       C1{v} -> v       // variable v bound inside match pattern
+   };
+
+   function shadow(a: string): () = {
+       var v: string;
+       var v = "foo"; // error: variable re-definition
+       var a = "bar"  // error: variable shadows argument name
+   }
+   ```
+   Variables in rules are discussed below.
+1. *Guarded fields* of tagged unions cannot be accessed using '.field'
+   syntax.  A guarded field is a field that is present in some but not
+   all of the type constructors, e.g., `value` in the `option_t` type 
+   ```
+   typedef option_t<'A> = None
+                        | Some {value : 'A}
+   ```
+   Accessing such a field has undefined outcome when the field is not
+   present:
+   ```
+   var a: Some<string>;
+   var b = a.value // error: access to guarded field value
+   ```
+   Use pattern matching instead, e.g.:
+   ```
+   var b = match (a) {
+       Some{v} -> v,
+       None    -> ""
+   }
+   ```
+1. Patterns in a `match` expression must be exhaustive.
+
 ## Rules
 
-A Datalog rule consists of one or more lefthand-side atoms (multiple 
+A Datalog rule consists of one or more left-hand-side atoms (multiple 
 LHS atoms are used to abbreviate rules with identical right-hand 
 sides), zero or more . 
 

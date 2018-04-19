@@ -1,0 +1,13 @@
+error: "./test/datalog_tests/function.fail.dl:3:5-3:10: Variable declared without a type"
+
+error: "./test/datalog_tests/function.fail.dl:5:5-5:10: Variable declaration is not allowed in this context"
+
+error: ":1:1-1:1: Argument f2 must be specified in this context"
+
+error: "./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already defined in this scope"
+
+error: "./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already defined in this scope"
+
+error: "./test/datalog_tests/function.fail.dl:9:13-10:1: Access to guarded field \"value\""
+
+error: "./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1"

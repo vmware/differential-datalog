@@ -1,0 +1,81 @@
+typedef T1 = C11
+           | C12
+
+// non-exhaustive pattern
+
+function f1(x: T1) : bool = {
+    match (x) {
+        C11 -> true
+    }
+}
+
+//---
+
+typedef T1 = C11
+           | C12
+
+// redundant pattern
+
+function f1(x: T1) : bool = {
+    match (x) {
+        C11 -> true,
+        C11 -> true,
+        C12 -> false
+    }
+}
+
+//---
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T2 = C21{f1: T1, f2: int}
+           | C22{f3: (bool, T1)}
+
+// non-exhaustive pattern
+
+function f1(x: T2) : bool = {
+    match (x) {
+        C21{}           -> true,
+        C22{(_, C11{})} -> true
+        // C22{(_, C21{})}
+    }
+}
+
+//---
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T2 = C21{f1: T1, f2: int}
+           | C22{f3: (bool, T1)}
+
+// redundant pattern
+
+function f1(x: T2) : bool = {
+    match (x) {
+        C21{}           -> true,
+        C22{}           -> true,
+        C22{(_, C11{})} -> true  // redundant
+    }
+}
+
+
+//---
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T2 = C21{f1: T1, f2: int}
+           | C22{f3: (bool, T1)}
+
+// redundant pattern
+
+function f1(x: T2) : bool = {
+    match (x) {
+        C21{}           -> true,
+        C22{(_, C11{})} -> true,
+        C22{(_, C12{})} -> true,
+        _               -> false
+    }
+}

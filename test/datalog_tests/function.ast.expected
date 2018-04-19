@@ -1,4 +1,6 @@
-typedef Alt = C0{x: bit<32>} | C1{x: bit<16>}
+typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
+typedef C = C{f1: string, f2: string}
+typedef option_t<'A> = None{} | Some{value: 'A}
 function a0 (): int =
     1
 function a1 (): int =
@@ -10,7 +12,7 @@ function a3 (): bit<32> =
 function a4 (): bit<32> =
     (0: bit<64>)[40:9]
 function a5 (a: bit<32>,b: bit<32>): bit<32> =
-    ((((((a & b) | (a | b)) | (~ a)) | (a << 5)) | (a >> 5)) | (a[15:0] ++ a[31:16]))
+    ((((((a & b) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
 function a6 (a: bit<16>,b: bit<16>): bit<16> =
     (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
 function a7 (a: bit<16>,b: bit<16>): bool =
@@ -27,14 +29,40 @@ function c0 (a: bit<32>,b: bit<16>): bit<16> =
 function f (): int
 function g (a: int): int
 function h (a: (int, int)): (int, int)
+function patterns (): () =
+    ((var a: Alt) = C0{1};
+     (var b = match (a) {
+                  C0{} -> true,
+                  C1{} -> false
+              };
+      (var i: bit<32>) = match (a) {
+                             C0{.x=var v} -> v,
+                             C1{var v} -> v
+                         }))
 function s0 (): string =
     "Some string"
 function s1 (): string =
     "\t\r\n\"\\\a"
+function shadow (): string =
+    ((var b: option_t<string>) = None{};
+     (var a = Some{"foo"};
+      match (a) {
+          Some{var v} -> v,
+          None{} -> ""
+      }))
 function v (): string =
     ((var v1: string) = "hello";
-     var v2 = "there")
+     (var v2 = "there";
+      v2))
 function v2 (): bool =
     b1(true)
+function vars (): () =
+    ((var x: int);
+     (x = 10;
+      (var y = C{.f1="foo", .f2="bar"};
+       ((var z: C) = C{.f1="bar", .f2="foo"};
+        ((var a, var b) = ((x + 5), (x - 5));
+         (C{.f1=var e} = y;
+          C{var c, var d} = y))))))
 function x (): Alt =
     C0{32'd5}
