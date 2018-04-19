@@ -1,5 +1,14 @@
 {-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
 
+-- This file is incorrectly named; it does not have anything to do with syntax.
+-- In fact, this file contains the definition of the program intermediate representation:
+-- the data structures used to represent the datalog program.
+-- Each data structure must implement several instances:
+-- PP: pretty-printing
+-- Eq: equality testing (in general it is recursive and it ignores the position)
+-- Show: conversion to string; in general it just calls pp
+-- WithPos: manipulating position information
+
 module Language.DifferentialDatalog.Syntax (
         Type(..),
         typeTypeVars,
@@ -26,6 +35,8 @@ module Language.DifferentialDatalog.Syntax (
         ExprNode(..),
         Expr(..),
         ENode,
+        Assignment(..),
+        Statement(..),
         enode,
         eVar,
         eApply,
@@ -266,7 +277,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = ((if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(") $$ 
+    pp Relation{..} = ((if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(") $$
                       (nest' $ (vcat $ punctuate comma $ map pp relArgs) <> ")")
 
 instance Show Relation where
@@ -341,6 +352,71 @@ instance PP Rule where
 
 instance Show Rule where
     show = render . pp
+
+data Assignment = Assignment     { assignPos :: Pos
+                                 , leftAssign :: String
+                                 , rightAssign :: Expr }
+
+instance Eq Assignment where
+    (==) (Assignment _ l1 r1) (Assignment _ l2 r2) =
+      l1 == l2 && r1 == r2
+
+instance WithPos Assignment where
+    pos = assignPos
+    atPos r p = r{assignPos = p}
+
+instance PP Assignment where
+    pp (Assignment _ l r) = pp l <+> "=" <+> pp r
+
+instance Show Assignment where
+    show = render . pp
+
+data Statement = ForStatement    { statPos :: Pos
+                                 , forExpr :: Expr
+                                 , forRelName :: String
+                                 , forCondition :: Maybe Expr
+                                 , forStatement :: Statement }
+               | IfStatement     { statPos :: Pos
+                                 , ifCondition :: Expr
+                                 , ifStatement :: Statement }
+               | LetStatement    { statPos :: Pos
+                                 , letList :: [Assignment]
+                                 , letStatement :: Statement }
+               | InsertStatement { statPos :: Pos
+                                 , insertRelName :: String
+                                 , insertValue :: Expr }
+               | BlockStatement  { statPos :: Pos
+                                 , seqList :: [Statement] }
+               | EmptyStatement  { statPos :: Pos }
+
+instance Eq Statement where
+    (==) (ForStatement _ e1 r1 c1 s1) (ForStatement _ e2 r2 c2 s2) =
+          e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
+    (==) (IfStatement _ c1 s1) (IfStatement _ c2 s2) =
+          c1 == c2 && s1 == s2
+    (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
+          l1 == l2 && s1 == s2
+    (==) (InsertStatement _ r1 v1) (InsertStatement _ r2 v2) =
+          r1 == r2 && v1 == v2
+    (==) (BlockStatement _ l1) (BlockStatement _ l2) =
+          l1 == l2
+    (==) (EmptyStatement _) (EmptyStatement _) = True
+
+instance PP Statement where
+    pp (ForStatement _ e r c s) = "for" <+> "(" <> (pp e) <+> "in" <+> pp r <+>
+                                     maybe empty (("if" <+>) . pp) c <> ")" <+> pp s
+    pp (IfStatement _ c s) = "if" <+> "(" <> (pp c) <> ")" <+> pp s
+    pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" <+> (pp s)
+    pp (InsertStatement _ r v) = "insert" <> "(" <> (pp r) <> "," <+> (pp v) <> ")"
+    pp (BlockStatement _ l) =  "{" <+> (hsep $ punctuate ";" $ map pp l) <+> "}"
+    pp (EmptyStatement _) = "skip"
+
+instance Show Statement where
+    show = render . pp
+
+instance WithPos Statement where
+    pos = statPos
+    atPos s p = s{statPos = p}
 
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
@@ -504,6 +580,7 @@ data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
                                      , progRelations :: M.Map String Relation
                                      , progRules     :: [Rule]
+                                     , statements    :: [Statement]
                                      }
                       deriving (Eq)
 
@@ -515,7 +592,9 @@ instance PP DatalogProgram where
                              ++
                              (map pp $ M.elems progRelations)
                              ++
-                             (map pp $ progRules))
+                             (map pp $ progRules)
+                             ++
+                             (map pp $ statements))
 
 instance Show DatalogProgram where
     show = render . pp
