@@ -1,18 +1,13 @@
 - Datalog syntax
-    - define syntax:                      Leonid, Mihai
     - parser:                             Leonid
-    - syntax reference document           Leonid
     - tests                               Leonid, Mihai
 - OVSDB schema -> Datalog compiler
     - compiler                            ?
     - tests                               ?
 - FTL syntax
-    - define syntax:                      Mihai, Leonid
     - analyze OVN's FTL code              Mihai
-    - syntax reference document           Mihai
     - tests                               Mihai, Leonid
         - convert Ben's FTL to Nerpa FTL  Mihai
 - FTL -> Datalog compiler                 ?
     - tests                               ?
-- Meta
-    - setup haskell IDE                   Leonid, Mihai
+
