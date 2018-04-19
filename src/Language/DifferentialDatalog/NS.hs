@@ -114,7 +114,7 @@ ctxMVars d ctx =
          CtxSlice  _ _            -> ([], plvars ++ prvars)
          CtxMatchExpr _ _         -> ([], plvars ++ prvars)
          CtxMatchPat _ _ _        -> ([], plvars ++ prvars)
-         CtxMatchVal e pctx i     -> let patternVars = map (mapSnd $ ctxExpectType d) $ exprVarDecls ctx $ fst $ (exprCases e) !! i in
+         CtxMatchVal e pctx i     -> let patternVars = map (mapSnd $ ctxExpectType d) $ exprVarDecls (CtxMatchPat e pctx i) $ fst $ (exprCases e) !! i in
                                      if isLExpr d pctx $ exprMatchExpr e
                                         then (plvars ++ patternVars, prvars)
                                         else (plvars, patternVars ++ prvars)
