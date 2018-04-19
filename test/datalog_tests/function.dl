@@ -60,16 +60,43 @@ typedef Alt = C0{x: bit<32>}
 function x(): Alt
     = C0{32'd5}
 
-typedef C = C{x: string}
+typedef C = C{f1: string, f2: string}
 
 function vars(): () = {
     var x: int;
     x = 10;
-    var y = C{.x = "foo"};
-    var z: C = C{.x = "bar"};
+    var y = C{.f1 = "foo", .f2 = "bar"};
+    var z: C = C{.f1 = "bar", .f2 = "foo"};
     
     (var a, var b) = (x+5, x-5);
 
-    C{var c} = y;
-    ()
+    C{.f1 = var e} = y;
+
+    C{var c, var d} = y
+}
+
+function patterns(): () = {
+    var a: Alt = C0{1};
+
+    var b = match (a) {
+        C0{} -> true,
+        C1{} -> false
+    };
+
+    var i: bit<32> = match (a) {
+        C0{.x = v} -> v,
+        C1{v} -> v
+    }
+}
+
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+function shadow(): string = {
+    var b: option_t<string> = None;
+    var a = Some{"foo"};
+    match (a) {
+        Some{v} -> v,
+        None    -> ""
+    }
 }

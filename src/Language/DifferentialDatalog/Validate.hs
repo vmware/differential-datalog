@@ -318,7 +318,7 @@ exprValidate2 d ctx (EField p e f)      = do
                                $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t 
          _           -> err (pos e) $ "Expression is not a struct"
     assert (not $ structFieldGuarded (typ' d e) f) p 
-           $ "Guarded field " ++ f ++ " accessed in query condition"
+           $ "Access to guarded field \"" ++ f ++ "\""
                                                        
 exprValidate2 d _   (ESlice p e h l)    = 
     case typ' d e of

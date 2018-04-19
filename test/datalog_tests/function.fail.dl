@@ -1,0 +1,62 @@
+// variable declared without a type outside of an assignment statement
+function vars(): () = {
+    var x;
+    x = 10
+}
+
+//---
+
+// variable declaration cannot be the last statement in a block
+function vars(): () = {
+    var x: int
+}
+
+//---
+
+typedef C = C{f1: string, f2: string}
+
+// missing arguments to a type constructor
+function vars(): () = {
+    var y: C;
+
+    // missing arguments allowed in the LHS of an assignment 
+    C{.f1 = var a} = y;
+
+    // error: missing argument in the RHS
+    var z = C{.f1 = "foo"}
+}
+
+//---
+
+typedef Alt = C0{x: bit<32>}
+            | C1{x: bit<32>}
+
+// shadow argument name
+function shadow(v: string): () = {
+    var a: Alt = C0{1};
+
+    var i: bit<32> = match (a) {
+        C0{.x = v} -> v,
+        C1{v} -> v
+    }
+}
+
+//---
+
+// shadow local variable
+function shadow(): () = {
+    var v: string;
+
+    var v = "foo"
+}
+
+//---
+
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+// access guarded struct field
+function shadow(): () = {
+    var a = Some{"foo"};
+    var b = a.value
+}
