@@ -192,7 +192,7 @@ instance Show Type where
     show = render . pp
 
 
--- Type variables used in type declaration
+-- | Type variables used in type declaration
 typeTypeVars :: Type -> [String]
 typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []

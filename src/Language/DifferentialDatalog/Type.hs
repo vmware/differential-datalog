@@ -11,7 +11,11 @@ module Language.DifferentialDatalog.Type(
     isBool, isBit, isInt, isStruct, isTuple,
     checkTypesMatch,
     typesMatch,
-    ctxExpectType
+    ctxExpectType,
+    ConsTree(..),
+    consTreeEmpty,
+    typeConsTree,
+    consTreeAbduct
 --    typeSubtypes,
 --    typeSubtypesRec,
 --    typeGraph,
@@ -475,3 +479,92 @@ ctxExpectType'' d ctx = typ'' d <$> ctxExpectType d ctx
 
 ctxExpectType' :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType' d ctx = typ' d <$> ctxExpectType d ctx
+
+
+-- | Constructor tree represents the set of patterns that covers the
+-- entire type.
+--
+-- The tree is constructed lazily, starting with a single wildcard
+-- pattern (_), and then expanding it as parts of the tree are
+-- covered by match patterns.
+type CTreeNode = ExprNode ConsTree
+data ConsTree = CT Type [CTreeNode] deriving Eq
+
+-- | Check if the tree is empty
+consTreeEmpty :: ConsTree -> Bool 
+consTreeEmpty (CT _ []) = True
+consTreeEmpty _         = False
+
+-- | Build constructor tree of a type
+typeConsTree :: DatalogProgram -> Type -> ConsTree
+typeConsTree d t = CT t [EPHolder nopos]
+
+consTreeNodeExpand :: DatalogProgram -> Type -> [CTreeNode]
+consTreeNodeExpand d t = 
+    case typ' d t of
+         TStruct _ cs -> map (\c -> EStruct nopos (name c)
+                                            $ map (\a -> (name a, CT (typ a) [EPHolder nopos]))
+                                            $ consArgs c) cs
+         TTuple _ fs  -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
+         TBool{}      -> [EBool nopos False, EBool nopos True]
+         _            -> [EPHolder nopos]
+    
+-- | Abduct a pattern from constructor tree. Returns the remaining
+-- tree and the abducted part.  
+--
+-- If the remaining tree is empty, this means that the type has been
+-- fully covered by a sequence of patterns.
+--
+-- If the abducted part is empty, this means that the pattern is
+-- redundant.
+consTreeAbduct :: DatalogProgram -> ConsTree -> Expr -> (ConsTree, ConsTree)
+
+-- wildcard (_), var decl abduct the entire tree
+consTreeAbduct d (CT t cts) (E EPHolder{}) = (CT t [], CT t cts)
+consTreeAbduct d (CT t cts) (E EVarDecl{}) = (CT t [], CT t cts)
+
+-- expand the tree if necessary
+consTreeAbduct d (CT t [EPHolder{}]) e =
+    consTreeAbduct' d (CT t $ consTreeNodeExpand d t) e
+
+consTreeAbduct d ct e = consTreeAbduct' d ct e
+
+
+consTreeAbduct' :: DatalogProgram -> ConsTree -> Expr -> (ConsTree, ConsTree)
+consTreeAbduct' d ct@(CT t nodes) (E e) = 
+    case e of
+         EBool p b      -> (CT t $ filter (/= EBool p b) nodes, CT t $ filter (== EBool p b) nodes)
+         EInt p v       -> (ct, CT t [EInt p v])
+         EString p s    -> (ct, CT t [EString p s])
+         EBit p w v     -> (ct, CT t [EBit p w v])
+         EStruct p c fs -> 
+             let (leftover, abducted) = unzip $ map (\nd -> abductStruct d e nd) nodes
+             in (CT t $ concat leftover, CT t $ concat abducted)
+         ETuple p es    -> 
+             let (leftover, abducted) = unzip $ map (\(ETuple _ ts) -> abductTuple d es ts) nodes
+             in (CT t $ concat leftover, CT t $ concat abducted)
+         ETyped p x _   -> consTreeAbduct d ct x
+
+
+abductTuple :: DatalogProgram -> [Expr] -> [ConsTree] -> ([CTreeNode], [CTreeNode])
+abductTuple d es ts = (map (ETuple nopos) leftover, map (ETuple nopos) abducted)
+    where 
+    (leftover, abducted) = abductMany d es ts
+
+abductStruct :: DatalogProgram -> ENode -> CTreeNode -> ([CTreeNode], [CTreeNode])
+abductStruct d (EStruct _ c fs) (EStruct _ c' ts) | c == c' =
+    (map (EStruct nopos c . zip fnames) leftover, map (EStruct nopos c . zip fnames) abducted)
+    where 
+    (fnames, fvals) = unzip fs
+    (leftover, abducted) = abductMany d fvals (map snd ts)
+abductStruct d _ nd  = ([nd], [])
+
+abductMany :: DatalogProgram -> [Expr] -> [ConsTree] -> ([[ConsTree]], [[ConsTree]])
+abductMany d []     []       = ([], [[]])
+abductMany d (e:es) (ct:cts) =
+    let (CT t leftover, CT _ abducted) = consTreeAbduct d ct e
+        (leftover', abducted') = abductMany d es cts
+        leftover'' = concatMap (\l -> map ((CT t [l]) :) abducted') leftover ++
+                     map (\l' -> ct : l') leftover'
+        abducted'' = concatMap (\a -> map ((CT t [a]) :) abducted') abducted
+    in (leftover'', abducted'')

@@ -381,6 +381,7 @@ pattern ::= (* tuple pattern *)
        None    -> ""
    }
    ```
+1. Patterns in a `match` expression must be exhaustive.
 
 ## Rules
 

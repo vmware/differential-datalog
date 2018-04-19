@@ -256,6 +256,7 @@ exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> 
 exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ show ctx) $ -} do 
     exprTraverseCtxM (exprValidate1 d tvars) ctx e
     exprTraverseTypeME d (exprValidate2 d) ctx e
+    exprTraverseCtxM (exprCheckMatchPatterns d) ctx e
 
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
@@ -348,7 +349,6 @@ exprValidate2 d _   (ESlice p e h l)    =
 exprValidate2 d _   (EMatch _ _ cs)     = do
     let t = snd $ head cs
     mapM_ ((\e -> checkTypesMatch (pos e) d t e) . snd) cs
-    -- TODO: check completeness of patterns
 
 exprValidate2 d _   (EBinOp p op e1 e2) = do 
     case op of 
@@ -389,3 +389,17 @@ checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
 checkLExpr d ctx e = 
     assert (isLExpr d ctx e) (pos e) 
            $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
+
+
+exprCheckMatchPatterns :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Expr -> me ()
+exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do
+    let t = exprType d (CtxMatchExpr e ctx) x
+        ct0 = typeConsTree d t
+    ct <- foldM (\ct pat -> do let (leftover, abducted) = consTreeAbduct d ct pat
+                               assert (not $ consTreeEmpty abducted) (pos pat)
+                                      "Unsatisfiable match pattern"
+                               return leftover)
+                ct0 (map fst cs)
+    assert (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
+
+exprCheckMatchPatterns _ _   _               = return ()
