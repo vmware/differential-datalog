@@ -33,7 +33,10 @@ validate d = do
     d' <- progDesugarExprs d
     -- Validate function prototypes
     mapM_ (funcValidateProto d') $ M.elems $ progFunctions d'
+    -- Validate function implementations
     mapM_ (funcValidateDefinition d') $ M.elems $ progFunctions d'
+    -- Check for recursion
+    checkNoRecursion d'
     -- Validate relation declarations
     mapM_ (relValidate d') $ M.elems $ progRelations d'
     return d'
@@ -45,14 +48,25 @@ validate d = do
 --          $ (grCycle $ relGraph r)
 --    mapM_ (relValidate3 r)   refineRels
 --    validateFinal r
---
----- Validate final refinement before generating topology from it
---validateFinal :: (MonadError String me) => Refine -> me ()
---validateFinal r = do
---    case grCycle (funcGraphNoSink r) of
---         Nothing -> return ()
---         Just t  -> err (pos $ getFunc r $ snd $ head t) $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
 
+-- Reject program with recursion
+checkNoRecursion :: (MonadError String me) => DatalogProgram -> me ()
+checkNoRecursion d = do
+    case grCycle (funcGraph d) of
+         Nothing -> return ()
+         Just t  -> err (pos $ getFunc d $ snd $ head t) 
+                        $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
+
+
+funcGraph :: DatalogProgram -> G.Gr String ()
+funcGraph DatalogProgram{..} = 
+    let g0 = foldl' (\g (i,f) -> G.insNode (i,f) g)
+                    G.empty $ zip [0..] (M.keys progFunctions) in
+    foldl' (\g (i,f) -> case funcDef f of
+                             Nothing -> g
+                             Just e  -> foldl' (\g' f' -> G.insEdge (i, M.findIndex f' progFunctions, ()) g') 
+                                               g (exprFuncs e)) 
+           g0 $ zip [0..] $ M.elems progFunctions
 
 -- Desugar expressions: convert all type constructor calls to named
 -- field syntax.  

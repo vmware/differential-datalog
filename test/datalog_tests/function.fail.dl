@@ -60,3 +60,15 @@ function shadow(): () = {
     var a = Some{"foo"};
     var b = a.value
 }
+
+//---
+
+// recursive functions
+
+function f1(arg: int): int = {
+    f2(arg)
+}
+
+function f2(arg: int): int = {
+    f1(arg)
+}

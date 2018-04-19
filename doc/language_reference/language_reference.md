@@ -174,6 +174,7 @@ arg ::= arg_name ":" simple_type_spec
 
 1. The body of the function must be a valid expression whose type
    matches the return type of the function.
+1. Recursive functions are not allowed.
 
 ## Relations
 
