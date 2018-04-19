@@ -6,4 +6,4 @@ expecting end of "function" or identifierFailed to parse input file: "./test/dat
 unexpected "{"
 expecting "<", "," or "}"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
 unexpected "F"
-expecting identifiererror: "./test/datalog_tests/constr.fail.dl:4:15-8:1: Field x is declared with different types"
+expecting identifiererror: "./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types"error: "./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D"

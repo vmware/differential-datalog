@@ -130,10 +130,13 @@ typedefValidate d@DatalogProgram{..} TypeDef{..} = do
     mapM_ (\a -> assert (M.notMember a progTypedefs) tdefPos
                         $ "Type argument " ++ a ++ " conflicts with user-defined type name")
           tdefArgs
-    -- TODO: all type arguments are used in type declaration
     case tdefType of
          Nothing -> return ()
-         Just t  -> typeValidate d tdefArgs t
+         Just t  -> do
+             typeValidate d tdefArgs t
+             let dif = tdefArgs \\ typeTypeVars t
+             assert (null dif) tdefPos 
+                    $ "The following type variables are not used in type definition: " ++ intercalate "," dif
 
 typeValidate :: (MonadError String me) => DatalogProgram -> [String] -> Type -> me ()
 typeValidate _ _     TString{}        = return ()

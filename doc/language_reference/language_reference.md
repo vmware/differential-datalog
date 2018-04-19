@@ -98,6 +98,12 @@ field            ::= field_name ":" simple_type_spec
 ### Constraints on types
 1. Type argument names must be unique within a typedef, e.g.,
 `typedef t1<'A,'A,'B>` is invalid.
+1. All type arguments of a `typedef` must be used in the type definition:
+    ```
+    // error: type argument 'D not used in type definition
+    typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
+                                       | Option2{y: 'B, z: 'C}
+    ```
 1. The number of bits in a bitvector type must be greater than 0, e.g.,
 `bit<0>` is invalid.
 1. Type constructor names must be globally unique.

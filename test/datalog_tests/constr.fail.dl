@@ -28,4 +28,8 @@ function F(): int
 typedef Alt = C0{x: bit<16>}
             | C1{x: bit<32>}
 
+//---
 
+// type argument 'D not used in type definition
+typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
+                                   | Option2{y: 'B, z: 'C}
