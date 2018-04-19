@@ -1,9 +1,21 @@
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, column 23):
 unexpected '{'
-expecting "typedef", "ground", "relation", "function", identifier, "for" or end of inputerror: "./test/datalog_tests/constr.fail.dl:4:13-4:26: Multiple definitions of constructor C at the following locations:\n  ./test/datalog_tests/constr.fail.dl:4:13-4:26\n  ./test/datalog_tests/constr.fail.dl:5:13-7:1"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):
+expecting "typedef", "ground", "relation", "function", identifier, "for" or end of input
+
+error: "./test/datalog_tests/constr.fail.dl:4:13-4:26: Multiple definitions of constructor C at the following locations:\n  ./test/datalog_tests/constr.fail.dl:4:13-4:26\n  ./test/datalog_tests/constr.fail.dl:5:13-7:1"
+
+Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):
 unexpected "("
-expecting end of "function" or identifierFailed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
+expecting end of "function" or identifier
+
+Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
 unexpected "{"
-expecting "<", "," or "}"Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
+expecting "<", "," or "}"
+
+Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
 unexpected "F"
-expecting identifiererror: "./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types"error: "./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D"
+expecting identifier
+
+error: "./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types"
+
+error: "./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D"

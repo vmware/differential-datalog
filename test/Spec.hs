@@ -74,7 +74,7 @@ testParser fname ofname = do
         -- if the file should fail we expect an exception.
         -- the exception message is the expected output
         out <- mapM (compileFailingProgram fname) parts
-        writeFile ofname (intercalate "" out)
+        writeFile ofname (intercalate "\n\n" out)
       else do
         -- parse Datalog file and output its AST
         prog <- parseValidate fname body
