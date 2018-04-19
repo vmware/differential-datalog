@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections #-}
 
 module Language.DifferentialDatalog.Validate (
     validate) where
@@ -21,20 +21,22 @@ import Language.DifferentialDatalog.Expr
 --import Relation
 
 -- | Validate Datalog program
-validate :: (MonadError String me) => DatalogProgram -> me ()
-validate d@DatalogProgram{..} = do
+validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+validate d = do
     uniqNames ("Multiple definitions of constructor " ++) 
               $ progConstructors d
     -- Validate typedef's
-    mapM_ (typedefValidate d) $ M.elems progTypedefs
+    mapM_ (typedefValidate d) $ M.elems $ progTypedefs d
     -- No cyclic dependencies between user-defined types
     checkAcyclicTypes d
+    -- Desugar.  Must be called after typeValidate.
+    d' <- progDesugarExprs d
     -- Validate function prototypes
-    mapM_ (funcValidateProto d) $ M.elems progFunctions
-    mapM_ (funcValidateDefinition d) $ M.elems progFunctions
+    mapM_ (funcValidateProto d') $ M.elems $ progFunctions d'
+    mapM_ (funcValidateDefinition d') $ M.elems $ progFunctions d'
     -- Validate relation declarations
-    mapM_ (relValidate d) $ M.elems progRelations
-    return ()
+    mapM_ (relValidate d') $ M.elems $ progRelations d'
+    return d'
 
 --    mapM_ (relValidate2 r)   refineRels
 --    maybe (return ())
@@ -52,10 +54,80 @@ validate d@DatalogProgram{..} = do
 --         Just t  -> err (pos $ getFunc r $ snd $ head t) $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
 
 
+-- Desugar expressions: convert all type constructor calls to named
+-- field syntax.  
+-- Precondition: typedefs must be validated before calling this
+-- function.  
+progDesugarExprs :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+progDesugarExprs d = do
+    funcs' <- mapM (\f -> do e <- case funcDef f of
+                                       Nothing -> return Nothing
+                                       Just e  -> Just <$> exprDesugar d e
+                             return f{funcDef = e})
+                   $ progFunctions d
+    rules' <- mapM (\r -> do lhs <- mapM (atomDesugarExprs d) $ ruleLHS r
+                             rhs <- mapM (rhsDesugarExprs d) $ ruleRHS r 
+                             return r{ruleLHS = lhs, ruleRHS = rhs})
+                   $ progRules d
+    return d{ progFunctions = funcs'
+            , progRules     = rules'}    
+
+atomDesugarExprs :: (MonadError String me) => DatalogProgram -> Atom -> me Atom
+atomDesugarExprs d a = do 
+    args <- mapM (\(m, e) -> (m,) <$> exprDesugar d e) $ atomArgs a
+    return a{atomArgs = args}
+
+rhsDesugarExprs :: (MonadError String me) => DatalogProgram -> RuleRHS -> me RuleRHS
+rhsDesugarExprs d l@RHSLiteral{}   = do
+    a <- atomDesugarExprs d (rhsAtom l)
+    return l{rhsAtom = a}
+rhsDesugarExprs d c@RHSCondition{} = do
+    e <- exprDesugar d (rhsExpr c)
+    return c{rhsExpr = e}
+rhsDesugarExprs d a@RHSAggregate{} = do
+    e <- exprDesugar d (rhsAggExpr a)
+    return a{rhsAggExpr = e}
+rhsDesugarExprs d m@RHSFlatMap{}   = do
+    e <- exprDesugar d (rhsMapExpr m)
+    return m{rhsMapExpr = e}
+
+exprDesugar :: (MonadError String me) => DatalogProgram -> Expr -> me Expr
+exprDesugar d e = exprFoldM (exprDesugar' d) e
+
+exprDesugar' :: (MonadError String me) => DatalogProgram -> ENode -> me Expr
+exprDesugar' d e =
+    case e of
+         EStruct p c as -> do
+            cons@Constructor{..} <- checkConstructor p d c
+            as' <- case as of
+                        [] | null consArgs
+                           -> return as
+                        [] -> desugarNamedArgs d cons (pos e) as
+                        _  | all (null . fst) as
+                           -> desugarPosArgs d cons (pos e) as
+                        _  | any (null . fst) as
+                           -> err (pos e) $ "Expression mixes named and positional arguments to type constructor"
+                        _  -> desugarNamedArgs d cons (pos e) as
+            return $ E e{exprStructFields = as'}
+         _              -> return $ E e
+
+desugarPosArgs :: (MonadError String me) => DatalogProgram -> Constructor -> Pos -> [(String, Expr)] -> me [(String, Expr)]
+desugarPosArgs d cons@Constructor{..} p as = do
+    assert (length as == length consArgs) p
+           $ "Number of arguments does not match constructor declaration: " ++ show cons
+    return $ zip (map name consArgs) (map snd as)
+
+desugarNamedArgs :: (MonadError String me) => DatalogProgram -> Constructor -> Pos -> [(String, Expr)] -> me [(String, Expr)]
+desugarNamedArgs d cons@Constructor{..} p as = do
+    uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
+    mapM (\(n,e) -> assert (isJust $ find ((==n) . name) consArgs) (pos e)
+                           $ "Unknown field " ++ n) as
+    return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) consArgs
+
 typedefValidate :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidate d@DatalogProgram{..} TypeDef{..} = do
     uniq' (\_ -> tdefPos) id ("Multiple definitions of type argument " ++) tdefArgs
-    mapM_ (\a -> assert (M.notMember a progTypedefs) tdefPos 
+    mapM_ (\a -> assert (M.notMember a progTypedefs) tdefPos
                         $ "Type argument " ++ a ++ " conflicts with user-defined type name")
           tdefArgs
     -- TODO: all type arguments are used in type declaration
@@ -175,31 +247,49 @@ exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
 exprValidate1 d _ ctx (EApply p f as)     = do fun <- checkFunc p d f
                                                assert (length as == length (funcArgs fun)) p
                                                       "Number of arguments does not match function declaration"
-exprValidate1 _ _ _   (EField _ _ _)      = return ()
-exprValidate1 _ _ _   (EBool _ _)         = return ()
-exprValidate1 _ _ _   (EInt _ _)          = return ()
-exprValidate1 _ _ _   (EString _ _)       = return ()
-exprValidate1 _ _ _   (EBit _ _ _)        = return ()
-exprValidate1 d _ _   (EStruct p c as)    = do cons <- checkConstructor p d c
-                                               assert (length as == length (consArgs cons)) p
-                                                      $ "Number of arguments does not match constructor declaration: " ++ show cons
-exprValidate1 _ _ _   (ETuple _ _)        = return ()
-exprValidate1 _ _ _   (ESlice _ _ _ _)    = return ()
-exprValidate1 _ _ _   (EMatch _ _ _)      = return ()
+exprValidate1 _ _ _   EField{}            = return ()
+exprValidate1 _ _ _   EBool{}             = return ()
+exprValidate1 _ _ _   EInt{}              = return ()
+exprValidate1 _ _ _   EString{}           = return ()
+exprValidate1 _ _ _   EBit{}              = return ()
+exprValidate1 _ _ _   EStruct{}           = return () -- see exprDesugar 
+exprValidate1 _ _ _   ETuple{}            = return ()
+exprValidate1 _ _ _   ESlice{}            = return ()
+exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
                                           = checkNoVar p d ctx v
                                      | otherwise 
                                           = do assert (ctxIsTyped ctx) p "Variable declared without a type"
                                                assert (ctxIsSeq1 $ ctxParent ctx) p 
                                                       "Variable declaration is not allowed in this context"
-exprValidate1 _ _ _   (ESeq _ _ _)        = return ()
-exprValidate1 _ _ _   (EITE _ _ _ _)      = return ()
+exprValidate1 _ _ _   ESeq{}              = return ()
+exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
-exprValidate1 _ _ _   (EBinOp _ _ _ _)    = return ()
-exprValidate1 _ _ _   (EUnOp _ Not _)     = return ()
-exprValidate1 _ _ _   (EUnOp _ BNeg _)    = return ()
-exprValidate1 _ _ _   (EPHolder _)        = return ()
+exprValidate1 _ _ _   EBinOp{}            = return ()
+exprValidate1 _ _ _   EUnOp{}             = return ()
+
+exprValidate1 _ _ ctx (EPHolder p)        = do
+    let msg = case ctx of
+                   CtxStruct _ _ f -> "Argument " ++ f ++ " must be specified in this context"
+                   _               -> "_ is not allowed in this context"
+    assert (ctxPHolderAllowed ctx) p msg
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
+
+-- True if a placeholder ("_") can appear in this context
+ctxPHolderAllowed :: ECtx -> Bool
+ctxPHolderAllowed ctx = 
+    case ctx of 
+         CtxSetL{}      -> True
+         CtxTyped{}     -> pres
+         CtxRuleL{}     -> True
+         CtxRuleRAtom{} -> True
+         CtxStruct{}    -> pres
+         CtxTuple{}     -> pres
+         CtxMatchPat{}  -> True
+         _              -> False
+    where 
+    par = ctxParent ctx
+    pres = ctxPHolderAllowed par
 
 checkNoVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me ()
 checkNoVar p d ctx v = assert (isNothing $ lookupVar d ctx v) p 
