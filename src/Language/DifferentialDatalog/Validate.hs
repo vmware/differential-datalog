@@ -193,7 +193,7 @@ checkAcyclicTypes d@DatalogProgram{..} = do
                                         $ maybe [] typeUserTypes $ tdefType tdef)
                                g0 progTypedefs
     maybe (return ())
-          (\cyc -> throwError $ "Dependency cycle among types: " ++ 
+          (\cyc -> throwError $ "Mutually recursive types: " ++ 
                                 (intercalate " -> " $ map snd cyc))
           $ grCycle gfull
 

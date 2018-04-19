@@ -344,7 +344,7 @@ pattern ::= (* tuple pattern *)
    // error: field f2 omitted in the right-hand side of an assignment
    var h = TwoFields{.f1 = "foo"}
    ```
-1. A variable declaration cannot shadow existing vairiables visible
+1. A variable declaration cannot shadow existing variables visible
    in the local scope.  Variables visible inside the body of a function 
    include: function arguments, local variables declared using `var`, and 
    variables introduced through `match` patterns:
@@ -371,7 +371,7 @@ pattern ::= (* tuple pattern *)
    Accessing such a field has undefined outcome when the field is not
    present:
    ```
-   var a = Some{"foo"};
+   var a: Some<string>;
    var b = a.value // error: access to guarded field value
    ```
    Use pattern matching instead, e.g.:
