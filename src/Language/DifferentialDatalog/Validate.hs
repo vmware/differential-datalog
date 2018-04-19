@@ -141,10 +141,11 @@ typeValidate _ _     TInt{}           = return ()
 typeValidate _ _     TBool{}          = return ()
 typeValidate _ _     (TBit p w)       =
     assert (w>0) p "Integer width must be greater than 0"
-typeValidate d tvars (TStruct _ cs)   = do
+typeValidate d tvars (TStruct p cs)   = do
     uniqNames ("Multiple definitions of constructor " ++) cs
     mapM_ (consValidate d tvars) cs
-    mapM_ (uniq (show . typ) (\a -> "Argument " ++ name a ++ " is re-declared with a different type"))
+    mapM_ (\grp -> assert (length (nub $ map typ grp) == 1) p $
+                          "Field " ++ (name $ head grp) ++ " is declared with different types")
           $ sortAndGroup name $ concatMap consArgs cs
 typeValidate d tvars (TTuple _ ts)    =
     mapM_ (typeValidate d tvars) ts

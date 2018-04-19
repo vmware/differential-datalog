@@ -55,7 +55,21 @@ function v(): string =
     v2
 
 typedef Alt = C0{x: bit<32>}
-            | C1{x: bit<16>}
+            | C1{x: bit<32>}
 
 function x(): Alt
     = C0{32'd5}
+
+typedef C = C{x: string}
+
+function vars(): () = {
+    var x: int;
+    x = 10;
+    var y = C{.x = "foo"};
+    var z: C = C{.x = "bar"};
+    
+    (var a, var b) = (x+5, x-5);
+
+    C{var c} = y;
+    ()
+}

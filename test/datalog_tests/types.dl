@@ -25,6 +25,6 @@ typedef T16 = t15
 typedef T17 = int
 typedef t18 = Const18 { f0: int, f1: string, f2: t00 }
 typedef t19 = C0 { f0: int }
-            | C1 { f0: string }
-            | C2 { f0: t00 }
+            | C1 { f0: int }
+            | C2 { f0: int }
 
