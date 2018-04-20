@@ -92,6 +92,7 @@ function patterns(): () = {
 typedef option_t<'A> = None
                      | Some {value : 'A}
 
+
 function shadow(): string = {
     var b: option_t<string> = None;
     var a = Some{"foo"};
@@ -99,4 +100,11 @@ function shadow(): string = {
         Some{v} -> v,
         None    -> ""
     }
+}
+
+typedef nested_t = N{field: C}
+
+function fnested(x: nested_t): string = {
+    N{C{var res, _}} = x;
+    res
 }

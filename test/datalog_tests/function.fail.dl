@@ -72,3 +72,29 @@ function f1(arg: int): int = {
 function f2(arg: int): int = {
     f1(arg)
 }
+
+
+//---
+
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+// non-unique constructor in the LHS of assignment
+
+function f(x: option_t<'A>): () = {
+    Some{var s} = x
+}
+
+//---
+
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+typedef t<'A> = T{field: option_t<'A>}
+
+// non-unique constructor in the LHS of assignment
+
+function f(x: t<'A>): () = {
+    T{.field = Some{var s}} = x
+}
+
