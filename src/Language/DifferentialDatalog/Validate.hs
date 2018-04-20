@@ -294,7 +294,12 @@ exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
-exprValidate1 _ _ _   EStruct{}           = return () -- see exprDesugar 
+exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was performed by exprDesugar 
+    let tdef = consType d c
+    when (ctxInSetL ctx) $
+        assert ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
+               $ "Type constructor in the left-hand side of an assignment is only allowed for types with one constructor, \
+                 \ but \"" ++ name tdef ++ "\" has multiple constructors"
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()

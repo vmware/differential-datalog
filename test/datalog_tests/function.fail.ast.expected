@@ -11,3 +11,7 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already define
 error: ./test/datalog_tests/function.fail.dl:9:13-10:1: Access to guarded field "value"
 
 error: ./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1
+
+error: ./test/datalog_tests/function.fail.dl:9:5-9:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "option_t" has multiple constructors
+
+error: ./test/datalog_tests/function.fail.dl:11:16-11:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "option_t" has multiple constructors

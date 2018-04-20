@@ -1,5 +1,6 @@
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef C = C{f1: string, f2: string}
+typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
 function a0 (): int =
     1
@@ -27,6 +28,9 @@ function c0 (a: bit<32>,b: bit<16>): bit<16> =
     (a;
      b)
 function f (): int
+function fnested (x: nested_t): string =
+    (N{.field=C{.f1=var res, .f2=_}} = x;
+     res)
 function g (a: int): int
 function h (a: (int, int)): (int, int)
 function patterns (): () =
