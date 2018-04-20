@@ -2,7 +2,9 @@ Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, colum
 unexpected '{'
 expecting "typedef", "ground", "relation", "function", identifier, "for" or end of input
 
-error: "./test/datalog_tests/constr.fail.dl:4:13-4:26: Multiple definitions of constructor C at the following locations:\n  ./test/datalog_tests/constr.fail.dl:4:13-4:26\n  ./test/datalog_tests/constr.fail.dl:5:13-7:1"
+error: ./test/datalog_tests/constr.fail.dl:4:13-4:26: Multiple definitions of constructor C at the following locations:
+  ./test/datalog_tests/constr.fail.dl:4:13-4:26
+  ./test/datalog_tests/constr.fail.dl:5:13-7:1
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):
 unexpected "("
@@ -16,6 +18,6 @@ Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, colum
 unexpected "F"
 expecting identifier
 
-error: "./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types"
+error: ./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types
 
-error: "./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D"
+error: ./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D

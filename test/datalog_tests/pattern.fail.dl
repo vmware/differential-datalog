@@ -79,3 +79,100 @@ function f1(x: T2) : bool = {
         _               -> false
     }
 }
+
+
+//---
+
+// non-exhaustive pattern
+
+function f1(z: (bool, (bool, (bool, bool)))) : bool = {
+    match (z) {
+        (true, _)                  -> true,
+        (false, (_,(true, true)))  -> true,
+        (false, (_,(true, false))) -> true,
+        (false, (_,(false, true))) -> true
+        // (false, (_,(false, false))) -> true
+    }
+}
+
+//---
+
+// redundant pattern
+
+function f1(z: (bool, (bool, (bool, bool)))) : bool = {
+    match (z) {
+        (true, _)                   -> true,
+        (false, (_,(true, true)))   -> true,
+        (false, (_,(true, false)))  -> true,
+        (false, (_,(false, true)))  -> true,
+        _                           -> false,
+        (false, (_,(false, false))) -> true
+    }
+}
+
+//---
+
+// non-exhaustive pattern
+
+function f1(z: (bool, (bool, (bool, bool)))) : bool = {
+    match (z) {
+        (_, (_,(true, true)))       -> true,
+        (_, (_,(true, false)))      -> true,
+        (_, (_,(false, true)))      -> true,
+        (false, (_,(false, false))) -> true
+    }
+}
+
+//---
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T3 = C31{f1: T1, f2: int}
+           | C32{f3: ((bool, (bool, bool, bool)), T1)}
+
+// non-exhaustive pattern
+
+function f1(x: T1, q: T3) : bool = {
+    match (q) {
+        C31{}                                       -> true,
+        C32{.f3=((true, (_, _, false)), _)}         -> true,
+        C32{.f3=((false, (_, _, false)), _)}        -> true,
+        C32{.f3=((false, (_, _, true)), _)}         -> true,
+        C32{.f3=((_, (_, _, true)), C11{})}         -> true
+    }
+}
+
+//---
+
+typedef T1 = C11{f1: int, f2: (int, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T3 = C31{f1: T1, f2: int, s: string, b: bit<32>}
+           | C32{f3: ((bool, (bool, bool, bool)), T1)}
+
+// non-exhaustive pattern
+
+function f1(x: T1, q: T3) : bool = {
+    match (q) {
+        C31{_, 0, "foo", 15}                                       -> true,
+        C31{_, _, _, 15}                                           -> true,
+        C31{_, 0, _, _}                                            -> true,
+        C31{_, _, "foo", _}                                        -> true,
+        C32{}                                                      -> true
+    }
+}
+
+//---
+
+// non-exhaustive pattern
+
+function f1(s: string) : bool = {
+    var s: string;
+    match (s) {
+        "foo" -> true,
+        "bar" -> true
+        //_     -> false
+    }
+}
+

@@ -326,6 +326,9 @@ pattern = withPos $
       <|> eVarDecl <$> varIdent
       <|> eVarDecl <$ reserved "var" <*> varIdent
       <|> epholder
+      <|> ebool
+      <|> estring
+      <|> eint
       <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
 
 anonpat = ("",) <$> pattern

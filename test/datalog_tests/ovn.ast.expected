@@ -19,7 +19,7 @@ function is_none (x: option_t<'A>): bool =
     }
 function is_some (x: option_t<'A>): bool =
     match (x) {
-        Some{} -> true,
+        Some{.value=_} -> true,
         _ -> false
     }
 ground relation ACL (
@@ -287,10 +287,10 @@ Logical_Switch_has_stateful_acl_action(ls) :- ACL(.logical_switch=ls, .action="a
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :- Logical_Switch_Port_port_security(lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_subnets(ips, (), subnet).
 Logical_Switch_Port_ps_macs(lsp, mac) :- Logical_Switch_Port_ps_ips(lsp, mac, _).
 DHCP_Options_option_args(opts, ((key ++ "=") ++ value)) :- DHCP_Options_options(opts, key, value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
-DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_mac", val), Some{mac} = eth_addr_from_string(val).
-DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_id", val), Some{mac} = eth_addr_from_string(val).
-DHCP_Options_server_ip(opts, val) :- DHCP_Options_options(opts, "server_id", val), Some{ip4} = ip_parse(val).
-DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :- DHCP_Options_options(opts, "server_id", val), None{} = ip_parse(val), Some{mac} = eth_addr_from_string(val), lla = in6_generate_lla(mac).
+DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_mac", val), Some{.value=mac} = eth_addr_from_string(val).
+DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_id", val), Some{.value=mac} = eth_addr_from_string(val).
+DHCP_Options_server_ip(opts, val) :- DHCP_Options_options(opts, "server_id", val), Some{.value=ip4} = ip_parse(val).
+DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :- DHCP_Options_options(opts, "server_id", val), None{} = ip_parse(val), Some{.value=mac} = eth_addr_from_string(val), lla = in6_generate_lla(mac).
 DHCP_Options_netmask(opts, build_dhcp_netmask(cidr)) :- DHCP_Options(opts, cidr).
 DHCP_Options_stateful(opts, true) :- DHCP_Options_options(opts, "dhcpv6_stateless", "false").
 DHCP_Options_stateful(opts, false) :- DHCP_Options_options(opts, "dhcpv6_stateless", "true").

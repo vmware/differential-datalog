@@ -30,14 +30,14 @@ function f (): int
 function g (a: int): int
 function h (a: (int, int)): (int, int)
 function patterns (): () =
-    ((var a: Alt) = C0{1};
+    ((var a: Alt) = C0{.x=1};
      (var b = match (a) {
-                  C0{} -> true,
-                  C1{} -> false
+                  C0{.x=_} -> true,
+                  C1{.x=_} -> false
               };
       (var i: bit<32>) = match (a) {
                              C0{.x=var v} -> v,
-                             C1{var v} -> v
+                             C1{.x=var v} -> v
                          }))
 function s0 (): string =
     "Some string"
@@ -45,9 +45,9 @@ function s1 (): string =
     "\t\r\n\"\\\a"
 function shadow (): string =
     ((var b: option_t<string>) = None{};
-     (var a = Some{"foo"};
+     (var a = Some{.value="foo"};
       match (a) {
-          Some{var v} -> v,
+          Some{.value=var v} -> v,
           None{} -> ""
       }))
 function v (): string =
@@ -62,7 +62,7 @@ function vars (): () =
       (var y = C{.f1="foo", .f2="bar"};
        ((var z: C) = C{.f1="bar", .f2="foo"};
         ((var a, var b) = ((x + 5), (x - 5));
-         (C{.f1=var e} = y;
-          C{var c, var d} = y))))))
+         (C{.f1=var e, .f2=_} = y;
+          C{.f1=var c, .f2=var d} = y))))))
 function x (): Alt =
-    C0{32'd5}
+    C0{.x=32'd5}
