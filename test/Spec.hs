@@ -49,7 +49,7 @@ parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do 
     d <- parseDatalogString program file
     case validate d of 
-         Left e  -> errorWithoutStackTrace $ "error: " ++ show e
+         Left e  -> errorWithoutStackTrace $ "error: " ++ e
          Right _ -> return d 
 
 -- compile a program that is supposed to fail compilation
@@ -74,11 +74,11 @@ testParser fname ofname = do
         -- if the file should fail we expect an exception.
         -- the exception message is the expected output
         out <- mapM (compileFailingProgram fname) parts
-        writeFile ofname (intercalate "\n\n" out)
+        writeFile ofname $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
         prog <- parseValidate fname body
-        writeFile ofname (show prog)
+        writeFile ofname (show prog ++ "\n")
         -- parse reference output
         prog' <- parseDatalogFile ofname
         -- expect the same result

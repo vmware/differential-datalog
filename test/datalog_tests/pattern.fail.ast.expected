@@ -1,9 +1,13 @@
-error: "./test/datalog_tests/pattern.fail.dl:7:12-7:13: Non-exhaustive match patterns"
+error: ./test/datalog_tests/pattern.fail.dl:7:12-7:13: Non-exhaustive match patterns
 
-error: "./test/datalog_tests/pattern.fail.dl:11:9-11:13: Unsatisfiable match pattern"
+error: ./test/datalog_tests/pattern.fail.dl:11:9-11:13: Unsatisfiable match pattern
 
-error: "./test/datalog_tests/pattern.fail.dl:12:12-12:13: Non-exhaustive match patterns"
+error: ./test/datalog_tests/pattern.fail.dl:12:12-12:13: Non-exhaustive match patterns
 
-error: "./test/datalog_tests/pattern.fail.dl:15:9-15:25: Unsatisfiable match pattern"
+error: ./test/datalog_tests/pattern.fail.dl:15:9-15:25: Unsatisfiable match pattern
 
-error: "./test/datalog_tests/pattern.fail.dl:16:9-16:25: Unsatisfiable match pattern"
+error: ./test/datalog_tests/pattern.fail.dl:16:9-16:25: Unsatisfiable match pattern
+
+error: ./test/datalog_tests/pattern.fail.dl:6:12-6:13: Non-exhaustive match patterns
+
+error: ./test/datalog_tests/pattern.fail.dl:12:9-12:37: Unsatisfiable match pattern

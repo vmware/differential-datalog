@@ -9,8 +9,23 @@ function f1 (x: T1,y: T2): bool =
           C11{} -> true,
           C12{} -> false
       };
-      match (y) {
-          C21{_, _} -> true,
-          C22{(_, C11{})} -> true,
-          _ -> false
-      }))
+      (match (y) {
+           C21{_, _} -> true,
+           C22{(_, C11{})} -> true,
+           _ -> false
+       };
+       (match (y) {
+            C21{_, _} -> true,
+            C22{(true, C11{})} -> true,
+            C22{(true, C12{})} -> true,
+            C22{(false, C11{})} -> true,
+            C22{(false, C12{})} -> true
+        };
+        ((var z: (bool, (bool, (bool, bool))));
+         match (z) {
+             (true, _) -> true,
+             (false, (_, (true, true))) -> true,
+             (false, (_, (true, false))) -> true,
+             (false, (_, (false, true))) -> true,
+             (false, (_, (false, false))) -> true
+         })))))
