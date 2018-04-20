@@ -387,6 +387,12 @@ pattern ::= (* tuple pattern *)
    }
    ```
 1. Patterns in a `match` expression must be exhaustive.
+1. A type constructor can only be used in the left-hand side of an
+   assignment if the given type only has one constructor:
+   ```
+   var v: option_t<string>;
+   Some{x} = v; // error type option_t has multiple constructors
+   ```
 
 ## Rules
 
