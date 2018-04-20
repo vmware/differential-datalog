@@ -9,7 +9,7 @@ typedef T2 = C21{f1: T1, f2: int}
            | C22{f3: (bool, T1)}
 
 
-typedef T3 = C31{f1: T1, f2: int}
+typedef T3 = C31{f1: T1, f2: int, s: string, b: bit<32>}
            | C32{f3: ((bool, (bool, bool, bool)), T1)}
 
 function f1(x: T1, y: T2, q: T3) : bool = {
@@ -65,5 +65,14 @@ function f1(x: T1, y: T2, q: T3) : bool = {
         C32{.f3=((_, (_, _, true)), C12{.f4=(true, true, true)})}  -> false,
         C32{.f3=((_, (_, _, true)), C12{.f4=(_, _, false)})}       -> false,
         C32{.f3=((_, (_, _, true)), C12{.f4=(_, _, true)})}        -> false
+    };
+
+    match (q) {
+        C31{_, 0, "foo", 15}                                       -> true,
+        C31{_, _, _, 15}                                           -> true,
+        C31{_, 0, _, _}                                            -> true,
+        C31{_, _, "foo", _}                                        -> true,
+        C32{}                                                      -> true,
+        C31{_, _, _, _}                                            -> true
     }
 }
