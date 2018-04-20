@@ -162,3 +162,17 @@ function f1(x: T1, q: T3) : bool = {
         C32{}                                                      -> true
     }
 }
+
+//---
+
+// non-exhaustive pattern
+
+function f1(s: string) : bool = {
+    var s: string;
+    match (s) {
+        "foo" -> true,
+        "bar" -> true
+        //_     -> false
+    }
+}
+

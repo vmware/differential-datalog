@@ -74,5 +74,12 @@ function f1(x: T1, y: T2, q: T3) : bool = {
         C31{_, _, "foo", _}                                        -> true,
         C32{}                                                      -> true,
         C31{_, _, _, _}                                            -> true
+    };
+
+    var s: string;
+    match (s) {
+        "foo" -> true,
+        "bar" -> true,
+        _     -> false
     }
 }
