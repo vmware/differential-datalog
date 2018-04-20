@@ -300,7 +300,12 @@ pattern ::= (* tuple pattern *)
             (* constructor pattern with named arguments *)
           | cons_name "{" ["." field_name "=" pattern 
                            ("," "." field_name "=" pattern)*] "}"
-          | var_decl_term (* variable declaration inside pattern *)
+          | vardecl_term    (* binds variable to a field inside the matched value *)
+          | var_term        (* binds variable to a field inside the matched value           
+                               (shorthand for vardecl_term) *)
+          | bool_literal    (* matches specified bool value *)
+          | string_literal  (* matches specified string value *)
+          | int_literal     (* matches specified integer or bitvector value *)
           | "_"             (* wildcard, matches any value *)
 ```
 
