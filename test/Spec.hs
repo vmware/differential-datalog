@@ -49,8 +49,8 @@ parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do 
     d <- parseDatalogString program file
     case validate d of 
-         Left e  -> errorWithoutStackTrace $ "error: " ++ e
-         Right _ -> return d 
+         Left e   -> errorWithoutStackTrace $ "error: " ++ e
+         Right d' -> return d'
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
