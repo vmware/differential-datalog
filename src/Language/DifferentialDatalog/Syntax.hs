@@ -648,12 +648,15 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- | Function definition: 'function f(...) = {X}'
           | CtxFunc           {ctxFunc::Function}
             -- | Argument to an atom in the left-hand side of a rule:
-            -- 'Rel1(X,y,x)'.
-            --
+            -- 'Rel1(.f1=X,.f2=y,.f3=x) :- ...'.
+            --           ^
+            --           \- context points here
             -- 'ctxAtomIdx' is the index of the LHS atom where the
             -- expression appears
             --
             -- 'ctxField' is the field within the atom.
+            -- Note: preprocessing ensures that field names are always
+            -- present.
           | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
             -- | Argument to a right-hand-side atom
           | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
