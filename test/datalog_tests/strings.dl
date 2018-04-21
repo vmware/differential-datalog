@@ -12,7 +12,6 @@ Strings("\\buzz").
 /* unicode */
 Strings("barΔ").
 
-
 /* raw strings */
 Strings([||]).
 Strings([|foo|]).
@@ -61,3 +60,9 @@ str3: {str3}.|];
     var str8 = $"{{var x = str1 ++ str2; dummy(x)}}";
     ()
 }
+
+Strings("word1\
+        \ word2").
+
+Strings("line1\n\
+        \line2").

@@ -34,3 +34,5 @@ Strings("foo-bar").
 Strings("foo\nbar").
 Strings("foo\\bar").
 Strings("foo\\bar").
+Strings("word1 word2").
+Strings("line1\nline2").
