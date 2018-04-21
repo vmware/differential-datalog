@@ -1,0 +1,81 @@
+// This file contains a port of the OVN FTL code.
+// This is a fairly literal translation of the code.
+
+// ftl/ovn/northd/lswitch-acls.ftl
+// TODO: declare used rules:
+// -flow: the output table
+// -Logical_Switch
+
+typedef stage = LS_IN_ACL{}
+              | LS_OUT_ACL{}
+
+/* Ingress and Egress ACL Table (Priority 0): Packets are allowed by
+ * default.  A related rule at priority 1 is added below if there
+ * are any stateful ACLs in this datapath. */
+for (ls in Logical_Switch) {
+    flow(ls, LS_IN_ACL, 0, "1", "next;");
+    flow(ls, LS_OUT_ACL, 0, "1", "next;")
+}
+
+for (ls in Logical_Switch if ls.has_stateful_acl) {
+    flow(ls, LS_IN_ACL, 1,
+         "ip && (!ct.est || (ct.est && ct_label.blocked))",
+         "{ reg0[1] = 1; next; }");
+    flow(ls, LS_OUT_ACL, 1,
+         "ip && (!ct.est || (ct.est && ct_label.blocked))",
+         "{ reg0[1] = 1; next; }");
+
+    /* Ingress and Egress ACL Table (Priority 65535).
+     *
+     * Always drop traffic that's in an invalid state.  Also drop
+     * reply direction packets for connections that have been marked
+     * for deletion (bit 0 of ct_label is set).
+     *
+     * This is enforced at a higher priority than ACLs can be defined. */
+    flow(ls, LS_IN_ACL, 65535,
+         "ct.inv || (ct.est && ct.rpl && ct_label.blocked)",
+         "{ drop; }");
+    flow(ls, LS_OUT_ACL, 65535,
+         "ct.inv || (ct.est && ct.rpl && ct_label.blocked)",
+         "{ drop; };");
+
+    /* Ingress and Egress ACL Table (Priority 65535).
+     *
+     * Allow reply traffic that is part of an established
+     * conntrack entry that has not been marked for deletion
+     * (bit 0 of ct_label).  We only match traffic in the
+     * reply direction because we want traffic in the request
+     * direction to hit the currently defined policy from ACLs.
+     *
+     * This is enforced at a higher priority than ACLs can be defined. */
+    flow(ls, LS_IN_ACL, 65535,
+         "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)",
+         "{ next; }");
+    flow(ls, LS_OUT_ACL, 65535,
+         "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)",
+         "{ next; }");
+
+    /* Ingress and Egress ACL Table (Priority 65535).
+     *
+     * Allow traffic that is related to an existing conntrack entry that
+     * has not been marked for deletion (bit 0 of ct_label).
+     *
+     * This is enforced at a higher priority than ACLs can be defined.
+     *
+     * NOTE: This does not support related data sessions (eg,
+     * a dynamically negotiated FTP data channel), but will allow
+     * related traffic such as an ICMP Port Unreachable through
+     * that's generated from a non-listening UDP port.  */
+    flow(ls, LS_IN_ACL, 65535,
+         "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked",
+         "{ next; }");
+    flow(ls, LS_OUT_ACL, 65535,
+         "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked",
+         "{ next; }");
+
+    /* Ingress and Egress ACL Table (Priority 65535).
+     *
+     * Not to do conntrack on ND packets. */
+    flow(ls, LS_IN_ACL, 65535, "nd", "{ next; }");
+    flow(ls, LS_OUT_ACL, 65535, "nd", "{ next; }")
+}
