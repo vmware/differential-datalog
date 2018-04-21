@@ -494,7 +494,7 @@ ifStatement ::= "if" "(" expression ")" statement
              
 letStatement ::= "let" identifier "=" expression (, identifier "=" expression )* in" statement
 
-insertStatement ::= "insert" rel_name "," expression
+insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 
 blockStatement ::= "{" statement ( ";" statement )* "}"
 

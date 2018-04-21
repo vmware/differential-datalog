@@ -407,7 +407,7 @@ data Statement = ForStatement    { statPos :: Pos
                                  , letStatement :: Statement }
                | InsertStatement { statPos :: Pos
                                  , insertRelName :: String
-                                 , insertValue :: Expr }
+                                 , insertValue :: [Expr] }
                | BlockStatement  { statPos :: Pos
                                  , seqList :: [Statement] }
                | EmptyStatement  { statPos :: Pos }
@@ -430,7 +430,7 @@ instance PP Statement where
                                      maybe empty (("if" <+>) . pp) c <> ")" <+> pp s
     pp (IfStatement _ c s) = "if" <+> "(" <> (pp c) <> ")" <+> pp s
     pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" <+> (pp s)
-    pp (InsertStatement _ r v) = "insert" <> "(" <> (pp r) <> "," <+> (pp v) <> ")"
+    pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
     pp (BlockStatement _ l) =  "{" <+> (hsep $ punctuate ";" $ map pp l) <+> "}"
     pp (EmptyStatement _) = "skip"
 

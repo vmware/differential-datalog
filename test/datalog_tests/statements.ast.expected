@@ -1,11 +1,9 @@
 for (a in x) skip
-for (a in x) insert(b, a)
+for (a in x) b ( a )
 for (a in x if true) skip
 for (a in x) { skip; skip }
 for (a in x) { if ((a == 2)) skip }
-for (a in x) if ((a == 2)) if ((a > 2)) { insert(z, a); insert(w, (a + 2)) }
-for (a in x) { for (b in z) insert(w, (a + b)); for (c in u) insert(w, (a + c)) }
+for (a in x) if ((a == 2)) if ((a > 2)) { z ( a ); w ( (a + 2) ) }
+for (a in x) { for (b in z) w ( (a + b) ); for (c in u) w ( (a + c) ) }
 for (a in x) let b = (a + 2) in skip
-for (a in x) let b = (a + 2), c = (b + a) in insert(w, (a;
-                                                        (b;
-                                                         c)))
+for (a in x) let b = (a + 2), c = (b + a) in w ( a, b, c )

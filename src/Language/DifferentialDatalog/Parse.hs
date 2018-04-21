@@ -234,9 +234,8 @@ parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
                                                   <*> commaSep parseAssignment
                                                   <*> (reserved "in" *> statement)
 
-parseInsertStatement = withPos $ (InsertStatement nopos) <$ (reserved "insert")
-                                                        <*> (symbol "(" *> identifier)
-                                                        <*> (symbol "," *> expr <* symbol ")")
+parseInsertStatement = withPos $ (InsertStatement nopos) <$> identifier
+                                                         <*> (parens $ commaSep expr)
 
 rule = withPos $ Rule nopos <$>
                  (commaSep1 atom) <*>

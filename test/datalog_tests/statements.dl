@@ -2,7 +2,7 @@ for (a in x)
    skip
 
 for (a in x)
-   insert(b, a)
+   b(a)
 
 for (a in x if true)
    skip
@@ -20,15 +20,15 @@ for (a in x) {
 for (a in x)
     if (a == 2)
         if (a > 2) {
-            insert(z, a);
-            insert(w, a+2)
+            z(a);
+            w(a+2)
         }
 
 for (a in x) {
     for (b in z)
-        insert(w, a+b);
+        w(a+b);
     for (c in u)
-        insert(w, a+c)
+        w(a+c)
 }
 
 for (a in x)
@@ -37,4 +37,4 @@ for (a in x)
 
 for (a in x)
    let b = a+2, c = b+a in
-       insert(w, (a; b; c))
+       w(a, b, c)
