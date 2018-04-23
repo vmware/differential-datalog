@@ -208,7 +208,7 @@ arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $ ForStatement nopos <$ reserved "for"
                                                  <*> (symbol "(" *> expr)
-                                                 <*> (reserved "in" *> identifier)
+                                                 <*> (reserved "in" *> relIdent)
                                                  <*> (optionMaybe (reserved "if" *> expr))
                                                  <*> (symbol ")" *> statement)
 
@@ -234,9 +234,8 @@ parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
                                                   <*> commaSep parseAssignment
                                                   <*> (reserved "in" *> statement)
 
-parseInsertStatement = withPos $ (InsertStatement nopos) <$ (reserved "insert")
-                                                        <*> (symbol "(" *> identifier)
-                                                        <*> (symbol "," *> expr <* symbol ")")
+parseInsertStatement = withPos $ (InsertStatement nopos) <$> relIdent
+                                                         <*> (parens $ commaSep expr)
 
 rule = withPos $ Rule nopos <$>
                  (commaSep1 atom) <*>

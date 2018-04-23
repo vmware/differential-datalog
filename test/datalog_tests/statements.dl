@@ -1,40 +1,45 @@
-for (a in x)
+ground relation X(field: int)
+
+relation Z(field: int)
+relation W(f1: int, f2: int, f3: int)
+
+for (a in X)
    skip
 
-for (a in x)
-   insert(b, a)
+for (a in X)
+   Z(a)
 
-for (a in x if true)
+for (a in X if true)
    skip
 
-for (a in x) {
+for (a in X) {
    skip;
    skip
 }
 
-for (a in x) {
+for (a in X) {
     if (a == 2)
         skip
 }
 
-for (a in x)
+for (a in X)
     if (a == 2)
         if (a > 2) {
-            insert(z, a);
-            insert(w, a+2)
+            Z(a);
+            Z(a+2)
         }
 
-for (a in x) {
-    for (b in z)
-        insert(w, a+b);
-    for (c in u)
-        insert(w, a+c)
+for (a in X) {
+    for (b in X)
+        Z(a+b);
+    for (c in X)
+        Z(a+c)
 }
 
-for (a in x)
+for (a in X)
    let b = a+2 in
        skip
 
-for (a in x)
+for (a in X)
    let b = a+2, c = b+a in
-       insert(w, (a; b; c))
+       W(a, b, c)
