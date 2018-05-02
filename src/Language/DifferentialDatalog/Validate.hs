@@ -273,6 +273,17 @@ relValidate d Relation{..} = do
 --            $ "Number of arguments in the left-hand-side of the rule does not match the number of fields in relation " ++ name rel
 --    mapM_ (exprValidate r (CtxRuleR rel rl)) ruleRHS
 --    mapIdxM_ (\e i -> exprValidate r (CtxRuleL rel rl i) e) ruleLHS
+--    
+--    only boolean or assignment in RHSCondition
+--    variable cannot be declared and used in the same atom
+--    validate aggregate function used
+--    aggregate, flatmap, assigned vars are not previously declared
+--    no new variables in negative literals
+--
+--
+-- atomValidate: 
+--   check number of arguments
+--   validate argument expressions
 --
 
 exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> Expr -> me ()
@@ -306,7 +317,8 @@ exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
                                           = checkNoVar p d ctx v
                                      | otherwise 
-                                          = do assert (ctxIsTyped ctx) p "Variable declared without a type"
+                                          = do checkNoVar p d ctx v
+                                               assert (ctxIsTyped ctx) p "Variable declared without a type"
                                                assert (ctxIsSeq1 $ ctxParent ctx) p 
                                                       "Variable declaration is not allowed in this context"
 exprValidate1 _ _ _   ESeq{}              = return ()
