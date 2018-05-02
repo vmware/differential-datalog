@@ -349,7 +349,7 @@ namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 --eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
 estring = (eString . concat) <$> 
-          many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]")))
+          many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace)))
 estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
 
 eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
