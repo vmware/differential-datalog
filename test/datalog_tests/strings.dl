@@ -28,6 +28,9 @@ Strings([|
 Strings([|barΔ
 Π|]).
 
+Strings([|barΔ
+Π|] " quoted string").
+
 // backslash does not work as an escape character in raw strings
 Strings([|
     foo\r
@@ -41,3 +44,10 @@ Strings("foo\n" "bar").
 Strings("foo\\""bar").
 
 Strings("foo\\" [|bar|]).
+
+function strings(): () = {
+    var str1 = "foo" ++ "bar";
+    var str2 = "foo" "bar" ++ "buzz" ++ [|
+raw string |]"quoted string";
+    ()
+}

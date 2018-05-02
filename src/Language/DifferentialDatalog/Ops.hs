@@ -48,6 +48,7 @@ data BOp = Eq
          | BAnd
          | BOr
          | Concat
+         | StrConcat
          deriving (Eq, Ord)
 
 instance PP BOp where

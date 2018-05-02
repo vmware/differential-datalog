@@ -1,3 +1,7 @@
+function strings (): () =
+    (var str1 = ("foo" ++ "bar");
+     (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");
+      ()))
 ground relation Strings (
     s: string)
 Strings("").
@@ -14,6 +18,7 @@ Strings("foo").
 Strings("foo\nbuzz\nbar").
 Strings("\n    foo\n    buzz\n    bar").
 Strings("bar\916\n\928").
+Strings("bar\916\n\928 quoted string").
 Strings("\n    foo\\r\n    buzz\n    bar").
 Strings("foo-bar").
 Strings("foo\nbar").

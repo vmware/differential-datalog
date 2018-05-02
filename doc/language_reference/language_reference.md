@@ -204,7 +204,7 @@ expr ::= term
        | expr "-" expr
        | expr ">>" expr                  (*right shift*)
        | expr "<<" expr                  (*left shift*)
-       | expr "++" expr                  (*bitvector concatenation*)
+       | expr "++" expr                  (*concatenation (applies to bitvectors or strings)*)
        | expr "==" expr
        | expr "!=" expr
        | expr ">" expr
