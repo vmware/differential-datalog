@@ -269,8 +269,8 @@ We support two types of UTF-8 string literals: quoted strings with escaping,
 e.g., `"foo\nbar"`
 (**We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
-functionality.**) and raw strings where all characters, including backslash
-are interpreted as is:
+functionality.**) and raw strings where all characters, including backslash and 
+line breaks are interpreted as is:
 
 ```EBNF
 string_literal   ::= ('"' utf8_character* '"' | "[|" utf8_character* "|]")+
