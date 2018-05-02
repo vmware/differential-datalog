@@ -8,3 +8,6 @@ Strings("\r\abuzz").
 Strings("\\buzz").
 Strings("\\buzz").
 Strings("bar\916").
+Strings("foo-bar").
+Strings("foo\nbar").
+Strings("foo\\bar").

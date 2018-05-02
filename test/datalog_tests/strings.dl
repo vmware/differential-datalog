@@ -9,3 +9,8 @@ Strings("\\buzz").
 Strings("\\buzz").
 
 Strings("barΔ").
+
+Strings("foo" "-" "bar").
+
+Strings("foo\n" "bar").
+Strings("foo\\""bar").
