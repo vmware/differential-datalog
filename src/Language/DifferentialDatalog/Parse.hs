@@ -62,7 +62,7 @@ parseDatalogString program file = do
          Right prog -> return prog
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
-                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "[|"]
 reservedNames = ["_",
                  "Aggregate",
                  "FlatMap",
@@ -348,7 +348,8 @@ namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
 --eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
-estring = (eString . concat) <$> many1 stringLit
+estring = (eString . concat) <$> 
+          many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]")))
 estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
 
 eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width

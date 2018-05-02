@@ -1,5 +1,6 @@
 ground relation Strings (
     s: string)
+Strings("").
 Strings("foo").
 Strings("bar\n").
 Strings("\t\tbar").
@@ -8,6 +9,13 @@ Strings("\r\abuzz").
 Strings("\\buzz").
 Strings("\\buzz").
 Strings("bar\916").
+Strings("").
+Strings("foo").
+Strings("foo\nbuzz\nbar").
+Strings("\n    foo\n    buzz\n    bar").
+Strings("bar\916\n\928").
+Strings("\n    foo\\r\n    buzz\n    bar").
 Strings("foo-bar").
 Strings("foo\nbar").
+Strings("foo\\bar").
 Strings("foo\\bar").

@@ -1,5 +1,6 @@
 ground relation Strings(s: string)
 
+Strings("").
 Strings("foo").
 Strings("bar\n").
 Strings("\t\tbar").
@@ -8,9 +9,35 @@ Strings("\r\abuzz").
 Strings("\\buzz").
 Strings("\\buzz").
 
+/* unicode */
 Strings("barΔ").
 
+
+/* raw strings */
+Strings([||]).
+Strings([|foo|]).
+Strings([|foo
+buzz
+bar|]).
+
+Strings([|
+    foo
+    buzz
+    bar|]).
+
+Strings([|barΔ
+Π|]).
+
+// backslash does not work as an escape character in raw strings
+Strings([|
+    foo\r
+    buzz
+    bar|]).
+
+/* string literal concatenation */
 Strings("foo" "-" "bar").
 
 Strings("foo\n" "bar").
 Strings("foo\\""bar").
+
+Strings("foo\\" [|bar|]).

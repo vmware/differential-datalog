@@ -265,13 +265,19 @@ int_literal  ::= decimal
 width ::= decimal
 ```
 
-**We rely on parsec's standard parser for strings, which
+We support two types of UTF-8 string literals: quoted strings with escaping,
+e.g., `"foo\nbar"`
+(**We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
-functionality.**
+functionality.**) and raw strings where all characters, including backslash
+are interpreted as is:
 
 ```EBNF
-string_literal   ::= '"' UTF-8 string with escaping '"' 
+string_literal   ::= ('"' utf8_character* '"' | "[|" utf8_character* "|]")+
 ```
+
+Multiple string literals are automatically concatenated, e.g.,
+`"foo" [|bar|]` is equivalent to `"foobar"`.
 
 Other terms:
 

@@ -11,13 +11,15 @@ syn clear
 
 syn case match
 
-syn region dlComment	start="/\*"  end="\*/" contains=dlTodo
+syn region dlComment   start="/\*"  end="\*/" contains=dlTodo
 syn region dlCommentL  start="//" skip="\\$" end="$" keepend contains=dlTodo
-syn region dlString start=/\v"/ skip=/\v\\./ end=/\v"/
+syn region dlString    start=/\v"/ skip=/\v\\./ end=/\v"/
 
 syn match  dlDelimiter         "->"
 syn match  dlDelimiter         ":-"
-syn match  dlDelimiter	        "[\[\]!?@#\~&|\^=<>%+-,;\:\.@]"
+syn match  dlDelimiter	       "[\[\]!?@#\~&|\^=<>%+-,;\:\.@]"
+
+syn region dlRawString start='\[|' end="|]"
 
 "Regular keywords
 syn keyword dlStatement        and function not or ground relation match var switch FlatMap Aggregate
@@ -59,8 +61,9 @@ if !exists("did_dl_syntax_inits")
   hi link dlType               Type
   hi link dlComment            Comment
   hi link dlCommentL           Comment
-  hi link dlDelimiter          String
   hi link dlString             String
+  hi link dlRawString          String
+  hi link dlDelimiter          String
   hi link dlConstant           Constant
   hi link dlRepeat             Repeat
   hi link dlConditional        Conditional
