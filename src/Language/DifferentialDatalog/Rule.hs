@@ -71,7 +71,7 @@ ruleRHSVarSet' d rl i =
 exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
 exprDecls d ctx e = 
     S.fromList
-        $ map (\(v, ctx') -> trace ("exprDecls " ++ show v ++ "; ctx': " ++ show ctx') $ Field nopos v $ exprType' d ctx' (eVarDecl v)) 
+        $ map (\(v, ctx') -> Field nopos v $ exprType' d ctx' (eVarDecl v)) 
         $ exprVarDecls ctx e
 
 exprVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]

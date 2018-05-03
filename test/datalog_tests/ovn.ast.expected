@@ -10,8 +10,15 @@ typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
 typedef set_t<'A>
 typedef uuid = bit<128>
+function build_dhcp_netmask (cidr: string): string
+function eth_addr_from_string (str: string): option_t<mac_addr_t>
 function extract_ips (str: string): set_t<ip_addr_t>
+function extract_mac (str: string): (mac_addr_t, string)
+function extract_subnets (str: string): set_t<ip_subnet_t>
+function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 function ip_address_and_port_from_lb_key (key: string): ip_port_t
+function ip_parse (str: string): option_t<ip_addr_t>
+function ipv6_string_mapped (addr: ip6_addr_t): string
 function is_none (x: option_t<'A>): bool =
     match (x) {
         None{} -> true,
@@ -202,11 +209,11 @@ ground relation Logical_Switch_Port_external_ids (
     value: string)
 relation Logical_Switch_Port_ips (
     logical_switch_port: uuid,
-    mac: bit<48>,
+    mac: mac_addr_t,
     ip: ip_addr_t)
 relation Logical_Switch_Port_macs (
     logical_switch_port: uuid,
-    mac: bit<48>)
+    mac: mac_addr_t)
 ground relation Logical_Switch_Port_options (
     logical_switch_port: uuid,
     key: string,
@@ -225,7 +232,7 @@ ground relation Logical_Switch_external_ids (
     logical_switch: uuid,
     key: string,
     value: string)
-relation Logical_Switch_has_stateful_acl (
+relation Logical_Switch_has_stateful_acl_action (
     logical_switch: uuid)
 ground relation Logical_Switch_other_config (
     logical_switch: uuid,
@@ -279,18 +286,18 @@ ground relation SSL_external_ids (
     ssl: uuid,
     key: string,
     value: string)
-Load_Balancer_ip_addresses(lb, ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips(lb, key, _).
-Logical_Switch_Port_ips(lsp, mac, ip) :- Logical_Switch_Port_addresses(lsp, addrs), (mac, ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
-Logical_Switch_Port_ips(lsp, mac, ip) :- Logical_Switch_Port_dynamic_addresses(lsp, addrs), (mac, ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
-Logical_Switch_Port_macs(lsp, mac) :- Logical_Switch_Port_ips(lsp, mac, _).
-Logical_Switch_has_stateful_acl_action(ls) :- ACL(.logical_switch=ls, .action="allow-related").
-Logical_Switch_Port_ps_ips(lsp, mac, subnet) :- Logical_Switch_Port_port_security(lsp, addrs), extract_mac((lsp, addrs), (), (mac, ips)), extract_subnets(ips, (), subnet).
-Logical_Switch_Port_ps_macs(lsp, mac) :- Logical_Switch_Port_ps_ips(lsp, mac, _).
-DHCP_Options_option_args(opts, ((key ++ "=") ++ value)) :- DHCP_Options_options(opts, key, value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
-DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_mac", val), Some{.value=mac} = eth_addr_from_string(val).
-DHCP_Options_server_mac(opts, mac) :- DHCP_Options_options(opts, "server_id", val), Some{.value=mac} = eth_addr_from_string(val).
-DHCP_Options_server_ip(opts, val) :- DHCP_Options_options(opts, "server_id", val), Some{.value=ip4} = ip_parse(val).
-DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :- DHCP_Options_options(opts, "server_id", val), None{} = ip_parse(val), Some{.value=mac} = eth_addr_from_string(val), lla = in6_generate_lla(mac).
-DHCP_Options_netmask(opts, build_dhcp_netmask(cidr)) :- DHCP_Options(opts, cidr).
-DHCP_Options_stateful(opts, true) :- DHCP_Options_options(opts, "dhcpv6_stateless", "false").
-DHCP_Options_stateful(opts, false) :- DHCP_Options_options(opts, "dhcpv6_stateless", "true").
+Load_Balancer_ip_addresses(.load_balancer=lb, .ip_address=ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips(.load_balancer=lb, .key=key, .value=_).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
+Logical_Switch_has_stateful_acl_action(.logical_switch=ls) :- ACL(.id=_, .name=_, .logical_switch=ls, .priority=_, .direction=_, ._match=_, .action="allow-related", .log=_, .severity=_).
+Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(subnet = extract_subnets(ips)).
+Logical_Switch_Port_ps_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
+DHCP_Options_option_args(.dhcp_options=opts, .option=((key ++ "=") ++ value)) :- DHCP_Options_options(.dhcp_options=opts, .key=key, .value=value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=val) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var ip4} = ip_parse(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=ipv6_string_mapped(lla)) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), None{} = ip_parse(val), Some{.value=var mac} = eth_addr_from_string(val), var lla = in6_generate_lla(mac).
+DHCP_Options_netmask(.dhcp_options=opts, .netmask=build_dhcp_netmask(cidr)) :- DHCP_Options(.id=opts, .cidr=cidr).
+DHCP_Options_stateful(.dhcp_options=opts, .stateful=true) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="false").
+DHCP_Options_stateful(.dhcp_options=opts, .stateful=false) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="true").

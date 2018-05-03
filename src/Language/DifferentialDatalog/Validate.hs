@@ -31,7 +31,7 @@ import Control.Monad.Except
 import Data.Maybe
 import Data.List
 import qualified Data.Graph.Inductive as G
--- import Debug.Trace
+import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
@@ -375,8 +375,8 @@ exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
 exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was performed by exprDesugar 
-    let tdef = consType d c
-    when (ctxInSetL ctx) $
+    let tdef = consType d c 
+    when (ctxInSetL ctx && not (ctxIsRuleRCond $ ctxParent ctx)) $
         assert ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
                $ "Type constructor in the left-hand side of an assignment is only allowed for types with one constructor, \
                  \ but \"" ++ name tdef ++ "\" has multiple constructors"
@@ -433,8 +433,7 @@ exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do
          Just t  -> do case ctxExpectType d ctx of
                             Nothing -> return ()
                             Just t' -> assert (typesMatch d t t') (pos e) 
-                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t
-                                                {-++ " (context: " ++ show ctx ++ ")"-}
+                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t ++ " (context: " ++ show ctx ++ ")"
                        return t
          Nothing -> err (pos e) $ "Expression " ++ show e ++ " has unknown type in " ++ show ctx) 
 

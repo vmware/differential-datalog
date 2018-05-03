@@ -34,6 +34,7 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsSeq1,
      ctxInSeq1,
      ctxIsTyped,
+     ctxIsRuleRCond,
      ctxInRuleRHSPattern,
      ctxIsRuleRHSPattern)
 where
@@ -82,6 +83,12 @@ ctxInSeq1 ctx = any ctxIsSeq1 $ ctxAncestors ctx
 ctxIsTyped :: ECtx -> Bool
 ctxIsTyped CtxTyped{} = True
 ctxIsTyped _          = False
+
+ctxIsRuleRCond :: ECtx -> Bool
+ctxIsRuleRCond CtxRuleRCond{} = True
+ctxIsRuleRCond _              = False
+
+
 
 -- | True if context is inside a positive right-hand-side literal of a
 -- rule, in a pattern expression, i.e., an expression where new

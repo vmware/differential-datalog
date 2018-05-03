@@ -460,7 +460,8 @@ ctxExpectType _ (CtxITEIf _ _)                       = Just tBool
 ctxExpectType d (CtxITEThen _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxITEElse _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxSetL e@(ESet _ _ rhs) ctx)       = exprTypeMaybe d (CtxSetR e ctx) rhs
-ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = exprTypeMaybe d ctx lhs -- avoid infinite recursion by evaluating lhs standalone
+ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = -- avoid infinite recursion by evaluating lhs standalone
+                                                       exprTypeMaybe d (CtxSeq1 (ESeq nopos lhs (error "ctxExpectType: should be unreachable")) ctx) lhs
 ctxExpectType d (CtxBinOpL e ctx)                    = 
     case exprBOp e of
          Eq     -> trhs

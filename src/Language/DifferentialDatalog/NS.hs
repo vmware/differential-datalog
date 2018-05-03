@@ -79,7 +79,7 @@ lookupVar d ctx n = find ((==n) . name) $ ctxAllVars d ctx
 
 checkVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me Field
 checkVar p d c n = case lookupVar d c n of
-                        Nothing -> err p $ "Unknown variable: " ++ n ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
+                        Nothing -> err p $ "Unknown variable: " ++ n -- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
                         Just v  -> return v
 
 getVar :: DatalogProgram -> ECtx -> String -> Field
