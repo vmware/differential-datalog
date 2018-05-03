@@ -241,16 +241,17 @@ The following table lists operators order by decreasing priority.
 | Lowest | ;                       |
 
 ```EBNF
-term ::= "_"               (* wildcard *)
-       | int_literal       (* integer literal *)
-       | bool_literal      (* Boolean literal *)
-       | string_literal    (* string literal *)
-       | cons_term         (* type constructor invocation *)
-       | apply_term        (* function application *)
-       | var_term          (* variable reference *)
-       | match_term        (* match term *)
-       | ite_term          (* if-then-else term *)
-       | vardecl_term      (* local variable declaration *)
+term ::= "_"                 (* wildcard *)
+       | int_literal         (* integer literal *)
+       | bool_literal        (* Boolean literal *)
+       | string_literal      (* string literal *)
+       | interpolated_string (* string literal *)
+       | cons_term           (* type constructor invocation *)
+       | apply_term          (* function application *)
+       | var_term            (* variable reference *)
+       | match_term          (* match term *)
+       | ite_term            (* if-then-else term *)
+       | vardecl_term        (* local variable declaration *)
 ```
 
 **Integer literal syntax is currently arcane and will be changed to
@@ -278,6 +279,23 @@ string_literal   ::= ('"' utf8_character* '"' | "[|" utf8_character* "|]")+
 
 Multiple string literals are automatically concatenated, e.g.,
 `"foo" [|bar|]` is equivalent to `"foobar"`.
+
+Interpolated strings are string literals, that can contain
+expressions inside curly brackets, whose values are substituted at runtime. 
+Interpolated strings are preceded by the `$` character (syntax
+borrowed from C#).
+
+```EBNF
+interpolated_string ::= ('$"' utf8_character* '"' | "$[|" utf8_character* "|]")+
+```
+
+For example,
+`$"x: {x}, y: {y}, f(x): {f(x)}"` is equivalent to 
+`"x: " ++ x ++ ", y: " ++ y ++ ", f(x): " ++ f(x)`.
+
+Expressions in curly brackets can be arbitrarily complex, as long as
+they produce results of type `string`, e.g.:
+`$[|foo{var x = "bar"; x}|]` will evaluate to "foobar" at runtime.
 
 Other terms:
 

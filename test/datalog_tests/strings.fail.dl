@@ -1,0 +1,24 @@
+function strings(): () = {
+    var str1 = "foo";
+    var str2 = "bar";
+    var ok = $"{str1+str2}";
+    var err = $"{str1+str2";
+    ()
+}
+
+//---
+
+function strings(): () = {
+    var x: int = 5;
+    var err = $"{x}"; // only strings arguments are allowed in string interpolation
+    ()
+}
+
+//---
+
+function strings(): () = {
+    var str2 = "bar";
+    {var str1 = ""; ()};
+    var err = $"{str2++str1}"; // str1 is not declared in this scope
+    ()
+}
