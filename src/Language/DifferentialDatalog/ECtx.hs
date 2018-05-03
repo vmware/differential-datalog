@@ -1,0 +1,96 @@
+{-
+Copyright (c) 2018 VMware, Inc.
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-}
+
+{-# LANGUAGE RecordWildCards #-}
+
+module Language.DifferentialDatalog.ECtx(
+     ctxAncestors,
+     ctxIsRuleL,
+     ctxInRuleL,
+     ctxIsMatchPat,
+     ctxInMatchPat,
+     ctxIsSetL,
+     ctxInSetL,
+     ctxIsSeq1,
+     ctxInSeq1,
+     ctxIsTyped,
+     ctxInRuleRHSPattern,
+     ctxIsRuleRHSPattern)
+where
+
+import Data.Maybe
+import Data.List
+
+import Language.DifferentialDatalog.Syntax
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
+
+ctxAncestors :: ECtx -> [ECtx]
+ctxAncestors CtxTop = [CtxTop]
+ctxAncestors ctx    = ctx : (ctxAncestors $ ctxParent ctx)
+
+ctxIsRuleL :: ECtx -> Bool
+ctxIsRuleL CtxRuleL{} = True
+ctxIsRuleL _          = False
+
+ctxInRuleL :: ECtx -> Bool
+ctxInRuleL ctx = any ctxIsRuleL $ ctxAncestors ctx
+
+ctxIsMatchPat :: ECtx -> Bool
+ctxIsMatchPat CtxMatchPat{} = True
+ctxIsMatchPat _             = False
+
+ctxInMatchPat :: ECtx -> Bool
+ctxInMatchPat ctx = isJust $ ctxInMatchPat' ctx
+
+ctxInMatchPat' :: ECtx -> Maybe ECtx
+ctxInMatchPat' ctx = find ctxIsMatchPat $ ctxAncestors ctx
+
+ctxIsSetL :: ECtx -> Bool
+ctxIsSetL CtxSetL{} = True
+ctxIsSetL _         = False
+
+ctxInSetL :: ECtx -> Bool
+ctxInSetL ctx = any ctxIsSetL $ ctxAncestors ctx
+
+ctxIsSeq1 :: ECtx -> Bool
+ctxIsSeq1 CtxSeq1{} = True
+ctxIsSeq1 _         = False
+
+ctxInSeq1 :: ECtx -> Bool
+ctxInSeq1 ctx = any ctxIsSeq1 $ ctxAncestors ctx
+
+ctxIsTyped :: ECtx -> Bool
+ctxIsTyped CtxTyped{} = True
+ctxIsTyped _          = False
+
+-- | True if context is inside a positive right-hand-side literal of a
+-- rule, in a pattern expression, i.e., an expression where new
+-- variables can be declared.
+ctxInRuleRHSPattern :: ECtx -> Bool
+ctxInRuleRHSPattern ctx = any ctxIsRuleRHSPattern $ ctxAncestors ctx
+
+ctxIsRuleRHSPattern :: ECtx -> Bool
+ctxIsRuleRHSPattern (CtxRuleRAtom rl idx f) = pol && exprIsPattern arg
+    where RHSLiteral pol Atom{..} = ruleRHS rl !! idx
+          arg = fromJust $ lookup f atomArgs
+ctxIsRuleRHSPattern _ = False

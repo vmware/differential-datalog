@@ -42,7 +42,8 @@ module Language.DifferentialDatalog.Expr (
     exprFuncs,
     exprFuncsRec,
     isLExpr,
-    isLVar
+    isLVar,
+    exprIsPattern
     --isLRel
     --exprSplitLHS,
     --exprSplitVDecl,
@@ -227,6 +228,7 @@ exprFuncsRec' d acc e =
     let new = exprFuncs' acc e in
     new ++ foldl' (\acc' f -> maybe acc' ((acc'++) . exprFuncsRec' d (acc++new++acc')) $ funcDef $ getFunc d f) [] new
 
+-- | Expression can be used as the left-hand side of an assignment
 isLExpr :: DatalogProgram -> ECtx -> Expr -> Bool
 isLExpr d ctx e = exprFoldCtx (isLExpr' d) ctx e
 
@@ -242,3 +244,21 @@ isLExpr' _ _   _                = False
 
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
+
+-- | True if expression can be interpreted as a pattern.
+-- Such an expression must be built out of constants, variables, 
+-- wildcards, tuples, and type constructors only.
+exprIsPattern :: Expr -> Bool
+exprIsPattern e = exprFold exprIsPattern' e
+
+exprIsPattern' :: ExprNode Bool -> Bool
+exprIsPattern' EString{}        = True
+exprIsPattern' EBit{}           = True
+exprIsPattern' EBool{}          = True
+exprIsPattern' EInt{}           = True
+exprIsPattern' EVar{}           = True
+exprIsPattern' (ETuple _ as)    = and as
+exprIsPattern' (EStruct _ _ as) = all snd as
+exprIsPattern' EPHolder{}       = True
+exprIsPattern' (ETyped _ e _)   = e
+exprIsPattern' _                = False

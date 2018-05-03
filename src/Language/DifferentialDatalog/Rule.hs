@@ -30,35 +30,61 @@ module Language.DifferentialDatalog.Rule (
 
 import qualified Data.Set as S
 
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
+import Language.DifferentialDatalog.ECtx
+
+import Debug.Trace
+
+ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
+ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
--- a rule
-ruleRHSMVars :: Rule -> Int -> [MField]
-ruleRHSMVars rl i = S.toList $ ruleRHSVars' rl (i-1)
+-- a rule.  All conjuncts before 'i' be validated before calling this
+-- function.
+ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Field
+ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
 
 -- Variables visible _after_ 'i'th conjunct.
-ruleRHSMVars' :: Rule -> Int -> S.Set Field
-ruleRHSMVars' rl i | i < 0 = S.empty
-ruleRHSMVars' rl i = 
+ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Field
+ruleRHSVarSet' _ rl i | i < 0 = S.empty
+ruleRHSVarSet' d rl i = 
     case ruleRHS rl !! i of
-         RHSLiteral _ a               -> vs `S.union` (S.fromList $ atomVarDecls a)
+         RHSLiteral True  a            -> vs `S.union` (atomVarDecls d rl i)
+         RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E ESet{_ l _}) -> vs `S.union` exprVars l
+         RHSCondition (E e@(ESet _ l _)) -> vs `S.union` exprDecls d (CtxSetL e (CtxRuleRCond rl i)) l
          -- condition does not introduce new variables
-         RHSCondition _               -> vs
+         RHSCondition _                -> vs
          -- FlatMap introduces a variable
-         RHSFlatMap l _               -> vs `S.union` exprVars l
+         RHSFlatMap v e                -> let TOpaque _ _ [t] = exprType' d (CtxRuleRFlatMap rl i) e
+                                          in S.insert (Field nopos v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate gb v _          -> S.insert v $ S.fromList gb  
+         RHSAggregate{}                -> error "ruleRHSVarSet' RHSAggregate: not implemented"
     where
-    vs = ruleRHSMVars rl i
-               
--- can return multiple occurrences to determine variables used and
--- declared in the same atom
-atomVarDecls :: Atom -> [Field]
+    vs = ruleRHSVarSet d rl i
+
+
+exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
+exprDecls d ctx e = 
+    S.fromList
+        $ map (\(v, ctx') -> trace ("exprDecls " ++ show v ++ "; ctx': " ++ show ctx') $ Field nopos v $ exprType' d ctx' (eVarDecl v)) 
+        $ exprVarDecls ctx e
+
+exprVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
+exprVarTypes d ctx e = 
+    map (\(v, ctx) -> Field nopos v $ exprType' d ctx (eVar v)) 
+        $ exprVars ctx e
+
+atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
+atomVarDecls d rl i = 
+    S.fromList
+        $ concatMap (\(f,v) -> exprVarTypes d (CtxRuleRAtom rl i f) v) 
+        $ atomArgs $ rhsAtom $ ruleRHS rl !! i
  
 -- | All variables defined in a rule
-ruleMVars :: Rule -> [MField]
-ruleMVars rl@Rule{..} = ruleRHSMVars rl (length ruleRHS)
+ruleVars :: DatalogProgram -> Rule -> [Field]
+ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)

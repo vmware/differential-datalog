@@ -89,17 +89,7 @@ module Language.DifferentialDatalog.Syntax (
         progStructs,
         progConstructors,
         ECtx(..),
-        ctxParent,
-        ctxAncestors,
-        ctxIsRuleL,
-        ctxInRuleL,
-        ctxIsMatchPat,
-        ctxInMatchPat,
-        ctxIsSetL,
-        ctxInSetL,
-        ctxIsSeq1,
-        ctxInSeq1,
-        ctxIsTyped)
+        ctxParent)
 where
 
 import Text.PrettyPrint
@@ -113,7 +103,6 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
 
-
 data Field = Field { fieldPos  :: Pos
                    , fieldName :: String
                    , fieldType :: Type
@@ -121,6 +110,9 @@ data Field = Field { fieldPos  :: Pos
 
 instance Eq Field where
     (==) (Field _ n1 t1) (Field _ n2 t2) = n1 == n2 && t1 == t2
+
+instance Ord Field where
+    compare (Field _ n1 t1) (Field _ n2 t2) = compare (n1, t1) (n2, t2)
 
 instance WithPos Field where
     pos = fieldPos
@@ -156,6 +148,17 @@ tUser     = TUser     nopos
 tVar      = TVar      nopos
 tOpaque   = TOpaque   nopos
 
+trank :: Type -> Int
+trank TBool  {} = 0
+trank TInt   {} = 1
+trank TString{} = 2
+trank TBit   {} = 3
+trank TStruct{} = 4
+trank TTuple {} = 5
+trank TUser  {} = 6
+trank TVar   {} = 7
+trank TOpaque{} = 8
+
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ find ((==f) . name) $ structFields t
 
@@ -179,9 +182,9 @@ structTypeDef _ t           = error $ "structTypeDef " ++ show t
 -}
 
 instance Eq Type where
-    (==) (TBool _)          (TBool _)           = True
-    (==) (TInt _)           (TInt _)            = True
-    (==) (TString _)        (TString _)         = True
+    (==) TBool{}            TBool{}             = True
+    (==) TInt{}             TInt{}              = True
+    (==) TString{}          TString{}           = True
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
@@ -189,6 +192,19 @@ instance Eq Type where
     (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
     (==) (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = t1 == t2 && as1 == as2
     (==) _                  _                   = False
+
+instance Ord Type where
+    compare TBool{}            TBool{}             = EQ
+    compare TInt{}             TInt{}              = EQ
+    compare TString{}          TString{}           = EQ
+    compare (TBit _ w1)        (TBit _ w2)         = compare w1 w2
+    compare (TStruct _ cs1)    (TStruct _ cs2)     = compare cs1 cs2
+    compare (TTuple _ ts1)     (TTuple _ ts2)      = compare ts1 ts2
+    compare (TUser _ n1 as1)   (TUser _ n2 as2)    = compare (n1, as1) (n2, as2)
+    compare (TVar _ v1)        (TVar _ v2)         = compare v1 v2
+    compare (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = compare (t1, as1) (t2, as2)
+    compare t1                 t2                  = compare (trank t1) (trank t2)
+
 
 instance WithPos Type where
     pos = typePos
@@ -261,6 +277,9 @@ data Constructor = Constructor { consPos :: Pos
 
 instance Eq Constructor where
     (==) (Constructor _ n1 as1) (Constructor _ n2 as2) = n1 == n2 && as1 == as2
+
+instance Ord Constructor where
+    compare (Constructor _ n1 as1) (Constructor _ n2 as2) = compare (n1, as1) (n2, as2)
 
 instance WithName Constructor where
     name = consName
@@ -753,42 +772,3 @@ ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
 ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx
-
-ctxAncestors :: ECtx -> [ECtx]
-ctxAncestors CtxTop = [CtxTop]
-ctxAncestors ctx    = ctx : (ctxAncestors $ ctxParent ctx)
-
-ctxIsRuleL :: ECtx -> Bool
-ctxIsRuleL CtxRuleL{} = True
-ctxIsRuleL _          = False
-
-ctxInRuleL :: ECtx -> Bool
-ctxInRuleL ctx = any ctxIsRuleL $ ctxAncestors ctx
-
-ctxIsMatchPat :: ECtx -> Bool
-ctxIsMatchPat CtxMatchPat{} = True
-ctxIsMatchPat _             = False
-
-ctxInMatchPat :: ECtx -> Bool
-ctxInMatchPat ctx = isJust $ ctxInMatchPat' ctx
-
-ctxInMatchPat' :: ECtx -> Maybe ECtx
-ctxInMatchPat' ctx = find ctxIsMatchPat $ ctxAncestors ctx
-
-ctxIsSetL :: ECtx -> Bool
-ctxIsSetL CtxSetL{} = True
-ctxIsSetL _         = False
-
-ctxInSetL :: ECtx -> Bool
-ctxInSetL ctx = any ctxIsSetL $ ctxAncestors ctx
-
-ctxIsSeq1 :: ECtx -> Bool
-ctxIsSeq1 CtxSeq1{} = True
-ctxIsSeq1 _         = False
-
-ctxInSeq1 :: ECtx -> Bool
-ctxInSeq1 ctx = any ctxIsSeq1 $ ctxAncestors ctx
-
-ctxIsTyped :: ECtx -> Bool
-ctxIsTyped CtxTyped{} = True
-ctxIsTyped _          = False

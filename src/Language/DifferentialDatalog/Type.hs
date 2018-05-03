@@ -60,6 +60,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
 
 -- | An object with type
@@ -139,6 +140,7 @@ exprType :: DatalogProgram -> ECtx -> Expr -> Type
 exprType d ctx e = maybe (error $ "exprType: expression " ++ show e ++ " has unknown type") id 
                          $ exprTypeMaybe d ctx e
 
+-- | Like 'exprType', but also applies 'typ'' to result.
 exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 exprType' d ctx e = typ' d $ exprType d ctx e
 
@@ -170,7 +172,11 @@ structTypeArgs d ctx cname argtypes = do
 exprNodeType' :: DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> Maybe Type
 exprNodeType' d ctx (EVar _ v)            = 
     let (lvs, rvs) = ctxMVars d ctx in
-    fromJust $ lookup v $ lvs ++ rvs
+    case lookup v $ lvs ++ rvs of
+         Just mt -> mt
+         Nothing | ctxInRuleRHSPattern ctx -- handle implicit vardecls in rules
+                 -> ctxExpectType d ctx
+         _       -> Nothing
 
 exprNodeType' d _   (EApply _ f mas)      = do
     let t = funcType $ getFunc d f 

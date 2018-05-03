@@ -36,3 +36,5 @@ Strings("foo\\bar").
 Strings("foo\\bar").
 Strings("word1 word2").
 Strings("line1\nline2").
+Strings(.s="word1 word2").
+Strings(.s="line1\nline2").

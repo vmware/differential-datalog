@@ -18,4 +18,4 @@ error: ./test/datalog_tests/pattern.fail.dl:12:12-12:13: Non-exhaustive match pa
 
 error: ./test/datalog_tests/pattern.fail.dl:12:12-12:13: Non-exhaustive match patterns
 
-error: ./test/datalog_tests/pattern.fail.dl:7:12-7:13: Non-exhaustive match patterns
+error: ./test/datalog_tests/pattern.fail.dl:6:12-6:13: Non-exhaustive match patterns

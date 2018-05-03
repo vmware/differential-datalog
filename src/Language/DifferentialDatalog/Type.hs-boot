@@ -9,3 +9,7 @@ instance WithType Type where
 instance WithType Field where
 
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type
+exprType :: DatalogProgram -> ECtx -> Expr -> Type
+exprType' :: DatalogProgram -> ECtx -> Expr -> Type
+exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type
+

@@ -762,25 +762,27 @@ Load_Balancer_ip_addresses(lb, ip_address_and_port_from_lb_key(key).ip)
  */
 relation Logical_Switch_Port_ips (
     logical_switch_port: uuid,
-    mac:                 bit<48>,
+    mac:                 mac_addr_t,
     ip:                  ip_addr_t
 )
 
 relation Logical_Switch_Port_macs (
     logical_switch_port: uuid,
-    mac:                 bit<48>
+    mac:                 mac_addr_t
 )
 
 function extract_ips(str: string): set_t<ip_addr_t>
 
+function extract_mac(str: string): (mac_addr_t, string)
+
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
-    (mac, ips) = extract_mac(addrs),
+    (var mac, var ips) = extract_mac(addrs),
     FlatMap(ip = extract_ips(ips)).
 
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_dynamic_addresses(lsp, addrs),
-    (mac, ips) = extract_mac(addrs),
+    (var mac, var ips) = extract_mac(addrs),
     FlatMap(ip = extract_ips(ips)).
 
 Logical_Switch_Port_macs(lsp, mac) :-
@@ -788,7 +790,7 @@ Logical_Switch_Port_macs(lsp, mac) :-
 
 /* Logical_Switch.has_stateful_acl
  */
-relation Logical_Switch_has_stateful_acl (
+relation Logical_Switch_has_stateful_acl_action (
     logical_switch:     uuid
 )
 
@@ -809,10 +811,13 @@ relation Logical_Switch_Port_ps_macs (
     mac:                 mac_addr_t
 )
 
+
+function extract_subnets(str: string): set_t<ip_subnet_t>
+
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),
-    extract_mac((lsp, addrs), (), (mac, ips)),
-    extract_subnets((ips), (), subnet).
+    (var mac, var ips) = extract_mac(addrs),
+    FlatMap(subnet = extract_subnets(ips)).
 
 Logical_Switch_Port_ps_macs(lsp, mac) :-
     Logical_Switch_Port_ps_ips(lsp, mac, _).
