@@ -27,10 +27,12 @@ module Language.DifferentialDatalog.Validate (
     validate) where
 
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Control.Monad.Except
 import Data.Maybe
 import Data.List
 import qualified Data.Graph.Inductive as G
+import qualified Data.Graph.Inductive.Query as G
 import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
@@ -66,6 +68,8 @@ validate d = do
     mapM_ (relValidate d') $ M.elems $ progRelations d'
     -- Validate rules
     mapM_ (ruleValidate d') $ progRules d'
+    -- Validate dependency graph
+    depGraphValidate d'
     return d'
 
 --    mapM_ (relValidate2 r)   refineRels
@@ -349,9 +353,48 @@ ruleLHSValidate d rl Atom{..} idx =
 
 --    validate aggregate function used
 --    aggregate, flatmap, assigned vars are not previously declared
+
+
+-- | Check the following properties of a Datalog dependency graph:
 --
--- atomValidate: 
---   check number of arguments
+--  * Linearity: A rule contains at most one RHS atom that is mutually
+--  recursive with its head.
+--  * Stratified negation: No loop contains a negative edge.
+depGraphValidate :: (MonadError String me) => DatalogProgram -> me ()
+depGraphValidate d@DatalogProgram{..} = do
+    let g = progDependencyGraph d
+    -- strongly connected components of the dependency graph
+    let sccs = map (S.fromList . map (fromJust . G.lab g)) $ G.scc g
+    -- maps relation name to SCC that contains this relation
+    let sccmap = M.fromList 
+                 $ concat 
+                 $ mapIdx (\scc i -> map (, i) $ S.toList scc) 
+                   sccs
+    -- Linearity
+    mapM_ (\rl@Rule{..} -> 
+            mapM_ (\a -> 
+                    do let lscc = sccmap M.! (atomRelation a)
+                       let rlits = filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                                   $ filter rhsIsLiteral ruleRHS
+                       when (length rlits > 1) 
+                            $ err (pos rl) 
+                            $ "At most one relation in the right-hand side of a rule can be mutually recursive with its head. " ++
+                              "The following RHS literals are mutually recursive with " ++ atomRelation a ++ ": " ++ 
+                              intercalate ", " (map show rlits))
+                  ruleLHS)
+          progRules
+    -- Stratified negation
+    mapM_ (\rl@Rule{..} -> 
+            mapM_ (\a -> 
+                    do let lscc = sccmap M.! (atomRelation a)
+                       mapM_ (\rhs -> err (pos rl) 
+                                          $ "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
+                                            " and therefore cannot appear negated in this rule")
+                             $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter (not . rhsPolarity)
+                             $ filter rhsIsLiteral ruleRHS)
+                  ruleLHS)
+          progRules
 
 exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> Expr -> me ()
 exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ show ctx) $ -} do 

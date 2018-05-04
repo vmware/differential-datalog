@@ -1,0 +1,3 @@
+error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: At most one relation in the right-hand side of a rule can be mutually recursive with its head. The following RHS literals are mutually recursive with R2: R3(.a3=x, .b3=y), R4(.a4=y, .b4=z)
+
+error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule

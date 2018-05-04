@@ -53,6 +53,7 @@ module Language.DifferentialDatalog.Syntax (
         consType,
         Relation(..),
         RuleRHS(..),
+        rhsIsLiteral,
         Atom(..),
         Rule(..),
         ExprNode(..),
@@ -88,6 +89,7 @@ module Language.DifferentialDatalog.Syntax (
         DatalogProgram(..),
         progStructs,
         progConstructors,
+        progDependencyGraph,
         ECtx(..),
         ctxParent)
 where
@@ -96,6 +98,7 @@ import Text.PrettyPrint
 import Data.Maybe
 import Data.List
 import Data.String.Utils
+import qualified Data.Graph.Inductive as G
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -372,6 +375,10 @@ instance PP RuleRHS where
 
 instance Show RuleRHS where
     show = render . pp
+
+rhsIsLiteral :: RuleRHS -> Bool
+rhsIsLiteral RHSLiteral{} = True
+rhsIsLiteral _            = False
 
 data Rule = Rule { rulePos :: Pos
                  , ruleLHS :: [Atom]
@@ -650,6 +657,27 @@ progStructs DatalogProgram{..} =
 
 progConstructors :: DatalogProgram -> [Constructor]
 progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs
+
+-- | Dependency graph among program relations.  An edge from Rel1 to
+-- Rel2 means that there is a rule with Rel1 in the right-hand-side,
+-- and Rel2 in the left-hand-side.  Edge label is equal to the
+-- polarity with which Rel1 occurs in the rule.
+--
+-- Assumes that rules and relations have been validated before calling
+-- this function.
+progDependencyGraph :: DatalogProgram -> G.Gr String Bool
+progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
+    where
+    g0 = G.insNodes (zip [0..] $ M.keys progRelations) G.empty
+    relidx rel = M.findIndex rel progRelations
+    edges = concatMap (\Rule{..} ->
+                        concatMap (\a ->
+                                    mapMaybe (\case
+                                               RHSLiteral pol a' -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
+                                               _ -> Nothing)
+                                             ruleRHS)
+                                  ruleLHS)
+                      progRules
 
 -- | Expression's syntactic context determines the kinds of
 -- expressions that can appear at this location in the Datalog program, 
