@@ -108,3 +108,10 @@ function fnested(x: nested_t): string = {
     N{C{var res, _}} = x;
     res
 }
+
+function parameterized(x: 'A, y: 'A): 'A
+
+typedef string_syn = string
+
+function use_parameterized(x: string, y: string_syn): string = 
+    parameterized(x, y)

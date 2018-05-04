@@ -47,17 +47,24 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
+import Language.DifferentialDatalog.Preamble
 
--- parse a file containing a datalog program and produce the intermediate representation
-parseDatalogFile :: FilePath -> IO DatalogProgram
-parseDatalogFile fname = do
+-- | Parse a file containing a datalog program and produce the intermediate representation
+-- if 'insert_preamble' is true, prepends the content of
+-- 'datalotPreamble' to the file before parsing it.
+parseDatalogFile :: Bool -> FilePath -> IO DatalogProgram
+parseDatalogFile insert_preamble fname = do
     fdata <- readFile fname
-    parseDatalogString fdata fname
+    parseDatalogString insert_preamble fdata fname
 
 -- parse a string containing a datalog program and produce the intermediate representation
-parseDatalogString :: String -> String -> IO DatalogProgram
-parseDatalogString program file = do
-  case parse datalogGrammar file program of
+parseDatalogString :: Bool -> String -> String -> IO DatalogProgram
+parseDatalogString insert_preamble program file = do
+  preamble <- if insert_preamble
+                 then parseDatalogString False datalogPreamble "Preamble"
+                 else return emptyDatalogProgram
+
+  case parse (datalogGrammar preamble) file program of
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 
@@ -151,18 +158,21 @@ data SpecItem = SpType         TypeDef
               | SpFunc         Function
               | SpStatement    Statement
 
-datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
+datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
-spec = do
+spec preamble = do
     items <- many decl
-    let relations = mapMaybe (\i -> case i of
+    let relations = (M.toList $ progRelations preamble) ++
+                    mapMaybe (\i -> case i of
                                          SpRelation r -> Just (name r, r)
                                          _            -> Nothing) items
-    let types = mapMaybe (\i -> case i of
+    let types = (M.toList $ progTypedefs preamble) ++
+                mapMaybe (\i -> case i of
                                      SpType t -> Just (name t, t)
                                      _        -> Nothing) items
-    let funcs = mapMaybe (\i -> case i of
+    let funcs = (M.toList $ progFunctions preamble) ++
+                mapMaybe (\i -> case i of
                                      SpFunc f -> Just (name f, f)
                                      _        -> Nothing) items
     let rules = mapMaybe (\i -> case i of
@@ -174,11 +184,11 @@ spec = do
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
-                 return $ DatalogProgram (M.fromList types)
-                                         (M.fromList funcs)
-                                         (M.fromList relations)
-                                         rules
-                                         statements
+                 return $ DatalogProgram { progTypedefs   = M.fromList types
+                                         , progFunctions  = M.fromList funcs
+                                         , progRelations  = M.fromList relations
+                                         , progRules      = progRules preamble ++ rules
+                                         , progStatements = progStatements preamble ++ statements}
     case res of
          Left err   -> error err
          Right prog -> return prog

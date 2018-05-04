@@ -8,9 +8,11 @@ function strings(): () = {
 
 //---
 
+typedef Type1 = Cons1 | Cons2
+
 function strings(): () = {
-    var x: int = 5;
-    var err = $"{x}"; // only strings arguments are allowed in string interpolation
+    var x: Type1 = Cons1;
+    var err = $"{x}"; // don't know how to convert x to string
     ()
 }
 

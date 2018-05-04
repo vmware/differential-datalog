@@ -95,7 +95,7 @@ main = do
 
 readValidate :: FilePath -> IO DatalogProgram
 readValidate fname = do
-    prog <- parseDatalogFile fname
+    prog <- parseDatalogFile True fname
 --    case validate prog of
 --         Left e  -> error $ "Validation error: " ++ e
 --         Right _ -> return ()

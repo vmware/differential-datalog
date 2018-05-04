@@ -46,6 +46,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Preamble
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -62,15 +63,18 @@ validate d = do
     mapM_ (funcValidateProto d') $ M.elems $ progFunctions d'
     -- Validate function implementations
     mapM_ (funcValidateDefinition d') $ M.elems $ progFunctions d'
-    -- Check for recursion
-    checkNoRecursion d'
     -- Validate relation declarations
     mapM_ (relValidate d') $ M.elems $ progRelations d'
     -- Validate rules
     mapM_ (ruleValidate d') $ progRules d'
     -- Validate dependency graph
     depGraphValidate d'
-    return d'
+    -- Insert string conversion functions
+    d'' <- progInjectStringConversions d'
+    -- This check must be done after 'depGraphValidate', which may
+    -- introduce recursion
+    checkNoRecursion d''
+    return d''
 
 --    mapM_ (relValidate2 r)   refineRels
 --    maybe (return ())
@@ -484,14 +488,13 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         BAnd   -> do {m; isbit1}
         BOr    -> do {m; isbit1}
         Concat | isString d e1 
-               -> do {m; isstr2}
+               -> return ()
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
           isint1 = assert (isInt d e1 || isBit d e1) (pos e1) "Not an integer"
           isint2 = assert (isInt d e2 || isBit d e2) (pos e2) "Not an integer"
           isbit1 = assert (isBit d e1) (pos e1) "Not a bit vector"
           isbit2 = assert (isBit d e2) (pos e2) "Not a bit vector"
-          isstr2 = assert (isString d e2) (pos e2) "Not a string"
           isbool = assert (isBool d e1) (pos e1) "Not a Boolean"
 
 exprValidate2 d _   (EUnOp _ BNeg e)    = 
@@ -519,3 +522,45 @@ exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do
     assert (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
 
 exprCheckMatchPatterns _ _   _               = return ()
+
+-- Automatically insert string conversion functions in the Concat
+-- operator:  '"x:" ++ x', where 'x' is of type int becomes 
+-- '"x:" ++ int_2string(x)'.
+progInjectStringConversions :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+progInjectStringConversions d = progExprMapCtxM d (exprInjectStringConversions d)
+
+exprInjectStringConversions :: (MonadError String me) => DatalogProgram -> ECtx -> ENode -> me Expr
+exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (tr /= tString) = do
+    -- find string conversion function
+    fname <- case tr of
+                  TBool{}     -> return bUILTIN_2STRING_FUNC
+                  TInt{}      -> return bUILTIN_2STRING_FUNC
+                  TString{}   -> return bUILTIN_2STRING_FUNC
+                  TBit{}      -> return bUILTIN_2STRING_FUNC
+                  TUser{..}   -> return $ typeName ++ tOSTRING_FUNC_SUFFIX 
+                  TOpaque{..} -> return $ typeName ++ tOSTRING_FUNC_SUFFIX
+                  TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
+                  TVar{..}    -> err (pos r) $ 
+                                     "Cannot automatically convert " ++ show r ++ 
+                                     " of variable type " ++ tvarName ++ " to string"
+                  TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
+    f <- case lookupFunc d fname of
+              Nothing  -> err (pos r) $ "Cannot find declaration of function " ++ fname ++ 
+                                        " needed to convert expression " ++ show r ++ " to string"
+              Just fun -> return fun
+    let arg0 = funcArgs f !! 0
+    -- validate its signature
+    assert (isString d $ funcType f) (pos f) 
+           "string conversion function must return \"string\""
+    assert ((length $ funcArgs f) == 1) (pos f) 
+           "string conversion function must take exactly one argument"
+    assert (isJust $ unifyTypes d [(typ arg0, tr)]) (pos f) $ 
+           "string conversion function \"" ++ name f ++ 
+           "\" must take argument of type " ++ show tr
+    let r' = E $ EApply (pos r) fname [r]
+    return $ E $ EBinOp p Concat l r'
+    where te = exprType'' d ctx $ E e
+          tr = exprType'' d (CtxBinOpR e ctx) r
+
+exprInjectStringConversions _ _   e = return $ E e
+
