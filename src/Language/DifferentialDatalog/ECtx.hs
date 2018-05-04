@@ -25,7 +25,7 @@ SOFTWARE.
 
 {- | 
 Module     : ECtx
-Description: Helper functions for manipulating with expression contexts.
+Description: Helper functions for manipulating expression contexts.
  -}
 module Language.DifferentialDatalog.ECtx(
      ctxAncestors,

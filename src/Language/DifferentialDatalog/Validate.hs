@@ -45,7 +45,7 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Rule
---import Relation
+import Language.DifferentialDatalog.DatalogProgram
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -99,12 +99,11 @@ funcGraph DatalogProgram{..} =
                                                g (exprFuncs e)) 
            g0 $ zip [0..] $ M.elems progFunctions
 
-
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 progDesugar d0 = do 
     d1 <- progDesugarAtoms d0
-    progDesugarExprs d1
+    progExprMapCtxM d1 (exprDesugar d1)
  
 -- Desugar atoms: convert all relational atoms to named field syntax.  
 progDesugarAtoms :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -144,49 +143,12 @@ atomDesugarArgs d a@(Atom p r as) = do
                 _  -> desugarNamed
     return a{atomArgs = as'}
 
-
 -- Desugar expressions: convert all type constructor calls to named
 -- field syntax.  
 -- Precondition: typedefs must be validated before calling this
 -- function.  
-progDesugarExprs :: (MonadError String me) => DatalogProgram -> me DatalogProgram
-progDesugarExprs d = do
-    funcs' <- mapM (\f -> do e <- case funcDef f of
-                                       Nothing -> return Nothing
-                                       Just e  -> Just <$> exprDesugar d e
-                             return f{funcDef = e})
-                   $ progFunctions d
-    rules' <- mapM (\r -> do lhs <- mapM (atomDesugarExprs d) $ ruleLHS r
-                             rhs <- mapM (rhsDesugarExprs d) $ ruleRHS r 
-                             return r{ruleLHS = lhs, ruleRHS = rhs})
-                   $ progRules d
-    return d{ progFunctions = funcs'
-            , progRules     = rules'}    
-
-atomDesugarExprs :: (MonadError String me) => DatalogProgram -> Atom -> me Atom
-atomDesugarExprs d a = do 
-    args <- mapM (\(m, e) -> (m,) <$> exprDesugar d e) $ atomArgs a
-    return a{atomArgs = args}
-
-rhsDesugarExprs :: (MonadError String me) => DatalogProgram -> RuleRHS -> me RuleRHS
-rhsDesugarExprs d l@RHSLiteral{}   = do
-    a <- atomDesugarExprs d (rhsAtom l)
-    return l{rhsAtom = a}
-rhsDesugarExprs d c@RHSCondition{} = do
-    e <- exprDesugar d (rhsExpr c)
-    return c{rhsExpr = e}
-rhsDesugarExprs d a@RHSAggregate{} = do
-    e <- exprDesugar d (rhsAggExpr a)
-    return a{rhsAggExpr = e}
-rhsDesugarExprs d m@RHSFlatMap{}   = do
-    e <- exprDesugar d (rhsMapExpr m)
-    return m{rhsMapExpr = e}
-
-exprDesugar :: (MonadError String me) => DatalogProgram -> Expr -> me Expr
-exprDesugar d e = exprFoldM (exprDesugar' d) e
-
-exprDesugar' :: (MonadError String me) => DatalogProgram -> ENode -> me Expr
-exprDesugar' d e =
+exprDesugar :: (MonadError String me) => DatalogProgram -> ECtx -> ENode -> me Expr
+exprDesugar d _ e =
     case e of
          EStruct p c as -> do
             cons@Constructor{..} <- checkConstructor p d c
