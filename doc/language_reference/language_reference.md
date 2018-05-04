@@ -422,29 +422,29 @@ pattern ::= (* tuple pattern *)
 
 ## Rules
 
-A Datalog rule consists of one or more left-hand-side atoms (multiple 
-LHS atoms are used to abbreviate rules with identical right-hand 
-sides), zero or more . 
+A Datalog rule consists of the *head* comprised of one or more *atoms* (multiple 
+atoms abbreviate rules with identical right-hand sides) and zero or more *body* clauses.
 
 ```EBNF
-rule ::= atom (,atom)* ":-" atom' (,atom')*
+rule ::= atom (,atom)* ":-" rhs_clause (,rhs_clause)*
 
 atom ::= rel_name "(" expr (,expr)* ")"
        | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
 
-atom' ::= atom                                      (* 1.atom *)
-        | "not" atom                                (* 2.negated atom *)
-        | expr                                      (* 3.condition *)
-        | expr "=" expr                             (* 4.condition *)
-        | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
-        | "Aggregate" "("                           (* 6.aggregation *)
-          "(" [var_name ("," var_name)*] ")" "," 
-          var_name "=" expr ")"
+rhs_clause ::= atom                                      (* 1.atom *)
+             | "not" atom                                (* 2.negated atom *)
+             | expr                                      (* 3.condition *)
+             | expr "=" expr                             (* 4.assignment *)
+             | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
+             | "Aggregate" "("                           (* 6.aggregation *)
+                "(" [var_name ("," var_name)*] ")" "," 
+                var_name "=" expr ")"
 ```
 
-We briefly discuss each form of right-hand-side clause (`atom'`). The
+An atom is a predicate that holds when a given tuple belongs to a relation.
+An body clause can several forms.  The
 first two forms (`atom` and `"not" atom`) represent a *literal*, i.e.,
-an atomic predicate or its negation:
+an atom or its negation:
 
 ```
 Cousins(x,y) :- Parent(z,x),
@@ -453,21 +453,24 @@ Cousins(x,y) :- Parent(z,x),
                 not Siblings(x,y)
 ```
 
+We say that the atom appears with *positive polarity* (in the
+non-negated case) or *negative polarity* in the rule.
+
 The third form is a Boolean expression over variables introduced in the 
-RHS of the rule. It filters the result of the query.
+body of the rule. It filters the result of the query.
 
 ```
 Siblings(x,y) :- Parent(z,x), Parent(z,y), x != y
 ```
 
-The fourth form is an assignment expression that may introduce new
-variables as well as filter the query by pattern matching, e.g.,:
+The fourth form is an assignment expression that may introduces new
+variables as well as filters the query by pattern matching, e.g.,:
 
 ```
 DHCP_Options_server_ip(opts, ipv6_string_mapped(in6_generate_lla(mac))) :-
     DHCP_Options_options(opts, "server_id", val),
     NoIP4Addr = ip_parse(val),
-    SomeMAC{mac} = eth_addr_from_string(val)
+    SomeMAC{var mac} = eth_addr_from_string(val)
 ```
 
 Here we first filter the relation, only keeping records where
@@ -475,7 +478,7 @@ Here we first filter the relation, only keeping records where
 `val` and bind the result to new variable `mac`, while filtering out 
 those values that do not parse to a valid Ethernet address.
 
-The fifth form is a flat map operation, which expands each record in
+The fifth form is a flat-map operation, which expands each record in
 the relation computed so far to a set of records, computes a union of 
 all sets and binds a record in the resulting relation to a fresh
 variable, e.g.:
@@ -487,7 +490,10 @@ Logical_Switch_Port_ips(lsp, mac, ip) :-
     FlatMap(ip = extract_ips(ips))
 ```
 
-Here, `extract_ips` must return a *set* of IP addresses.
+Here, `extract_ips` must return a *set* of IP addresses:
+```
+function extract_ips(addrs: string): set<ip_addr_t>
+```
 
 The sixth form groups records computed so far by a subset of fields,
 computes an aggreagate for each group using specified aggregate function 
@@ -497,6 +503,75 @@ binds the result to a new variable:
 ```
 ShortestPath(x,y, c) :- Path(x,y,cost), Aggregate((x,y), c = min(cost))
 ```
+
+### Variables and patterns
+
+A clause in the body of a rule can introduce variables that are
+visible in clauses following it and in the head of the rule. Variables
+are introduced *explicitly* in the left-hand side of an assignment
+clause, a flat-map or an aggregate clause or *implicitly*,
+by referring to them in a positive atom.  An implicit declaration must
+appear in a *pattern expression*, i.e., an expression built 
+recursively out of variable names, wildcards, tuples, type
+constructors, and constants (i.e., string, integer, booleand or
+bit-vector literals).
+
+For example, in the following rule, the first occurrence of variable
+`x` in pattern `Some{(_, x)}` introduces the variable, whereas the
+second occurrence (in `T(x,y)`) refers to it:
+```
+R(x,y) :- S(Some{(_, x)}), T(x, y).
+```
+
+It is illegal to introduce a new variable in an expression that is not 
+a pattern:
+```
+R(x,y) :- S(f(x)), T(x, y). // illegal, as f(x) is not a pattern.
+R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
+```
+
+### Constraints on rules
+
+1. Negative atoms and condition clauses may not introduce new variables.
+1. Variables introduced in a clause are visible in clauses following it.  An aggregate 
+   clause has the effect of concealing all variables except for the
+   group-by variables and the aggregate variable.
+   ```
+   R(x,y) :- S(x), T(x, y), Aggregate((x), z = min(y)). // error:
+        // y cannot be used in the head, as it is concealed by aggregation
+   ```
+1. *Safety*: Negative literals may not introduce new variables or use wildcards.
+   ```
+   R(x) :- S(x), T(x,y).     // ok
+   R(x) :- S(x), not T(x,y). // error: variable y introduced in a negative literal
+   ```
+1. A variable cannot be declared and used in the same literal.
+   ```
+   R(x) :- S(x,_), T(x). // ok
+   R(x) :- S(x,x).       // error variable x is introduced and used in the same literal
+   ```
+1. All variables occurring in the head of a rule must be declared in
+   its body.
+   ```
+   R(f(x)) :- S(x). //ok
+   R(f(y)) :- S(x). //error: y is not declared
+   ```
+1. A flat-map expression must have type `set<x>` for some type `x`. 
+
+### Constraints on dependency graph
+
+A *dependency graph* is a labeled directed graph whose vertices represent
+relations.  For each rule that contains relation 'R1' in its head and
+relation 'R2' with polarity 'p' in the body, there is an edge in the
+graph from 'R2' to 'R1' labeled 'p'.
+
+1. *Linearity*: For each atom 'R(...)' in the head of a rule, at most one 
+   relation in the body of the rule can be mutually recursive with 'R'.
+1. *Stratified negation*: No cycle in a graph can contain an edge
+   labeled with negative polarity.
+1. A body of a rule with an aggregate clause cannot contain an atom mutually 
+   recursive with its head.
+
 
 # FTL syntax
 
