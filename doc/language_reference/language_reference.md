@@ -274,7 +274,8 @@ functionality.**) and raw strings where all characters, including backslash and
 line breaks are interpreted as is:
 
 ```EBNF
-string_literal   ::= ('"' utf8_character* '"' | "[|" utf8_character* "|]")+
+string_literal   ::= ( '"' utf8_character* '"' 
+                     | "[|" utf8_character* "|]")+
 ```
 
 Multiple string literals are automatically concatenated, e.g.,
@@ -286,7 +287,8 @@ Interpolated strings are preceded by the `$` character (syntax
 borrowed from C#).
 
 ```EBNF
-interpolated_string ::= ('$"' utf8_character* '"' | "$[|" utf8_character* "|]")+
+interpolated_string ::= ( '$"' utf8_character* '"' 
+                        | "$[|" utf8_character* "|]")+
 ```
 
 For example,
