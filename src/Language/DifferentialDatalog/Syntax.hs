@@ -151,17 +151,6 @@ tUser     = TUser     nopos
 tVar      = TVar      nopos
 tOpaque   = TOpaque   nopos
 
-trank :: Type -> Int
-trank TBool  {} = 0
-trank TInt   {} = 1
-trank TString{} = 2
-trank TBit   {} = 3
-trank TStruct{} = 4
-trank TTuple {} = 5
-trank TUser  {} = 6
-trank TVar   {} = 7
-trank TOpaque{} = 8
-
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ find ((==f) . name) $ structFields t
 
@@ -195,6 +184,18 @@ instance Eq Type where
     (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
     (==) (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = t1 == t2 && as1 == as2
     (==) _                  _                   = False
+
+-- assign rank to constructors; used in the implementation of Ord
+trank :: Type -> Int
+trank TBool  {} = 0
+trank TInt   {} = 1
+trank TString{} = 2
+trank TBit   {} = 3
+trank TStruct{} = 4
+trank TTuple {} = 5
+trank TUser  {} = 6
+trank TVar   {} = 7
+trank TOpaque{} = 8
 
 instance Ord Type where
     compare TBool{}            TBool{}             = EQ

@@ -442,7 +442,7 @@ rhs_clause ::= atom                                      (* 1.atom *)
 ```
 
 An atom is a predicate that holds when a given tuple belongs to a relation.
-An body clause can several forms.  The
+A body clause can have several forms.  The
 first two forms (`atom` and `"not" atom`) represent a *literal*, i.e.,
 an atom or its negation:
 
@@ -463,7 +463,7 @@ body of the rule. It filters the result of the query.
 Siblings(x,y) :- Parent(z,x), Parent(z,y), x != y
 ```
 
-The fourth form is an assignment expression that may introduces new
+The fourth form is an assignment expression that may introduce new
 variables as well as filters the query by pattern matching, e.g.,:
 
 ```
