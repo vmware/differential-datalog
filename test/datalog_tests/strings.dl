@@ -12,10 +12,6 @@ Strings("\\buzz").
 /* unicode */
 Strings("barΔ").
 
-<<<<<<< HEAD
-=======
-
->>>>>>> master
 /* raw strings */
 Strings([||]).
 Strings([|foo|]).
