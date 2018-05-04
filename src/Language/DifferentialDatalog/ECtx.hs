@@ -23,6 +23,10 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards #-}
 
+{- | 
+Module     : ECtx
+Description: Helper functions for manipulating with expression contexts.
+ -}
 module Language.DifferentialDatalog.ECtx(
      ctxAncestors,
      ctxIsRuleL,
@@ -45,6 +49,7 @@ import Data.List
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 
+-- | List all ancestor contexts by recursively calling 'ctxParent'
 ctxAncestors :: ECtx -> [ECtx]
 ctxAncestors CtxTop = [CtxTop]
 ctxAncestors ctx    = ctx : (ctxAncestors $ ctxParent ctx)
@@ -87,8 +92,6 @@ ctxIsTyped _          = False
 ctxIsRuleRCond :: ECtx -> Bool
 ctxIsRuleRCond CtxRuleRCond{} = True
 ctxIsRuleRCond _              = False
-
-
 
 -- | True if context is inside a positive right-hand-side literal of a
 -- rule, in a pattern expression, i.e., an expression where new
