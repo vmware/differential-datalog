@@ -21,3 +21,4 @@ isLExpr :: DatalogProgram -> ECtx -> Expr -> Bool
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 exprFuncs :: Expr -> [String]
 exprFuncsRec :: DatalogProgram -> Expr -> [String]
+exprIsPattern :: Expr -> Bool

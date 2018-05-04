@@ -60,6 +60,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
 
 -- | An object with type
@@ -139,6 +140,7 @@ exprType :: DatalogProgram -> ECtx -> Expr -> Type
 exprType d ctx e = maybe (error $ "exprType: expression " ++ show e ++ " has unknown type") id 
                          $ exprTypeMaybe d ctx e
 
+-- | Like 'exprType', but also applies 'typ'' to result.
 exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 exprType' d ctx e = typ' d $ exprType d ctx e
 
@@ -170,7 +172,11 @@ structTypeArgs d ctx cname argtypes = do
 exprNodeType' :: DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> Maybe Type
 exprNodeType' d ctx (EVar _ v)            = 
     let (lvs, rvs) = ctxMVars d ctx in
-    fromJust $ lookup v $ lvs ++ rvs
+    case lookup v $ lvs ++ rvs of
+         Just mt -> mt
+         Nothing | ctxInRuleRHSPattern ctx -- handle implicit vardecls in rules
+                 -> ctxExpectType d ctx
+         _       -> Nothing
 
 exprNodeType' d _   (EApply _ f mas)      = do
     let t = funcType $ getFunc d f 
@@ -454,7 +460,8 @@ ctxExpectType _ (CtxITEIf _ _)                       = Just tBool
 ctxExpectType d (CtxITEThen _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxITEElse _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxSetL e@(ESet _ _ rhs) ctx)       = exprTypeMaybe d (CtxSetR e ctx) rhs
-ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = exprTypeMaybe d ctx lhs -- avoid infinite recursion by evaluating lhs standalone
+ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = -- avoid infinite recursion by evaluating lhs standalone
+                                                       exprTypeMaybe d (CtxSeq1 (ESeq nopos lhs (error "ctxExpectType: should be unreachable")) ctx) lhs
 ctxExpectType d (CtxBinOpL e ctx)                    = 
     case exprBOp e of
          Eq     -> trhs

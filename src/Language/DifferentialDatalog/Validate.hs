@@ -27,11 +27,13 @@ module Language.DifferentialDatalog.Validate (
     validate) where
 
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Control.Monad.Except
 import Data.Maybe
 import Data.List
 import qualified Data.Graph.Inductive as G
--- import Debug.Trace
+import qualified Data.Graph.Inductive.Query as G
+import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
@@ -40,7 +42,9 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Ops
+import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
+import Language.DifferentialDatalog.Rule
 --import Relation
 
 -- | Validate Datalog program
@@ -53,7 +57,7 @@ validate d = do
     -- No cyclic dependencies between user-defined types
     checkAcyclicTypes d
     -- Desugar.  Must be called after typeValidate.
-    d' <- progDesugarExprs d
+    d' <- progDesugar d
     -- Validate function prototypes
     mapM_ (funcValidateProto d') $ M.elems $ progFunctions d'
     -- Validate function implementations
@@ -62,6 +66,10 @@ validate d = do
     checkNoRecursion d'
     -- Validate relation declarations
     mapM_ (relValidate d') $ M.elems $ progRelations d'
+    -- Validate rules
+    mapM_ (ruleValidate d') $ progRules d'
+    -- Validate dependency graph
+    depGraphValidate d'
     return d'
 
 --    mapM_ (relValidate2 r)   refineRels
@@ -90,6 +98,52 @@ funcGraph DatalogProgram{..} =
                              Just e  -> foldl' (\g' f' -> G.insEdge (i, M.findIndex f' progFunctions, ()) g') 
                                                g (exprFuncs e)) 
            g0 $ zip [0..] $ M.elems progFunctions
+
+
+-- Remove syntactic sugar
+progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+progDesugar d0 = do 
+    d1 <- progDesugarAtoms d0
+    progDesugarExprs d1
+ 
+-- Desugar atoms: convert all relational atoms to named field syntax.  
+progDesugarAtoms :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+progDesugarAtoms d = do
+    rules' <- mapM (\r -> do lhs <- mapM (atomDesugarArgs d) $ ruleLHS r
+                             rhs <- mapM (rhsDesugarAtoms d) $ ruleRHS r 
+                             return r{ruleLHS = lhs, ruleRHS = rhs})
+                   $ progRules d
+    return d{progRules = rules'}    
+
+rhsDesugarAtoms :: (MonadError String me) => DatalogProgram -> RuleRHS -> me RuleRHS
+rhsDesugarAtoms d l@RHSLiteral{}   = do
+    a <- atomDesugarArgs d (rhsAtom l)
+    return l{rhsAtom = a}
+rhsDesugarAtoms _ x = return x
+
+atomDesugarArgs :: (MonadError String me) => DatalogProgram -> Atom -> me Atom
+atomDesugarArgs d a@(Atom p r as) = do 
+    rel@Relation{..} <- checkRelation p d r
+    let desugarPos = do
+            assert (length as == length relArgs) p
+                   $ "Number of arguments does not match relation declaration"
+            return $ zip (map name relArgs) (map snd as)
+    let desugarNamed = do
+            uniq' (\_ -> p) id ("Multiple occurrences of argument " ++) $ map fst as
+            mapM (\(n,e) -> assert (isJust $ find ((==n) . name) relArgs) (pos e)
+                                   $ "Unknown argument " ++ n) as
+            return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) relArgs
+    as' <- case as of
+                [] | null relArgs
+                   -> return []
+                [] -> desugarNamed
+                _  | all (null . fst) as
+                   -> desugarPos
+                _  | any (null . fst) as
+                   -> err p $ "Atom mixes named and positional arguments to relation " ++ r
+                _  -> desugarNamed
+    return a{atomArgs = as'}
+
 
 -- Desugar expressions: convert all type constructor calls to named
 -- field syntax.  
@@ -136,30 +190,26 @@ exprDesugar' d e =
     case e of
          EStruct p c as -> do
             cons@Constructor{..} <- checkConstructor p d c
+            let desugarPos = do
+                    assert (length as == length consArgs) p
+                           $ "Number of arguments does not match constructor declaration: " ++ show cons
+                    return $ zip (map name consArgs) (map snd as)
+            let desugarNamed = do
+                    uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
+                    mapM (\(n,e) -> assert (isJust $ find ((==n) . name) consArgs) (pos e)
+                                           $ "Unknown field " ++ n) as
+                    return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) consArgs
             as' <- case as of
                         [] | null consArgs
                            -> return as
-                        [] -> desugarNamedArgs d cons (pos e) as
+                        [] -> desugarNamed
                         _  | all (null . fst) as
-                           -> desugarPosArgs d cons (pos e) as
+                           -> desugarPos
                         _  | any (null . fst) as
-                           -> err (pos e) $ "Expression mixes named and positional arguments to type constructor"
-                        _  -> desugarNamedArgs d cons (pos e) as
+                           -> err (pos e) $ "Expression mixes named and positional arguments to type constructor " ++ c
+                        _  -> desugarNamed
             return $ E e{exprStructFields = as'}
          _              -> return $ E e
-
-desugarPosArgs :: (MonadError String me) => DatalogProgram -> Constructor -> Pos -> [(String, Expr)] -> me [(String, Expr)]
-desugarPosArgs d cons@Constructor{..} p as = do
-    assert (length as == length consArgs) p
-           $ "Number of arguments does not match constructor declaration: " ++ show cons
-    return $ zip (map name consArgs) (map snd as)
-
-desugarNamedArgs :: (MonadError String me) => DatalogProgram -> Constructor -> Pos -> [(String, Expr)] -> me [(String, Expr)]
-desugarNamedArgs d cons@Constructor{..} p as = do
-    uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
-    mapM (\(n,e) -> assert (isJust $ find ((==n) . name) consArgs) (pos e)
-                           $ "Unknown field " ++ n) as
-    return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) consArgs
 
 typedefValidate :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidate d@DatalogProgram{..} TypeDef{..} = do
@@ -267,13 +317,84 @@ relValidate d Relation{..} = do
 --                      (intercalate "\n" $ map (show . snd) cyc))
 --          $ grCycle $ typeGraph r types
 
---ruleValidate :: (MonadError String me) => Refine -> Relation -> Rule -> me ()
---ruleValidate r rel@Relation{..} rl@Rule{..} = do
---    assertR r (length ruleLHS == length relArgs) (pos rl)
---            $ "Number of arguments in the left-hand-side of the rule does not match the number of fields in relation " ++ name rel
---    mapM_ (exprValidate r (CtxRuleR rel rl)) ruleRHS
---    mapIdxM_ (\e i -> exprValidate r (CtxRuleL rel rl i) e) ruleLHS
+ruleValidate :: (MonadError String me) => DatalogProgram -> Rule -> me ()
+ruleValidate d rl@Rule{..} = do
+    mapIdxM_ (ruleRHSValidate d rl) ruleRHS
+    mapIdxM_ (ruleLHSValidate d rl) ruleLHS
+
+ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
+ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
+    -- number of arguments and relation name were validated during desugaring
+    mapM (\(f,v) -> exprValidate d [] (CtxRuleRAtom rl idx f) v) $ atomArgs atom
+    let vars = ruleRHSVars d rl idx
+    -- variable cannot be declared and used in the same atom 
+    uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
+        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars) 
+        $ concatMap (\(f, v) -> exprVars (CtxRuleRAtom rl idx f) v)
+        $ atomArgs atom
+
+ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
+    exprValidate d [] (CtxRuleRCond rl idx) e
+
+ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
+    let ctx = CtxRuleRFlatMap rl idx 
+    exprValidate d [] ctx e
+    case exprType' d ctx e of
+         TOpaque _ sET_TYPE_NAME [_] -> return ()
+         t  -> err (pos e) $ "FlatMap expression must be of type set<>, but its type is " ++ show t
+         
+ruleRHSValidate _ _ RHSAggregate{..} _ = 
+    err (pos rhsAggExpr) "Aggregates not implemented"
+ 
+ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
+ruleLHSValidate d rl Atom{..} idx = 
+    -- number of arguments and relation name were validated during desugaring
+    mapM_ (\(f,v) -> exprValidate d [] (CtxRuleL rl idx f) v) atomArgs
+
+--    validate aggregate function used
+--    aggregate, flatmap, assigned vars are not previously declared
+
+
+-- | Check the following properties of a Datalog dependency graph:
 --
+--  * Linearity: A rule contains at most one RHS atom that is mutually
+--  recursive with its head.
+--  * Stratified negation: No loop contains a negative edge.
+depGraphValidate :: (MonadError String me) => DatalogProgram -> me ()
+depGraphValidate d@DatalogProgram{..} = do
+    let g = progDependencyGraph d
+    -- strongly connected components of the dependency graph
+    let sccs = map (S.fromList . map (fromJust . G.lab g)) $ G.scc g
+    -- maps relation name to SCC that contains this relation
+    let sccmap = M.fromList 
+                 $ concat 
+                 $ mapIdx (\scc i -> map (, i) $ S.toList scc) 
+                   sccs
+    -- Linearity
+    mapM_ (\rl@Rule{..} -> 
+            mapM_ (\a -> 
+                    do let lscc = sccmap M.! (atomRelation a)
+                       let rlits = filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                                   $ filter rhsIsLiteral ruleRHS
+                       when (length rlits > 1) 
+                            $ err (pos rl) 
+                            $ "At most one relation in the right-hand side of a rule can be mutually recursive with its head. " ++
+                              "The following RHS literals are mutually recursive with " ++ atomRelation a ++ ": " ++ 
+                              intercalate ", " (map show rlits))
+                  ruleLHS)
+          progRules
+    -- Stratified negation
+    mapM_ (\rl@Rule{..} -> 
+            mapM_ (\a -> 
+                    do let lscc = sccmap M.! (atomRelation a)
+                       mapM_ (\rhs -> err (pos rl) 
+                                          $ "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
+                                            " and therefore cannot appear negated in this rule")
+                             $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter (not . rhsPolarity)
+                             $ filter rhsIsLiteral ruleRHS)
+                  ruleLHS)
+          progRules
 
 exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> Expr -> me ()
 exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ show ctx) $ -} do 
@@ -284,6 +405,8 @@ exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ s
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
+exprValidate1 _ _ ctx EVar{} | ctxInRuleRHSPattern ctx
+                                          = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
 exprValidate1 d _ ctx (EApply p f as)     = do fun <- checkFunc p d f
@@ -295,8 +418,8 @@ exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
 exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was performed by exprDesugar 
-    let tdef = consType d c
-    when (ctxInSetL ctx) $
+    let tdef = consType d c 
+    when (ctxInSetL ctx && not (ctxIsRuleRCond $ ctxParent ctx)) $
         assert ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
                $ "Type constructor in the left-hand side of an assignment is only allowed for types with one constructor, \
                  \ but \"" ++ name tdef ++ "\" has multiple constructors"
@@ -306,7 +429,8 @@ exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
                                           = checkNoVar p d ctx v
                                      | otherwise 
-                                          = do assert (ctxIsTyped ctx) p "Variable declared without a type"
+                                          = do checkNoVar p d ctx v
+                                               assert (ctxIsTyped ctx) p "Variable declared without a type"
                                                assert (ctxIsSeq1 $ ctxParent ctx) p 
                                                       "Variable declaration is not allowed in this context"
 exprValidate1 _ _ _   ESeq{}              = return ()
@@ -326,14 +450,14 @@ exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
 ctxPHolderAllowed :: ECtx -> Bool
 ctxPHolderAllowed ctx = 
     case ctx of 
-         CtxSetL{}      -> True
-         CtxTyped{}     -> pres
-         CtxRuleL{}     -> True
-         CtxRuleRAtom{} -> True
-         CtxStruct{}    -> pres
-         CtxTuple{}     -> pres
-         CtxMatchPat{}  -> True
-         _              -> False
+         CtxSetL{}        -> True
+         CtxTyped{}       -> pres
+         CtxRuleRAtom{..} -> -- only positive literals
+                             rhsPolarity $ (ruleRHS ctxRule) !! ctxAtomIdx
+         CtxStruct{}      -> pres
+         CtxTuple{}       -> pres
+         CtxMatchPat{}    -> True
+         _                -> False
     where 
     par = ctxParent ctx
     pres = ctxPHolderAllowed par
@@ -352,8 +476,7 @@ exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do
          Just t  -> do case ctxExpectType d ctx of
                             Nothing -> return ()
                             Just t' -> assert (typesMatch d t t') (pos e) 
-                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t
-                                                {-++ " (context: " ++ show ctx ++ ")"-}
+                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t ++ " (context: " ++ show ctx ++ ")"
                        return t
          Nothing -> err (pos e) $ "Expression " ++ show e ++ " has unknown type in " ++ show ctx) 
 

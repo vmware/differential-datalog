@@ -52,3 +52,21 @@ stack ghci --ghci-options -isrc --ghci-options -itest differential-datalog:diffe
 ```
 
 and type `do main` in the command prompt.
+
+# Building with profiling info enabled
+
+```
+stack clean
+```
+
+followed by
+
+```
+stack build --profile
+```
+
+or 
+
+```
+stack test --profile
+```

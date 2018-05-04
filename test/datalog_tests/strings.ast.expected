@@ -14,23 +14,25 @@ function strings (): () =
             ()))))))))
 ground relation Strings (
     s: string)
-Strings("").
-Strings("foo").
-Strings("bar\n").
-Strings("\t\tbar").
-Strings("\"buzz").
-Strings("\r\abuzz").
-Strings("\\buzz").
-Strings("\\buzz").
-Strings("bar\916").
-Strings("").
-Strings("foo").
-Strings("foo\nbuzz\nbar").
-Strings("\n    foo\n    buzz\n    bar").
-Strings("bar\916\n\928").
-Strings("bar\916\n\928 quoted string").
-Strings("\n    foo\\r\n    buzz\n    bar").
-Strings("foo-bar").
-Strings("foo\nbar").
-Strings("foo\\bar").
-Strings("foo\\bar").
+Strings(.s="").
+Strings(.s="foo").
+Strings(.s="bar\n").
+Strings(.s="\t\tbar").
+Strings(.s="\"buzz").
+Strings(.s="\r\abuzz").
+Strings(.s="\\buzz").
+Strings(.s="\\buzz").
+Strings(.s="bar\916").
+Strings(.s="").
+Strings(.s="foo").
+Strings(.s="foo\nbuzz\nbar").
+Strings(.s="\n    foo\n    buzz\n    bar").
+Strings(.s="bar\916\n\928").
+Strings(.s="bar\916\n\928 quoted string").
+Strings(.s="\n    foo\\r\n    buzz\n    bar").
+Strings(.s="foo-bar").
+Strings(.s="foo\nbar").
+Strings(.s="foo\\bar").
+Strings(.s="foo\\bar").
+Strings(.s="word1 word2").
+Strings(.s="line1\nline2").

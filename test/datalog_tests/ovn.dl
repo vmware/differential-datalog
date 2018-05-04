@@ -762,25 +762,27 @@ Load_Balancer_ip_addresses(lb, ip_address_and_port_from_lb_key(key).ip)
  */
 relation Logical_Switch_Port_ips (
     logical_switch_port: uuid,
-    mac:                 bit<48>,
+    mac:                 mac_addr_t,
     ip:                  ip_addr_t
 )
 
 relation Logical_Switch_Port_macs (
     logical_switch_port: uuid,
-    mac:                 bit<48>
+    mac:                 mac_addr_t
 )
 
 function extract_ips(str: string): set_t<ip_addr_t>
 
+function extract_mac(str: string): (mac_addr_t, string)
+
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
-    (mac, ips) = extract_mac(addrs),
+    (var mac, var ips) = extract_mac(addrs),
     FlatMap(ip = extract_ips(ips)).
 
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_dynamic_addresses(lsp, addrs),
-    (mac, ips) = extract_mac(addrs),
+    (var mac, var ips) = extract_mac(addrs),
     FlatMap(ip = extract_ips(ips)).
 
 Logical_Switch_Port_macs(lsp, mac) :-
@@ -788,7 +790,7 @@ Logical_Switch_Port_macs(lsp, mac) :-
 
 /* Logical_Switch.has_stateful_acl
  */
-relation Logical_Switch_has_stateful_acl (
+relation Logical_Switch_has_stateful_acl_action (
     logical_switch:     uuid
 )
 
@@ -809,10 +811,13 @@ relation Logical_Switch_Port_ps_macs (
     mac:                 mac_addr_t
 )
 
+
+function extract_subnets(str: string): set_t<ip_subnet_t>
+
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),
-    extract_mac((lsp, addrs), (), (mac, ips)),
-    extract_subnets((ips), (), subnet).
+    (var mac, var ips) = extract_mac(addrs),
+    FlatMap(subnet = extract_subnets(ips)).
 
 Logical_Switch_Port_ps_macs(lsp, mac) :-
     Logical_Switch_Port_ps_ips(lsp, mac, _).
@@ -836,13 +841,15 @@ relation DHCP_Options_server_mac (
     server_mac:         mac_addr_t
 )
 
+function eth_addr_from_string(str: string): option_t<mac_addr_t>
+
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_mac", val),
-    Some{mac} = eth_addr_from_string(val).
+    Some{var mac} = eth_addr_from_string(val).
 
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_id", val),
-    Some{mac} = eth_addr_from_string(val).
+    Some{var mac} = eth_addr_from_string(val).
 
 /* DHCP_Options.server_ip
  */
@@ -851,15 +858,20 @@ relation DHCP_Options_server_ip (
     server_ip:          string
 )
 
+function ip_parse(str: string): option_t<ip_addr_t>
+
 DHCP_Options_server_ip(opts, val) :-
     DHCP_Options_options(opts, "server_id", val),
-    Some{ip4} = ip_parse(val).
+    Some{var ip4} = ip_parse(val).
+
+function in6_generate_lla(mac: mac_addr_t): ip6_addr_t
+function ipv6_string_mapped(addr: ip6_addr_t): string
 
 DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :-
     DHCP_Options_options(opts, "server_id", val),
     None = ip_parse(val),
-    Some{mac} = eth_addr_from_string(val),
-    lla = in6_generate_lla(mac).
+    Some{var mac} = eth_addr_from_string(val),
+    var lla = in6_generate_lla(mac).
 
 /* DHCP_Options.netmask
  */
@@ -867,6 +879,8 @@ relation DHCP_Options_netmask (
     dhcp_options:       uuid,
     netmask:            string
 )
+
+function build_dhcp_netmask(cidr: string): string
 
 DHCP_Options_netmask(opts, build_dhcp_netmask(cidr)) :-
     DHCP_Options(opts, cidr).

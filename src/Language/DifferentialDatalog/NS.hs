@@ -79,7 +79,7 @@ lookupVar d ctx n = find ((==n) . name) $ ctxAllVars d ctx
 
 checkVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me Field
 checkVar p d c n = case lookupVar d c n of
-                        Nothing -> err p $ "Unknown variable: " ++ n-- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map fst ls, map fst vs)) $ ctxVars r c)
+                        Nothing -> err p $ "Unknown variable: " ++ n -- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
                         Just v  -> return v
 
 getVar :: DatalogProgram -> ECtx -> String -> Field
@@ -125,11 +125,11 @@ ctxMVars d ctx =
     case ctx of
          CtxTop                   -> ([], [])
          CtxFunc f                -> ([], map f2mf $ funcArgs f)
-         CtxRuleL rl _ _          -> ([], map f2mf $ ruleVars rl)
-         CtxRuleRAtom rl i _      -> ([], map f2mf $ ruleRHSVars rl i)
-         CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars rl i)
-         CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars rl i)
-         CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars rl i)
+         CtxRuleL rl _ _          -> ([], map f2mf $ ruleVars d rl)
+         CtxRuleRAtom rl i _      -> ([], map f2mf $ ruleRHSVars d rl i)
+         CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
+         CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
+         CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxApply _ _ _           -> ([], plvars ++ prvars)
          CtxField _ _             -> (plvars, prvars)
          CtxStruct _ _ _          -> (plvars, prvars)
