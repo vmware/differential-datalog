@@ -1,0 +1,9 @@
+Failed to parse input file: "./test/datalog_tests/strings.fail.dl" (line 5, column 28):
+unexpected ";"
+"./test/datalog_tests/strings.fail.dl" (line 5, column 27):
+unexpected end of input
+expecting letter or digit, "_", operator, "+", "-" or "}"
+
+error: ./test/datalog_tests/strings.fail.dl:5:17-5:20: Incompatible types string and int
+
+error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1

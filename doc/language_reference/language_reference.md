@@ -204,7 +204,7 @@ expr ::= term
        | expr "-" expr
        | expr ">>" expr                  (*right shift*)
        | expr "<<" expr                  (*left shift*)
-       | expr "++" expr                  (*bitvector concatenation*)
+       | expr "++" expr                  (*concatenation (applies to bitvectors or strings)*)
        | expr "==" expr
        | expr "!=" expr
        | expr ">" expr
@@ -241,16 +241,17 @@ The following table lists operators order by decreasing priority.
 | Lowest | ;                       |
 
 ```EBNF
-term ::= "_"               (* wildcard *)
-       | int_literal       (* integer literal *)
-       | bool_literal      (* Boolean literal *)
-       | string_literal    (* string literal *)
-       | cons_term         (* type constructor invocation *)
-       | apply_term        (* function application *)
-       | var_term          (* variable reference *)
-       | match_term        (* match term *)
-       | ite_term          (* if-then-else term *)
-       | vardecl_term      (* local variable declaration *)
+term ::= "_"                 (* wildcard *)
+       | int_literal         (* integer literal *)
+       | bool_literal        (* Boolean literal *)
+       | string_literal      (* string literal *)
+       | interpolated_string (* string literal *)
+       | cons_term           (* type constructor invocation *)
+       | apply_term          (* function application *)
+       | var_term            (* variable reference *)
+       | match_term          (* match term *)
+       | ite_term            (* if-then-else term *)
+       | vardecl_term        (* local variable declaration *)
 ```
 
 **Integer literal syntax is currently arcane and will be changed to
@@ -265,13 +266,38 @@ int_literal  ::= decimal
 width ::= decimal
 ```
 
-**We rely on parsec's standard parser for strings, which
+We support two types of UTF-8 string literals: quoted strings with escaping,
+e.g., `"foo\nbar"`
+(**We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
-functionality.**
+functionality.**) and raw strings where all characters, including backslash and 
+line breaks are interpreted as is:
 
 ```EBNF
-string_literal   ::= '"' UTF-8 string with escaping '"' 
+string_literal   ::= ( '"' utf8_character* '"' 
+                     | "[|" utf8_character* "|]")+
 ```
+
+Multiple string literals are automatically concatenated, e.g.,
+`"foo" [|bar|]` is equivalent to `"foobar"`.
+
+Interpolated strings are string literals, that can contain
+expressions inside curly brackets, whose values are substituted at runtime. 
+Interpolated strings are preceded by the `$` character (syntax
+borrowed from C#).
+
+```EBNF
+interpolated_string ::= ( '$"' utf8_character* '"' 
+                        | "$[|" utf8_character* "|]")+
+```
+
+For example,
+`$"x: {x}, y: {y}, f(x): {f(x)}"` is equivalent to 
+`"x: " ++ x ++ ", y: " ++ y ++ ", f(x): " ++ f(x)`.
+
+Expressions in curly brackets can be arbitrarily complex, as long as
+they produce results of type `string`, e.g.:
+`$[|foo{var x = "bar"; x}|]` will evaluate to "foobar" at runtime.
 
 Other terms:
 

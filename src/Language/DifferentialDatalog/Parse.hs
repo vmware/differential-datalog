@@ -305,6 +305,7 @@ term' = withPos $
      <|> eint
      <|> ebool
      <|> estring
+     <|> einterpolated_string
      <|> evar
      <|> ematch
      <|> eite
@@ -348,7 +349,47 @@ namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
 --eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
-estring = eString <$> stringLit
+estring = (eString . concat) <$> 
+          many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace)))
+
+-- Parse interpolated strings, converting them to string concatenation
+-- expressions.
+-- First, parse as normal string literal;
+-- then apply a separate parser to the resulting string to extract 
+-- interpolated expressions.
+einterpolated_string = einterpolated_quoted_string <|> einterpolated_raw_string
+
+einterpolated_quoted_string = do
+    p <- try $ lookAhead $ do {string "$\""; getPosition}
+    str <- char '$' *> stringLit
+    case parse (interpolate p) "" str of
+         Left  er -> fail $ show er
+         Right ex -> return ex
+
+einterpolated_raw_string  = do
+    try $ string "$[|"
+    p <- getPosition
+    str <- manyTill anyChar (try $ string "|]" *> whiteSpace)
+    case parse (interpolate p) "" str of
+         Left  er -> fail $ show er
+         Right ex -> return ex
+
+interpolate p = do
+    setPosition p
+    interpolate' Nothing
+
+interpolate' mprefix = do
+    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ char '{'; return ()})
+    let prefix' = maybe str
+                        (\prefix -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
+                        mprefix
+    (do eof
+        return prefix'
+     <|>
+     do e <- char '{' *> whiteSpace *> expr <* char '}'
+        p <- getPosition
+        interpolate' $ (Just $ E $ EBinOp (fst $ pos prefix', p) Concat prefix' e))
+
 estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
 
 eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width

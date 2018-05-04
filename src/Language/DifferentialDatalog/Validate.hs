@@ -398,13 +398,16 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Div    -> do {isint1; isint2}
         BAnd   -> do {m; isbit1}
         BOr    -> do {m; isbit1}
+        Concat | isString d e1 
+               -> do {m; isstr2}
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
-          isint1 = assert (isInt d e1 || isBit d e1) (pos e1) $ "Not an integer"
-          isint2 = assert (isInt d e2 || isBit d e2) (pos e2) $ "Not an integer"
-          isbit1 = assert (isBit d e1) (pos e1) $ "Not a bit vector"
-          isbit2 = assert (isBit d e2) (pos e2) $ "Not a bit vector"
-          isbool = assert (isBool d e1) (pos e1) $ "Not a Boolean"
+          isint1 = assert (isInt d e1 || isBit d e1) (pos e1) "Not an integer"
+          isint2 = assert (isInt d e2 || isBit d e2) (pos e2) "Not an integer"
+          isbit1 = assert (isBit d e1) (pos e1) "Not a bit vector"
+          isbit2 = assert (isBit d e2) (pos e2) "Not a bit vector"
+          isstr2 = assert (isString d e2) (pos e2) "Not a string"
+          isbool = assert (isBool d e1) (pos e1) "Not a Boolean"
 
 exprValidate2 d _   (EUnOp _ BNeg e)    = 
     assert (isBit d e) (pos e) "Not a bit vector"

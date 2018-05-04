@@ -31,7 +31,7 @@ module Language.DifferentialDatalog.Type(
 --    exprTypes,
     exprTraverseTypeM,
     typ', typ'',
-    isBool, isBit, isInt, isStruct, isTuple,
+    isBool, isBit, isInt, isString, isStruct, isTuple,
     checkTypesMatch,
     typesMatch,
     ctxExpectType,
@@ -231,6 +231,8 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
          ShiftL -> Just t1
          BAnd   -> Just t1
          BOr    -> Just t1
+         Concat | isString d e1
+                -> Just tString
          Concat -> Just $ tBit (typeWidth t1 + typeWidth t2)
     where t1 = typ' d e1
           t2 = typ' d e2
@@ -301,6 +303,11 @@ isInt :: (WithType a) => DatalogProgram -> a -> Bool
 isInt d a = case typ' d a of
                  TInt _ -> True
                  _      -> False
+
+isString :: (WithType a) => DatalogProgram -> a -> Bool
+isString d a = case typ' d a of
+                    TString _ -> True
+                    _      -> False
 
 isStruct :: (WithType a) => DatalogProgram -> a -> Bool
 isStruct d a = case typ' d a of
