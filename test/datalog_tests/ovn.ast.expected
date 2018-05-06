@@ -8,8 +8,10 @@ typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet
 typedef mac_addr_t = bit<48>
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
+typedef set<'A>
 typedef set_t<'A>
 typedef uuid = bit<128>
+function __builtin_2string (x: 'X): string
 function build_dhcp_netmask (cidr: string): string
 function eth_addr_from_string (str: string): option_t<mac_addr_t>
 function extract_ips (str: string): set_t<ip_addr_t>

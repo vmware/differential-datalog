@@ -24,3 +24,25 @@ function strings(): () = {
     var err = $"{str2++str1}"; // str1 is not declared in this scope
     ()
 }
+
+//---
+
+typedef serializable_t = ConsInt {x: int}
+                       | ConsBit {y: bit<32>}
+                       | ConsBool{z: bool}
+                       | Cons0{}
+
+// error: argument type must be serializable_t
+function serializable_t2string(x: int): string = {
+    "foo"
+}
+
+function tostring2(): () = {
+    var a: int     = 5;
+    var b: bit<32> = 5;
+    var c: bool    = true;
+    var d: string  = "foo";
+    var e: serializable_t = ConsInt{0};
+    var err = $"a={a}, b={b}, c={c}, d={d}, e:{e}"; 
+    ()
+}

@@ -2,6 +2,9 @@ typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef C = C{f1: string, f2: string}
 typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
+typedef set<'A>
+typedef string_syn = string
+function __builtin_2string (x: 'X): string
 function a0 (): int =
     1
 function a1 (): int =
@@ -33,6 +36,7 @@ function fnested (x: nested_t): string =
      res)
 function g (a: int): int
 function h (a: (int, int)): (int, int)
+function parameterized (x: 'A,y: 'A): 'A
 function patterns (): () =
     ((var a: Alt) = C0{.x=1};
      (var b = match (a) {
@@ -54,6 +58,8 @@ function shadow (): string =
           Some{.value=var v} -> v,
           None{} -> ""
       }))
+function use_parameterized (x: string,y: string_syn): string =
+    parameterized(x, y)
 function v (): string =
     ((var v1: string) = "hello";
      (var v2 = "there";

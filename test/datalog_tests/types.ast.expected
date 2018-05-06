@@ -1,5 +1,6 @@
 typedef T16 = t15
 typedef T17 = int
+typedef set<'A>
 typedef t00 = int
 typedef t01 = bool
 typedef t02 = string
@@ -18,3 +19,4 @@ typedef t14 = (t04, t04)
 typedef t15 = Const15{f: int}
 typedef t18 = Const18{f0: int, f1: string, f2: t00}
 typedef t19 = C0{f0: int} | C1{f0: int} | C2{f0: int}
+function __builtin_2string (x: 'X): string

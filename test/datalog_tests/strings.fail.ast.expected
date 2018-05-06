@@ -4,6 +4,8 @@ unexpected ";"
 unexpected end of input
 expecting letter or digit, "_", operator, "+", "-" or "}"
 
-error: ./test/datalog_tests/strings.fail.dl:5:17-5:20: Incompatible types string and int
+error: ./test/datalog_tests/strings.fail.dl:7:18-7:19: Cannot find declaration of function type12string needed to convert expression x to string
 
 error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1
+
+error: ./test/datalog_tests/strings.fail.dl:9:1-13:1: string conversion function "serializable_t2string" must take argument of type serializable_t
