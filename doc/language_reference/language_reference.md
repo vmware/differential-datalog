@@ -335,6 +335,45 @@ pattern ::= (* tuple pattern *)
           | "_"             (* wildcard, matches any value *)
 ```
 
+### Automatic string conversion
+
+The compiler automatically inserts code to convert abitrary values to strings when they occur
+inside interpolated strings or as a second argument to string concatenation.  
+Values of primitive types (`string`, `int`, `bit`, and `bool`) are converted using 
+builtin function
+```
+function __builtin_2string(x:'A): string
+```
+
+For example, the assignment statement in
+```
+x: int;
+y = $"x:{x}";
+```
+is equivalent to:
+```
+y = $"x:{__builtin_2string(x)}";
+```
+
+For user-defined types, the compiler injects a call to a function whose name is formed from
+the type name by changing the first letter of the type name to lower case (if it is in upper case) 
+and adding the `"2string"` suffix.  The function must take exactly one 
+argument of the given type and return a string.  
+Compilation fails if a function with this name and signature is not found.
+
+For example, the last statement in
+```
+typedef udf_t = Cons1 | Cons2{f: int}
+function udf_t2string(x: udf_t): string = ...
+x: udf_t;
+
+y = $"x:{x}";
+```
+is equivalent to:
+```
+y = $"x:{udf_t2string(x)}";
+```
+
 ### Constraints on expressions
 
 1. Number and types of arguments to a function must match function
