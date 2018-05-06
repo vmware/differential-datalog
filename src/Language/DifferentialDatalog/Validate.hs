@@ -31,6 +31,7 @@ import qualified Data.Set as S
 import Control.Monad.Except
 import Data.Maybe
 import Data.List
+import Data.Char
 import qualified Data.Graph.Inductive as G
 import qualified Data.Graph.Inductive.Query as G
 import Debug.Trace
@@ -537,8 +538,8 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
                   TInt{}      -> return bUILTIN_2STRING_FUNC
                   TString{}   -> return bUILTIN_2STRING_FUNC
                   TBit{}      -> return bUILTIN_2STRING_FUNC
-                  TUser{..}   -> return $ typeName ++ tOSTRING_FUNC_SUFFIX 
-                  TOpaque{..} -> return $ typeName ++ tOSTRING_FUNC_SUFFIX
+                  TUser{..}   -> return $ mk2string_func typeName
+                  TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
                   TVar{..}    -> err (pos r) $ 
                                      "Cannot automatically convert " ++ show r ++ 
@@ -561,6 +562,7 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
     return $ E $ EBinOp p Concat l r'
     where te = exprType'' d ctx $ E e
           tr = exprType'' d (CtxBinOpR e ctx) r
+          mk2string_func (c:cs) = ((toLower c) : cs) ++ tOSTRING_FUNC_SUFFIX
 
 exprInjectStringConversions _ _   e = return $ E e
 
