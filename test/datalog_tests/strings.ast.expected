@@ -1,5 +1,16 @@
+typedef serializable_t = ConsInt{x: int} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
+typedef set<'A>
+function __builtin_2string (x: 'X): string
 function dummy (x: string): string =
     (x ++ " dummy")
+function serializable_t2string (x: serializable_t): string =
+    match (x) {
+        ConsInt{.x=var v} -> (("ConsInt(" ++ __builtin_2string(v)) ++ ")"),
+        ConsBit{.y=var v} -> (("ConsBool(" ++ __builtin_2string(v)) ++ ")"),
+        ConsBool{.z=true} -> "ConsBool(true)",
+        ConsBool{.z=false} -> "ConsBool(false)",
+        Cons0{} -> "Cons0"
+    }
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");
@@ -12,6 +23,21 @@ function strings (): () =
            (var str8 = (("" ++ (var x = (str1 ++ str2);
                                 dummy(x))) ++ "");
             ()))))))))
+function tostring1 (): () =
+    ((var a: int) = 5;
+     ((var b: bit<32>) = 5;
+      ((var c: bool) = true;
+       ((var d: string) = "foo";
+        (var err = (((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ "");
+         ())))))
+function tostring2 (): () =
+    ((var a: int) = 5;
+     ((var b: bit<32>) = 5;
+      ((var c: bool) = true;
+       ((var d: string) = "foo";
+        ((var e: serializable_t) = ConsInt{.x=0};
+         (var err = (((((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
+          ()))))))
 ground relation Strings (
     s: string)
 Strings(.s="").

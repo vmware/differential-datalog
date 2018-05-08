@@ -27,7 +27,8 @@ module Language.DifferentialDatalog.Type(
     WithType(..),
     typeUserTypes,
     typeIsPolymorphic,
-    exprType, exprType', exprTypeMaybe, exprNodeType,
+    unifyTypes,
+    exprType, exprType', exprType'', exprTypeMaybe, exprNodeType,
 --    exprTypes,
     exprTraverseTypeM,
     typ', typ'',
@@ -143,6 +144,10 @@ exprType d ctx e = maybe (error $ "exprType: expression " ++ show e ++ " has unk
 -- | Like 'exprType', but also applies 'typ'' to result.
 exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 exprType' d ctx e = typ' d $ exprType d ctx e
+
+-- | Like 'exprType', but also applies 'typ''' to result.
+exprType'' :: DatalogProgram -> ECtx -> Expr -> Type
+exprType'' d ctx e = typ'' d $ exprType d ctx e
 
 -- | Version of exprType that returns 'Nothing' if the type is not
 -- known.  Can be used during validation.
@@ -329,8 +334,8 @@ isTuple d a = case typ' d a of
 -- throw exception if they don't.
 checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()
 checkTypesMatch p d x y = 
-    assert (typesMatch d x y) p 
-           $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
+    check (typesMatch d x y) p 
+          $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
 
 
 -- | True iff 'a' and 'b' have idential types up to type aliasing.

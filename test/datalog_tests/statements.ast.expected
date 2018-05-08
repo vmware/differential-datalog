@@ -1,3 +1,5 @@
+typedef set<'A>
+function __builtin_2string (x: 'X): string
 relation W (
     f1: int,
     f2: int,

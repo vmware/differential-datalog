@@ -29,6 +29,7 @@ dependencies:
 - fgl
 - split
 - MissingH
+- raw-strings-qq
 
 library:
   source-dirs: src

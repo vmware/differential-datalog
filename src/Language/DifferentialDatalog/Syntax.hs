@@ -87,6 +87,7 @@ module Language.DifferentialDatalog.Syntax (
         Function(..),
         funcTypeVars,
         DatalogProgram(..),
+        emptyDatalogProgram,
         progStructs,
         progConstructors,
         progDependencyGraph,
@@ -630,7 +631,7 @@ data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
                                      , progRelations :: M.Map String Relation
                                      , progRules     :: [Rule]
-                                     , statements    :: [Statement]
+                                     , progStatements:: [Statement]
                                      }
                       deriving (Eq)
 
@@ -644,7 +645,7 @@ instance PP DatalogProgram where
                              ++
                              (map pp $ progRules)
                              ++
-                             (map pp $ statements))
+                             (map pp $ progStatements))
 
 instance Show DatalogProgram where
     show = render . pp
@@ -658,6 +659,13 @@ progStructs DatalogProgram{..} =
 
 progConstructors :: DatalogProgram -> [Constructor]
 progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs
+
+emptyDatalogProgram :: DatalogProgram
+emptyDatalogProgram = DatalogProgram { progTypedefs   = M.empty
+                                     , progFunctions  = M.empty
+                                     , progRelations  = M.empty
+                                     , progRules      = []
+                                     , progStatements = [] }
 
 -- | Dependency graph among program relations.  An edge from Rel1 to
 -- Rel2 means that there is a rule with Rel1 in the right-hand-side,

@@ -3,4 +3,6 @@ unexpected 't'
 expecting "typedef", "ground", "relation", "function", identifier, "for" or end of input
 
 typedef f = int
+typedef set<'A>
+function __builtin_2string (x: 'X): string
 function f (): int

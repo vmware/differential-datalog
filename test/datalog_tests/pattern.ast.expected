@@ -1,6 +1,8 @@
 typedef T1 = C11{f1: int, f2: (int, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T2 = C21{f1: T1, f2: int} | C22{f3: (bool, T1)}
 typedef T3 = C31{f1: T1, f2: int, s: string, b: bit<32>} | C32{f3: ((bool, (bool, bool, bool)), T1)}
+typedef set<'A>
+function __builtin_2string (x: 'X): string
 function f1 (x: T1,y: T2,q: T3): bool =
     (match (x) {
          C11{.f1=_, .f2=_} -> true,

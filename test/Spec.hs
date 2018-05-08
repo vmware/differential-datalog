@@ -32,6 +32,7 @@ import Control.Exception
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
+import Language.DifferentialDatalog.Preamble
 
 main :: IO ()
 main = defaultMain =<< goldenTests
@@ -47,7 +48,7 @@ goldenTests = do
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do 
-    d <- parseDatalogString program file
+    d <- parseDatalogString True program file
     case validate d of 
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'
@@ -80,7 +81,7 @@ testParser fname ofname = do
         prog <- parseValidate fname body
         writeFile ofname (show prog ++ "\n")
         -- parse reference output
-        prog' <- parseDatalogFile ofname
+        prog' <- parseDatalogFile False ofname
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
     return ()
