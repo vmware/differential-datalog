@@ -45,8 +45,8 @@ if' False _ y = y
 err :: (MonadError String me) => Pos -> String -> me a
 err p e = throwError $ spos p ++ ": " ++ e
 
-assert :: (MonadError String me) => Bool -> Pos -> String -> me ()
-assert b p m =
+check :: (MonadError String me) => Bool -> Pos -> String -> me ()
+check b p m =
     if b
        then return ()
        else err p m

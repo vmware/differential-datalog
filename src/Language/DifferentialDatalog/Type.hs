@@ -334,8 +334,8 @@ isTuple d a = case typ' d a of
 -- throw exception if they don't.
 checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()
 checkTypesMatch p d x y = 
-    assert (typesMatch d x y) p 
-           $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
+    check (typesMatch d x y) p 
+          $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
 
 
 -- | True iff 'a' and 'b' have idential types up to type aliasing.
