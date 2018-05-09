@@ -28,9 +28,10 @@ module Language.DifferentialDatalog.Type(
     typeUserTypes,
     typeIsPolymorphic,
     unifyTypes,
-    exprType, exprType', exprType'', exprTypeMaybe, exprNodeType,
---    exprTypes,
-    exprTraverseTypeM,
+    exprType,
+    exprType',
+    exprType'',
+    exprNodeType,
     typ', typ'',
     isBool, isBit, isInt, isString, isStruct, isTuple,
     checkTypesMatch,
@@ -101,39 +102,40 @@ typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 -- Concrete and abstract type variables belong to different
 -- namespaces (i.e., the same name represents different variables in
 -- concrete and abstract types). 
-unifyTypes :: DatalogProgram -> [(Type, Type)] -> Maybe (M.Map String Type)
-unifyTypes d ts = do
-    m0 <- M.unionsWith (++) <$> mapM ((M.map return <$>) . unifyTypes' d) ts
-    M.traverseWithKey (\_ ts -> checkConflicts d ts) m0
+unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
+unifyTypes d p ctx ts = do
+    m0 <- M.unionsWith (++) <$> mapM ((M.map return <$>) . unifyTypes' d p ctx) ts
+    M.traverseWithKey (\v ts -> checkConflicts d p ctx v ts) m0
 
-checkConflicts :: DatalogProgram -> [Type] -> Maybe Type
-checkConflicts d (t:ts) = do
-    mapM (\t' -> when (not $ typesMatch d t t') Nothing) ts
+checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
+checkConflicts d p ctx v (t:ts) = do
+    mapM (\t' -> when (not $ typesMatch d t t') 
+                      $ err p $ "Conflicting types " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
     return t
 
-unifyTypes' :: DatalogProgram -> (Type, Type) -> Maybe (M.Map String Type)
-unifyTypes' d (a, c) =
+unifyTypes' :: (MonadError String me) => DatalogProgram -> Pos -> String -> (Type, Type) -> me (M.Map String Type)
+unifyTypes' d p ctx (a, c) =
     case (a',c') of
-        (TBool{}         , TBool{})          -> Just M.empty
-        (TInt{}          , TInt{})           -> Just M.empty
-        (TString{}       , TString{})        -> Just M.empty
+        (TBool{}         , TBool{})          -> return M.empty
+        (TInt{}          , TInt{})           -> return M.empty
+        (TString{}       , TString{})        -> return M.empty
         (TBit _ w1       , TBit _ w2)        | w1 == w2 
-                                             -> Just M.empty 
+                                             -> return M.empty 
         (TTuple _ as1    , TTuple _ as2)     | length as1 == length as2 
-                                             -> unifyTypes d $ zip as1 as2
+                                             -> unifyTypes d p ctx $ zip as1 as2
         (TUser _ n1 as1  , TUser _ n2 as2)   | n1 == n2
-                                             -> unifyTypes d $ zip as1 as2
+                                             -> unifyTypes d p ctx $ zip as1 as2
         (TOpaque _ n1 as1, TOpaque _ n2 as2) | n1 == n2
-                                             -> unifyTypes d $ zip as1 as2
-        (TVar _ n1       , t)                -> Just $ M.singleton n1 t
-        _                                    -> Nothing
+                                             -> unifyTypes d p ctx $ zip as1 as2
+        (TVar _ n1       , t)                -> return $ M.singleton n1 t
+        _                                    -> err p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx  
     where a' = typ'' d a
           c' = typ'' d c
 
 -- | Visitor pattern implementation that carries type information
 -- through the syntax tree.
-exprTraverseTypeM :: (Monad m) => DatalogProgram -> (ECtx -> ExprNode (Maybe Type) -> m ()) -> ECtx -> Expr -> m ()
-exprTraverseTypeM d = exprTraverseCtxWithM (\ctx e -> return $ exprNodeType d ctx e)
+--exprTraverseTypeM :: (Monad m) => DatalogProgram -> (ECtx -> ExprNode (Maybe Type) -> m ()) -> ECtx -> Expr -> m ()
+--exprTraverseTypeM d = exprTraverseCtxWithM (\ctx e -> return $ exprNodeType d ctx e)
 
 -- | Compute type of an expression.  The expression must be previously validated
 -- to make sure that it has an unambiguous type.
@@ -152,18 +154,24 @@ exprType'' d ctx e = typ'' d $ exprType d ctx e
 -- | Version of exprType that returns 'Nothing' if the type is not
 -- known.  Can be used during validation.
 exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type
-exprTypeMaybe d ctx e = exprFoldCtx (\ctx' e' -> fmap ((flip atPos) (pos e')) $ exprNodeType d ctx' e') ctx e
+exprTypeMaybe d ctx e = 
+    exprFoldCtx (\ctx' e' -> 
+                  case exprNodeType' d ctx' e' of
+                       Left _  -> Nothing
+                       Right t -> Just $ atPos t (pos e')) 
+                ctx e
 
-exprNodeType :: DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> Maybe Type
-exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx e
+-- | Compute expression node type; fail if type is undefined or there
+-- is a conflict.
+exprNodeType :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me Type
+exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMap Just e)
 
+funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
+funcTypeArgSubsts d p f@Function{..} argtypes = 
+    unifyTypes d p ("in call to function " ++ funcShowProto f) (zip (map typ funcArgs) argtypes)
 
-funcTypeArgSubsts :: DatalogProgram -> String -> [Type] -> Maybe (M.Map String Type)
-funcTypeArgSubsts d fname argtypes = unifyTypes d (zip (map typ funcArgs) argtypes)
-    where Function{..} = getFunc d fname
-
-structTypeArgs :: DatalogProgram -> ECtx -> String -> [(String, Type)] -> Maybe [Type]
-structTypeArgs d ctx cname argtypes = do
+structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
+structTypeArgs d p ctx cname argtypes = do
     let TypeDef{..} = consType d cname
         Constructor{..} = getConstructor d cname
     let -- Try to extract type variable bindings from expected type;
@@ -171,91 +179,106 @@ structTypeArgs d ctx cname argtypes = do
                    Just (TUser _ n as) | n == tdefName 
                                        -> zip (map tVar tdefArgs) as
                    _                   -> []
-    subst <- unifyTypes d $ exp ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
-    mapM (\a -> M.lookup a subst) tdefArgs
+    subst <- unifyTypes d p ("in type constructor " ++ cname) 
+                        $ exp ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
+    mapM (\a -> case M.lookup a subst of
+                     Nothing -> err p $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++ 
+                                        " to a concrete type in a call to type constructor " ++ cname
+                     Just t  -> return t)
+         tdefArgs
 
-exprNodeType' :: DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> Maybe Type
-exprNodeType' d ctx (EVar _ v)            = 
+eunknown :: (MonadError String me) => Pos -> ECtx -> me Type
+eunknown p ctx = err p $ "Expression has unknown type in " ++ show ctx
+
+mtype2me :: (MonadError String me) => Pos -> ECtx -> Maybe Type -> me Type
+mtype2me p ctx Nothing  = err p $ "Expression has unknown type in " ++ show ctx
+mtype2me _ _   (Just t) = return t
+
+exprNodeType' :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> me Type
+exprNodeType' d ctx e@(EVar p v)            = 
     let (lvs, rvs) = ctxMVars d ctx in
     case lookup v $ lvs ++ rvs of
-         Just mt -> mt
+         Just mt -> mtype2me p ctx mt
          Nothing | ctxInRuleRHSPattern ctx -- handle implicit vardecls in rules
-                 -> ctxExpectType d ctx
-         _       -> Nothing
+                 -> mtype2me p ctx $ ctxExpectType d ctx
+         _       -> eunknown p ctx
 
-exprNodeType' d _   (EApply _ f mas)      = do
-    let t = funcType $ getFunc d f 
-    as <- sequence mas
-    subst <- funcTypeArgSubsts d f as
+exprNodeType' d ctx (EApply p f mas)      = do
+    let func = getFunc d f
+    let t = funcType func
+    as <- mapM (mtype2me p ctx) mas
+    subst <- funcTypeArgSubsts d p func as
     return $ typeSubstTypeArgs subst t
 
-exprNodeType' d _   (EField _ Nothing f)  = Nothing
+exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx
 
-exprNodeType' d _   (EField _ (Just e) f) = do
+exprNodeType' d _   (EField p (Just e) f) = do
     let TStruct _ cs = typ' d e
-    fieldType <$> find ((==f) . name) (concatMap consArgs cs)
+    case find ((==f) . name) (concatMap consArgs cs) of
+         Nothing  -> err p $ "Unknown field " ++ f
+         Just fld -> return $ fieldType fld
 
-exprNodeType' _ _   (EBool _ _)           = Just tBool
+exprNodeType' _ _   (EBool _ _)           = return tBool
 
-exprNodeType' d ctx (EInt _ _)            = do
-    expect <- ctxExpectType' d ctx
+exprNodeType' d ctx (EInt p _)            = do
+    expect <- mtype2me p ctx $ ctxExpectType' d ctx
     case expect of
          t@(TBit _ _) -> return t
          t@(TInt _)   -> return t
-         _            -> Nothing
+         _            -> eunknown p ctx
 
-exprNodeType' _ _   (EString _ _)         = Just tString
-exprNodeType' _ _   (EBit _ w _)          = Just $ tBit w
+exprNodeType' _ _   (EString _ _)         = return tString
+exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
 
-exprNodeType' d ctx (EStruct _ c mas)     = do
+exprNodeType' d ctx (EStruct p c mas)     = do
     let tdef = consType d c
-    as <- mapM (\(f, mt) -> (f,) <$> mt) mas
-    targs <- structTypeArgs d ctx c as
+    as <- mapM (\(f, mt) -> (f,) <$> mtype2me p ctx mt) mas
+    targs <- structTypeArgs d p ctx c as
     return $ tUser (name tdef) targs
 
-exprNodeType' _ _   (ETuple _ fs)         = fmap tTuple $ sequence fs
-exprNodeType' _ _   (ESlice _ _ h l)      = Just $ tBit $ h - l + 1
-exprNodeType' d _   (EMatch _ _ cs)       = (fromJust . snd) <$> find (isJust . snd) cs
-exprNodeType' d ctx (EVarDecl _ _)        = ctxExpectType d ctx
-exprNodeType' _ _   (ESeq _ _ e2)         = e2
-exprNodeType' d _   (EITE _ _ Nothing e)  = e
-exprNodeType' d _   (EITE _ _ (Just t) e) = Just t
-exprNodeType' _ _   (ESet _ _ _)          = Just $ tTuple []
+exprNodeType' _ ctx (ETuple p fs)         = fmap tTuple $ mapM (mtype2me p ctx) fs
+exprNodeType' _ _   (ESlice _ _ h l)      = return $ tBit $ h - l + 1
+exprNodeType' d ctx (EMatch p _ cs)       = mtype2me p ctx $ (fromJust . snd) <$> find (isJust . snd) cs
+exprNodeType' d ctx (EVarDecl p _)        = mtype2me p ctx $ ctxExpectType d ctx
+exprNodeType' _ ctx (ESeq p _ e2)         = mtype2me p ctx e2
+exprNodeType' d ctx (EITE p _ Nothing e)  = mtype2me p ctx e
+exprNodeType' d ctx (EITE _ _ (Just t) e) = return t
+exprNodeType' _ _   (ESet _ _ _)          = return $ tTuple []
 
 exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
     case op of
-         Eq     -> Just tBool
-         Neq    -> Just tBool
-         Lt     -> Just tBool
-         Gt     -> Just tBool
-         Lte    -> Just tBool
-         Gte    -> Just tBool
-         And    -> Just tBool
-         Or     -> Just tBool
-         Impl   -> Just tBool
-         Plus   -> Just $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
-         Minus  -> Just $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
-         Mod    -> Just t1
-         Times  -> Just t1
-         Div    -> Just t1
-         ShiftR -> Just t1
-         ShiftL -> Just t1
-         BAnd   -> Just t1
-         BOr    -> Just t1
+         Eq     -> return tBool
+         Neq    -> return tBool
+         Lt     -> return tBool
+         Gt     -> return tBool
+         Lte    -> return tBool
+         Gte    -> return tBool
+         And    -> return tBool
+         Or     -> return tBool
+         Impl   -> return tBool
+         Plus   -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
+         Minus  -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
+         Mod    -> return t1
+         Times  -> return t1
+         Div    -> return t1
+         ShiftR -> return t1
+         ShiftL -> return t1
+         BAnd   -> return t1
+         BOr    -> return t1
          Concat | isString d e1
-                -> Just tString
-         Concat -> Just $ tBit (typeWidth t1 + typeWidth t2)
+                -> return tString
+         Concat -> return $ tBit (typeWidth t1 + typeWidth t2)
     where t1 = typ' d e1
           t2 = typ' d e2
 
-exprNodeType' _ _   (EBinOp _ ShiftR e1 _) = e1
-exprNodeType' _ _   (EBinOp _ ShiftL e1 _) = e1
-exprNodeType' _ _   (EBinOp _ _ _ _)       = Nothing
-exprNodeType' _ _   (EUnOp _ Not _)        = Just tBool
-exprNodeType' d _   (EUnOp _ BNeg (Just e))= Just $ typ' d e
-exprNodeType' _ _   (EUnOp _ _ _)          = Nothing
-exprNodeType' d ctx (EPHolder _)           = ctxExpectType d ctx
-exprNodeType' _ _   (ETyped _ _ t)         = Just t
+exprNodeType' _ ctx (EBinOp p ShiftR e1 _) = mtype2me p ctx e1
+exprNodeType' _ ctx (EBinOp p ShiftL e1 _) = mtype2me p ctx e1
+exprNodeType' _ ctx (EBinOp p _ _ _)       = eunknown p ctx
+exprNodeType' _ _   (EUnOp _ Not _)        = return tBool
+exprNodeType' d _   (EUnOp _ BNeg (Just e))= return $ typ' d e
+exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
+exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
+exprNodeType' _ _   (ETyped _ _ t)         = return t
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
 --exprTypes r ctx e = nub $ execState (exprTraverseTypeM r (\ctx' e' -> modify ((fromJust $ exprNodeType r ctx' e'):)) ctx e) []

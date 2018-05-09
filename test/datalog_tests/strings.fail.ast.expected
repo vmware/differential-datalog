@@ -8,4 +8,4 @@ error: ./test/datalog_tests/strings.fail.dl:7:18-7:19: Cannot find declaration o
 
 error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1
 
-error: ./test/datalog_tests/strings.fail.dl:9:1-13:1: string conversion function "serializable_t2string" must take argument of type serializable_t
+error: ./test/datalog_tests/strings.fail.dl:19:17-19:50: Cannot match expected type int and actual type serializable_t in the call to string conversion function "serializable_t2string"
