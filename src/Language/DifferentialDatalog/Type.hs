@@ -168,7 +168,7 @@ exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMa
 
 funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
 funcTypeArgSubsts d p f@Function{..} argtypes = 
-    unifyTypes d p ("in call to function " ++ funcShowProto f) (zip (map typ funcArgs) argtypes)
+    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs) argtypes)
 
 structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
 structTypeArgs d p ctx cname argtypes = do
