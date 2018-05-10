@@ -110,7 +110,7 @@ unifyTypes d p ctx ts = do
 checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
 checkConflicts d p ctx v (t:ts) = do
     mapM (\t' -> when (not $ typesMatch d t t') 
-                      $ err p $ "Conflicting types " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
+                      $ err p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
     return t
 
 unifyTypes' :: (MonadError String me) => DatalogProgram -> Pos -> String -> (Type, Type) -> me (M.Map String Type)
@@ -131,11 +131,6 @@ unifyTypes' d p ctx (a, c) =
         _                                    -> err p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx  
     where a' = typ'' d a
           c' = typ'' d c
-
--- | Visitor pattern implementation that carries type information
--- through the syntax tree.
---exprTraverseTypeM :: (Monad m) => DatalogProgram -> (ECtx -> ExprNode (Maybe Type) -> m ()) -> ECtx -> Expr -> m ()
---exprTraverseTypeM d = exprTraverseCtxWithM (\ctx e -> return $ exprNodeType d ctx e)
 
 -- | Compute type of an expression.  The expression must be previously validated
 -- to make sure that it has an unambiguous type.
