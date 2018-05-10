@@ -437,15 +437,13 @@ checkNoVar p d ctx v = check (isNothing $ lookupVar d ctx v) p
 -- have well-defined types that match their context
 exprTraverseTypeME :: (MonadError String me) => DatalogProgram -> (ECtx -> ExprNode Type -> me ()) -> ECtx -> Expr -> me ()
 exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do 
-    let e' = exprMap Just e
     --trace ("exprTraverseTypeME " ++ show ctx ++ "\n    " ++ show e) $ return ()
-    case exprNodeType d ctx e' of
-         Just t  -> do case ctxExpectType d ctx of
-                            Nothing -> return ()
-                            Just t' -> check (typesMatch d t t') (pos e) 
-                                              $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t ++ " (context: " ++ show ctx ++ ")"
-                       return t
-         Nothing -> err (pos e) $ "Expression " ++ show e ++ " has unknown type in " ++ show ctx) 
+    t <- exprNodeType d ctx e
+    case ctxExpectType d ctx of
+         Nothing -> return ()
+         Just t' -> check (typesMatch d t t') (pos e) 
+                          $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t ++ " (context: " ++ show ctx ++ ")"
+    return t)
 
 exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me ()
 exprValidate2 d ctx (EField p e f)      = do 
@@ -555,9 +553,9 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
            "string conversion function must return \"string\""
     check ((length $ funcArgs f) == 1) (pos f) 
            "string conversion function must take exactly one argument"
-    check (isJust $ unifyTypes d [(typ arg0, tr)]) (pos f) $ 
-           "string conversion function \"" ++ name f ++ 
-           "\" must take argument of type " ++ show tr
+    unifyTypes d p
+           ("in the call to string conversion function \"" ++ name f ++ "\"")
+           [(typ arg0, tr)] 
     let r' = E $ EApply (pos r) fname [r]
     return $ E $ EBinOp p Concat l r'
     where te = exprType'' d ctx $ E e

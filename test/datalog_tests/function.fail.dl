@@ -104,3 +104,8 @@ function parameterized(x: 'A, y: 'A): 'A
 
 function use_parameterized(x: string, y: int): string = 
     parameterized(x,y) // error: x and y must have the same type
+
+//---
+
+function foo(x: int): string = 
+    x.bar // x is not a struct

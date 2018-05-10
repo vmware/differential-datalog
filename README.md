@@ -3,6 +3,9 @@
 An in-memory incremental Datalog engine based on Differential Dataflow.
 This is currently very early work-in-progress.
 
+Language reference for the Datalog dialect implemented by the tool
+can be found [here](doc/language_reference/language_reference.md).
+
 # Requirements
 
 We have only tested our software on Ubuntu Linux.

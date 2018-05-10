@@ -85,6 +85,7 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eTyped,
         Function(..),
+        funcShowProto,
         funcTypeVars,
         DatalogProgram(..),
         emptyDatalogProgram,
@@ -614,7 +615,7 @@ instance WithName Function where
 
 instance PP Function where
     pp Function{..} = ("function" <+> pp funcName
-                       <+> (parens $ hcat $ punctuate comma $ map pp funcArgs)
+                       <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
                        <> colon <+> pp funcType
                        <+> (maybe empty (\_ -> "=") funcDef))
                       $$
@@ -622,6 +623,12 @@ instance PP Function where
 
 instance Show Function where
     show = render . pp
+
+funcShowProto :: Function -> String
+funcShowProto Function{..} = render $
+    "function" <+> pp funcName
+    <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
+    <> colon <+> pp funcType
 
 -- | Type variables used in function declaration
 funcTypeVars :: Function -> [String]
