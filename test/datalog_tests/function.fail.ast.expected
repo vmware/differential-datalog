@@ -16,6 +16,6 @@ error: ./test/datalog_tests/function.fail.dl:9:5-9:17: Type constructor in the l
 
 error: ./test/datalog_tests/function.fail.dl:11:16-11:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "option_t" has multiple constructors
 
-error: ./test/datalog_tests/function.fail.dl:6:5-8:1: Conflicting types string and int for type variable 'A in call to function parameterized (x: 'A, y: 'A): 'A
+error: ./test/datalog_tests/function.fail.dl:6:5-8:1: Conflicting bindings string and int for type variable 'A in call to function parameterized (x: 'A, y: 'A): 'A
 
 error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
