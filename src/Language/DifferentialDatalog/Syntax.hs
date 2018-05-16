@@ -430,7 +430,8 @@ data Statement = ForStatement    { statPos :: Pos
                                  , forStatement :: Statement }
                | IfStatement     { statPos :: Pos
                                  , ifCondition :: Expr
-                                 , ifStatement :: Statement }
+                                 , ifStatement :: Statement
+                                 , elseStatement :: Maybe Statement}
                | LetStatement    { statPos :: Pos
                                  , letList :: [Assignment]
                                  , letStatement :: Statement }
@@ -444,8 +445,8 @@ data Statement = ForStatement    { statPos :: Pos
 instance Eq Statement where
     (==) (ForStatement _ e1 r1 c1 s1) (ForStatement _ e2 r2 c2 s2) =
           e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
-    (==) (IfStatement _ c1 s1) (IfStatement _ c2 s2) =
-          c1 == c2 && s1 == s2
+    (==) (IfStatement _ c1 s1 e1) (IfStatement _ c2 s2 e2) =
+          c1 == c2 && s1 == s2 && e1 == e2
     (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
           l1 == l2 && s1 == s2
     (==) (InsertStatement _ r1 v1) (InsertStatement _ r2 v2) =
@@ -456,11 +457,14 @@ instance Eq Statement where
 
 instance PP Statement where
     pp (ForStatement _ e r c s) = "for" <+> "(" <> (pp e) <+> "in" <+> pp r <+>
-                                     maybe empty (("if" <+>) . pp) c <> ")" <+> pp s
-    pp (IfStatement _ c s) = "if" <+> "(" <> (pp c) <> ")" <+> pp s
-    pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" <+> (pp s)
+                                     maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
+    pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
+                                     maybe empty (("else" $$) . (nest' . pp)) e
+    pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
     pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
-    pp (BlockStatement _ l) =  "{" <+> (hsep $ punctuate ";" $ map pp l) <+> "}"
+    pp (BlockStatement _ l) =  "{" $+$
+                                (nest' $ vcat $ (punctuate ";" $ map pp l))
+                                $$ "}"
     pp (EmptyStatement _) = "skip"
 
 instance Show Statement where

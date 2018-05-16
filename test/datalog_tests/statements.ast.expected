@@ -8,12 +8,46 @@ ground relation X (
     field: int)
 relation Z (
     field: int)
-for (a in X) skip
-for (a in X) Z ( a )
-for (a in X if true) skip
-for (a in X) { skip; skip }
-for (a in X) { if ((a == 2)) skip }
-for (a in X) if ((a == 2)) if ((a > 2)) { Z ( a ); Z ( (a + 2) ) }
-for (a in X) { for (b in X) Z ( (a + b) ); for (c in X) Z ( (a + c) ) }
-for (a in X) let b = (a + 2) in skip
-for (a in X) let b = (a + 2), c = (b + a) in W ( a, b, c )
+for (a in X)
+    skip
+for (a in X)
+    Z ( a )
+for (a in X if true)
+    skip
+for (a in X)
+    {
+        skip;
+        skip
+    }
+for (a in X)
+    {
+        if ((a == 2))
+            skip
+    }
+for (a in X)
+    {
+        if ((a == 2))
+            skip
+        else
+            skip
+    }
+for (a in X)
+    if ((a == 2))
+        if ((a > 2))
+            {
+                Z ( a );
+                Z ( (a + 2) )
+            }
+for (a in X)
+    {
+        for (b in X)
+            Z ( (a + b) );
+        for (c in X)
+            Z ( (a + c) )
+    }
+for (a in X)
+    let b = (a + 2) in
+        skip
+for (a in X)
+    let b = (a + 2), c = (b + a) in
+        W ( a, b, c )
