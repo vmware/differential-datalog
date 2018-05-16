@@ -27,7 +27,7 @@ for (lrp in Logical_Router_Port if lrp.enabled)
     {
         let P = lrp.name, E = lrp.mac in
             {
-                Flow ( lrp.lr, LR_IN_ADMISSION{}, 50, (((("inport == $" ++ P{}) ++ " && (eth.mcast || eth.dst == $") ++ E{}) ++ ")"), "{ next; }" )
+                Flow ( lrp.lr, LR_IN_ADMISSION{}, 50, (((("inport == " ++ P{}) ++ " && (eth.mcast || eth.dst == ") ++ E{}) ++ ")"), "{ next; }" )
             }
     }
 for (lr in Logical_Router)
@@ -61,7 +61,7 @@ for (lrp in Logical_Router_Port if lrp.enabled)
     {
         let P = lrp.name in
             {
-                Flow ( lrp.lr, LR_OUT_DELIVERY{}, 100, (("outport == $" ++ P{}) ++ ""), "{ output; }" )
+                Flow ( lrp.lr, LR_OUT_DELIVERY{}, 100, (("outport == " ++ P{}) ++ ""), "{ output; }" )
             }
     }
 for (lsp in Logical_Switch_Port)
@@ -75,15 +75,15 @@ for (lsp in Logical_Switch_Port if lsp.enabled)
             {
                 if (lsp.port_security.not_empty)
                     {
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, (((("inport == \"" ++ P{}) ++ "\" && eth.src == ") ++ L2{}) ++ ""), "{ next; }" );
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 90, (((("inport == \"" ++ P{}) ++ "\" && (") ++ IP{}) ++ "))"), "{ next; }" );
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 80, (((("inport == \"" ++ P{}) ++ "\" && ip && eth.src == ") ++ L2{}) ++ ""), "{ drop; }" );
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 90, (((("inport == \"" ++ P{}) ++ "\" && (") ++ ND{}) ++ ")"), "{ next; }" );
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 80, (("inport == \"" ++ P{}) ++ "\" && (arp || nd)"), "{ drop; }" )
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, "inport == \"{P}\" && eth.src == {L2}", "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 90, "inport == \"{P}\" && ({IP}))", "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 80, "inport == \"{P}\" && ip && eth.src == {L2}", "{ drop; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 90, "inport == \"{P}\" && ({ND})", "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 80, "inport == \"{P}\" && (arp || nd)", "{ drop; }" )
                     }
                 else
                     {
-                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, (("inport == \"" ++ P{}) ++ "\""), "{ next; }" )
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, "inport == \"{P}\"", "{ next; }" )
                     }
             }
     }
@@ -96,7 +96,7 @@ for (lsp in Logical_Switch_Port)
     if ((lsp.type == "localnet"))
         {
             let P = lsp.name in
-                Flow ( lsp.ls, LS_IN_ARP_RSP{}, 100, (("inport == \"" ++ P{}) ++ "\""), "{ next; }" )
+                Flow ( lsp.ls, LS_IN_ARP_RSP{}, 100, "inport == \"{P}\"", "{ next; }" )
         }
 for (ls in Logical_Switch)
     Flow ( ls, LS_IN_ARP_RSP{}, 0, "1", "{ next; }" )

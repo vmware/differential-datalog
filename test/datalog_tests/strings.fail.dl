@@ -1,8 +1,8 @@
 function strings(): () = {
     var str1 = "foo";
     var str2 = "bar";
-    var ok = $"{str1+str2}";
-    var err = $"{str1+str2";
+    var ok = $"${str1+str2}";
+    var err = $"${str1+str2";
     ()
 }
 
@@ -12,7 +12,7 @@ typedef Type1 = Cons1 | Cons2
 
 function strings(): () = {
     var x: Type1 = Cons1;
-    var err = $"{x}"; // don't know how to convert x to string
+    var err = $"${x}"; // don't know how to convert x to string
     ()
 }
 
@@ -21,7 +21,7 @@ function strings(): () = {
 function strings(): () = {
     var str2 = "bar";
     {var str1 = ""; ()};
-    var err = $"{str2++str1}"; // str1 is not declared in this scope
+    var err = $"${str2++str1}"; // str1 is not declared in this scope
     ()
 }
 
@@ -43,6 +43,6 @@ function tostring2(): () = {
     var c: bool    = true;
     var d: string  = "foo";
     var e: serializable_t = ConsInt{0};
-    var err = $"a={a}, b={b}, c={c}, d={d}, e:{e}"; 
+    var err = $"a=${a}, b=${b}, c=${c}, d=${d}, e:${e}"; 
     ()
 }

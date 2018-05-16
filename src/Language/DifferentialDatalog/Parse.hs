@@ -390,14 +390,14 @@ interpolate p = do
     interpolate' Nothing
 
 interpolate' mprefix = do
-    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ char '{'; return ()})
+    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ string "${"; return ()})
     let prefix' = maybe str
                         (\prefix -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
                         mprefix
     (do eof
         return prefix'
      <|>
-     do e <- char '{' *> whiteSpace *> expr <* char '}'
+     do e <- string "${" *> whiteSpace *> expr <* char '}'
         p <- getPosition
         interpolate' $ (Just $ E $ EBinOp (fst $ pos prefix', p) Concat prefix' e))
 
