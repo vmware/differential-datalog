@@ -619,6 +619,7 @@ statement ::= forStatement
           | emptyStatement
           
 ifStatement ::= "if" "(" expression ")" statement
+            |   "if" "(" expression ")" statement "else" statement
              
 letStatement ::= "let" identifier "=" expression (, identifier "=" expression )* in" statement
 

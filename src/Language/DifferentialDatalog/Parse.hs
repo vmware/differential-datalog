@@ -239,6 +239,7 @@ parseBlockStatement = withPos $ (BlockStatement nopos) <$> (braces $ semiSep sta
 parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
                                                 <*> (symbol "(" *> expr)
                                                 <*> (symbol ")" *> statement)
+                                                <*> (optionMaybe (reserved "else" *> statement))
 
 parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
                                                   <*> commaSep parseAssignment

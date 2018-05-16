@@ -1,0 +1,2 @@
+all:
+	stack test

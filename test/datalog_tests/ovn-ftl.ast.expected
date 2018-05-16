@@ -1,5 +1,102 @@
 typedef set<'A>
-typedef stage = LS_IN_ACL{} | LS_OUT_ACL{}
+typedef stage = LS_IN_ACL{} | LS_OUT_ACL{} | LR_IN_ADMISSION{} | LR_IN_IP_INPUT{} | LR_IN_UNSNAT{} | LR_OUT_SNAT{} | LR_IN_DNAT{} | LR_IN_ARP_RESOLVE{}
 function __builtin_2string (x: 'X): string
-for (ls in Logical_Switch) { Flow ( ls, LS_IN_ACL{}, 0, "1", "next;" ); Flow ( ls, LS_OUT_ACL{}, 0, "1", "next;" ) }
-for (ls in Logical_Switch if ls.has_stateful_acl) { Flow ( ls, LS_IN_ACL{}, 1, "ip && (!ct.est || (ct.est && ct_label.blocked))", "{ reg0[1] = 1; next; }" ); Flow ( ls, LS_OUT_ACL{}, 1, "ip && (!ct.est || (ct.est && ct_label.blocked))", "{ reg0[1] = 1; next; }" ); Flow ( ls, LS_IN_ACL{}, 65535, "ct.inv || (ct.est && ct.rpl && ct_label.blocked)", "{ drop; }" ); Flow ( ls, LS_OUT_ACL{}, 65535, "ct.inv || (ct.est && ct.rpl && ct_label.blocked)", "{ drop; };" ); Flow ( ls, LS_IN_ACL{}, 65535, "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)", "{ next; }" ); Flow ( ls, LS_OUT_ACL{}, 65535, "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)", "{ next; }" ); Flow ( ls, LS_IN_ACL{}, 65535, "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked", "{ next; }" ); Flow ( ls, LS_OUT_ACL{}, 65535, "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked", "{ next; }" ); Flow ( ls, LS_IN_ACL{}, 65535, "nd", "{ next; }" ); Flow ( ls, LS_OUT_ACL{}, 65535, "nd", "{ next; }" ) }
+for (ls in Logical_Switch)
+    {
+        Flow ( ls, LS_IN_ACL{}, 0, "1", "next;" );
+        Flow ( ls, LS_OUT_ACL{}, 0, "1", "next;" )
+    }
+for (ls in Logical_Switch if ls.has_stateful_acl)
+    {
+        Flow ( ls, LS_IN_ACL{}, 1, "ip && (!ct.est || (ct.est && ct_label.blocked))", "{ reg0[1] = 1; next; }" );
+        Flow ( ls, LS_OUT_ACL{}, 1, "ip && (!ct.est || (ct.est && ct_label.blocked))", "{ reg0[1] = 1; next; }" );
+        Flow ( ls, LS_IN_ACL{}, 65535, "ct.inv || (ct.est && ct.rpl && ct_label.blocked)", "{ drop; }" );
+        Flow ( ls, LS_OUT_ACL{}, 65535, "ct.inv || (ct.est && ct.rpl && ct_label.blocked)", "{ drop; };" );
+        Flow ( ls, LS_IN_ACL{}, 65535, "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)", "{ next; }" );
+        Flow ( ls, LS_OUT_ACL{}, 65535, "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)", "{ next; }" );
+        Flow ( ls, LS_IN_ACL{}, 65535, "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked", "{ next; }" );
+        Flow ( ls, LS_OUT_ACL{}, 65535, "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked", "{ next; }" );
+        Flow ( ls, LS_IN_ACL{}, 65535, "nd", "{ next; }" );
+        Flow ( ls, LS_OUT_ACL{}, 65535, "nd", "{ next; }" )
+    }
+for (lr in Logical_Router)
+    {
+        Flow ( lr, LR_IN_ADMISSION{}, 100, "vlan.present || eth.src[40]", "{ drop; }" )
+    }
+for (lrp in Logical_Router_Port if lrp.enabled)
+    {
+        let P = lrp.name, E = lrp.mac in
+            {
+                Flow ( lrp.lr, LR_IN_ADMISSION{}, 50, (((("inport == $" ++ P{}) ++ " && (eth.mcast || eth.dst == $") ++ E{}) ++ ")"), "{ next; }" )
+            }
+    }
+for (lr in Logical_Router)
+    {
+        Flow ( lr, LR_IN_IP_INPUT{}, 100, "ip4.mcast ||\n           ip4.src == 255.255.255.255 ||\n           ip4.src == 127.0.0.0/8 ||\n           ip4.dst == 127.0.0.0/8 ||\n           ip4.src == 0.0.0.0/8 ||\n           ip4.dst == 0.0.0.0/8)", "{ drop; }" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 90, "arp.op == 2", "put_arp(inport, arp.spa, arp.sha);" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 50, "eth.bcast", "{ drop; }" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 30, "ip4 && ip.ttl == {0, 1}", "{ drop; }" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 90, "nd_na", "{ put_nd(inport, nd.target, nd.tll); }" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 80, "nd_na", "{ put_nd(inport, ip6.src, nd.sll); }" );
+        Flow ( lr, LR_IN_IP_INPUT{}, 0, "1", "{ next; }" )
+    }
+for (lr in Logical_Router)
+    {
+        Flow ( lr, LR_IN_DEFRAG{}, 0, "1", "{ next; }" );
+        Flow ( lr, LR_IN_UNSNAT{}, 0, "1", "{ next; }" );
+        Flow ( lr, LR_OUT_SNAT{}, 0, "1", "{ next; }" );
+        Flow ( lr, LR_IN_DNAT{}, 0, "1", "{ next; }" )
+    }
+for (lr in Logical_Router)
+    {
+        Flow ( lr, LR_IN_ARP_RESOLVE{}, 0, "ip4", "{ get_arp(outport, reg0); next; }" );
+        Flow ( lr, LR_IN_ARP_RESOLVE{}, 0, "ip6", "{ get_nd(outport, xxreg0); next; }" )
+    }
+for (lr in Logical_Router)
+    {
+        Flow ( lr, LR_IN_ARP_REQUEST{}, 100, "eth.dst == 00:00:00:00:00:00", "{\n        arp {\n            eth.dst = ff:ff:ff:ff:ff:ff;\n            arp.spa = reg1;\n            arp.tpa = reg0;\n            arp.op = 1;  /* ARP request */\n            output;\n        }\n    }" );
+        Flow ( lr, LR_IN_ARP_REQUEST{}, 0, "1", "{ output; }" )
+    }
+for (lrp in Logical_Router_Port if lrp.enabled)
+    {
+        let P = lrp.name in
+            {
+                Flow ( lrp.lr, LR_OUT_DELIVERY{}, 100, (("outport == $" ++ P{}) ++ ""), "{ output; }" )
+            }
+    }
+for (lsp in Logical_Switch_Port)
+    {
+        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 100, "vlan.present", "{ drop; }" );
+        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 100, "eth.src[40]", "{ drop; }" )
+    }
+for (lsp in Logical_Switch_Port if lsp.enabled)
+    {
+        let P = lsp.name, L2 = lsp.port_security_l2, IP = lsp.port_security_ip_ingress, ND = lsp.port_security_nd in
+            {
+                if (lsp.port_security.not_empty)
+                    {
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, (((("inport == \"" ++ P{}) ++ "\" && eth.src == ") ++ L2{}) ++ ""), "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 90, (((("inport == \"" ++ P{}) ++ "\" && (") ++ IP{}) ++ "))"), "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 80, (((("inport == \"" ++ P{}) ++ "\" && ip && eth.src == ") ++ L2{}) ++ ""), "{ drop; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 90, (((("inport == \"" ++ P{}) ++ "\" && (") ++ ND{}) ++ ")"), "{ next; }" );
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 80, (("inport == \"" ++ P{}) ++ "\" && (arp || nd)"), "{ drop; }" )
+                    }
+                else
+                    {
+                        Flow ( lsp.ls, LS_IN_PORT_SEC_L2{}, 50, (("inport == \"" ++ P{}) ++ "\""), "{ next; }" )
+                    }
+            }
+    }
+for (lsp in Logical_Switch_Port)
+    {
+        Flow ( lsp.ls, LS_IN_PORT_SEC_ND{}, 0, "1", "{ next; }" );
+        Flow ( lsp.ls, LS_IN_PORT_SEC_IP{}, 0, "1", "{ next; }" )
+    }
+for (lsp in Logical_Switch_Port)
+    if ((lsp.type == "localnet"))
+        {
+            let P = lsp.name in
+                Flow ( lsp.ls, LS_IN_ARP_RSP{}, 100, (("inport == \"" ++ P{}) ++ "\""), "{ next; }" )
+        }
+for (ls in Logical_Switch)
+    Flow ( ls, LS_IN_ARP_RSP{}, 0, "1", "{ next; }" )
