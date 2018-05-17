@@ -216,11 +216,11 @@ exprNodeType' d _   (EField p (Just e) f) = do
 exprNodeType' _ _   (EBool _ _)           = return tBool
 
 exprNodeType' d ctx (EInt p _)            = do
-    expect <- mtype2me p ctx $ ctxExpectType' d ctx
-    case expect of
-         t@(TBit _ _) -> return t
-         t@(TInt _)   -> return t
-         _            -> eunknown p ctx
+    case ctxExpectType' d ctx of
+         Just t@(TBit _ _) -> return t
+         Just t@(TInt _)   -> return t
+         Nothing           -> return tInt
+         _                 -> eunknown p ctx
 
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
