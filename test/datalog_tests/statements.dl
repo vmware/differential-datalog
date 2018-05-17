@@ -50,3 +50,5 @@ for (a in X)
 for (a in X)
    let b = a+2, c = b+a in
        W(a, b, c)
+
+Z(a) :- X(a), ((a % 2) == 0).

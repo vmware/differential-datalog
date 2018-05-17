@@ -8,6 +8,7 @@ ground relation X (
     field: int)
 relation Z (
     field: int)
+Z(.field=a) :- X(.field=a), ((a % 2) == 0).
 for (a in X)
     skip
 for (a in X)
