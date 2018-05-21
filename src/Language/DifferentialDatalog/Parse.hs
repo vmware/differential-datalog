@@ -226,6 +226,7 @@ parseForStatement = withPos $ ForStatement nopos <$ reserved "for"
 statement = parseForStatement
         <|> parseEmptyStatement
         <|> parseIfStatement
+        <|> parseMatchStatement
         <|> parseLetStatement
         <|> parseInsertStatement
         <|> parseBlockStatement
@@ -241,6 +242,9 @@ parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
                                                 <*> (symbol "(" *> expr)
                                                 <*> (symbol ")" *> statement)
                                                 <*> (optionMaybe (reserved "else" *> statement))
+
+parseMatchStatement = withPos $ (MatchStatement nopos) <$ reserved "match" <*> parens expr
+                      <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
 parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
                                                   <*> commaSep parseAssignment
@@ -361,13 +365,13 @@ namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
 --eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
-estring = (eString . concat) <$> 
+estring = (eString . concat) <$>
           many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace)))
 
 -- Parse interpolated strings, converting them to string concatenation
 -- expressions.
 -- First, parse as normal string literal;
--- then apply a separate parser to the resulting string to extract 
+-- then apply a separate parser to the resulting string to extract
 -- interpolated expressions.
 einterpolated_string = einterpolated_quoted_string <|> einterpolated_raw_string
 

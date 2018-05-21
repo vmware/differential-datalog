@@ -243,7 +243,7 @@ typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
 typeTypeVars TString{}   = []
 typeTypeVars TBit{}      = []
-typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType) 
+typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
                                $ concatMap consArgs typeCons
 typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
 typeTypeVars TUser{..}   = nub $ concatMap typeTypeVars typeArgs
@@ -301,7 +301,7 @@ instance Show Constructor where
     show = render . pp
 
 consType :: DatalogProgram -> String -> TypeDef
-consType d c = 
+consType d c =
     fromJust
     $ find (\td -> case tdefType td of
                         Just (TStruct _ cs) -> any ((==c) . name) cs
@@ -397,7 +397,7 @@ instance WithPos Rule where
     atPos r p = r{rulePos = p}
 
 instance PP Rule where
-    pp Rule{..} = (vcat $ map pp ruleLHS) <+>
+    pp Rule{..} = (vcat $ punctuate "," $ map pp ruleLHS) <+>
                   (if null ruleRHS
                       then empty
                       else ":-" <+> (hsep $ punctuate comma $ map pp ruleRHS)) <> "."
@@ -432,6 +432,9 @@ data Statement = ForStatement    { statPos :: Pos
                                  , ifCondition :: Expr
                                  , ifStatement :: Statement
                                  , elseStatement :: Maybe Statement}
+               | MatchStatement  { statPos :: Pos
+                                 , matchExpr :: Expr
+                                 , cases :: [(Expr, Statement)] }
                | LetStatement    { statPos :: Pos
                                  , letList :: [Assignment]
                                  , letStatement :: Statement }
@@ -447,6 +450,8 @@ instance Eq Statement where
           e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
     (==) (IfStatement _ c1 s1 e1) (IfStatement _ c2 s2 e2) =
           c1 == c2 && s1 == s2 && e1 == e2
+    (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
+          e1 == e2 && l1 == l1
     (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
           l1 == l2 && s1 == s2
     (==) (InsertStatement _ r1 v1) (InsertStatement _ r2 v2) =
@@ -460,6 +465,9 @@ instance PP Statement where
                                      maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
     pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
                                      maybe empty (("else" $$) . (nest' . pp)) e
+    pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
+                                (nest' $ vcat $ (punctuate "," $ map (\x -> pp (fst x) <+> "->" <+> pp (snd x)) l))
+                                $$ "}"
     pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
     pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
     pp (BlockStatement _ l) =  "{" $+$
@@ -636,7 +644,7 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs 
+funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 
 data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
@@ -662,7 +670,7 @@ instance Show DatalogProgram where
     show = render . pp
 
 progStructs :: DatalogProgram -> M.Map String TypeDef
-progStructs DatalogProgram{..} = 
+progStructs DatalogProgram{..} =
     M.filter ((\case
                 Just TStruct{} -> True
                 _              -> False) . tdefType)
@@ -700,7 +708,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
                       progRules
 
 -- | Expression's syntactic context determines the kinds of
--- expressions that can appear at this location in the Datalog program, 
+-- expressions that can appear at this location in the Datalog program,
 -- expected type of the expression, and variables visible withing the
 -- given scope.
 --
