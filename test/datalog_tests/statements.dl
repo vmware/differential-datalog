@@ -1,6 +1,6 @@
 ground relation X(field: int)
-
 relation Z(field: int)
+
 relation W(f1: int, f2: int, f3: int)
 
 for (a in X)
@@ -8,14 +8,40 @@ for (a in X)
 
 for (a in X)
    Z(a)
+// equivalent to
+Z(a) :- X(a).
+
+for (a in X)
+   match (a) {
+      1 -> Z(a),
+      2 -> Z(a+1),
+      _ -> Z(a-1)
+   }
+// equivalent to
+Z(a) :- X(a), match(a) { 1 -> true, 2 -> false, _ -> false }.
+Z(a+1) :- X(a), match(a) { 1-> false, 2 -> true, _ -> false }.
+Z(a-1) :- X(a), match(a) { 1 -> false, 2 -> false, _ -> true }.
 
 for (a in X if true)
    skip
+// equivalent to
+for (a in X)
+   if (true)
+       skip
 
 for (a in X) {
    skip;
    skip
 }
+
+for (a in X if (a % 2) == 0)
+    Z(a)
+// equivalent to
+for (a in X)
+    if (a % 2 == 0)
+         Z(a)
+// equivalent to
+Z(a) :- X(a), ((a % 2) == 0).
 
 for (a in X) {
     if (a == 2)
@@ -29,12 +55,25 @@ for (a in X) {
         skip
 }
 
-for (a in X)
+for (a in X) {
     if (a == 2)
+        Z(a+1)
+    else
+        Z(a)
+}
+// equivalent to
+Z(a+1) :- X(a), a == 2.
+Z(a) :- X(a), a != 1.
+
+for (a in X)
+    if (a >= 2)
         if (a > 2) {
             Z(a);
             Z(a+2)
         }
+// Equivalent to
+Z(a) :- X(a), a>=2, a > 2.
+Z(a+2) :- X(a), a>=2, a > 2.
 
 for (a in X) {
     for (b in X)
@@ -42,13 +81,26 @@ for (a in X) {
     for (c in X)
         Z(a+c)
 }
+// equivalent to
+Z(a+b) :- X(a), X(b).
+Z(a+c) :- X(a), X(c).
+// equivalent to
+Z(a+b), Z(a+c) :- X(a), X(b), X(c).
 
 for (a in X)
    let b = a+2 in
        skip
 
 for (a in X)
+   let b = a+2 in
+       Z(a+b)
+// equivalent to
+Z(a+b) :- X(a), var b = a+2.
+
+for (a in X)
    let b = a+2, c = b+a in
        W(a, b, c)
+// equivalent to
+W(a, b, c) :- X(a), var b = a+2, var c = b+a.
 
-Z(a) :- X(a), ((a % 2) == 0).
+

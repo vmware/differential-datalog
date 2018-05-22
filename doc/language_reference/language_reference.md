@@ -613,6 +613,7 @@ forStatement ::= "for" "(" expr "in" rel_name ")" statement
 
 statement ::= forStatement
           | ifStatement
+          | matchStatement
           | letStatement
           | insertStatement
           | blockStatement
@@ -620,6 +621,8 @@ statement ::= forStatement
           
 ifStatement ::= "if" "(" expression ")" statement
             |   "if" "(" expression ")" statement "else" statement
+             
+matchStatement ::= "match" "(" expression ")" "{" expression "->" statement (, expression "->" statement )* "}"                                               
              
 letStatement ::= "let" identifier "=" expression (, identifier "=" expression )* in" statement
 
