@@ -466,7 +466,7 @@ instance PP Statement where
     pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
                                      maybe empty (("else" $$) . (nest' . pp)) e
     pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
-                                (nest' $ vcat $ (punctuate "," $ map (\x -> pp (fst x) <+> "->" <+> pp (snd x)) l))
+                                (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
                                 $$ "}"
     pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
     pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
