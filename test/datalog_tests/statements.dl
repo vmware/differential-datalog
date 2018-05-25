@@ -18,7 +18,7 @@ for (a in X)
       _ -> Z(a-1)
    }
 // equivalent to
-Z(a) :- X(a), match(a) { 1 -> true, 2 -> false, _ -> false }.
+Z(a) :- X(a), match(a) { 1 -> true, _ -> false }.
 Z(a+1) :- X(a), match(a) { 1-> false, 2 -> true, _ -> false }.
 Z(a-1) :- X(a), match(a) { 1 -> false, 2 -> false, _ -> true }.
 
