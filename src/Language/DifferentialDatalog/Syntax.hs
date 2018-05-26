@@ -24,7 +24,7 @@ SOFTWARE.
 {-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
 
 -- This file is incorrectly named; it does not have anything to do with syntax.
--- In fact, this file contains the definition of the program intemediate representation:
+-- In fact, this file contains the definition of the program intermediate representation:
 -- the data structures used to represent the datalog program.
 -- Each data structure must implement several instances:
 -- PP: pretty-printing
