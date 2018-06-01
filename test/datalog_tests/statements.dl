@@ -71,7 +71,7 @@ for (a in X)
             Z(a);
             Z(a+2)
         }
-// Equivalent to
+// equivalent to
 Z(a) :- X(a), a>=2, a > 2.
 Z(a+2) :- X(a), a>=2, a > 2.
 
@@ -84,7 +84,7 @@ for (a in X) {
 // equivalent to
 Z(a+b) :- X(a), X(b).
 Z(a+c) :- X(a), X(c).
-// equivalent to
+// Equivalent to
 Z(a+b), Z(a+c) :- X(a), X(b), X(c).
 
 for (a in X)
@@ -102,5 +102,3 @@ for (a in X)
        W(a, b, c)
 // equivalent to
 W(a, b, c) :- X(a), var b = a+2, var c = b+a.
-
-

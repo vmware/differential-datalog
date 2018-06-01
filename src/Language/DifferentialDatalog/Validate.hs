@@ -52,7 +52,7 @@ import Language.DifferentialDatalog.Preamble
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 validate d0 = do
-    d <- convertFtl d0
+    let d = convertFtl d0
     uniqNames ("Multiple definitions of constructor " ++)
               $ progConstructors d
     -- Validate typedef's
@@ -106,10 +106,10 @@ funcGraph DatalogProgram{..} =
            g0 $ zip [0..] $ M.elems progFunctions
 
 -- convert FTL into rules
-convertFtl :: (MonadError String me) => DatalogProgram -> me DatalogProgram
-convertFtl d0 = do
-    rules <- mapM convertFtlStatement $ progStatements d0
-    return d0{progStatements = [], progRules = (progRules d0) ++ concat rules}
+convertFtl :: DatalogProgram -> DatalogProgram
+convertFtl d0 =
+    let rules = map convertFtlStatement $ progStatements d0 in
+    d0{progStatements = [], progRules = (progRules d0) ++ concat rules}
 
 -- given a list of match labels generates a matrix
 -- [a,b,c] -> [[(a,true), (b,false), (c,false)],
@@ -123,53 +123,47 @@ explodeMatchCases l =
 -- add the specified RHS to all the rules
 addRhsToRules:: RuleRHS -> [Rule] -> [Rule]
 addRhsToRules toAdd rules =
-     map (\r -> Rule (rulePos r) (ruleLHS r) (toAdd : ruleRHS r)) rules
+     map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
 
-convertFtlStatement :: (MonadError String me) => Statement -> me [Rule]
-convertFtlStatement (ForStatement p e r Nothing s) = do
-    rules <- convertFtlStatement s
-    let atom = Atom p r [("", e)]
-    let rhs = RHSLiteral True atom
-    let rules' = addRhsToRules rhs rules
-    return rules'
-convertFtlStatement (ForStatement p e r (Just c) s) = do
-    rules <- convertFtlStatement s
-    let atom = Atom p r [("", e)]
-    let rhs0 = RHSLiteral True atom
-    let rhs1 = RHSCondition c
-    let rules' = map (\r -> Rule (rulePos r) (ruleLHS r) (rhs0 : rhs1 : ruleRHS r)) rules
-    return rules'
-convertFtlStatement (IfStatement p c s Nothing) = do
-    rules <- convertFtlStatement s
-    let rules' = addRhsToRules (RHSCondition c) rules
-    return rules'
-convertFtlStatement (IfStatement p c s (Just e)) = do
-    rules0 <- convertFtlStatement s
-    rules1 <- convertFtlStatement e
-    let rules0' = addRhsToRules (RHSCondition c) rules0
-    let rules1' = addRhsToRules (RHSCondition $ eNot c) rules1
-    return (rules0' ++ rules1')
-convertFtlStatement (MatchStatement p e c) = do
-    rulesList <- mapM (\(co, s) -> convertFtlStatement s) c
-    let matchList = explodeMatchCases $ map fst c
-    let matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
-    let rules = concat $ zipWith addRhsToRules matchExpressions rulesList
-    return rules
-convertFtlStatement (LetStatement p l s) = do
-    rules <- convertFtlStatement s
-    let exprs = map (\a -> eSet (eVarDecl $ leftAssign a) (rightAssign a)) l
-    let rhs = map (\e -> RHSCondition e) exprs
-    let rules' = map (\r -> Rule (rulePos r) (ruleLHS r) ((ruleRHS r) ++ rhs)) rules
-    return rules'
-convertFtlStatement (BlockStatement p l) = do
-    rulesList <- mapM convertFtlStatement l
-    let rules = concat rulesList
-    return rules
+convertFtlStatement :: Statement -> [Rule]
+convertFtlStatement (ForStatement p e r Nothing s) =
+    let rules = convertFtlStatement s
+        atom = Atom p r [("", e)]
+        rhs = RHSLiteral True atom in
+    addRhsToRules rhs rules
+convertFtlStatement (ForStatement p e r (Just c) s) =
+    let rules = convertFtlStatement s
+        atom = Atom p r [("", e)]
+        rhs0 = RHSLiteral True atom
+        rhs1 = RHSCondition c in
+    map (\r -> r{ruleRHS=(rhs0 : rhs1 : ruleRHS r)}) rules
+convertFtlStatement (IfStatement p c s Nothing) =
+    let rules = convertFtlStatement s in
+    addRhsToRules (RHSCondition c) rules
+convertFtlStatement (IfStatement p c s (Just e)) =
+    let rules0 = convertFtlStatement s
+        rules1 = convertFtlStatement e
+        rules0' = addRhsToRules (RHSCondition c) rules0
+        rules1' = addRhsToRules (RHSCondition $ eNot c) rules1 in
+    rules0' ++ rules1'
+convertFtlStatement (MatchStatement p e c) =
+    let rulesList = map (\(co, s) -> convertFtlStatement s) c
+        matchList = explodeMatchCases $ map fst c
+        matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
+    in concat $ zipWith addRhsToRules matchExpressions rulesList
+convertFtlStatement (LetStatement p l s) =
+    let rules = convertFtlStatement s
+        exprs = map (\a -> eSet (eVarDecl $ leftAssign a) (rightAssign a)) l
+        rhs = map RHSCondition exprs in
+    map (\r -> r{ruleRHS = (ruleRHS r) ++ rhs}) rules
+convertFtlStatement (BlockStatement p l) =
+    let rulesList = map convertFtlStatement l in
+    concat rulesList
 convertFtlStatement (EmptyStatement p) =
-    do return [Rule p [] []]
-convertFtlStatement (InsertStatement p r v) = do
-    let atom = Atom p r $ map (\e -> ("", e)) v
-    return [Rule p [atom] []]
+    [Rule p [] []]
+convertFtlStatement (InsertStatement p r v) =
+    let atom = Atom p r $ map (\e -> ("", e)) v in
+    [Rule p [atom] []]
 
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
