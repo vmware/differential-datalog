@@ -5,6 +5,19 @@
 // -Flow: the output table
 // -Logical_Switch
 
+typedef stage = LS_IN_ACL{}
+              | LS_OUT_ACL{}
+              | LR_IN_ADMISSION{}
+              | LR_IN_IP_INPUT{}
+              | LR_IN_UNSNAT{}
+              | LR_OUT_SNAT{}
+              | LR_IN_DNAT{}
+              | LR_IN_ARP_RESOLVE{}
+
+relation Flow(lr: int, stage: stage, prio: number, matchStr: string, actionStr: string)
+ground relation Logical_Router(lr: int)
+ground relation Logical_Router_Port(name: string, mac: string, enabled: bool)
+
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lrouter.ftl
 
@@ -108,15 +121,6 @@ for (lrp in Logical_Router_Port if lrp.enabled) {
 
 /////////////////////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-acls.ftl
-
-typedef stage = LS_IN_ACL{}
-              | LS_OUT_ACL{}
-              | LR_IN_ADMISSION{}
-              | LR_IN_IP_INPUT{}
-              | LR_IN_UNSNAT{}
-              | LR_OUT_SNAT{}
-              | LR_IN_DNAT{}
-              | LR_IN_ARP_RESOLVE{}
 
 /* Ingress and Egress ACL Table (Priority 0): Packets are allowed by
  * default.  A related rule at priority 1 is added below if there

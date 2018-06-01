@@ -111,12 +111,26 @@ convertFtl d0 = do
     rules <- mapM convertFtlStatement $ progStatements d0
     return d0{progStatements = [], progRules = (progRules d0) ++ concat rules}
 
+-- given a list of match labels generates a matrix
+-- [a,b,c] -> [[(a,true), (b,false), (c,false)],
+--             [(a,false), (b,true), (c,false)],
+--             [(a,false), (b,false), (c,true)]]
+explodeMatchCases :: [Expr] -> [[(Expr, Expr)]]
+explodeMatchCases l =
+    let pairs = [ [(i1, i2) | i1 <- [0..(length l - 1)]] | i2 <- [0..(length l - 1)]] in
+    map (map (\(a,b) -> (l !! a, if a == b then eTrue else eFalse))) pairs
+
+-- add the specified RHS to all the rules
+addRhsToRules:: RuleRHS -> [Rule] -> [Rule]
+addRhsToRules toAdd rules =
+     map (\r -> Rule (rulePos r) (ruleLHS r) (toAdd : ruleRHS r)) rules
+
 convertFtlStatement :: (MonadError String me) => Statement -> me [Rule]
 convertFtlStatement (ForStatement p e r Nothing s) = do
     rules <- convertFtlStatement s
     let atom = Atom p r [("", e)]
     let rhs = RHSLiteral True atom
-    let rules' = map (\r -> Rule (rulePos r) (ruleLHS r) (rhs : ruleRHS r)) rules
+    let rules' = addRhsToRules rhs rules
     return rules'
 convertFtlStatement (ForStatement p e r (Just c) s) = do
     rules <- convertFtlStatement s
@@ -127,16 +141,20 @@ convertFtlStatement (ForStatement p e r (Just c) s) = do
     return rules'
 convertFtlStatement (IfStatement p c s Nothing) = do
     rules <- convertFtlStatement s
-    let rules' = map (\r -> Rule (rulePos r) (ruleLHS r) ((RHSCondition c) : ruleRHS r)) rules
+    let rules' = addRhsToRules (RHSCondition c) rules
     return rules'
 convertFtlStatement (IfStatement p c s (Just e)) = do
     rules0 <- convertFtlStatement s
     rules1 <- convertFtlStatement e
-    let rules0' = map (\r -> Rule (rulePos r) (ruleLHS r) ((RHSCondition c) : ruleRHS r)) rules0
-    let cneg = eNot c
-    let rules1' = map (\r -> Rule (rulePos r) (ruleLHS r) ((RHSCondition cneg) : ruleRHS r)) rules1
+    let rules0' = addRhsToRules (RHSCondition c) rules0
+    let rules1' = addRhsToRules (RHSCondition $ eNot c) rules1
     return (rules0' ++ rules1')
-convertFtlStatement (MatchStatement p e c) = do return [Rule p [] []]
+convertFtlStatement (MatchStatement p e c) = do
+    rulesList <- mapM (\(co, s) -> convertFtlStatement s) c
+    let matchList = explodeMatchCases $ map fst c
+    let matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
+    let rules = concat $ zipWith addRhsToRules matchExpressions rulesList
+    return rules
 convertFtlStatement (LetStatement p l s) = do
     rules <- convertFtlStatement s
     let exprs = map (\a -> eSet (eVarDecl $ leftAssign a) (rightAssign a)) l
