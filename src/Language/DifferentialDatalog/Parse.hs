@@ -239,7 +239,7 @@ relation = do
          let rel = Relation nopos ground relName $ TUser p relName []
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- brackets $ Relation nopos ground relName <$> typeSpec
+       (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
            return [SpRelation rel]))
         
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
