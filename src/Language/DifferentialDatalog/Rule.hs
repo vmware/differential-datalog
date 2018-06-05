@@ -82,8 +82,8 @@ exprVarTypes d ctx e =
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
 atomVarDecls d rl i = 
     S.fromList
-        $ concatMap (\(f,v) -> exprVarTypes d (CtxRuleRAtom rl i f) v) 
-        $ atomArgs $ rhsAtom $ ruleRHS rl !! i
+        $ exprVarTypes d (CtxRuleRAtom rl i) 
+        $ atomVal $ rhsAtom $ ruleRHS rl !! i
  
 -- | All variables defined in a rule
 ruleVars :: DatalogProgram -> Rule -> [Field]

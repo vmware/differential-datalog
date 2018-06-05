@@ -1,3 +1,4 @@
+typedef Strings = Strings{s: string}
 typedef serializable_t = ConsInt{x: int} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
@@ -38,8 +39,7 @@ function tostring2 (): () =
         ((var e: serializable_t) = ConsInt{.x=0};
          (var err = (((((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
           ()))))))
-ground relation Strings (
-    s: string)
+ground relation Strings (Strings)
 Strings(.s="").
 Strings(.s="foo").
 Strings(.s="bar\n").

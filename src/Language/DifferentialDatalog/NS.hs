@@ -125,8 +125,8 @@ ctxMVars d ctx =
     case ctx of
          CtxTop                   -> ([], [])
          CtxFunc f                -> ([], map f2mf $ funcArgs f)
-         CtxRuleL rl _ _          -> ([], map f2mf $ ruleVars d rl)
-         CtxRuleRAtom rl i _      -> ([], map f2mf $ ruleRHSVars d rl i)
+         CtxRuleL rl _            -> ([], map f2mf $ ruleVars d rl)
+         CtxRuleRAtom rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)

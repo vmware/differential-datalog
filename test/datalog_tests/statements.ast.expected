@@ -1,13 +1,11 @@
+typedef W = W{f1: int, f2: int, f3: int}
+typedef X = X{field: int}
+typedef Z = Z{field: int}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
-relation W (
-    f1: int,
-    f2: int,
-    f3: int)
-ground relation X (
-    field: int)
-relation Z (
-    field: int)
+relation W (W)
+ground relation X (X)
+relation Z (Z)
 Z(.field=a) :- X(.field=a).
 Z(.field=a) :- X(.field=a), match (a) {
                                 1 -> true,
@@ -38,13 +36,13 @@ W(.f1=a, .f2=b, .f3=c) :- X(.field=a), var b = (a + 2), var c = (b + a).
 for (a in X)
     skip
 for (a in X)
-    Z ( a )
+    Z(a)
 for (a in X)
     match (a)
     {
-        1 -> Z ( a ),
-        2 -> Z ( (a + 1) ),
-        _ -> Z ( (a - 1) )
+        1 -> Z(a),
+        2 -> Z((a + 1)),
+        _ -> Z((a - 1))
     }
 for (a in X if true)
     skip
@@ -57,10 +55,10 @@ for (a in X)
         skip
     }
 for (a in X if ((a % 2) == 0))
-    Z ( a )
+    Z(a)
 for (a in X)
     if (((a % 2) == 0))
-        Z ( a )
+        Z(a)
 for (a in X)
     {
         if ((a == 2))
@@ -76,30 +74,30 @@ for (a in X)
 for (a in X)
     {
         if ((a == 2))
-            Z ( (a + 1) )
+            Z((a + 1))
         else
-            Z ( a )
+            Z(a)
     }
 for (a in X)
     if ((a >= 2))
         if ((a > 2))
             {
-                Z ( a );
-                Z ( (a + 2) )
+                Z(a);
+                Z((a + 2))
             }
 for (a in X)
     {
         for (b in X)
-            Z ( (a + b) );
+            Z((a + b));
         for (c in X)
-            Z ( (a + c) )
+            Z((a + c))
     }
 for (a in X)
     let b = (a + 2) in
         skip
 for (a in X)
     let b = (a + 2) in
-        Z ( (a + b) )
+        Z((a + b))
 for (a in X)
     let b = (a + 2), c = (b + a) in
-        W ( a, b, c )
+        W(a, b, c)

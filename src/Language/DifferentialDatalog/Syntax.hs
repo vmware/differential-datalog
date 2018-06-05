@@ -311,11 +311,11 @@ consType d c =
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
                          , relName        :: String
-                         , relArgs        :: [Field]
+                         , relType        :: Type
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 as1) (Relation _ g2 n2 as2) = g1 == g2 && n1 == n2 && as1 == as2
+    (==) (Relation _ g1 n1 t1) (Relation _ g2 n2 t2) = g1 == g2 && n1 == n2 && t1 == t2
 
 instance WithPos Relation where
     pos = relPos
@@ -325,8 +325,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = ((if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(") $$
-                      (nest' $ (vcat $ punctuate comma $ map pp relArgs) <> ")")
+    pp Relation{..} = (if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(" <> pp relType <> ")"
 
 instance Show Relation where
     show = render . pp
@@ -334,20 +333,21 @@ instance Show Relation where
 
 data Atom = Atom { atomPos      :: Pos
                  , atomRelation :: String
-                 , atomArgs     :: [(String, Expr)]
+                 , atomVal      :: Expr
                  }
 
 instance Eq Atom where
-    (==) (Atom _ r1 as1) (Atom _ r2 as2) = r1 == r2 && as1 == as2
+    (==) (Atom _ r1 v1) (Atom _ r2 v2) = r1 == r2 && v1 == v2
 
 instance WithPos Atom where
     pos = atomPos
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp Atom{..} = pp atomRelation <>
-                  (parens $ hsep $ punctuate comma
-                   $ map (\(n, e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) atomArgs)
+    pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons 
+                = pp rel <> (parens $ hsep $ punctuate comma $
+                             map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) as)
+    pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
 
 instance Show Atom where
     show = render . pp
@@ -439,8 +439,7 @@ data Statement = ForStatement    { statPos :: Pos
                                  , letList :: [Assignment]
                                  , letStatement :: Statement }
                | InsertStatement { statPos :: Pos
-                                 , insertRelName :: String
-                                 , insertValue :: [Expr] }
+                                 , insertAtom :: Atom }
                | BlockStatement  { statPos :: Pos
                                  , seqList :: [Statement] }
                | EmptyStatement  { statPos :: Pos }
@@ -454,8 +453,8 @@ instance Eq Statement where
           e1 == e2 && l1 == l1
     (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
           l1 == l2 && s1 == s2
-    (==) (InsertStatement _ r1 v1) (InsertStatement _ r2 v2) =
-          r1 == r2 && v1 == v2
+    (==) (InsertStatement _ a1) (InsertStatement _ a2) =
+          a1 == a2
     (==) (BlockStatement _ l1) (BlockStatement _ l2) =
           l1 == l2
     (==) (EmptyStatement _) (EmptyStatement _) = True
@@ -469,7 +468,7 @@ instance PP Statement where
                                 (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
                                 $$ "}"
     pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
-    pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
+    pp (InsertStatement _ a) =  pp a
     pp (BlockStatement _ l) =  "{" $+$
                                 (nest' $ vcat $ (punctuate ";" $ map pp l))
                                 $$ "}"
@@ -732,9 +731,9 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- 'ctxField' is the field within the atom.
             -- Note: preprocessing ensures that field names are always
             -- present.
-          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Argument to a right-hand-side atom
-          | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+          | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Filter or assignment expression the RHS of a rule
           | CtxRuleRCond      {ctxRule::Rule, ctxIdx::Int}
             -- | FlatMap clause in the RHS of a rule
@@ -790,8 +789,8 @@ instance PP ECtx where
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
         ctx' = case ctx of
-                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
-                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
+                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
+                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
