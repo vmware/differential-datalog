@@ -1,14 +1,14 @@
 typedef R1 = int
 
-ground relation R1:R1
-ground relation R2:(int, int)
+ground relation R1[R1]
+ground relation R2[(int, int)]
 
 R1[1].
 R2[(1,2)].
 
 ground relation R3(f1: int, f2: bool)
-relation R4:R3
-relation R5:int
+relation R4[R3]
+relation R5[int]
 relation R6(f: int)
 
 R4[x] :- R3[x].

@@ -3,12 +3,12 @@ typedef R3 = R3{f1: int, f2: bool}
 typedef R6 = R6{f: int}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
-ground relation R1 : R1
-ground relation R2 : (int, int)
-ground relation R3 : R3
-relation R4 : R3
-relation R5 : int
-relation R6 : R6
+ground relation R1 [R1]
+ground relation R2 [(int, int)]
+ground relation R3 [R3]
+relation R4 [R3]
+relation R5 [int]
+relation R6 [R6]
 R1[1].
 R2[(1, 2)].
 R4[x] :- R3[x].

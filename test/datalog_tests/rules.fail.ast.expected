@@ -1,4 +1,6 @@
-error: ./test/datalog_tests/rules.fail.dl:5:3-5:6: Unknown constructor: R1
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 19):
+unexpected ":"
+expecting letter or digit, "_", "(" or "["
 
 ./test/datalog_tests/rules.fail.dl:5:1-7:1: Multiple definitions of type R1 at the following locations:
   ./test/datalog_tests/rules.fail.dl:5:1-7:1

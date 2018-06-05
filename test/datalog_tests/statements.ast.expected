@@ -3,9 +3,9 @@ typedef X = X{field: int}
 typedef Z = Z{field: int}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
-relation W : W
-ground relation X : X
-relation Z : Z
+relation W [W]
+ground relation X [X]
+relation Z [Z]
 Z(.field=a) :- X(.field=a).
 Z(.field=a) :- X(.field=a), match (a) {
                                 1 -> true,

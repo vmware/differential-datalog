@@ -39,7 +39,7 @@ function tostring2 (): () =
         ((var e: serializable_t) = ConsInt{.x=0};
          (var err = (((((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
           ()))))))
-ground relation Strings : Strings
+ground relation Strings [Strings]
 Strings(.s="").
 Strings(.s="foo").
 Strings(.s="bar\n").
