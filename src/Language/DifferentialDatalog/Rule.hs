@@ -76,7 +76,7 @@ exprDecls d ctx e =
 
 exprVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
 exprVarTypes d ctx e = 
-    map (\(v, ctx) -> Field nopos v $ exprType' d ctx (eVar v)) 
+    map (\(v, ctx) -> Field nopos v $ exprType d ctx (eVar v)) 
         $ exprVars ctx e
 
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field

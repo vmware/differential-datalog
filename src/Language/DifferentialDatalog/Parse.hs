@@ -206,7 +206,7 @@ spec preamble = do
                                          , progRules      = progRules preamble ++ rules
                                          , progStatements = progStatements preamble ++ statements}
     case res of
-         Left err   -> error err
+         Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
 
 decl = withPosMany $
@@ -230,19 +230,18 @@ relation = do
     ground <-  True <$ reserved "ground" <* reserved "relation" 
            <|> False <$ reserved "relation"
     relName <- relIdent
-    parens $
-        do try $ lookAhead arg
-           start <- getPosition
-           fields <- commaSep arg
-           end <- getPosition
-           let p = (start, end)
-           let tspec = TStruct p [Constructor p relName fields]
-           let tdef = TypeDef nopos relName [] $ Just tspec
-           let rel = Relation nopos ground relName $ TUser p relName []
-           return [SpType tdef, SpRelation rel]
-        <|>
-        do rel <- Relation nopos ground relName <$> typeSpec
-           return [SpRelation rel]
+    ((do start <- getPosition
+         fields <- parens $ commaSep arg
+         end <- getPosition
+         let p = (start, end)
+         let tspec = TStruct p [Constructor p relName fields]
+         let tdef = TypeDef nopos relName [] $ Just tspec
+         let rel = Relation nopos ground relName $ TUser p relName []
+         return [SpType tdef, SpRelation rel])
+      <|>
+       (do colon
+           rel <- Relation nopos ground relName <$> typeSpec
+           return [SpRelation rel]))
         
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 

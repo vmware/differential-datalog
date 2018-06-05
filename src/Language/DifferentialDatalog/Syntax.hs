@@ -325,7 +325,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(" <> pp relType <> ")"
+    pp Relation{..} = (if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> ":" <+> pp relType
 
 instance Show Relation where
     show = render . pp
