@@ -208,10 +208,14 @@ exprNodeType' d ctx (EApply p f mas)      = do
 exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx
 
 exprNodeType' d _   (EField p (Just e) f) = do
-    let TStruct _ cs = typ' d e
-    case find ((==f) . name) (concatMap consArgs cs) of
-         Nothing  -> err p $ "Unknown field " ++ f
-         Just fld -> return $ fieldType fld
+    case typ' d e of
+         t@TStruct{} -> 
+             case find ((==f) . name) $ structFields t of
+                  Nothing  -> err p  $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
+                  Just fld -> do check (not $ structFieldGuarded (typ' d e) f) p
+                                       $ "Access to guarded field \"" ++ f ++ "\""
+                                 return $ fieldType fld
+         _           -> err (pos e) $ "Expression is not a struct"
 
 exprNodeType' _ _   (EBool _ _)           = return tBool
 

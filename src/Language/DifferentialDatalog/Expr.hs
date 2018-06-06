@@ -104,8 +104,11 @@ exprFoldCtxM' f ctx e@(EITE p i t el)         = f ctx =<< EITE p <$>
                                                           exprFoldCtxM f (CtxITEIf e ctx) i <*>
                                                           exprFoldCtxM f (CtxITEThen e ctx) t <*>
                                                           exprFoldCtxM f (CtxITEElse e ctx) el
-exprFoldCtxM' f ctx e@(ESet p l r)            = f ctx =<< ESet p <$> exprFoldCtxM f (CtxSetL e ctx) l <*> 
-                                                                     exprFoldCtxM f (CtxSetR e ctx) r
+exprFoldCtxM' f ctx e@(ESet p l r)            = do -- XXX: start with RHS, e.g., in validating an assignment it helps to know RHS type
+                                                   -- before validating LHS
+                                                   r' <- exprFoldCtxM f (CtxSetR e ctx) r
+                                                   l' <- exprFoldCtxM f (CtxSetL e ctx) l
+                                                   f ctx $ ESet p l' r'
 exprFoldCtxM' f ctx e@(EBinOp p op l r)       = f ctx =<< EBinOp p op <$> exprFoldCtxM f (CtxBinOpL e ctx) l <*>
                                                                           exprFoldCtxM f (CtxBinOpR e ctx) r
 exprFoldCtxM' f ctx e@(EUnOp p op x)          = f ctx =<< EUnOp p op <$> (exprFoldCtxM f (CtxUnOp e ctx) x)
