@@ -36,6 +36,6 @@ rpath = false
 lto = false
 debug-assertions = false
 
-[[bin]]
+[lib]
 name = "datalog"
-path = "./datalog.rs"
+path = "./lib.rs"
