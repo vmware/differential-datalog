@@ -51,10 +51,10 @@ progExprMapCtxM d fun = do
     return d{ progFunctions = funcs'
             , progRules     = rules'}    
 
-atomExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> (String -> ECtx) -> Atom -> m Atom
-atomExprMapCtxM d fun fctx a = do 
-    args <- mapM (\(m, e) -> (m,) <$> exprFoldCtxM fun (fctx m) e) $ atomArgs a
-    return a{atomArgs = args}
+atomExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
+atomExprMapCtxM d fun ctx a = do
+    v <- exprFoldCtxM fun ctx $ atomVal a
+    return a{atomVal = v}
 
 rhsExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> Rule -> Int -> RuleRHS -> m RuleRHS
 rhsExprMapCtxM d fun r rhsidx l@RHSLiteral{}   = do

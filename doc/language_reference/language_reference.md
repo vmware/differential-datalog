@@ -180,6 +180,20 @@ arg ::= arg_name ":" simple_type_spec
 
 ```EBNF
 relation ::= ["ground"] "relation" rel_name "(" [arg ","] arg ")"
+           | ["ground"] "relation" rel_name "[" simple_type_spec "]"
+```
+
+The first form declares relation by listing its arguments.  The second 
+form explicitly specifies relation's element type.  The
+second form is more general:
+
+```
+relation R(f1: int, f2: bool)
+```
+is equivalent to:
+```
+typedef R = R{f1: int, f2:bool}
+relation R[R]
 ```
 
 ### Constraints of relations
@@ -197,8 +211,8 @@ expr ::= term
        | "not" expr                      (*boolean negation*)
        | "(" expr ")"                    (*grouping*)
        | "{" expr "}"                    (*grouping (alternative syntax)*)
-       | expr "*" expr                   (* multiplication *)
-       | expr "/" expr                   (* division *)
+       | expr "*" expr                   (*multiplication*)
+       | expr "/" expr                   (*division*)
        | expr "%" expr                   (*remainder*)
        | expr "+" expr
        | expr "-" expr
@@ -457,6 +471,7 @@ rule ::= atom (,atom)* ":-" rhs_clause (,rhs_clause)*
 
 atom ::= rel_name "(" expr (,expr)* ")"
        | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
+       | rel_name "[" expr "]"
 
 rhs_clause ::= atom                                      (* 1.atom *)
              | "not" atom                                (* 2.negated atom *)
@@ -468,7 +483,18 @@ rhs_clause ::= atom                                      (* 1.atom *)
                 var_name "=" expr ")"
 ```
 
-An atom is a predicate that holds when a given tuple belongs to a relation.
+An atom is a predicate that holds when a given value belongs to a relation.
+It can be specified by listing its fields or by giving its value explicitly.  
+The former is a special case of the latter:
+
+```
+Rel(val1, val2)
+```
+is expanded into
+```
+Rel[Rel1(val1, val2)]
+```
+
 A body clause can have several forms.  The
 first two forms (`atom` and `"not" atom`) represent a *literal*, i.e.,
 an atom or its negation:

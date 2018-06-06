@@ -126,17 +126,12 @@ addRhsToRules toAdd rules =
      map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
 
 convertFtlStatement :: Statement -> [Rule]
-convertFtlStatement (ForStatement p e r Nothing s) =
+convertFtlStatement (ForStatement p e r mc s) =
     let rules = convertFtlStatement s
-        atom = Atom p r [("", e)]
-        rhs = RHSLiteral True atom in
-    addRhsToRules rhs rules
-convertFtlStatement (ForStatement p e r (Just c) s) =
-    let rules = convertFtlStatement s
-        atom = Atom p r [("", e)]
+        atom = Atom p r e
         rhs0 = RHSLiteral True atom
-        rhs1 = RHSCondition c in
-    map (\r -> r{ruleRHS=(rhs0 : rhs1 : ruleRHS r)}) rules
+        rhs1 = map RHSCondition $ maybeToList mc in
+    map (\r -> r{ruleRHS=(rhs0 : rhs1 ++ ruleRHS r)}) rules
 convertFtlStatement (IfStatement p c s Nothing) =
     let rules = convertFtlStatement s in
     addRhsToRules (RHSCondition c) rules
@@ -153,64 +148,21 @@ convertFtlStatement (MatchStatement p e c) =
     in concat $ zipWith addRhsToRules matchExpressions rulesList
 convertFtlStatement (LetStatement p l s) =
     let rules = convertFtlStatement s
-        exprs = map (\a -> eSet (eVarDecl $ leftAssign a) (rightAssign a)) l
+        exprs = map (\a -> eSet (E $ EVarDecl (pos a) $ leftAssign a) (rightAssign a)) l
         rhs = map RHSCondition exprs in
     map (\r -> r{ruleRHS = (ruleRHS r) ++ rhs}) rules
 convertFtlStatement (BlockStatement p l) =
     let rulesList = map convertFtlStatement l in
     concat rulesList
 convertFtlStatement (EmptyStatement p) =
-    [Rule p [] []]
-convertFtlStatement (InsertStatement p r v) =
-    let atom = Atom p r $ map (\e -> ("", e)) v in
-    [Rule p [atom] []]
+    []
+convertFtlStatement (InsertStatement p a) =
+    [Rule p [a] []]
 
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
-progDesugar d0 = do
-    d1 <- progDesugarAtoms d0
-    progExprMapCtxM d1 (exprDesugar d1)
-
--- Desugar atoms: convert all relational atoms to named field syntax.
-progDesugarAtoms :: (MonadError String me) => DatalogProgram -> me DatalogProgram
-progDesugarAtoms d = do
-    -- Drop rules with an empty LHS
-    let rules = filter (\r -> ruleLHS r /= []) $ progRules d in do
-        rules' <- mapM (\r -> do lhs <- mapM (atomDesugarArgs d) $ ruleLHS r
-                                 rhs <- mapM (rhsDesugarAtoms d) $ ruleRHS r
-                                 return r{ruleLHS = lhs, ruleRHS = rhs})
-                       rules
-        return d{progRules = rules'}
-
-rhsDesugarAtoms :: (MonadError String me) => DatalogProgram -> RuleRHS -> me RuleRHS
-rhsDesugarAtoms d l@RHSLiteral{}   = do
-    a <- atomDesugarArgs d (rhsAtom l)
-    return l{rhsAtom = a}
-rhsDesugarAtoms _ x = return x
-
-atomDesugarArgs :: (MonadError String me) => DatalogProgram -> Atom -> me Atom
-atomDesugarArgs d a@(Atom p r as) = do
-    rel@Relation{..} <- checkRelation p d r
-    let desugarPos = do
-            check (length as == length relArgs) p
-                   $ "Number of arguments does not match relation declaration"
-            return $ zip (map name relArgs) (map snd as)
-    let desugarNamed = do
-            uniq' (\_ -> p) id ("Multiple occurrences of argument " ++) $ map fst as
-            mapM (\(n,e) -> check (isJust $ find ((==n) . name) relArgs) (pos e)
-                                   $ "Unknown argument " ++ n) as
-            return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) relArgs
-    as' <- case as of
-                [] | null relArgs
-                   -> return []
-                [] -> desugarNamed
-                _  | all (null . fst) as
-                   -> desugarPos
-                _  | any (null . fst) as
-                   -> err p $ "Atom mixes named and positional arguments to relation " ++ r
-                _  -> desugarNamed
-    return a{atomArgs = as'}
-
+progDesugar d = progExprMapCtxM d (exprDesugar d)
+ 
 -- Desugar expressions: convert all type constructor calls to named
 -- field syntax.
 -- Precondition: typedefs must be validated before calling this
@@ -316,9 +268,7 @@ funcValidateDefinition d f@Function{..} = do
          Just def -> exprValidate d (funcTypeVars f) (CtxFunc f) def
 
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
-relValidate d Relation{..} = do
-    uniqNames ("Multiple definitions of column " ++) relArgs
-    mapM_ (typeValidate d [] . fieldType) relArgs
+relValidate d Relation{..} = typeValidate d [] relType
 
 --relValidate2 :: (MonadError String me) => Refine -> Relation -> me ()
 --relValidate2 r rel@Relation{..} = do
@@ -354,14 +304,14 @@ ruleValidate d rl@Rule{..} = do
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
 ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
-    -- number of arguments and relation name were validated during desugaring
-    mapM (\(f,v) -> exprValidate d [] (CtxRuleRAtom rl idx f) v) $ atomArgs atom
+    checkRelation (pos atom) d $ atomRelation atom
+    exprValidate d [] (CtxRuleRAtom rl idx) $ atomVal atom
     let vars = ruleRHSVars d rl idx
     -- variable cannot be declared and used in the same atom
     uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
-        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars)
-        $ concatMap (\(f, v) -> exprVars (CtxRuleRAtom rl idx f) v)
-        $ atomArgs atom
+        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars) 
+        $ exprVars (CtxRuleRAtom rl idx)
+        $ atomVal atom
 
 ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
     exprValidate d [] (CtxRuleRCond rl idx) e
@@ -377,9 +327,9 @@ ruleRHSValidate _ _ RHSAggregate{..} _ =
     err (pos rhsAggExpr) "Aggregates not implemented"
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
-ruleLHSValidate d rl Atom{..} idx =
-    -- number of arguments and relation name were validated during desugaring
-    mapM_ (\(f,v) -> exprValidate d [] (CtxRuleL rl idx f) v) atomArgs
+ruleLHSValidate d rl Atom{..} idx = do
+    checkRelation atomPos d atomRelation
+    exprValidate d [] (CtxRuleL rl idx) atomVal
 
 --    validate aggregate function used
 --    aggregate, flatmap, assigned vars are not previously declared
@@ -509,14 +459,6 @@ exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do
     return t)
 
 exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me ()
-exprValidate2 d ctx (EField p e f)      = do
-    case typ' d e of
-         t@TStruct{} -> check (isJust $ find ((==f) . name) $ structFields t) p
-                               $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
-         _           -> err (pos e) $ "Expression is not a struct"
-    check (not $ structFieldGuarded (typ' d e) f) p
-           $ "Access to guarded field \"" ++ f ++ "\""
-
 exprValidate2 d _   (ESlice p e h l)    =
     case typ' d e of
         TBit _ w -> do check (h >= l) p

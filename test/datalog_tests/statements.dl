@@ -7,15 +7,15 @@ for (a in X)
    skip
 
 for (a in X)
-   Z(a)
+   Z(a.field)
 // equivalent to
-Z(a) :- X(a).
+Z(a.field) :- X[a].
 
 for (a in X)
-   match (a) {
-      1 -> Z(a),
-      2 -> Z(a+1),
-      _ -> Z(a-1)
+   match (a.field) {
+      1 -> Z(a.field),
+      2 -> Z(a.field+1),
+      _ -> Z(a.field-1)
    }
 // equivalent to
 Z(a) :- X(a), match(a) { 1 -> true, _ -> false }.
@@ -34,42 +34,42 @@ for (a in X) {
    skip
 }
 
-for (a in X if (a % 2) == 0)
-    Z(a)
+for (a in X if (a.field % 2) == 0)
+    Z(a.field)
 // equivalent to
 for (a in X)
-    if (a % 2 == 0)
-         Z(a)
+    if (a.field % 2 == 0)
+         Z(a.field)
 // equivalent to
 Z(a) :- X(a), ((a % 2) == 0).
 
 for (a in X) {
-    if (a == 2)
+    if (a.field == 2)
         skip
 }
 
 for (a in X) {
-    if (a == 2)
+    if (a.field == 2)
         skip
     else
         skip
 }
 
 for (a in X) {
-    if (a == 2)
-        Z(a+1)
+    if (a.field == 2)
+        Z(a.field+1)
     else
-        Z(a)
+        Z(a.field)
 }
 // equivalent to
 Z(a+1) :- X(a), a == 2.
 Z(a) :- X(a), a != 1.
 
 for (a in X)
-    if (a >= 2)
-        if (a > 2) {
-            Z(a);
-            Z(a+2)
+    if (a.field >= 2)
+        if (a.field > 2) {
+            Z(a.field);
+            Z(a.field+2)
         }
 // equivalent to
 Z(a) :- X(a), a>=2, a > 2.
@@ -77,9 +77,9 @@ Z(a+2) :- X(a), a>=2, a > 2.
 
 for (a in X) {
     for (b in X)
-        Z(a+b);
+        Z(a.field+b.field);
     for (c in X)
-        Z(a+c)
+        Z(a.field+c.field)
 }
 // equivalent to
 Z(a+b) :- X(a), X(b).
@@ -88,17 +88,17 @@ Z(a+c) :- X(a), X(c).
 Z(a+b), Z(a+c) :- X(a), X(b), X(c).
 
 for (a in X)
-   let b = a+2 in
+   let b = a.field+2 in
        skip
 
 for (a in X)
-   let b = a+2 in
-       Z(a+b)
+   let b = a.field+2 in
+       Z(a.field+b)
 // equivalent to
 Z(a+b) :- X(a), var b = a+2.
 
 for (a in X)
-   let b = a+2, c = b+a in
-       W(a, b, c)
+   let b = a.field+2, c = b+a.field in
+       W(a.field, b, c)
 // equivalent to
 W(a, b, c) :- X(a), var b = a+2, var c = b+a.
