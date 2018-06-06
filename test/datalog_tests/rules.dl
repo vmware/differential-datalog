@@ -1,0 +1,34 @@
+typedef R1 = int
+
+ground relation R1[R1]
+ground relation R2[(int, int)]
+
+R1[1].
+R2[(1,2)].
+
+ground relation R3(f1: int, f2: bool)
+relation R4[R3]
+relation R5[int]
+relation R6(f: int)
+
+R4[x] :- R3[x].
+R5[x.f1] :- R3[x].
+R6(x.f1) :- R3[x].
+
+ground relation X(b: int, c: R3, d: R1)
+relation Z(x: int, y: R3)
+Z(a.b, a.c) :- X[a].
+
+ground relation Y(b: int, e: string)
+relation T(x: int, y: string)
+
+T(a.b, e) :- X[a], Y(a.d, e).
+
+typedef R7 = R7{f1: int, f2: bit<16>}
+           | R7Other
+
+relation R7[R7]
+
+R7(1,2).
+R7[R7{1,3}].
+R7[R7Other].

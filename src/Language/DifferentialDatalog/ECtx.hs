@@ -39,8 +39,7 @@ module Language.DifferentialDatalog.ECtx(
      ctxInSeq1,
      ctxIsTyped,
      ctxIsRuleRCond,
-     ctxInRuleRHSPattern,
-     ctxIsRuleRHSPattern)
+     ctxInRuleRHSPattern)
 where
 
 import Data.Maybe
@@ -97,10 +96,8 @@ ctxIsRuleRCond _              = False
 -- rule, in a pattern expression, i.e., an expression where new
 -- variables can be declared.
 ctxInRuleRHSPattern :: ECtx -> Bool
-ctxInRuleRHSPattern ctx = any ctxIsRuleRHSPattern $ ctxAncestors ctx
-
-ctxIsRuleRHSPattern :: ECtx -> Bool
-ctxIsRuleRHSPattern (CtxRuleRAtom rl idx f) = pol && exprIsPattern arg
-    where RHSLiteral pol Atom{..} = ruleRHS rl !! idx
-          arg = fromJust $ lookup f atomArgs
-ctxIsRuleRHSPattern _ = False
+ctxInRuleRHSPattern (CtxRuleRAtom rl idx) = rhsPolarity $ ruleRHS rl !! idx
+ctxInRuleRHSPattern CtxStruct{..}         = ctxInRuleRHSPattern ctxPar
+ctxInRuleRHSPattern CtxTuple{..}          = ctxInRuleRHSPattern ctxPar
+ctxInRuleRHSPattern CtxTyped{..}          = ctxInRuleRHSPattern ctxPar
+ctxInRuleRHSPattern _                     = False

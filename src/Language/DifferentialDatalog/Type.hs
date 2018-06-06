@@ -422,12 +422,10 @@ typeUserTypes' _           = []
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType _ CtxTop                               = Nothing
 ctxExpectType _ (CtxFunc f)                          = Just $ funcType f
-ctxExpectType d (CtxRuleL Rule{..} i fname)          = 
-    let rel = getRelation d (atomRelation $ ruleLHS !! i)
-    in fmap fieldType $ find ((== fname) . name) $ relArgs rel
-ctxExpectType d (CtxRuleRAtom Rule{..} i fname)      =
-    let rel = getRelation d (atomRelation $ rhsAtom $ ruleRHS !! i)
-    in fmap fieldType $ find ((== fname) . name) $ relArgs rel
+ctxExpectType d (CtxRuleL Rule{..} i)                = 
+    Just $ relType $ getRelation d (atomRelation $ ruleLHS !! i)
+ctxExpectType d (CtxRuleRAtom Rule{..} i)            =
+    Just $ relType $ getRelation d (atomRelation $ rhsAtom $ ruleRHS !! i)
 ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
     case rhsExpr $ ruleRHS !! i of
          E ESet{} -> Just $ tTuple []
