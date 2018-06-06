@@ -28,6 +28,7 @@ use std::io::{stdin, stdout, Write};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::hash::Hash;
+use std::fmt::Debug;
 use serde_json as json;
 
 use timely::progress::nested::product::Product;
@@ -176,6 +177,84 @@ enum Value {
 }
 unsafe_abomonate!(Value);
 
+/* Value trait describes types that can be stored in a collection */
+pub trait Val: Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation {}
+impl<T> Val for T where T: Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation {}
+
+
+/* Datalog program is a vector of strongly connected components (representing mutually recursive
+ * rules) or individual non-recursive relations. */
+pub struct Program<V: Val> {
+    nodes: Vec<ProgNode<V>>
+}
+
+pub enum ProgNode<V: Val>  {
+    SCC{scc: SCC<V>},
+    Relation{relation: Relation<V>}
+}
+
+pub struct SCC<V: Val> {
+    relations: Vec<Relation<V>>
+}
+
+type RelId = String;
+type ArrId = String;
+
+/* Relation defines a set of rules and a set of arrangements with which this relation is used in 
+ * rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements 
+ * can also be empty if the relation is not used in the RHS of any rules */
+pub struct Relation<V: Val> {
+    id:           RelId,
+    rules:        Vec<Rule<V>>,
+    arrangements: Vec<Arrangement<V>>
+}
+
+/* Function used to map a collection of values to another collection of values */
+pub type MapFunc<V>        = fn(&V) -> &V;
+
+/* Function used to filter a collection of values */
+pub type FilterFunc<V>     = fn(&V) -> bool;
+
+/* Function that simultaneously filters and maps a collection */
+pub type FilterMapFunc<V>  = fn(&V) -> Option<&V>;
+
+/* Function that arranges a collection, possibly filtering it  */
+pub type ArrangeFunc<V> = fn(&V) -> Option<(&V,&V)>;
+
+/* Function that assembles the result of a join to a new value */
+pub type JoinFunc<V> = fn(&V,&V,&V) -> V;
+
+pub struct Rule<V: Val> {
+    rel:    RelId,        // first relation in the body of the rule
+    xforms: Vec<XForm<V>> // chain of transformations
+}
+
+pub enum XForm<V: Val> {
+    Map {
+        mfun: MapFunc<V>
+    },
+    Filter {
+        ffun: FilterFunc<V>
+    },
+    FilterMap {
+        fmfun: FilterMapFunc<V>
+    },
+    Join {
+        afun: ArrangeFunc<V>, // arrange the relation before performing join on it
+        arrangement: ArrId,   // arrangement to join with
+        jfun: JoinFunc<V>     // put together ouput value
+    },
+    Antijoin {
+        afun: ArrangeFunc<V>, // arrange the relation before performing antijoin
+        arrangement: ArrId    // arrangement to antijoin with
+    }
+}
+
+pub struct Arrangement<V: Val> {
+    id:   ArrId,
+    afun: ArrangeFunc<V>
+}
+
 fn xupd<D>(s: &Rc<RefCell<HashSet<D>>>, ds: &Rc<RefCell<HashMap<D, i8>>>, x : &D, w: isize) 
     where D:Data + Hash
 {
@@ -204,7 +283,7 @@ fn upd<D>(s: &Rc<RefCell<HashSet<D>>>, x: &D, w: isize)
     }
 }
 
-fn main() {
+fn runProgram<V:Val>(prog: &Program<V>) {
 
     // start up timely computation
     timely::execute_from_args(std::env::args(), |worker| {
@@ -367,3 +446,15 @@ fn main() {
             };*/
     }).unwrap();
 }
+
+/*
+                              - join function: arrange input 1;
+                                               call join_core with a closure that
+                                                   - filters the second input relation,
+                                                   - compute output tuple
+                                                   - filters output (by returning option)
+                  all arrangements used in rules
+*/
+
+
+
