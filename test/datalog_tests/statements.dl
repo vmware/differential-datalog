@@ -17,7 +17,14 @@ for (a in X)
       2 -> Z(a.field+1),
       _ -> Z(a.field-1)
    }
-// equivalent to
+
+for (X{a} in X)
+   match (a) {
+      1 -> Z(a),
+      2 -> Z(a+1),
+      _ -> Z(a-1)
+   }
+// both are equivalent to
 Z(a) :- X(a), match(a) { 1 -> true, _ -> false }.
 Z(a+1) :- X(a), match(a) { 1-> false, 2 -> true, _ -> false }.
 Z(a-1) :- X(a), match(a) { 1 -> false, 2 -> false, _ -> true }.
