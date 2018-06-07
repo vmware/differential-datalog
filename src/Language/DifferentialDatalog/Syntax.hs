@@ -243,7 +243,7 @@ typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
 typeTypeVars TString{}   = []
 typeTypeVars TBit{}      = []
-typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType) 
+typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
                                $ concatMap consArgs typeCons
 typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
 typeTypeVars TUser{..}   = nub $ concatMap typeTypeVars typeArgs
@@ -301,7 +301,7 @@ instance Show Constructor where
     show = render . pp
 
 consType :: DatalogProgram -> String -> TypeDef
-consType d c = 
+consType d c =
     fromJust
     $ find (\td -> case tdefType td of
                         Just (TStruct _ cs) -> any ((==c) . name) cs
@@ -311,11 +311,11 @@ consType d c =
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
                          , relName        :: String
-                         , relArgs        :: [Field]
+                         , relType        :: Type
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 as1) (Relation _ g2 n2 as2) = g1 == g2 && n1 == n2 && as1 == as2
+    (==) (Relation _ g1 n1 t1) (Relation _ g2 n2 t2) = g1 == g2 && n1 == n2 && t1 == t2
 
 instance WithPos Relation where
     pos = relPos
@@ -325,8 +325,8 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = ((if relGround then "ground" else empty) <+> "relation" <+> pp relName <+> "(") $$
-                      (nest' $ (vcat $ punctuate comma $ map pp relArgs) <> ")")
+    pp Relation{..} = (if relGround then "ground" else empty) <+> 
+                      "relation" <+> pp relName <+> "[" <> pp relType <> "]"
 
 instance Show Relation where
     show = render . pp
@@ -334,20 +334,21 @@ instance Show Relation where
 
 data Atom = Atom { atomPos      :: Pos
                  , atomRelation :: String
-                 , atomArgs     :: [(String, Expr)]
+                 , atomVal      :: Expr
                  }
 
 instance Eq Atom where
-    (==) (Atom _ r1 as1) (Atom _ r2 as2) = r1 == r2 && as1 == as2
+    (==) (Atom _ r1 v1) (Atom _ r2 v2) = r1 == r2 && v1 == v2
 
 instance WithPos Atom where
     pos = atomPos
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp Atom{..} = pp atomRelation <>
-                  (parens $ hsep $ punctuate comma
-                   $ map (\(n, e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) atomArgs)
+    pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons 
+                = pp rel <> (parens $ hsep $ punctuate comma $
+                             map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) as)
+    pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
 
 instance Show Atom where
     show = render . pp
@@ -397,7 +398,7 @@ instance WithPos Rule where
     atPos r p = r{rulePos = p}
 
 instance PP Rule where
-    pp Rule{..} = (vcat $ map pp ruleLHS) <+>
+    pp Rule{..} = (vcat $ punctuate "," $ map pp ruleLHS) <+>
                   (if null ruleRHS
                       then empty
                       else ":-" <+> (hsep $ punctuate comma $ map pp ruleRHS)) <> "."
@@ -432,12 +433,14 @@ data Statement = ForStatement    { statPos :: Pos
                                  , ifCondition :: Expr
                                  , ifStatement :: Statement
                                  , elseStatement :: Maybe Statement}
+               | MatchStatement  { statPos :: Pos
+                                 , matchExpr :: Expr
+                                 , cases :: [(Expr, Statement)] }
                | LetStatement    { statPos :: Pos
                                  , letList :: [Assignment]
                                  , letStatement :: Statement }
                | InsertStatement { statPos :: Pos
-                                 , insertRelName :: String
-                                 , insertValue :: [Expr] }
+                                 , insertAtom :: Atom }
                | BlockStatement  { statPos :: Pos
                                  , seqList :: [Statement] }
                | EmptyStatement  { statPos :: Pos }
@@ -447,10 +450,12 @@ instance Eq Statement where
           e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
     (==) (IfStatement _ c1 s1 e1) (IfStatement _ c2 s2 e2) =
           c1 == c2 && s1 == s2 && e1 == e2
+    (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
+          e1 == e2 && l1 == l1
     (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
           l1 == l2 && s1 == s2
-    (==) (InsertStatement _ r1 v1) (InsertStatement _ r2 v2) =
-          r1 == r2 && v1 == v2
+    (==) (InsertStatement _ a1) (InsertStatement _ a2) =
+          a1 == a2
     (==) (BlockStatement _ l1) (BlockStatement _ l2) =
           l1 == l2
     (==) (EmptyStatement _) (EmptyStatement _) = True
@@ -460,8 +465,11 @@ instance PP Statement where
                                      maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
     pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
                                      maybe empty (("else" $$) . (nest' . pp)) e
+    pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
+                                (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
+                                $$ "}"
     pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
-    pp (InsertStatement _ r v) =  (pp r) <+> "(" <+> (hsep $ punctuate "," $ map pp v) <+> ")"
+    pp (InsertStatement _ a) =  pp a
     pp (BlockStatement _ l) =  "{" $+$
                                 (nest' $ vcat $ (punctuate ";" $ map pp l))
                                 $$ "}"
@@ -636,7 +644,7 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs 
+funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 
 data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
@@ -662,7 +670,7 @@ instance Show DatalogProgram where
     show = render . pp
 
 progStructs :: DatalogProgram -> M.Map String TypeDef
-progStructs DatalogProgram{..} = 
+progStructs DatalogProgram{..} =
     M.filter ((\case
                 Just TStruct{} -> True
                 _              -> False) . tdefType)
@@ -700,7 +708,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
                       progRules
 
 -- | Expression's syntactic context determines the kinds of
--- expressions that can appear at this location in the Datalog program, 
+-- expressions that can appear at this location in the Datalog program,
 -- expected type of the expression, and variables visible withing the
 -- given scope.
 --
@@ -724,9 +732,9 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- 'ctxField' is the field within the atom.
             -- Note: preprocessing ensures that field names are always
             -- present.
-          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Argument to a right-hand-side atom
-          | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int, ctxField::String}
+          | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Filter or assignment expression the RHS of a rule
           | CtxRuleRCond      {ctxRule::Rule, ctxIdx::Int}
             -- | FlatMap clause in the RHS of a rule
@@ -782,8 +790,8 @@ instance PP ECtx where
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
         ctx' = case ctx of
-                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
-                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx <+> pp ctxField
+                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
+                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx

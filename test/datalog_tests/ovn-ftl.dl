@@ -1,33 +1,173 @@
 // This file contains a port of the OVN FTL code.
 // This is a fairly literal translation of the code.
 
-// ftl/ovn/northd/lswitch-acls.ftl
 // TODO: declare used rules:
 // -Flow: the output table
 // -Logical_Switch
 
-typedef stage = LS_IN_ACL{}
-              | LS_OUT_ACL{}
-              | LR_IN_ADMISSION{}
-              | LR_IN_IP_INPUT{}
-              | LR_IN_UNSNAT{}
-              | LR_OUT_SNAT{}
-              | LR_IN_DNAT{}
-              | LR_IN_ARP_RESOLVE{}
+typedef option_t<'A> = None
+                    | Some {value : 'A}
+
+typedef stage = LS_IN_ACL
+              | LS_OUT_ACL
+              | LR_IN_ADMISSION
+              | LR_IN_IP_INPUT
+              | LR_IN_UNSNAT
+              | LR_OUT_SNAT
+              | LR_IN_DNAT
+              | LR_IN_ARP_RESOLVE
+              | LR_IN_ARP_REQUEST
+              | LR_IN_DEFRAG
+              | LR_OUT_DELIVERY
+              | LS_IN_LB
+              | LS_OUT_LB
+              | LS_IN_PRE_ACL
+              | LS_OUT_PRE_ACL
+              | LS_IN_PRE_LB
+              | LS_OUT_PRE_LB
+              | LS_IN_PRE_STATEFUL
+              | LS_OUT_PRE_STATEFUL
+              | LS_IN_STATEFUL
+              | LS_OUT_STATEFUL
+              | LS_IN_PORT_SEC_L2
+              | LS_IN_PORT_SEC_IP
+              | LS_IN_PORT_SEC_ND
+              | LS_IN_ARP_RSP
+              | LS_IN_DHCP_OPTIONS
+              | LS_IN_DHCP_RESPONSE
+              | LS_IN_L2_LKUP
+              | LS_OUT_PORT_SEC_IP
+              | LS_OUT_PORT_SEC_L2
+
+relation Flow(lr: int, stage: stage, prio: int, matchStr: string, actionStr: string)
+ground relation Logical_Router(lr: int)
+ground relation Logical_Router_Port(name: string, lr: int, mac: string, enabled: bool)
+
+///////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lrouter.ftl
+
+/* Logical router ingress table 0: Admission control framework. */
+for (lr in Logical_Router) {
+    /* Logical VLANs not supported.
+     * Broadcast/multicast source address is invalid. */
+    Flow(lr.lr, LR_IN_ADMISSION, 100, "vlan.present || eth.src[40]", "{ drop; }")
+}
+
+/* Logical router ingress table 0: match (priority 50). */
+for (lrp in Logical_Router_Port if lrp.enabled) {
+    let p = lrp.name,
+        e = lrp.mac in {
+        Flow(lrp.lr, LR_IN_ADMISSION, 50,
+             $"inport == ${p} && (eth.mcast || eth.dst == ${e})", "{ next; }")
+    }
+}
+
+/* Logical router ingress table 1: IP Input. */
+for (lr in Logical_Router) {
+    /* L3 admission control: drop multicast and broadcast source, localhost
+     * source or destination, and zero network source or destination
+     * (priority 100). */
+    Flow(lr.lr, LR_IN_IP_INPUT, 100,
+         [|ip4.mcast ||
+           ip4.src == 255.255.255.255 ||
+           ip4.src == 127.0.0.0/8 ||
+           ip4.dst == 127.0.0.0/8 ||
+           ip4.src == 0.0.0.0/8 ||
+           ip4.dst == 0.0.0.0/8)|], "{ drop; }");
+
+    /* ARP reply handling.  Use ARP replies to populate the logical
+     * router's ARP table. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 90, "arp.op == 2",
+         "put_arp(inport, arp.spa, arp.sha);");
+
+    /* Drop Ethernet local broadcast.  By definition this traffic should
+     * not be forwarded. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 50, "eth.bcast", "{ drop; }");
+
+    /* TTL discard.
+     *
+     * XXX Need to send ICMP time exceeded if !ip.later_frag. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 30, "ip4 && ip.ttl == {0, 1}", "{ drop; }");
+
+    /* ND advertisement handling.  Use advertisements to populate
+     * the logical router's ARP/ND table. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 90, "nd_na", "{ put_nd(inport, nd.target, nd.tll); }");
+
+    /* Learn from neighbor solicitations that were not directed at
+     * us.  (A priority-90 flow will respond to requests to us and
+     * learn the sender's mac address. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 80, "nd_na", "{ put_nd(inport, ip6.src, nd.sll); }");
+
+    /* Pass other traffic not already handled to the next table for
+     * routing. */
+    Flow(lr.lr, LR_IN_IP_INPUT, 0, "1", "{ next; }")
+}
+
+/* NAT, Defrag and load balancing in Gateway routers. */
+for (lr in Logical_Router) {
+    /* Packets are allowed by default. */
+    Flow(lr.lr, LR_IN_DEFRAG, 0, "1", "{ next; }");
+    Flow(lr.lr, LR_IN_UNSNAT, 0, "1", "{ next; }");
+    Flow(lr.lr, LR_OUT_SNAT, 0, "1", "{ next; }");
+    Flow(lr.lr, LR_IN_DNAT, 0, "1", "{ next; }")
+}
+
+for (lr in Logical_Router) {
+    Flow(lr.lr, LR_IN_ARP_RESOLVE, 0, "ip4", "{ get_arp(outport, reg0); next; }");
+    Flow(lr.lr, LR_IN_ARP_RESOLVE, 0, "ip6", "{ get_nd(outport, xxreg0); next; }")
+}
+
+/* Local router ingress table 6: ARP request.
+ *
+ * In the common case where the Ethernet destination has been resolved,
+ * this table outputs the packet (priority 0).  Otherwise, it composes
+ * and sends an ARP request (priority 100). */
+for (lr in Logical_Router) {
+    Flow(lr.lr, LR_IN_ARP_REQUEST, 100, "eth.dst == 00:00:00:00:00:00", [|{
+        arp {
+            eth.dst = ff:ff:ff:ff:ff:ff;
+            arp.spa = reg1;
+            arp.tpa = reg0;
+            arp.op = 1;  /* ARP request */
+            output;
+        }
+    }|]);
+    Flow(lr.lr, LR_IN_ARP_REQUEST, 0, "1", "{ output; }")
+}
+
+/* Logical router egress table 1: Delivery (priority 100).
+ *
+ * Priority 100 rules deliver packets to enabled logical ports. */
+for (lrp in Logical_Router_Port if lrp.enabled) {
+    let p = lrp.name in {
+        Flow(lrp.lr, LR_OUT_DELIVERY, 100, $"outport == ${p}", "{ output; }")
+    }
+}
+
+/////////////////////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-acls.ftl
+
+relation Logical_Switch (
+    ls:  int,
+    has_stateful_acl: bool,
+    has_load_balancer: bool
+)
+
+
 
 /* Ingress and Egress ACL Table (Priority 0): Packets are allowed by
  * default.  A related rule at priority 1 is added below if there
  * are any stateful ACLs in this datapath. */
 for (ls in Logical_Switch) {
-    Flow(ls, LS_IN_ACL, 0, "1", "next;");
-    Flow(ls, LS_OUT_ACL, 0, "1", "next;")
+    Flow(ls.ls, LS_IN_ACL, 0, "1", "next;");
+    Flow(ls.ls, LS_OUT_ACL, 0, "1", "next;")
 }
 
 for (ls in Logical_Switch if ls.has_stateful_acl) {
-    Flow(ls, LS_IN_ACL, 1,
+    Flow(ls.ls, LS_IN_ACL, 1,
          "ip && (!ct.est || (ct.est && ct_label.blocked))",
          "{ reg0[1] = 1; next; }");
-    Flow(ls, LS_OUT_ACL, 1,
+    Flow(ls.ls, LS_OUT_ACL, 1,
          "ip && (!ct.est || (ct.est && ct_label.blocked))",
          "{ reg0[1] = 1; next; }");
 
@@ -38,10 +178,10 @@ for (ls in Logical_Switch if ls.has_stateful_acl) {
      * for deletion (bit 0 of ct_label is set).
      *
      * This is enforced at a higher priority than ACLs can be defined. */
-    Flow(ls, LS_IN_ACL, 65535,
+    Flow(ls.ls, LS_IN_ACL, 65535,
          "ct.inv || (ct.est && ct.rpl && ct_label.blocked)",
          "{ drop; }");
-    Flow(ls, LS_OUT_ACL, 65535,
+    Flow(ls.ls, LS_OUT_ACL, 65535,
          "ct.inv || (ct.est && ct.rpl && ct_label.blocked)",
          "{ drop; };");
 
@@ -54,10 +194,10 @@ for (ls in Logical_Switch if ls.has_stateful_acl) {
      * direction to hit the currently defined policy from ACLs.
      *
      * This is enforced at a higher priority than ACLs can be defined. */
-    Flow(ls, LS_IN_ACL, 65535,
+    Flow(ls.ls, LS_IN_ACL, 65535,
          "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)",
          "{ next; }");
-    Flow(ls, LS_OUT_ACL, 65535,
+    Flow(ls.ls, LS_OUT_ACL, 65535,
          "(ct.est && !ct.rel && !ct.new && !ct.inv && ct.rpl && !ct_label.blocked)",
          "{ next; }");
 
@@ -72,123 +212,180 @@ for (ls in Logical_Switch if ls.has_stateful_acl) {
      * a dynamically negotiated FTP data channel), but will allow
      * related traffic such as an ICMP Port Unreachable through
      * that's generated from a non-listening UDP port.  */
-    Flow(ls, LS_IN_ACL, 65535,
+    Flow(ls.ls, LS_IN_ACL, 65535,
          "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked",
          "{ next; }");
-    Flow(ls, LS_OUT_ACL, 65535,
+    Flow(ls.ls, LS_OUT_ACL, 65535,
          "!ct.est && ct.rel && !ct.new && !ct.inv && !ct_label.blocked",
          "{ next; }");
 
     /* Ingress and Egress ACL Table (Priority 65535).
      *
      * Not to do conntrack on ND packets. */
-    Flow(ls, LS_IN_ACL, 65535, "nd", "{ next; }");
-    Flow(ls, LS_OUT_ACL, 65535, "nd", "{ next; }")
+    Flow(ls.ls, LS_IN_ACL, 65535, "nd", "{ next; }");
+    Flow(ls.ls, LS_OUT_ACL, 65535, "nd", "{ next; }")
 }
 
 ///////////////////////////
-// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lrouter.ftl
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-lb.ftl
 
-/* Logical router ingress table 0: Admission control framework. */
-for (lr in Logical_Router) {
-    /* Logical VLANs not supported.
-     * Broadcast/multicast source address is invalid. */
-    Flow(lr, LR_IN_ADMISSION, 100, "vlan.present || eth.src[40]", "{ drop; }")
-}
+for (ls in Logical_Switch) {
+    /* Ingress and Egress LB Table (Priority 0): Packets are allowed by
+     * default.  */
+    Flow(ls.ls, LS_IN_LB, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_LB, 0, "1", "{ next; }");
 
-/* Logical router ingress table 0: match (priority 50). */
-for (lrp in Logical_Router_Port if lrp.enabled) {
-    let P = lrp.name,
-        E = lrp.mac in {
-        Flow(lrp.lr, LR_IN_ADMISSION, 50,
-             $"inport == ${P} && (eth.mcast || eth.dst == ${E})", "{ next; }")
+    if (ls.has_load_balancer) { // TODO: ls.load_balancer != [])
+        /* Ingress and Egress LB Table (Priority 65535).
+         *
+         * Send established traffic through conntrack for just NAT. */
+        Flow(ls.ls, LS_IN_LB, 65535, "ct.est && !ct.rel && !ct.new && !ct.inv", [|
+            reg0[0] = 1;
+            next;
+        };|]);
+        Flow(ls.ls, LS_OUT_LB, 65535, "ct.est && !ct.rel && !ct.new && !ct.inv", [|
+            reg0[0] = 1;
+            next;
+        };|])
     }
 }
 
-/* Logical router ingress table 1: IP Input. */
-for (lr in Logical_Router) {
-    /* L3 admission control: drop multicast and broadcast source, localhost
-     * source or destination, and zero network source or destination
-     * (priority 100). */
-    Flow(lr, LR_IN_IP_INPUT, 100,
-         [|ip4.mcast ||
-           ip4.src == 255.255.255.255 ||
-           ip4.src == 127.0.0.0/8 ||
-           ip4.dst == 127.0.0.0/8 ||
-           ip4.src == 0.0.0.0/8 ||
-           ip4.dst == 0.0.0.0/8)|], "{ drop; }");
+///////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-pre-acls.ftl
 
-    /* ARP reply handling.  Use ARP replies to populate the logical
-     * router's ARP table. */
-    Flow(lr, LR_IN_IP_INPUT, 90, "arp.op == 2",
-         "put_arp(inport, arp.spa, arp.sha);");
+/* Ingress and Egress Pre-ACL Table (Priority 0): Packets are
+ * allowed by default. */
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_IN_PRE_ACL, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_PRE_ACL, 0, "1", "{ next; }")
+}
 
-    /* Drop Ethernet local broadcast.  By definition this traffic should
-     * not be forwarded. */
-    Flow(lr, LR_IN_IP_INPUT, 50, "eth.bcast", "{ drop; }");
-
-    /* TTL discard.
+/* If there are any stateful ACL rules in this datapath, we must
+ * send all IP packets through the conntrack action, which handles
+ * defragmentation, in order to match L4 headers. */
+for (ls in Logical_Switch if ls.has_stateful_acl) {
+    /* Ingress and Egress Pre-ACL Table (Priority 110).
      *
-     * XXX Need to send ICMP time exceeded if !ip.later_frag. */
-    Flow(lr, LR_IN_IP_INPUT, 30, "ip4 && ip.ttl == {0, 1}", "{ drop; }");
+     * Not to do conntrack on ND packets. */
+    Flow(ls.ls, LS_IN_PRE_ACL, 110, "nd", "{ next; }");
+    Flow(ls.ls, LS_OUT_PRE_ACL, 110, "nd", "{ next; }");
 
-    /* ND advertisement handling.  Use advertisements to populate
-     * the logical router's ARP/ND table. */
-    Flow(lr, LR_IN_IP_INPUT, 90, "nd_na", "{ put_nd(inport, nd.target, nd.tll); }");
-
-    /* Learn from neighbor solicitations that were not directed at
-     * us.  (A priority-90 flow will respond to requests to us and
-     * learn the sender's mac address. */
-    Flow(lr, LR_IN_IP_INPUT, 80, "nd_na", "{ put_nd(inport, ip6.src, nd.sll); }");
-
-    /* Pass other traffic not already handled to the next table for
-     * routing. */
-    Flow(lr, LR_IN_IP_INPUT, 0, "1", "{ next; }")
+    /* Ingress and Egress Pre-ACL Table (Priority 100).
+     *
+     * Regardless of whether the ACL is "from-lport" or "to-lport",
+     * we need rules in both the ingress and egress table, because
+     * the return traffic needs to be followed.
+     *
+     * 'REGBIT_CONNTRACK_DEFRAG' is set to let the pre-stateful table send
+     * it to conntrack for tracking and defragmentation. */
+    Flow(ls.ls, LS_IN_PRE_ACL, 100, "ip", "{ reg0[0] = 1; next; }");
+    Flow(ls.ls, LS_OUT_PRE_ACL, 100, "ip", "{ reg0[0] = 1; next; }")
 }
 
-/* NAT, Defrag and load balancing in Gateway routers. */
-for (lr in Logical_Router) {
-    /* Packets are allowed by default. */
-    Flow(lr, LR_IN_DEFRAG, 0, "1", "{ next; }");
-    Flow(lr, LR_IN_UNSNAT, 0, "1", "{ next; }");
-    Flow(lr, LR_OUT_SNAT, 0, "1", "{ next; }");
-    Flow(lr, LR_IN_DNAT, 0, "1", "{ next; }")
-}
+ground relation Load_Balancer (
+    lb:           int,
+    ls:           int,
+    ip_addresses: string,
+    protocol:     option_t<string>,
+    name:         string
+)
 
-for (lr in Logical_Router) {
-    Flow(lr, LR_IN_ARP_RESOLVE, 0, "ip4", "{ get_arp(outport, reg0); next; }");
-    Flow(lr, LR_IN_ARP_RESOLVE, 0, "ip6", "{ get_nd(outport, xxreg0); next; }")
-}
 
-/* Local router ingress table 6: ARP request.
+/* This ignores L4 port information in the key because fragmented packets may
+ * not have L4 information.  The pre-stateful table will send the packet
+ * through ct() action to de-fragment.  In stateful table, we will eventually
+ * look at L4 information.
  *
- * In the common case where the Ethernet destination has been resolved,
- * this table outputs the packet (priority 0).  Otherwise, it composes
- * and sends an ARP request (priority 100). */
-for (lr in Logical_Router) {
-    Flow(lr, LR_IN_ARP_REQUEST, 100, "eth.dst == 00:00:00:00:00:00", [|{
-        arp {
-            eth.dst = ff:ff:ff:ff:ff:ff;
-            arp.spa = reg1;
-            arp.tpa = reg0;
-            arp.op = 1;  /* ARP request */
-            output;
-        }
-    }|]);
-    Flow(lr, LR_IN_ARP_REQUEST, 0, "1", "{ output; }")
+ * If multiple load balancers have the same IP address but different L4
+ * information, this will generate duplicate logical flows, but that's OK. */
+for (lb in Load_Balancer) {
+    let a = lb.ip_addresses in
+        Flow(lb.ls, LS_IN_PRE_LB, 100, "ip4.dst == ${a}", "{ reg0[0] = 1; next; }")
 }
-
-/* Logical router egress table 1: Delivery (priority 100).
- *
- * Priority 100 rules deliver packets to enabled logical ports. */
-for (lrp in Logical_Router_Port if lrp.enabled) {
-    let P = lrp.name in {
-        Flow(lrp.lr, LR_OUT_DELIVERY, 100, $"outport == ${P}", "{ output; }")
+for (ls in Logical_Switch) {
+    if (ls.has_load_balancer) { // TODO: ls.load_balancer != [])
+        Flow(ls.ls, LS_OUT_PRE_LB, 100, "ip4", "{ reg0[0] = 1; next; }")
     }
+}
+
+///////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-pre-lb.ftl
+
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_IN_PRE_LB, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_PRE_LB, 0, "1", "{ next; }")
+}
+
+///////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-pre-stateful.ftl
+
+for (ls in Logical_Switch) {
+    /* Ingress and Egress pre-stateful Table (Priority 0): Packets are
+     * allowed by default. */
+    Flow(ls.ls, LS_IN_PRE_STATEFUL, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_PRE_STATEFUL, 0, "1", "{ next; }");
+
+    /* If REGBIT_CONNTRACK_DEFRAG is set as 1, then the packets should be
+     * sent to conntrack for tracking and defragmentation. */
+    Flow(ls.ls, LS_IN_PRE_STATEFUL, 100, "reg0[0] /* conntrack.defrag */", "{ ct_next; }");
+    Flow(ls.ls, LS_OUT_PRE_STATEFUL, 100, "reg0[0] /* conntrack.defrag */", "{ ct_next; }")
+}
+
+///////////////////////////
+// https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-stateful.ftl
+
+for (ls in Logical_Switch) {
+    /* Ingress and Egress stateful Table (Priority 0): Packets are
+     * allowed by default. */
+    Flow(ls.ls, LS_IN_STATEFUL, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_STATEFUL, 0, "1", "{ next; }");
+
+    /* If REGBIT_CONNTRACK_COMMIT is set as 1, then the packets should be
+     * committed to conntrack. We always set ct_label.blocked to 0 here as
+     * any packet that makes it this far is part of a connection we
+     * want to allow to continue. */
+    Flow(ls.ls, LS_IN_STATEFUL, 100, "reg0[1] == 1", [|{
+        ct_commit(ct_label=0/1);
+        next;
+    }|]);
+    Flow(ls.ls, LS_OUT_STATEFUL, 100, "reg0[1] == 1", [|{
+        ct_commit(ct_label=0/1);
+        next;
+    }|]);
+
+    /* If REGBIT_CONNTRACK_NAT is set as 1, then packets should just be sent
+     * through nat (without committing).
+     *
+     * reg0[1] is set for new connections and
+     * REGBIT_CONNTRACK_NAT is set for established connections. So they
+     * don't overlap.
+     */
+    Flow(ls.ls, LS_IN_STATEFUL, 100, "reg0[2] == 1", "{ ct_lb; }");
+    Flow(ls.ls, LS_OUT_STATEFUL, 100, "reg0[2] == 1", "{ ct_lb; }")
 }
 
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch.ftl
+
+ground relation Logical_Switch_Port (
+    lsp:                     int,
+    ls:                      int,
+    parent:                  option_t<string>,
+    tag_request:             option_t<int>,
+    tag:                     option_t<int>,
+    /* can up and enabled fields really be missing? */
+    up:                      option_t<bool>,
+    enabled:                 bool,
+    port_security_not_empty: bool,         
+    port_security_l2:        string,
+    port_security_ip_ingress:string,
+    port_security_ip_egress: string,
+    port_security_nd:        string,
+    name:                    string,
+    type:                    string,
+    macs:                    string
+)
+
 
 /* Logical switch ingress table 0: Admission control framework (priority
  * 100). */
@@ -207,19 +404,19 @@ for (lsp in Logical_Switch_Port) {
  *  Ingress table 2: Ingress port security - ND (priority 90 and 80)
  */
 for (lsp in Logical_Switch_Port if lsp.enabled) {
-    let  P = lsp.name,
-         L2 = lsp.port_security_l2,
-         IP = lsp.port_security_ip_ingress,
-         ND = lsp.port_security_nd in
+    let  p = lsp.name,
+         l2 = lsp.port_security_l2,
+         ip = lsp.port_security_ip_ingress,
+         nd = lsp.port_security_nd in
     {
-        if (lsp.port_security.not_empty) { /* lsp.port_security != []) { TODO mbudiu */
-            Flow(lsp.ls, LS_IN_PORT_SEC_L2, 50, $"inport == \"{P}\" && eth.src == {L2}", "{ next; }");
-            Flow(lsp.ls, LS_IN_PORT_SEC_IP, 90, $"inport == \"{P}\" && ({IP}))", "{ next; }");
-            Flow(lsp.ls, LS_IN_PORT_SEC_IP, 80, $"inport == \"{P}\" && ip && eth.src == {L2}", "{ drop; }");
-            Flow(lsp.ls, LS_IN_PORT_SEC_ND, 90, $"inport == \"{P}\" && ({ND})", "{ next; }");
-            Flow(lsp.ls, LS_IN_PORT_SEC_ND, 80, $"inport == \"{P}\" && (arp || nd)", "{ drop; }")
+        if (lsp.port_security_not_empty) { /* lsp.port_security != []) { TODO mbudiu */
+            Flow(lsp.ls, LS_IN_PORT_SEC_L2, 50, $"inport == \"${p}\" && eth.src == ${l2}", "{ next; }");
+            Flow(lsp.ls, LS_IN_PORT_SEC_IP, 90, $"inport == \"${p}\" && (${ip}))", "{ next; }");
+            Flow(lsp.ls, LS_IN_PORT_SEC_IP, 80, $"inport == \"${p}\" && ip && eth.src == ${l2}", "{ drop; }");
+            Flow(lsp.ls, LS_IN_PORT_SEC_ND, 90, $"inport == \"${p}\" && (${nd})", "{ next; }");
+            Flow(lsp.ls, LS_IN_PORT_SEC_ND, 80, $"inport == \"${p}\" && (arp || nd)", "{ drop; }")
         } else {
-            Flow(lsp.ls, LS_IN_PORT_SEC_L2, 50, $"inport == \"{P}\"", "{ next; }")
+            Flow(lsp.ls, LS_IN_PORT_SEC_L2, 50, $"inport == \"${p}\"", "{ next; }")
         }
     }
 }
@@ -235,109 +432,125 @@ for (lsp in Logical_Switch_Port) {
  * router ports (up or not), but not from localnet ports. */
 for (lsp in Logical_Switch_Port)
     if (lsp.type == "localnet") {
-        let P = lsp.name in
-            Flow(lsp.ls, LS_IN_ARP_RSP, 100, $"inport == \"{P}\"", "{ next; }")
+        let p = lsp.name in
+            Flow(lsp.ls, LS_IN_ARP_RSP, 100, $"inport == \"${p}\"", "{ next; }")
     }
 
 for (ls in Logical_Switch)
-    Flow(ls, LS_IN_ARP_RSP, 0, "1", "{ next; }")
+    Flow(ls.ls, LS_IN_ARP_RSP, 0, "1", "{ next; }")
 
-//for (lspip in Logical_Switch_Port_IP if lspip.lsp.up) {
-//    let E = lspip.mac, A = lspip.ip, P = lspip.lsp.name in {
-//        if (lspip.ip_version == 4) {
-//            Flow(lspip.lsp.ls, LS_IN_ARP_RSP, "50", $[|
-//                arp.tpa == ${A} && arp.op == 1) \{
-//                eth.dst = eth.src;
-//                eth.src = ${E};
-//                arp.op = 2;     /* ARP reply */
-//                arp.tha = arp.sha;
-//                arp.sha = ${E};
-//                arp.tpa = arp.spa;
-//                arp.spa = ${A};
-//                outport = inport;
-//                flags.loopback = 1;
-//                output;
-//            \};|]);
-//
-//            /* Do not reply to an ARP request from the port that owns the
-//             * address (otherwise a DHCP client that ARPs to check for a
-//             * duplicate address will fail).  Instead, forward it the usual
-//             * way.
-//             *
-//             * (Another alternative would be to simply drop the packet.  If
-//             * everything is working as it is configured, then this would
-//             * produce equivalent results, since no one should reply to the
-//             * request.  But ARPing for one's own IP address is intended to
-//             * detect situations where the network is not working as
-//             * configured, so dropping the request would frustrate that
-//             * intent.) */
-//            Flow(lspip.lsp.ls, LS_IN_ARP_RSP, 100,
-//                 $"arp.tpa == ${A} && arp.op == 1 && inport == \"${P}\", "{ next; }");
-//        } else {
-//            /* For ND solicitations, we need to listen for both the unicast
-//             * IPv6 address and its all-nodes multicast address, but always
-//             * respond with the unicast IPv6 address. */
-//            let S = lspip.sn_ip in {
-//                Flow(lspip.lsp.ls, LS_IN_ARP_RSP, 50,
-//                     $"nd_ns && ip6.dst == {${A}, ${S}} && nd.target == ${A}", $[|{
-//                    nd_na {
-//                        eth.src = ${E};
-//                        ip6.src = ${A};
-//                        nd.target = ${A};
-//                        nd.tll = ${E};
-//                        outport = inport;
-//                        flags.loopback = 1;
-//                        output;
-//                    };
-//                }|]);
-//                /* Do not reply to a solicitation from the port that owns
-//                 * the address (otherwise DAD detection will fail). */
-//                Flow(lspip.lsp.ls, LS_IN_ARP_RSP, 100,
-//                     [| nd_ns && ip6.dst == {${A}, ${S}} && nd.target == ${A}
-//                     && inport == \"${P}\", "{ next; })
-//            }
-//        }
-//    }
-//}
-//
-///* Ingress table 10 and 11: DHCP options and response, by default goto next.
-// * (priority 0). */
-//for (ls in Logical_Switch) {
-//    Flow(ls, LS_IN_DHCP_OPTIONS, 0, "1", "{ next; }");
-//    Flow(ls, LS_IN_DHCP_RESPONSE, 0, "1", "{ next; }")
-//}
+
+relation Logical_Switch_Port_IP (
+    lspip:               int,
+    ip_version:          int,
+    lsp:                 int,
+    lsp_name:            string,
+    lsp_enabled:         bool,
+    lsp_type:            string,
+    ls:                  int,
+    mac:                 string,
+    ip:                  string,
+    sn_ip:               string,
+    up:                  bool
+)
+
+for (lspip in Logical_Switch_Port_IP if lspip.up) {
+    let e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
+        if (lspip.ip_version == 4) {
+            Flow(lspip.ls, LS_IN_ARP_RSP, 50, $"arp.tpa == ${a} && arp.op == 1", $[|
+                arp.tpa == ${a} && arp.op == 1) {
+                eth.dst = eth.src;
+                eth.src = ${e};
+                arp.op = 2;     /* ARP reply */
+                arp.tha = arp.sha;
+                arp.sha = ${e};
+                arp.tpa = arp.spa;
+                arp.spa = ${a};
+                outport = inport;
+                flags.loopback = 1;
+                output;
+            };|]);
+
+            /* Do not reply to an ARP request from the port that owns the
+             * address (otherwise a DHCP client that ARPs to check for a
+             * duplicate address will fail).  Instead, forward it the usual
+             * way.
+             *
+             * (Another alternative would be to simply drop the packet.  If
+             * everything is working as it is configured, then this would
+             * produce equivalent results, since no one should reply to the
+             * request.  But ARPing for one's own IP address is intended to
+             * detect situations where the network is not working as
+             * configured, so dropping the request would frustrate that
+             * intent.) */
+            Flow(lspip.ls, LS_IN_ARP_RSP, 100,
+                 $"arp.tpa == ${a} && arp.op == 1 && inport == \"${p}\"", "{ next; }")
+        } else {
+            /* For ND solicitations, we need to listen for both the unicast
+             * IPv6 address and its all-nodes multicast address, but always
+             * respond with the unicast IPv6 address. */
+            let s = lspip.sn_ip in {
+                Flow(lspip.ls, LS_IN_ARP_RSP, 50,
+                     $"nd_ns && ip6.dst == {${a}, ${s}} && nd.target == ${a}", $[|{
+                     nd_na {
+                        eth.src = ${e};
+                        ip6.src = ${a};
+                        nd.target = ${a};
+                        nd.tll = ${e};
+                        outport = inport;
+                        flags.loopback = 1;
+                        output;
+                    };
+                }|]);
+                /* Do not reply to a solicitation from the port that owns
+                 * the address (otherwise DAD detection will fail). */
+                Flow(lspip.ls, LS_IN_ARP_RSP, 100,
+                     [| nd_ns && ip6.dst == {${a}, ${s}} && nd.target == ${a}
+                     && inport == \"${p}\"|], "{ next; }")
+            }
+        }
+    }
+}
+
+/* Ingress table 10 and 11: DHCP options and response, by default goto next.
+ * (priority 0). */
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_IN_DHCP_OPTIONS, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_IN_DHCP_RESPONSE, 0, "1", "{ next; }")
+}
+
 //for (lspip in Logical_Switch_Port_IP
-//     if lspip.lsp.enabled && lspip.lsp.type != "router") {
-//    let P = lspip.lsp.name,
-//        A = lspip.ip,
-//        E = lspip.mac in {
+//     if lspip.lsp_enabled and lspip.lsp_type != "router") {
+//    let p = lspip.lsp.name,
+//        a = lspip.ip,
+//        e = lspip.mac in {
 //        if (lspip.ip_version == 4) {
-//            if (lspip.lsp.dhcpv4_options != []
+//            if (lspip.lsb.has_dhcpv4_options  // TODO lspip.lsp.dhcpv4_options != []
 //                /*&& !((lspip.ip ^ lspip.lsp.dhcpv4_options.host)
 //                  & lspip.lsp.dhcpv4_options.netmask)*/) {
-//                let M = lspip.lsp.dhcpv4_options.netmask,
-//                    O = lspip.lsp.dhcpv4_options.option_args,
-//                    SM = lspip.lsp.dhcpv4_options.server_mac,
-//                    SI = lspip.lsp.dhcpv4_options.server_ip in {
+//                let m  = lspip.lsp.dhcpv4_options.netmask,
+//                    o  = lspip.lsp.dhcpv4_options.option_args,
+//                    sm = lspip.lsp.dhcpv4_options.server_mac,
+//                    si = lspip.lsp.dhcpv4_options.server_ip in {
 //                    Flow(lspip.lsp.ls, LS_IN_DHCP_OPTIONS, 100,
-//                         [| inport == "${P}" && eth.src == ${E}
+//                         [| inport == "${p}" && eth.src == ${e}
 //                         && ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255
 //                         && udp.src == 68 && udp.dst == 67|], [|{
-//                        reg0[3] = put_dhcp_opts(offerip = ${A},
-//                                                netmask = ${M},
-//                                                ${O}); next; }|]);
+//                        reg0[3] = put_dhcp_opts(offerip = ${a},
+//                                                netmask = ${m},
+//                                                ${o}); next; }|]);
 //
 //                    /* If reg0[3] is set, it means the put_dhcp_opts action is
 //                     * successful. */
 //                    Flow(lspip.lsp.ls, LS_IN_DHCP_RESPONSE, 100,
-//                         [|inport == "${P}" && eth.src == ${E}
+//                         [|inport == "${p}" && eth.src == ${e}
 //                         && ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255
 //                         && udp.src == 68 && udp.dst == 67
 //                         && reg0[3]|], [|{
 //                        eth.dst = eth.src;
-//                        eth.src = ${SM};
-//                        ip4.dst = ${A};
-//                        ip4.src = ${SI};
+//                        eth.src = ${sm};
+//                        ip4.dst = ${a};
+//                        ip4.src = ${si};
 //                        udp.src = 67;
 //                        udp.dst = 68;
 //                        outport = inport;
@@ -347,108 +560,108 @@ for (ls in Logical_Switch)
 //                }
 //            }
 //        } else {
-//            let O = lspip.lsp.dhcpv6_options.option_args,
-//                SM = lspip.lsp.dhcpv6_options.server_mac,
-//                SI = lspip.lsp.dhcpv6_options.server_ip) in {
+//            let o  = lspip.lsp.dhcpv6_options.option_args,
+//                sm = lspip.lsp.dhcpv6_options.server_mac,
+//                si = lspip.lsp.dhcpv6_options.server_ip in {
 //                /* Stateful DHCPv6 includes an IP address,
 //                 * stateless DHCPv6 is options-only. */
 //                if (lspip.lsp.dhcpv6_options.stateful) {
 //                    Flow(lspip.lsp.ls, LS_IN_DHCP_OPTIONS, 100,
-//                         [|inport == "${P}" && eth.src == ${E}
+//                         [|inport == "${p}" && eth.src == ${e}
 //                         && ip6.dst == ff02::1:2
 //                         && udp.src == 546 && udp.dst == 547)|], [|{
-//                        reg0[3] = put_dhcpv6_opts(ia_addr = ${A}, ${O});
+//                        reg0[3] = put_dhcpv6_opts(ia_addr = ${a}, ${o});
 //                        next;
-//                    }|]);
+//                    }|])
 //                } else {
 //                    Flow(lspip.lsp.ls, LS_IN_DHCP_OPTIONS, 100,
-//                         [|inport == "${P}" && eth.src == ${E}
+//                         [|inport == "${p}" && eth.src == ${e}
 //                         && ip6.dst == ff02::1:2
 //                         && udp.src == 546 && udp.dst == 547)|], [|{
-//                        reg0[3] = put_dhcpv6_opts(${O});
+//                        reg0[3] = put_dhcpv6_opts(${o});
 //                        next;
-//                    }|]);
-//                }
+//                    }|])
+//                };
 //
 //                /* If reg0[3] is set, it means the put_dhcpv6_opts action is
 //                 * successful. */
 //                Flow(lspip.lsp.ls, LS_IN_DHCP_RESPONSE, 100,
-//                     [|inport == "${P}" && eth.src == ${E}
+//                     [|inport == "${p}" && eth.src == ${e}
 //                     && ip6.dst == ff02::1:2
 //                     && udp.src == 546 && udp.dst == 547
 //                     && reg0[3]|], [|{
 //                    eth.dst = eth.src;
-//                    eth.src = ${SM};
+//                    eth.src = ${sm};
 //                    ip6.dst = ip6.src;
-//                    ip6.src = ${SI};
+//                    ip6.src = ${si};
 //                    udp.src = 547;
 //                    udp.dst = 546;
 //                    outport = inport;
 //                    flags.loopback = 1;
 //                    output;
-//                };"|])
+//                };|])
 //            }
 //        }
 //    }
 //}
-//
-///* Ingress table 12: Destination lookup, broadcast and multicast handling
-// * (priority 100). */
-//for (ls in Logical_Switch) {
-//    Flow(ls, LS_IN_L2_LKUP, 100, "eth.mcast", [|
-//        outport = "_MC_flood";
-//        output;
-//    };|])
-//}
-//
-///* Ingress table 12: Destination lookup, unicast handling (priority 50), */
-//for (lsp in Logical_Switch_Port) {
-//    if (lsp.macs != "") {
-//        let P = lsp.name, M = lsp.macs in
-//            Flow(lsp.ls, LS_IN_L2_LKUP, 50, $"eth.dst == {${M}}", [|{
-//                outport = "${P}";
-//                output;
-//            }|])
-//        }
-//    }
-//}
-//for (ls in Logical_Switch) {
-//    Flow(ls, LS_IN_L2_LKUP, 0, "1", [|{
-//        outport = "_MC_unknown";
-//        output;
-//    }|])
-//}
-//
-///* Egress table 6: Egress port security - IP (priorities 90 and 80)
-// * if port security enabled.
-// *
-// * Egress table 7: Egress port security - L2 (priorities 50 and 150).
-// *
-// * Priority 50 rules implement port security for enabled logical port.
-// *
-// * Priority 150 rules drop packets to disabled logical ports: so that they
-// * don't even receive multicast or broadcast packets. */
-//for (lsp in Logical_Switch_Port) {
-//    let P = lsp.name,
-//        L2 = lsp.port_security_l2,
-//        IP = lsp.port_security_ip_egress in
-//    {
-//        if (lsp.port_security != []) {
-//            Flow(lsp.ls, LS_OUT_PORT_SEC_IP, 90,
-//                 $[|"outport == "${P}" && (${IP})|], "{ next; }");
-//            Flow(lsp.ls, LS_OUT_PORT_SEC_IP, 80,
-//                 $[|"outport == "${P}" && ip && eth.dst == ${L2}|], "{ drop; }")
-//        }
-//
-//        if (lsp.enabled) {
-//            Flow(lsp.ls, LS_OUT_PORT_SEC_L2, 50, $[|outport == "${P}" && eth.dst == ${L2}|],
-//             "{ output; }")
-//        } else {
-//            Flow(lsp.ls, LS_OUT_PORT_SEC_L2, 150, $"outport == \"${P}\"", "{ drop; }")
-//        }
-//    }
-//}
-//for (ls in Logical_Switch) {
-//    Flow(ls, LS_OUT_PORT_SEC_IP, 0, "1", "{ next; }");
-//    Flow(ls, LS_OUT_PORT_SEC_L2, 100, "eth.mcast", "{ output; }")
-//}
+
+/* Ingress table 12: Destination lookup, broadcast and multicast handling
+ * (priority 100). */
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_IN_L2_LKUP, 100, "eth.mcast", [|{
+        outport = "_MC_flood";
+        output;
+    };|])
+}
+
+/* Ingress table 12: Destination lookup, unicast handling (priority 50), */
+for (lsp in Logical_Switch_Port) {
+    if (lsp.macs != "") {
+        let p = lsp.name, m = lsp.macs in {
+            Flow(lsp.ls, LS_IN_L2_LKUP, 50, $"eth.dst == {${m}}", [|{
+                outport = "${P}";
+                output;
+            }|])
+        }
+    }
+}
+
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_IN_L2_LKUP, 0, "1", [|{
+        outport = "_MC_unknown";
+        output;
+    }|])
+}
+
+/* Egress table 6: Egress port security - IP (priorities 90 and 80)
+ * if port security enabled.
+ *
+ * Egress table 7: Egress port security - L2 (priorities 50 and 150).
+ *
+ * Priority 50 rules implement port security for enabled logical port.
+ *
+ * Priority 150 rules drop packets to disabled logical ports: so that they
+ * don't even receive multicast or broadcast packets. */
+for (lsp in Logical_Switch_Port) {
+    let p = lsp.name,
+        l2 = lsp.port_security_l2,
+        ip = lsp.port_security_ip_egress in {
+        if (lsp.port_security_not_empty) { // TODO: lsp.port_security != [])
+            Flow(lsp.ls, LS_OUT_PORT_SEC_IP, 90,
+                 $[|"outport == "${p}" && (${ip})|], "{ next; }");
+            Flow(lsp.ls, LS_OUT_PORT_SEC_IP, 80,
+                 $[|"outport == "${p}" && ip && eth.dst == ${l2}|], "{ drop; }")
+        };
+
+        if (lsp.enabled) {
+            Flow(lsp.ls, LS_OUT_PORT_SEC_L2, 50, $[|outport == "${p}" && eth.dst == ${l2}|],
+             "{ output; }")
+        } else {
+            Flow(lsp.ls, LS_OUT_PORT_SEC_L2, 150, $"outport == \"${p}\"", "{ drop; }")
+        }
+    }
+}
+for (ls in Logical_Switch) {
+    Flow(ls.ls, LS_OUT_PORT_SEC_IP, 0, "1", "{ next; }");
+    Flow(ls.ls, LS_OUT_PORT_SEC_L2, 100, "eth.mcast", "{ output; }")
+}

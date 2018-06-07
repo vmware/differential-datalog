@@ -1,3 +1,19 @@
+// cannot use parenthes if type name does not match relation name
+
+ground relation R1: int
+
+R1(1).
+
+//---
+
+// relation name collides with existing type name
+
+typedef R1 = int
+
+ground relation R1(a1: string)
+
+//---
+
 // non-linear rules
 
 ground relation R1(a1: string)

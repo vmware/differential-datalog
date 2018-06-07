@@ -79,6 +79,7 @@ reservedNames = ["_",
                  "default",
                  "else",
                  "false",
+                 "for",
                  "function",
                  "if",
                  "in",
@@ -151,25 +152,40 @@ removeTabs = do s <- getInput
                 setInput s'
 
 withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
+withPosMany x = (\ s as e -> map (\a -> atPos a (s,e)) as) <$> getPosition <*> x <*> getPosition
 
-data SpecItem = SpType         TypeDef
-              | SpRelation     Relation
-              | SpRule         Rule
-              | SpFunc         Function
-              | SpStatement    Statement
+data SpecItem = SpType      TypeDef
+              | SpRelation  Relation
+              | SpRule      Rule
+              | SpFunc      Function
+              | SpStatement Statement
+
+instance WithPos SpecItem where
+    pos   (SpType         t)   = pos t
+    pos   (SpRelation     r)   = pos r
+    pos   (SpRule         r)   = pos r
+    pos   (SpFunc         f)   = pos f
+    pos   (SpStatement    s)   = pos s
+    atPos (SpType         t) p = SpType      $ atPos t p
+    atPos (SpRelation     r) p = SpRelation  $ atPos r p
+    atPos (SpRule         r) p = SpRule      $ atPos r p
+    atPos (SpFunc         f) p = SpFunc      $ atPos f p
+    atPos (SpStatement    s) p = SpStatement $ atPos s p
+   
 
 datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
 spec preamble = do
-    items <- many decl
+    items <- concat <$> many decl
+
     let relations = (M.toList $ progRelations preamble) ++
                     mapMaybe (\i -> case i of
                                          SpRelation r -> Just (name r, r)
                                          _            -> Nothing) items
     let types = (M.toList $ progTypedefs preamble) ++
                 mapMaybe (\i -> case i of
-                                     SpType t -> Just (name t, t)
+                                     SpType t         -> Just (name t, t)
                                      _        -> Nothing) items
     let funcs = (M.toList $ progFunctions preamble) ++
                 mapMaybe (\i -> case i of
@@ -190,41 +206,54 @@ spec preamble = do
                                          , progRules      = progRules preamble ++ rules
                                          , progStatements = progStatements preamble ++ statements}
     case res of
-         Left err   -> error err
+         Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
 
-decl =  (SpType         <$> typeDef)
-    <|> (SpRelation     <$> relation)
-    <|> (SpFunc         <$> func)
-    <|> (SpRule         <$> rule)
-    <|> (SpStatement    <$> parseForStatement)
+decl = withPosMany $
+        (return . SpType)      <$> typeDef
+    <|> relation
+    <|> (return . SpFunc)      <$> func
+    <|> (return . SpRule)      <$> rule
+    <|> (return . SpStatement) <$> parseForStatement
 
-typeDef = withPos $ (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
-                                       (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
-                                       (optionMaybe $ reservedOp "=" *> typeSpec)
+typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
+                             (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                             (optionMaybe $ reservedOp "=" *> typeSpec)
 
-func = withPos $ Function nopos <$  reserved "function"
-                                <*> funcIdent
-                                <*> (parens $ commaSep arg)
-                                <*> (colon *> typeSpecSimple)
-                                <*> (optionMaybe $ reservedOp "=" *> expr)
+func = Function nopos <$  reserved "function"
+                      <*> funcIdent
+                      <*> (parens $ commaSep arg)
+                      <*> (colon *> typeSpecSimple)
+                      <*> (optionMaybe $ reservedOp "=" *> expr)
 
-relation = withPos $ Relation nopos <$> ((True <$ reserved "ground" <* reserved "relation")
-                                         <|>
-                                         (False <$ reserved "relation"))
-                                       <*> relIdent <*> (parens $ commaSep arg)
-
+relation = do
+    ground <-  True <$ reserved "ground" <* reserved "relation" 
+           <|> False <$ reserved "relation"
+    relName <- relIdent
+    ((do start <- getPosition
+         fields <- parens $ commaSep arg
+         end <- getPosition
+         let p = (start, end)
+         let tspec = TStruct p [Constructor p relName fields]
+         let tdef = TypeDef nopos relName [] $ Just tspec
+         let rel = Relation nopos ground relName $ TUser p relName []
+         return [SpType tdef, SpRelation rel])
+      <|>
+       (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
+           return [SpRelation rel]))
+        
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
-parseForStatement = withPos $ ForStatement nopos <$ reserved "for"
-                                                 <*> (symbol "(" *> expr)
-                                                 <*> (reserved "in" *> relIdent)
-                                                 <*> (optionMaybe (reserved "if" *> expr))
-                                                 <*> (symbol ")" *> statement)
+parseForStatement = ForStatement nopos <$ reserved "for"
+                                       <*> (symbol "(" *> expr)
+                                       <*> (reserved "in" *> relIdent)
+                                       <*> (optionMaybe (reserved "if" *> expr))
+                                       <*> (symbol ")" *> statement)
 
 statement = parseForStatement
         <|> parseEmptyStatement
         <|> parseIfStatement
+        <|> parseMatchStatement
         <|> parseLetStatement
         <|> parseInsertStatement
         <|> parseBlockStatement
@@ -237,22 +266,23 @@ parseEmptyStatement = withPos $ (EmptyStatement nopos) <$ reserved "skip"
 parseBlockStatement = withPos $ (BlockStatement nopos) <$> (braces $ semiSep statement)
 
 parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
-                                                <*> (symbol "(" *> expr)
-                                                <*> (symbol ")" *> statement)
+                                                <*> (parens expr) <*> statement
                                                 <*> (optionMaybe (reserved "else" *> statement))
+
+parseMatchStatement = withPos $ (MatchStatement nopos) <$ reserved "match" <*> parens expr
+                      <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
 parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
                                                   <*> commaSep parseAssignment
                                                   <*> (reserved "in" *> statement)
 
-parseInsertStatement = withPos $ (InsertStatement nopos) <$> relIdent
-                                                         <*> (parens $ commaSep expr)
+parseInsertStatement = withPos $ (InsertStatement nopos) <$> atom
 
-rule = withPos $ Rule nopos <$>
-                 (commaSep1 atom) <*>
-                 (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
+rule = Rule nopos <$>
+       (commaSep1 atom) <*>
+       (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> symbol "("
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
        <|> (RHSCondition <$> expr)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
@@ -263,7 +293,12 @@ rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *>
        <|> (RHSFlatMap <$ reserved "FlatMap" <*> (symbol "(" *> varIdent) <*>
                           (reservedOp "=" *> expr <* symbol ")"))
 
-atom = withPos $ Atom nopos <$> relIdent <*> (parens $ commaSep (namedarg <|> anonarg))
+atom = withPos $ do
+       rname <- relIdent
+       val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
+              <|>
+              brackets expr
+       return $ Atom nopos rname val 
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
@@ -360,13 +395,13 @@ namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
 --eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
-estring = (eString . concat) <$> 
+estring = (eString . concat) <$>
           many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace)))
 
 -- Parse interpolated strings, converting them to string concatenation
 -- expressions.
 -- First, parse as normal string literal;
--- then apply a separate parser to the resulting string to extract 
+-- then apply a separate parser to the resulting string to extract
 -- interpolated expressions.
 einterpolated_string = einterpolated_quoted_string <|> einterpolated_raw_string
 
@@ -390,14 +425,14 @@ interpolate p = do
     interpolate' Nothing
 
 interpolate' mprefix = do
-    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ char '{'; return ()})
+    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ string "${"; return ()})
     let prefix' = maybe str
                         (\prefix -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
                         mprefix
     (do eof
         return prefix'
      <|>
-     do e <- char '{' *> whiteSpace *> expr <* char '}'
+     do e <- string "${" *> whiteSpace *> expr <* char '}'
         p <- getPosition
         interpolate' $ (Just $ E $ EBinOp (fst $ pos prefix', p) Concat prefix' e))
 

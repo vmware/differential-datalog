@@ -208,19 +208,23 @@ exprNodeType' d ctx (EApply p f mas)      = do
 exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx
 
 exprNodeType' d _   (EField p (Just e) f) = do
-    let TStruct _ cs = typ' d e
-    case find ((==f) . name) (concatMap consArgs cs) of
-         Nothing  -> err p $ "Unknown field " ++ f
-         Just fld -> return $ fieldType fld
+    case typ' d e of
+         t@TStruct{} -> 
+             case find ((==f) . name) $ structFields t of
+                  Nothing  -> err p  $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
+                  Just fld -> do check (not $ structFieldGuarded (typ' d e) f) p
+                                       $ "Access to guarded field \"" ++ f ++ "\""
+                                 return $ fieldType fld
+         _           -> err (pos e) $ "Expression is not a struct"
 
 exprNodeType' _ _   (EBool _ _)           = return tBool
 
 exprNodeType' d ctx (EInt p _)            = do
-    expect <- mtype2me p ctx $ ctxExpectType' d ctx
-    case expect of
-         t@(TBit _ _) -> return t
-         t@(TInt _)   -> return t
-         _            -> eunknown p ctx
+    case ctxExpectType' d ctx of
+         Just t@(TBit _ _) -> return t
+         Just t@(TInt _)   -> return t
+         Nothing           -> return tInt
+         _                 -> eunknown p ctx
 
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
@@ -422,12 +426,10 @@ typeUserTypes' _           = []
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType _ CtxTop                               = Nothing
 ctxExpectType _ (CtxFunc f)                          = Just $ funcType f
-ctxExpectType d (CtxRuleL Rule{..} i fname)          = 
-    let rel = getRelation d (atomRelation $ ruleLHS !! i)
-    in fmap fieldType $ find ((== fname) . name) $ relArgs rel
-ctxExpectType d (CtxRuleRAtom Rule{..} i fname)      =
-    let rel = getRelation d (atomRelation $ rhsAtom $ ruleRHS !! i)
-    in fmap fieldType $ find ((== fname) . name) $ relArgs rel
+ctxExpectType d (CtxRuleL Rule{..} i)                = 
+    Just $ relType $ getRelation d (atomRelation $ ruleLHS !! i)
+ctxExpectType d (CtxRuleRAtom Rule{..} i)            =
+    Just $ relType $ getRelation d (atomRelation $ rhsAtom $ ruleRHS !! i)
 ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
     case rhsExpr $ ruleRHS !! i of
          E ESet{} -> Just $ tTuple []
