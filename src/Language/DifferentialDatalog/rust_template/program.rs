@@ -7,14 +7,19 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::collections::HashSet;
+use std::marker::PhantomData;
 
 use timely;
 use timely_communication::initialize::Configuration;
 use timely_communication::Allocator;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
+use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
+use differential_dataflow::trace::TraceReader;
 use timely::dataflow::scopes::*;
+use timely::progress::nested::product::Product;
+use timely::progress::timestamp::RootTimestamp;
 
 
 const NTIMELY_THREADS: usize = 1;
@@ -22,6 +27,9 @@ const NTIMELY_THREADS: usize = 1;
 /* Value trait describes types that can be stored in a collection */
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + 'static {}
 impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + 'static {}
+
+pub trait ValTraceReader<V: Val> : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
+impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 
 type RelId = usize;
 type ArrId = (usize, usize);
@@ -53,19 +61,19 @@ pub struct Relation<V: Val> {
 }
 
 /* Function used to map a collection of values to another collection of values */
-pub type MapFunc<V>        = fn(&V) -> &V;
+pub type MapFunc<V>        = fn(V) -> V;
 
 /* Function used to filter a collection of values */
 pub type FilterFunc<V>     = fn(&V) -> bool;
 
 /* Function that simultaneously filters and maps a collection */
-pub type FilterMapFunc<V>  = fn(&V) -> Option<&V>;
+pub type FilterMapFunc<V>  = fn(V) -> Option<V>;
 
 /* Function that arranges a collection, possibly filtering it  */
-pub type ArrangeFunc<V> = fn(&V) -> Option<(&V,&V)>;
+pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 
 /* Function that assembles the result of a join to a new value */
-pub type JoinFunc<V> = fn(&V,&V,&V) -> V;
+pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
 #[derive(Clone)]
 pub struct Rule<V: Val> {
@@ -76,22 +84,22 @@ pub struct Rule<V: Val> {
 #[derive(Clone)]
 pub enum XForm<V: Val> {
     Map {
-        mfun: MapFunc<V>
+        mfun: &'static MapFunc<V>
     },
     Filter {
-        ffun: FilterFunc<V>
+        ffun: &'static FilterFunc<V>
     },
     FilterMap {
-        fmfun: FilterMapFunc<V>
+        fmfun: &'static FilterMapFunc<V>
     },
     Join {
-        afun: ArrangeFunc<V>, // arrange the relation before performing join on it
-        arrangement: ArrId,   // arrangement to join with
-        jfun: JoinFunc<V>     // put together ouput value
+        afun: &'static ArrangeFunc<V>, // arrange the relation before performing join on it
+        arrangement: ArrId,            // arrangement to join with
+        jfun: &'static JoinFunc<V>     // put together ouput value
     },
     Antijoin {
-        afun: ArrangeFunc<V>, // arrange the relation before performing antijoin
-        arrangement: ArrId    // arrangement to antijoin with
+        afun: &'static ArrangeFunc<V>, // arrange the relation before performing antijoin
+        arrangement: ArrId             // arrangement to antijoin with
     }
 }
 
@@ -104,13 +112,15 @@ pub struct Arrangement<V: Val> {
 
 /* Running datalog program.
  */
-pub struct RunningProgram<V: Val> {
-    relations: HashMap<RelId, RelationInstance<V>>
+pub struct RunningProgram<V: Val, T: ValTraceReader<V>> {
+    relations: HashMap<RelId, RelationInstance<V>>,
+    t: PhantomData<T>
 }
 
 pub type ValSet<V> = Rc<RefCell<HashSet<V>>>;
 pub type DeltaSet<V> = Rc<RefCell<HashMap<V, i8>>>;
 type ValCollection<'a, V> = Collection<Child<'a, Root<Allocator>, u64>, V, isize>;
+type ValArrangement<'a, V, T> = Arranged<Child<'a, Root<Allocator>, u64>, V, V, isize, T>;
 
 /* Runtime representation of relation
  */
@@ -123,8 +133,9 @@ pub struct RelationInstance<V: Val> {
     delta:    DeltaSet<V>
 }
 
-impl<V:Val> Program<V> {
-    pub fn run(&self) -> RunningProgram<V> {
+impl<V:Val> Program<V> 
+{
+    pub fn run<T: ValTraceReader<V>>(&self) -> RunningProgram<V,T> {
         let mut rels = HashMap::new();
 
         let mut elements : HashMap<RelId, ValSet<V>>   = HashMap::new();
@@ -152,6 +163,7 @@ impl<V:Val> Program<V> {
             let sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
                 let mut sessions : HashMap<RelId, InputSession<u64, V, isize>> = HashMap::new();
                 let mut collections : HashMap<RelId, ValCollection<V>> = HashMap::new();
+                let mut arrangements : HashMap<ArrId, ValArrangement<V,T>> = HashMap::new();
                 //let mut arrangements = HashMap::new();
                 for node in &prog.nodes {
                     match node {
@@ -159,7 +171,7 @@ impl<V:Val> Program<V> {
                             let (session, mut collection) = outer.new_collection::<V,isize>();
                             /* apply rules */
                             for rule in &r.rules {
-                                collection = add_rule(&collection, rule, &collections);
+                                collection = add_rule(&collection, rule, &collections, &arrangements);
                             };
                             collection = collection.distinct();
                             /* generate arrangements */
@@ -176,15 +188,52 @@ impl<V:Val> Program<V> {
             });
         });
 
-        RunningProgram{relations: rels}
+        RunningProgram{relations: rels, t: PhantomData}
     }
 }
 
-fn add_rule<'a, V:Val>(collection: &ValCollection<'a,V>, 
-                       rule: &Rule<V>,
-                       collections: &HashMap<RelId, ValCollection<'a,V>>) -> ValCollection<'a,V> {
-    match collections.get(&rule.rel) {
-        Some(c) => collection.concat(c),
-        None    => panic!("mk_rule: unknown relation id {}", rule.rel)
-    }
+fn add_rule<'a, V:Val, T>(collection: &ValCollection<'a,V>, 
+                          rule: &Rule<V>,
+                          collections: &HashMap<RelId, ValCollection<'a,V>>,
+                          arrangements: &HashMap<ArrId, ValArrangement<'a,V,T>>) -> ValCollection<'a,V> 
+    where T : ValTraceReader<V>
+{
+    if !collections.contains_key(&rule.rel) {
+        panic!("add_rule: unknown relation id {}", rule.rel)
+    };
+    let mut first = collections.get(&rule.rel).unwrap();
+    let mut rhs = None;
+    for xform in &rule.xforms {
+        match xform {
+            XForm::Map{mfun: &f} => {
+                rhs = Some(rhs.as_ref().unwrap_or(first).map(f));
+            },
+            XForm::Filter{ffun: &f} => {
+                rhs = Some(rhs.as_ref().unwrap_or(first).filter(f));
+            },
+            XForm::FilterMap{fmfun: &f} => {
+                rhs = Some(rhs.as_ref().unwrap_or(first).flat_map(f));
+            },
+            XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
+                let arr = match arrangements.get(&arrid) {
+                    None      => panic!("add_rule: unknown arrangement id {:?}", arrid),
+                    Some(arr) => arr
+                };
+                rhs = Some(rhs.as_ref().unwrap_or(first).
+                           flat_map(af).arrange_by_key().
+                           join_core(arr, jf));
+            },
+            XForm::Antijoin {afun: &af, arrangement: arrid} => {
+                let arr = match arrangements.get(&arrid) {
+                    None      => panic!("add_rule: unknown arrangement id {:?}", arrid),
+                    Some(arr) => arr
+                };
+                rhs = Some(rhs.as_ref().unwrap_or(first).
+                           flat_map(af).
+                           antijoin(&arr.as_collection(|k,_|k.clone())).
+                           map(|(_,v)|v));
+            }
+        };
+    };
+    collection.concat(rhs.as_ref().unwrap_or(first))
 }
