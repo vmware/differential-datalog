@@ -21,7 +21,6 @@ unsafe_abomonate!(Value);
 #[test]
 fn test_simple_prog() {
     let prog: Program<Value> = Program {
-        relations: Vec::new(),
         nodes: Vec::new()
     };
     let running = prog.run();
