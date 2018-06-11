@@ -23,6 +23,10 @@ enum Value {
 }
 unsafe_abomonate!(Value);
 
+impl Default for Value {
+    fn default() -> Value {Value::bool(false)}
+}
+
 #[test]
 fn test_simple_prog() {
     let prog: Program<Value> = Program {

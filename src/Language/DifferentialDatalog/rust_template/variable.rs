@@ -15,7 +15,7 @@ use differential_dataflow::lattice::Lattice;
 pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
     feedback: Option<Handle<G::Timestamp, u64,(D, Product<G::Timestamp, u64>, isize)>>,
-    current: Collection<Child<'a, G, u64>, D>,
+    pub current: Collection<Child<'a, G, u64>, D>,
     cycle: Collection<Child<'a, G, u64>, D>,
 }
 
