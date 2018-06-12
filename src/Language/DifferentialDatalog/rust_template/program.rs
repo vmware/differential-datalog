@@ -4,8 +4,13 @@ use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
+use std::error;
+use std::result::Result;
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
+use std::collections::hash_set;
+use std::collections::hash_map;
+use std::fmt;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
@@ -20,10 +25,9 @@ use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
-use differential_dataflow::trace::implementations::ord::OrdValSpine;
 use variable::*;
 
-const NTIMELY_THREADS: usize = 1;
+const NTIMELY_THREADS: usize = 16;
 
 /* Value trait describes types that can be stored in a collection */
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
@@ -76,7 +80,7 @@ pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 /* Function that assembles the result of a join to a new value */
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
-pub type ValTraceAgent<S:Scope, V>  = TraceAgent<V, V, S::Timestamp, isize, OrdValSpine<V, V, S::Timestamp, isize>>;
+//pub type ValTraceAgent<S:Scope, V>  = TraceAgent<V, V, S::Timestamp, isize, OrdValSpine<V, V, S::Timestamp, isize>>;
 
 #[derive(Clone)]
 pub struct Rule<V: Val> {
@@ -115,14 +119,19 @@ pub struct Arrangement<V: Val> {
 
 pub type ValSet<V> = Arc<Mutex<FnvHashSet<V>>>;
 pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
-//type ValCollection<'a, V> = Collection<Child<'a, Root<Allocator>, u64>, V, isize>;
-//type ValArrangement<'a, V, T> = Arranged<Child<'a, Root<Allocator>, u64>, V, V, isize, T>;
+
+/* Running datalog program.
+ */
+pub struct RunningProgram<V: Val> {
+    relations: FnvHashMap<RelId, RelationInstance<V>>,
+    transaction_in_progress: bool
+}
 
 /* Runtime representation of relation
  */
 pub struct RelationInstance<V: Val> {
     /* Input session to feed data to relation */
-    input:    InputSession<u64, V, isize>,
+    //input:    InputSession<u64, V, isize>,
     /* Set of all elements in the relation */
     elements: ValSet<V>,
     /* Changes since start of transaction */
@@ -135,12 +144,13 @@ enum Dep {
     DepArr(ArrId)
 }
 
-
 impl<V:Val> Program<V> 
 {
-    pub fn run(&self) {
+    pub fn run(&self) -> RunningProgram<V> {
         let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
         let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
+        let mut elements1 = elements.clone();
+        let mut deltas1 = deltas.clone();
 
         for node in self.nodes.iter() {
             match node {
@@ -251,7 +261,26 @@ impl<V:Val> Program<V>
                 };
                 sessions
             });
+            println!("worker {} started", worker.index());
+
+            /* process commands from client */
+            //loop{};
         });
+        // TODO: check return value of timely::execute()
+
+        let mut rels = FnvHashMap::default();
+        for (relid, elems) in elements1.drain() {
+            rels.insert(relid, 
+                        RelationInstance{
+                            elements: elems,
+                            delta:    deltas1.remove(&relid).unwrap()
+                        });
+        };
+        println!("timely computation started");
+        RunningProgram{
+            relations: rels,
+            transaction_in_progress: false
+        }
     }
 
     fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
@@ -271,6 +300,7 @@ impl<V:Val> Program<V>
         }
     }
 
+    /* Lookup relation by id */
     fn get_relation(&self, relid: RelId) -> &Relation<V> {
         for node in &self.nodes {
             match node {
@@ -287,7 +317,7 @@ impl<V:Val> Program<V>
         panic!("get_relation({}): relation not found", relid)
     }
 
-
+    /* Lookup arrangement by id */
     fn get_arrangement(&self, arrid: ArrId) -> &Arrangement<V> {
         &self.get_relation(arrid.0).arrangements[arrid.1]
     }
@@ -315,6 +345,7 @@ impl<V:Val> Program<V>
         result
     }
 
+    /* Compile right-hand-side of a rule to a collection */
     fn mk_rule<'a,S:Scope,T,F>(&'a self,
                                rule: &Rule<V>,
                                lookup_collection: F,
@@ -376,5 +407,104 @@ impl<V:Val> Program<V>
             };
         };
         rhs.unwrap_or(first.map(|x|x))
+    }
+}
+
+#[derive(Debug)]
+pub struct Error {
+    err: String
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.err)
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        self.err.as_str()
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        None
+    }
+}
+
+pub type Response<X> = Result<X, Error>;
+
+fn resp_from_error<X>(err: &str) -> Response<X> {
+    Result::Err(Error{err: String::from(err)})
+}
+
+/* Iterate over the content of a relation */
+pub type RelIterator<'a, V> = hash_set::Iter<'a, V>;
+
+/* Iterate over delta */
+pub type DeltaIterator<'a, V> = hash_map::Iter<'a, V, i8>;
+
+impl<V:Val> RunningProgram<V> {
+    pub fn transaction_start(&mut self) -> Response<()> {
+        if self.transaction_in_progress {
+            resp_from_error("transaction already in progress")
+        } else {
+            self.transaction_in_progress = true;
+            Result::Ok(())
+        }
+    }
+
+    pub fn transaction_commit(&mut self) -> Response<()> {
+        self.flush();
+        if !self.transaction_in_progress {
+            resp_from_error("no transaction in progress")
+        } else {
+            self.delta_cleanup();
+            self.transaction_in_progress = false;
+            Result::Ok(())
+        }
+    }
+
+    pub fn transaction_rollback(&mut self) -> Response<()> {
+        self.flush();
+        if !self.transaction_in_progress {
+            resp_from_error("no transaction in progress")
+        } else {
+            self.delta_undo();
+            self.delta_cleanup();
+            self.transaction_in_progress = false;
+            Result::Ok(())
+        }
+    }
+
+    pub fn delta<'a>(&'a self, relid: RelId) -> Response<DeltaIterator<'a, V>> {
+        self.flush();
+        panic!("transaction_delta: not implemented")
+    }
+    
+    pub fn insert(&self, relid: RelId, v: V) -> Response<()> {
+        panic!("insert: not implemented")
+    }
+    
+    pub fn delete(&self, relid: RelId, v: V) -> Response<()> {
+        panic!("delete: not implemented")
+    }
+
+    pub fn relation_iter<'a>(&'a self, relid: RelId) -> Response<RelIterator<'a, V>> {
+        self.flush();
+        panic!("relation_iter: not implemented")
+    }
+
+    fn delta_cleanup(&mut self) {
+        for (_, rel) in &self.relations {
+            rel.delta.lock().unwrap().clear();
+        }
+    }
+
+    fn delta_undo(&mut self) {
+        panic!("delta_undo: not implemented")
+    }
+
+    fn flush(&self) {
+        panic!("flush: not implemented")
     }
 }

@@ -27,5 +27,5 @@ fn test_simple_prog() {
     let prog: Program<Value> = Program {
         nodes: Vec::new()
     };
-    prog.run();
+    let running = prog.run();
 }
