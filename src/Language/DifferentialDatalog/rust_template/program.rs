@@ -3,9 +3,7 @@ use serde::de::*;
 use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
 use fnv::FnvHashMap;
@@ -14,17 +12,16 @@ use fnv::FnvHashSet;
 use timely;
 use timely_communication::initialize::Configuration;
 use timely_communication::Allocator;
+use timely::dataflow::scopes::*;
+use timely::dataflow::operators::probe;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
-use timely::dataflow::scopes::*;
-use timely::progress::nested::product::Product;
-use timely::progress::timestamp::RootTimestamp;
+use differential_dataflow::trace::implementations::ord::OrdValSpine;
 use variable::*;
-
 
 const NTIMELY_THREADS: usize = 1;
 
@@ -32,8 +29,8 @@ const NTIMELY_THREADS: usize = 1;
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
 impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
 
-pub trait ValTraceReader<V: Val> : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
-impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
+//pub trait ValTraceReader<V: Val> : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
+//impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 
 type RelId = usize;
 type ArrId = (usize, usize);
@@ -79,6 +76,8 @@ pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 /* Function that assembles the result of a join to a new value */
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
+pub type ValTraceAgent<S:Scope, V>  = TraceAgent<V, V, S::Timestamp, isize, OrdValSpine<V, V, S::Timestamp, isize>>;
+
 #[derive(Clone)]
 pub struct Rule<V: Val> {
     rel:    RelId,        // first relation in the body of the rule
@@ -114,15 +113,8 @@ pub struct Arrangement<V: Val> {
 }
 
 
-/* Running datalog program.
- */
-pub struct RunningProgram<V: Val, T: ValTraceReader<V>> {
-    relations: FnvHashMap<RelId, RelationInstance<V>>,
-    t: PhantomData<T>
-}
-
-pub type ValSet<V> = Rc<RefCell<FnvHashSet<V>>>;
-pub type DeltaSet<V> = Rc<RefCell<FnvHashMap<V, i8>>>;
+pub type ValSet<V> = Arc<Mutex<FnvHashSet<V>>>;
+pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 //type ValCollection<'a, V> = Collection<Child<'a, Root<Allocator>, u64>, V, isize>;
 //type ValArrangement<'a, V, T> = Arranged<Child<'a, Root<Allocator>, u64>, V, V, isize, T>;
 
@@ -137,33 +129,41 @@ pub struct RelationInstance<V: Val> {
     delta:    DeltaSet<V>
 }
 
+#[derive(PartialEq,Eq,Hash)]
+enum Dep {
+    DepRel(RelId),
+    DepArr(ArrId)
+}
+
+
 impl<V:Val> Program<V> 
 {
-    pub fn run<T: ValTraceReader<V>>(&self) -> RunningProgram<V,T> {
-        let mut rels = FnvHashMap::default();
-
+    pub fn run(&self) {
         let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
         let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
 
         for node in self.nodes.iter() {
             match node {
                 ProgNode::RelNode{rel: r} => {
-                    elements.insert(r.id, Rc::new(RefCell::new(FnvHashSet::default())));
-                    deltas.insert(r.id, Rc::new(RefCell::new(FnvHashMap::default())));
+                    elements.insert(r.id, Arc::new(Mutex::new(FnvHashSet::default())));
+                    deltas.insert(r.id, Arc::new(Mutex::new(FnvHashMap::default())));
                 },
                 ProgNode::SCCNode{rels: rs} => {
                     for r in rs.iter() {
-                        elements.insert(r.id, Rc::new(RefCell::new(FnvHashSet::default())));
-                        deltas.insert(r.id, Rc::new(RefCell::new(FnvHashMap::default())));
+                        elements.insert(r.id, Arc::new(Mutex::new(FnvHashSet::default())));
+                        deltas.insert(r.id, Arc::new(Mutex::new(FnvHashMap::default())));
                     }
                 }
             }
         };
-        /* Clone the program, so that it can be accessed inside the timely computation */
+        /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
         // start up timely computation
         timely::execute(Configuration::Process(NTIMELY_THREADS), move |worker: &mut Root<Allocator>| {
+            let probe = probe::Handle::new();
+            let mut probe1 = probe.clone();
+
             let sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
                 let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
                 let mut collections : FnvHashMap<RelId, Collection<Child<Root<Allocator>, u64>,V,isize>> = FnvHashMap::default();
@@ -175,7 +175,7 @@ impl<V:Val> Program<V>
                             sessions.insert(r.id, session);
                             /* apply rules */
                             for rule in &r.rules {
-                                collection = collection.concat(&Self::mk_rule(rule, |rid| collections.get(&rid), &arrangements));
+                                collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
                             };
                             collection = collection.distinct();
                             /* create arrangements */
@@ -197,24 +197,31 @@ impl<V:Val> Program<V>
                                 /* create variables for relations defined in the SCC, as well as all
                                  * relations they depend on. */
                                 let mut vars = FnvHashMap::default();
-                                for rid in Self::dependencies(&rs) {
-                                    vars.insert(rid, Variable::from(&collections.get(&rid).unwrap().enter(inner)));
-                                };
                                 let mut inner_arrangements = FnvHashMap::default();
-                                for arrid in Self::arr_dependencies(&rs) {
-                                    match arrangements.get(&arrid) {
-                                        Some(arr)   => {inner_arrangements.insert(arrid, arr.enter(inner));},
-                                        None        => {} // TODO: create arrangements
+                                for dep in Self::dependencies(&rs) {
+                                    match dep {
+                                        Dep::DepRel(relid) => {
+                                            vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                        },
+                                        Dep::DepArr(arrid) => {
+                                            match arrangements.get(&arrid) {
+                                                Some(arr)   => {
+                                                    inner_arrangements.insert(arrid, arr.enter(inner));
+                                                },
+                                                None        => {
+                                                    if !vars.contains_key(&arrid.0) {
+                                                        vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
+                                                    };
+                                                } // TODO: figure out it there is a safe way to create arrangements inside recursive fragment
+                                            };
+                                        }
                                     }
                                 };
-                                // /* create all arrangements used in the scope (or 
-                                //  * import existing arrangements into the scope) */
-                                // let inner_arrangements = ;
                                 /* apply rules to variables */
                                 for rel in rs {
                                     for rule in &rel.rules {
-                                        let c = &Self::mk_rule(rule, |rid|vars.get(&rid).map(|v|&v.current), &inner_arrangements);
-                                        vars.get_mut(&rel.id).unwrap().add(c);
+                                        let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&v.current), &inner_arrangements);
+                                        vars.get_mut(&rel.id).unwrap().add(&c);
                                     };
                                     /* var.distinct() will be called automatically by var.drop() */
                                 };
@@ -236,26 +243,82 @@ impl<V:Val> Program<V>
                         }
                     };
                 };
+
+                for (relid, collection) in collections {
+                    let elems = elements.get(&relid).unwrap().clone();
+                    let delts = deltas.get(&relid).unwrap().clone();
+                    collection.inspect(move |x| Self::xupd(&elems, &delts, &x.0, x.2)).probe_with(&mut probe1);
+                };
                 sessions
             });
         });
+    }
 
-        RunningProgram{relations: rels, t: PhantomData}
+    fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
+    {
+        if w > 0 {
+            let new = s.lock().unwrap().insert(x.clone());
+            if new {
+                let f = |e: &mut i8| if *e == -1 {*e = 0;} else if *e == 0 {*e = 1};
+                f(ds.lock().unwrap().entry(x.clone()).or_insert(0));
+            };
+        } else if w < 0 {
+            let present = s.lock().unwrap().remove(x);
+            if present {
+                let f = |e: &mut i8| if *e == 1 {*e = 0;} else if *e == 0 {*e = -1;};
+                f(ds.lock().unwrap().entry(x.clone()).or_insert(0));
+            };
+        }
+    }
+
+    fn get_relation(&self, relid: RelId) -> &Relation<V> {
+        for node in &self.nodes {
+            match node {
+                ProgNode::RelNode{rel:r} => {
+                    if r.id == relid {return r;};
+                },
+                ProgNode::SCCNode{rels:rs} => {
+                    for r in rs {
+                        if r.id == relid {return r;};
+                    };
+                }
+            }
+        };
+        panic!("get_relation({}): relation not found", relid)
+    }
+
+
+    fn get_arrangement(&self, arrid: ArrId) -> &Arrangement<V> {
+        &self.get_relation(arrid.0).arrangements[arrid.1]
     }
     
-    fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<RelId> {
-        // TODO
-        panic!("dependencies not implemented")
+    /* Return all relations required to compute rels, including rels themselves */
+    fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
+        let mut result = FnvHashSet::default();
+        for rel in rels {
+            result.insert(Dep::DepRel(rel.id));
+            for rule in &rel.rules {
+                result.insert(Dep::DepRel(rule.rel));
+                for xform in &rule.xforms {
+                    match xform {
+                        XForm::Join{afun: _, arrangement: arrid, jfun: _} => {
+                            result.insert(Dep::DepArr(*arrid));
+                        },
+                        XForm::Antijoin {afun: _, arrangement: arrid} => {
+                            result.insert(Dep::DepArr(*arrid));
+                        },
+                        _ => {}
+                    };
+                };
+            };
+        };
+        result
     }
 
-    fn arr_dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<ArrId> {
-        // TODO
-        panic!("arr_dependencies not implemented")
-    }
-
-    fn mk_rule<'a,S:Scope,T,F>(rule: &Rule<V>,
-                                lookup_collection: F,
-                                arrangements: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T>>) -> Collection<S,V> 
+    fn mk_rule<'a,S:Scope,T,F>(&'a self,
+                               rule: &Rule<V>,
+                               lookup_collection: F,
+                               arrangements: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T>>) -> Collection<S,V> 
         where T : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
               S::Timestamp : Lattice,
               F: Fn(RelId) -> Option<&'a Collection<S,V>>
@@ -266,34 +329,49 @@ impl<V:Val> Program<V>
         };
         let mut rhs = None;
         for xform in &rule.xforms {
-            match xform {
+            rhs = match xform {
                 XForm::Map{mfun: &f} => {
-                    rhs = Some(rhs.as_ref().unwrap_or(first).map(f));
+                    Some(rhs.as_ref().unwrap_or(first).map(f))
                 },
                 XForm::Filter{ffun: &f} => {
-                    rhs = Some(rhs.as_ref().unwrap_or(first).filter(f));
+                    Some(rhs.as_ref().unwrap_or(first).filter(f))
                 },
                 XForm::FilterMap{fmfun: &f} => {
-                    rhs = Some(rhs.as_ref().unwrap_or(first).flat_map(f));
+                    Some(rhs.as_ref().unwrap_or(first).flat_map(f))
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
-                    let arr = match arrangements.get(&arrid) {
-                        None      => panic!("mk_rule: unknown arrangement id {:?}", arrid),
-                        Some(arr) => arr
-                    };
-                    rhs = Some(rhs.as_ref().unwrap_or(first).
-                               flat_map(af).arrange_by_key().
-                               join_core(arr, jf));
+                    match arrangements.get(&arrid) {
+                        Some(arranged) => {
+                            Some(rhs.as_ref().unwrap_or(first).
+                                 flat_map(af).arrange_by_key().
+                                 join_core(arranged, jf))
+                        },
+                        None      => {
+                            let arrangement = self.get_arrangement(*arrid);
+                            let arranged = lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key();
+                            Some(rhs.as_ref().unwrap_or(first).
+                                 flat_map(af).arrange_by_key().
+                                 join_core(&arranged, jf))
+                        }
+                    }
                 },
                 XForm::Antijoin {afun: &af, arrangement: arrid} => {
-                    let arr = match arrangements.get(&arrid) {
-                        None      => panic!("mk_rule: unknown arrangement id {:?}", arrid),
-                        Some(arr) => arr
-                    };
-                    rhs = Some(rhs.as_ref().unwrap_or(first).
-                               flat_map(af).
-                               antijoin(&arr.as_collection(|k,_|k.clone())).
-                               map(|(_,v)|v));
+                    match arrangements.get(&arrid) {
+                        Some(arranged) => {
+                            Some(rhs.as_ref().unwrap_or(first).
+                                 flat_map(af).
+                                 antijoin(&arranged.as_collection(|k,_|k.clone())).
+                                 map(|(_,v)|v))
+                        },
+                        None      => {
+                            let arrangement = self.get_arrangement(*arrid);
+                            let arranged = lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key();
+                            Some(rhs.as_ref().unwrap_or(first).
+                                 flat_map(af).
+                                 antijoin(&arranged.as_collection(|k,_|k.clone())).
+                                 map(|(_,v)|v))
+                        }
+                    }
                 }
             };
         };
