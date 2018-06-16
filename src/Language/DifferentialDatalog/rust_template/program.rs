@@ -11,6 +11,7 @@ use std::result::Result;
 use std::collections::hash_set;
 use std::collections::hash_map;
 use std::fmt;
+use std::sync::mpsc;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
@@ -18,7 +19,8 @@ use timely;
 use timely_communication::initialize::Configuration;
 use timely_communication::Allocator;
 use timely::dataflow::scopes::*;
-use timely::dataflow::operators::probe;
+use timely::dataflow::operators::{probe,Probe};
+use timely::dataflow::operators::generic::operator::source;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
@@ -123,6 +125,7 @@ pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 /* Running datalog program.
  */
 pub struct RunningProgram<V: Val> {
+    sender: mpsc::Sender<Msg<V>>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     transaction_in_progress: bool
 }
@@ -142,6 +145,21 @@ pub struct RelationInstance<V: Val> {
 enum Dep {
     DepRel(RelId),
     DepArr(ArrId)
+}
+
+/* Messages sent to timely worker threads
+ */
+#[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
+enum MsgType {
+    MsgInsert,
+    MsgDelete
+}
+unsafe_abomonate!(MsgType);
+
+struct Msg<V: Val> {
+    typ:   MsgType,
+    relid: RelId,
+    v:     V
 }
 
 impl<V:Val> Program<V> 
@@ -169,11 +187,18 @@ impl<V:Val> Program<V>
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
+        /* setup channel to communicate with  */
+        let (tx, rx) = mpsc::channel::<Msg<V>>();
+        let rx = Arc::new(Mutex::new(rx));
+        let weak_rx = Arc::downgrade(&rx);
+
         // start up timely computation
         timely::execute(Configuration::Process(NTIMELY_THREADS), move |worker: &mut Root<Allocator>| {
             let probe = probe::Handle::new();
             let mut probe1 = probe.clone();
+            let worker_index = worker.index();
 
+            let weak_rx = weak_rx.clone();
             let sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
                 let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
                 let mut collections : FnvHashMap<RelId, Collection<Child<Root<Allocator>, u64>,V,isize>> = FnvHashMap::default();
@@ -222,7 +247,7 @@ impl<V:Val> Program<V>
                                                     if !vars.contains_key(&arrid.0) {
                                                         vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
                                                     };
-                                                } // TODO: figure out it there is a safe way to create arrangements inside recursive fragment
+                                                } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
                                             };
                                         }
                                     }
@@ -259,14 +284,47 @@ impl<V:Val> Program<V>
                     let delts = deltas.get(&relid).unwrap().clone();
                     collection.inspect(move |x| Self::xupd(&elems, &delts, &x.0, x.2)).probe_with(&mut probe1);
                 };
+
+                /* Create data source attached to the rx side of the channel. */
+                source(outer, "input", move |capability| {
+                    /* Only worker 0 received data */
+                    let mut optcap = if worker_index == 0 {
+                        match weak_rx.clone().upgrade() {
+                            None     => None,
+                            Some(rx) => Some((capability, rx))
+                        }
+                    } else {
+                        None
+                    };
+                    move |output| {
+                        let mut closed = false;
+                        if let Some((cap, rx)) = optcap.as_mut() {
+                            println!("waiting for input");
+                            match rx.lock().unwrap().recv() {
+                                Err(_)  => {
+                                    /* Sender hung up--drop the capability */
+                                    closed = true;
+                                },
+                                Ok(Msg{typ, relid, v}) => {
+                                    output.session(&cap).give((typ, relid, v));
+                                    let mut time = cap.time().clone();
+                                    time.inner += 1;
+                                    *cap = cap.delayed(&time); 
+                                }
+                            };
+                        };
+                        if closed {
+                            optcap = None
+                        }
+                    }
+                }).probe_with(&mut probe1);
+
                 sessions
             });
             println!("worker {} started", worker.index());
-
-            /* process commands from client */
-            //loop{};
         });
         // TODO: check return value of timely::execute()
+        println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
         for (relid, elems) in elements1.drain() {
@@ -276,8 +334,9 @@ impl<V:Val> Program<V>
                             delta:    deltas1.remove(&relid).unwrap()
                         });
         };
-        println!("timely computation started");
+
         RunningProgram{
+            sender: tx,
             relations: rels,
             transaction_in_progress: false
         }
@@ -454,10 +513,10 @@ impl<V:Val> RunningProgram<V> {
     }
 
     pub fn transaction_commit(&mut self) -> Response<()> {
-        self.flush();
         if !self.transaction_in_progress {
             resp_from_error("no transaction in progress")
         } else {
+            self.flush();
             self.delta_cleanup();
             self.transaction_in_progress = false;
             Result::Ok(())
@@ -465,10 +524,10 @@ impl<V:Val> RunningProgram<V> {
     }
 
     pub fn transaction_rollback(&mut self) -> Response<()> {
-        self.flush();
         if !self.transaction_in_progress {
             resp_from_error("no transaction in progress")
         } else {
+            self.flush();
             self.delta_undo();
             self.delta_cleanup();
             self.transaction_in_progress = false;
@@ -476,13 +535,28 @@ impl<V:Val> RunningProgram<V> {
         }
     }
 
+    /* Read delta accumulated by the current transaction */
     pub fn delta<'a>(&'a self, relid: RelId) -> Response<DeltaIterator<'a, V>> {
-        self.flush();
-        panic!("transaction_delta: not implemented")
+        if !self.transaction_in_progress {
+            resp_from_error("no transaction in progress")
+        } else {
+            self.flush();
+            panic!("transaction_delta: not implemented")
+        }
     }
     
     pub fn insert(&self, relid: RelId, v: V) -> Response<()> {
-        panic!("insert: not implemented")
+        if !self.transaction_in_progress {
+            resp_from_error("no transaction in progress")
+        } else {
+            println!("sending");
+            self.sender.send(Msg{
+                typ:   MsgType::MsgInsert,
+                relid: relid,
+                v:     v
+            });
+            Ok(())
+        }
     }
     
     pub fn delete(&self, relid: RelId, v: V) -> Response<()> {
@@ -505,6 +579,6 @@ impl<V:Val> RunningProgram<V> {
     }
 
     fn flush(&self) {
-        panic!("flush: not implemented")
+        // TODO: panic!("flush: not implemented")
     }
 }

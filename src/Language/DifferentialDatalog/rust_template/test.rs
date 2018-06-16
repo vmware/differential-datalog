@@ -27,5 +27,10 @@ fn test_simple_prog() {
     let prog: Program<Value> = Program {
         nodes: Vec::new()
     };
-    let running = prog.run();
+    let mut running = prog.run();
+    for i in 0..10 {
+        running.transaction_start();
+        running.insert(0, Value::bool(true));
+        running.transaction_commit();
+    }
 }
