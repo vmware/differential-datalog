@@ -8,9 +8,8 @@ use std::error;
 use std::result::Result;
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
-use std::collections::hash_set;
-use std::collections::hash_map;
 use std::fmt;
+use std::thread;
 use std::sync::mpsc;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
@@ -19,8 +18,10 @@ use timely;
 use timely_communication::initialize::Configuration;
 use timely_communication::Allocator;
 use timely::dataflow::scopes::*;
-use timely::dataflow::operators::{probe,Probe};
-use timely::dataflow::operators::generic::operator::source;
+use timely::dataflow::operators::probe;
+use timely::dataflow::ProbeHandle;
+use timely::progress::nested::product::Product;
+use timely::progress::timestamp::RootTimestamp;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
@@ -125,9 +126,10 @@ pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 /* Running datalog program.
  */
 pub struct RunningProgram<V: Val> {
-    sender: mpsc::Sender<Msg<V>>,
+    sender: mpsc::SyncSender<Msg<V>>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
-    transaction_in_progress: bool
+    transaction_in_progress: bool,
+    need_to_flush: bool
 }
 
 /* Runtime representation of relation
@@ -149,17 +151,10 @@ enum Dep {
 
 /* Messages sent to timely worker threads
  */
-#[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
-enum MsgType {
-    MsgInsert,
-    MsgDelete
-}
-unsafe_abomonate!(MsgType);
-
-struct Msg<V: Val> {
-    typ:   MsgType,
-    relid: RelId,
-    v:     V
+enum Msg<V: Val> {
+    Insert{relid: RelId, v: V},
+    Delete{relid: RelId, v: V},
+    Flush
 }
 
 impl<V:Val> Program<V> 
@@ -187,142 +182,157 @@ impl<V:Val> Program<V>
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
-        /* setup channel to communicate with  */
-        let (tx, rx) = mpsc::channel::<Msg<V>>();
+        /* Setup channel to communicate with the dataflow.
+         * We use sync channel with buffer size 0 to ensure that the receiver finishes 
+         * processing commands by the time send() returns.
+         */
+        let (tx, rx) = mpsc::sync_channel::<Msg<V>>(0);
         let rx = Arc::new(Mutex::new(rx));
-        let weak_rx = Arc::downgrade(&rx);
 
+        let h = thread::spawn(move || 
         // start up timely computation
-        timely::execute(Configuration::Process(NTIMELY_THREADS), move |worker: &mut Root<Allocator>| {
-            let probe = probe::Handle::new();
-            let mut probe1 = probe.clone();
-            let worker_index = worker.index();
+            timely::execute(Configuration::Process(NTIMELY_THREADS), move |worker: &mut Root<Allocator>| {
+                let probe = probe::Handle::new();
+                let mut probe1 = probe.clone();
+                let worker_index = worker.index();
 
-            let weak_rx = weak_rx.clone();
-            let sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
-                let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
-                let mut collections : FnvHashMap<RelId, Collection<Child<Root<Allocator>, u64>,V,isize>> = FnvHashMap::default();
-                let mut arrangements /*: FnvHashMap<ArrId, Arranged<Child<Root<Allocator>, u64>,V,V,isize,T>>*/ = FnvHashMap::default();
-                for node in &prog.nodes {
-                    match node {
-                        ProgNode::RelNode{rel:r} => {
-                            let (session, mut collection) = outer.new_collection::<V,isize>();
-                            sessions.insert(r.id, session);
-                            /* apply rules */
-                            for rule in &r.rules {
-                                collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
-                            };
-                            collection = collection.distinct();
-                            /* create arrangements */
-                            for (i,arr) in r.arrangements.iter().enumerate() {
-                                arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key());
-                            };
-                            collections.insert(r.id, collection);
-                        },
-                        ProgNode::SCCNode{rels:rs} => {
-                            /* create collections; add them to map; we will overwrite them with
-                             * updated collections returned from the inner scope. */
-                            for r in rs.iter() {
-                                let (session, collection) = outer.new_collection::<V,isize>();
+                let rx = rx.clone();
+                let mut sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
+                    let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
+                    let mut collections : FnvHashMap<RelId, Collection<Child<Root<Allocator>, u64>,V,isize>> = FnvHashMap::default();
+                    let mut arrangements /*: FnvHashMap<ArrId, Arranged<Child<Root<Allocator>, u64>,V,V,isize,T>>*/ = FnvHashMap::default();
+                    for node in &prog.nodes {
+                        match node {
+                            ProgNode::RelNode{rel:r} => {
+                                let (session, mut collection) = outer.new_collection::<V,isize>();
                                 sessions.insert(r.id, session);
+                                /* apply rules */
+                                for rule in &r.rules {
+                                    collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
+                                };
+                                collection = collection.distinct();
+                                /* create arrangements */
+                                for (i,arr) in r.arrangements.iter().enumerate() {
+                                    arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key());
+                                };
                                 collections.insert(r.id, collection);
-                            };
-                            /* create a nested scope for mutually recursive relations */
-                            let new_collections = outer.scoped(|inner| {
-                                /* create variables for relations defined in the SCC, as well as all
-                                 * relations they depend on. */
-                                let mut vars = FnvHashMap::default();
-                                let mut inner_arrangements = FnvHashMap::default();
-                                for dep in Self::dependencies(&rs) {
-                                    match dep {
-                                        Dep::DepRel(relid) => {
-                                            vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
-                                        },
-                                        Dep::DepArr(arrid) => {
-                                            match arrangements.get(&arrid) {
-                                                Some(arr)   => {
-                                                    inner_arrangements.insert(arrid, arr.enter(inner));
-                                                },
-                                                None        => {
-                                                    if !vars.contains_key(&arrid.0) {
-                                                        vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
-                                                    };
-                                                } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
-                                            };
+                            },
+                            ProgNode::SCCNode{rels:rs} => {
+                                /* create collections; add them to map; we will overwrite them with
+                                 * updated collections returned from the inner scope. */
+                                for r in rs.iter() {
+                                    let (session, collection) = outer.new_collection::<V,isize>();
+                                    sessions.insert(r.id, session);
+                                    collections.insert(r.id, collection);
+                                };
+                                /* create a nested scope for mutually recursive relations */
+                                let new_collections = outer.scoped(|inner| {
+                                    /* create variables for relations defined in the SCC, as well as all
+                                     * relations they depend on. */
+                                    let mut vars = FnvHashMap::default();
+                                    let mut inner_arrangements = FnvHashMap::default();
+                                    for dep in Self::dependencies(&rs) {
+                                        match dep {
+                                            Dep::DepRel(relid) => {
+                                                vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                            },
+                                            Dep::DepArr(arrid) => {
+                                                match arrangements.get(&arrid) {
+                                                    Some(arr)   => {
+                                                        inner_arrangements.insert(arrid, arr.enter(inner));
+                                                    },
+                                                    None        => {
+                                                        if !vars.contains_key(&arrid.0) {
+                                                            vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
+                                                        };
+                                                    } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
+                                                };
+                                            }
                                         }
-                                    }
-                                };
-                                /* apply rules to variables */
-                                for rel in rs {
-                                    for rule in &rel.rules {
-                                        let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&v.current), &inner_arrangements);
-                                        vars.get_mut(&rel.id).unwrap().add(&c);
                                     };
-                                    /* var.distinct() will be called automatically by var.drop() */
-                                };
-                                /* bring new relations back to the outer scope */
-                                let mut new_collections = FnvHashMap::default();
+                                    /* apply rules to variables */
+                                    for rel in rs {
+                                        for rule in &rel.rules {
+                                            let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&v.current), &inner_arrangements);
+                                            vars.get_mut(&rel.id).unwrap().add(&c);
+                                        };
+                                        /* var.distinct() will be called automatically by var.drop() */
+                                    };
+                                    /* bring new relations back to the outer scope */
+                                    let mut new_collections = FnvHashMap::default();
+                                    for rel in rs {
+                                        new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
+                                    };
+                                    new_collections
+                                });
+                                /* add new collections to the map */
+                                collections.extend(new_collections);
+                                /* create arrangements */
                                 for rel in rs {
-                                    new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
+                                    for (i, arr) in rel.arrangements.iter().enumerate() {
+                                        arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key());
+                                    };
                                 };
-                                new_collections
-                            });
-                            /* add new collections to the map */
-                            collections.extend(new_collections);
-                            /* create arrangements */
-                            for rel in rs {
-                                for (i, arr) in rel.arrangements.iter().enumerate() {
-                                    arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key());
-                                };
-                            };
-                        }
+                            }
+                        };
                     };
-                };
 
-                for (relid, collection) in collections {
-                    let elems = elements.get(&relid).unwrap().clone();
-                    let delts = deltas.get(&relid).unwrap().clone();
-                    collection.inspect(move |x| Self::xupd(&elems, &delts, &x.0, x.2)).probe_with(&mut probe1);
-                };
-
-                /* Create data source attached to the rx side of the channel. */
-                source(outer, "input", move |capability| {
-                    /* Only worker 0 received data */
-                    let mut optcap = if worker_index == 0 {
-                        match weak_rx.clone().upgrade() {
-                            None     => None,
-                            Some(rx) => Some((capability, rx))
-                        }
-                    } else {
-                        None
+                    for (relid, collection) in collections {
+                        let elems = elements.get(&relid).unwrap().clone();
+                        let delts = deltas.get(&relid).unwrap().clone();
+                        collection.inspect(move |x| Self::xupd(&elems, &delts, &x.0, x.2)).probe_with(&mut probe1);
                     };
-                    move |output| {
-                        let mut closed = false;
-                        if let Some((cap, rx)) = optcap.as_mut() {
-                            println!("waiting for input");
-                            match rx.lock().unwrap().recv() {
-                                Err(_)  => {
-                                    /* Sender hung up--drop the capability */
-                                    closed = true;
+
+                    sessions
+                });
+                println!("worker {} started", worker.index());
+
+                /* Only worker 0 receives data */
+                if worker_index != 0 {return;};
+
+                let mut epoch: u64 = 0;
+                let rx = rx.lock().unwrap();
+                loop {
+                    match rx.recv() {
+                        Err(_)  => {
+                            /* Sender hung */
+                            break;
+                        },
+                        Ok(Msg::Insert{relid, v}) => {
+                            match sessions.get_mut(&relid) {
+                                None => { 
+                                    println!("Msg::Insert: unknown relation {}", relid); 
+                                    continue;
                                 },
-                                Ok(Msg{typ, relid, v}) => {
-                                    output.session(&cap).give((typ, relid, v));
-                                    let mut time = cap.time().clone();
-                                    time.inner += 1;
-                                    *cap = cap.delayed(&time); 
+                                Some(session) => {
+                                    session.insert(v);
                                 }
                             };
-                        };
-                        if closed {
-                            optcap = None
+                            epoch = epoch+1;
+                            //print!("epoch: {}\n", epoch);
+                            Self::advance(&mut sessions, epoch);
+                        },
+                        Ok(Msg::Delete{relid, v}) => {
+                            match sessions.get_mut(&relid) {
+                                None => {
+                                    println!("Msg::Insert: unknown relation {}", relid); 
+                                    continue;
+                                },
+                                Some(session) => {
+                                    session.remove(v);
+                                }
+                            };
+                            epoch = epoch+1;
+                            //print!("epoch: {}\n", epoch);
+                            Self::advance(&mut sessions, epoch);
+                        },
+                        Ok(Msg::Flush) => {
+                            Self::flush(&mut sessions, &probe, worker);
                         }
-                    }
-                }).probe_with(&mut probe1);
+                    };
+                };
+            }));
 
-                sessions
-            });
-            println!("worker {} started", worker.index());
-        });
         // TODO: check return value of timely::execute()
         println!("timely computation started");
 
@@ -338,7 +348,33 @@ impl<V:Val> Program<V>
         RunningProgram{
             sender: tx,
             relations: rels,
-            transaction_in_progress: false
+            transaction_in_progress: false,
+            need_to_flush: false
+        }
+    }
+
+    /* Advance the epoch on all input sessions */
+    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>, epoch : u64) {
+        for (_,s) in sessions.into_iter() {
+            //print!("advance\n");
+            s.advance_to(epoch);
+        };
+    }
+
+    /* Propagate all changes through the pipeline */
+    fn flush(
+        sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>,
+        probe: &ProbeHandle<Product<RootTimestamp, u64>>,
+        worker: &mut Root<Allocator>) 
+    {
+        for (_,r) in sessions.into_iter() {
+            //print!("flush\n");
+            r.flush();
+        };
+        if let Some((_,session)) = sessions.into_iter().nth(0) {
+            while probe.less_than(session.time()) {
+                worker.step();
+            };
         }
     }
 
@@ -492,81 +528,98 @@ impl error::Error for Error {
 
 pub type Response<X> = Result<X, Error>;
 
-fn resp_from_error<X>(err: &str) -> Response<X> {
-    Result::Err(Error{err: String::from(err)})
+macro_rules! resp_from_error {
+    ($($arg:tt)*) => (Result::Err(Error{err: format_args!($($arg)*).to_string()}));
 }
 
-/* Iterate over the content of a relation */
-pub type RelIterator<'a, V> = hash_set::Iter<'a, V>;
-
-/* Iterate over delta */
-pub type DeltaIterator<'a, V> = hash_map::Iter<'a, V, i8>;
-
+// TODO: change the interface to take a vector of commands
 impl<V:Val> RunningProgram<V> {
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
-            resp_from_error("transaction already in progress")
-        } else {
-            self.transaction_in_progress = true;
-            Result::Ok(())
-        }
+            return resp_from_error!("transaction already in progress");
+        }; 
+
+        self.transaction_in_progress = true;
+        Result::Ok(())
     }
 
     pub fn transaction_commit(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            resp_from_error("no transaction in progress")
-        } else {
-            self.flush();
-            self.delta_cleanup();
-            self.transaction_in_progress = false;
-            Result::Ok(())
-        }
+            return resp_from_error!("no transaction in progress")
+        };
+
+        self.flush();
+        self.delta_cleanup();
+        self.transaction_in_progress = false;
+        Result::Ok(())
     }
 
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            resp_from_error("no transaction in progress")
-        } else {
-            self.flush();
-            self.delta_undo();
-            self.delta_cleanup();
-            self.transaction_in_progress = false;
-            Result::Ok(())
-        }
-    }
-
-    /* Read delta accumulated by the current transaction */
-    pub fn delta<'a>(&'a self, relid: RelId) -> Response<DeltaIterator<'a, V>> {
-        if !self.transaction_in_progress {
-            resp_from_error("no transaction in progress")
-        } else {
-            self.flush();
-            panic!("transaction_delta: not implemented")
-        }
-    }
-    
-    pub fn insert(&self, relid: RelId, v: V) -> Response<()> {
-        if !self.transaction_in_progress {
-            resp_from_error("no transaction in progress")
-        } else {
-            println!("sending");
-            self.sender.send(Msg{
-                typ:   MsgType::MsgInsert,
-                relid: relid,
-                v:     v
-            });
-            Ok(())
-        }
-    }
-    
-    pub fn delete(&self, relid: RelId, v: V) -> Response<()> {
-        panic!("delete: not implemented")
-    }
-
-    pub fn relation_iter<'a>(&'a self, relid: RelId) -> Response<RelIterator<'a, V>> {
+            return resp_from_error!("no transaction in progress");
+        } 
+        
         self.flush();
-        panic!("relation_iter: not implemented")
+        self.delta_undo();
+        self.transaction_in_progress = false;
+        Result::Ok(())
     }
+
+    pub fn insert(&mut self, relid: RelId, v: V) -> Response<()> {
+        if !self.transaction_in_progress {
+            return resp_from_error!("no transaction in progress");
+        } 
+        
+        //println!("sending");
+        self.sender.send(Msg::Insert{
+            relid: relid,
+            v:     v
+        });
+        self.need_to_flush = true;
+        Ok(())
+    }
+    
+    pub fn delete(&mut self, relid: RelId, v: V) -> Response<()> {
+        if !self.transaction_in_progress {
+            return resp_from_error!("no transaction in progress");
+        };
+        
+        //println!("deleting");
+        self.sender.send(Msg::Delete{
+            relid: relid,
+            v:     v
+        });
+        self.need_to_flush = true;
+        Ok(())
+    }
+
+    /* Returns all elements of a relation */
+    pub fn relation_content(&mut self, relid: RelId) -> Response<&ValSet<V>> {
+        if !self.transaction_in_progress {
+            return resp_from_error!("no transaction in progress");
+        };
+
+        self.flush();
+        match self.relations.get_mut(&relid) {
+            None => resp_from_error!("unknown relation"),
+            Some(rel) => Ok(&rel.elements)
+        }
+    }
+
+    /* Returns delta accumulated by the current transaction */
+    pub fn relation_delta(&mut self, relid: RelId) -> Response<&DeltaSet<V>> {
+        if !self.transaction_in_progress {
+            return resp_from_error!("no transaction in progress");
+        };
+
+        self.flush();
+
+        match self.relations.get_mut(&relid) {
+            None => resp_from_error!("unknown relation"),
+            Some(rel) => Ok(&rel.delta)
+        }
+    }
+ 
 
     fn delta_cleanup(&mut self) {
         for (_, rel) in &self.relations {
@@ -574,11 +627,33 @@ impl<V:Val> RunningProgram<V> {
         }
     }
 
+    /* reverse all changes recorded in delta sets */
     fn delta_undo(&mut self) {
-        panic!("delta_undo: not implemented")
+        for (relid, rel) in &self.relations {
+            let d = rel.delta.lock().unwrap();
+            for (k,w) in d.iter() {
+                if *w == 1 {
+                    self.sender.send(Msg::Delete{
+                        relid: *relid,
+                        v:     k.clone()
+                    });
+                } else if *w == -1 {
+                    self.sender.send(Msg::Insert{
+                        relid: *relid,
+                        v:     k.clone()
+                    });
+                };
+            };
+        };
+        self.flush();
+
+        /* TODO: all deltas must be empty */
     }
 
-    fn flush(&self) {
-        // TODO: panic!("flush: not implemented")
+    fn flush(&mut self) {
+        if !self.need_to_flush {return};
+        
+        self.sender.send(Msg::Flush);
+        self.need_to_flush = false;
     }
 }
