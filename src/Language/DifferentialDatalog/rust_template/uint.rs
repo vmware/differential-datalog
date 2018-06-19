@@ -37,12 +37,14 @@ impl<'de> Deserialize<'de> for Uint {
     }
 }
 
+/*
 impl Uint {
     #[inline]
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
         Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
     }
 }
+*/
 
 impl Shr<usize> for Uint {
     type Output = Uint;

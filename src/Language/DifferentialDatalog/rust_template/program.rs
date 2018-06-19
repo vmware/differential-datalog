@@ -15,7 +15,7 @@ use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
 use timely;
-use timely_communication::initialize::Configuration;
+use timely_communication::initialize::{Configuration, WorkerGuards};
 use timely_communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::dataflow::operators::probe;
@@ -30,7 +30,14 @@ use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
 use variable::*;
 
-const NTIMELY_THREADS: usize = 16;
+/* Error type returned by this library */
+#[derive(Debug)]
+pub struct Error {
+    err: String
+}
+
+/* Result type returned by this library */
+pub type Response<X> = Result<X, Error>;
 
 /* Value trait describes types that can be stored in a collection */
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
@@ -128,6 +135,7 @@ pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 pub struct RunningProgram<V: Val> {
     sender: mpsc::SyncSender<Msg<V>>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
+    thread_handle: thread::JoinHandle<Result<WorkerGuards<()>, String>>,
     transaction_in_progress: bool,
     need_to_flush: bool
 }
@@ -149,17 +157,22 @@ enum Dep {
     DepArr(ArrId)
 }
 
+pub enum Update<V: Val> {
+    Insert{relid: RelId, v: V},
+    Delete{relid: RelId, v: V}
+}
+
 /* Messages sent to timely worker threads
  */
 enum Msg<V: Val> {
-    Insert{relid: RelId, v: V},
-    Delete{relid: RelId, v: V},
-    Flush
+    Update(Update<V>),
+    Flush,
+    Stop
 }
 
 impl<V:Val> Program<V> 
 {
-    pub fn run(&self) -> RunningProgram<V> {
+    pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
         let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
         let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
         let mut elements1 = elements.clone();
@@ -191,7 +204,7 @@ impl<V:Val> Program<V>
 
         let h = thread::spawn(move || 
         // start up timely computation
-            timely::execute(Configuration::Process(NTIMELY_THREADS), move |worker: &mut Root<Allocator>| {
+            timely::execute(Configuration::Process(nworkers), move |worker: &mut Root<Allocator>| {
                 let probe = probe::Handle::new();
                 let mut probe1 = probe.clone();
                 let worker_index = worker.index();
@@ -298,7 +311,7 @@ impl<V:Val> Program<V>
                             /* Sender hung */
                             break;
                         },
-                        Ok(Msg::Insert{relid, v}) => {
+                        Ok(Msg::Update(Update::Insert{relid, v})) => {
                             match sessions.get_mut(&relid) {
                                 None => { 
                                     println!("Msg::Insert: unknown relation {}", relid); 
@@ -312,10 +325,10 @@ impl<V:Val> Program<V>
                             //print!("epoch: {}\n", epoch);
                             Self::advance(&mut sessions, epoch);
                         },
-                        Ok(Msg::Delete{relid, v}) => {
+                        Ok(Msg::Update(Update::Delete{relid, v})) => {
                             match sessions.get_mut(&relid) {
                                 None => {
-                                    println!("Msg::Insert: unknown relation {}", relid); 
+                                    println!("Msg::Delete: unknown relation {}", relid); 
                                     continue;
                                 },
                                 Some(session) => {
@@ -328,12 +341,14 @@ impl<V:Val> Program<V>
                         },
                         Ok(Msg::Flush) => {
                             Self::flush(&mut sessions, &probe, worker);
+                        },
+                        Ok(Msg::Stop) => {
+                            break;
                         }
                     };
                 };
             }));
 
-        // TODO: check return value of timely::execute()
         println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
@@ -348,6 +363,7 @@ impl<V:Val> Program<V>
         RunningProgram{
             sender: tx,
             relations: rels,
+            thread_handle: h,
             transaction_in_progress: false,
             need_to_flush: false
         }
@@ -505,11 +521,6 @@ impl<V:Val> Program<V>
     }
 }
 
-#[derive(Debug)]
-pub struct Error {
-    err: String
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.err)
@@ -526,14 +537,37 @@ impl error::Error for Error {
     }
 }
 
-pub type Response<X> = Result<X, Error>;
-
 macro_rules! resp_from_error {
     ($($arg:tt)*) => (Result::Err(Error{err: format_args!($($arg)*).to_string()}));
 }
 
-// TODO: change the interface to take a vector of commands
+/* Interface to a running datalog computation
+ */
+/* This should not panic, so that the client  */
+// TODO: error messages
 impl<V:Val> RunningProgram<V> {
+    /* Terminate program, kill worker threads; returns final database state.
+     * If there was a transaction in progress, returns intermediate DB state.
+     */
+    pub fn stop(mut self) -> Response<FnvHashMap<RelId, RelationInstance<V>>> {
+        self.flush()
+        .and_then(|_| self.send(Msg::Stop))
+        .and_then(|_| {
+            match self.thread_handle.join() {
+                Err(_) => resp_from_error!("timely thread terminated with an error"),
+                Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
+                Ok(Ok(guards)) => {
+                    guards.join();
+                    Ok(self.relations)
+                }
+            }
+        })
+    }
+
+    /* Start a transaction.  Does not return a transaction handle, as there
+     * can be at most one transaction in progress at any given time.  Fails 
+     * if there is already a transaction in progress.
+     */
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
             return resp_from_error!("transaction already in progress");
@@ -548,10 +582,12 @@ impl<V:Val> RunningProgram<V> {
             return resp_from_error!("no transaction in progress")
         };
 
-        self.flush();
-        self.delta_cleanup();
-        self.transaction_in_progress = false;
-        Result::Ok(())
+        self.flush()
+        .and_then(|_| self.delta_cleanup())
+        .and_then(|_| {
+            self.transaction_in_progress = false;
+            Result::Ok(())
+        })
     }
 
     pub fn transaction_rollback(&mut self) -> Response<()> {
@@ -559,10 +595,12 @@ impl<V:Val> RunningProgram<V> {
             return resp_from_error!("no transaction in progress");
         } 
         
-        self.flush();
-        self.delta_undo();
-        self.transaction_in_progress = false;
-        Result::Ok(())
+        self.flush()
+        .and_then(|_| self.delta_undo())
+        .and_then(|_| {
+            self.transaction_in_progress = false;
+            Result::Ok(())
+        })
     }
 
     pub fn insert(&mut self, relid: RelId, v: V) -> Response<()> {
@@ -571,12 +609,15 @@ impl<V:Val> RunningProgram<V> {
         } 
         
         //println!("sending");
-        self.sender.send(Msg::Insert{
-            relid: relid,
-            v:     v
-        });
-        self.need_to_flush = true;
-        Ok(())
+        self.send(Msg::Update(
+            Update::Insert {
+                relid: relid,
+                v:     v
+            }))
+        .and_then(|_| {
+            self.need_to_flush = true;
+            Ok(())
+        })
     }
     
     pub fn delete(&mut self, relid: RelId, v: V) -> Response<()> {
@@ -585,10 +626,28 @@ impl<V:Val> RunningProgram<V> {
         };
         
         //println!("deleting");
-        self.sender.send(Msg::Delete{
-            relid: relid,
-            v:     v
-        });
+        self.send(Msg::Update(
+            Update::Delete{
+                relid: relid,
+                v:     v
+            }))
+        .and_then(|_| {
+            self.need_to_flush = true;
+            Ok(())
+        })
+    }
+
+    pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
+        if !self.transaction_in_progress {
+            return resp_from_error!("no transaction in progress");
+        };
+        
+        for update in updates.drain(0..) {
+            match self.send(Msg::Update(update)) {
+                Ok(()) => continue,
+                e => return e
+            }
+        };
         self.need_to_flush = true;
         Ok(())
     }
@@ -599,11 +658,12 @@ impl<V:Val> RunningProgram<V> {
             return resp_from_error!("no transaction in progress");
         };
 
-        self.flush();
-        match self.relations.get_mut(&relid) {
-            None => resp_from_error!("unknown relation"),
-            Some(rel) => Ok(&rel.elements)
-        }
+        self.flush().and_then(move |_| {
+            match self.relations.get_mut(&relid) {
+                None => resp_from_error!("unknown relation"),
+                Some(rel) => Ok(&rel.elements)
+            }
+        })
     }
 
     /* Returns delta accumulated by the current transaction */
@@ -612,48 +672,67 @@ impl<V:Val> RunningProgram<V> {
             return resp_from_error!("no transaction in progress");
         };
 
-        self.flush();
-
-        match self.relations.get_mut(&relid) {
-            None => resp_from_error!("unknown relation"),
-            Some(rel) => Ok(&rel.delta)
-        }
+        self.flush().and_then(move |_| {
+            match self.relations.get_mut(&relid) {
+                None => resp_from_error!("unknown relation"),
+                Some(rel) => Ok(&rel.delta)
+            }
+        })
     }
  
+    fn send(&self, msg: Msg<V>) -> Response<()> {
+        match self.sender.send(msg) {
+            Err(_) => resp_from_error!("failed to communicate with timely dataflow thread"),
+            Ok(()) => Ok(())
+        }
+    }
 
-    fn delta_cleanup(&mut self) {
+    fn delta_cleanup(&mut self) -> Response<()> {
         for (_, rel) in &self.relations {
             rel.delta.lock().unwrap().clear();
-        }
+        };
+        Ok(())
     }
 
     /* reverse all changes recorded in delta sets */
-    fn delta_undo(&mut self) {
+    fn delta_undo(&mut self) -> Response<()> {
         for (relid, rel) in &self.relations {
             let d = rel.delta.lock().unwrap();
             for (k,w) in d.iter() {
-                if *w == 1 {
-                    self.sender.send(Msg::Delete{
-                        relid: *relid,
-                        v:     k.clone()
-                    });
-                } else if *w == -1 {
-                    self.sender.send(Msg::Insert{
-                        relid: *relid,
-                        v:     k.clone()
-                    });
-                };
+                let res = 
+                    if *w == 1 {
+                        self.send(Msg::Update(Update::Delete{
+                            relid: *relid,
+                            v:     k.clone()}))
+                    } else if *w == -1 {
+                        self.send(Msg::Update(Update::Insert{
+                            relid: *relid,
+                            v:     k.clone()}))
+                    } else {
+                        resp_from_error!("unexpected weight {} in record {:?}", w, k)
+                    };
+                match res {
+                    Err(_) => {return res},
+                    Ok(_) => continue
+                }
             };
         };
-        self.flush();
-
-        /* TODO: all deltas must be empty */
+        self.flush().and_then(|_| {
+            /* validation: all deltas must be empty */
+            for (_, rel) in &self.relations {
+                let d = rel.delta.lock().unwrap();
+                debug_assert!(d.is_empty());
+            };
+            Ok(())
+        })
     }
 
-    fn flush(&mut self) {
-        if !self.need_to_flush {return};
+    fn flush(&mut self) -> Response<()> {
+        if !self.need_to_flush {return Ok(())};
         
-        self.sender.send(Msg::Flush);
-        self.need_to_flush = false;
+        self.send(Msg::Flush).and_then(|()| {
+            self.need_to_flush = false;
+            Ok(())
+        })
     }
 }
