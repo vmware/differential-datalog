@@ -67,7 +67,9 @@ pub enum ProgNode<V: Val> {
  * rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements 
  * can also be empty if the relation is not used in the RHS of any rules.  name is the
  * human-readable name of the relation; scc is the index of the strongly connected component of 
- * the dependency graph that the relation belongs to. */
+ * the dependency graph that the relation belongs to.
+ */
+// TODO: undo delta for input relations only
 #[derive(Clone)]
 pub struct Relation<V: Val> {
     pub name:         String,
@@ -169,7 +171,7 @@ pub enum Update<V: Val> {
 /* Messages sent to timely worker threads
  */
 enum Msg<V: Val> {
-    Update(Update<V>),
+    Update(Vec<Update<V>>),
     Flush,
     Stop
 }
@@ -320,33 +322,39 @@ impl<V:Val> Program<V>
                             /* Sender hung */
                             break;
                         },
-                        Ok(Msg::Update(Update::Insert{relid, v})) => {
-                            match sessions.get_mut(&relid) {
-                                None => { 
-                                    println!("Msg::Insert: unknown relation {}", relid); 
-                                    continue;
-                                },
-                                Some(session) => {
-                                    session.insert(v);
+                        Ok(Msg::Update(mut updates)) => {
+                            for update in updates.drain(..) {
+                                match update {
+                                    Update::Insert{relid, v} => {
+                                        match sessions.get_mut(&relid) {
+                                            None => { 
+                                                println!("Msg::Insert: unknown relation {}", relid); 
+                                                continue;
+                                            },
+                                            Some(session) => {
+                                                session.insert(v);
+                                            }
+                                        };
+                                        epoch = epoch+1;
+                                        //print!("epoch: {}\n", epoch);
+                                        Self::advance(&mut sessions, epoch);
+                                    },
+                                    Update::Delete{relid, v} => {
+                                        match sessions.get_mut(&relid) {
+                                            None => {
+                                                println!("Msg::Delete: unknown relation {}", relid); 
+                                                continue;
+                                            },
+                                            Some(session) => {
+                                                session.remove(v);
+                                            }
+                                        };
+                                        epoch = epoch+1;
+                                        //print!("epoch: {}\n", epoch);
+                                        Self::advance(&mut sessions, epoch);
+                                    }
                                 }
-                            };
-                            epoch = epoch+1;
-                            print!("epoch: {}\n", epoch);
-                            Self::advance(&mut sessions, epoch);
-                        },
-                        Ok(Msg::Update(Update::Delete{relid, v})) => {
-                            match sessions.get_mut(&relid) {
-                                None => {
-                                    println!("Msg::Delete: unknown relation {}", relid); 
-                                    continue;
-                                },
-                                Some(session) => {
-                                    session.remove(v);
-                                }
-                            };
-                            epoch = epoch+1;
-                            //print!("epoch: {}\n", epoch);
-                            Self::advance(&mut sessions, epoch);
+                            }
                         },
                         Ok(Msg::Flush) => {
                             //println!("flushing");
@@ -620,57 +628,43 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
+    /* Insert one record into input relation. Relations have set semantics, i.e.,
+     * adding an existing record is a no-op.
+     */
     pub fn insert(&mut self, relid: RelId, v: V) -> Response<()> {
-        if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress");
-        } 
-        
-        //println!("sending");
-        self.send(Msg::Update(
-            Update::Insert {
-                relid: relid,
-                v:     v
-            }))
-        .and_then(|_| {
-            self.need_to_flush = true;
-            print!("insert sent\n");
-            Ok(())
-        })
+        self.apply_updates(vec![Update::Insert {
+            relid: relid,
+            v:     v
+        }])
     }
-    
+ 
+    /* Remove a record if it exists in the relation.
+     */   
     pub fn delete(&mut self, relid: RelId, v: V) -> Response<()> {
+        self.apply_updates(vec![Update::Delete {
+            relid: relid,
+            v:     v
+        }])
+    }
+
+    /* Apply multipl insert and delete operations in one batch.
+     */
+    pub fn apply_updates(&mut self, updates: Vec<Update<V>>) -> Response<()> {
         if !self.transaction_in_progress {
             return resp_from_error!("no transaction in progress");
         };
         
-        //println!("deleting");
-        self.send(Msg::Update(
-            Update::Delete{
-                relid: relid,
-                v:     v
-            }))
+        self.send(Msg::Update(updates))
         .and_then(|_| {
             self.need_to_flush = true;
             Ok(())
         })
     }
 
-    pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
-        if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress");
-        };
-        
-        for update in updates.drain(0..) {
-            match self.send(Msg::Update(update)) {
-                Ok(()) => continue,
-                e => return e
-            }
-        };
-        self.need_to_flush = true;
-        Ok(())
-    }
-
-    /* Returns all elements of a relation */
+    /* Returns all elements of a relation.
+     * If called in the middle of a transaction, returns state snapshot including changed
+     * made by the current transaction.
+     */
     pub fn relation_content(&mut self, relid: RelId) -> Response<&ValSet<V>> {
         self.flush().and_then(move |_| {
             match self.relations.get_mut(&relid) {
@@ -680,7 +674,8 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
-    /* Returns delta accumulated by the current transaction */
+    /* Returns delta accumulated by the current transaction
+     */
     pub fn relation_delta(&mut self, relid: RelId) -> Response<&DeltaSet<V>> {
         if !self.transaction_in_progress {
             return resp_from_error!("no transaction in progress");
@@ -712,25 +707,26 @@ impl<V:Val> RunningProgram<V> {
     fn delta_undo(&mut self) -> Response<()> {
         for (relid, rel) in &self.relations {
             let d = rel.delta.lock().unwrap();
-            for (k,w) in d.iter() {
-                let res = 
+            let mut updates = d.iter().map(|(k,w)| {
                     if *w == 1 {
-                        self.send(Msg::Update(Update::Delete{
+                        Update::Delete{
                             relid: *relid,
-                            v:     k.clone()}))
-                    } else if *w == -1 {
-                        self.send(Msg::Update(Update::Insert{
-                            relid: *relid,
-                            v:     k.clone()}))
+                            v:     k.clone()
+                        }
                     } else {
-                        resp_from_error!("unexpected weight {} in record {:?}", w, k)
-                    };
-                match res {
-                    Err(_) => {return res},
-                    Ok(_) => continue
-                }
+                        debug_assert!(*w == -1);
+                        Update::Insert{
+                            relid: *relid,
+                            v:     k.clone()
+                        }
+                    }
+            }).collect();
+            match self.send(Msg::Update(updates)) {
+                Ok(()) => continue,
+                e => return e
             };
         };
+        self.need_to_flush = true;
         self.flush().and_then(|_| {
             /* validation: all deltas must be empty */
             for (_, rel) in &self.relations {
@@ -741,6 +737,7 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
+    /* Propagates all changes through the dataflow pipeline. */
     fn flush(&mut self) -> Response<()> {
         if !self.need_to_flush {return Ok(())};
         
