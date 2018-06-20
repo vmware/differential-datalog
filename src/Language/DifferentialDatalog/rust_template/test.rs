@@ -30,6 +30,7 @@ impl Default for Value {
 fn test_one_relation() {
     let rel = Relation {
         name:         "T1".to_string(),
+        input:        true,
         id:           1,      
         rules:        Vec::new(),
         arrangements: Vec::new()
@@ -98,19 +99,3 @@ fn test_one_relation() {
 
     running.stop().unwrap();
 }
-
-
-/*
-#[test]
-fn test_simple_prog() {
-    let prog: Program<Value> = Program {
-        nodes: Vec::new()
-    };
-    let mut running = prog.run(16);
-    for _i in 0..10 {
-        running.transaction_start().unwrap();
-        running.insert(0, Value::bool(true)).unwrap();
-        running.transaction_commit().unwrap();
-    };
-    running.stop().unwrap();
-}*/

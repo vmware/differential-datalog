@@ -54,7 +54,10 @@ type ArrId = (usize, usize);
 
 /* Datalog program is a vector of strongly connected components (representing mutually recursive
  * rules) or individual non-recursive relations. */
-// TODO: add validating constructor for Program
+// TODO: add validating constructor for Program:
+// - relation id's are unique
+// - rules only refer to previously declared relations or relations in the local scc
+// - input relations do not occur in LHS of rules
 #[derive(Clone)]
 pub struct Program<V: Val> {
     pub nodes: Vec<ProgNode<V>>
@@ -76,6 +79,7 @@ pub enum ProgNode<V: Val> {
 #[derive(Clone)]
 pub struct Relation<V: Val> {
     pub name:         String,
+    pub input:        bool,
     pub id:           RelId,      
     pub rules:        Vec<Rule<V>>,
     pub arrangements: Vec<Arrangement<V>>
@@ -152,6 +156,7 @@ pub struct RunningProgram<V: Val> {
 /* Runtime representation of relation
  */
 pub struct RelationInstance<V: Val> {
+    input: bool,
     /* Set of all elements in the relation */
     elements: ValSet<V>,
     /* Changes since start of transaction */
@@ -231,7 +236,9 @@ impl<V:Val> Program<V>
                         match node {
                             ProgNode::RelNode{rel:r} => {
                                 let (session, mut collection) = outer.new_collection::<V,isize>();
-                                sessions.insert(r.id, session);
+                                if r.input {
+                                    sessions.insert(r.id, session);
+                                };
                                 /* apply rules */
                                 for rule in &r.rules {
                                     collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
@@ -248,7 +255,9 @@ impl<V:Val> Program<V>
                                  * updated collections returned from the inner scope. */
                                 for r in rs.iter() {
                                     let (session, collection) = outer.new_collection::<V,isize>();
-                                    sessions.insert(r.id, session);
+                                    if r.input {
+                                        sessions.insert(r.id, session);
+                                    }
                                     collections.insert(r.id, collection);
                                 };
                                 /* create a nested scope for mutually recursive relations */
@@ -311,7 +320,7 @@ impl<V:Val> Program<V>
 
                     sessions
                 });
-                println!("worker {} started", worker.index());
+                //println!("worker {} started", worker.index());
 
                 /* Only worker 0 receives data */
                 if worker_index != 0 {return;};
@@ -385,12 +394,13 @@ impl<V:Val> Program<V>
                 };
             }));
 
-        println!("timely computation started");
+        //println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
         for (relid, elems) in elements1.drain() {
             rels.insert(relid, 
                         RelationInstance{
+                            input:    self.get_relation(relid).input,
                             elements: elems,
                             delta:    deltas1.remove(&relid).unwrap()
                         });
@@ -745,6 +755,7 @@ impl<V:Val> RunningProgram<V> {
     /* reverse all changes recorded in delta sets */
     fn delta_undo(&mut self) -> Response<()> {
         for (relid, rel) in &self.relations {
+            if !rel.input {continue};
             let d = rel.delta.lock().unwrap();
             let mut updates = d.iter().map(|(k,w)| {
                     if *w == 1 {
@@ -760,7 +771,7 @@ impl<V:Val> RunningProgram<V> {
                         }
                     }
             }).collect();
-            println!("updates: {:?}", updates);
+            //println!("updates: {:?}", updates);
             match self.send(Msg::Update(updates)) {
                 Ok(()) => continue,
                 e => return e
@@ -771,7 +782,7 @@ impl<V:Val> RunningProgram<V> {
             /* validation: all deltas must be empty */
             for (_, rel) in &self.relations {
                 let d = rel.delta.lock().unwrap();
-                println!("delta: {:?}", *d);
+                //println!("delta: {:?}", *d);
                 debug_assert!(d.is_empty());
             };
             Ok(())
