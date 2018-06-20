@@ -1,3 +1,5 @@
+// TODO: namespace cleanup
+
 use serde::ser::*;
 use serde::de::*;
 use abomonation::Abomonation;
@@ -6,6 +8,7 @@ use std::fmt::Debug;
 use std::sync::{Arc, Mutex, Condvar};
 use std::error;
 use std::result::Result;
+use std::collections::hash_map;
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
 use std::fmt;
@@ -149,8 +152,6 @@ pub struct RunningProgram<V: Val> {
 /* Runtime representation of relation
  */
 pub struct RelationInstance<V: Val> {
-    /* Input session to feed data to relation */
-    //input:    InputSession<u64, V, isize>,
     /* Set of all elements in the relation */
     elements: ValSet<V>,
     /* Changes since start of transaction */
@@ -163,6 +164,7 @@ enum Dep {
     DepArr(ArrId)
 }
 
+#[derive(Debug)]
 pub enum Update<V: Val> {
     Insert{relid: RelId, v: V},
     Delete{relid: RelId, v: V}
@@ -332,7 +334,12 @@ impl<V:Val> Program<V>
                                                 continue;
                                             },
                                             Some(session) => {
-                                                session.insert(v);
+                                                /* check that v does not belong to relation yet */
+                                                Self::flush_session(session, &probe, worker);
+                                                let set = elements.get(&relid).unwrap().lock().unwrap();
+                                                if !set.contains(&v) {
+                                                    session.insert(v);
+                                                }
                                             }
                                         };
                                         epoch = epoch+1;
@@ -346,7 +353,13 @@ impl<V:Val> Program<V>
                                                 continue;
                                             },
                                             Some(session) => {
-                                                session.remove(v);
+                                                /* check that v belongs to relation 
+                                                 * TODO: is this necessary? */
+                                                Self::flush_session(session, &probe, worker);
+                                                let set = elements.get(&relid).unwrap().lock().unwrap();
+                                                if set.contains(&v) {
+                                                    session.remove(v);
+                                                }
                                             }
                                         };
                                         epoch = epoch+1;
@@ -419,19 +432,45 @@ impl<V:Val> Program<V>
         }
     }
 
+    fn flush_session(
+        session: &mut InputSession<u64, V, isize>,
+        probe: &ProbeHandle<Product<RootTimestamp, u64>>,
+        worker: &mut Root<Allocator>)
+    {
+        session.flush();
+        while probe.less_than(session.time()) {
+            //println!("step");
+            worker.step();
+        };
+    }
+
     fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
     {
         if w > 0 {
             let new = s.lock().unwrap().insert(x.clone());
             if new {
-                let f = |e: &mut i8| if *e == -1 {*e = 0;} else if *e == 0 {*e = 1};
-                f(ds.lock().unwrap().entry(x.clone()).or_insert(0));
+                let mut d = ds.lock().unwrap();
+                let e = d.entry(x.clone());
+                match e {
+                    hash_map::Entry::Occupied(mut oe) => {
+                        debug_assert!(*oe.get_mut() == -1);
+                        oe.remove_entry();
+                    },
+                    hash_map::Entry::Vacant(ve) => {ve.insert(1);}
+                }
             };
         } else if w < 0 {
             let present = s.lock().unwrap().remove(x);
             if present {
-                let f = |e: &mut i8| if *e == 1 {*e = 0;} else if *e == 0 {*e = -1;};
-                f(ds.lock().unwrap().entry(x.clone()).or_insert(0));
+                let mut d = ds.lock().unwrap();
+                let e = d.entry(x.clone());
+                match e {
+                    hash_map::Entry::Occupied(mut oe) => {
+                        debug_assert!(*oe.get_mut() == 1);
+                        oe.remove_entry();
+                    },
+                    hash_map::Entry::Vacant(ve) => {ve.insert(-1);}
+                }
             };
         }
     }
@@ -721,6 +760,7 @@ impl<V:Val> RunningProgram<V> {
                         }
                     }
             }).collect();
+            println!("updates: {:?}", updates);
             match self.send(Msg::Update(updates)) {
                 Ok(()) => continue,
                 e => return e
@@ -731,6 +771,7 @@ impl<V:Val> RunningProgram<V> {
             /* validation: all deltas must be empty */
             for (_, rel) in &self.relations {
                 let d = rel.delta.lock().unwrap();
+                println!("delta: {:?}", *d);
                 debug_assert!(d.is_empty());
             };
             Ok(())

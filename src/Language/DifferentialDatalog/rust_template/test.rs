@@ -43,7 +43,7 @@ fn test_one_relation() {
 
     /* 1. Insertion */
     let vals:Vec<u64> = (0..10).collect();
-    let mut set = FnvHashSet::from_iter(vals.into_iter().map(|x| Value::u64(x)));
+    let mut set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
 
     for x in &set {
         running.transaction_start().unwrap();
@@ -51,10 +51,7 @@ fn test_one_relation() {
         running.transaction_commit().unwrap();
     };
 
-    {
-        let content = running.relation_content(1).unwrap().lock().unwrap();
-        assert_eq!(*content, set);
-    }
+    assert_eq!(*running.relation_content(1).unwrap().lock().unwrap(), set);
 
     /* 2. Deletion */
     let mut set2 = set.clone();
@@ -62,16 +59,10 @@ fn test_one_relation() {
     for x in set.drain() {
         set2.remove(&x);
         running.delete(1, x.clone()).unwrap();
-        {
-            let content = running.relation_content(1).unwrap().lock().unwrap();
-            assert_eq!(*content, set2);
-        };
+        assert_eq!(*running.relation_content(1).unwrap().lock().unwrap(), set2);
     };
     running.transaction_commit().unwrap();
-    {
-        let content = running.relation_content(1).unwrap().lock().unwrap();
-        assert_eq!(content.len(), 0);
-    };
+    assert_eq!(running.relation_content(1).unwrap().lock().unwrap().len(), 0);
 
     /* 3. Test set semantics: insert twice, delete once */
     running.transaction_start().unwrap();
@@ -79,14 +70,31 @@ fn test_one_relation() {
     running.insert(1, Value::u64(1)).unwrap();
     running.delete(1, Value::u64(1)).unwrap();
     running.transaction_commit().unwrap();
-    {
-        let content = running.relation_content(1).unwrap().lock().unwrap();
-        assert_eq!(content.len(), 0);
-    };
 
-    // TODO: relations obey set semantics
-    // TODO: read state and delta in the middle of a transaction
-    // TODO: test rollback
+    assert_eq!(running.relation_content(1).unwrap().lock().unwrap().len(), 0);
+
+    /* 4. Set semantics: delete before insert */
+    running.transaction_start().unwrap();
+    running.delete(1, Value::u64(1)).unwrap();
+    running.insert(1, Value::u64(1)).unwrap();
+    running.transaction_commit().unwrap();
+
+    assert_eq!(running.relation_content(1).unwrap().lock().unwrap().len(), 1);
+
+    /* 5. Rollback */
+    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
+
+    let before = running.relation_content(1).unwrap().lock().unwrap().clone();
+    running.transaction_start().unwrap();
+    for x in &set {
+        running.insert(1, x.clone()).unwrap();
+    };
+    //println!("delta: {:?}", *running.relation_delta(1).unwrap().lock().unwrap());
+    assert_eq!(*running.relation_content(1).unwrap().lock().unwrap(), set);
+    assert_eq!(running.relation_delta(1).unwrap().lock().unwrap().len(), set.len() - 1);
+    running.transaction_rollback().unwrap();
+
+    assert_eq!(*running.relation_content(1).unwrap().lock().unwrap(), before);
 
     running.stop().unwrap();
 }
