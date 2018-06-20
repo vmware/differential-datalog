@@ -3,7 +3,7 @@ use serde::de::*;
 use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Condvar};
 use std::error;
 use std::result::Result;
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
@@ -51,6 +51,7 @@ type ArrId = (usize, usize);
 
 /* Datalog program is a vector of strongly connected components (representing mutually recursive
  * rules) or individual non-recursive relations. */
+// TODO: add validating constructor for Program
 #[derive(Clone)]
 pub struct Program<V: Val> {
     pub nodes: Vec<ProgNode<V>>
@@ -69,10 +70,10 @@ pub enum ProgNode<V: Val> {
  * the dependency graph that the relation belongs to. */
 #[derive(Clone)]
 pub struct Relation<V: Val> {
-    name:         String,
-    id:           RelId,      
-    rules:        Vec<Rule<V>>,
-    arrangements: Vec<Arrangement<V>>
+    pub name:         String,
+    pub id:           RelId,      
+    pub rules:        Vec<Rule<V>>,
+    pub arrangements: Vec<Arrangement<V>>
 }
 
 /* Function used to map a collection of values to another collection of values */
@@ -133,7 +134,10 @@ pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 /* Running datalog program.
  */
 pub struct RunningProgram<V: Val> {
+    /* producer side of the channel used to send commands to workers */
     sender: mpsc::SyncSender<Msg<V>>,
+    /* conditional variable used to acknowledge completion of flush request */
+    flush_ack: Arc<(Mutex<bool>, Condvar)>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     thread_handle: thread::JoinHandle<Result<WorkerGuards<()>, String>>,
     transaction_in_progress: bool,
@@ -175,8 +179,6 @@ impl<V:Val> Program<V>
     pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
         let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
         let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
-        let mut elements1 = elements.clone();
-        let mut deltas1 = deltas.clone();
 
         for node in self.nodes.iter() {
             match node {
@@ -192,6 +194,9 @@ impl<V:Val> Program<V>
                 }
             }
         };
+        let mut elements1 = elements.clone();
+        let mut deltas1 = deltas.clone();
+
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
@@ -201,6 +206,10 @@ impl<V:Val> Program<V>
          */
         let (tx, rx) = mpsc::sync_channel::<Msg<V>>(0);
         let rx = Arc::new(Mutex::new(rx));
+
+
+        let flush_ack = Arc::new((Mutex::new(false), Condvar::new()));
+        let flush_ack2 = flush_ack.clone();
 
         let h = thread::spawn(move || 
         // start up timely computation
@@ -322,7 +331,7 @@ impl<V:Val> Program<V>
                                 }
                             };
                             epoch = epoch+1;
-                            //print!("epoch: {}\n", epoch);
+                            print!("epoch: {}\n", epoch);
                             Self::advance(&mut sessions, epoch);
                         },
                         Ok(Msg::Update(Update::Delete{relid, v})) => {
@@ -340,7 +349,13 @@ impl<V:Val> Program<V>
                             Self::advance(&mut sessions, epoch);
                         },
                         Ok(Msg::Flush) => {
+                            //println!("flushing");
                             Self::flush(&mut sessions, &probe, worker);
+                            //println!("flushed");
+                            let &(ref l, ref c) = &*flush_ack2;
+                            let mut done = l.lock().unwrap();
+                            *done = true;
+                            c.notify_one();
                         },
                         Ok(Msg::Stop) => {
                             break;
@@ -362,6 +377,7 @@ impl<V:Val> Program<V>
 
         RunningProgram{
             sender: tx,
+            flush_ack: flush_ack,
             relations: rels,
             thread_handle: h,
             transaction_in_progress: false,
@@ -389,6 +405,7 @@ impl<V:Val> Program<V>
         };
         if let Some((_,session)) = sessions.into_iter().nth(0) {
             while probe.less_than(session.time()) {
+                //println!("step");
                 worker.step();
             };
         }
@@ -616,6 +633,7 @@ impl<V:Val> RunningProgram<V> {
             }))
         .and_then(|_| {
             self.need_to_flush = true;
+            print!("insert sent\n");
             Ok(())
         })
     }
@@ -654,13 +672,9 @@ impl<V:Val> RunningProgram<V> {
 
     /* Returns all elements of a relation */
     pub fn relation_content(&mut self, relid: RelId) -> Response<&ValSet<V>> {
-        if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress");
-        };
-
         self.flush().and_then(move |_| {
             match self.relations.get_mut(&relid) {
-                None => resp_from_error!("unknown relation"),
+                None => resp_from_error!("unknown relation {}", relid),
                 Some(rel) => Ok(&rel.elements)
             }
         })
@@ -732,6 +746,9 @@ impl<V:Val> RunningProgram<V> {
         
         self.send(Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
+            let mut done = self.flush_ack.0.lock().unwrap();
+            done = self.flush_ack.1.wait(done).unwrap();
+            *done = false;
             Ok(())
         })
     }
