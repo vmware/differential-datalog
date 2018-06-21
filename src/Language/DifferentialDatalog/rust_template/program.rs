@@ -430,7 +430,7 @@ impl<V:Val> Program<V>
         for (_,r) in sessions.into_iter() {
             //print!("flush\n");
             r.flush();
-        };
+        };  
         if let Some((_,session)) = sessions.into_iter().nth(0) {
             while probe.less_than(session.time()) {
                 //println!("flush.step");
