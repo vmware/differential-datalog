@@ -6,7 +6,7 @@ use serde::de::*;
 use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Mutex};
 use std::error;
 use std::result::Result;
 use std::collections::hash_map;
@@ -145,8 +145,8 @@ pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
 pub struct RunningProgram<V: Val> {
     /* producer side of the channel used to send commands to workers */
     sender: mpsc::SyncSender<Msg<V>>,
-    /* conditional variable used to acknowledge completion of flush request */
-    flush_ack: Arc<(Mutex<bool>, Condvar)>,
+    /* channel that signals completion of flush requests */
+    flush_ack: mpsc::Receiver<()>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     thread_handle: thread::JoinHandle<Result<WorkerGuards<()>, String>>,
     transaction_in_progress: bool,
@@ -218,8 +218,8 @@ impl<V:Val> Program<V>
         let rx = Arc::new(Mutex::new(rx));
 
 
-        let flush_ack = Arc::new((Mutex::new(false), Condvar::new()));
-        let flush_ack2 = flush_ack.clone();
+        let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
+        let flush_ack_send = flush_ack_send.clone();
 
         let h = thread::spawn(move || 
         // start up timely computation
@@ -382,10 +382,7 @@ impl<V:Val> Program<V>
                             //println!("flushing");
                             Self::flush(&mut sessions, &probe, worker);
                             //println!("flushed");
-                            let &(ref l, ref c) = &*flush_ack2;
-                            let mut done = l.lock().unwrap();
-                            *done = true;
-                            c.notify_one();
+                            flush_ack_send.send(()).unwrap();
                         },
                         Ok(Msg::Stop) => {
                             break;
@@ -408,7 +405,7 @@ impl<V:Val> Program<V>
 
         RunningProgram{
             sender: tx,
-            flush_ack: flush_ack,
+            flush_ack: flush_ack_recv,
             relations: rels,
             thread_handle: h,
             transaction_in_progress: false,
@@ -794,10 +791,10 @@ impl<V:Val> RunningProgram<V> {
         
         self.send(Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
-            let mut done = self.flush_ack.0.lock().unwrap();
-            done = self.flush_ack.1.wait(done).unwrap();
-            *done = false;
-            Ok(())
+            match self.flush_ack.recv() {
+                Err(_) => resp_from_error!("failed to receive flush ack message from timely dataflow thread"),
+                Ok(()) => Ok(())
+            }
         })
     }
 }
