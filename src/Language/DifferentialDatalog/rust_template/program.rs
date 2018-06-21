@@ -1,4 +1,5 @@
 // TODO: namespace cleanup
+// TODO: single input relation
 
 use serde::ser::*;
 use serde::de::*;
@@ -58,6 +59,7 @@ type ArrId = (usize, usize);
 // - relation id's are unique
 // - rules only refer to previously declared relations or relations in the local scc
 // - input relations do not occur in LHS of rules
+// - all references to arrangements are valid
 #[derive(Clone)]
 pub struct Program<V: Val> {
     pub nodes: Vec<ProgNode<V>>
@@ -75,7 +77,6 @@ pub enum ProgNode<V: Val> {
  * human-readable name of the relation; scc is the index of the strongly connected component of 
  * the dependency graph that the relation belongs to.
  */
-// TODO: undo delta for input relations only
 #[derive(Clone)]
 pub struct Relation<V: Val> {
     pub name:         String,
@@ -104,8 +105,8 @@ pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
 #[derive(Clone)]
 pub struct Rule<V: Val> {
-    rel:    RelId,        // first relation in the body of the rule
-    xforms: Vec<XForm<V>> // chain of transformations
+    pub rel:    RelId,        // first relation in the body of the rule
+    pub xforms: Vec<XForm<V>> // chain of transformations
 }
 
 #[derive(Clone)]
@@ -132,10 +133,9 @@ pub enum XForm<V: Val> {
 
 #[derive(Clone)]
 pub struct Arrangement<V: Val> {
-    name: String,
-    afun: &'static ArrangeFunc<V>
+    pub name: String,
+    pub afun: &'static ArrangeFunc<V>
 }
-
 
 pub type ValSet<V> = Arc<Mutex<FnvHashSet<V>>>;
 pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
@@ -185,6 +185,7 @@ enum Msg<V: Val> {
 
 impl<V:Val> Program<V> 
 {
+    // TODO: only maintain deltas and sets for input and output relations
     pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
         let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
         let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
@@ -335,6 +336,7 @@ impl<V:Val> Program<V>
                         },
                         Ok(Msg::Update(mut updates)) => {
                             for update in updates.drain(..) {
+                                Self::flush(&mut sessions, &probe, worker);
                                 match update {
                                     Update::Insert{relid, v} => {
                                         match sessions.get_mut(&relid) {
@@ -344,7 +346,6 @@ impl<V:Val> Program<V>
                                             },
                                             Some(session) => {
                                                 /* check that v does not belong to relation yet */
-                                                Self::flush_session(session, &probe, worker);
                                                 let set = elements.get(&relid).unwrap().lock().unwrap();
                                                 if !set.contains(&v) {
                                                     session.insert(v);
@@ -364,7 +365,6 @@ impl<V:Val> Program<V>
                                             Some(session) => {
                                                 /* check that v belongs to relation 
                                                  * TODO: is this necessary? */
-                                                Self::flush_session(session, &probe, worker);
                                                 let set = elements.get(&relid).unwrap().lock().unwrap();
                                                 if set.contains(&v) {
                                                     session.remove(v);
@@ -436,22 +436,10 @@ impl<V:Val> Program<V>
         };
         if let Some((_,session)) = sessions.into_iter().nth(0) {
             while probe.less_than(session.time()) {
-                //println!("step");
+                //println!("flush.step");
                 worker.step();
             };
         }
-    }
-
-    fn flush_session(
-        session: &mut InputSession<u64, V, isize>,
-        probe: &ProbeHandle<Product<RootTimestamp, u64>>,
-        worker: &mut Root<Allocator>)
-    {
-        session.flush();
-        while probe.less_than(session.time()) {
-            //println!("step");
-            worker.step();
-        };
     }
 
     fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
@@ -710,7 +698,7 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
-    /* Returns all elements of a relation.
+    /* Returns a reference to relation content.
      * If called in the middle of a transaction, returns state snapshot including changed
      * made by the current transaction.
      */
@@ -723,7 +711,13 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
-    /* Returns delta accumulated by the current transaction
+    /* Returns a copy of all elements of the relation
+     */
+    pub fn relation_clone_content(&mut self, relid: RelId) -> Response<FnvHashSet<V>> {
+        self.relation_content(relid).and_then(|x|Ok(x.lock().unwrap().clone()))
+    }
+
+    /* Returns a reference to delta accumulated by the current transaction
      */
     pub fn relation_delta(&mut self, relid: RelId) -> Response<&DeltaSet<V>> {
         if !self.transaction_in_progress {
@@ -737,6 +731,11 @@ impl<V:Val> RunningProgram<V> {
             }
         })
     }
+
+    pub fn relation_clone_delta(&mut self, relid: RelId) -> Response<FnvHashMap<V, i8>> {
+        self.relation_delta(relid).and_then(|x|Ok(x.lock().unwrap().clone()))
+    }
+
  
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
