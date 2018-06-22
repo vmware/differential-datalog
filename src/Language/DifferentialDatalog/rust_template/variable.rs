@@ -15,7 +15,7 @@ use differential_dataflow::lattice::Lattice;
 pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
     feedback: Option<Handle<G::Timestamp, u64,(D, Product<G::Timestamp, u64>, isize)>>,
-    pub current: Collection<Child<'a, G, u64>, D>,
+    current: Collection<Child<'a, G, u64>, D>,
     cycle: Collection<Child<'a, G, u64>, D>,
 }
 
@@ -46,6 +46,7 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Drop for Variable<'a, G, D> where G
         if let Some(feedback) = self.feedback.take() {
             self.current.distinct()
                         .inner
+                        .map(|(x,t,d)| (x, Product::new(t.outer, t.inner+1), d))
                         .connect_loop(feedback);
         }
     }
