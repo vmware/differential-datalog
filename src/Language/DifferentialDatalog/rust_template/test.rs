@@ -548,8 +548,6 @@ fn test_recursion(nthreads: usize) {
     /* 2. Remove record from "parent" relation */
     running.transaction_start().unwrap();
     running.delete(1, vals[0].clone()).unwrap();
-    println!("delta1: {:?}", running.relation_clone_delta(1).unwrap());
-    println!("delta2: {:?}", running.relation_clone_delta(2).unwrap());
     running.transaction_commit().unwrap();
 
     let expect_vals2 = vec![Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string())))];

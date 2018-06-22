@@ -163,7 +163,7 @@ pub struct RelationInstance<V: Val> {
     delta:    DeltaSet<V>
 }
 
-#[derive(PartialEq,Eq,Hash)]
+#[derive(PartialEq,Eq,Hash,Debug)]
 enum Dep {
     DepRel(RelId),
     DepArr(ArrId)
@@ -270,7 +270,9 @@ impl<V:Val> Program<V>
                                     for dep in Self::dependencies(&rs) {
                                         match dep {
                                             Dep::DepRel(relid) => {
-                                                vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                                if !vars.contains_key(&relid) {
+                                                    vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                                }
                                             },
                                             Dep::DepArr(arrid) => {
                                                 match arrangements.get(&arrid) {
@@ -289,7 +291,7 @@ impl<V:Val> Program<V>
                                     /* apply rules to variables */
                                     for rel in rs {
                                         for rule in &rel.rules {
-                                            let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&v.current), &inner_arrangements);
+                                            let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&(**v)), &inner_arrangements);
                                             vars.get_mut(&rel.id).unwrap().add(&c);
                                         };
                                         /* var.distinct() will be called automatically by var.drop() */
@@ -335,6 +337,7 @@ impl<V:Val> Program<V>
                             break;
                         },
                         Ok(Msg::Update(mut updates)) => {
+                            //println!("updates: {:?}", updates);
                             for update in updates.drain(..) {
                                 Self::flush(&mut sessions, &probe, worker);
                                 match update {
@@ -430,7 +433,7 @@ impl<V:Val> Program<V>
         for (_,r) in sessions.into_iter() {
             //print!("flush\n");
             r.flush();
-        };  
+        };
         if let Some((_,session)) = sessions.into_iter().nth(0) {
             while probe.less_than(session.time()) {
                 //println!("flush.step");
@@ -441,6 +444,7 @@ impl<V:Val> Program<V>
 
     fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
     {
+        //println!("xupd {:?} {}", *x, w);
         if w > 0 {
             let new = s.lock().unwrap().insert(x.clone());
             if new {
@@ -512,6 +516,7 @@ impl<V:Val> Program<V>
                 };
             };
         };
+        //println!("dependencies: {:?}", result);
         result
     }
 
@@ -681,7 +686,7 @@ impl<V:Val> RunningProgram<V> {
         }])
     }
 
-    /* Apply multipl insert and delete operations in one batch.
+    /* Apply multiple insert and delete operations in one batch.
      */
     pub fn apply_updates(&mut self, updates: Vec<Update<V>>) -> Response<()> {
         if !self.transaction_in_progress {
