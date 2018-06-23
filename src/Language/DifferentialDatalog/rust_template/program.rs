@@ -83,7 +83,8 @@ pub struct Relation<V: Val> {
     pub input:        bool,
     pub id:           RelId,      
     pub rules:        Vec<Rule<V>>,
-    pub arrangements: Vec<Arrangement<V>>
+    pub arrangements: Vec<Arrangement<V>>,
+    pub change_cb:    Arc<Fn(&V, bool) + Send + Sync>
 }
 
 /* Function used to map a collection of values to another collection of values */
@@ -137,8 +138,8 @@ pub struct Arrangement<V: Val> {
     pub afun: &'static ArrangeFunc<V>
 }
 
-pub type ValSet<V> = Arc<Mutex<FnvHashSet<V>>>;
-pub type DeltaSet<V> = Arc<Mutex<FnvHashMap<V, i8>>>;
+pub type ValSet<V> = FnvHashSet<V>;
+pub type DeltaSet<V> = FnvHashMap<V, i8>;
 
 /* Running datalog program.
  */
@@ -175,6 +176,15 @@ pub enum Update<V: Val> {
     Delete{relid: RelId, v: V}
 }
 
+impl<V:Val> Update<V> {
+    pub fn relid(&self) -> RelId {
+        match self {
+            Update::Insert{relid, v: _} => *relid,
+            Update::Delete{relid, v: _} => *relid
+        }
+    }
+}
+
 /* Messages sent to timely worker threads
  */
 enum Msg<V: Val> {
@@ -185,28 +195,7 @@ enum Msg<V: Val> {
 
 impl<V:Val> Program<V> 
 {
-    // TODO: only maintain deltas and sets for input and output relations
     pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
-        let mut elements : FnvHashMap<RelId, ValSet<V>>   = FnvHashMap::default();
-        let mut deltas   : FnvHashMap<RelId, DeltaSet<V>> = FnvHashMap::default();
-
-        for node in self.nodes.iter() {
-            match node {
-                ProgNode::RelNode{rel: r} => {
-                    elements.insert(r.id, Arc::new(Mutex::new(FnvHashSet::default())));
-                    deltas.insert(r.id, Arc::new(Mutex::new(FnvHashMap::default())));
-                },
-                ProgNode::SCCNode{rels: rs} => {
-                    for r in rs.iter() {
-                        elements.insert(r.id, Arc::new(Mutex::new(FnvHashSet::default())));
-                        deltas.insert(r.id, Arc::new(Mutex::new(FnvHashMap::default())));
-                    }
-                }
-            }
-        };
-        let mut elements1 = elements.clone();
-        let mut deltas1 = deltas.clone();
-
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
@@ -217,12 +206,11 @@ impl<V:Val> Program<V>
         let (tx, rx) = mpsc::sync_channel::<Msg<V>>(0);
         let rx = Arc::new(Mutex::new(rx));
 
-
         let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
         let flush_ack_send = flush_ack_send.clone();
 
         let h = thread::spawn(move || 
-        // start up timely computation
+            /* start up timely computation */
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Root<Allocator>| {
                 let probe = probe::Handle::new();
                 let mut probe1 = probe.clone();
@@ -316,9 +304,10 @@ impl<V:Val> Program<V>
                     };
 
                     for (relid, collection) in collections {
-                        let elems = elements.get(&relid).unwrap().clone();
-                        let delts = deltas.get(&relid).unwrap().clone();
-                        collection.inspect(move |x| Self::xupd(&elems, &delts, &x.0, x.2)).probe_with(&mut probe1);
+                        /* notify client about changes */
+                        let cb = prog.get_relation(relid).change_cb.clone();
+                        collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(&x.0, x.2 == 1)})
+                            .probe_with(&mut probe1);
                     };
 
                     sessions
@@ -339,41 +328,15 @@ impl<V:Val> Program<V>
                         Ok(Msg::Update(mut updates)) => {
                             //println!("updates: {:?}", updates);
                             for update in updates.drain(..) {
-                                Self::flush(&mut sessions, &probe, worker);
                                 match update {
                                     Update::Insert{relid, v} => {
-                                        match sessions.get_mut(&relid) {
-                                            None => { 
-                                                println!("Msg::Insert: unknown relation {}", relid); 
-                                                continue;
-                                            },
-                                            Some(session) => {
-                                                /* check that v does not belong to relation yet */
-                                                let set = elements.get(&relid).unwrap().lock().unwrap();
-                                                if !set.contains(&v) {
-                                                    session.insert(v);
-                                                }
-                                            }
-                                        };
+                                        sessions.get_mut(&relid).unwrap().insert(v);
                                         epoch = epoch+1;
                                         //print!("epoch: {}\n", epoch);
                                         Self::advance(&mut sessions, epoch);
                                     },
                                     Update::Delete{relid, v} => {
-                                        match sessions.get_mut(&relid) {
-                                            None => {
-                                                println!("Msg::Delete: unknown relation {}", relid); 
-                                                continue;
-                                            },
-                                            Some(session) => {
-                                                /* check that v belongs to relation 
-                                                 * TODO: is this necessary? */
-                                                let set = elements.get(&relid).unwrap().lock().unwrap();
-                                                if set.contains(&v) {
-                                                    session.remove(v);
-                                                }
-                                            }
-                                        };
+                                        sessions.get_mut(&relid).unwrap().remove(v);
                                         epoch = epoch+1;
                                         //print!("epoch: {}\n", epoch);
                                         Self::advance(&mut sessions, epoch);
@@ -397,12 +360,12 @@ impl<V:Val> Program<V>
         //println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
-        for (relid, elems) in elements1.drain() {
+        for relid in self.input_relations() {
             rels.insert(relid, 
                         RelationInstance{
                             input:    self.get_relation(relid).input,
-                            elements: elems,
-                            delta:    deltas1.remove(&relid).unwrap()
+                            elements: FnvHashSet::default(),
+                            delta:    FnvHashMap::default()
                         });
         };
 
@@ -442,38 +405,6 @@ impl<V:Val> Program<V>
         }
     }
 
-    fn xupd(s: &ValSet<V>, ds: &DeltaSet<V>, x : &V, w: isize) 
-    {
-        //println!("xupd {:?} {}", *x, w);
-        if w > 0 {
-            let new = s.lock().unwrap().insert(x.clone());
-            if new {
-                let mut d = ds.lock().unwrap();
-                let e = d.entry(x.clone());
-                match e {
-                    hash_map::Entry::Occupied(mut oe) => {
-                        debug_assert!(*oe.get_mut() == -1);
-                        oe.remove_entry();
-                    },
-                    hash_map::Entry::Vacant(ve) => {ve.insert(1);}
-                }
-            };
-        } else if w < 0 {
-            let present = s.lock().unwrap().remove(x);
-            if present {
-                let mut d = ds.lock().unwrap();
-                let e = d.entry(x.clone());
-                match e {
-                    hash_map::Entry::Occupied(mut oe) => {
-                        debug_assert!(*oe.get_mut() == 1);
-                        oe.remove_entry();
-                    },
-                    hash_map::Entry::Vacant(ve) => {ve.insert(-1);}
-                }
-            };
-        }
-    }
-
     /* Lookup relation by id */
     fn get_relation(&self, relid: RelId) -> &Relation<V> {
         for node in &self.nodes {
@@ -489,6 +420,23 @@ impl<V:Val> Program<V>
             }
         };
         panic!("get_relation({}): relation not found", relid)
+    }
+
+
+    /* Returns all input relations of the program */
+    fn input_relations(&self) -> Vec<RelId> {
+        self.nodes.iter().flat_map(|node| {
+            match node {
+                ProgNode::RelNode{rel:r} => {
+                    if r.input {vec![r.id]} else {vec![]}
+                },
+                ProgNode::SCCNode{rels:rs} => {
+                    rs.iter().flat_map(|r| {
+                        if r.input {vec![r.id]} else {vec![]}
+                    }).collect()
+                }
+            }
+        }).collect()
     }
 
     /* Lookup arrangement by id */
@@ -607,7 +555,7 @@ macro_rules! resp_from_error {
 
 /* Interface to a running datalog computation
  */
-/* This should not panic, so that the client  */
+/* This should not panic, so that the client has a chance to recover from failures */
 // TODO: error messages
 impl<V:Val> RunningProgram<V> {
     /* Terminate program, kill worker threads; returns final database state.
@@ -685,19 +633,76 @@ impl<V:Val> RunningProgram<V> {
             v:     v
         }])
     }
-
+    
     /* Apply multiple insert and delete operations in one batch.
      */
-    pub fn apply_updates(&mut self, updates: Vec<Update<V>>) -> Response<()> {
+    pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
         if !self.transaction_in_progress {
             return resp_from_error!("no transaction in progress");
         };
-        
-        self.send(Msg::Update(updates))
+
+        /* Remove no-op updates to maintain set semantics */
+        let mut filtered_updates = Vec::new();
+        for upd in updates.drain(..) {
+            let mut rel = match self.relations.get_mut(&upd.relid()) {
+                None => return resp_from_error!("unknown relation {}", upd.relid()),
+                Some(rel) => {
+                    if !rel.input {
+                        return resp_from_error!("relation {} is not an input relation", upd.relid())
+                    };
+                    rel
+                }
+            };
+            let pass = match &upd {
+                Update::Insert{relid: _, v} => {
+                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, true) 
+                },
+                Update::Delete{relid: _, v} => {
+                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, false)
+                }
+            };
+            if pass {
+                filtered_updates.push(upd);
+            }
+        }
+
+        self.send(Msg::Update(filtered_updates))
         .and_then(|_| {
             self.need_to_flush = true;
             Ok(())
         })
+    }
+
+    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, x : &V, insert: bool) -> bool
+    {
+        //println!("xupd {:?} {}", *x, w);
+        if insert {
+            let new = s.insert(x.clone());
+            if new {
+                let e = ds.entry(x.clone());
+                match e {
+                    hash_map::Entry::Occupied(mut oe) => {
+                        debug_assert!(*oe.get_mut() == -1);
+                        oe.remove_entry();
+                    },
+                    hash_map::Entry::Vacant(ve) => {ve.insert(1);}
+                }
+            };
+            new
+        } else {
+            let present = s.remove(x);
+            if present {
+                let e = ds.entry(x.clone());
+                match e {
+                    hash_map::Entry::Occupied(mut oe) => {
+                        debug_assert!(*oe.get_mut() == 1);
+                        oe.remove_entry();
+                    },
+                    hash_map::Entry::Vacant(ve) => {ve.insert(-1);}
+                }
+            };
+            present
+        }
     }
 
     /* Returns a reference to relation content.
@@ -711,12 +716,6 @@ impl<V:Val> RunningProgram<V> {
                 Some(rel) => Ok(&rel.elements)
             }
         })
-    }
-
-    /* Returns a copy of all elements of the relation
-     */
-    pub fn relation_clone_content(&mut self, relid: RelId) -> Response<FnvHashSet<V>> {
-        self.relation_content(relid).and_then(|x|Ok(x.lock().unwrap().clone()))
     }
 
     /* Returns a reference to delta accumulated by the current transaction
@@ -734,11 +733,6 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
-    pub fn relation_clone_delta(&mut self, relid: RelId) -> Response<FnvHashMap<V, i8>> {
-        self.relation_delta(relid).and_then(|x|Ok(x.lock().unwrap().clone()))
-    }
-
- 
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
             Err(_) => resp_from_error!("failed to communicate with timely dataflow thread"),
@@ -747,47 +741,46 @@ impl<V:Val> RunningProgram<V> {
     }
 
     fn delta_cleanup(&mut self) -> Response<()> {
-        for (_, rel) in &self.relations {
-            rel.delta.lock().unwrap().clear();
+        for (_, rel) in &mut self.relations {
+            if !rel.input {continue};
+            rel.delta.clear();
         };
         Ok(())
     }
 
     /* reverse all changes recorded in delta sets */
     fn delta_undo(&mut self) -> Response<()> {
+        let mut updates = vec![];
         for (relid, rel) in &self.relations {
             if !rel.input {continue};
-            let d = rel.delta.lock().unwrap();
-            let mut updates = d.iter().map(|(k,w)| {
-                    if *w == 1 {
+            for (k, w) in &rel.delta {
+                if *w == 1 {
+                    updates.push(
                         Update::Delete{
                             relid: *relid,
                             v:     k.clone()
-                        }
-                    } else {
-                        debug_assert!(*w == -1);
+                        })
+                } else {
+                    debug_assert!(*w == -1);
+                    updates.push(
                         Update::Insert{
                             relid: *relid,
                             v:     k.clone()
-                        }
-                    }
-            }).collect();
-            //println!("updates: {:?}", updates);
-            match self.send(Msg::Update(updates)) {
-                Ok(()) => continue,
-                e => return e
+                        })
+                }
             };
         };
-        self.need_to_flush = true;
-        self.flush().and_then(|_| {
-            /* validation: all deltas must be empty */
-            for (_, rel) in &self.relations {
-                let d = rel.delta.lock().unwrap();
-                //println!("delta: {:?}", *d);
-                debug_assert!(d.is_empty());
-            };
-            Ok(())
-        })
+        //println!("updates: {:?}", updates);
+        self.apply_updates(updates)
+            .and_then(|_| self.flush())
+            .and_then(|_| {
+                /* validation: all deltas must be empty */
+                for (_, rel) in &self.relations {
+                    //println!("delta: {:?}", *d);
+                    debug_assert!(rel.delta.is_empty());
+                };
+                Ok(())
+            })
     }
 
     /* Propagates all changes through the dataflow pipeline. */
