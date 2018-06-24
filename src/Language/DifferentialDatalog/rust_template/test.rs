@@ -18,6 +18,7 @@ const TEST_SIZE: u64 = 10000;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum Value {
+    empty(),
     bool(bool),
     Uint(Uint),
     String(String),
@@ -68,9 +69,10 @@ impl Default for Value {
     }
 }*/
 
-fn set_update(s: &Arc<Mutex<ValSet<Value>>>, x : &Value, insert: bool)
+#[cfg(test)]
+fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, insert: bool)
 {
-    //println!("xupd {:?} {}", *x, w);
+    //println!("set_update({}) {:?} {}", rel, *x, insert);
     if insert {
         s.lock().unwrap().insert(x.clone());
     } else {
@@ -93,7 +95,7 @@ fn test_one_relation(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset1, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
         }
     };
 
@@ -156,7 +158,7 @@ fn test_one_relation(nthreads: usize) {
 
     assert_eq!(*relset.lock().unwrap(), before);
 
-   running.stop().unwrap();
+    running.stop().unwrap();
 }
 
 
@@ -167,7 +169,7 @@ fn test_one_relation_1() {
 
 /*
 #[test]
-fn test_one_relation_16() {
+fn test_one_relation_multi() {
     test_one_relation(16)
 }*/
 
@@ -184,7 +186,7 @@ fn test_two_relations(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset1, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
@@ -196,7 +198,7 @@ fn test_two_relations(nthreads: usize) {
             id:           2,      
             rules:        vec![Rule{rel: 1, xforms: Vec::new()}],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset2, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
         }
     };
 
@@ -256,7 +258,7 @@ fn test_two_relations_1() {
  
 
 #[test]
-fn test_two_relations_16() {
+fn test_two_relations_multi() {
     test_two_relations(16)
 }
 
@@ -274,7 +276,7 @@ fn test_join(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset1, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -295,7 +297,7 @@ fn test_join(nthreads: usize) {
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
-            change_cb:    Arc::new(move |v,pol| set_update(&relset2, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
         }
     };
     fn jfun(_key: &Value, v1: &Value, v2: &Value) -> Option<Value> {
@@ -318,7 +320,7 @@ fn test_join(nthreads: usize) {
                 }]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset3, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T3", &relset3, v, pol))
         }
     };
 
@@ -353,7 +355,7 @@ fn test_join_1() {
 
 
 #[test]
-fn test_join_16() {
+fn test_join_multi() {
     test_join(16)
 }
  
@@ -370,7 +372,7 @@ fn test_antijoin(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset1, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -387,11 +389,35 @@ fn test_antijoin(nthreads: usize) {
             input:        true,
             id:           2,      
             rules:        Vec::new(),
-            arrangements: vec![Arrangement{
-                name: "arrange2.0".to_string(),
-                afun: &(afun1 as ArrangeFunc<Value>)
-            }],
-            change_cb:    Arc::new(move |v,pol| set_update(&relset2, v, pol))
+            arrangements: vec![],
+            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
+        }
+    };
+
+    fn mfun(v: Value) -> Value {
+        match v {
+            Value::Tuple2(v1,_) => *v1,
+            _ => panic!("unexpected value")
+        }
+    }
+
+    let relset21: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel21 = {
+        let relset21 = relset21.clone();
+        Relation {
+            name:         "T21".to_string(),
+            input:        false,
+            id:           21,      
+            rules:        vec![
+                Rule{
+                    rel: 2, 
+                    xforms: vec![
+                        XForm::Map{
+                            mfun: &(mfun as MapFunc<Value>)
+                        }]
+                }],
+            arrangements: vec![],
+            change_cb:    Arc::new(move |v,pol| set_update("T21", &relset21, v, pol))
         }
     };
 
@@ -405,18 +431,19 @@ fn test_antijoin(nthreads: usize) {
             rules:        vec![Rule{
                 rel: 1, 
                 xforms: vec![XForm::Antijoin{
-                    afun:        &(afun1 as ArrangeFunc<Value>),
-                    arrangement: (2,0)
+                    afun: &(afun1 as ArrangeFunc<Value>),
+                    rel:  21
                 }]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset3, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T3", &relset3, v, pol))
         }
     };
 
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: rel1},
         ProgNode::RelNode{rel: rel2},
+        ProgNode::RelNode{rel: rel21},
         ProgNode::RelNode{rel: rel3}]
     };
 
@@ -453,7 +480,7 @@ fn test_antijoin_1() {
 
 
 #[test]
-fn test_antijoin_16() {
+fn test_antijoin_multi() {
     test_antijoin(16)
 }
  
@@ -470,7 +497,7 @@ fn test_map(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset1, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
         }
     };
 
@@ -520,7 +547,7 @@ fn test_map(nthreads: usize) {
                     }]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&relset2, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
         }
     };
 
@@ -556,7 +583,7 @@ fn test_map_1() {
 }
 
 #[test]
-fn test_map_16() {
+fn test_map_multi() {
     test_map(16)
 }
 
@@ -565,21 +592,41 @@ fn test_map_16() {
 */
 #[cfg(test)]
 fn test_recursion(nthreads: usize) {
-    fn arrange_by_parent(v: Value) -> Option<(Value, Value)> {
+    fn arrange_by_fst(v: Value) -> Option<(Value, Value)> {
         match &v {
-            Value::Tuple2(parent,child) => Some(((**parent).clone(), (**child).clone())),
+            Value::Tuple2(fst,snd) => Some(((**fst).clone(), (**snd).clone())),
             _ => None
         }
     }
-    fn arrange_by_descendant(v: Value) -> Option<(Value, Value)> {
+    fn arrange_by_snd(v: Value) -> Option<(Value, Value)> {
         match &v {
-            Value::Tuple2(ancestor,descendant) => Some(((**descendant).clone(), (**ancestor).clone())),
+            Value::Tuple2(fst,snd) => Some(((**snd).clone(), (**fst).clone())),
             _ => None
         }
+    }
+    fn anti_arrange1(v: Value) -> Option<(Value, Value)> {
+        //println!("anti_arrange({:?})", v);
+        let res = Some((v.clone(),v.clone()));
+        //println!("res: {:?}", res);
+        res
+    }
+
+    fn anti_arrange2(v: Value) -> Option<(Value, Value)> {
+        match &v {
+            Value::Tuple2(fst,snd) => Some((Value::Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())), v.clone())),
+            _ => None
+        }
+    }
+    fn arrange_by_self(v: Value) -> Option<(Value, Value)> {
+        Some((v.clone(),Value::empty()))
     }
 
     fn jfun(_parent: &Value, ancestor: &Value, child: &Value) -> Option<Value> {
         Some(Value::Tuple2(Box::new(ancestor.clone()), Box::new(child.clone())))
+    }
+
+    fn jfun2(_ancestor: &Value, descendant1: &Value, descendant2: &Value) -> Option<Value> {
+        Some(Value::Tuple2(Box::new(descendant1.clone()), Box::new(descendant2.clone())))
     }
 
     let parentset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
@@ -592,9 +639,9 @@ fn test_recursion(nthreads: usize) {
             rules:        Vec::new(),
             arrangements: vec![Arrangement{
                 name: "arrange_by_parent".to_string(),
-                afun: &(arrange_by_parent as ArrangeFunc<Value>)
+                afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
-            change_cb:    Arc::new(move |v,pol| set_update(&parentset, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("parent", &parentset, v, pol))
         }
     };
 
@@ -613,64 +660,142 @@ fn test_recursion(nthreads: usize) {
                 Rule{
                     rel: 2, 
                     xforms: vec![XForm::Join{
-                        afun:        &(arrange_by_descendant as ArrangeFunc<Value>),
+                        afun:        &(arrange_by_snd as ArrangeFunc<Value>),
                         arrangement: (1,0),
                         jfun:        &(jfun as JoinFunc<Value>)
                     }]
                 }],
+            arrangements: vec![
+                Arrangement{
+                    name: "arrange_by_ancestor".to_string(),
+                    afun: &(arrange_by_fst as ArrangeFunc<Value>)
+                },
+                Arrangement{
+                    name: "arrange_by_self".to_string(),
+                    afun: &(arrange_by_self as ArrangeFunc<Value>)
+                }],
+            change_cb:    Arc::new(move |v,pol| set_update("ancestor", &ancestorset, v, pol))
+        }
+    };
+
+    fn ffun(v: &Value) -> bool {
+        match &v {
+            Value::Tuple2(fst,snd) => fst != snd, 
+            _ => false
+        }
+    }
+
+    let common_ancestorset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let common_ancestor = {
+        let common_ancestorset = common_ancestorset.clone();
+        Relation {
+            name:         "common_ancestor".to_string(),
+            input:        false,
+            id:           3,      
+            rules:        vec![
+                Rule{
+                    rel: 2,
+                    xforms: vec![
+                        XForm::Join{
+                            afun:        &(arrange_by_fst as ArrangeFunc<Value>),
+                            arrangement: (2,0),
+                            jfun:        &(jfun2 as JoinFunc<Value>)
+                        },
+                        XForm::Antijoin{
+                            afun:        &(anti_arrange1 as ArrangeFunc<Value>),
+                            rel:         2
+                        },
+                        XForm::Antijoin{
+                            afun:        &(anti_arrange2 as ArrangeFunc<Value>),
+                            rel:         2
+                        },
+                        XForm::Filter{
+                            ffun: &(ffun as FilterFunc<Value>)
+                        }]
+                }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update(&ancestorset, v, pol))
+            change_cb:    Arc::new(move |v,pol| set_update("common_ancestor", &common_ancestorset, v, pol))
         }
     };
 
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: parent},
-        ProgNode::SCCNode{rels: vec![ancestor]}]
+                    ProgNode::SCCNode{rels: vec![ancestor]},
+                    ProgNode::RelNode{rel: common_ancestor}]
     };
 
     let mut running = prog.run(nthreads);
 
     /* 1. Populate parent relation */
+    /*
+        A-->B-->C
+        |   |-->D
+        |
+        |-->E
+    */
     let vals = vec![Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("B".to_string()))),
-    Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string())))];
+                    Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
+                    Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("D".to_string()))),
+                    Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("E".to_string())))];
     let set = FnvHashSet::from_iter(vals.iter().map(|x| x.clone()));
 
     let expect_vals = vec![Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("B".to_string()))),
-    Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
-    Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("C".to_string())))];
+                           Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
+                           Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("D".to_string()))),
+                           Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("E".to_string()))),
+                           Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("D".to_string()))),
+                           Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("C".to_string())))];
 
     let expect_set = FnvHashSet::from_iter(expect_vals.iter().map(|x| x.clone()));
+
+    let expect_vals2 = vec![Value::Tuple2(Box::new(Value::String("C".to_string())), Box::new(Value::String("D".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("D".to_string())), Box::new(Value::String("C".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("C".to_string())), Box::new(Value::String("E".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("E".to_string())), Box::new(Value::String("C".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("D".to_string())), Box::new(Value::String("E".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("E".to_string())), Box::new(Value::String("D".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("E".to_string())), Box::new(Value::String("B".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("E".to_string())))];
+    let expect_set2 = FnvHashSet::from_iter(expect_vals2.iter().map(|x| x.clone()));
 
     running.transaction_start().unwrap();
     for x in &set {
         running.insert(1, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
+    //println!("commit done");
 
     assert_eq!(*parentset.lock().unwrap(), set);
     assert_eq!(*ancestorset.lock().unwrap(), expect_set);
+    assert_eq!(*common_ancestorset.lock().unwrap(), expect_set2);
 
     /* 2. Remove record from "parent" relation */
     running.transaction_start().unwrap();
     running.delete(1, vals[0].clone()).unwrap();
     running.transaction_commit().unwrap();
 
-    let expect_vals2 = vec![Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string())))];
-    let expect_set2 = FnvHashSet::from_iter(expect_vals2.iter().map(|x| x.clone()));
+    let expect_vals3 = vec![Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("D".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("E".to_string())))];
+    let expect_set3 = FnvHashSet::from_iter(expect_vals3.iter().map(|x| x.clone()));
 
-    assert_eq!(*ancestorset.lock().unwrap(), expect_set2);
+    assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
+
+    let expect_vals4 = vec![Value::Tuple2(Box::new(Value::String("C".to_string())), Box::new(Value::String("D".to_string()))),
+                            Value::Tuple2(Box::new(Value::String("D".to_string())), Box::new(Value::String("C".to_string())))];
+    let expect_set4 = FnvHashSet::from_iter(expect_vals4.iter().map(|x| x.clone()));
+
+    assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
 
     running.stop().unwrap();
 }
-
 
 #[test]
 fn test_recursion_1() {
     test_recursion(1)
 }
 
-
 #[test]
-fn test_recursion_16() {
+fn test_recursion_multi() {
     test_recursion(16)
 }

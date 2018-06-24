@@ -128,7 +128,7 @@ pub enum XForm<V: Val> {
     },
     Antijoin {
         afun: &'static ArrangeFunc<V>, // arrange the relation before performing antijoin
-        arrangement: ArrId             // arrangement to antijoin with
+        rel: RelId                     // relation to antijoin with
     }
 }
 
@@ -456,8 +456,8 @@ impl<V:Val> Program<V>
                         XForm::Join{afun: _, arrangement: arrid, jfun: _} => {
                             result.insert(Dep::DepArr(*arrid));
                         },
-                        XForm::Antijoin {afun: _, arrangement: arrid} => {
-                            result.insert(Dep::DepArr(*arrid));
+                        XForm::Antijoin {afun: _, rel: relid} => {
+                            result.insert(Dep::DepRel(*relid));
                         },
                         _ => {}
                     };
@@ -509,23 +509,12 @@ impl<V:Val> Program<V>
                         }
                     }
                 },
-                XForm::Antijoin {afun: &af, arrangement: arrid} => {
-                    match arrangements.get(&arrid) {
-                        Some(arranged) => {
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).
-                                 antijoin(&arranged.as_collection(|k,_|k.clone())).
-                                 map(|(_,v)|v))
-                        },
-                        None      => {
-                            let arrangement = self.get_arrangement(*arrid);
-                            let arranged = lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key();
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).
-                                 antijoin(&arranged.as_collection(|k,_|k.clone())).
-                                 map(|(_,v)|v))
-                        }
-                    }
+                XForm::Antijoin {afun: &af, rel: relid} => {
+                    let collection = lookup_collection(*relid).unwrap();
+                    Some(rhs.as_ref().unwrap_or(first).
+                         flat_map(af).
+                         antijoin(&collection).
+                         map(|(_,v)|v))
                 }
             };
         };
