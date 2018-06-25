@@ -1,19 +1,13 @@
 #![allow(non_camel_case_types)]
 
-#[cfg(test)]
-
 use program::*;
 use uint::*;
 use abomonation::Abomonation;
 
-#[cfg(test)]
 use std::sync::{Arc,Mutex};
-#[cfg(test)]
 use fnv::FnvHashSet;
-#[cfg(test)]
 use std::iter::FromIterator;
 
-#[cfg(test)]
 const TEST_SIZE: u64 = 10000;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -34,7 +28,6 @@ impl Default for Value {
     fn default() -> Value {Value::bool(false)}
 }
 
-#[cfg(test)]
 /*fn set_update(s: &Arc<Mutex<ValSet<Value>>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
 {
     //println!("xupd {:?} {}", *x, w);
@@ -69,7 +62,6 @@ impl Default for Value {
     }
 }*/
 
-#[cfg(test)]
 fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, insert: bool)
 {
     //println!("set_update({}) {:?} {}", rel, *x, insert);
@@ -84,7 +76,6 @@ fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, insert: boo
 
 /* Test insertion/deletion into a database with a single table and no rules
  */
-#[cfg(test)]
 fn test_one_relation(nthreads: usize) {
     let relset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel = {
@@ -175,7 +166,6 @@ fn test_one_relation_multi() {
 
 /* Two tables + 1 rule that keeps the two synchronized
  */
-#[cfg(test)]
 fn test_two_relations(nthreads: usize) {
     let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel1 = {
@@ -265,7 +255,6 @@ fn test_two_relations_multi() {
  
 /* Inner join
  */
-#[cfg(test)]
 fn test_join(nthreads: usize) {
     let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel1 = {
@@ -361,7 +350,6 @@ fn test_join_multi() {
  
 /* Antijoin
  */
-#[cfg(test)]
 fn test_antijoin(nthreads: usize) {
     let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel1 = {
@@ -486,7 +474,6 @@ fn test_antijoin_multi() {
  
 /* Maps and filters
  */
-#[cfg(test)]
 fn test_map(nthreads: usize) {
     let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel1 = {
@@ -590,7 +577,6 @@ fn test_map_multi() {
 
 /* Recursion
 */
-#[cfg(test)]
 fn test_recursion(nthreads: usize) {
     fn arrange_by_fst(v: Value) -> Option<(Value, Value)> {
         match &v {

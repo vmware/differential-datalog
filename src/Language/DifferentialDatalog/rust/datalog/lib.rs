@@ -13,6 +13,7 @@ extern crate fnv;
 
 mod uint;
 mod variable;
+#[cfg(test)]
 mod test;
 
 pub mod program;
