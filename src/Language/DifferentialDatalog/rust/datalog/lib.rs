@@ -13,5 +13,6 @@ extern crate fnv;
 
 mod uint;
 mod variable;
-pub mod program;
 mod test;
+
+pub mod program;
