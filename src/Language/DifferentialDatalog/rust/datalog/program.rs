@@ -43,6 +43,9 @@ use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
 use variable::*;
 
+/* Message buffer for communication with timely threads */
+const MSG_BUF_SIZE: usize = 500;
+
 /// Error type returned by this library
 #[derive(Debug)]
 pub struct Error {
@@ -287,7 +290,7 @@ impl<V:Val> Program<V>
          * We use sync channel with buffer size 0 to ensure that the receiver finishes 
          * processing commands by the time send() returns.
          */
-        let (tx, rx) = mpsc::sync_channel::<Msg<V>>(0);
+        let (tx, rx) = mpsc::sync_channel::<Msg<V>>(MSG_BUF_SIZE);
         let rx = Arc::new(Mutex::new(rx));
 
         /* Channel to send flush acknowledgements. */
@@ -416,18 +419,15 @@ impl<V:Val> Program<V>
                                 match update {
                                     Update::Insert{relid, v} => {
                                         sessions.get_mut(&relid).unwrap().insert(v);
-                                        epoch = epoch+1;
-                                        //print!("epoch: {}\n", epoch);
-                                        Self::advance(&mut sessions, epoch);
                                     },
                                     Update::Delete{relid, v} => {
                                         sessions.get_mut(&relid).unwrap().remove(v);
-                                        epoch = epoch+1;
-                                        //print!("epoch: {}\n", epoch);
-                                        Self::advance(&mut sessions, epoch);
                                     }
                                 }
-                            }
+                            };
+                            epoch = epoch+1;
+                            //print!("epoch: {}\n", epoch);
+                            Self::advance(&mut sessions, epoch);
                         },
                         Ok(Msg::Flush) => {
                             //println!("flushing");
