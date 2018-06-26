@@ -118,9 +118,7 @@ pub enum ProgNode<V: Val> {
 ///
 /// defines a set of rules and a set of arrangements with which this relation is used in 
 /// rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements 
-/// can also be empty if the relation is not used in the RHS of any rules.  name is the
-/// human-readable name of the relation; scc is the index of the strongly connected component of 
-/// the dependency graph that the relation belongs to.
+/// can also be empty if the relation is not used in the RHS of any rules.
 #[derive(Clone)]
 pub struct Relation<V: Val> {
     /// Relation name; does not have to be unique
@@ -136,7 +134,7 @@ pub struct Relation<V: Val> {
     /// component.
     pub rules:        Vec<Rule<V>>,
     /// Arrangements of the relation used to compute other relations.  Index in this vector
-    /// identifies along with relation id uniquely identify the arrangement (see `ArrId`).
+    /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement<V>>,
     /// Callback invoked when an element is added or removed from relation.
     pub change_cb:    Arc<Fn(&V, bool) + Send + Sync>
@@ -516,9 +514,10 @@ impl<V:Val> Program<V>
                     if r.input {vec![r.id]} else {vec![]}
                 },
                 ProgNode::SCCNode{rels:rs} => {
-                    rs.iter().flat_map(|r| {
-                        if r.input {vec![r.id]} else {vec![]}
-                    }).collect()
+                    for r in rs {
+                        if r.input { panic!("input relation in SCCNode"); };
+                    };
+                    vec![]
                 }
             }
         }).collect()
