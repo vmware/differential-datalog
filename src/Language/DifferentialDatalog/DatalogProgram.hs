@@ -96,4 +96,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
                                   ruleLHS)
                       progRules
 
+-- | Replace multihead rules with several rules by introducing an
+-- intermediate relation for the body of the rule.
+progExpandMultiheadRules :: DatalogProgram -> DatalogProgram
 
