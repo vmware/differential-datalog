@@ -91,6 +91,9 @@ module Language.DifferentialDatalog.Syntax (
         emptyDatalogProgram,
         progStructs,
         progConstructors,
+        progAddRel,
+        progAddRules,
+        progAddTypedef,
         ECtx(..),
         ctxParent)
 where
@@ -683,6 +686,15 @@ emptyDatalogProgram = DatalogProgram { progTypedefs   = M.empty
                                      , progRelations  = M.empty
                                      , progRules      = []
                                      , progStatements = [] }
+
+progAddTypedef :: TypeDef -> DatalogProgram -> DatalogProgram
+progAddTypedef tdef prog = prog{progTypedefs = M.insert (name tdef) tdef (progTypedefs prog)}
+
+progAddRules :: [Rule] -> DatalogProgram -> DatalogProgram
+progAddRules rules prog = prog{progRules = rules ++ (progRules prog)}
+
+progAddRel :: Relation -> DatalogProgram -> DatalogProgram
+progAddRel rel prog = prog{progRelations = M.insert (name rel) rel (progRelations prog)}
 
 -- | Expression's syntactic context determines the kinds of
 -- expressions that can appear at this location in the Datalog program,

@@ -25,7 +25,8 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
-    ruleVars
+    ruleVars,
+    ruleLHSVars
 ) where
 
 import qualified Data.Set as S
@@ -35,6 +36,7 @@ import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Util
 
 import Debug.Trace
 
@@ -88,3 +90,13 @@ atomVarDecls d rl i =
 -- | All variables defined in a rule
 ruleVars :: DatalogProgram -> Rule -> [Field]
 ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
+
+-- | Variables used in the head of the rule
+ruleLHSVars :: DatalogProgram -> Rule -> [Field]
+ruleLHSVars d rl = S.toList $ ruleLHSVarSet d rl
+
+ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Field
+ruleLHSVarSet d rl = S.fromList 
+    $ concat 
+    $ mapIdx (\a i -> exprVarTypes d (CtxRuleL rl i) $ atomVal a) 
+    $ ruleLHS rl
