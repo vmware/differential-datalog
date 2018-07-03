@@ -1,5 +1,5 @@
 use abomonation::Abomonation;
-use num::bigint::BigUint;
+use num::bigint::BigInt;
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;
@@ -8,25 +8,28 @@ use serde::de::Error;
 
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
-pub struct Uint{x:BigUint}
+pub struct Int{x:BigInt}
 
-impl Default for Uint {
-    fn default() -> Uint {
-        Uint{x: BigUint::default()}
+impl Default for Int {
+    fn default() -> Int {
+        Int{x: BigInt::default()}
     }
 }
-unsafe_abomonate!(Uint);
+unsafe_abomonate!(Int);
 
-impl Uint {
-    pub fn from_u64(v: u64) -> Uint {
-        Uint{x: BigUint::from(v)}
+impl Int {
+    pub fn from_u64(v: u64) -> Int {
+        Int{x: BigInt::from(v)}
     }
-    pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
-        Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
+    pub fn from_i64(v: i64) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn parse_bytes(buf: &[u8], radix: u32) -> Int {
+        Int{x: BigInt::parse_bytes(buf, radix).unwrap()}
     }
 }
 
-impl Serialize for Uint {
+impl Serialize for Int {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer
     {
@@ -34,13 +37,13 @@ impl Serialize for Uint {
     }
 }
 
-impl<'de> Deserialize<'de> for Uint {
-    fn deserialize<D>(deserializer: D) -> Result<Uint, D::Error>
+impl<'de> Deserialize<'de> for Int {
+    fn deserialize<D>(deserializer: D) -> Result<Int, D::Error>
         where D: Deserializer<'de>
     {
         match String::deserialize(deserializer) {
-            Ok(s) => match BigUint::from_str(&s) {
-                        Ok(i)  => Ok(Uint{x:i}),
+            Ok(s) => match BigInt::from_str(&s) {
+                        Ok(i)  => Ok(Int{x:i}),
                         Err(_) => Err(D::Error::custom(format!("invalid integer value: {}", s)))
                      },
             Err(e) => Err(e)
@@ -57,21 +60,21 @@ impl Uint {
 }
 */
 
-impl Shr<usize> for Uint {
-    type Output = Uint;
+impl Shr<usize> for Int {
+    type Output = Int;
 
     #[inline]
-    fn shr(self, rhs: usize) -> Uint {
-        Uint{x: self.x.shr(rhs)}
+    fn shr(self, rhs: usize) -> Int {
+        Int{x: self.x.shr(rhs)}
     }
 }
 
-impl Shl<usize> for Uint {
-    type Output = Uint;
+impl Shl<usize> for Int {
+    type Output = Int;
 
     #[inline]
-    fn shl(self, rhs: usize) -> Uint {
-        Uint{x: self.x.shl(rhs)}
+    fn shl(self, rhs: usize) -> Int {
+        Int{x: self.x.shl(rhs)}
     }
 }
 
@@ -83,13 +86,13 @@ macro_rules! forward_binop {
             #[inline]
             fn $method(self, other: $res) -> $res {
                 // forward to val-ref
-                Uint{x: $imp::$method(self.x, other.x)}
+                Int{x: $imp::$method(self.x, other.x)}
             }
         }
     }
 }
 
-forward_binop!(impl Add for Uint, add);
-forward_binop!(impl Sub for Uint, sub);
-forward_binop!(impl Div for Uint, div);
-forward_binop!(impl Rem for Uint, rem);
+forward_binop!(impl Add for Int, add);
+forward_binop!(impl Sub for Int, sub);
+forward_binop!(impl Div for Int, div);
+forward_binop!(impl Rem for Int, rem);

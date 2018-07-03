@@ -13,6 +13,7 @@ extern crate differential_dataflow;
 extern crate fnv;
 
 mod uint;
+mod int;
 mod variable;
 #[cfg(test)]
 mod test;
