@@ -2,6 +2,7 @@
 
 use program::*;
 use uint::*;
+use int::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
@@ -9,6 +10,21 @@ use fnv::FnvHashSet;
 use std::iter::FromIterator;
 
 const TEST_SIZE: u64 = 10000;
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+struct Q {
+    f1: bool,
+    f2: String
+}
+unsafe_abomonate!(Q);
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+enum S {
+    S1 {f1: u32, f2: String, f3: Q, f4: Uint},
+    S2 {e1: bool},
+    S3 {g1: Q, g2: Q}
+}
+unsafe_abomonate!(S);
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum Value {
@@ -20,13 +36,40 @@ enum Value {
     u16(u16),
     u32(u32),
     u64(u64),
-    Tuple2(Box<Value>, Box<Value>)
+    BoolTuple((bool, bool)),
+    Tuple2(Box<Value>, Box<Value>),
+    Q(Q),
+    S(S)
 }
 unsafe_abomonate!(Value);
 
 impl Default for Value {
     fn default() -> Value {Value::bool(false)}
 }
+
+fn _filter_fun1(v: &Value) -> bool {
+    match &v {
+        Value::S(S::S1{f1: _, f2: _, f3: _, f4: _}) => true, 
+        _ => false
+    }
+}
+
+fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
+    let (x, _2) = match &v {
+        Value::S(S::S1{f1: x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == Uint::from_u64(32) => (x.clone(), _2.clone()), 
+        _ => return None
+    };
+    if _2.f1 && x > 5 { return None; };
+    Some((Value::S(S::S3{g1: _2.clone(), g2: _2.clone()}), v))
+}
+
+/*
+fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
+    match v {
+        Value::Tuple2(v1,v2) => Some((*v1, *v2)),
+        _ => None
+    }
+}*/
 
 /*fn set_update(s: &Arc<Mutex<ValSet<Value>>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
 {
@@ -364,11 +407,21 @@ fn test_antijoin(nthreads: usize) {
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
-        match &v {
-            Value::Tuple2(v1,_) => Some(((**v1).clone(), v.clone())),
-            _ => None
-        }
+        let (v1,v) = match &v {
+            Value::Tuple2(v1,_) => ((**v1).clone(), v.clone()),
+            _ => return None
+        };
+        Some((v1,v))
     }
+
+    fn _afunx(v: Value) -> Option<(Value, Value)> {
+        let (v1,v2): (&bool, &bool) = match &v {
+            Value::BoolTuple((v1,v2)) => (v1,v2),
+            _ => return None
+        };
+        Some((Value::bool(*v1),Value::bool(*v2)))
+    }
+
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel2 = {
         let relset2 = relset2.clone();
