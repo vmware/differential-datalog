@@ -37,6 +37,7 @@ module Language.DifferentialDatalog.Expr (
     exprCollectM,
     exprCollectCtx,
     exprCollect,
+    exprVarOccurrences,
     exprVars,
     exprVarDecls,
     exprFuncs,
@@ -193,12 +194,21 @@ exprCollectCtx f op ctx e = runIdentity $ exprCollectCtxM (\ctx' x -> return $ f
 exprCollect :: (ExprNode b -> b) -> (b -> b -> b) -> Expr -> b
 exprCollect f op e = runIdentity $ exprCollectM (return . f) op e
 
+-- enumerate all variable occurrences in the expression
+exprVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
+exprVarOccurrences ctx e = exprCollectCtx (\ctx' e' -> 
+                                            case e' of
+                                                 EVar _ v -> [(v, ctx')]
+                                                 _        -> [])
+                                          (++) ctx e
+
 -- enumerate all variables that occur in the expression
-exprVars :: ECtx -> Expr -> [(String, ECtx)]
-exprVars ctx e = exprCollectCtx (\ctx' e' -> case e' of
-                                                  EVar _ v -> [(v, ctx')]
-                                                  _        -> [])
-                                (++) ctx e
+exprVars :: Expr -> [String]
+exprVars e = nub $ exprCollect (\case
+                                EVar _ v -> [v]
+                                _        -> [])
+                               (++) e
+
 
 -- Variables declared inside expression, visible in the code that follows the expression
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]

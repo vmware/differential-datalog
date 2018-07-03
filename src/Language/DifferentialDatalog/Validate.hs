@@ -299,6 +299,10 @@ relValidate d Relation{..} = typeValidate d [] relType
 
 ruleValidate :: (MonadError String me) => DatalogProgram -> Rule -> me ()
 ruleValidate d rl@Rule{..} = do
+    when (not $ null ruleRHS) $ do
+        case head ruleRHS of
+             RHSLiteral True _ -> return ()
+             x                 -> err (pos rl) "Rule must start with positive literal"
     mapIdxM_ (ruleRHSValidate d rl) ruleRHS
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
@@ -310,7 +314,7 @@ ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
     -- variable cannot be declared and used in the same atom
     uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
         $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars) 
-        $ exprVars (CtxRuleRAtom rl idx)
+        $ exprVarOccurrences (CtxRuleRAtom rl idx)
         $ atomVal atom
 
 ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do

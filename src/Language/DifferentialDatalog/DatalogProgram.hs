@@ -29,6 +29,7 @@ Description: Helper functions for manipulating 'DatalogProgram'.
 -}
 module Language.DifferentialDatalog.DatalogProgram (
     progExprMapCtxM,
+    DepGraph,
     progDependencyGraph,
     progExpandMultiheadRules
 ) 
@@ -80,6 +81,8 @@ rhsExprMapCtxM d fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
 
+type DepGraph = G.Gr String Bool
+
 -- | Dependency graph among program relations.  An edge from Rel1 to
 -- Rel2 means that there is a rule with Rel1 in the right-hand-side,
 -- and Rel2 in the left-hand-side.  Edge label is equal to the
@@ -87,7 +90,7 @@ rhsExprMapCtxM d fun r rhsidx m@RHSFlatMap{}   = do
 --
 -- Assumes that rules and relations have been validated before calling
 -- this function.
-progDependencyGraph :: DatalogProgram -> G.Gr String Bool
+progDependencyGraph :: DatalogProgram -> DepGraph
 progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
     where
     g0 = G.insNodes (zip [0..] $ M.keys progRelations) G.empty
