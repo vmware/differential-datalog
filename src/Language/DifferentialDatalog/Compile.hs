@@ -39,6 +39,7 @@ module Language.DifferentialDatalog.Compile (
 import Control.Monad.State
 import Text.PrettyPrint
 import Data.Tuple
+import Data.Tuple.Select
 import Data.Maybe
 import Data.List
 import Data.Int
@@ -50,10 +51,12 @@ import qualified Data.Graph.Inductive.Query.DFS as G
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.ECtx
 
 -- TODO: generate code to fill relations with initial values
 -- (corresponding to rules with empty bodies)
@@ -93,6 +96,17 @@ emptyCompilerState = CompilerState {
 
 getRelId :: String -> CompilerMonad RelId
 getRelId rname = gets $ (M.! rname) . cRels
+
+-- Rust does not like parenthesis around singleton tuples
+tuple :: [Doc] -> Doc
+tuple [x] = x
+tuple xs = parens $ hsep $ punctuate comma xs
+
+-- Structs with a single constructor are compiled into Rust structs;
+-- structs with multiple constructor are compiled into Rust enums.
+isStructType :: Type -> Bool
+isStructType TStruct{..} | length typeCons == 1 = True
+isStructType _                                  = False
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
@@ -262,7 +276,7 @@ openAtom d Atom{..} =
     rel = getRelation d atomRelation
     constructor = mkConstructorName d $ relType rel
     varnames = map pp $ exprVars atomVal
-    vars = parens $ hsep $ punctuate comma varnames
+    vars = tuple varnames
     (pattern, cond) = mkPatExpr d atomVal
     cond_str = if cond == empty then empty else ("if" <+> cond)
 
@@ -319,13 +333,7 @@ mkPatExpr' _ EInt{..}                  = do
     i <- get
     put $ i+1
     let vname = pp $ "_" <> pp i
-    let val = case exprIVal of
-                   v | v <= (toInteger (maxBound::Word64)) && v >= (toInteger (minBound::Word64))
-                     -> "Int::from_u64(" <> pp v <> ")"
-                   v | v <= (toInteger (maxBound::Int64))  && v >= (toInteger (minBound::Int64))
-                     -> "Int::from_i64(" <> pp v <> ")"
-                   v -> "Int::parse_bytes(b\"" <> pp v <> "\", 10)"
-    return (vname, "*" <> vname <+> "==" <+> val)
+    return (vname, "*" <> vname <+> "==" <+> mkInt exprIVal)
 mkPatExpr' _ EString{..}               = do
     i <- get
     put $ i+1
@@ -340,9 +348,8 @@ mkPatExpr' _ EBit{..}                  = do
 mkPatExpr' d EStruct{..}               = return (e, cond)
     where
     struct_name = name $ consType d exprConstructor
-    e = pp struct_name <> "::" <> pp exprConstructor <> "{" <>
-        (hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields) <>
-        "}"
+    e = pp struct_name <> "::" <> pp exprConstructor <> 
+        (braces' $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
     cond = hsep $ intersperse "&&" $ map (\(_,(_,c)) -> c) exprStructFields
 mkPatExpr' d ETuple{..}                = return (e, cond)
     where
@@ -350,3 +357,193 @@ mkPatExpr' d ETuple{..}                = return (e, cond)
     cond = hsep $ intersperse "&&" $ map (pp . snd) exprTupleFields
 mkPatExpr' _ EPHolder{}                = return ("_", empty)
 mkPatExpr' _ ETyped{..}                = return exprExpr
+
+
+-- Convert Datalog expression to Rust
+-- We generate the code so that all variables are references and must
+-- be dereferenced before use or cloned when passed to a constructor,
+-- assigned to another variable or returned.
+mkExpr :: DatalogProgram -> ECtx -> Expr -> Doc
+mkExpr d ctx e = sel1 $ exprFoldCtx (mkExpr_ d) ctx e
+
+mkExpr_ :: DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind, ENode)
+mkExpr_ d ctx e = (t', k', e')
+    where (t', k') = mkExpr' d ctx e
+          e' = exprMap (E . sel3) e
+
+-- Rust expression kind
+data EKind = EVal   -- normal value
+           | ELVal  -- l-value that can be written to or moved
+           | ERef   -- reference (mutable or immutable)
+
+-- convert any expression into reference
+ref :: (Doc, EKind, ENode) -> Doc
+ref (x, ERef, _)  = x
+ref (x, _, _)     = parens $ "&" <> x
+
+-- dereference expression if it is a reference; leave it alone
+-- otherwise
+deref :: (Doc, EKind, ENode) -> Doc
+deref (x, ERef, _) = parens $ "*" <> x
+deref (x, _, _)    = x
+
+-- convert any expression into mutable reference
+mutref :: (Doc, EKind, ENode) -> Doc
+mutref (x, ERef, _)  = x
+mutref (x, _, _)     = parens $ "&mut" <> x
+
+-- convert any expression to EVal by cloning it if necessary
+val :: (Doc, EKind, ENode) -> Doc
+val (x, EVal, _) = x
+val (x, _, _)    = x <> ".clone()"
+
+-- convert expression to l-value
+lval :: (Doc, EKind, ENode) -> Doc
+lval (x, ELVal, _) = x
+-- this can only be mutable reference in a valid program
+lval (x, ERef, _)  = parens $ "*" <> x
+lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
+
+-- Compiled expressions are represented as '(Doc, EKind)' tuple, where
+-- the second components is the kind of the compiled representation
+mkExpr' :: DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind)
+-- All variables are references
+mkExpr' _ _ EVar{..}    = (pp exprVar, ERef) 
+
+-- Function arguments are passed as read-only references
+-- Functions return real values.
+mkExpr' _ _ EApply{..}  = 
+    (pp exprFunc <> (parens $ commaSep $ map ref exprArgs), EVal)
+
+-- Field access automatically dereferences subexpression
+mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
+
+mkExpr' _ _ (EBool _ True) = ("true", EVal)
+mkExpr' _ _ (EBool _ False) = ("false", EVal)
+mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
+mkExpr' _ _ EString{..} = ("\"" <> pp exprString <> "\".to_string()", EVal)
+mkExpr' _ _ EBit{..} | exprWidth <= 64 = (pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
+                     | otherwise       = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+
+-- Struct fields must be values
+mkExpr' d ctx EStruct{..} | ctxInSetL ctx
+                          = (tname <> fieldlvals, ELVal)
+                          | isstruct
+                          = (tname <> fieldvals, EVal)
+                          | otherwise
+                          = (tname <> "::" <> pp exprConstructor <> fieldvals, EVal)
+    where fieldvals  = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> val v) exprStructFields
+          fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
+          tdef = consType d exprConstructor
+          isstruct = isStructType $ fromJust $ tdefType tdef
+          tname = pp $ name tdef
+
+-- Tuple fields must be values
+mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
+                         = (tuple $ map lval exprTupleFields, ELVal)
+                         | otherwise
+                         = (tuple $ map val exprTupleFields, EVal)
+
+mkExpr' _ _ ESlice{..} = error "not implemented: Compile.mkExpr ESlice"
+
+-- Match expression is a reference
+mkExpr' d ctx e@EMatch{..} = (doc, EVal)
+    where 
+    m = if exprIsVarOrFieldLVal d (CtxMatchExpr (exprMap (E . sel3) e) ctx) (E $ sel3 exprMatchExpr)
+           then mutref exprMatchExpr
+           else ref exprMatchExpr
+    doc = ("match" <+> m <+> "{")
+          $$
+          (nest' $ vcat $ punctuate comma cases)
+          $$
+          "}"
+    cases = map (\(c,v) -> let (match, cond) = mkPatExpr d (E $ sel3 c)
+                               cond' = if cond == empty then empty else ("|" <+> cond) in
+                           match <+> cond' <+> "=>" <+> val v) exprCases
+
+-- Variables are mutable references 
+mkExpr' _ _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
+-- TODO VarDecl without assignment
+
+mkExpr' _ ctx ESeq{..} | ctxIsSeq2 ctx = (body, sel2 exprRight)
+                       | otherwise     = (braces' body, sel2 exprRight)
+    where 
+    body = (sel1 exprLeft <> ";") $$ sel1 exprRight
+    
+
+mkExpr' _ _ EITE{..} = (doc, EVal)
+    where
+    doc = ("if" <+> deref exprCond <+> "{") $$
+          (nest' $ val exprThen)            $$
+          ("}" <+> "else" <+> "{")          $$
+          (nest' $ val exprElse)            $$
+          "}"
+                    
+-- Desonctruction expressions in LHS are compiled into let statements, other assignments
+-- are compiled into normal assignments.  Note: assignments in rule
+-- atoms are handled by a different code path.
+mkExpr' d _ ESet{..} | islet     = ("let" <+> assign, EVal)
+                     | otherwise = (assign, EVal)
+    where
+    islet = exprIsDeconstruct d $ E $ sel3 exprLVal
+    assign = lval exprLVal <+> "=" <+> val exprRVal
+
+-- operators take values or lvalues and return values
+mkExpr' _ _ EBinOp{..} = (v, EVal)
+    where
+    e1 = deref exprLeft
+    e2 = deref exprRight
+    v = case exprBOp of
+             Concat     -> error "not implemented: Compile.mkExpr EBinOp Concat"
+             Impl       -> parens $ "!" <> e1 <+> "||" <+> e2
+             StrConcat  -> parens $ e1 <> ".push_str(" <> ref exprRight <> ".as_str())"
+             op         -> parens $ e1 <+> mkBinOp op <+> e2
+
+mkExpr' _ _ EUnOp{..} = (v, EVal)
+    where
+    e = deref exprOp
+    v = case exprUOp of
+             Not    -> parens $ "!" <> e
+             BNeg   -> parens $ "~" <> e
+
+mkExpr' _ _ EPHolder{} = ("_", ELVal)
+
+-- keep type ascriptions in LHS of assignment and in integer constants
+mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat)
+                         | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, cat)
+                         | otherwise     = (e', cat)
+    where
+    (e', cat, e) = exprExpr
+    isint = case e of
+                 EInt{} -> True
+                 _      -> False
+
+mkType :: Type -> Doc
+mkType = undefined
+
+mkBinOp :: BOp -> Doc
+mkBinOp Eq     = "=="
+mkBinOp Neq    = "!="
+mkBinOp Lt     = "<"
+mkBinOp Gt     = ">"
+mkBinOp Lte    = "<="
+mkBinOp Gte    = ">="
+mkBinOp And    = "&&"
+mkBinOp Or     = "||"
+mkBinOp Plus   = "+"
+mkBinOp Minus  = "-"
+mkBinOp Mod    = "%"
+mkBinOp Times  = "*"
+mkBinOp Div    = "/"
+mkBinOp ShiftR = ">>"
+mkBinOp ShiftL = "<<"
+mkBinOp BAnd   = "&"
+mkBinOp BOr    = "|"
+
+mkInt :: Integer -> Doc
+mkInt v | v <= (toInteger (maxBound::Word64)) && v >= (toInteger (minBound::Word64))
+        = "Int::from_u64(" <> pp v <> ")"
+        | v <= (toInteger (maxBound::Int64))  && v >= (toInteger (minBound::Int64))
+        = "Int::from_i64(" <> pp v <> ")"
+        | otherwise
+        = "Int::parse_bytes(b\"" <> pp v <> "\", 10)"

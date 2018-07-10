@@ -513,10 +513,12 @@ exprValidate2 d _  (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 _ _   _                   = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
-checkLExpr d ctx e =
-    check (isLExpr d ctx e) (pos e)
-           $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
-
+checkLExpr d ctx e | ctxIsRuleRCond ctx = 
+    check (exprIsPattern e) (pos e)
+        $ "Left-hand side of an assignment term can only contain variable declarations, type constructors, and tuples"
+                   | otherwise =
+    check (exprIsVarOrFieldLVal d ctx e || exprIsDeconstruct d e) (pos e)
+        $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
 
 exprCheckMatchPatterns :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Expr -> me ()
 exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do

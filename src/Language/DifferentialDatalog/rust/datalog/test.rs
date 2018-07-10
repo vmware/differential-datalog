@@ -19,12 +19,28 @@ struct Q {
 unsafe_abomonate!(Q);
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+struct P {
+    f1: Q,
+    f2: bool
+}
+unsafe_abomonate!(P);
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum S {
     S1 {f1: u32, f2: String, f3: Q, f4: Uint},
     S2 {e1: bool},
     S3 {g1: Q, g2: Q}
 }
 unsafe_abomonate!(S);
+
+impl S {
+    fn f1(&mut self) -> &mut u32 {
+        match self {
+            S::S1{ref mut f1,..} => f1,
+            _         => panic!("")
+        }
+    }
+}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum Value {
@@ -54,13 +70,87 @@ fn _filter_fun1(v: &Value) -> bool {
     }
 }
 
+fn some_fun(x: &u32) -> u32 {
+    (*x)+1
+}
+
 fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
     let (x, _2) = match &v {
-        Value::S(S::S1{f1: x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == Uint::from_u64(32) => (x.clone(), _2.clone()), 
+        Value::S(S::S1{f1: ref x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == Uint::from_u64(32) => (x, _2), 
         _ => return None
     };
-    if _2.f1 && x > 5 { return None; };
-    Some((Value::S(S::S3{g1: _2.clone(), g2: _2.clone()}), v))
+    if (*_2).f1 && (*x) + 1 > 5 { return None; };
+    if some_fun(x) > 5 { return None; };
+    if some_fun(&((*x)+1)) > 5 { return None; };
+    if {let y=5; some_fun(&y) > 5} { return None; };
+    if {let x = 0; x < 4} { return None; };
+    if (*_2 == Q{f1: _2.f1, f2: _2.f2.clone()}) { return None; };
+    if {let v = &((*x) + 1); (*v) > 0} { return None; };
+    if {let v = &(*_2).f1; *v} { return None; };
+    if {let v = _2.f1; v} { return None; };
+    if {
+        let mut s = &mut S::S1{f1: 0, f2: "foo".to_string(), f3: Q{f1: true, f2: "bar".to_string()}, f4: Uint::from_u64(10)};
+        *s.f1() = 5;
+        let q = s.f1();
+        (*q) > 0
+        //q == Q{f1: false, f2: "buzz".to_string()}
+    } { 
+        return None; 
+    };
+    if {
+        let ref mut p = P{f1: Q{f1: true, f2: "x".to_string()}, f2: true};
+        let ref mut b = false;
+        p.f1 = Q{f1: true, f2: "x".to_string()};
+        let ref mut pf1 = p.f1.clone();
+        let ref mut pf11 = p.f1.clone();
+        let ref mut pf2 = (p.f1.f1 || p.f1.f1);
+        let ref mut pf22 = (p.f2.clone());
+        let ref mut z = true;
+        let ref mut pclone = p.clone();
+        let Q{f1: ref mut qf1, f2: ref mut qf2} = p.f1.clone();
+        *qf1 = true;
+        let ref mut neq = Q{f1: qf1.clone(), f2: qf2.clone()};
+        *z = true;
+
+        //*f2 = false.clone();
+        //*f1 = Q{f1: true, f2: "x".to_string()};
+        let (ref mut v1, ref mut v2): (Q,bool) = (Q{f1: true, f2: "x".to_string()}, false);
+        (*b) = false;
+
+        let ref mut s = S::S1{f1: 0, f2: "f2".to_string(), f3: neq.clone(), f4: Uint::from_u64(10)};
+        match (s) {
+            S::S1{f1,f2,f3: _,f4: _} => {
+                *f1 = 2; ()
+            },
+            _         => return None
+        };
+        match p {
+            P{f1, f2: true} => *f1 = p.f1.clone(),
+            _               => return None
+        };
+        /*match &mut p.f1 {
+            Q{f1: true, f2} => *f2 = p.f1.f2.clone(),
+            _               => return None
+        };*/
+        let ref mut a: u64 = 5 as u64;
+        let ref mut b: u64 = 5;
+        let ref mut c: u64 = *(a)+*(b);
+        *a = *a+*a+*a;
+        let ref mut str1: String = (("str1".to_string()) as String);
+        let ref mut str2 = "str2".to_string();
+        let ref mut str3 = (*str1).push_str(str2.as_str());
+        let (ref mut str4, _) = ("str4".to_string(), "str5".to_string());
+        match &(a,b) {
+            (5, _) => (),
+            _  => return None
+        }
+        *z
+    } { return None ;};
+    match *_2 {
+        Q{f1: true, f2: _} => {},
+        _ => return None
+    }
+    Some((Value::S(S::S3{g1: _2.clone(), g2: _2.clone()}), v.clone()))
 }
 
 /*

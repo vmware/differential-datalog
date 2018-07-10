@@ -42,9 +42,10 @@ module Language.DifferentialDatalog.Expr (
     exprVarDecls,
     exprFuncs,
     exprFuncsRec,
-    isLExpr,
     isLVar,
-    exprIsPattern
+    exprIsPattern,
+    exprIsDeconstruct,
+    exprIsVarOrFieldLVal
     --isLRel
     --exprSplitLHS,
     --exprSplitVDecl,
@@ -241,26 +242,27 @@ exprFuncsRec' d acc e =
     let new = exprFuncs' acc e in
     new ++ foldl' (\acc' f -> maybe acc' ((acc'++) . exprFuncsRec' d (acc++new++acc')) $ funcDef $ getFunc d f) [] new
 
--- | Expression can be used as the left-hand side of an assignment
-isLExpr :: DatalogProgram -> ECtx -> Expr -> Bool
-isLExpr d ctx e = exprFoldCtx (isLExpr' d) ctx e
-
-isLExpr' :: DatalogProgram -> ECtx -> ExprNode Bool -> Bool
-isLExpr' d ctx (EVar _ v)       = isLVar d ctx v
-isLExpr' _ _   (EField _ e _)   = e
-isLExpr' _ _   (ETuple _ as)    = and as
-isLExpr' _ _   (EStruct _ _ as) = all snd as
-isLExpr' _ _   (EVarDecl _ _)   = True
-isLExpr' _ _   (EPHolder _)     = True
-isLExpr' _ _   (ETyped _ e _)   = e
-isLExpr' _ _   _                = False
-
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 
--- | True if expression can be interpreted as a pattern.
--- Such an expression must be built out of constants, variables, 
--- wildcards, tuples, and type constructors only.
+
+-- | We support several kinds of patterns used in different contexts:
+--
+-- * Deconstruction patterns are used in left-hand side of
+-- assignments that simultaneously deconstruct a value and bind its 
+-- fields to fresh variables.  The consist of variable declarations, tuples,
+-- placeholders, constructors, type annotations.  Types with multiple
+-- constructors cannot be deconstructed in this manner.
+--
+-- * Field expression: variables, fields, and type annotations.
+--
+-- * Match patterns are used in match expressions, relational
+-- atoms, and in assignment terms in rules. They simultaneously restrict the 
+-- structure of a value and bind its fields to fresh variables.  They are 
+-- built out of variable declarations (optionally omitting the 'var' keyword), 
+-- tuples, constructors, placeholders, constant values, and type annotations.
+
+-- | True if expression can be interpreted as a match pattern.
 exprIsPattern :: Expr -> Bool
 exprIsPattern e = exprFold exprIsPattern' e
 
@@ -269,9 +271,33 @@ exprIsPattern' EString{}        = True
 exprIsPattern' EBit{}           = True
 exprIsPattern' EBool{}          = True
 exprIsPattern' EInt{}           = True
-exprIsPattern' EVar{}           = True
+exprIsPattern' EVarDecl{}       = True
 exprIsPattern' (ETuple _ as)    = and as
 exprIsPattern' (EStruct _ _ as) = all snd as
 exprIsPattern' EPHolder{}       = True
 exprIsPattern' (ETyped _ e _)   = e
 exprIsPattern' _                = False
+
+-- | True if 'e' is a deconstruction expression.
+exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
+exprIsDeconstruct d e = exprFold (exprIsDeconstruct' d) e
+
+exprIsDeconstruct' :: DatalogProgram -> ExprNode Bool -> Bool
+exprIsDeconstruct' _ EVarDecl{}       = True
+exprIsDeconstruct' _ (ETuple _ as)    = and as
+exprIsDeconstruct' d (EStruct _ c as) = all snd as &&
+                                        (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
+exprIsDeconstruct' _ EPHolder{}       = True
+exprIsDeconstruct' _ (ETyped _ e _)   = e
+exprIsDeconstruct' _ _                = False
+
+-- | True if 'e' is a variable or field expression, and 
+-- can be assigned to (i.e., the variable is writable)
+exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
+exprIsVarOrFieldLVal d ctx e = exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e
+
+exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode Bool -> Bool
+exprIsVarOrFieldLVal' d ctx (EVar _ v) = isLVar d ctx v
+exprIsVarOrFieldLVal' _ _   (EField _ e _)   = e
+exprIsVarOrFieldLVal' _ _   (ETyped _ e _)   = e
+exprIsVarOrFieldLVal' _ _   _                = False

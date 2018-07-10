@@ -37,6 +37,7 @@ module Language.DifferentialDatalog.ECtx(
      ctxInSetL,
      ctxIsSeq1,
      ctxInSeq1,
+     ctxIsSeq2,
      ctxIsTyped,
      ctxIsRuleRCond,
      ctxInRuleRHSPattern)
@@ -83,6 +84,10 @@ ctxIsSeq1 _         = False
 
 ctxInSeq1 :: ECtx -> Bool
 ctxInSeq1 ctx = any ctxIsSeq1 $ ctxAncestors ctx
+
+ctxIsSeq2 :: ECtx -> Bool
+ctxIsSeq2 CtxSeq2{} = True
+ctxIsSeq2 _         = False
 
 ctxIsTyped :: ECtx -> Bool
 ctxIsTyped CtxTyped{} = True

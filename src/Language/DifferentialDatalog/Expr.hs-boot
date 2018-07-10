@@ -18,8 +18,9 @@ exprCollect :: (ExprNode b -> b) -> (b -> b -> b) -> Expr -> b
 exprVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
 exprVars :: Expr -> [String]
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
-isLExpr :: DatalogProgram -> ECtx -> Expr -> Bool
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 exprFuncs :: Expr -> [String]
 exprFuncsRec :: DatalogProgram -> Expr -> [String]
 exprIsPattern :: Expr -> Bool
+exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
+exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool

@@ -30,6 +30,7 @@ dependencies:
 - split
 - MissingH
 - raw-strings-qq
+- tuple
 
 library:
   source-dirs: src
