@@ -52,11 +52,13 @@ import qualified Data.Graph.Inductive.Query.DFS as G
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Type
 
 -- TODO: generate code to fill relations with initial values
 -- (corresponding to rules with empty bodies)
@@ -236,10 +238,10 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
     -- Open up input constructor; bring Datalog variables into scope
     let open = if last_rhs_idx == 0
                   then openAtom d $ rhsAtom $ head ruleRHS
-                  else openTuple $ rhsVarsAfter d rl last_rhs_idx
+                  else openTuple d $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and the next
     -- join or antijoin
-    let filters = map (mkFilter . rhsExpr)
+    let filters = mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_rhs_idx) $ rhsExpr rhs)
                   $ takeWhile (\case
                               RHSCondition{} -> True
                               _              -> False)
@@ -268,7 +270,7 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
 -- };
 openAtom :: DatalogProgram -> Atom -> Doc
 openAtom d Atom{..} = 
-    "let " <> vars <> " = match &v {"                                                            $$
+    "let" <+> vars <+> "= match &v {"                                                            $$
     "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
     "    _ => return None"                                                                       $$
     "};"
@@ -286,13 +288,34 @@ mkConstructorName = undefined
 
 -- Generate Rust code to open up tuples and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
-openTuple :: [Field] -> Doc
-openTuple = undefined
+openTuple :: DatalogProgram -> [Field] -> Doc
+openTuple d vars =
+    "let" <+> vartuple <+> "= &v;"
+    where
+    constructor = mkConstructorName d $ tTuple $ map typ vars
+    vartuple = tuple $ map (pp . name) vars
 
 -- Implement RHSCondition semantics in Rust; brings new variables into
 -- scope if this is an assignment
-mkFilter :: Expr -> Doc
-mkFilter = undefined
+mkFilter :: DatalogProgram -> ECtx -> Expr -> Doc
+mkFilter d ctx (E e@ESet{..}) = mkAssignFilter d ctx e
+mkFilter d ctx e              = mkCondFilter d ctx e
+
+mkAssignFilter :: DatalogProgram -> ECtx -> ENode -> Doc
+mkAssignFilter d ctx e@(ESet _ l r) =
+    "let" <+> vars <+> "= match" <+> r' <+> "{"                     $$
+    (nest' $ pattern <+> cond_str <+> "=> " <+> vars <> ",")        $$
+    "    _ => return None"                                          $$
+    "};"
+    where
+    r' = mkExpr d (CtxSetR e ctx) r ERef
+    (pattern, cond) = mkPatExpr d l
+    varnames = map pp $ exprVars l
+    vars = tuple varnames
+    cond_str = if cond == empty then empty else ("if" <+> cond)
+
+mkCondFilter :: DatalogProgram -> ECtx -> Expr -> Doc
+mkCondFilter = undefined
 
 -- Compile XForm::Join
 -- Returns generated xform and index of the last RHS term consumed by
@@ -359,12 +382,16 @@ mkPatExpr' _ EPHolder{}                = return ("_", empty)
 mkPatExpr' _ ETyped{..}                = return exprExpr
 
 
--- Convert Datalog expression to Rust
+-- Convert Datalog expression to Rust.
 -- We generate the code so that all variables are references and must
 -- be dereferenced before use or cloned when passed to a constructor,
 -- assigned to another variable or returned.
-mkExpr :: DatalogProgram -> ECtx -> Expr -> Doc
-mkExpr d ctx e = sel1 $ exprFoldCtx (mkExpr_ d) ctx e
+mkExpr :: DatalogProgram -> ECtx -> Expr -> EKind -> Doc
+mkExpr d ctx e k | k == EVal  = val e'
+                 | k == ERef  = ref e'
+                 | k == ELVal = lval e'
+    where   
+    e' = exprFoldCtx (mkExpr_ d) ctx e
 
 mkExpr_ :: DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind, ENode)
 mkExpr_ d ctx e = (t', k', e')
@@ -375,6 +402,7 @@ mkExpr_ d ctx e = (t', k', e')
 data EKind = EVal   -- normal value
            | ELVal  -- l-value that can be written to or moved
            | ERef   -- reference (mutable or immutable)
+           deriving (Eq)
 
 -- convert any expression into reference
 ref :: (Doc, EKind, ENode) -> Doc

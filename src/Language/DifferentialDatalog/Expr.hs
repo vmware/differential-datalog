@@ -246,7 +246,7 @@ isLVar :: DatalogProgram -> ECtx -> String -> Bool
 isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 
 
--- | We support several kinds of patterns used in different contexts:
+-- | We support three kinds of patterns used in different contexts:
 --
 -- * Deconstruction patterns are used in left-hand side of
 -- assignments that simultaneously deconstruct a value and bind its 
