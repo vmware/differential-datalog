@@ -296,15 +296,11 @@ compileRule' :: DatalogProgram -> Rule -> Int -> CompilerMonad [Doc]
 compileRule' d rl@Rule{..} last_rhs_idx = do
     -- Open up input constructor; bring Datalog variables into scope
     let open = if last_rhs_idx == 0
-                  then openAtom d $ rhsAtom $ head ruleRHS
-                  else openTuple d $ rhsVarsAfter d rl last_rhs_idx
+                  then openAtom  d ("&" <> vALUE_VAR) $ rhsAtom $ head ruleRHS
+                  else openTuple d ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and the next
     -- join or antijoin
-    let filters = mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_rhs_idx) $ rhsExpr rhs)
-                  $ takeWhile (\case
-                              RHSCondition{} -> True
-                              _              -> False)
-                  $ drop last_rhs_idx ruleRHS
+    let filters = mkFilters d rl last_rhs_idx 
     let prefix = open $+$ vcat filters
     -- index of the next join
     let join_idx = last_rhs_idx + length filters + 1
@@ -317,8 +313,10 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
                case ruleRHS !! join_idx of
                     RHSLiteral True a  -> mkJoin d prefix a rl join_idx
                     RHSLiteral False a -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
-           rest <- compileRule' d rl last_idx'
-           return $ xform:rest
+           if last_idx' == length ruleRHS
+              then do rest <- compileRule' d rl last_idx'
+                      return $ xform:rest
+              else return [xform]
 
 -- Generate Rust code to filter records and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
@@ -327,9 +325,9 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
 --     Value::Rel1(v1,v2) => (v1,v2),
 --     _ => return None
 -- };
-openAtom :: DatalogProgram -> Atom -> Doc
-openAtom d Atom{..} = 
-    "let" <+> vars <+> "= match &" <> vALUE_VAR <> "{"                                           $$
+openAtom :: DatalogProgram -> Doc -> Atom -> Doc
+openAtom d var Atom{..} = 
+    "let" <+> vars <+> "= match " <> var <> "{"                                                  $$
     "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
     "    _ => return None"                                                                       $$
     "};"
@@ -347,12 +345,28 @@ mkConstructorName = undefined
 
 -- Generate Rust code to open up tuples and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
-openTuple :: DatalogProgram -> [Field] -> Doc
-openTuple d vars =
-    "let" <+> constructor <> "(" <> vartuple <> ") = &" <> vALUE_VAR <> ";"
+openTuple :: DatalogProgram -> Doc -> [Field] -> Doc
+openTuple d var vars =
+    "let" <+> mkVarsTupleValue d vars <+> " = " <> var <> ";"
+
+mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> Doc
+mkTupleValue d ctx es = constructor <> (parens $ tuple $ map (\e -> mkExpr d ctx e EVal) es)
     where
-    constructor = mkConstructorName d $ tTuple $ map typ vars
-    vartuple = tuple $ map (pp . name) vars
+    constructor = mkConstructorName d $ tTuple $ map (exprType'' d ctx) es
+
+mkVarsTupleValue :: DatalogProgram -> [Field] -> Doc
+mkVarsTupleValue d vs = constructor <> (parens $ tuple $ map (pp . name) vs)
+    where
+    constructor = mkConstructorName d $ tTuple $ map (typ'' d) vs
+
+-- Compile all contiguous RHSCondition terms following 'last_idx'
+mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
+mkFilters d rl@Rule{..} last_idx = 
+    mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_idx) $ rhsExpr rhs)
+    $ takeWhile (\case
+                  RHSCondition{} -> True
+                  _              -> False)
+    $ drop last_idx ruleRHS
 
 -- Implement RHSCondition semantics in Rust; brings new variables into
 -- scope if this is an assignment
@@ -381,29 +395,54 @@ mkCondFilter d ctx e =
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
 mkJoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad (Doc, Int)
-mkJoin d prefix Atom{..} rl@Rule{..} join_idx = do
-    let afun = undefined
-        (jfun, last_idx) = undefined
-        arr = normalizeArrangement d (getRelation d atomRelation) (CtxRuleRAtom rl join_idx) atomVal
-    (rid, aid) <- addArrangement atomRelation arr
-    let doc = "XForm::Join{"                                                                                                         $$
-              "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                                      $$
-              "    arrangement: (" <> pp rid <> "," <> pp aid <> "),"                                                                $$
-              "    jfun:        &((|" <> kEY_VAR <> "," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
+mkJoin d prefix atom rl@Rule{..} join_idx = do
+    -- Build arrangement to join with
+    let ctx = CtxRuleRAtom rl join_idx
+        (arr, vmap) = normalizeArrangement d (getRelation d $ atomRelation atom) ctx $ atomVal atom
+    (rid, aid) <- addArrangement (atomRelation atom) arr
+    -- Arrange variables
+    let akey = mkTupleValue d ctx $ map snd vmap
+        aval = mkVarsTupleValue d $ rhsVarsAfter d rl join_idx
+        afun = prefix $$ 
+               "Some(" <> akey <> "," <+> aval <> ")"
+    -- Join function: open up both values, apply filters.
+    let open = openTuple d vALUE_VAR1 (rhsVarsAfter d rl join_idx) $$
+               openAtom d vALUE_VAR2 atom{atomVal = strip $ atomVal atom}
+            where -- simplify pattern to only extract new variables from it
+            strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
+            strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
+            strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar 
+                                    = E e
+            strip (E e@ETyped{..})  = E e{exprExpr = strip exprExpr}
+            strip _                 = ePHolder
+    let filters = mkFilters d rl join_idx 
+        last_idx = join_idx + length filters
+    -- If we're at the end of the rule, generate head atom; otherwise
+    -- return all live variables in a tuple
+    let (ret, last_idx') = if last_idx == length ruleRHS - 1
+        then (mkExpr d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS) EVal, 
+              last_idx + 1)
+        else (mkVarsTupleValue d $ rhsVarsAfter d rl last_idx,
+              last_idx)
+    let jfun = open $$ vcat filters $$ ret
+    let doc = "XForm::Join{"                                                                                         $$
+              "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                      $$
+              "    arrangement: (" <> pp rid <> "," <> pp aid <> "),"                                                $$
+              "    jfun:        &((|_," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
               "}"
-    return (doc, last_idx)
+    return (doc, last_idx')
 
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = undefined
 
 -- Normalize pattern expression for use in arrangement
-normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> Arrangement
-normalizeArrangement d rel ctx pat = Arrangement renamed
+normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr)])
+normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
     where
     pat' = exprFoldCtx (normalizePattern d) ctx pat
-    renamed = evalState (rename pat') 0
-    rename :: Expr -> State Int Expr
+    (renamed, (_, vmap)) = runState (rename pat') (0, [])
+    rename :: Expr -> State (Int, [(String, Expr)]) Expr
     rename (E e) = 
         case e of
              EStruct{..}             -> do
@@ -421,11 +460,12 @@ normalizeArrangement d rel ctx pat = Arrangement renamed
                 e' <- rename exprExpr
                 return $ E e{exprExpr = e'}
              _                       -> do
-                vid <- get
-                put $ vid + 1
-                return $ eVar $ "_" ++ show vid
+                vid <- gets fst
+                let vname = "_" ++ show vid
+                modify $ \(_, vmap) -> (vid + 1, vmap ++ [(vname, E e)])
+                return $ eVar vname
 
--- Removed redundant info from the pattern
+-- Simplify away parts of the pattern that do not constrain its value.
 normalizePattern :: DatalogProgram -> ECtx -> ENode -> Expr
 normalizePattern _ ctx e | ctxInRuleRHSPattern ctx = E e
 normalizePattern d ctx e =
