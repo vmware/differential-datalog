@@ -54,6 +54,7 @@ import qualified Data.Graph.Inductive.Query.DFS as G
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
@@ -132,6 +133,10 @@ type ProgRel = (String, [Doc] -> Doc)
 data ProgNode = SCCNode [ProgRel]
               | RelNode ProgRel
 
+nodeRels :: ProgNode -> [ProgRel]
+nodeRels (SCCNode rels) = rels
+nodeRels (RelNode rel)  = [rel]
+
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
 
@@ -187,7 +192,7 @@ compile d =  valtype $+$ prog
                                $ emptyCompilerState{cRels = relids}
     -- Assemble results
     valtype = mkValType $ cTypes cstate
-    prog = mkProg (cArrangements cstate) nodes
+    prog = mkProg d (cArrangements cstate) nodes
     
 -- Generate Value type
 mkValType :: S.Set Type -> Doc
@@ -424,7 +429,9 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
               last_idx + 1)
         else (mkVarsTupleValue d $ rhsVarsAfter d rl last_idx,
               last_idx)
-    let jfun = open $$ vcat filters $$ ret
+    let jfun = open                     $$ 
+               vcat filters             $$ 
+               "Some" <> parens ret
     let doc = "XForm::Join{"                                                                                         $$
               "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                      $$
               "    arrangement: (" <> pp rid <> "," <> pp aid <> "),"                                                $$
@@ -434,7 +441,16 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
 
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
-mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = undefined
+mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
+    rid <- getRelId atomRelation
+    let akey = mkExpr d (CtxRuleRAtom rl ajoin_idx) atomVal EVal
+        aval = mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
+        afun = prefix $$ 
+               "Some(" <> akey <> "," <+> aval <> ")"
+    return $ "XForm::Antijoin{"                                                            $$
+             "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
+             "    rel:  " <> pp rid                                                        $$
+             "}"
 
 -- Normalize pattern expression for use in arrangement
 normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr)])
@@ -489,8 +505,53 @@ mkHead d prefix rl = undefined
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter = undefined
 
-mkProg :: M.Map String (M.Map Arrangement Int) -> [ProgNode] -> Doc
-mkProg = undefined
+mkProg :: DatalogProgram -> M.Map String (M.Map Arrangement Int) -> [ProgNode] -> Doc
+mkProg d arrangements nodes = rels $$ prog
+    where
+    rels = vcat 
+           $ map (\(rname, rel) -> 
+                  let arrs = map (mkArrangement d (getRelation d rname) . fst) 
+                                 $ sortOn snd $ M.toList $ arrangements M.! rname
+                  in "let" <+> pp rname <+> "=" <+> rel arrs <> ";") 
+           $ concatMap nodeRels nodes
+    pnodes = map mkNode nodes
+    prog = "let prog: Program<Value> = Program {"           $$
+           "    nodes: vec!["                               $$
+           (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
+           "]};"
+
+mkNode :: ProgNode -> Doc
+mkNode (RelNode (rel,_)) = 
+    "ProgNode::RelNode{rel:" <+> pp rel <> "}"
+mkNode (SCCNode rels)    = 
+    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (pp . fst) rels) <> "]}"
+
+mkArrangement :: DatalogProgram -> Relation -> Arrangement -> Doc
+mkArrangement d rel (Arrangement pattern) =
+    "Arrangement{"                                                              $$
+    "   name: \"" <> pp pattern <> "\".to_string(),"                            $$
+    "   afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>)"   $$
+    "}"
+    where
+    (pat, cond) = mkPatExpr d pattern
+    -- extract variables with types from pattern, in the order
+    -- consistent with that returned by 'rename'.
+    patvars = mkVarsTupleValue d $ getvars (relType rel) pattern
+    getvars :: Type -> Expr -> [Field]
+    getvars _ (E EStruct{..}) = 
+        concatMap (\(e,t) -> getvars t e) 
+        $ zip (map snd exprStructFields) (map typ $ consArgs $ getConstructor d exprConstructor)
+    getvars t (E ETuple{..})  = 
+        concatMap (\(e,t) -> getvars t e) $ zip exprTupleFields ts
+        where TTuple _ ts = typ' d t
+    getvars t (E ETyped{..})  = getvars t exprExpr
+    getvars t (E EVar{..})    = [Field nopos exprVar t]
+    getvars _ _               = []
+
+    afun = "match" <+> vALUE_VAR <+> "{"                                                          $$
+           (nest' $ pat <+> cond <+> "=> Some(" <+> patvars <> "," <+> vALUE_VAR <> ".clone()),") $$
+           "    _ => None"                                                                        $$
+           "}"
 
 -- Compile Datalog pattern expression to Rust.
 -- The first element in the return tuple is a Rust match pattern, the second
