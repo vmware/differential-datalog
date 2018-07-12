@@ -87,7 +87,7 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
     if (*_2 == Q{f1: _2.f1, f2: _2.f2.clone()}) { return None; };
     if {let v = &((*x) + 1); (*v) > 0} { return None; };
     if {let v = &(*_2).f1; *v} { return None; };
-    if {let v = _2.f1; v} { return None; };
+    if {let V = _2.f1; V} { return None; };
     if {
         let mut s = &mut S::S1{f1: 0, f2: "foo".to_string(), f3: Q{f1: true, f2: "bar".to_string()}, f4: Uint::from_u64(10)};
         *s.f1() = 5;

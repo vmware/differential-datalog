@@ -34,6 +34,9 @@ module Language.DifferentialDatalog.Compile (
 
 -- TODO: 
 -- Generate functions
+-- Generate type declarations
+-- TODO: generate code to fill relations with initial values
+-- (corresponding to rules with empty bodies)
 -- ??? Generate callback function prototypes, but don't overwrite existing implementations.
 
 import Control.Monad.State
@@ -60,15 +63,66 @@ import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 
--- TODO: generate code to fill relations with initial values
--- (corresponding to rules with empty bodies)
+-- Input argument name for Rust functions that take a datalog record.
+vALUE_VAR :: Doc
+vALUE_VAR = "__v"
+
+-- Input arguments for Rust functions that take a key and one or two
+-- values
+kEY_VAR :: Doc
+kEY_VAR = "__key"
+
+vALUE_VAR1 :: Doc
+vALUE_VAR1 = "__v1"
+
+vALUE_VAR2 :: Doc
+vALUE_VAR2 = "__v2"
 
 {- The following types model corresponding entities in program.rs -}
 
+-- Arrangement is uniquely identified by its _normalized_ pattern
+-- expression.  The normalized pattern only contains variables
+-- involved in the arrangement key, with normalized names (so that 
+-- two patterns isomorphic modulo variable names have the same 
+-- normalized representation) and only expand constructors that 
+-- either contain a key variable or are non-unique.
 data Arrangement = Arrangement {
-    arngKey   :: Expr,
-    arngValue :: Expr
+    arngPattern :: Expr
 }
+
+-- Rust expression kind
+data EKind = EVal   -- normal value
+           | ELVal  -- l-value that can be written to or moved
+           | ERef   -- reference (mutable or immutable)
+           deriving (Eq)
+
+-- convert any expression into reference
+ref :: (Doc, EKind, ENode) -> Doc
+ref (x, ERef, _)  = x
+ref (x, _, _)     = parens $ "&" <> x
+
+-- dereference expression if it is a reference; leave it alone
+-- otherwise
+deref :: (Doc, EKind, ENode) -> Doc
+deref (x, ERef, _) = parens $ "*" <> x
+deref (x, _, _)    = x
+
+-- convert any expression into mutable reference
+mutref :: (Doc, EKind, ENode) -> Doc
+mutref (x, ERef, _)  = x
+mutref (x, _, _)     = parens $ "&mut" <> x
+
+-- convert any expression to EVal by cloning it if necessary
+val :: (Doc, EKind, ENode) -> Doc
+val (x, EVal, _) = x
+val (x, _, _)    = x <> ".clone()"
+
+-- convert expression to l-value
+lval :: (Doc, EKind, ENode) -> Doc
+lval (x, ELVal, _) = x
+-- this can only be mutable reference in a valid program
+lval (x, ERef, _)  = parens $ "*" <> x
+lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
 
 -- Relation is a function that takes a list of arrangements and produces a Doc containing Rust 
 -- code for the relation (since we won't know all required arrangements till we finish scanning 
@@ -82,6 +136,7 @@ data ProgNode = SCCNode [ProgRel]
 type CompilerMonad = State CompilerState
 
 type RelId = Int
+type ArrId = (Int, Int)
 
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
@@ -98,6 +153,10 @@ emptyCompilerState = CompilerState {
 
 getRelId :: String -> CompilerMonad RelId
 getRelId rname = gets $ (M.! rname) . cRels
+
+-- Create a new arrangement or return existing arrangement id
+addArrangement :: String -> Arrangement -> CompilerMonad ArrId
+addArrangement relname arr = undefined
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -270,7 +329,7 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
 -- };
 openAtom :: DatalogProgram -> Atom -> Doc
 openAtom d Atom{..} = 
-    "let" <+> vars <+> "= match &v {"                                                            $$
+    "let" <+> vars <+> "= match &" <> vALUE_VAR <> "{"                                           $$
     "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
     "    _ => return None"                                                                       $$
     "};"
@@ -290,7 +349,7 @@ mkConstructorName = undefined
 -- The Rust code returns None if the record does not pass the filter.
 openTuple :: DatalogProgram -> [Field] -> Doc
 openTuple d vars =
-    "let" <+> vartuple <+> "= &v;"
+    "let" <+> constructor <> "(" <> vartuple <> ") = &" <> vALUE_VAR <> ";"
     where
     constructor = mkConstructorName d $ tTuple $ map typ vars
     vartuple = tuple $ map (pp . name) vars
@@ -315,17 +374,72 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     cond_str = if cond == empty then empty else ("if" <+> cond)
 
 mkCondFilter :: DatalogProgram -> ECtx -> Expr -> Doc
-mkCondFilter = undefined
+mkCondFilter d ctx e =
+    "if !" <> mkExpr d ctx e EVal <+> "{return None;};"
 
 -- Compile XForm::Join
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
 mkJoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad (Doc, Int)
-mkJoin d prefix Atom{..} rl@Rule{..} join_idx = undefined
+mkJoin d prefix Atom{..} rl@Rule{..} join_idx = do
+    let afun = undefined
+        (jfun, last_idx) = undefined
+        arr = normalizeArrangement d (getRelation d atomRelation) (CtxRuleRAtom rl join_idx) atomVal
+    (rid, aid) <- addArrangement atomRelation arr
+    let doc = "XForm::Join{"                                                                                                         $$
+              "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                                      $$
+              "    arrangement: (" <> pp rid <> "," <> pp aid <> "),"                                                                $$
+              "    jfun:        &((|" <> kEY_VAR <> "," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
+              "}"
+    return (doc, last_idx)
 
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = undefined
+
+-- Normalize pattern expression for use in arrangement
+normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> Arrangement
+normalizeArrangement d rel ctx pat = Arrangement renamed
+    where
+    pat' = exprFoldCtx (normalizePattern d) ctx pat
+    renamed = evalState (rename pat') 0
+    rename :: Expr -> State Int Expr
+    rename (E e) = 
+        case e of
+             EStruct{..}             -> do
+                fs' <- mapM (\(n,e) -> (n,) <$> rename e) exprStructFields
+                return $ E e{exprStructFields = fs'}
+             ETuple{..}              -> do
+                fs' <- mapM rename exprTupleFields
+                return $ E e{exprTupleFields = fs'}
+             EBool{}                 -> return $ E e
+             EInt{}                  -> return $ E e
+             EString{}               -> return $ E e
+             EBit{}                  -> return $ E e
+             EPHolder{}              -> return $ E e
+             ETyped{..}              -> do 
+                e' <- rename exprExpr
+                return $ E e{exprExpr = e'}
+             _                       -> do
+                vid <- get
+                put $ vid + 1
+                return $ eVar $ "_" ++ show vid
+
+-- Removed redundant info from the pattern
+normalizePattern :: DatalogProgram -> ECtx -> ENode -> Expr
+normalizePattern _ ctx e | ctxInRuleRHSPattern ctx = E e
+normalizePattern d ctx e =
+    case e of
+         -- replace new variables with placeholders
+         EVar{..}    | isNothing $ lookupVar d ctx exprVar
+                                 -> ePHolder
+         -- replace tuples and unique constructors populated with placeholders
+         -- with a placeholder
+         EStruct{..} | consIsUnique d exprConstructor && all ((== ePHolder) . snd) exprStructFields
+                                 -> ePHolder
+         ETuple{..}  | all (== ePHolder) exprTupleFields
+                                 -> ePHolder
+         _                       -> E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
 mkHead :: DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
@@ -397,40 +511,6 @@ mkExpr_ :: DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind
 mkExpr_ d ctx e = (t', k', e')
     where (t', k') = mkExpr' d ctx e
           e' = exprMap (E . sel3) e
-
--- Rust expression kind
-data EKind = EVal   -- normal value
-           | ELVal  -- l-value that can be written to or moved
-           | ERef   -- reference (mutable or immutable)
-           deriving (Eq)
-
--- convert any expression into reference
-ref :: (Doc, EKind, ENode) -> Doc
-ref (x, ERef, _)  = x
-ref (x, _, _)     = parens $ "&" <> x
-
--- dereference expression if it is a reference; leave it alone
--- otherwise
-deref :: (Doc, EKind, ENode) -> Doc
-deref (x, ERef, _) = parens $ "*" <> x
-deref (x, _, _)    = x
-
--- convert any expression into mutable reference
-mutref :: (Doc, EKind, ENode) -> Doc
-mutref (x, ERef, _)  = x
-mutref (x, _, _)     = parens $ "&mut" <> x
-
--- convert any expression to EVal by cloning it if necessary
-val :: (Doc, EKind, ENode) -> Doc
-val (x, EVal, _) = x
-val (x, _, _)    = x <> ".clone()"
-
--- convert expression to l-value
-lval :: (Doc, EKind, ENode) -> Doc
-lval (x, ELVal, _) = x
--- this can only be mutable reference in a valid program
-lval (x, ERef, _)  = parens $ "*" <> x
-lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
 
 -- Compiled expressions are represented as '(Doc, EKind)' tuple, where
 -- the second components is the kind of the compiled representation

@@ -51,6 +51,7 @@ module Language.DifferentialDatalog.Syntax (
         TypeDef(..),
         Constructor(..),
         consType,
+        consIsUnique,
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
@@ -308,6 +309,10 @@ consType d c =
                         Just (TStruct _ cs) -> any ((==c) . name) cs
                         _                   -> False)
     $ progTypedefs d
+
+-- | 'True' iff c is the unique constructor of its type
+consIsUnique :: DatalogProgram -> String -> Bool
+consIsUnique d c = (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
 
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool

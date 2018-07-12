@@ -285,8 +285,7 @@ exprIsDeconstruct d e = exprFold (exprIsDeconstruct' d) e
 exprIsDeconstruct' :: DatalogProgram -> ExprNode Bool -> Bool
 exprIsDeconstruct' _ EVarDecl{}       = True
 exprIsDeconstruct' _ (ETuple _ as)    = and as
-exprIsDeconstruct' d (EStruct _ c as) = all snd as &&
-                                        (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
+exprIsDeconstruct' d (EStruct _ c as) = all snd as && consIsUnique d c
 exprIsDeconstruct' _ EPHolder{}       = True
 exprIsDeconstruct' _ (ETyped _ e _)   = e
 exprIsDeconstruct' _ _                = False
