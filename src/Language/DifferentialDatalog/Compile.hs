@@ -89,7 +89,7 @@ vALUE_VAR2 = "__v2"
 -- either contain a key variable or are non-unique.
 data Arrangement = Arrangement {
     arngPattern :: Expr
-}
+} deriving Eq
 
 -- Rust expression kind
 data EKind = EVal   -- normal value
@@ -146,7 +146,7 @@ type ArrId = (Int, Int)
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
     cRels         :: M.Map String RelId,
-    cArrangements :: M.Map String (M.Map Arrangement Int)
+    cArrangements :: M.Map String [Arrangement]
 }
 
 emptyCompilerState :: CompilerState
@@ -161,7 +161,14 @@ getRelId rname = gets $ (M.! rname) . cRels
 
 -- Create a new arrangement or return existing arrangement id
 addArrangement :: String -> Arrangement -> CompilerMonad ArrId
-addArrangement relname arr = undefined
+addArrangement relname arr = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    rid <- getRelId relname
+    let (arrs', aid) = case findIndex (==arr) arrs of
+                            Nothing -> (arrs ++ [arr], length arrs)
+                            Just i  -> (arrs, i)
+    modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
+    return (rid, aid)
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -187,9 +194,12 @@ compile d =  valtype $+$ prog
     sccs = G.topsort' $ G.condensation depgraph
     -- Assign RelId's
     relids = M.fromList $ map swap $ G.labNodes depgraph
+    -- Initialize arrangements map
+    arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
     -- Compile SCCs
     (nodes, cstate) = runState (mapM (compileSCC d' depgraph) sccs) 
-                               $ emptyCompilerState{cRels = relids}
+                               $ emptyCompilerState{ cRels = relids
+                                                   , cArrangements = arrs}
     -- Assemble results
     valtype = mkValType $ cTypes cstate
     prog = mkProg d (cArrangements cstate) nodes
@@ -505,13 +515,13 @@ mkHead d prefix rl = undefined
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter = undefined
 
-mkProg :: DatalogProgram -> M.Map String (M.Map Arrangement Int) -> [ProgNode] -> Doc
+mkProg :: DatalogProgram -> M.Map String [Arrangement] -> [ProgNode] -> Doc
 mkProg d arrangements nodes = rels $$ prog
     where
     rels = vcat 
            $ map (\(rname, rel) -> 
-                  let arrs = map (mkArrangement d (getRelation d rname) . fst) 
-                                 $ sortOn snd $ M.toList $ arrangements M.! rname
+                  let arrs = map (mkArrangement d (getRelation d rname)) 
+                                 $ arrangements M.! rname
                   in "let" <+> pp rname <+> "=" <+> rel arrs <> ";") 
            $ concatMap nodeRels nodes
     pnodes = map mkNode nodes
