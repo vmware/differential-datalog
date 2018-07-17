@@ -26,6 +26,7 @@ SOFTWARE.
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
     ruleVars,
+    ruleRHSTermVars,
     ruleLHSVars
 ) where
 
@@ -44,7 +45,7 @@ ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
--- a rule.  All conjuncts before 'i' be validated before calling this
+-- a rule.  All conjuncts before 'i' must be validated before calling this
 -- function.
 ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Field
 ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
@@ -86,6 +87,15 @@ atomVarDecls d rl i =
     S.fromList
         $ exprVarTypes d (CtxRuleRAtom rl i) 
         $ atomVal $ rhsAtom $ ruleRHS rl !! i
+
+-- | Variables used in a RHS term of a rule
+ruleRHSTermVars :: Rule -> Int -> [String]
+ruleRHSTermVars rl i = 
+    case ruleRHS rl !! i of
+         RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
+         RHSCondition{..} -> exprVars rhsExpr
+         RHSFlatMap{..}   -> exprVars rhsMapExpr
+         RHSAggregate{}   -> error "ruleRHSTermVars RHSAggregate: not implemented"
  
 -- | All variables defined in a rule
 ruleVars :: DatalogProgram -> Rule -> [Field]

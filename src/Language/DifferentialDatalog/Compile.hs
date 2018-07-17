@@ -47,6 +47,8 @@ import Data.Maybe
 import Data.List
 import Data.Int
 import Data.Word
+import Data.Bits
+import Numeric
 import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
@@ -63,6 +65,7 @@ import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.Rule
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -159,6 +162,10 @@ emptyCompilerState = CompilerState {
 getRelId :: String -> CompilerMonad RelId
 getRelId rname = gets $ (M.! rname) . cRels
 
+-- t must be normalized
+addType :: Type -> CompilerMonad ()
+addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
+
 -- Create a new arrangement or return existing arrangement id
 addArrangement :: String -> Arrangement -> CompilerMonad ArrId
 addArrangement relname arr = do
@@ -183,30 +190,38 @@ isStructType _                                  = False
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
-compile :: DatalogProgram -> Doc
-compile d =  valtype $+$ prog
-    where
-    -- Transform away rules with multiple heads
-    d' = progExpandMultiheadRules d
-    -- Compute ordered SCCs of the dependency graph.  These will define the
-    -- structure of the program.
-    depgraph = progDependencyGraph d'
-    sccs = G.topsort' $ G.condensation depgraph
-    -- Assign RelId's
-    relids = M.fromList $ map swap $ G.labNodes depgraph
-    -- Initialize arrangements map
-    arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
-    -- Compile SCCs
-    (nodes, cstate) = runState (mapM (compileSCC d' depgraph) sccs) 
-                               $ emptyCompilerState{ cRels = relids
-                                                   , cArrangements = arrs}
-    -- Assemble results
-    valtype = mkValType $ cTypes cstate
-    prog = mkProg d (cArrangements cstate) nodes
+compile :: DatalogProgram -> CompilerMonad Doc
+compile d = do
+    let -- Transform away rules with multiple heads
+        d' = progExpandMultiheadRules d
+        -- Compute ordered SCCs of the dependency graph.  These will define the
+        -- structure of the program.
+        depgraph = progDependencyGraph d'
+        sccs = G.topsort' $ G.condensation depgraph
+        -- Assign RelId's
+        relids = M.fromList $ map swap $ G.labNodes depgraph
+        -- Initialize arrangements map
+        arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
+        -- Compile SCCs
+        (nodes, cstate) = runState (mapM (compileSCC d' depgraph) sccs) 
+                                   $ emptyCompilerState{ cRels = relids
+                                                       , cArrangements = arrs}
+    prog <- mkProg d (cArrangements cstate) nodes
+    let -- Assemble results
+        valtype = mkValType d $ cTypes cstate
+    return $ valtype $+$ prog
     
--- Generate Value type
-mkValType :: S.Set Type -> Doc
-mkValType types = undefined
+-- Generate Value type as an enum with one entry per type in types
+mkValType :: DatalogProgram -> S.Set Type -> Doc
+mkValType d types = 
+    "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
+    "enum Value {"                                                                          $$
+    (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
+    "}"                                                                                     $$
+    "unsafe_abomonate!(Value);"
+    where
+    mkValCons :: Type -> Doc
+    mkValCons t = mkConstructorName' d t <> (parens $ mkType t)
 
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
@@ -310,21 +325,21 @@ compileRule d rl@Rule{..} = do
 compileRule' :: DatalogProgram -> Rule -> Int -> CompilerMonad [Doc]
 compileRule' d rl@Rule{..} last_rhs_idx = do
     -- Open up input constructor; bring Datalog variables into scope
-    let open = if last_rhs_idx == 0
-                  then openAtom  d ("&" <> vALUE_VAR) $ rhsAtom $ head ruleRHS
-                  else openTuple d ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
+    open <- if last_rhs_idx == 0
+               then openAtom  d ("&" <> vALUE_VAR) $ rhsAtom $ head ruleRHS
+               else openTuple d ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and the next
     -- join or antijoin
-    let filters = mkFilters d rl last_rhs_idx 
+    let filters = mkFilters d rl last_rhs_idx
     let prefix = open $+$ vcat filters
     -- index of the next join
     let join_idx = last_rhs_idx + length filters + 1
     if join_idx == length ruleRHS
-       then do 
+       then do
            head <- mkHead d prefix rl
            return [head]
-       else do 
-           (xform, last_idx') <- 
+       else do
+           (xform, last_idx') <-
                case ruleRHS !! join_idx of
                     RHSLiteral True a  -> mkJoin d prefix a rl join_idx
                     RHSLiteral False a -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
@@ -340,39 +355,69 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
 --     Value::Rel1(v1,v2) => (v1,v2),
 --     _ => return None
 -- };
-openAtom :: DatalogProgram -> Doc -> Atom -> Doc
-openAtom d var Atom{..} = 
-    "let" <+> vars <+> "= match " <> var <> "{"                                                  $$
-    "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
-    "    _ => return None"                                                                       $$
-    "};"
-    where
-    rel = getRelation d atomRelation
-    constructor = mkConstructorName d $ relType rel
-    varnames = map pp $ exprVars atomVal
-    vars = tuple varnames
-    (pattern, cond) = mkPatExpr d atomVal
-    cond_str = if cond == empty then empty else ("if" <+> cond)
+openAtom :: DatalogProgram -> Doc -> Atom -> CompilerMonad Doc
+openAtom d var Atom{..} = do
+    let rel = getRelation d atomRelation
+    constructor <- mkConstructorName d $ relType rel
+    let varnames = map pp $ exprVars atomVal
+        vars = tuple varnames
+        (pattern, cond) = mkPatExpr d atomVal
+        cond_str = if cond == empty then empty else ("if" <+> cond)
+    return $
+        "let" <+> vars <+> "= match " <> var <> "{"                                                  $$
+        "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
+        "    _ => return None"                                                                       $$
+        "};"
 
 -- Generate Rust constructor name for a type
-mkConstructorName :: DatalogProgram -> Type -> Doc
-mkConstructorName = undefined
+mkConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
+mkConstructorName d t = do
+    let t' = typeNormalize d t
+    addType t'
+    return $ mkConstructorName' d t'
 
+-- Assumes that t is normalized
+mkConstructorName' :: DatalogProgram -> Type -> Doc
+mkConstructorName' d t =
+    case t of
+         TTuple{..}  -> "tuple" <> pp (length typeTupArgs) <> "__" <>
+                        (hcat $ punctuate "_" $ map (mkConstructorName' d) typeTupArgs)
+         TBool{}     -> "bool"
+         TInt{}      -> "int"
+         TString{}   -> "string"
+         TBit{..}    -> "bit" <> pp typeWidth
+         TUser{}     -> consuser
+         TOpaque{}   -> consuser
+         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkConstructorName"
+    where
+    consuser = pp (typeName t) <> 
+               case typeArgs t of
+                    [] -> empty
+                    as -> "__" <> (hcat $ punctuate "_" $ map (mkConstructorName' d) as)
+
+       
 -- Generate Rust code to open up tuples and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
-openTuple :: DatalogProgram -> Doc -> [Field] -> Doc
-openTuple d var vars =
-    "let" <+> mkVarsTupleValue d vars <+> " = " <> var <> ";"
+openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
+openTuple d var vars = do
+    tup <- mkVarsTupleValue d vars
+    return $ "let" <+> tup <+> " = " <> var <> ";"
 
-mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> Doc
-mkTupleValue d ctx es = constructor <> (parens $ tuple $ map (\e -> mkExpr d ctx e EVal) es)
-    where
-    constructor = mkConstructorName d $ tTuple $ map (exprType'' d ctx) es
+mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
+mkValue d ctx e = do
+    constructor <- mkConstructorName d $ exprType d ctx e
+    return $ constructor <> (parens $ mkExpr d ctx e EVal)
 
-mkVarsTupleValue :: DatalogProgram -> [Field] -> Doc
-mkVarsTupleValue d vs = constructor <> (parens $ tuple $ map (pp . name) vs)
-    where
-    constructor = mkConstructorName d $ tTuple $ map (typ'' d) vs
+mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> CompilerMonad Doc
+mkTupleValue d ctx es = do 
+    constructor <- mkConstructorName d $ tTuple $ map (exprType'' d ctx) es
+    return $ constructor <> (parens $ tuple $ map (\e -> mkExpr d ctx e EVal) es)
+
+mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTupleValue d vs = do
+    constructor <- mkConstructorName d $ tTuple $ map typ vs
+    return $ constructor <> (parens $ tuple $ map (pp . name) vs)
+
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
@@ -415,30 +460,32 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     let ctx = CtxRuleRAtom rl join_idx
         (arr, vmap) = normalizeArrangement d (getRelation d $ atomRelation atom) ctx $ atomVal atom
     (rid, aid) <- addArrangement (atomRelation atom) arr
-    -- Arrange variables
-    let akey = mkTupleValue d ctx $ map snd vmap
-        aval = mkVarsTupleValue d $ rhsVarsAfter d rl join_idx
-        afun = prefix $$ 
+    -- Variables from previous terms that will be used in terms
+    -- following the join.
+    let post_join_vars = (rhsVarsAfter d rl (join_idx - 1)) `intersect`
+                         (rhsVarsAfter d rl join_idx)
+    -- Arrange variables from previous terms
+    akey <- mkTupleValue d ctx $ map snd vmap
+    aval <- mkVarsTupleValue d post_join_vars
+    let afun = prefix $$ 
                "Some(" <> akey <> "," <+> aval <> ")"
+    -- simplify pattern to only extract new variables from it
+    let strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
+        strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
+        strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar 
+                                = E e
+        strip (E e@ETyped{..})  = E e{exprExpr = strip exprExpr}
+        strip _                 = ePHolder
     -- Join function: open up both values, apply filters.
-    let open = openTuple d vALUE_VAR1 (rhsVarsAfter d rl join_idx) $$
-               openAtom d vALUE_VAR2 atom{atomVal = strip $ atomVal atom}
-            where -- simplify pattern to only extract new variables from it
-            strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
-            strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
-            strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar 
-                                    = E e
-            strip (E e@ETyped{..})  = E e{exprExpr = strip exprExpr}
-            strip _                 = ePHolder
+    open <- liftM2 ($$) (openTuple d vALUE_VAR1 post_join_vars)
+                        (openAtom d vALUE_VAR2 atom{atomVal = strip $ atomVal atom})
     let filters = mkFilters d rl join_idx 
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
     -- return all live variables in a tuple
-    let (ret, last_idx') = if last_idx == length ruleRHS - 1
-        then (mkExpr d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS) EVal, 
-              last_idx + 1)
-        else (mkVarsTupleValue d $ rhsVarsAfter d rl last_idx,
-              last_idx)
+    (ret, last_idx') <- if last_idx == length ruleRHS - 1
+        then (, last_idx + 1) <$> mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
+        else (, last_idx)     <$> (mkVarsTupleValue d $ rhsVarsAfter d rl last_idx)
     let jfun = open                     $$ 
                vcat filters             $$ 
                "Some" <> parens ret
@@ -453,9 +500,9 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
     rid <- getRelId atomRelation
-    let akey = mkExpr d (CtxRuleRAtom rl ajoin_idx) atomVal EVal
-        aval = mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
-        afun = prefix $$ 
+    akey <- mkValue d (CtxRuleRAtom rl ajoin_idx) atomVal
+    aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
+    let afun = prefix $$ 
                "Some(" <> akey <> "," <+> aval <> ")"
     return $ "XForm::Antijoin{"                                                            $$
              "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
@@ -509,26 +556,37 @@ normalizePattern d ctx e =
 
 -- Compile XForm::FilterMap that generates the head of the rule
 mkHead :: DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
-mkHead d prefix rl = undefined
+mkHead d prefix rl = do
+    v <- mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
+    let fmfun = prefix $$
+                "Some" <> parens v
+    return $
+        "XForm::FilterMap{"                                                             $$
+        "    fmfun: &((|" <> vALUE_VAR <> "|" <> fmfun <>") as FilterMapFunc<Value>)"   $$
+        "}"
 
--- Variables in the RHS of the rule visible after i'th term.
+-- Variables in the RHS of the rule declared before or in i'th term
+-- and visible after the term.
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
-rhsVarsAfter = undefined
+rhsVarsAfter d rl i =
+    filter (\f -> elem (name f) $ (map name $ ruleLHSVars d rl) `union` 
+                                  (concatMap (ruleRHSTermVars rl) [i..length (ruleRHS rl) - 1]))
+           $ ruleRHSVars d rl (i+1)
 
-mkProg :: DatalogProgram -> M.Map String [Arrangement] -> [ProgNode] -> Doc
-mkProg d arrangements nodes = rels $$ prog
-    where
-    rels = vcat 
-           $ map (\(rname, rel) -> 
-                  let arrs = map (mkArrangement d (getRelation d rname)) 
-                                 $ arrangements M.! rname
-                  in "let" <+> pp rname <+> "=" <+> rel arrs <> ";") 
-           $ concatMap nodeRels nodes
-    pnodes = map mkNode nodes
-    prog = "let prog: Program<Value> = Program {"           $$
-           "    nodes: vec!["                               $$
-           (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
-           "]};"
+mkProg :: DatalogProgram -> M.Map String [Arrangement] -> [ProgNode] -> CompilerMonad Doc
+mkProg d arrangements nodes = do
+    rels <- vcat <$>
+            mapM (\(rname, rel) -> do
+                  arrs <- mapM (mkArrangement d (getRelation d rname)) 
+                               $ arrangements M.! rname
+                  return $ "let" <+> pp rname <+> "=" <+> rel arrs <> ";")
+                 (concatMap nodeRels nodes)
+    let pnodes = map mkNode nodes
+        prog = "let prog: Program<Value> = Program {"           $$
+               "    nodes: vec!["                               $$
+               (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
+               "]};"
+    return $ rels $$ prog
 
 mkNode :: ProgNode -> Doc
 mkNode (RelNode (rel,_)) = 
@@ -536,32 +594,33 @@ mkNode (RelNode (rel,_)) =
 mkNode (SCCNode rels)    = 
     "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (pp . fst) rels) <> "]}"
 
-mkArrangement :: DatalogProgram -> Relation -> Arrangement -> Doc
-mkArrangement d rel (Arrangement pattern) =
-    "Arrangement{"                                                              $$
-    "   name: \"" <> pp pattern <> "\".to_string(),"                            $$
-    "   afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>)"   $$
-    "}"
-    where
-    (pat, cond) = mkPatExpr d pattern
+mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
+mkArrangement d rel (Arrangement pattern) = do
+    let (pat, cond) = mkPatExpr d pattern
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
-    patvars = mkVarsTupleValue d $ getvars (relType rel) pattern
-    getvars :: Type -> Expr -> [Field]
-    getvars _ (E EStruct{..}) = 
-        concatMap (\(e,t) -> getvars t e) 
-        $ zip (map snd exprStructFields) (map typ $ consArgs $ getConstructor d exprConstructor)
-    getvars t (E ETuple{..})  = 
-        concatMap (\(e,t) -> getvars t e) $ zip exprTupleFields ts
-        where TTuple _ ts = typ' d t
-    getvars t (E ETyped{..})  = getvars t exprExpr
-    getvars t (E EVar{..})    = [Field nopos exprVar t]
-    getvars _ _               = []
+    let getvars :: Type -> Expr -> [Field]
+        getvars t (E EStruct{..}) = 
+            concatMap (\(e,t) -> getvars t e) 
+            $ zip (map snd exprStructFields) (map typ $ consArgs $ fromJust $ find ((== exprConstructor) . name) cs)
+            where TStruct _ cs = typ' d t
+        getvars t (E ETuple{..})  = 
+            concatMap (\(e,t) -> getvars t e) $ zip exprTupleFields ts
+            where TTuple _ ts = typ' d t
+        getvars t (E ETyped{..})  = getvars t exprExpr
+        getvars t (E EVar{..})    = [Field nopos exprVar t]
+        getvars _ _               = []
+    patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
+    let afun = "match" <+> vALUE_VAR <+> "{"                                                          $$
+               (nest' $ pat <+> cond <+> "=> Some(" <+> patvars <> "," <+> vALUE_VAR <> ".clone()),") $$
+               "    _ => None"                                                                        $$
+               "}"
+    return $
+        "Arrangement{"                                                              $$
+        "   name: \"" <> pp pattern <> "\".to_string(),"                            $$
+        "   afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>)"   $$
+        "}"
 
-    afun = "match" <+> vALUE_VAR <+> "{"                                                          $$
-           (nest' $ pat <+> cond <+> "=> Some(" <+> patvars <> "," <+> vALUE_VAR <> ".clone()),") $$
-           "    _ => None"                                                                        $$
-           "}"
 
 -- Compile Datalog pattern expression to Rust.
 -- The first element in the return tuple is a Rust match pattern, the second
@@ -708,7 +767,7 @@ mkExpr' d _ ESet{..} | islet     = ("let" <+> assign, EVal)
     assign = lval exprLVal <+> "=" <+> val exprRVal
 
 -- operators take values or lvalues and return values
-mkExpr' _ _ EBinOp{..} = (v, EVal)
+mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     where
     e1 = deref exprLeft
     e2 = deref exprRight
@@ -717,6 +776,19 @@ mkExpr' _ _ EBinOp{..} = (v, EVal)
              Impl       -> parens $ "!" <> e1 <+> "||" <+> e2
              StrConcat  -> parens $ e1 <> ".push_str(" <> ref exprRight <> ".as_str())"
              op         -> parens $ e1 <+> mkBinOp op <+> e2
+    -- Truncate bitvector result in case the type used to represent it
+    -- in Rust is larger than the bitvector width.
+    v' = case exprType' d (CtxBinOpL (exprMap (E . sel3) e) ctx) (E $ sel3 exprLeft) of
+              TBit{..} | elem exprBOp bopsRequireTruncation && needsTruncation typeWidth 
+                       -> parens $ v <+> "&" <+> mask typeWidth
+              _        -> v
+    needsTruncation :: Int -> Bool
+    needsTruncation w = mask w /= empty
+    mask :: Int -> Doc
+    mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 
+           = "0x" <> (pp $ showHex (((1::Integer) `shiftL` w) - 1) "")
+    mask _ = empty
+
 
 mkExpr' _ _ EUnOp{..} = (v, EVal)
     where
@@ -738,7 +810,23 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
                  _      -> False
 
 mkType :: Type -> Doc
-mkType = undefined
+mkType TBool{}                    = "bool"
+mkType TInt{}                     = "Int"
+mkType TString{}                  = "String"
+mkType TBit{..} | typeWidth <= 8  = "u8"
+                | typeWidth <= 16 = "u16"
+                | typeWidth <= 32 = "u32"
+                | typeWidth <= 64 = "u64"
+                | otherwise       = "Uint"
+mkType TTuple{..}                 = parens $ commaSep $ map mkType typeTupArgs
+mkType TUser{..}                  = pp typeName <>
+                                    if null typeArgs 
+                                       then empty 
+                                       else "<" <> (commaSep $ map mkType typeArgs) <> ">"
+mkType TOpaque{..}                = pp typeName <>
+                                    if null typeArgs 
+                                       then empty 
+                                       else "<" <> (commaSep $ map mkType typeArgs) <> ">"
 
 mkBinOp :: BOp -> Doc
 mkBinOp Eq     = "=="
@@ -749,15 +837,19 @@ mkBinOp Lte    = "<="
 mkBinOp Gte    = ">="
 mkBinOp And    = "&&"
 mkBinOp Or     = "||"
-mkBinOp Plus   = "+"
-mkBinOp Minus  = "-"
 mkBinOp Mod    = "%"
-mkBinOp Times  = "*"
 mkBinOp Div    = "/"
 mkBinOp ShiftR = ">>"
-mkBinOp ShiftL = "<<"
 mkBinOp BAnd   = "&"
 mkBinOp BOr    = "|"
+mkBinOp ShiftL = "<<"
+mkBinOp Plus   = "+"
+mkBinOp Minus  = "-"
+mkBinOp Times  = "*"
+
+-- These operators require truncating the output value to correct
+-- width.
+bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 
 mkInt :: Integer -> Doc
 mkInt v | v <= (toInteger (maxBound::Word64)) && v >= (toInteger (minBound::Word64))

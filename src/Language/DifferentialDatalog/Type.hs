@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.Type(
     isBool, isBit, isInt, isString, isStruct, isTuple,
     checkTypesMatch,
     typesMatch,
+    typeNormalize,
     ctxExpectType,
     ConsTree(..),
     consTreeEmpty,
@@ -362,23 +363,22 @@ checkTypesMatch p d x y =
 
 -- | True iff 'a' and 'b' have idential types up to type aliasing.
 typesMatch :: (WithType a, WithType b) => DatalogProgram -> a -> b -> Bool
-typesMatch d x y =
-    case (t1, t2) of
-         (TBool _          , TBool _)          -> True
-         (TBit _ w1        , TBit _ w2)        -> w1 == w2
-         (TInt _           , TInt _)           -> True
-         (TString _        , TString _)        -> True
-         (TTuple _ fs1     , TTuple _ fs2)     -> (length fs1 == length fs2) &&
-                                                  (all (\(f1, f2) -> typesMatch d f1 f2) $ zip fs1 fs2)
-         (TUser _ t1 as1   , TUser _ t2 as2)   -> t1 == t2 &&
-                                                  (all (\(a1, a2) -> typesMatch d a1 a2) $ zip as1 as2)
-         (TOpaque _ t1 as1 , TOpaque _ t2 as2) -> t1 == t2 &&
-                                                  (all (\(a1, a2) -> typesMatch d a1 a2) $ zip as1 as2)
-         (TVar _ v1        , TVar _ v2)        -> v1 == v2
-         _                                     -> False
-    where t1 = typ'' d x
-          t2 = typ'' d y
+typesMatch d x y = typeNormalize d (typ x) == typeNormalize d (typ y)
 
+-- | Normalize type by applying typ'' to all its fields and type
+-- arguments. 
+typeNormalize :: DatalogProgram -> Type -> Type
+typeNormalize d t = 
+    case t' of
+         TBool{}            -> t'
+         TBit{}             -> t'
+         TInt{}             -> t'
+         TString{}          -> t'
+         TTuple{..}         -> t'{typeTupArgs = map (typeNormalize d) typeTupArgs}
+         TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
+         TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
+         TVar{}             -> t'
+    where t' = typ'' d t
 
 -- User-defined types that appear in type expression
 typeUserTypes :: Type -> [String]
