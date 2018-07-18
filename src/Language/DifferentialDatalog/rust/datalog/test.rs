@@ -12,18 +12,19 @@ use std::iter::FromIterator;
 const TEST_SIZE: u64 = 10000;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+struct P {
+    f1: Q,
+    f2: bool
+}
+unsafe_abomonate!(P);
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 struct Q {
     f1: bool,
     f2: String
 }
 unsafe_abomonate!(Q);
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-struct P {
-    f1: Q,
-    f2: bool
-}
-unsafe_abomonate!(P);
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum S {

@@ -33,10 +33,7 @@ module Language.DifferentialDatalog.Compile (
 ) where
 
 -- TODO: 
--- Generate functions
--- Generate type declarations
--- TODO: generate code to fill relations with initial values
--- (corresponding to rules with empty bodies)
+-- generate code to fill relations with initial values (corresponding to rules with empty bodies)
 -- ??? Generate callback function prototypes, but don't overwrite existing implementations.
 
 import Control.Monad.State
@@ -207,10 +204,51 @@ compile d = do
                                    $ emptyCompilerState{ cRels = relids
                                                        , cArrangements = arrs}
     prog <- mkProg d (cArrangements cstate) nodes
-    let -- Assemble results
-        valtype = mkValType d $ cTypes cstate
-    return $ valtype $+$ prog
-    
+    -- Type declarations
+    let typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d
+    -- Functions
+    let funcs = vcat $ map (mkFunc d) $ M.elems $ progFunctions d
+    -- 'Value' enum type
+    let valtype = mkValType d $ cTypes cstate
+    -- Assemble results
+    return $ typedefs $$ valtype $+$ funcs $+$ prog
+
+mkTypedef :: TypeDef -> Doc
+mkTypedef TypeDef{..} =
+    case tdefType of
+         Just TStruct{..} | length typeCons == 1
+                          -> "struct" <+> pp tdefName <> targs <+> "{"                                 $$
+                             (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
+                             "}"
+                          | otherwise
+                          -> "enum" <+> pp tdefName <> targs <+> "{"                                   $$
+                             (nest' $ hsep $ punctuate comma $ map mkConstructor typeCons)             $$
+                             "}"
+         Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t
+         Nothing          -> empty -- The user must provide definitions of opaque types
+    where
+    targs = if null tdefArgs
+               then empty
+               else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">" 
+    mkField :: Field -> Doc
+    mkField f = pp (name f) <> ":" <+> mkType (typ f)
+
+    mkConstructor :: Constructor -> Doc
+    mkConstructor c = 
+        pp (name c) <+> "{" $$
+        (nest' $ vcat $ punctuate comma $ map mkField $ consArgs c) $$
+        "}"
+
+mkFunc :: DatalogProgram -> Function -> Doc
+mkFunc d f@Function{..} | isJust funcDef =
+    "fn" <+> pp (name f) <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
+    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                               $$
+    "}"
+                        | otherwise = empty
+    where 
+    mkArg :: Field -> Doc
+    mkArg a = pp (name a) <> ":" <+> "&" <> mkType (typ a)
+
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: DatalogProgram -> S.Set Type -> Doc
 mkValType d types = 
