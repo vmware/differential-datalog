@@ -1,11 +1,3 @@
-// variable declared without a type outside of an assignment statement
-function vars(): () = {
-    var x;
-    x = 10
-}
-
-//---
-
 // variable declaration cannot be the last statement in a block
 function vars(): () = {
     var x: int
@@ -17,7 +9,7 @@ typedef C = C{f1: string, f2: string}
 
 // missing arguments to a type constructor
 function vars(): () = {
-    var y: C;
+    var y: C = C{"foo", "bar"};
 
     // missing arguments allowed in the LHS of an assignment 
     C{.f1 = var a} = y;
@@ -45,7 +37,7 @@ function shadow(v: string): () = {
 
 // shadow local variable
 function shadow(): () = {
-    var v: string;
+    var v: string = "bar";
 
     var v = "foo"
 }

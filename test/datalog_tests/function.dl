@@ -63,7 +63,7 @@ function x(): Alt
 typedef C = C{f1: string, f2: string}
 
 function vars(): () = {
-    var x: int;
+    var x: int = 0;
     x = 10;
     var y = C{.f1 = "foo", .f2 = "bar"};
     var z: C = C{.f1 = "bar", .f2 = "foo"};

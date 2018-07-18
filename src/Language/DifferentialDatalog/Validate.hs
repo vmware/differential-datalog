@@ -410,13 +410,14 @@ exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was perform
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
-exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
-                                          = checkNoVar p d ctx v
-                                     | otherwise
+exprValidate1 d _ ctx (EVarDecl p v)      = do 
+    check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
+    checkNoVar p d ctx v
+{-                                     | otherwise
                                           = do checkNoVar p d ctx v
                                                check (ctxIsTyped ctx) p "Variable declared without a type"
                                                check (ctxIsSeq1 $ ctxParent ctx) p
-                                                      "Variable declaration is not allowed in this context"
+                                                      "Variable declaration is not allowed in this context"-}
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l

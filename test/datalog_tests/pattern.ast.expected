@@ -24,7 +24,7 @@ function f1 (x: T1, y: T2, q: T3): bool =
             C22{.f3=(false, C11{.f1=_, .f2=_})} -> true,
             C22{.f3=(false, C12{.f3=_, .f4=_})} -> true
         };
-        ((var z: (bool, (bool, (bool, bool))));
+        ((var z: (bool, (bool, (bool, bool)))) = (true, (false, (true, false)));
          (match (z) {
               (true, _) -> true,
               (false, (_, (true, true))) -> true,
@@ -57,7 +57,7 @@ function f1 (x: T1, y: T2, q: T3): bool =
                  C32{.f3=_} -> true,
                  C31{.f1=_, .f2=_, .s=_, .b=_} -> true
              };
-             ((var s: string);
+             ((var s: string) = "bar";
               match (s) {
                   "foo" -> true,
                   "bar" -> true,

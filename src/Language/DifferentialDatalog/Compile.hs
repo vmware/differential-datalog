@@ -779,7 +779,6 @@ mkExpr' d ctx e@EMatch{..} = (doc, EVal)
 
 -- Variables are mutable references 
 mkExpr' _ _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
--- TODO VarDecl without assignment
 
 mkExpr' _ ctx ESeq{..} | ctxIsSeq2 ctx = (body, sel2 exprRight)
                        | otherwise     = (braces' body, sel2 exprRight)

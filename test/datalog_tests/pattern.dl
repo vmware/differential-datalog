@@ -38,7 +38,7 @@ function f1(x: T1, y: T2, q: T3) : bool = {
     };
 
 
-    var z: (bool, (bool, (bool,bool)));
+    var z: (bool, (bool, (bool,bool))) = (true, (false, (true, false)));
 
     match (z) {
         (true, _)                   -> true,
@@ -76,7 +76,7 @@ function f1(x: T1, y: T2, q: T3) : bool = {
         C31{_, _, _, _}                                            -> true
     };
 
-    var s: string;
+    var s: string = "bar";
     match (s) {
         "foo" -> true,
         "bar" -> true,
