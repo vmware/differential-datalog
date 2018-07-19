@@ -32,6 +32,7 @@ dependencies:
 - raw-strings-qq
 - tuple
 - file-embed
+- filepath
 
 library:
   source-dirs: src

@@ -46,6 +46,9 @@ import Data.Int
 import Data.Word
 import Data.Bits
 import Data.FileEmbed
+import Data.String.Utils
+import System.FilePath.Posix
+import System.Directory
 import qualified Data.ByteString.Char8 as BS
 import Numeric
 import qualified Data.Set as S
@@ -85,10 +88,12 @@ vALUE_VAR2 = "__v2"
 header :: Doc
 header = pp $ BS.unpack $(embedFile "rust/template/lib.rs")
 
+cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
+
 -- Rust differential_datalog library
-rustLibFiles :: [(String, Doc)]
+rustLibFiles :: [(String, String)]
 rustLibFiles = 
-    map (mapSnd (pp . BS.unpack)) $
+    map (mapSnd (BS.unpack)) $
         [ ("differential_datalog/Cargo.toml"  , $(embedFile "rust/differential_datalog/Cargo.toml"))
         , ("differential_datalog/int.rs"      , $(embedFile "rust/differential_datalog/int.rs"))
         , ("differential_datalog/uint.rs"     , $(embedFile "rust/differential_datalog/uint.rs"))
@@ -97,6 +102,7 @@ rustLibFiles =
         , ("differential_datalog/lib.rs"      , $(embedFile "rust/differential_datalog/lib.rs"))
         , ("differential_datalog/test.rs"     , $(embedFile "rust/differential_datalog/test.rs"))
         ]
+
 
 {- The following types model corresponding entities in program.rs -}
 
@@ -207,18 +213,35 @@ isStructType :: Type -> Bool
 isStructType TStruct{..} | length typeCons == 1 = True
 isStructType _                                  = False
 
+-- | Create a compilable Cargo project.
 compile :: DatalogProgram -> String -> FilePath -> IO ()
 compile d specname dir = do
     let lib = compileLib d
     -- Create dir if it does not exist.
-
+    createDirectoryIfMissing True dir
     -- Update rustLibFiles if they changed.
-
+    mapM_ (\(path, content) -> 
+           do let path' = joinPath [dir, path]
+              updateFile path' content) 
+         rustLibFiles
     -- Substitute specname in the Cargo.toml files; write Cargo.toml
     -- if it changed.
-
+    let cargo = replace "datalog_example" specname cargoFile
+    updateFile (joinPath [dir, specname, "Cargo.toml"]) cargo
     -- Generate lib.rs file if changed.
+    updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
     return ()
+
+-- Replace file content if changed
+updateFile :: FilePath -> String -> IO ()
+updateFile path content = do
+    createDirectoryIfMissing True $ takeDirectory path
+    exists <- doesFileExist path
+    if exists
+       then do
+            oldcontent <- readFile path
+            when (oldcontent /= content) $ writeFile path content
+       else writeFile path content
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
