@@ -77,7 +77,7 @@ fn some_fun(x: &u32) -> u32 {
 
 fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
     let (x, _2) = match &v {
-        Value::S(S::S1{f1: ref x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == Uint::from_u64(32) => (x, _2), 
+        Value::S(S::S1{f1: ref x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == (Uint::from_u64(32) & Uint::from_u64(0xff)) => (x, _2), 
         _ => return None
     };
     if (*_2).f1 && (*x) + 1 > 5 { return None; };

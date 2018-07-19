@@ -816,7 +816,10 @@ mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
                          | otherwise
                          = (tuple $ map val exprTupleFields, EVal)
 
-mkExpr' _ _ ESlice{..} = error "not implemented: Compile.mkExpr ESlice"
+mkExpr' d ctx e@ESlice{..} = (mkSlice (deref exprOp, w) exprH exprL, EVal)
+    where
+    e' = exprMap (E . sel3) e
+    TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
 
 -- Match expression is a reference
 mkExpr' d ctx e@EMatch{..} = (doc, EVal)
@@ -864,31 +867,29 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     where
     e1 = deref exprLeft
     e2 = deref exprRight
+    e' = exprMap (E . sel3) e
+    t  = exprType' d ctx (E e')
+    t1 = exprType' d (CtxBinOpL e' ctx) (E $ sel3 exprLeft)
+    t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
     v = case exprBOp of
-             Concat     -> error "not implemented: Compile.mkExpr EBinOp Concat"
-             Impl       -> parens $ "!" <> e1 <+> "||" <+> e2
-             StrConcat  -> parens $ e1 <> ".push_str(" <> ref exprRight <> ".as_str())"
-             op         -> parens $ e1 <+> mkBinOp op <+> e2
+             Concat | t == tString
+                    -> parens $ e1 <> ".push_str(" <> ref exprRight <> ".as_str())"
+             Concat -> mkConcat (e1, typeWidth t1) (e1, typeWidth t2)
+             Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
+             op     -> parens $ e1 <+> mkBinOp op <+> e2
     -- Truncate bitvector result in case the type used to represent it
     -- in Rust is larger than the bitvector width.
-    v' = case exprType' d (CtxBinOpL (exprMap (E . sel3) e) ctx) (E $ sel3 exprLeft) of
-              TBit{..} | elem exprBOp bopsRequireTruncation && needsTruncation typeWidth 
-                       -> parens $ v <+> "&" <+> mask typeWidth
-              _        -> v
-    needsTruncation :: Int -> Bool
-    needsTruncation w = mask w /= empty
-    mask :: Int -> Doc
-    mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 
-           = "0x" <> (pp $ showHex (((1::Integer) `shiftL` w) - 1) "")
-    mask _ = empty
+    v' = if elem exprBOp bopsRequireTruncation
+            then mkTruncate v t
+            else v
 
-
-mkExpr' _ _ EUnOp{..} = (v, EVal)
+mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     where
-    e = deref exprOp
+    arg =  deref exprOp
+    e' = exprMap (E . sel3) e
     v = case exprUOp of
-             Not    -> parens $ "!" <> e
-             BNeg   -> parens $ "~" <> e
+             Not    -> parens $ "!" <> arg
+             BNeg   -> mkTruncate (parens $ "~" <> arg) $ exprType' d ctx (E e')
 
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
@@ -945,6 +946,56 @@ mkBinOp Times  = "*"
 -- These operators require truncating the output value to correct
 -- width.
 bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
+
+-- Produce code to cast bitvector to a different-width BV.
+-- The value of 'e' must fit in the new width.
+castBV :: Doc -> Int -> Int -> Doc
+castBV e w1 w2 | t1 == t2 
+               = e
+               | w1 <= 64 && w2 <= 64
+               = parens $ e <+> " as " <+> t2
+               | w2 > 64
+               = "Uint::from_u64(" <> e <> ")"
+               | otherwise
+               = e <> "to_" <> t2 <> "().unwrap()"
+    where
+    t1 = mkType $ tBit w1
+    t2 = mkType $ tBit w2
+
+-- Concatenate two bitvectors
+mkConcat :: (Doc, Int) -> (Doc, Int) -> Doc
+mkConcat (e1, w1) (e2, w2) = 
+    parens $ e1'' <+> "|" <+> e2' 
+    where
+    e1' = castBV e1 w1 (w1+w2)
+    e2' = castBV e2 w2 (w1+w2)
+    e1'' = parens $ e1' <+> "<<" <+> pp w2
+
+mkSlice :: (Doc, Int) -> Int -> Int -> Doc
+mkSlice (e, w) h l = castBV res w (h - l + 1)
+    where
+    res = parens $ (parens $ e <+> ">>" <+> pp l) <+> "&" <+> mask
+    mask = mkBVMask (h - l + 1)
+
+mkBVMask :: Int -> Doc
+mkBVMask w | w > 64    = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
+           | otherwise = "0x" <> m
+    where 
+    m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
+
+mkTruncate :: Doc -> Type -> Doc
+mkTruncate v t =
+    case t of
+         TBit{..} | needsTruncation typeWidth 
+                  -> parens $ v <+> "&" <+> mask typeWidth
+         _        -> v
+    where
+    needsTruncation :: Int -> Bool
+    needsTruncation w = mask w /= empty
+    mask :: Int -> Doc
+    mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 || w > 64
+           = mkBVMask w
+    mask _ = empty
 
 mkInt :: Integer -> Doc
 mkInt v | v <= (toInteger (maxBound::Word64)) && v >= (toInteger (minBound::Word64))
