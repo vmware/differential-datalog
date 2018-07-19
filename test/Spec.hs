@@ -33,6 +33,7 @@ import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Preamble
+import Language.DifferentialDatalog.Compile
 
 main :: IO ()
 main = defaultMain =<< goldenTests
@@ -66,6 +67,7 @@ testParser fname ofname = do
     -- if a file contains .fail. in it's name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
+    let specname = takeBaseName fname
     let shouldFail = ".fail." `isInfixOf` fname
     if shouldFail
       then do
@@ -84,4 +86,5 @@ testParser fname ofname = do
         prog' <- parseDatalogFile False ofname
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
+        compile prog specname (joinPath [takeDirectory fname, specname])
     return ()

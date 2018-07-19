@@ -145,15 +145,16 @@ data Type = TBool     {typePos :: Pos}
           | TVar      {typePos :: Pos, tvarName :: String}
           | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
 
-tBool     = TBool     nopos
-tInt      = TInt      nopos
-tString   = TString   nopos
-tBit      = TBit      nopos
-tStruct   = TStruct   nopos
-tTuple    = TTuple    nopos
-tUser     = TUser     nopos
-tVar      = TVar      nopos
-tOpaque   = TOpaque   nopos
+tBool      = TBool     nopos
+tInt       = TInt      nopos
+tString    = TString   nopos
+tBit       = TBit      nopos
+tStruct    = TStruct   nopos
+tTuple [t] = t
+tTuple ts  = TTuple    nopos ts
+tUser      = TUser     nopos
+tVar       = TVar      nopos
+tOpaque    = TOpaque   nopos
 
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ find ((==f) . name) $ structFields t

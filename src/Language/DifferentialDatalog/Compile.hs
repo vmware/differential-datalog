@@ -47,7 +47,7 @@ import Data.Word
 import Data.Bits
 import Data.FileEmbed
 import Data.String.Utils
-import System.FilePath.Posix
+import System.FilePath
 import System.Directory
 import qualified Data.ByteString.Char8 as BS
 import Numeric
@@ -55,6 +55,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import qualified Data.Graph.Inductive.Query.DFS as G
+import Debug.Trace
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
@@ -412,11 +413,11 @@ compileRule d rl@Rule{..} = do
              "    rel: Relations::" <> pp fstrel <+> "as RelId," $$ 
              "    xforms: vec!["                                 $$ 
              (nest' $ nest' $ vcat $ punctuate comma xforms)     $$
-             "}"
+             "]}"
 
 -- Generates one XForm in the chain
 compileRule' :: DatalogProgram -> Rule -> Int -> CompilerMonad [Doc]
-compileRule' d rl@Rule{..} last_rhs_idx = do
+compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- Open up input constructor; bring Datalog variables into scope
     open <- if last_rhs_idx == 0
                then openAtom  d ("&" <> vALUE_VAR) $ rhsAtom $ head ruleRHS
@@ -427,7 +428,7 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
     let prefix = open $+$ vcat filters
     -- index of the next join
     let join_idx = last_rhs_idx + length filters + 1
-    if join_idx == length ruleRHS
+    if {-trace ("join_idx = " ++ show join_idx) $-} join_idx == length ruleRHS
        then do
            head <- mkHead d prefix rl
            return [head]
@@ -436,7 +437,7 @@ compileRule' d rl@Rule{..} last_rhs_idx = do
                case ruleRHS !! join_idx of
                     RHSLiteral True a  -> mkJoin d prefix a rl join_idx
                     RHSLiteral False a -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
-           if last_idx' == length ruleRHS
+           if {-trace ("last_idx' = " ++ show last_idx') $-} last_idx' < length ruleRHS
               then do rest <- compileRule' d rl last_idx'
                       return $ xform:rest
               else return [xform]
@@ -515,11 +516,11 @@ mkVarsTupleValue d vs = do
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
 mkFilters d rl@Rule{..} last_idx = 
-    mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_idx) $ rhsExpr rhs)
+    mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_idx + 1) $ rhsExpr rhs)
     $ takeWhile (\case
                   RHSCondition{} -> True
                   _              -> False)
-    $ drop last_idx ruleRHS
+    $ drop (last_idx+1) ruleRHS
 
 -- Implement RHSCondition semantics in Rust; brings new variables into
 -- scope if this is an assignment
@@ -726,6 +727,7 @@ mkPatExpr d e = evalState (exprFoldM (mkPatExpr' d) e) 0
 
 mkPatExpr' :: DatalogProgram -> ExprNode (Doc, Doc) -> State Int (Doc, Doc)
 mkPatExpr' _ EVar{..}                  = return (pp exprVar, empty)
+mkPatExpr' _ EVarDecl{..}              = return (pp exprVName, empty)
 mkPatExpr' _ (EBool _ True)            = return ("true", empty)
 mkPatExpr' _ (EBool _ False)           = return ("false", empty)
 mkPatExpr' _ EInt{..}                  = do 
@@ -756,7 +758,7 @@ mkPatExpr' d ETuple{..}                = return (e, cond)
     cond = hsep $ intersperse "&&" $ map (pp . snd) exprTupleFields
 mkPatExpr' _ EPHolder{}                = return ("_", empty)
 mkPatExpr' _ ETyped{..}                = return exprExpr
-
+mkPatExpr' _ e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
 
 -- Convert Datalog expression to Rust.
 -- We generate the code so that all variables are references and must
@@ -918,6 +920,8 @@ mkType TOpaque{..}                = pp typeName <>
                                     if null typeArgs 
                                        then empty 
                                        else "<" <> (commaSep $ map mkType typeArgs) <> ">"
+mkType TVar{..}                   = pp tvarName
+mkType t                          = error $ "Compile.mkType " ++ show t
 
 mkBinOp :: BOp -> Doc
 mkBinOp Eq     = "=="

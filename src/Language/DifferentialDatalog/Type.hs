@@ -136,7 +136,7 @@ unifyTypes' d p ctx (a, c) =
 -- | Compute type of an expression.  The expression must be previously validated
 -- to make sure that it has an unambiguous type.
 exprType :: DatalogProgram -> ECtx -> Expr -> Type
-exprType d ctx e = maybe (error $ "exprType: expression " ++ show e ++ " has unknown type") id 
+exprType d ctx e = maybe (error $ "exprType: expression " ++ show e ++ " has unknown type in " ++ show ctx) id 
                          $ exprTypeMaybe d ctx e
 
 -- | Like 'exprType', but also applies 'typ'' to result.
