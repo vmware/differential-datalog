@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell #-}
 
 {- | 
 Module     : Compile
@@ -45,6 +45,8 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Bits
+import Data.FileEmbed
+import qualified Data.ByteString.Char8 as BS
 import Numeric
 import qualified Data.Set as S
 import qualified Data.Map as M
@@ -78,6 +80,23 @@ vALUE_VAR1 = "__v1"
 
 vALUE_VAR2 :: Doc
 vALUE_VAR2 = "__v2"
+
+-- Rust imports
+header :: Doc
+header = pp $ BS.unpack $(embedFile "rust/template/lib.rs")
+
+-- Rust differential_datalog library
+rustLibFiles :: [(String, Doc)]
+rustLibFiles = 
+    map (mapSnd (pp . BS.unpack)) $
+        [ ("differential_datalog/Cargo.toml"  , $(embedFile "rust/differential_datalog/Cargo.toml"))
+        , ("differential_datalog/int.rs"      , $(embedFile "rust/differential_datalog/int.rs"))
+        , ("differential_datalog/uint.rs"     , $(embedFile "rust/differential_datalog/uint.rs"))
+        , ("differential_datalog/variable.rs" , $(embedFile "rust/differential_datalog/variable.rs"))
+        , ("differential_datalog/program.rs"  , $(embedFile "rust/differential_datalog/program.rs"))
+        , ("differential_datalog/lib.rs"      , $(embedFile "rust/differential_datalog/lib.rs"))
+        , ("differential_datalog/test.rs"     , $(embedFile "rust/differential_datalog/test.rs"))
+        ]
 
 {- The following types model corresponding entities in program.rs -}
 
@@ -140,24 +159,28 @@ nodeRels (RelNode rel)  = [rel]
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
 
-type RelId = Int
-type ArrId = (Int, Int)
+type ArrId = Int
 
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
-    cRels         :: M.Map String RelId,
     cArrangements :: M.Map String [Arrangement]
 }
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
     cTypes        = S.empty,
-    cRels         = M.empty,
     cArrangements = M.empty
 }
 
-getRelId :: String -> CompilerMonad RelId
-getRelId rname = gets $ (M.! rname) . cRels
+mkRelEnum :: DatalogProgram -> Doc
+mkRelEnum d = 
+    "#[derive(Copy,Clone)]"                                                                                     $$
+    "pub enum Relations {"                                                                                      $$
+    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> pp rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
+    "}"
+
+relId :: String -> Doc
+relId rel = "Relations::" <> pp rel <+> "as RelId"
 
 -- t must be normalized
 addType :: Type -> CompilerMonad ()
@@ -167,12 +190,11 @@ addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
 addArrangement :: String -> Arrangement -> CompilerMonad ArrId
 addArrangement relname arr = do
     arrs <- gets $ (M.! relname) . cArrangements
-    rid <- getRelId relname
     let (arrs', aid) = case findIndex (==arr) arrs of
                             Nothing -> (arrs ++ [arr], length arrs)
                             Just i  -> (arrs, i)
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
-    return (rid, aid)
+    return aid
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -185,33 +207,44 @@ isStructType :: Type -> Bool
 isStructType TStruct{..} | length typeCons == 1 = True
 isStructType _                                  = False
 
+compile :: DatalogProgram -> String -> FilePath -> IO ()
+compile d specname dir = do
+    let lib = compileLib d
+    -- Create dir if it does not exist.
+
+    -- Update rustLibFiles if they changed.
+
+    -- Substitute specname in the Cargo.toml files; write Cargo.toml
+    -- if it changed.
+
+    -- Generate lib.rs file if changed.
+    return ()
+
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
-compile :: DatalogProgram -> CompilerMonad Doc
-compile d = do
-    let -- Transform away rules with multiple heads
-        d' = progExpandMultiheadRules d
-        -- Compute ordered SCCs of the dependency graph.  These will define the
-        -- structure of the program.
-        depgraph = progDependencyGraph d'
-        sccs = G.topsort' $ G.condensation depgraph
-        -- Assign RelId's
-        relids = M.fromList $ map swap $ G.labNodes depgraph
-        -- Initialize arrangements map
-        arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
-        -- Compile SCCs
-        (nodes, cstate) = runState (mapM (compileSCC d' depgraph) sccs) 
-                                   $ emptyCompilerState{ cRels = relids
-                                                       , cArrangements = arrs}
-    prog <- mkProg d (cArrangements cstate) nodes
+compileLib :: DatalogProgram -> Doc
+compileLib d = header $+$ typedefs $+$ relenum $+$ valtype $+$ funcs $+$ prog
+    where
+    -- Transform away rules with multiple heads
+    d' = progExpandMultiheadRules d
+    -- Compute ordered SCCs of the dependency graph.  These will define the
+    -- structure of the program.
+    depgraph = progDependencyGraph d'
+    sccs = G.topsort' $ G.condensation depgraph
+    -- Initialize arrangements map
+    arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
+    -- Compile SCCs
+    (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
+                                  mkProg d nodes)
+                              $ emptyCompilerState{cArrangements = arrs}
+    -- Relations enum
+    relenum = mkRelEnum d
     -- Type declarations
-    let typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d
+    typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d
     -- Functions
-    let funcs = vcat $ map (mkFunc d) $ M.elems $ progFunctions d
+    funcs = vcat $ map (mkFunc d) $ M.elems $ progFunctions d
     -- 'Value' enum type
-    let valtype = mkValType d $ cTypes cstate
-    -- Assemble results
-    return $ typedefs $$ valtype $+$ funcs $+$ prog
+    valtype = mkValType d $ cTypes cstate
 
 mkTypedef :: TypeDef -> Doc
 mkTypedef TypeDef{..} =
@@ -318,7 +351,6 @@ let ancestor = {
 compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rname = do
     let Relation{..} = getRelation d rname
-    relid <- getRelId rname
     -- collect all rules for this relation
     let rules = filter (not . null . ruleRHS)
                 $ filter ((== rname) . atomRelation . head . ruleLHS) 
@@ -328,7 +360,7 @@ compileRelation d rname = do
             "Relation {"                                                                $$
             "    name:         \"" <> pp rname <> "\".to_string(),"                     $$
             "    input:        " <> (if relGround then "true" else "false") <> ","      $$
-            "    id:           " <> pp relid <> ","                                     $$
+            "    id:           Relations::" <> pp rname <+> "as RelId,"                 $$
             "    rules:        vec!["                                                   $$
             (nest' $ nest' $ vcat $ punctuate comma rules') <> "],"                     $$
             "    arrangements: vec!["                                                   $$
@@ -351,12 +383,12 @@ Rule{
 -}
 compileRule :: DatalogProgram -> Rule -> CompilerMonad Doc
 compileRule d rl@Rule{..} = do
-    fstrelid <- getRelId $ atomRelation $ rhsAtom $ head ruleRHS
+    let fstrel = atomRelation $ rhsAtom $ head ruleRHS
     xforms <- compileRule' d rl 0
-    return $ "Rule{"                                            $$
-             "    rel: " <> pp fstrelid <> ","                  $$ 
-             "    xforms: vec!["                                $$ 
-             (nest' $ nest' $ vcat $ punctuate comma xforms)    $$
+    return $ "Rule{"                                             $$
+             "    rel: Relations::" <> pp fstrel <+> "as RelId," $$ 
+             "    xforms: vec!["                                 $$ 
+             (nest' $ nest' $ vcat $ punctuate comma xforms)     $$
              "}"
 
 -- Generates one XForm in the chain
@@ -497,7 +529,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
         (arr, vmap) = normalizeArrangement d (getRelation d $ atomRelation atom) ctx $ atomVal atom
-    (rid, aid) <- addArrangement (atomRelation atom) arr
+    aid <- addArrangement (atomRelation atom) arr
     -- Variables from previous terms that will be used in terms
     -- following the join.
     let post_join_vars = (rhsVarsAfter d rl (join_idx - 1)) `intersect`
@@ -529,7 +561,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
                "Some" <> parens ret
     let doc = "XForm::Join{"                                                                                         $$
               "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                      $$
-              "    arrangement: (" <> pp rid <> "," <> pp aid <> "),"                                                $$
+              "    arrangement: (Relations::" <> pp (atomRelation atom) <> "as RelId," <> pp aid <> "),"             $$
               "    jfun:        &((|_," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
               "}"
     return (doc, last_idx')
@@ -537,14 +569,13 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
-    rid <- getRelId atomRelation
     akey <- mkValue d (CtxRuleRAtom rl ajoin_idx) atomVal
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
     let afun = prefix $$ 
                "Some(" <> akey <> "," <+> aval <> ")"
     return $ "XForm::Antijoin{"                                                            $$
              "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
-             "    rel:  " <> pp rid                                                        $$
+             "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                     $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
@@ -611,12 +642,12 @@ rhsVarsAfter d rl i =
                                   (concatMap (ruleRHSTermVars rl) [i..length (ruleRHS rl) - 1]))
            $ ruleRHSVars d rl (i+1)
 
-mkProg :: DatalogProgram -> M.Map String [Arrangement] -> [ProgNode] -> CompilerMonad Doc
-mkProg d arrangements nodes = do
+mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
+mkProg d nodes = do
     rels <- vcat <$>
             mapM (\(rname, rel) -> do
-                  arrs <- mapM (mkArrangement d (getRelation d rname)) 
-                               $ arrangements M.! rname
+                  relarrs <- gets ((M.! rname) . cArrangements)
+                  arrs <- mapM (mkArrangement d (getRelation d rname)) relarrs
                   return $ "let" <+> pp rname <+> "=" <+> rel arrs <> ";")
                  (concatMap nodeRels nodes)
     let pnodes = map mkNode nodes

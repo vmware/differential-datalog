@@ -31,6 +31,7 @@ dependencies:
 - MissingH
 - raw-strings-qq
 - tuple
+- file-embed
 
 library:
   source-dirs: src

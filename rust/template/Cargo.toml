@@ -1,0 +1,26 @@
+[package]
+name = "datalog_example"
+version = "0.1.0"
+
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
+[dependencies]
+abomonation="0.5"
+serde = "1.0.14"
+serde_derive = "1.0.14"
+fnv="1.0.2"
+
+[features]
+default = []
+
+[profile.release]
+opt-level = 1
+debug = false
+rpath = false
+lto = false
+debug-assertions = false
+
+[lib]
+name = "datalog_example"
+path = "./lib.rs"
