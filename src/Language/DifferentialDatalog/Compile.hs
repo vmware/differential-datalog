@@ -175,7 +175,9 @@ data CompilerState = CompilerState {
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
-    cTypes        = S.empty,
+    -- make sure that empty tuple is always in Value, so it can be
+    -- used to implement Value::default()
+    cTypes        = S.singleton $ tTuple [],
     cArrangements = M.empty
 }
 
@@ -262,31 +264,36 @@ compileLib d = header $+$ typedefs $+$ relenum $+$ valtype $+$ funcs $+$ prog
     arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
     -- Compile SCCs
     (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
-                                  mkProg d nodes)
+                                  mkProg d' nodes)
                               $ emptyCompilerState{cArrangements = arrs}
     -- Relations enum
-    relenum = mkRelEnum d
+    relenum = mkRelEnum d'
     -- Type declarations
-    typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d
+    typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
     -- Functions
-    funcs = vcat $ map (mkFunc d) $ M.elems $ progFunctions d
+    funcs = vcat $ map (mkFunc d') $ M.elems $ progFunctions d'
     -- 'Value' enum type
-    valtype = mkValType d $ cTypes cstate
+    valtype = mkValType d' $ cTypes cstate
 
 mkTypedef :: TypeDef -> Doc
 mkTypedef TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
-                          -> "struct" <+> pp tdefName <> targs <+> "{"                                 $$
+                          -> derive                                                                    $$
+                             "struct" <+> pp tdefName <> targs <+> "{"                                 $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
-                             "}"
+                             "}"                                                                       $$
+                             "unsafe_abomonate!(" <> pp tdefName <> ");"
                           | otherwise
-                          -> "enum" <+> pp tdefName <> targs <+> "{"                                   $$
-                             (nest' $ hsep $ punctuate comma $ map mkConstructor typeCons)             $$
-                             "}"
+                          -> derive                                                                    $$
+                             "enum" <+> pp tdefName <> targs <+> "{"                                   $$
+                             (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
+                             "}"                                                                       $$
+                             "unsafe_abomonate!(" <> pp tdefName <> ");"
          Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
+    derive = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]"
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">" 
@@ -316,15 +323,19 @@ mkValType d types =
     "enum Value {"                                                                          $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
     "}"                                                                                     $$
-    "unsafe_abomonate!(Value);"
+    "unsafe_abomonate!(Value);"                                                             $$
+    "impl Default for Value {"                                                              $$
+    "    fn default() -> Value {" <> tuple0 <> "}"                                          $$
+    "}"
     where
     mkValCons :: Type -> Doc
     mkValCons t = mkConstructorName' d t <> (parens $ mkType t)
+    tuple0 = "Value::" <> mkConstructorName' d (tTuple []) <> "(())" 
 
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
-compileSCC d dep nodes | recursive = compileRelNode d (head relnames)
-                       | otherwise = compileSCCNode d relnames
+compileSCC d dep nodes | recursive = compileSCCNode d relnames
+                       | otherwise =  compileRelNode d (head relnames)
     where
     recursive = any (\(from, to) -> elem from nodes && elem to nodes) $ G.edges dep
     relnames = map (fromJust . G.lab dep) nodes
@@ -462,9 +473,9 @@ openAtom d var Atom{..} = do
         (pattern, cond) = mkPatExpr d atomVal
         cond_str = if cond == empty then empty else ("if" <+> cond)
     return $
-        "let" <+> vars <+> "= match " <> var <> "{"                                                  $$
-        "    " <> constructor <> "(" <> pattern <> ")" <+> cond_str <+> "=> " <> vars <> ","         $$
-        "    _ => return None"                                                                       $$
+        "let" <+> vars <+> "= match " <> var <> "{"                                    $$
+        "    " <> constructor <> parens pattern <+> cond_str <+> "=> " <> vars <> ","  $$
+        "    _ => return None"                                                         $$
         "};"
 
 -- Generate Rust constructor name for a type
@@ -498,7 +509,7 @@ mkConstructorName' d t =
 -- The Rust code returns None if the record does not pass the filter.
 openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vars = do
-    tup <- mkVarsTupleValue d vars
+    tup <- mkVarsTupleValuePat d vars
     return $ "let" <+> tup <+> " = " <> var <> ";"
 
 mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
@@ -514,7 +525,14 @@ mkTupleValue d ctx es = do
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     constructor <- mkConstructorName d $ tTuple $ map typ vs
+    return $ constructor <> (parens $ tuple $ map ((<> ".clone()") . pp . name) vs)
+
+mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTupleValuePat d vs = do
+    constructor <- mkConstructorName d $ tTuple $ map typ vs
     return $ constructor <> (parens $ tuple $ map (pp . name) vs)
+
+
 
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
@@ -566,7 +584,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     akey <- mkTupleValue d ctx $ map snd vmap
     aval <- mkVarsTupleValue d post_join_vars
     let afun = braces' $ prefix $$ 
-                         "Some(" <> akey <> "," <+> aval <> ")"
+                         "Some((" <> akey <> "," <+> aval <> "))"
     -- simplify pattern to only extract new variables from it
     let strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
         strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
@@ -600,7 +618,7 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
     akey <- mkValue d (CtxRuleRAtom rl ajoin_idx) atomVal
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
     let afun = braces' $ prefix $$ 
-                         "Some(" <> akey <> "," <+> aval <> ")"
+                         "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                            $$
              "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
              "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                     $$
@@ -711,9 +729,10 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
     patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
-    let afun = "match" <+> vALUE_VAR <+> "{"                                                          $$
-               (nest' $ pat <+> cond <+> "=> Some(" <> patvars <> "," <+> vALUE_VAR <> ".clone()),")  $$
-               "    _ => None"                                                                        $$
+    constructor <- mkConstructorName d $ relType rel
+    let afun = "match" <+> vALUE_VAR <+> "{"                                                                                  $$
+               (nest' $ constructor <> parens pat <+> cond <+> "=> Some((" <> patvars <> "," <+> vALUE_VAR <> ".clone())),")  $$
+               "    _ => None"                                                                                                $$
                "}"
     return $
         "Arrangement{"                                                              $$
@@ -755,9 +774,11 @@ mkPatExpr' _ EBit{..}                  = do
     return (vname, "*" <> vname <+> "==" <+> "Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)")
 mkPatExpr' d EStruct{..}               = return (e, cond)
     where
-    struct_name = name $ consType d exprConstructor
-    e = pp struct_name <> "::" <> pp exprConstructor <> 
-        (braces' $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
+    t = consType d exprConstructor
+    struct_name = name t
+    e = pp struct_name <>
+        (if isStructType (fromJust $ tdefType t) then empty else ("::" <> pp exprConstructor)) <> 
+        (braces $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
     cond = hsep $ intersperse "&&" $ filter (/= empty)
                                    $ map (\(_,(_,c)) -> c) exprStructFields
 mkPatExpr' d ETuple{..}                = return (e, cond)
