@@ -50,8 +50,8 @@ function f1 (x: T1, y: T2, q: T3): bool =
                 C32{.f3=((_, (_, _, true)), C12{.f3=_, .f4=(_, _, true)})} -> false
             };
             (match (q) {
-                 C31{.f1=_, .f2=0, .s="foo", .b=15} -> true,
-                 C31{.f1=_, .f2=_, .s=_, .b=15} -> true,
+                 C31{.f1=_, .f2=0, .s="foo", .b=32'd15} -> true,
+                 C31{.f1=_, .f2=_, .s=_, .b=32'd15} -> true,
                  C31{.f1=_, .f2=0, .s=_, .b=_} -> true,
                  C31{.f1=_, .f2=_, .s="foo", .b=_} -> true,
                  C32{.f3=_} -> true,

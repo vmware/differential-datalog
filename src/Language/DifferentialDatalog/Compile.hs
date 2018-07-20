@@ -532,9 +532,6 @@ mkVarsTupleValuePat d vs = do
     constructor <- mkConstructorName d $ tTuple $ map typ vs
     return $ constructor <> (parens $ tuple $ map (pp . name) vs)
 
-
-
-
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
 mkFilters d rl@Rule{..} last_idx = 

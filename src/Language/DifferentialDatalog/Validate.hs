@@ -73,10 +73,12 @@ validate d0 = do
     depGraphValidate d'
     -- Insert string conversion functions
     d'' <- progInjectStringConversions d'
+    -- Convert 'int' constants to 'bit<>'.
+    let d''' = progConvertIntsToBVs d''
     -- This check must be done after 'depGraphValidate', which may
     -- introduce recursion
-    checkNoRecursion d''
-    return d''
+    checkNoRecursion d'''
+    return d'''
 
 --    mapM_ (relValidate2 r)   refineRels
 --    maybe (return ())
@@ -576,3 +578,13 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
 
 exprInjectStringConversions _ _   e = return $ E e
 
+
+progConvertIntsToBVs :: DatalogProgram -> DatalogProgram
+progConvertIntsToBVs d = progExprMapCtx d (exprConvertIntToBV d)
+
+exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
+exprConvertIntToBV d ctx e@(EInt p v) = 
+    case exprType' d ctx (E e) of
+         TBit _ w -> E $ EBit p w v
+         _        -> E e
+exprConvertIntToBV _ _ e = E e

@@ -29,6 +29,7 @@ Description: Helper functions for manipulating 'DatalogProgram'.
 -}
 module Language.DifferentialDatalog.DatalogProgram (
     progExprMapCtxM,
+    progExprMapCtx,
     DepGraph,
     progDependencyGraph,
     progExpandMultiheadRules
@@ -38,6 +39,7 @@ where
 import qualified Data.Graph.Inductive as G
 import qualified Data.Map as M
 import Data.Maybe
+import Control.Monad.Identity
 
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
@@ -80,6 +82,9 @@ rhsExprMapCtxM d fun r rhsidx a@RHSAggregate{} = do
 rhsExprMapCtxM d fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
+
+progExprMapCtx :: DatalogProgram -> (ECtx -> ENode -> Expr) -> DatalogProgram
+progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun ctx e)
 
 type DepGraph = G.Gr String Bool
 
