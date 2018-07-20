@@ -238,10 +238,13 @@ updateFile :: FilePath -> String -> IO ()
 updateFile path content = do
     createDirectoryIfMissing True $ takeDirectory path
     exists <- doesFileExist path
+    let tmppath = addExtension path "tmp"
     if exists
        then do
             oldcontent <- readFile path
-            when (oldcontent /= content) $ writeFile path content
+            when (oldcontent /= content) $ do
+                writeFile tmppath content
+                renameFile tmppath path
        else writeFile path content
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
@@ -281,7 +284,7 @@ mkTypedef TypeDef{..} =
                           -> "enum" <+> pp tdefName <> targs <+> "{"                                   $$
                              (nest' $ hsep $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"
-         Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t
+         Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     targs = if null tdefArgs
@@ -386,10 +389,10 @@ compileRelation d rname = do
             "    input:        " <> (if relGround then "true" else "false") <> ","      $$
             "    id:           Relations::" <> pp rname <+> "as RelId,"                 $$
             "    rules:        vec!["                                                   $$
-            (nest' $ nest' $ vcat $ punctuate comma rules') <> "],"                     $$
+            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$
             "    arrangements: vec!["                                                   $$
-            (nest' $ nest' $ vcat $ punctuate comma arrangements) <> "],"               $$
-            "    change_cb:    Arc::new(move |v,pol| )"                                 $$
+            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")               $$
+            "    change_cb:    Arc::new(move |v,pol| {})"                               $$
             "}"
     return (rname, f)
 
@@ -409,11 +412,12 @@ compileRule :: DatalogProgram -> Rule -> CompilerMonad Doc
 compileRule d rl@Rule{..} = do
     let fstrel = atomRelation $ rhsAtom $ head ruleRHS
     xforms <- compileRule' d rl 0
-    return $ "Rule{"                                             $$
+    return $ "/*" <+> pp rl <+> "*/"                             $$
+             "Rule{"                                             $$
              "    rel: Relations::" <> pp fstrel <+> "as RelId," $$ 
              "    xforms: vec!["                                 $$ 
              (nest' $ nest' $ vcat $ punctuate comma xforms)     $$
-             "]}"
+             "    ]}"
 
 -- Generates one XForm in the chain
 compileRule' :: DatalogProgram -> Rule -> Int -> CompilerMonad [Doc]
@@ -459,7 +463,7 @@ openAtom d var Atom{..} = do
         cond_str = if cond == empty then empty else ("if" <+> cond)
     return $
         "let" <+> vars <+> "= match " <> var <> "{"                                                  $$
-        "    Value::" <> constructor <> "(" <> pattern <> " )" <+> cond_str <+> "=> " <> vars <> "," $$
+        "    " <> constructor <> "(" <> pattern <> ")" <+> cond_str <+> "=> " <> vars <> ","         $$
         "    _ => return None"                                                                       $$
         "};"
 
@@ -468,7 +472,7 @@ mkConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
 mkConstructorName d t = do
     let t' = typeNormalize d t
     addType t'
-    return $ mkConstructorName' d t'
+    return $ "Value::" <> mkConstructorName' d t'
 
 -- Assumes that t is normalized
 mkConstructorName' :: DatalogProgram -> Type -> Doc
@@ -561,8 +565,8 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     -- Arrange variables from previous terms
     akey <- mkTupleValue d ctx $ map snd vmap
     aval <- mkVarsTupleValue d post_join_vars
-    let afun = prefix $$ 
-               "Some(" <> akey <> "," <+> aval <> ")"
+    let afun = braces' $ prefix $$ 
+                         "Some(" <> akey <> "," <+> aval <> ")"
     -- simplify pattern to only extract new variables from it
     let strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
         strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
@@ -580,12 +584,12 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     (ret, last_idx') <- if last_idx == length ruleRHS - 1
         then (, last_idx + 1) <$> mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
         else (, last_idx)     <$> (mkVarsTupleValue d $ rhsVarsAfter d rl last_idx)
-    let jfun = open                     $$ 
-               vcat filters             $$ 
-               "Some" <> parens ret
+    let jfun = braces' $ open                     $$ 
+                         vcat filters             $$ 
+                         "Some" <> parens ret
     let doc = "XForm::Join{"                                                                                         $$
               "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                      $$
-              "    arrangement: (Relations::" <> pp (atomRelation atom) <> "as RelId," <> pp aid <> "),"             $$
+              "    arrangement: (Relations::" <> pp (atomRelation atom) <+> "as RelId," <> pp aid <> "),"            $$
               "    jfun:        &((|_," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
               "}"
     return (doc, last_idx')
@@ -595,8 +599,8 @@ mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
     akey <- mkValue d (CtxRuleRAtom rl ajoin_idx) atomVal
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
-    let afun = prefix $$ 
-               "Some(" <> akey <> "," <+> aval <> ")"
+    let afun = braces' $ prefix $$ 
+                         "Some(" <> akey <> "," <+> aval <> ")"
     return $ "XForm::Antijoin{"                                                            $$
              "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
              "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                     $$
@@ -633,7 +637,7 @@ normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
 
 -- Simplify away parts of the pattern that do not constrain its value.
 normalizePattern :: DatalogProgram -> ECtx -> ENode -> Expr
-normalizePattern _ ctx e | ctxInRuleRHSPattern ctx = E e
+normalizePattern _ ctx e | not (ctxInRuleRHSPattern ctx) = E e
 normalizePattern d ctx e =
     case e of
          -- replace new variables with placeholders
@@ -651,8 +655,8 @@ normalizePattern d ctx e =
 mkHead :: DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
 mkHead d prefix rl = do
     v <- mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
-    let fmfun = prefix $$
-                "Some" <> parens v
+    let fmfun = braces' $ prefix $$
+                          "Some" <> parens v
     return $
         "XForm::FilterMap{"                                                             $$
         "    fmfun: &((|" <> vALUE_VAR <> "|" <> fmfun <>") as FilterMapFunc<Value>)"   $$
@@ -675,11 +679,14 @@ mkProg d nodes = do
                   return $ "let" <+> pp rname <+> "=" <+> rel arrs <> ";")
                  (concatMap nodeRels nodes)
     let pnodes = map mkNode nodes
-        prog = "let prog: Program<Value> = Program {"           $$
+        prog = "Program {"                                      $$
                "    nodes: vec!["                               $$
                (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
-               "]};"
-    return $ rels $$ prog
+               "]}"
+    return $ 
+        "pub fn prog() -> Program<Value> {"     $$
+        (nest' $ rels $$ prog)                  $$
+        "}"
 
 mkNode :: ProgNode -> Doc
 mkNode (RelNode (rel,_)) = 
@@ -705,7 +712,7 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars _ _               = []
     patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
     let afun = "match" <+> vALUE_VAR <+> "{"                                                          $$
-               (nest' $ pat <+> cond <+> "=> Some(" <+> patvars <> "," <+> vALUE_VAR <> ".clone()),") $$
+               (nest' $ pat <+> cond <+> "=> Some(" <> patvars <> "," <+> vALUE_VAR <> ".clone()),")  $$
                "    _ => None"                                                                        $$
                "}"
     return $
@@ -751,11 +758,13 @@ mkPatExpr' d EStruct{..}               = return (e, cond)
     struct_name = name $ consType d exprConstructor
     e = pp struct_name <> "::" <> pp exprConstructor <> 
         (braces' $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
-    cond = hsep $ intersperse "&&" $ map (\(_,(_,c)) -> c) exprStructFields
+    cond = hsep $ intersperse "&&" $ filter (/= empty)
+                                   $ map (\(_,(_,c)) -> c) exprStructFields
 mkPatExpr' d ETuple{..}                = return (e, cond)
     where
     e = "(" <> (hsep $ punctuate comma $ map (pp . fst) exprTupleFields) <> ")"
-    cond = hsep $ intersperse "&&" $ map (pp . snd) exprTupleFields
+    cond = hsep $ intersperse "&&" $ filter (/= empty)
+                                   $ map (pp . snd) exprTupleFields
 mkPatExpr' _ EPHolder{}                = return ("_", empty)
 mkPatExpr' _ ETyped{..}                = return exprExpr
 mkPatExpr' _ e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
@@ -953,7 +962,7 @@ castBV :: Doc -> Int -> Int -> Doc
 castBV e w1 w2 | t1 == t2 
                = e
                | w1 <= 64 && w2 <= 64
-               = parens $ e <+> " as " <+> t2
+               = parens $ e <+> "as" <+> t2
                | w2 > 64
                = "Uint::from_u64(" <> e <> ")"
                | otherwise

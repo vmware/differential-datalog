@@ -85,12 +85,12 @@ impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialO
 //impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 
 /// Unique identifier of a datalog relation
-type RelId = usize;
+pub type RelId = usize;
 
 /// Unique identifier of an arranged relation.
 /// The first element of the tuple identifies relation; the second is the index
 /// of arrangement for the given relation.
-type ArrId = (RelId, usize);
+pub type ArrId = (RelId, usize);
 
 
 // TODO: add validating constructor for Program:
