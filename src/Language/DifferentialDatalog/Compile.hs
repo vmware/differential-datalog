@@ -280,13 +280,13 @@ mkTypedef TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive                                                                    $$
-                             "struct" <+> pp tdefName <> targs <+> "{"                                 $$
+                             "pub struct" <+> pp tdefName <> targs <+> "{"                             $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
                              "unsafe_abomonate!(" <> pp tdefName <> ");"
                           | otherwise
                           -> derive                                                                    $$
-                             "enum" <+> pp tdefName <> targs <+> "{"                                   $$
+                             "pub enum" <+> pp tdefName <> targs <+> "{"                               $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
                              "unsafe_abomonate!(" <> pp tdefName <> ");"
@@ -308,7 +308,7 @@ mkTypedef TypeDef{..} =
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "fn" <+> pp (name f) <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
+    "fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
     (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                               $$
     "}"
                         | otherwise = empty
@@ -316,11 +316,15 @@ mkFunc d f@Function{..} | isJust funcDef =
     mkArg :: Field -> Doc
     mkArg a = pp (name a) <> ":" <+> "&" <> mkType (typ a)
 
+    tvars = case funcTypeVars f of
+                 []  -> empty
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
+
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: DatalogProgram -> S.Set Type -> Doc
 mkValType d types = 
     "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
-    "enum Value {"                                                                          $$
+    "pub enum Value {"                                                                      $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
     "}"                                                                                     $$
     "unsafe_abomonate!(Value);"                                                             $$
@@ -478,6 +482,18 @@ openAtom d var Atom{..} = do
         "    _ => return None"                                                         $$
         "};"
 
+-- Generate Rust code to open up tuples and bring variables into scope.
+-- The Rust code returns None if the record does not pass the filter.
+openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
+openTuple d var vs = do
+    tup <- mkVarsTupleValuePat d vs
+    let vars = tuple $ map (pp . name) vs
+    return $ 
+        "let" <+> vars <+> " = match " <> var <> "{"                                   $$
+        "    " <> tup <> "=> " <> vars <> ","                                          $$
+        "    _ => return None"                                                         $$
+        "};"
+
 -- Generate Rust constructor name for a type
 mkConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
 mkConstructorName d t = do
@@ -503,15 +519,7 @@ mkConstructorName' d t =
                case typeArgs t of
                     [] -> empty
                     as -> "__" <> (hcat $ punctuate "_" $ map (mkConstructorName' d) as)
-
        
--- Generate Rust code to open up tuples and bring variables into scope.
--- The Rust code returns None if the record does not pass the filter.
-openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
-openTuple d var vars = do
-    tup <- mkVarsTupleValuePat d vars
-    return $ "let" <+> tup <+> " = " <> var <> ";"
-
 mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue d ctx e = do
     constructor <- mkConstructorName d $ exprType d ctx e
@@ -602,10 +610,10 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     let jfun = braces' $ open                     $$ 
                          vcat filters             $$ 
                          "Some" <> parens ret
-    let doc = "XForm::Join{"                                                                                         $$
-              "    afun:        &((|" <> vALUE_VAR <> "|" <> afun <>") as ArrangeFunc<Value>),"                      $$
-              "    arrangement: (Relations::" <> pp (atomRelation atom) <+> "as RelId," <> pp aid <> "),"            $$
-              "    jfun:        &((|_," <> vALUE_VAR1 <> "," <> vALUE_VAR2 <> "|" <> jfun <> ") as JoinFunc<Value>)" $$
+    let doc = "XForm::Join{"                                                                                                                      $$
+              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")                                  $$
+              "    arrangement: (Relations::" <> pp (atomRelation atom) <+> "as RelId," <> pp aid <> "),"                                         $$
+              (nest' $ "jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>" $$ jfun $$ "__f}") $$
               "}"
     return (doc, last_idx')
 
@@ -616,9 +624,9 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
     let afun = braces' $ prefix $$ 
                          "Some((" <> akey <> "," <+> aval <> "))"
-    return $ "XForm::Antijoin{"                                                            $$
-             "    afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>),"   $$
-             "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                     $$
+    return $ "XForm::Antijoin{"                                                                                 $$
+             (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
+             "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                                          $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
@@ -673,8 +681,8 @@ mkHead d prefix rl = do
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     return $
-        "XForm::FilterMap{"                                                             $$
-        "    fmfun: &((|" <> vALUE_VAR <> "|" <> fmfun <>") as FilterMapFunc<Value>)"   $$
+        "XForm::FilterMap{"                                                                       $$
+        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f}") $$
         "}"
 
 -- Variables in the RHS of the rule declared before or in i'th term
@@ -727,16 +735,16 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars _ _               = []
     patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
     constructor <- mkConstructorName d $ relType rel
-    let afun = "match" <+> vALUE_VAR <+> "{"                                                                                  $$
+    let afun = braces' $
+               "match &" <+> vALUE_VAR <+> "{"                                                                                $$
                (nest' $ constructor <> parens pat <+> cond <+> "=> Some((" <> patvars <> "," <+> vALUE_VAR <> ".clone())),")  $$
                "    _ => None"                                                                                                $$
                "}"
     return $
-        "Arrangement{"                                                              $$
-        "   name: \"" <> pp pattern <> "\".to_string(),"                            $$
-        "   afun: &((|" <> vALUE_VAR <> "|" <> afun <> ") as ArrangeFunc<Value>)"   $$
+        "Arrangement{"                                                                                      $$
+        "   name: \"" <> pp pattern <> "\".to_string(),"                                                    $$
+        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
         "}"
-
 
 -- Compile Datalog pattern expression to Rust.
 -- The first element in the return tuple is a Rust match pattern, the second
@@ -820,7 +828,7 @@ mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
-mkExpr' _ _ EString{..} = ("\"" <> pp exprString <> "\".to_string()", EVal)
+mkExpr' _ _ EString{..} = ("r###\"" <> pp exprString <> "\"###.to_string()", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 64 = (pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise       = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
@@ -883,11 +891,12 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments
 -- are compiled into normal assignments.  Note: assignments in rule
 -- atoms are handled by a different code path.
-mkExpr' d _ ESet{..} | islet     = ("let" <+> assign, EVal)
-                     | otherwise = (assign, EVal)
+mkExpr' d ctx ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
+                       | otherwise = (assign, EVal)
     where
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
     assign = lval exprLVal <+> "=" <+> val exprRVal
+    optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
 
 -- operators take values or lvalues and return values
 mkExpr' d ctx e@EBinOp{..} = (v', EVal)
@@ -916,7 +925,7 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     e' = exprMap (E . sel3) e
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
-             BNeg   -> mkTruncate (parens $ "~" <> arg) $ exprType' d ctx (E e')
+             BNeg   -> mkTruncate (parens $ "!" <> arg) $ exprType' d ctx (E e')
 
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 

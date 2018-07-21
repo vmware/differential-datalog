@@ -111,6 +111,8 @@ function fnested(x: nested_t): string = {
 
 function parameterized(x: 'A, y: 'A): 'A
 
+function parameterized2(x: 'A, y: 'A): bool = x == y
+
 typedef string_syn = string
 
 function use_parameterized(x: string, y: string_syn): string = 

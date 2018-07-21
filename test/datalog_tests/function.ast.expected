@@ -37,6 +37,8 @@ function fnested (x: nested_t): string =
 function g (a: int): int
 function h (a: (int, int)): (int, int)
 function parameterized (x: 'A, y: 'A): 'A
+function parameterized2 (x: 'A, y: 'A): bool =
+    (x == y)
 function patterns (): () =
     ((var a: Alt) = C0{.x=32'd1};
      (var b = match (a) {
