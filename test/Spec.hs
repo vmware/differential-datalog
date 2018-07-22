@@ -24,6 +24,7 @@ SOFTWARE.
 import Test.Tasty
 import Test.Tasty.Golden
 import System.FilePath
+import System.Directory
 import Test.HUnit
 import Data.List
 import Data.List.Split
@@ -42,7 +43,7 @@ goldenTests :: IO TestTree
 goldenTests = do
   dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
   return $ testGroup "datalog parser tests"
-    [ goldenVsFile (takeBaseName dlFile) expect output (testParser dlFile output)
+    [ goldenVsFile (takeBaseName dlFile) expect output (testOne dlFile output)
     | dlFile <- dlFiles 
     , let expect = replaceExtension dlFile ".ast.expected"
     , let output = replaceExtension dlFile ".ast"]
@@ -60,10 +61,18 @@ compileFailingProgram file program =
     (show <$> parseValidate file program) `catch`
              (\e -> return $ show (e::SomeException))
 
--- test Datalog parser and pretty printer.
--- as a side-effect it must create the file with the name specified
-testParser :: FilePath -> FilePath -> IO ()
-testParser fname ofname = do
+-- Run Datalog compiler on spec in 'fname'.
+--
+-- * Writes parsed AST to 'ofname'.
+--
+-- * Creates Cargo project in a directory obtained by removing file
+-- extension from 'fname'.
+--
+-- * Checks if a file with the same name as 'fname' and '.rs' extension 
+-- (instead of '.dl') exists and passes its content as the 'imports' argument to
+-- compiler.
+testOne :: FilePath -> FilePath -> IO ()
+testOne fname ofname = do
     -- if a file contains .fail. in it's name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
@@ -86,5 +95,10 @@ testParser fname ofname = do
         prog' <- parseDatalogFile False ofname
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
-        compile prog specname (joinPath [takeDirectory fname, specname])
+        let importsfile = addExtension (dropExtension fname) "rs"
+        hasimports <- doesFileExist importsfile
+        imports <- if hasimports
+                      then readFile importsfile
+                      else return ""
+        compile prog specname imports (joinPath [takeDirectory fname, specname])
     return ()
