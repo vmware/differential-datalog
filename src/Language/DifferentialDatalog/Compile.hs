@@ -292,13 +292,13 @@ mkTypedef TypeDef{..} =
                              "pub struct" <+> pp tdefName <> targs <+> "{"                             $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
-                             "unsafe_abomonate!(" <> pp tdefName <> ");"
+                             impl_abomonate
                           | otherwise
                           -> derive                                                                    $$
                              "pub enum" <+> pp tdefName <> targs <+> "{"                               $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
-                             "unsafe_abomonate!(" <> pp tdefName <> ");"
+                             impl_abomonate
          Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
@@ -306,6 +306,10 @@ mkTypedef TypeDef{..} =
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">" 
+    targs_traits = if null tdefArgs
+                      then empty
+                      else "<" <> (hsep $ punctuate comma $ map ((<> ": Val") . pp) tdefArgs) <> ">" 
+
     mkField :: Field -> Doc
     mkField f = pp (name f) <> ":" <+> mkType (typ f)
 
@@ -314,6 +318,8 @@ mkTypedef TypeDef{..} =
         pp (name c) <+> "{" $$
         (nest' $ vcat $ punctuate comma $ map mkField $ consArgs c) $$
         "}"
+
+    impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> pp tdefName <> targs <> "{}"
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
@@ -860,7 +866,7 @@ mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
                          | otherwise
                          = (tuple $ map val exprTupleFields, EVal)
 
-mkExpr' d ctx e@ESlice{..} = (mkSlice (deref exprOp, w) exprH exprL, EVal)
+mkExpr' d ctx e@ESlice{..} = (mkSlice (val exprOp, w) exprH exprL, EVal)
     where
     e' = exprMap (E . sel3) e
     TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
@@ -883,10 +889,12 @@ mkExpr' d ctx e@EMatch{..} = (doc, EVal)
 -- Variables are mutable references 
 mkExpr' _ _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
 
-mkExpr' _ ctx ESeq{..} | ctxIsSeq2 ctx = (body, sel2 exprRight)
-                       | otherwise     = (braces' body, sel2 exprRight)
+mkExpr' _ ctx ESeq{..} | ctxIsSeq2 ctx || ctxIsFunc ctx
+                       = (body, EVal)
+                       | otherwise
+                       = (braces' body, EVal)
     where 
-    body = (sel1 exprLeft <> ";") $$ sel1 exprRight
+    body = (sel1 exprLeft <> ";") $$ val exprRight
     
 
 mkExpr' _ _ EITE{..} = (doc, EVal)
@@ -910,8 +918,8 @@ mkExpr' d ctx ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
 -- operators take values or lvalues and return values
 mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     where
-    e1 = deref exprLeft
-    e2 = deref exprRight
+    e1 = val exprLeft
+    e2 = val exprRight
     e' = exprMap (E . sel3) e
     t  = exprType' d ctx (E e')
     t1 = exprType' d (CtxBinOpL e' ctx) (E $ sel3 exprLeft)
@@ -930,7 +938,7 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
 
 mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     where
-    arg =  deref exprOp
+    arg =  val exprOp
     e' = exprMap (E . sel3) e
     v = case exprUOp of
              Not    -> parens $ "!" <> arg

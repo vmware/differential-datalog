@@ -40,7 +40,8 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsSeq2,
      ctxIsTyped,
      ctxIsRuleRCond,
-     ctxInRuleRHSPattern)
+     ctxInRuleRHSPattern,
+     ctxIsFunc)
 where
 
 import Data.Maybe
@@ -106,3 +107,7 @@ ctxInRuleRHSPattern CtxStruct{..}         = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTuple{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTyped{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern _                     = False
+
+ctxIsFunc :: ECtx -> Bool
+ctxIsFunc CtxFunc{} = True
+ctxIsFunc _         = False

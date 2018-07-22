@@ -19,3 +19,6 @@ use abomonation::Abomonation;
 use std::sync::{Arc,Mutex};
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
+
+use serde::de::*;
+use serde::ser::*;
