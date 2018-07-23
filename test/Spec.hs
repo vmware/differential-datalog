@@ -25,10 +25,13 @@ import Test.Tasty
 import Test.Tasty.Golden
 import System.FilePath
 import System.Directory
+import System.Process
 import Test.HUnit
 import Data.List
 import Data.List.Split
 import Control.Exception
+import Control.Monad
+import GHC.IO.Exception
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
@@ -100,5 +103,15 @@ testOne fname ofname = do
         imports <- if hasimports
                       then readFile importsfile
                       else return ""
-        compile prog specname imports (joinPath [takeDirectory fname, specname])
+        -- generate Rust project
+        let rust_dir = joinPath [takeDirectory fname, specname, specname]
+        compile prog specname imports rust_dir
+        -- compile it with Cargo
+        let cargo_proc = (proc "cargo" ["test"]){cwd = Just rust_dir}
+        (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++ 
+                                     "\nstderr:\n" ++ stde ++
+                                     "\n\nstdout:\n" ++ stdo
+        return ()
     return ()

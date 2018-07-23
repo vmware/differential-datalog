@@ -62,3 +62,4 @@ tests:
     - HUnit
     - tasty-golden
     - filepath
+    - process
