@@ -382,7 +382,7 @@ ground relation Logical_Switch_Port (
     port_security_ip_egress: string,
     port_security_nd:        string,
     name:                    string,
-    type:                    string,
+    _type:                   string,
     macs:                    string
 )
 
@@ -431,7 +431,7 @@ for (lsp in Logical_Switch_Port) {
 /* Ingress table 9: Respond to ARP/ND requests, for ports that are up and for
  * router ports (up or not), but not from localnet ports. */
 for (lsp in Logical_Switch_Port)
-    if (lsp.type == "localnet") {
+    if (lsp._type == "localnet") {
         let p = lsp.name in
             Flow(lsp.ls, LS_IN_ARP_RSP, 100, $"inport == \"${p}\"", "{ next; }")
     }

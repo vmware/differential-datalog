@@ -68,6 +68,10 @@ parseDatalogString insert_preamble program file = do
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog
 
+-- The following Rust keywords are declared as Datalog keywords to
+-- prevent users from declaring variables with the same names.
+rustKeywords = ["type"]
+
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
 reservedNames = ["_",
@@ -94,7 +98,7 @@ reservedNames = ["_",
                  "string",
                  "true",
                  "typedef",
-                 "var"]
+                 "var"] ++ rustKeywords
 
 
 ccnDef = emptyDef { T.commentStart      = "/*"

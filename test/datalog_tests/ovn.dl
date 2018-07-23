@@ -160,7 +160,7 @@ ground relation Connection_status (
 ground relation Logical_Switch (
     id:         uuid,
     name:       string,
-    type:       string
+    _type:      string
 )
 
 ground relation Logical_Switch_other_config (
@@ -236,7 +236,7 @@ ground relation Logical_Switch_Port (
     dhcpv4_options:         option_t<uuid>,
     dhcpv6_options:         option_t<uuid>,
     name:                   string,
-    type:                   string
+    _type:                  string
 )
 
 ground relation Logical_Switch_Port_options (
@@ -602,7 +602,7 @@ ground relation NAT (
     external_mac:   option_t<string>,
     logical_ip:     string,
     logical_port:   option_t<string>,
-    type:           option_t<string>
+    _type:          option_t<string>
 )
 
 ground relation NAT_external_ids (
