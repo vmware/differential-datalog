@@ -114,6 +114,8 @@ pub enum ProgNode<V: Val> {
     SCCNode{rels: Vec<Relation<V>>}
 }
 
+pub type UpdateCallback<V> = Arc<Fn(&V, bool) + Send + Sync>;
+
 /// Datalog relation.
 ///
 /// defines a set of rules and a set of arrangements with which this relation is used in 
@@ -137,7 +139,7 @@ pub struct Relation<V: Val> {
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement<V>>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb:    Arc<Fn(&V, bool) + Send + Sync>
+    pub change_cb:    UpdateCallback<V>
 }
 
 /// Function type used to map the content of a relation

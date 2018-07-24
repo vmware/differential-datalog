@@ -430,7 +430,7 @@ compileRelation d rname = do
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$
             "    arrangements: vec!["                                                   $$
             (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")               $$
-            "    change_cb:    Arc::new(move |v,pol| {})"                               $$
+            "    change_cb:    __update_cb.clone()"                                     $$
             "}"
     return (rname, f)
 
@@ -747,8 +747,8 @@ mkProg d nodes = do
                (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
                "]}"
     return $ 
-        "pub fn prog() -> Program<Value> {"     $$
-        (nest' $ rels $$ prog)                  $$
+        "pub fn prog(__update_cb: UpdateCallback<Value>) -> Program<Value> {"  $$
+        (nest' $ rels $$ prog)                                                 $$
         "}"
 
 mkNode :: ProgNode -> Doc
