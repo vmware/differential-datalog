@@ -1,0 +1,170 @@
+typedef ACL = ACL{id: uuid, name: option_t<string>, logical_switch: uuid, priority: int, direction: string, _match: string, action: string, log: bool, severity: option_t<string>}
+typedef ACL_external_ids = ACL_external_ids{acl: uuid, key: string, value: string}
+typedef Address_Set = Address_Set{id: uuid, name: string}
+typedef Address_Set_addresses = Address_Set_addresses{address_set: uuid, address: string}
+typedef Address_Set_external_ids = Address_Set_external_ids{address_set: uuid, key: string, value: string}
+typedef Connection = Connection{id: uuid, target: string, is_connected: bool, max_backoff: option_t<int>, inactivity_probe: option_t<int>}
+typedef Connection_external_ids = Connection_external_ids{connection: uuid, value: string}
+typedef Connection_other_config = Connection_other_config{connection: uuid, other_config: string}
+typedef Connection_status = Connection_status{connection: uuid, key: string, value: string}
+typedef DHCP_Options = DHCP_Options{id: uuid, cidr: string}
+typedef DHCP_Options_external_ids = DHCP_Options_external_ids{dhcp_options: uuid, key: string, value: string}
+typedef DHCP_Options_netmask = DHCP_Options_netmask{dhcp_options: uuid, netmask: string}
+typedef DHCP_Options_option_args = DHCP_Options_option_args{dhcp_options: uuid, option: string}
+typedef DHCP_Options_options = DHCP_Options_options{dhcp_options: uuid, key: string, value: string}
+typedef DHCP_Options_server_ip = DHCP_Options_server_ip{dhcp_options: uuid, server_ip: string}
+typedef DHCP_Options_server_mac = DHCP_Options_server_mac{dhcp_options: uuid, server_mac: mac_addr_t}
+typedef DHCP_Options_stateful = DHCP_Options_stateful{dhcp_options: uuid, stateful: bool}
+typedef DNS = DNS{id: uuid, logical_switch: uuid}
+typedef DNS_external_ids = DNS_external_ids{dns: uuid, key: string, value: string}
+typedef DNS_records = DNS_records{dns: uuid, key: string, value: string}
+typedef Gateway_Chassis = Gateway_Chassis{id: uuid, logical_router: uuid, name: string, chassis_name: string, priority: int}
+typedef Gateway_Chassis_external_ids = Gateway_Chassis_external_ids{gateway_chassis: uuid, key: string, value: string}
+typedef Gateway_Chassis_options = Gateway_Chassis_options{gateway_chassis: uuid, key: string, value: string}
+typedef Load_Balancer = Load_Balancer{id: uuid, logical_switch: uuid, protocol: option_t<string>, name: string}
+typedef Load_Balancer_external_ids = Load_Balancer_external_ids{load_balancer: uuid, key: string, value: string}
+typedef Load_Balancer_ip_addresses = Load_Balancer_ip_addresses{load_balancer: uuid, ip_address: string}
+typedef Load_Balancer_vips = Load_Balancer_vips{load_balancer: uuid, key: string, value: string}
+typedef Logical_Router = Logical_Router{id: uuid, enabled: option_t<bool>, name: string}
+typedef Logical_Router_Port = Logical_Router_Port{id: uuid, logical_router: uuid, name: string, mac: string, peer: option_t<string>, enabled: option_t<bool>}
+typedef Logical_Router_Port_external_ids = Logical_Router_Port_external_ids{logical_router_port: uuid, key: string, value: string}
+typedef Logical_Router_Port_ipv6_ra_configs = Logical_Router_Port_ipv6_ra_configs{logical_router_port: uuid, key: string, value: string}
+typedef Logical_Router_Port_networks = Logical_Router_Port_networks{logical_router_port: uuid, network: string}
+typedef Logical_Router_Port_options = Logical_Router_Port_options{logical_router_port: uuid, key: string, value: string}
+typedef Logical_Router_Static_Route = Logical_Router_Static_Route{id: uuid, logical_router: uuid, ip_prefix: string, policy: option_t<string>, nexthop: string, output_port: option_t<string>}
+typedef Logical_Router_Static_Route_external_ids = Logical_Router_Static_Route_external_ids{logical_router_static_route: uuid, key: string, value: string}
+typedef Logical_Router_external_ids = Logical_Router_external_ids{logical_router: uuid, key: string, value: string}
+typedef Logical_Router_options = Logical_Router_options{logical_router: uuid, key: string, value: string}
+typedef Logical_Switch = Logical_Switch{id: uuid, name: string, _type: string}
+typedef Logical_Switch_Port = Logical_Switch_Port{id: uuid, logical_switch: uuid, parent: option_t<string>, tag_request: option_t<int>, tag: option_t<int>, up: option_t<bool>, enabled: option_t<bool>, dhcpv4_options: option_t<uuid>, dhcpv6_options: option_t<uuid>, name: string, _type: string}
+typedef Logical_Switch_Port_addresses = Logical_Switch_Port_addresses{logical_switch_port: uuid, address: string}
+typedef Logical_Switch_Port_dynamic_addresses = Logical_Switch_Port_dynamic_addresses{logical_switch_port: uuid, dynamic_address: string}
+typedef Logical_Switch_Port_external_ids = Logical_Switch_Port_external_ids{logical_switch_port: uuid, key: string, value: string}
+typedef Logical_Switch_Port_ips = Logical_Switch_Port_ips{logical_switch_port: uuid, mac: mac_addr_t, ip: ip_addr_t}
+typedef Logical_Switch_Port_macs = Logical_Switch_Port_macs{logical_switch_port: uuid, mac: mac_addr_t}
+typedef Logical_Switch_Port_options = Logical_Switch_Port_options{logical_switch_port: uuid, key: string, value: string}
+typedef Logical_Switch_Port_port_security = Logical_Switch_Port_port_security{logical_switch_port: uuid, port_security: string}
+typedef Logical_Switch_Port_ps_ips = Logical_Switch_Port_ps_ips{logical_switch_port: uuid, mac: mac_addr_t, ip: ip_subnet_t}
+typedef Logical_Switch_Port_ps_macs = Logical_Switch_Port_ps_macs{logical_switch_port: uuid, mac: mac_addr_t}
+typedef Logical_Switch_external_ids = Logical_Switch_external_ids{logical_switch: uuid, key: string, value: string}
+typedef Logical_Switch_has_stateful_acl_action = Logical_Switch_has_stateful_acl_action{logical_switch: uuid}
+typedef Logical_Switch_other_config = Logical_Switch_other_config{logical_switch: uuid, key: string, value: string}
+typedef NAT = NAT{id: uuid, logical_router: uuid, external_ip: string, external_mac: option_t<string>, logical_ip: string, logical_port: option_t<string>, _type: option_t<string>}
+typedef NAT_external_ids = NAT_external_ids{nat: uuid, key: string, value: string}
+typedef NB_Global = NB_Global{nb_cfg: int, sb_cfg: int, hv_cfg: int}
+typedef NB_Global_external_ids = NB_Global_external_ids{key: string, value: string}
+typedef QoS = QoS{id: uuid, logical_switch: uuid, priority: int, direction: string, _match: string}
+typedef QoS_action = QoS_action{qos: uuid, key: string, value: int}
+typedef QoS_bandwidth = QoS_bandwidth{qos: uuid, key: string, value: int}
+typedef QoS_external_ids = QoS_external_ids{qos: uuid, key: string, value: string}
+typedef SSL = SSL{id: uuid, private_key: string, certificate: string, bootstrap_ca_cert: bool, ssl_protocols: string, ssl_ciphers: string}
+typedef SSL_external_ids = SSL_external_ids{ssl: uuid, key: string, value: string}
+typedef ip4_addr_t = bit<32>
+typedef ip4_subnet_t = IP4Subnet{addr: ip4_addr_t, mask: ip4_addr_t}
+typedef ip6_addr_t = bit<128>
+typedef ip6_subnet_t = IP6Subnet{addr: ip6_addr_t, mask: ip6_addr_t}
+typedef ip_addr_t = IPAddr4{addr4: ip4_addr_t} | IPAddr6{addr6: ip6_addr_t}
+typedef ip_port_t = IPPort{ip: string, port: option_t<port_t>}
+typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet: ip6_subnet_t}
+typedef mac_addr_t = bit<48>
+typedef option_t<'A> = None{} | Some{value: 'A}
+typedef port_t = bit<16>
+typedef set<'A>
+typedef set_t<'A>
+typedef uuid = bit<128>
+function __builtin_2string (x: 'X): string
+function build_dhcp_netmask (cidr: string): string
+function eth_addr_from_string (str: string): option_t<mac_addr_t>
+function extract_ips (str: string): set_t<ip_addr_t>
+function extract_mac (str: string): (mac_addr_t, string)
+function extract_subnets (str: string): set_t<ip_subnet_t>
+function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
+function ip_address_and_port_from_lb_key (key: string): ip_port_t
+function ip_parse (str: string): option_t<ip_addr_t>
+function ipv6_string_mapped (addr: ip6_addr_t): string
+function is_none (x: option_t<'A>): bool =
+    match (x) {
+        None{} -> true,
+        _ -> false
+    }
+function is_some (x: option_t<'A>): bool =
+    match (x) {
+        Some{.value=_} -> true,
+        _ -> false
+    }
+ground relation ACL [ACL]
+ground relation ACL_external_ids [ACL_external_ids]
+ground relation Address_Set [Address_Set]
+ground relation Address_Set_addresses [Address_Set_addresses]
+ground relation Address_Set_external_ids [Address_Set_external_ids]
+ground relation Connection [Connection]
+ground relation Connection_external_ids [Connection_external_ids]
+ground relation Connection_other_config [Connection_other_config]
+ground relation Connection_status [Connection_status]
+ground relation DHCP_Options [DHCP_Options]
+ground relation DHCP_Options_external_ids [DHCP_Options_external_ids]
+relation DHCP_Options_netmask [DHCP_Options_netmask]
+relation DHCP_Options_option_args [DHCP_Options_option_args]
+ground relation DHCP_Options_options [DHCP_Options_options]
+relation DHCP_Options_server_ip [DHCP_Options_server_ip]
+relation DHCP_Options_server_mac [DHCP_Options_server_mac]
+relation DHCP_Options_stateful [DHCP_Options_stateful]
+ground relation DNS [DNS]
+ground relation DNS_external_ids [DNS_external_ids]
+ground relation DNS_records [DNS_records]
+ground relation Gateway_Chassis [Gateway_Chassis]
+ground relation Gateway_Chassis_external_ids [Gateway_Chassis_external_ids]
+ground relation Gateway_Chassis_options [Gateway_Chassis_options]
+ground relation Load_Balancer [Load_Balancer]
+ground relation Load_Balancer_external_ids [Load_Balancer_external_ids]
+relation Load_Balancer_ip_addresses [Load_Balancer_ip_addresses]
+ground relation Load_Balancer_vips [Load_Balancer_vips]
+ground relation Logical_Router [Logical_Router]
+ground relation Logical_Router_Port [Logical_Router_Port]
+ground relation Logical_Router_Port_external_ids [Logical_Router_Port_external_ids]
+ground relation Logical_Router_Port_ipv6_ra_configs [Logical_Router_Port_ipv6_ra_configs]
+ground relation Logical_Router_Port_networks [Logical_Router_Port_networks]
+ground relation Logical_Router_Port_options [Logical_Router_Port_options]
+ground relation Logical_Router_Static_Route [Logical_Router_Static_Route]
+ground relation Logical_Router_Static_Route_external_ids [Logical_Router_Static_Route_external_ids]
+ground relation Logical_Router_external_ids [Logical_Router_external_ids]
+ground relation Logical_Router_options [Logical_Router_options]
+ground relation Logical_Switch [Logical_Switch]
+ground relation Logical_Switch_Port [Logical_Switch_Port]
+ground relation Logical_Switch_Port_addresses [Logical_Switch_Port_addresses]
+ground relation Logical_Switch_Port_dynamic_addresses [Logical_Switch_Port_dynamic_addresses]
+ground relation Logical_Switch_Port_external_ids [Logical_Switch_Port_external_ids]
+relation Logical_Switch_Port_ips [Logical_Switch_Port_ips]
+relation Logical_Switch_Port_macs [Logical_Switch_Port_macs]
+ground relation Logical_Switch_Port_options [Logical_Switch_Port_options]
+ground relation Logical_Switch_Port_port_security [Logical_Switch_Port_port_security]
+relation Logical_Switch_Port_ps_ips [Logical_Switch_Port_ps_ips]
+relation Logical_Switch_Port_ps_macs [Logical_Switch_Port_ps_macs]
+ground relation Logical_Switch_external_ids [Logical_Switch_external_ids]
+relation Logical_Switch_has_stateful_acl_action [Logical_Switch_has_stateful_acl_action]
+ground relation Logical_Switch_other_config [Logical_Switch_other_config]
+ground relation NAT [NAT]
+ground relation NAT_external_ids [NAT_external_ids]
+ground relation NB_Global [NB_Global]
+ground relation NB_Global_external_ids [NB_Global_external_ids]
+ground relation QoS [QoS]
+ground relation QoS_action [QoS_action]
+ground relation QoS_bandwidth [QoS_bandwidth]
+ground relation QoS_external_ids [QoS_external_ids]
+ground relation SSL [SSL]
+ground relation SSL_external_ids [SSL_external_ids]
+Load_Balancer_ip_addresses(.load_balancer=lb, .ip_address=ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips(.load_balancer=lb, .key=key, .value=_).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
+Logical_Switch_has_stateful_acl_action(.logical_switch=ls) :- ACL(.id=_, .name=_, .logical_switch=ls, .priority=_, .direction=_, ._match=_, .action="allow-related", .log=_, .severity=_).
+Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(subnet = extract_subnets(ips)).
+Logical_Switch_Port_ps_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
+DHCP_Options_option_args(.dhcp_options=opts, .option=((key ++ "=") ++ value)) :- DHCP_Options_options(.dhcp_options=opts, .key=key, .value=value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=val) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var ip4} = ip_parse(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=ipv6_string_mapped(lla)) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), None{} = ip_parse(val), Some{.value=var mac} = eth_addr_from_string(val), var lla = in6_generate_lla(mac).
+DHCP_Options_netmask(.dhcp_options=opts, .netmask=build_dhcp_netmask(cidr)) :- DHCP_Options(.id=opts, .cidr=cidr).
+DHCP_Options_stateful(.dhcp_options=opts, .stateful=true) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="false").
+DHCP_Options_stateful(.dhcp_options=opts, .stateful=false) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="true").

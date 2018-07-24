@@ -316,9 +316,12 @@ mkTypedef TypeDef{..} =
 
     mkConstructor :: Constructor -> Doc
     mkConstructor c = 
-        pp (name c) <+> "{" $$
-        (nest' $ vcat $ punctuate comma $ map mkField $ consArgs c) $$
-        "}"
+        let args = vcat $ punctuate comma $ map mkField $ consArgs c in
+        if null $ consArgs c 
+           then pp (name c)
+           else pp (name c) <+> "{" $$ 
+                nest' args $$ 
+                "}"
 
     impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> pp tdefName <> targs <> "{}"
 
@@ -482,10 +485,14 @@ compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++
 mkFlatMap :: DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx v e = do
     vars <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    -- Clone variables before passing them to the closure.
+    let clones = vcat $ map ((\vname -> "let" <+> vname <+> "=" <+> vname <> ".clone();") . pp . name) 
+                      $ filter ((/= v) . name) $ rhsVarsAfter d rl idx
     let set = mkExpr d (CtxRuleRFlatMap rl idx) e EVal
         fmfun = braces'
                 $ prefix $$ 
-                  "Some(Box::new(" <> set <> ".map(|ref" <+> pp v <> "|" <> vars <> ")))"
+                  clones $$
+                  "Some(Box::new(" <> set <> ".into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
     return $
         "XForm::FlatMap{"                                                                                               $$
         (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},") $$
@@ -720,7 +727,7 @@ mkHead d prefix rl = do
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter d rl i =
     filter (\f -> elem (name f) $ (map name $ ruleLHSVars d rl) `union` 
-                                  (concatMap (ruleRHSTermVars rl) [i..length (ruleRHS rl) - 1]))
+                                  (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
            $ ruleRHSVars d rl (i+1)
 
 mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
