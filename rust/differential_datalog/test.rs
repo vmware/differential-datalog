@@ -2,6 +2,7 @@
 
 use program::*;
 use uint::*;
+use int::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
@@ -9,6 +10,38 @@ use fnv::FnvHashSet;
 use std::iter::FromIterator;
 
 const TEST_SIZE: u64 = 10000;
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+struct P {
+    f1: Q,
+    f2: bool
+}
+unsafe_abomonate!(P);
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+struct Q {
+    f1: bool,
+    f2: String
+}
+unsafe_abomonate!(Q);
+
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+enum S {
+    S1 {f1: u32, f2: String, f3: Q, f4: Uint},
+    S2 {e1: bool},
+    S3 {g1: Q, g2: Q}
+}
+unsafe_abomonate!(S);
+
+impl S {
+    fn f1(&mut self) -> &mut u32 {
+        match self {
+            S::S1{ref mut f1,..} => f1,
+            _         => panic!("")
+        }
+    }
+}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum Value {
@@ -20,13 +53,115 @@ enum Value {
     u16(u16),
     u32(u32),
     u64(u64),
-    Tuple2(Box<Value>, Box<Value>)
+    i64(i64),
+    BoolTuple((bool, bool)),
+    Tuple2(Box<Value>, Box<Value>),
+    Q(Q),
+    S(S)
 }
 unsafe_abomonate!(Value);
 
 impl Default for Value {
     fn default() -> Value {Value::bool(false)}
 }
+
+fn _filter_fun1(v: &Value) -> bool {
+    match &v {
+        Value::S(S::S1{f1: _, f2: _, f3: _, f4: _}) => true, 
+        _ => false
+    }
+}
+
+fn some_fun(x: &u32) -> u32 {
+    (*x)+1
+}
+
+fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
+    let (x, _2) = match &v {
+        Value::S(S::S1{f1: ref x, f2: _0, f3: _2, f4: _3}) if *_0 == "foo".to_string() && *_3 == (Uint::from_u64(32) & Uint::from_u64(0xff)) => (x, _2), 
+        _ => return None
+    };
+    if (*_2).f1 && (*x) + 1 > 5 { return None; };
+    if some_fun(x) > 5 { return None; };
+    if some_fun(&((*x)+1)) > 5 { return None; };
+    if {let y=5; some_fun(&y) > 5} { return None; };
+    if {let x = 0; x < 4} { return None; };
+    if (*_2 == Q{f1: _2.f1, f2: _2.f2.clone()}) { return None; };
+    if {let v = &((*x) + 1); (*v) > 0} { return None; };
+    if {let v = &(*_2).f1; *v} { return None; };
+    if {let V = _2.f1; V} { return None; };
+    if {
+        let mut s = &mut S::S1{f1: 0, f2: "foo".to_string(), f3: Q{f1: true, f2: "bar".to_string()}, f4: Uint::from_u64(10)};
+        *s.f1() = 5;
+        let q = s.f1();
+        (*q) > 0
+        //q == Q{f1: false, f2: "buzz".to_string()}
+    } { 
+        return None; 
+    };
+    if {
+        let ref mut p = P{f1: Q{f1: true, f2: "x".to_string()}, f2: true};
+        let ref mut b = false;
+        p.f1 = Q{f1: true, f2: "x".to_string()};
+        let ref mut pf1 = p.f1.clone();
+        let ref mut pf11 = p.f1.clone();
+        let ref mut pf2 = (p.f1.f1 || p.f1.f1);
+        let ref mut pf22 = (p.f2.clone());
+        let ref mut z = true;
+        let ref mut pclone = p.clone();
+        let Q{f1: ref mut qf1, f2: ref mut qf2} = p.f1.clone();
+        *qf1 = true;
+        let ref mut neq = Q{f1: qf1.clone(), f2: qf2.clone()};
+        *z = true;
+
+        //*f2 = false.clone();
+        //*f1 = Q{f1: true, f2: "x".to_string()};
+        let (ref mut v1, ref mut v2): (Q,bool) = (Q{f1: true, f2: "x".to_string()}, false);
+        (*b) = false;
+
+        let ref mut s = S::S1{f1: 0, f2: "f2".to_string(), f3: neq.clone(), f4: Uint::from_u64(10)};
+        match (s) {
+            S::S1{f1,f2,f3: _,f4: _} => {
+                *f1 = 2; ()
+            },
+            _         => return None
+        };
+        match p {
+            P{f1, f2: true} => *f1 = p.f1.clone(),
+            _               => return None
+        };
+        /*match &mut p.f1 {
+            Q{f1: true, f2} => *f2 = p.f1.f2.clone(),
+            _               => return None
+        };*/
+        let ref mut a: u64 = 5 as u64;
+        let ref mut b: u64 = 5;
+        let ref mut c: u64 = *(a)+*(b);
+        *a = *a+*a+*a;
+        let ref mut str1: String = (("str1".to_string()) as String);
+        let ref mut str2 = "str2".to_string();
+        let ref mut str3 = (*str1).push_str(str2.as_str());
+        let (ref mut str4, _) = ("str4".to_string(), "str5".to_string());
+        match &(a,b) {
+            (5, _) => (),
+            _  => return None
+        }
+        *z
+    } { return None ;};
+    match *_2 {
+        Q{f1: true, f2: _} => {},
+        _ => return None
+    }
+    Some((Value::S(S::S3{g1: _2.clone(), g2: _2.clone()}), v.clone()))
+}
+
+/*
+fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
+    match v {
+        Value::Tuple2(v1,v2) => Some((*v1, *v2)),
+        _ => None
+    }
+}*/
 
 /*fn set_update(s: &Arc<Mutex<ValSet<Value>>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
 {
@@ -364,11 +499,21 @@ fn test_antijoin(nthreads: usize) {
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
-        match &v {
-            Value::Tuple2(v1,_) => Some(((**v1).clone(), v.clone())),
-            _ => None
-        }
+        let (v1,v) = match &v {
+            Value::Tuple2(v1,_) => ((**v1).clone(), v.clone()),
+            _ => return None
+        };
+        Some((v1,v))
     }
+
+    fn _afunx(v: Value) -> Option<(Value, Value)> {
+        let (v1,v2): (&bool, &bool) = match &v {
+            Value::BoolTuple((v1,v2)) => (v1,v2),
+            _ => return None
+        };
+        Some((Value::bool(*v1),Value::bool(*v2)))
+    }
+
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel2 = {
         let relset2 = relset2.clone();
@@ -513,6 +658,17 @@ fn test_map(nthreads: usize) {
         }
     }
 
+    fn flatmapfun(v: Value) -> Option<Box<Iterator<Item=Value>>> {
+        match &v {
+            Value::u64(i) => {
+                if *i > 12 {
+                    Some(Box::new(vec![Value::i64(-(*i as i64)), Value::i64(-(2*(*i as i64)))].into_iter()))
+                } else { None }
+            }, 
+            _ => None
+        }
+    }
+
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel2 = {
         let relset2 = relset2.clone();
@@ -531,7 +687,11 @@ fn test_map(nthreads: usize) {
                     },
                     XForm::FilterMap{
                         fmfun: &(fmfun as FilterMapFunc<Value>)
-                    }]
+                    },
+                    XForm::FlatMap{
+                        fmfun: &(flatmapfun as FlatMapFunc<Value>)
+                    }
+                ]
             }],
             arrangements: Vec::new(),
             change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
@@ -540,7 +700,7 @@ fn test_map(nthreads: usize) {
 
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: rel1},
-        ProgNode::RelNode{rel: rel2}]
+                    ProgNode::RelNode{rel: rel2}]
     };
 
     let mut running = prog.run(nthreads);
@@ -551,7 +711,8 @@ fn test_map(nthreads: usize) {
                                          map(|x| Value::u64(*x)).
                                          map(|x| mfun(x)).
                                          filter(|x| ffun(&x)).
-                                         filter_map(|x| fmfun(x)));
+                                         filter_map(|x| fmfun(x)).
+                                         flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ));
 
     running.transaction_start().unwrap();
     for x in &set {

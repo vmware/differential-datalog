@@ -73,10 +73,12 @@ validate d0 = do
     depGraphValidate d'
     -- Insert string conversion functions
     d'' <- progInjectStringConversions d'
+    -- Convert 'int' constants to 'bit<>'.
+    let d''' = progConvertIntsToBVs d''
     -- This check must be done after 'depGraphValidate', which may
     -- introduce recursion
-    checkNoRecursion d''
-    return d''
+    checkNoRecursion d'''
+    return d'''
 
 --    mapM_ (relValidate2 r)   refineRels
 --    maybe (return ())
@@ -299,6 +301,10 @@ relValidate d Relation{..} = typeValidate d [] relType
 
 ruleValidate :: (MonadError String me) => DatalogProgram -> Rule -> me ()
 ruleValidate d rl@Rule{..} = do
+    when (not $ null ruleRHS) $ do
+        case head ruleRHS of
+             RHSLiteral True _ -> return ()
+             x                 -> err (pos rl) "Rule must start with positive literal"
     mapIdxM_ (ruleRHSValidate d rl) ruleRHS
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
@@ -310,7 +316,7 @@ ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
     -- variable cannot be declared and used in the same atom
     uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
         $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars) 
-        $ exprVars (CtxRuleRAtom rl idx)
+        $ exprVarOccurrences (CtxRuleRAtom rl idx)
         $ atomVal atom
 
 ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
@@ -406,13 +412,14 @@ exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was perform
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
-exprValidate1 d _ ctx (EVarDecl p v) | ctxInSetL ctx || ctxInMatchPat ctx
-                                          = checkNoVar p d ctx v
-                                     | otherwise
+exprValidate1 d _ ctx (EVarDecl p v)      = do 
+    check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
+    checkNoVar p d ctx v
+{-                                     | otherwise
                                           = do checkNoVar p d ctx v
                                                check (ctxIsTyped ctx) p "Variable declared without a type"
                                                check (ctxIsSeq1 $ ctxParent ctx) p
-                                                      "Variable declaration is not allowed in this context"
+                                                      "Variable declaration is not allowed in this context"-}
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
@@ -509,10 +516,12 @@ exprValidate2 d _  (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 _ _   _                   = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
-checkLExpr d ctx e =
-    check (isLExpr d ctx e) (pos e)
-           $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
-
+checkLExpr d ctx e | ctxIsRuleRCond ctx = 
+    check (exprIsPattern e) (pos e)
+        $ "Left-hand side of an assignment term can only contain variable declarations, type constructors, and tuples"
+                   | otherwise =
+    check (exprIsVarOrFieldLVal d ctx e || exprIsDeconstruct d e) (pos e)
+        $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
 
 exprCheckMatchPatterns :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Expr -> me ()
 exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do
@@ -569,3 +578,13 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
 
 exprInjectStringConversions _ _   e = return $ E e
 
+
+progConvertIntsToBVs :: DatalogProgram -> DatalogProgram
+progConvertIntsToBVs d = progExprMapCtx d (exprConvertIntToBV d)
+
+exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
+exprConvertIntToBV d ctx e@(EInt p v) = 
+    case exprType' d ctx (E e) of
+         TBit _ w -> E $ EBit p w v
+         _        -> E e
+exprConvertIntToBV _ _ e = E e

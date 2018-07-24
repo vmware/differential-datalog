@@ -85,12 +85,12 @@ impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialO
 //impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 
 /// Unique identifier of a datalog relation
-type RelId = usize;
+pub type RelId = usize;
 
 /// Unique identifier of an arranged relation.
 /// The first element of the tuple identifies relation; the second is the index
 /// of arrangement for the given relation.
-type ArrId = (RelId, usize);
+pub type ArrId = (RelId, usize);
 
 
 // TODO: add validating constructor for Program:
@@ -113,6 +113,8 @@ pub enum ProgNode<V: Val> {
     RelNode{rel: Relation<V>},
     SCCNode{rels: Vec<Relation<V>>}
 }
+
+pub type UpdateCallback<V> = Arc<Fn(&V, bool) + Send + Sync>;
 
 /// Datalog relation.
 ///
@@ -137,12 +139,15 @@ pub struct Relation<V: Val> {
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement<V>>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb:    Arc<Fn(&V, bool) + Send + Sync>
+    pub change_cb:    UpdateCallback<V>
 }
 
 /// Function type used to map the content of a relation
 /// (see `XForm::Map`).
 pub type MapFunc<V>        = fn(V) -> V;
+
+/// (see `XForm::FlatMap`).
+pub type FlatMapFunc<V>        = fn(V) -> Option<Box<Iterator<Item=V>>>;
 
 /// Function type used to filter a relation
 /// (see `XForm::Filter`).
@@ -178,6 +183,10 @@ pub enum XForm<V: Val> {
     Map {
         mfun: &'static MapFunc<V>
     },
+    /// FlatMap
+    FlatMap {
+        fmfun: &'static FlatMapFunc<V>
+    },
     /// Filter a relation
     Filter {
         ffun: &'static FilterFunc<V>
@@ -194,7 +203,7 @@ pub enum XForm<V: Val> {
         arrangement: ArrId,
         /// Function used to put together ouput value
         jfun: &'static JoinFunc<V>
-    },
+    }, 
     /// Antijoin arranges the input relation using `afun` and retuns a subset of values that 
     /// correspond to keys not present in relation `rel`.
     Antijoin {
@@ -570,6 +579,13 @@ impl<V:Val> Program<V>
             rhs = match xform {
                 XForm::Map{mfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).map(f))
+                },
+                XForm::FlatMap{fmfun: &f} => {
+                    Some(rhs.as_ref().unwrap_or(first).
+                         flat_map(move |x| 
+                                  /* TODO: replace this with f(x).into_iter().flatten() when the
+                                   * iterator_flatten feature makes it out of experimental API. */
+                                  match f(x) {Some(iter) => iter, None => Box::new(None.into_iter())}))
                 },
                 XForm::Filter{ffun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).filter(f))

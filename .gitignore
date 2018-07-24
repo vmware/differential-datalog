@@ -25,4 +25,4 @@ out/
 *.cabal
 cabal.config
 differential-datalog.iml
-
+**Cargo.lock

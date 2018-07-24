@@ -5,15 +5,32 @@ use std::ops::*;
 use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
-
+use std::fmt;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
 pub struct Uint{x:BigUint}
 
 impl Default for Uint {
-    fn default() -> Uint {Uint{x: BigUint::default()}}
+    fn default() -> Uint {
+        Uint{x: BigUint::default()}
+    }
 }
 unsafe_abomonate!(Uint);
+
+impl Uint {
+    pub fn from_u64(v: u64) -> Uint {
+        Uint{x: BigUint::from(v)}
+    }
+    pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
+        Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
+    }
+}
+
+impl fmt::Display for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.x)
+    }
+}
 
 impl Serialize for Uint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -82,3 +99,5 @@ forward_binop!(impl Add for Uint, add);
 forward_binop!(impl Sub for Uint, sub);
 forward_binop!(impl Div for Uint, div);
 forward_binop!(impl Rem for Uint, rem);
+forward_binop!(impl BitAnd for Uint, bitand);
+forward_binop!(impl BitOr for Uint, bitor);

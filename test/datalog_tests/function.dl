@@ -63,7 +63,7 @@ function x(): Alt
 typedef C = C{f1: string, f2: string}
 
 function vars(): () = {
-    var x: int;
+    var x: int = 0;
     x = 10;
     var y = C{.f1 = "foo", .f2 = "bar"};
     var z: C = C{.f1 = "bar", .f2 = "foo"};
@@ -110,6 +110,8 @@ function fnested(x: nested_t): string = {
 }
 
 function parameterized(x: 'A, y: 'A): 'A
+
+function parameterized2(x: 'A, y: 'A): bool = x == y
 
 typedef string_syn = string
 

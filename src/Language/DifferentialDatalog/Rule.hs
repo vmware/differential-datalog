@@ -25,7 +25,9 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
-    ruleVars
+    ruleVars,
+    ruleRHSTermVars,
+    ruleLHSVars
 ) where
 
 import qualified Data.Set as S
@@ -35,6 +37,7 @@ import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Util
 
 import Debug.Trace
 
@@ -42,7 +45,7 @@ ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
--- a rule.  All conjuncts before 'i' be validated before calling this
+-- a rule.  All conjuncts before 'i' must be validated before calling this
 -- function.
 ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Field
 ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
@@ -77,14 +80,33 @@ exprDecls d ctx e =
 exprVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
 exprVarTypes d ctx e = 
     map (\(v, ctx) -> Field nopos v $ exprType d ctx (eVar v)) 
-        $ exprVars ctx e
+        $ exprVarOccurrences ctx e
 
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
 atomVarDecls d rl i = 
     S.fromList
         $ exprVarTypes d (CtxRuleRAtom rl i) 
         $ atomVal $ rhsAtom $ ruleRHS rl !! i
+
+-- | Variables used in a RHS term of a rule
+ruleRHSTermVars :: Rule -> Int -> [String]
+ruleRHSTermVars rl i = 
+    case ruleRHS rl !! i of
+         RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
+         RHSCondition{..} -> exprVars rhsExpr
+         RHSFlatMap{..}   -> exprVars rhsMapExpr
+         RHSAggregate{}   -> error "ruleRHSTermVars RHSAggregate: not implemented"
  
 -- | All variables defined in a rule
 ruleVars :: DatalogProgram -> Rule -> [Field]
 ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
+
+-- | Variables used in the head of the rule
+ruleLHSVars :: DatalogProgram -> Rule -> [Field]
+ruleLHSVars d rl = S.toList $ ruleLHSVarSet d rl
+
+ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Field
+ruleLHSVarSet d rl = S.fromList 
+    $ concat 
+    $ mapIdx (\a i -> exprVarTypes d (CtxRuleL rl i) $ atomVal a) 
+    $ ruleLHS rl

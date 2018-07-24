@@ -51,6 +51,7 @@ module Language.DifferentialDatalog.Syntax (
         TypeDef(..),
         Constructor(..),
         consType,
+        consIsUnique,
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
@@ -91,7 +92,9 @@ module Language.DifferentialDatalog.Syntax (
         emptyDatalogProgram,
         progStructs,
         progConstructors,
-        progDependencyGraph,
+        progAddRel,
+        progAddRules,
+        progAddTypedef,
         ECtx(..),
         ctxParent)
 where
@@ -100,7 +103,6 @@ import Text.PrettyPrint
 import Data.Maybe
 import Data.List
 import Data.String.Utils
-import qualified Data.Graph.Inductive as G
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -143,15 +145,16 @@ data Type = TBool     {typePos :: Pos}
           | TVar      {typePos :: Pos, tvarName :: String}
           | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
 
-tBool     = TBool     nopos
-tInt      = TInt      nopos
-tString   = TString   nopos
-tBit      = TBit      nopos
-tStruct   = TStruct   nopos
-tTuple    = TTuple    nopos
-tUser     = TUser     nopos
-tVar      = TVar      nopos
-tOpaque   = TOpaque   nopos
+tBool      = TBool     nopos
+tInt       = TInt      nopos
+tString    = TString   nopos
+tBit       = TBit      nopos
+tStruct    = TStruct   nopos
+tTuple [t] = t
+tTuple ts  = TTuple    nopos ts
+tUser      = TUser     nopos
+tVar       = TVar      nopos
+tOpaque    = TOpaque   nopos
 
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ find ((==f) . name) $ structFields t
@@ -307,6 +310,10 @@ consType d c =
                         Just (TStruct _ cs) -> any ((==c) . name) cs
                         _                   -> False)
     $ progTypedefs d
+
+-- | 'True' iff c is the unique constructor of its type
+consIsUnique :: DatalogProgram -> String -> Bool
+consIsUnique d c = (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
 
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
@@ -686,26 +693,14 @@ emptyDatalogProgram = DatalogProgram { progTypedefs   = M.empty
                                      , progRules      = []
                                      , progStatements = [] }
 
--- | Dependency graph among program relations.  An edge from Rel1 to
--- Rel2 means that there is a rule with Rel1 in the right-hand-side,
--- and Rel2 in the left-hand-side.  Edge label is equal to the
--- polarity with which Rel1 occurs in the rule.
---
--- Assumes that rules and relations have been validated before calling
--- this function.
-progDependencyGraph :: DatalogProgram -> G.Gr String Bool
-progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
-    where
-    g0 = G.insNodes (zip [0..] $ M.keys progRelations) G.empty
-    relidx rel = M.findIndex rel progRelations
-    edges = concatMap (\Rule{..} ->
-                        concatMap (\a ->
-                                    mapMaybe (\case
-                                               RHSLiteral pol a' -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
-                                               _ -> Nothing)
-                                             ruleRHS)
-                                  ruleLHS)
-                      progRules
+progAddTypedef :: TypeDef -> DatalogProgram -> DatalogProgram
+progAddTypedef tdef prog = prog{progTypedefs = M.insert (name tdef) tdef (progTypedefs prog)}
+
+progAddRules :: [Rule] -> DatalogProgram -> DatalogProgram
+progAddRules rules prog = prog{progRules = rules ++ (progRules prog)}
+
+progAddRel :: Relation -> DatalogProgram -> DatalogProgram
+progAddRel rel prog = prog{progRelations = M.insert (name rel) rel (progRelations prog)}
 
 -- | Expression's syntactic context determines the kinds of
 -- expressions that can appear at this location in the Datalog program,

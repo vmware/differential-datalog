@@ -21,20 +21,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, LambdaCase, RecordWildCards #-}
 
 {- | 
 Module     : DatalogProgram
 Description: Helper functions for manipulating 'DatalogProgram'.
 -}
 module Language.DifferentialDatalog.DatalogProgram (
-    progExprMapCtxM
+    progExprMapCtxM,
+    progExprMapCtx,
+    DepGraph,
+    progDependencyGraph,
+    progExpandMultiheadRules
 ) 
 where
 
+import qualified Data.Graph.Inductive as G
+import qualified Data.Map as M
+import Data.Maybe
+import Control.Monad.Identity
+
 import Language.DifferentialDatalog.Util
+import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
+import Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.Type
 
 -- | Map function 'fun' over all expressions in a program
 progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m DatalogProgram
@@ -69,3 +82,67 @@ rhsExprMapCtxM d fun r rhsidx a@RHSAggregate{} = do
 rhsExprMapCtxM d fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
+
+progExprMapCtx :: DatalogProgram -> (ECtx -> ENode -> Expr) -> DatalogProgram
+progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun ctx e)
+
+type DepGraph = G.Gr String Bool
+
+-- | Dependency graph among program relations.  An edge from Rel1 to
+-- Rel2 means that there is a rule with Rel1 in the right-hand-side,
+-- and Rel2 in the left-hand-side.  Edge label is equal to the
+-- polarity with which Rel1 occurs in the rule.
+--
+-- Assumes that rules and relations have been validated before calling
+-- this function.
+progDependencyGraph :: DatalogProgram -> DepGraph
+progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
+    where
+    g0 = G.insNodes (zip [0..] $ M.keys progRelations) G.empty
+    relidx rel = M.findIndex rel progRelations
+    edges = concatMap (\Rule{..} ->
+                        concatMap (\a ->
+                                    mapMaybe (\case
+                                               RHSLiteral pol a' -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
+                                               _ -> Nothing)
+                                             ruleRHS)
+                                  ruleLHS)
+                      progRules
+
+-- | Replace multihead rules with several rules by introducing an
+-- intermediate relation for the body of the rule.
+progExpandMultiheadRules :: DatalogProgram -> DatalogProgram
+progExpandMultiheadRules d = progExpandMultiheadRules' d 0
+
+progExpandMultiheadRules' :: DatalogProgram -> Int -> DatalogProgram
+progExpandMultiheadRules' d@DatalogProgram{progRules=[], ..} _ = d
+progExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
+    | length (ruleRHS r) == 1 = progAddRules [r] d'
+    | otherwise               = progAddRules rules $ progAddRel rel d'
+    where d' = progExpandMultiheadRules' d{progRules = rs} (i+1)
+          (rel, rules) = expandMultiheadRule d r i
+
+expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Relation, [Rule])
+expandMultiheadRule d rl ruleidx = (rel, rule1 : rules)
+    where
+    -- variables used in the LHS of the rule
+    lhsvars = ruleLHSVars d rl
+    -- generate relation
+    relname = "Rule_" ++ show ruleidx
+    rel = Relation { relPos    = nopos
+                   , relGround = False
+                   , relName   = relname
+                   , relType   = tTuple $ map typ lhsvars
+                   }
+    -- rule to compute the new relation
+    rule1 = Rule { rulePos = nopos
+                 , ruleLHS = [Atom nopos relname $ eTuple $ map (eVar . name) lhsvars]
+                 , ruleRHS = ruleRHS rl
+                 }
+    -- rule per head of the original rule
+    rules = map (\atom -> Rule { rulePos = nopos
+                               , ruleLHS = [atom]
+                               , ruleRHS = [RHSLiteral True 
+                                           $ Atom nopos relname 
+                                           $ eTuple $ map (eVar . name) lhsvars]})
+                $ ruleLHS rl

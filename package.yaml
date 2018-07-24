@@ -30,6 +30,9 @@ dependencies:
 - split
 - MissingH
 - raw-strings-qq
+- tuple
+- file-embed
+- filepath
 
 library:
   source-dirs: src
@@ -69,3 +72,4 @@ tests:
     - HUnit
     - tasty-golden
     - filepath
+    - process

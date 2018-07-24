@@ -12,9 +12,11 @@ extern crate timely_communication;
 extern crate differential_dataflow;
 extern crate fnv;
 
-mod uint;
 mod variable;
 #[cfg(test)]
 mod test;
 
 pub mod program;
+pub mod uint;
+pub mod int;
+

@@ -15,10 +15,12 @@ exprCollectCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> (b -> b -> b) -> 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
 exprCollectCtx :: (ECtx -> ExprNode b -> b) -> (b -> b -> b) -> ECtx -> Expr -> b
 exprCollect :: (ExprNode b -> b) -> (b -> b -> b) -> Expr -> b
-exprVars :: ECtx -> Expr -> [(String, ECtx)]
+exprVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
+exprVars :: Expr -> [String]
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
-isLExpr :: DatalogProgram -> ECtx -> Expr -> Bool
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 exprFuncs :: Expr -> [String]
 exprFuncsRec :: DatalogProgram -> Expr -> [String]
 exprIsPattern :: Expr -> Bool
+exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
+exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool

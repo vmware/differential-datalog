@@ -12,9 +12,9 @@ function a1 (): int =
 function a2 (): bit<32> =
     (32'd0 + 32'd1)
 function a3 (): bit<32> =
-    (0: bit<32>)
+    (32'd0: bit<32>)
 function a4 (): bit<32> =
-    (0: bit<64>)[40:9]
+    (64'd0: bit<64>)[40:9]
 function a5 (a: bit<32>, b: bit<32>): bit<32> =
     ((((((a & b) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
 function a6 (a: bit<16>, b: bit<16>): bit<16> =
@@ -37,8 +37,10 @@ function fnested (x: nested_t): string =
 function g (a: int): int
 function h (a: (int, int)): (int, int)
 function parameterized (x: 'A, y: 'A): 'A
+function parameterized2 (x: 'A, y: 'A): bool =
+    (x == y)
 function patterns (): () =
-    ((var a: Alt) = C0{.x=1};
+    ((var a: Alt) = C0{.x=32'd1};
      (var b = match (a) {
                   C0{.x=_} -> true,
                   C1{.x=_} -> false
@@ -67,7 +69,7 @@ function v (): string =
 function v2 (): bool =
     b1(true)
 function vars (): () =
-    ((var x: int);
+    ((var x: int) = 0;
      (x = 10;
       (var y = C{.f1="foo", .f2="bar"};
        ((var z: C) = C{.f1="bar", .f2="foo"};
