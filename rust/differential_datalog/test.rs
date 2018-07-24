@@ -658,14 +658,14 @@ fn test_map(nthreads: usize) {
         }
     }
 
-    fn flatmapfun(v: Value) -> Box<Iterator<Item=Value>> {
+    fn flatmapfun(v: Value) -> Option<Box<Iterator<Item=Value>>> {
         match &v {
             Value::u64(i) => {
                 if *i > 12 {
-                    Box::new(vec![Value::i64(-(*i as i64)), Value::i64(-(2*(*i as i64)))].into_iter())
-                } else { Box::new(vec![].into_iter()) }
+                    Some(Box::new(vec![Value::i64(-(*i as i64)), Value::i64(-(2*(*i as i64)))].into_iter()))
+                } else { None }
             }, 
-            _ => Box::new(vec![].into_iter())
+            _ => None
         }
     }
 
@@ -712,7 +712,7 @@ fn test_map(nthreads: usize) {
                                          map(|x| mfun(x)).
                                          filter(|x| ffun(&x)).
                                          filter_map(|x| fmfun(x)).
-                                         flat_map(|x| flatmapfun(x)));
+                                         flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ));
 
     running.transaction_start().unwrap();
     for x in &set {

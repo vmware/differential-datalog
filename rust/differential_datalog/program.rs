@@ -145,7 +145,7 @@ pub struct Relation<V: Val> {
 pub type MapFunc<V>        = fn(V) -> V;
 
 /// (see `XForm::FlatMap`).
-pub type FlatMapFunc<V>        = fn(V) -> Box<Iterator<Item=V>>;
+pub type FlatMapFunc<V>        = fn(V) -> Option<Box<Iterator<Item=V>>>;
 
 /// Function type used to filter a relation
 /// (see `XForm::Filter`).
@@ -579,7 +579,11 @@ impl<V:Val> Program<V>
                     Some(rhs.as_ref().unwrap_or(first).map(f))
                 },
                 XForm::FlatMap{fmfun: &f} => {
-                    Some(rhs.as_ref().unwrap_or(first).flat_map(f))
+                    Some(rhs.as_ref().unwrap_or(first).
+                         flat_map(move |x| 
+                                  /* TODO: replace this with f(x).into_iter().flatten() when the
+                                   * iterator_flatten feature makes it out of experimental API. */
+                                  match f(x) {Some(iter) => iter, None => Box::new(None.into_iter())}))
                 },
                 XForm::Filter{ffun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).filter(f))

@@ -280,7 +280,8 @@ compileLib d imports = header $+$ pp imports $+$ typedefs $+$ relenum $+$ valtyp
     -- Type declarations
     typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
     -- Functions
-    funcs = vcat $ map (mkFunc d') $ M.elems $ progFunctions d'
+    (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
+    funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
     -- 'Value' enum type
     valtype = mkValType d' $ cTypes cstate
 
@@ -326,7 +327,8 @@ mkFunc d f@Function{..} | isJust funcDef =
     "fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
     (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                               $$
     "}"
-                        | otherwise = empty
+                        | -- generate commented out prototypes of extern functions for user convenvience.
+                          otherwise = "/* fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
     where 
     mkArg :: Field -> Doc
     mkArg a = pp (name a) <> ":" <+> "&" <> mkType (typ a)
@@ -471,13 +473,23 @@ compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++
                case ruleRHS !! join_idx of
                     RHSLiteral True a  -> mkJoin d prefix a rl join_idx
                     RHSLiteral False a -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
-                    --RHSFlatMap v e     -> (, join_idx) <$> mkFlatMap d rl v e
+                    RHSFlatMap v e     -> (, join_idx) <$> mkFlatMap d prefix rl join_idx v e
            if {-trace ("last_idx' = " ++ show last_idx') $-} last_idx' < length ruleRHS
               then do rest <- compileRule' d rl last_idx'
                       return $ xform:rest
               else return [xform]
 
---mkFlatMap :: 
+mkFlatMap :: DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
+mkFlatMap d prefix rl idx v e = do
+    vars <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    let set = mkExpr d (CtxRuleRFlatMap rl idx) e EVal
+        fmfun = braces'
+                $ prefix $$ 
+                  "Some(Box::new(" <> set <> ".map(|ref" <+> pp v <> "|" <> vars <> ")))"
+    return $
+        "XForm::FlatMap{"                                                                                               $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},") $$
+        "}"
 
 -- Generate Rust code to filter records and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
