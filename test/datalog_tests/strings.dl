@@ -5,7 +5,7 @@ Strings("foo").
 Strings("bar\n").
 Strings("\t\tbar").
 Strings("\"buzz").
-Strings("\r\abuzz").
+Strings("\r\n\abuzz").
 Strings("\\buzz").
 Strings("\\buzz").
 
@@ -32,7 +32,7 @@ Strings([|barΔ
 
 // backslash does not work as an escape character in raw strings
 Strings([|
-    foo\r
+    foo\r\n
     buzz
     bar|]).
 

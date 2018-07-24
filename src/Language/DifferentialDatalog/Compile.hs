@@ -241,6 +241,7 @@ compile d specname imports dir = do
     let cargo = replace "datalog_example" specname cargoFile
     updateFile (joinPath [dir, specname, "Cargo.toml"]) cargo
     -- Generate lib.rs file if changed.
+    putStrLn $ specname ++ " about to write lib.rs to " ++ joinPath [dir, specname, "lib.rs"]
     updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
     return ()
 

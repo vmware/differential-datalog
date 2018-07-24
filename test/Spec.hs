@@ -104,10 +104,10 @@ testOne fname ofname = do
                       then readFile importsfile
                       else return ""
         -- generate Rust project
-        let rust_dir = joinPath [takeDirectory fname, specname, specname]
+        let rust_dir = joinPath [takeDirectory fname, specname]
         compile prog specname imports rust_dir
         -- compile it with Cargo
-        let cargo_proc = (proc "cargo" ["test"]){cwd = Just rust_dir}
+        let cargo_proc = (proc "cargo" ["test"]){cwd = Just $ joinPath [rust_dir, specname]}
         (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++ 
