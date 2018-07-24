@@ -53,6 +53,7 @@ enum Value {
     u16(u16),
     u32(u32),
     u64(u64),
+    i64(i64),
     BoolTuple((bool, bool)),
     Tuple2(Box<Value>, Box<Value>),
     Q(Q),
@@ -657,6 +658,17 @@ fn test_map(nthreads: usize) {
         }
     }
 
+    fn flatmapfun(v: Value) -> Box<Iterator<Item=Value>> {
+        match &v {
+            Value::u64(i) => {
+                if *i > 12 {
+                    Box::new(vec![Value::i64(-(*i as i64)), Value::i64(-(2*(*i as i64)))].into_iter())
+                } else { Box::new(vec![].into_iter()) }
+            }, 
+            _ => Box::new(vec![].into_iter())
+        }
+    }
+
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel2 = {
         let relset2 = relset2.clone();
@@ -675,7 +687,11 @@ fn test_map(nthreads: usize) {
                     },
                     XForm::FilterMap{
                         fmfun: &(fmfun as FilterMapFunc<Value>)
-                    }]
+                    },
+                    XForm::FlatMap{
+                        fmfun: &(flatmapfun as FlatMapFunc<Value>)
+                    }
+                ]
             }],
             arrangements: Vec::new(),
             change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
@@ -684,7 +700,7 @@ fn test_map(nthreads: usize) {
 
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: rel1},
-        ProgNode::RelNode{rel: rel2}]
+                    ProgNode::RelNode{rel: rel2}]
     };
 
     let mut running = prog.run(nthreads);
@@ -695,7 +711,8 @@ fn test_map(nthreads: usize) {
                                          map(|x| Value::u64(*x)).
                                          map(|x| mfun(x)).
                                          filter(|x| ffun(&x)).
-                                         filter_map(|x| fmfun(x)));
+                                         filter_map(|x| fmfun(x)).
+                                         flat_map(|x| flatmapfun(x)));
 
     running.transaction_start().unwrap();
     for x in &set {

@@ -144,6 +144,9 @@ pub struct Relation<V: Val> {
 /// (see `XForm::Map`).
 pub type MapFunc<V>        = fn(V) -> V;
 
+/// (see `XForm::FlatMap`).
+pub type FlatMapFunc<V>        = fn(V) -> Box<Iterator<Item=V>>;
+
 /// Function type used to filter a relation
 /// (see `XForm::Filter`).
 pub type FilterFunc<V>     = fn(&V) -> bool;
@@ -178,6 +181,10 @@ pub enum XForm<V: Val> {
     Map {
         mfun: &'static MapFunc<V>
     },
+    /// FlatMap
+    FlatMap {
+        fmfun: &'static FlatMapFunc<V>
+    },
     /// Filter a relation
     Filter {
         ffun: &'static FilterFunc<V>
@@ -194,7 +201,7 @@ pub enum XForm<V: Val> {
         arrangement: ArrId,
         /// Function used to put together ouput value
         jfun: &'static JoinFunc<V>
-    },
+    }, 
     /// Antijoin arranges the input relation using `afun` and retuns a subset of values that 
     /// correspond to keys not present in relation `rel`.
     Antijoin {
@@ -570,6 +577,9 @@ impl<V:Val> Program<V>
             rhs = match xform {
                 XForm::Map{mfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).map(f))
+                },
+                XForm::FlatMap{fmfun: &f} => {
+                    Some(rhs.as_ref().unwrap_or(first).flat_map(f))
                 },
                 XForm::Filter{ffun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).filter(f))
