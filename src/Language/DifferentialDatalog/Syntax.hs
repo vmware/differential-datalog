@@ -127,7 +127,7 @@ instance WithName Field where
     name = fieldName
 
 instance PP Field where
-    pp (Field _ n t) = pp n <> ":" <+>pp t
+    pp (Field _ n t) = pp n <> ":" <+> pp t
 
 instance Show Field where
     show = render . pp
@@ -325,7 +325,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "ground" else empty) <+> 
+    pp Relation{..} = (if relGround then "ground" else empty) <+>
                       "relation" <+> pp relName <+> "[" <> pp relType <> "]"
 
 instance Show Relation where
@@ -345,7 +345,7 @@ instance WithPos Atom where
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons 
+    pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons
                 = pp rel <> (parens $ hsep $ punctuate comma $
                              map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) as)
     pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
