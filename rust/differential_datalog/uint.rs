@@ -5,7 +5,7 @@ use std::ops::*;
 use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
-
+use std::fmt;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
 pub struct Uint{x:BigUint}
@@ -23,6 +23,12 @@ impl Uint {
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
         Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
+    }
+}
+
+impl fmt::Display for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.x)
     }
 }
 

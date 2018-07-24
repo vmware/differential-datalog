@@ -19,6 +19,11 @@ use abomonation::Abomonation;
 use std::sync::{Arc,Mutex};
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
+use std::fmt::Display;
 
 use serde::de::*;
 use serde::ser::*;
+
+fn __builtin_2string<T: Display>(x: &T) -> String {
+    format!("{}", *x).to_string()
+}
