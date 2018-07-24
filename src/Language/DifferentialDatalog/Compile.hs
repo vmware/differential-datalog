@@ -175,9 +175,7 @@ data CompilerState = CompilerState {
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
-    -- make sure that empty tuple is always in Value, so it can be
-    -- used to implement Value::default()
-    cTypes        = S.singleton $ tTuple [],
+    cTypes        = S.empty,
     cArrangements = M.empty
 }
 
@@ -271,10 +269,15 @@ compileLib d imports = header $+$ pp imports $+$ typedefs $+$ relenum $+$ valtyp
     sccs = G.topsort' $ G.condensation depgraph
     -- Initialize arrangements map
     arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
+    -- Initialize types
+    -- Make sure that empty tuple is always in Value, so it can be
+    -- used to implement Value::default()
+    types = S.fromList $ (tTuple []) : (map (typeNormalize d . relType) $ M.elems $ progRelations d')
     -- Compile SCCs
     (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
                                   mkProg d' nodes)
-                              $ emptyCompilerState{cArrangements = arrs}
+                              $ emptyCompilerState{cArrangements = arrs,
+                                                   cTypes        = types}
     -- Relations enum
     relenum = mkRelEnum d'
     -- Type declarations
