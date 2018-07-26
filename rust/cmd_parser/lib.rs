@@ -16,8 +16,8 @@ pub enum Value {
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Update {
-    Insert {rel: String, val: Value},
-    Delete {rel: String, val: Value}
+    Insert (String, Value),
+    Delete (String, Value)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -25,7 +25,7 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
-    ApplyUpdates{updates: Vec<Update>}
+    ApplyUpdates(Vec<Update>)
 }
 
 named!(spaces<&[u8], ()>,
@@ -41,9 +41,10 @@ named_args!(sym<'a>(s: &str)<()>,
 );
 
 named!(identifier<&[u8], String>,
-    do_parse!(bytes: alphanumeric1 >>
+    do_parse!(first: alt!(alpha | tag!("_")) >>
+              bytes: alphanumeric0 >>
               spaces >>
-              (String::from_utf8(bytes.to_vec()).unwrap()))
+              (String::from_utf8(first.to_vec()).unwrap() + &String::from_utf8(bytes.to_vec()).unwrap()))
 );
 
 named!(pub parse_command<&[u8], Command>,
@@ -51,12 +52,40 @@ named!(pub parse_command<&[u8], Command>,
         do_parse!(apply!(sym,"commit")   >> (Command::Commit))   | 
         do_parse!(apply!(sym,"rollback") >> (Command::Rollback)) |
         do_parse!(updates: delimited!(apply!(sym,"["), separated_list_complete!(apply!(sym,","), update), apply!(sym,"]"))
-                  >> (Command::ApplyUpdates{updates})))
+                  >> (Command::ApplyUpdates(updates))))
 );
 
+#[test]
+fn test_command() {
+    assert_eq!(parse_command(br"start ")   , Ok((&br""[..], Command::Start)));
+    assert_eq!(parse_command(br"commit ")  , Ok((&br""[..], Command::Commit)));
+    assert_eq!(parse_command(br"rollback "), Ok((&br""[..], Command::Rollback)));
+    assert_eq!(parse_command(br"[]")       , Ok((&br""[..], Command::ApplyUpdates(vec![]))));
+    assert_eq!(parse_command(br"[insert Rel1(true)]"), 
+               Ok((&br""[..], Command::ApplyUpdates(vec![
+                   Update::Insert("Rel1".to_string(), Value::Struct("Rel1".to_string(), vec![Value::Bool(true)]))
+               ]))));
+    assert_eq!(parse_command(br"[insert Rel1[true]]"), 
+               Ok((&br""[..], Command::ApplyUpdates(vec![
+                   Update::Insert("Rel1".to_string(), Value::Bool(true))
+               ]))));
+    assert_eq!(parse_command(br"[insert Rel1[(true,false)]]"), 
+               Ok((&br""[..], Command::ApplyUpdates(vec![
+                   Update::Insert("Rel1".to_string(), Value::Tuple(vec![Value::Bool(true), Value::Bool(false)]))
+               ]))));
+    assert_eq!(parse_command(br#"[insert Rel1[(true,false)], delete Rel2("foo", 0xabcdef1, true)]"#), 
+               Ok((&br""[..], Command::ApplyUpdates(vec![
+                   Update::Insert("Rel1".to_string(), Value::Tuple(vec![Value::Bool(true), Value::Bool(false)])),
+                   Update::Delete("Rel2".to_string(), Value::Struct("Rel2".to_string(), 
+                                                                    vec![Value::String("foo".to_string()), 
+                                                                         Value::Int(0xabcdef1.to_bigint().unwrap()),
+                                                                         Value::Bool(true)]))
+               ]))));
+}
+
 named!(update<&[u8], Update>,
-    alt!(do_parse!(apply!(sym,"insert") >> rec: record >> (Update::Insert{rel: rec.0, val: rec.1})) |
-         do_parse!(apply!(sym,"delete") >> rec: record >> (Update::Delete{rel: rec.0, val: rec.1})))
+    alt!(do_parse!(apply!(sym,"insert") >> rec: record >> (Update::Insert(rec.0, rec.1))) |
+         do_parse!(apply!(sym,"delete") >> rec: record >> (Update::Delete(rec.0, rec.1))))
 );
 
 named!(record<&[u8], (String, Value)>,
@@ -84,27 +113,42 @@ fn test_bool() {
 
 named!(string_val<&[u8], Value>,
     do_parse!(
-        str: delimited!(
-            char!('\"'),
-            escaped_transform!(map!(many0!(none_of!(b"\\\"")), |v:Vec<char>|{v.into_iter().collect::<String>().into_bytes()}), '\\', 
-                               alt!(tag!("\\") => { |_| &b"\\"[..] }   |
-                                    tag!("\"") => { |_| &b"\""[..] }   |
-                                    tag!("\'") => { |_| &b"\'"[..] }   |
-                                    tag!("n")  => { |_| &b"\n"[..] }   |
-                                    tag!("a")  => { |_| &b"\x07"[..] } |
-                                    tag!("b")  => { |_| &b"\x08"[..] } |
-                                    tag!("f")  => { |_| &b"\x0c"[..] } |
-                                    tag!("r")  => { |_| &b"\r"[..] }   |
-                                    tag!("t")  => { |_| &b"\t"[..] }   |
-                                    tag!("v")  => { |_| &b"\x0b"[..] } |
-                                    tag!("?")  => { |_| &b"\x3f"[..] })),
-            char!('\"'))
+        str: alt!(
+            // I think there is is bug in nom, causing escaped_transform to only work with
+            // take_until_either1 but not take_until_either or any other parser that accepts
+            // 0-length sequences; therefore we parse empty strings as a special case.
+            map!(tag!(b"\"\""), |_| vec![]) |
+            delimited!(
+                char!('\"'),
+                escaped_transform!(take_until_either1!(b"\\\""), '\\', 
+                                   alt!(tag!("\\") => { |_| &b"\\"[..] }   |
+                                        tag!("\"") => { |_| &b"\""[..] }   |
+                                        tag!("\'") => { |_| &b"\'"[..] }   |
+                                        tag!("n")  => { |_| &b"\n"[..] }   |
+                                        tag!("a")  => { |_| &b"\x07"[..] } |
+                                        tag!("b")  => { |_| &b"\x08"[..] } |
+                                        tag!("f")  => { |_| &b"\x0c"[..] } |
+                                        tag!("r")  => { |_| &b"\r"[..] }   |
+                                        tag!("t")  => { |_| &b"\t"[..] }   |
+                                        tag!("v")  => { |_| &b"\x0b"[..] } |
+                                        tag!("?")  => { |_| &b"\x3f"[..] })),
+                char!('\"')
+            )
+        )
         >>
         spaces
         >>
         (Value::String(String::from_utf8(str).unwrap()))
     )
 );
+
+#[test]
+fn test_string() {
+    assert_eq!(string_val(br###""foo""###), Ok((&br""[..], Value::String("foo".to_string()))));
+    assert_eq!(string_val(br###""" "###), Ok((&br""[..], Value::String("".to_string()))));
+    assert_eq!(string_val(br###""foo\nbar" "###), Ok((&br""[..], Value::String("foo\nbar".to_string()))));
+    assert_eq!(string_val(br###""foo\tbar\t\a" "###), Ok((&br""[..], Value::String("foo\tbar\t\x07".to_string()))));
+}
 
 named!(tuple_val<&[u8], Value>,
     delimited!(apply!(sym,"("),
@@ -124,9 +168,26 @@ named!(struct_val<&[u8], Value>,
         (val))
 );
 
+#[test]
+fn test_struct() {
+    assert_eq!(struct_val(br"Constructor { true, false }"), 
+               Ok((&br""[..], Value::Struct("Constructor".to_string(),
+                                            vec![Value::Bool(true), Value::Bool(false)]))));
+    assert_eq!(struct_val(br"_Constructor{true, false}"), 
+               Ok((&br""[..], Value::Struct("_Constructor".to_string(),
+                                            vec![Value::Bool(true), Value::Bool(false)]))));
+    assert_eq!(struct_val(br###"Constructor1 { true, C{false, 25, "foo\nbar"} }"###), 
+               Ok((&br""[..], Value::Struct("Constructor1".to_string(),
+                                            vec![Value::Bool(true), 
+                                                 Value::Struct("C".to_string(),
+                                                               vec![Value::Bool(false),
+                                                                    Value::Int(25_i32.to_bigint().unwrap()),
+                                                                    Value::String("foo\nbar".to_string())])]))));
+}
+
 named!(int_val<&[u8], Value>,
-    alt!(map!(dec_val, Value::Int) | 
-         map!(hex_val, Value::Int) | 
+    alt!(map!(hex_val, Value::Int) |
+         map!(dec_val, Value::Int) | 
          do_parse!(apply!(sym,"-") >> 
                    val: alt!(hex_val | dec_val) >>
                    (Value::Int(-val))
@@ -134,40 +195,28 @@ named!(int_val<&[u8], Value>,
         )
 );
 
-/*
-named!(multi<&[u8], Vec<&[u8]> >, many1!( tag!( "abcd" ) ) );
-
-#[test]
-fn dummy_test() {
-    let a = b"abcdabcdefgh";
-    let b = b"azerty";
-
-    let res = vec![&b"abcd"[..], &b"abcd"[..]];
-    assert_eq!(multi(&a[..]),Ok((&b"efgh"[..], res)));
-    assert_eq!(multi(&b[..]), Err(Err::Error(error_position!(&b[..], ErrorKind::Many1))));
-}*/
-
-
-#[test]
-fn test_int() {
-    assert_eq!(int_val(br"1 "), Ok((&br""[..], Value::Int(1_i32.to_bigint().unwrap()))));
-    assert_eq!(dec_val(br"1 "), Ok((&br""[..], 1_i32.to_bigint().unwrap())));
-}
-
-
 named!(hex_val<&[u8], BigInt>,
     do_parse!(tag_no_case!("0x") >> 
-              val: map!(hex_digit, |bs| BigInt::parse_bytes(bs, 16).unwrap()) >>
+              bs: take_while1!(is_hex_digit) >> 
               spaces >>
-              (val))
+              (BigInt::parse_bytes(bs, 16).unwrap()))
 );
-
 
 named!(dec_val<&[u8], BigInt>,
     do_parse!(bs: take_while1!(is_digit) >> 
               spaces >>
               (BigInt::parse_bytes(bs, 10).unwrap()))
 );
+
+#[test]
+fn test_int() {
+    assert_eq!(dec_val(br"1 ")     , Ok((&br""[..], 1_i32.to_bigint().unwrap())));
+    assert_eq!(int_val(br"1 ")     , Ok((&br""[..], Value::Int(1_i32.to_bigint().unwrap()))));
+    assert_eq!(value(br"-5 ")      , Ok((&br""[..], Value::Int(-5_i32.to_bigint().unwrap()))));
+    assert_eq!(hex_val(br"0xabcd "), Ok((&br""[..], 0xabcd.to_bigint().unwrap())));
+    assert_eq!(int_val(br"0xabcd "), Ok((&br""[..], Value::Int(0xabcd.to_bigint().unwrap()))));
+    assert_eq!(value(br"0xabcd ")  , Ok((&br""[..], Value::Int(0xabcd.to_bigint().unwrap()))));
+}
 
 named_args!(constructor_args(constructor: String)<Value>,
     do_parse!(args: separated_list!(apply!(sym,","), value) >>
