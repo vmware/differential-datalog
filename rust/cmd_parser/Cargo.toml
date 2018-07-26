@@ -1,0 +1,18 @@
+[package]
+name = "cmd_parser"
+version = "0.1.0"
+
+[dependencies]
+nom = "4.0"
+num = "0.1.40"
+
+[profile.release]
+opt-level = 1
+debug = false
+rpath = false
+lto = false
+debug-assertions = false
+
+[lib]
+name = "cmd_parser"
+path = "./lib.rs"
