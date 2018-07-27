@@ -263,7 +263,7 @@ updateFile path content = do
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
 compileLib :: DatalogProgram -> String -> Doc
-compileLib d imports = header $+$ pp imports $+$ typedefs $+$ relenum $+$ valtype $+$ funcs $+$ prog
+compileLib d imports = header $+$ pp imports $+$ typedefs $+$ valfromrec $+$ relenum $+$ valtype $+$ funcs $+$ prog
     where
     -- Transform away rules with multiple heads
     d' = progExpandMultiheadRules d
@@ -286,6 +286,8 @@ compileLib d imports = header $+$ pp imports $+$ typedefs $+$ relenum $+$ valtyp
     relenum = mkRelEnum d'
     -- Type declarations
     typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
+    -- Function to convert cmd_parser::Record to Value
+    valfromrec = mkValueFromRecord d'
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
@@ -343,12 +345,16 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
             Record::Struct(constr, args) => {
                 match constr.as_ref() {
                     "Constr1" if args.len() == 2 => {
-                        Ok(DummyEnum::Constr1{f1: bool::from_record(&args[0])?,
+                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(&args[0])?,
                                               f2: String::from_record(&args[1])?})
                     },
-                    "Constr2" if args.len() == 2 => {
-                        Ok(DummyEnum::Constr2{f1: T::from_record(&args[0])?,
-                                              f2: BigInt::from_record(&args[1])?})
+                    "Constr2" if args.len() == 3 => {
+                        Ok(DummyEnum::Constr2{f1: <T>::from_record(&args[0])?,
+                                              f2: <BigInt>::from_record(&args[1])?,
+                                              f3: <Foo<T>>::from_record(&args[2])?})
+                    },
+                    "Constr3" if args.len() == 1 => {
+                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_record(&args[0])?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
                 }
@@ -391,6 +397,33 @@ mkFromRecord t@TypeDef{..} =
                    then pp (name t)
                    else pp (name t) <> "::" <> pp (name c)
         fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType $ typ f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
+
+{-
+pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
+    match rel {
+        Relations::Rel1 => {
+            Ok(Value::Rel1Constr(<Rel1Type>::from_record(rec)?))
+        },
+        ..
+        _ => Err(...)
+    }
+}
+-}
+mkValueFromRecord :: DatalogProgram -> Doc
+mkValueFromRecord d@DatalogProgram{..} =
+    "pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {"      $$
+    "    match rel {"                                                                       $$
+    (nest' $ nest' $ vcat $ punctuate comma entries)                                        $$
+    "    }"                                                                                 $$
+    "}"
+    where
+    entries = map mkrel $ M.elems progRelations
+    mkrel :: Relation ->  Doc
+    mkrel rel@Relation{..} = 
+        "Relations::" <> pp (name rel) <+> "=> {"                                                   $$
+        "    Ok(Value::" <> mkConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
+        "}"
+        where t = typeNormalize d relType
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =

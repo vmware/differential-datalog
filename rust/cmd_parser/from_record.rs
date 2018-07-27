@@ -186,6 +186,17 @@ fn test_string() {
     assert_eq!(String::from_record(&Record::Bool(true)), Err("not a string Bool(true)".to_string()));
 }
 
+impl FromRecord for () {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Tuple(args) if args.len() == 0 => {
+                Ok(())
+            },
+            v => { Result::Err(format!("not a 0-tuple {:?}", *v)) }
+        }
+    }
+}
+
 impl <T1: FromRecord, T2: FromRecord> FromRecord for (T1,T2) {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
