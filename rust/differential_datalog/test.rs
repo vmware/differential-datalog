@@ -126,10 +126,11 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
             },
             _         => return None
         };
+        /*
         match p {
             P{f1, f2: true} => *f1 = p.f1.clone(),
             _               => return None
-        };
+        };*/
         /*match &mut p.f1 {
             Q{f1: true, f2} => *f2 = p.f1.f2.clone(),
             _               => return None

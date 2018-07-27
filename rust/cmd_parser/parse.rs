@@ -4,18 +4,18 @@ use num::bigint::*;
 use nom::*;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
-pub enum Value {
+pub enum Record {
     Bool(bool),
     Int(BigInt),
     String(String),
-    Tuple(Vec<Value>),
-    Struct(String, Vec<Value>)
+    Tuple(Vec<Record>),
+    Struct(String, Vec<Record>)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Update {
-    Insert (String, Value),
-    Delete (String, Value)
+    Insert (String, Record),
+    Delete (String, Record)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -65,56 +65,56 @@ fn test_command() {
     assert_eq!(parse_command(br"rollback;"), Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"), 
                Ok((&br""[..], Command::Update(
-                   Update::Insert("Rel1".to_string(), Value::Struct("Rel1".to_string(), vec![Value::Bool(true)])),
+                   Update::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
                    true
                ))));
     assert_eq!(parse_command(br" insert Rel1[true];"), 
                Ok((&br""[..], Command::Update(
-                   Update::Insert("Rel1".to_string(), Value::Bool(true)), true
+                   Update::Insert("Rel1".to_string(), Record::Bool(true)), true
                ))));
     assert_eq!(parse_command(br"delete Rel1[(true,false)];"), 
                Ok((&br""[..], Command::Update(
-                   Update::Delete("Rel1".to_string(), Value::Tuple(vec![Value::Bool(true), Value::Bool(false)])), true
+                   Update::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
                ))));
     assert_eq!(parse_command(br#"   delete Rel2("foo", 0xabcdef1, true) , "#), 
                Ok((&br""[..], Command::Update(
-                   Update::Delete("Rel2".to_string(), Value::Struct("Rel2".to_string(), 
-                                                                    vec![Value::String("foo".to_string()), 
-                                                                         Value::Int(0xabcdef1.to_bigint().unwrap()),
-                                                                         Value::Bool(true)])),
+                   Update::Delete("Rel2".to_string(), Record::Struct("Rel2".to_string(), 
+                                                                    vec![Record::String("foo".to_string()), 
+                                                                         Record::Int(0xabcdef1.to_bigint().unwrap()),
+                                                                         Record::Bool(true)])),
                    false
                ))));
 }
 
 named!(update<&[u8], Update>,
-    alt!(do_parse!(apply!(sym,"insert") >> rec: record >> (Update::Insert(rec.0, rec.1))) |
-         do_parse!(apply!(sym,"delete") >> rec: record >> (Update::Delete(rec.0, rec.1))))
+    alt!(do_parse!(apply!(sym,"insert") >> rec: rel_record >> (Update::Insert(rec.0, rec.1))) |
+         do_parse!(apply!(sym,"delete") >> rec: rel_record >> (Update::Delete(rec.0, rec.1))))
 );
 
-named!(record<&[u8], (String, Value)>,
+named!(rel_record<&[u8], (String, Record)>,
     do_parse!(cons: identifier >>
-              val: alt!(delimited!(apply!(sym,"["), value, apply!(sym,"]")) | 
+              val: alt!(delimited!(apply!(sym,"["), record, apply!(sym,"]")) | 
                         delimited!(apply!(sym,"("), apply!(constructor_args, cons.clone()), apply!(sym,")"))) >>
               (cons, val))
 );
 
-named!(value<&[u8], Value>,
+named!(record<&[u8], Record>,
     alt!(bool_val | string_val | tuple_val | struct_val | int_val )
 );
 
-named!(bool_val<&[u8], Value>,
-    alt!(do_parse!(apply!(sym,"true")  >> (Value::Bool(true))) |
-         do_parse!(apply!(sym,"false") >> (Value::Bool(false))))
+named!(bool_val<&[u8], Record>,
+    alt!(do_parse!(apply!(sym,"true")  >> (Record::Bool(true))) |
+         do_parse!(apply!(sym,"false") >> (Record::Bool(false))))
 );
 
 #[test]
 fn test_bool() {
-    assert_eq!(bool_val(br"true "), Ok((&br""[..], Value::Bool(true))));
-    assert_eq!(bool_val(br"false"), Ok((&br""[..], Value::Bool(false))));
-    assert_eq!(value(br"false "), Ok((&br""[..], Value::Bool(false))));
+    assert_eq!(bool_val(br"true "), Ok((&br""[..], Record::Bool(true))));
+    assert_eq!(bool_val(br"false"), Ok((&br""[..], Record::Bool(false))));
+    assert_eq!(record(br"false ") , Ok((&br""[..], Record::Bool(false))));
 }
 
-named!(string_val<&[u8], Value>,
+named!(string_val<&[u8], Record>,
     do_parse!(
         str: alt!(
             // I think there is is bug in nom, causing escaped_transform to only work with
@@ -141,30 +141,30 @@ named!(string_val<&[u8], Value>,
         >>
         spaces
         >>
-        (Value::String(String::from_utf8(str).unwrap()))
+        (Record::String(String::from_utf8(str).unwrap()))
     )
 );
 
 #[test]
 fn test_string() {
-    assert_eq!(string_val(br###""foo""###), Ok((&br""[..], Value::String("foo".to_string()))));
-    assert_eq!(string_val(br###""" "###), Ok((&br""[..], Value::String("".to_string()))));
-    assert_eq!(string_val(br###""foo\nbar" "###), Ok((&br""[..], Value::String("foo\nbar".to_string()))));
-    assert_eq!(string_val(br###""foo\tbar\t\a" "###), Ok((&br""[..], Value::String("foo\tbar\t\x07".to_string()))));
+    assert_eq!(string_val(br###""foo""###), Ok((&br""[..], Record::String("foo".to_string()))));
+    assert_eq!(string_val(br###""" "###), Ok((&br""[..], Record::String("".to_string()))));
+    assert_eq!(string_val(br###""foo\nbar" "###), Ok((&br""[..], Record::String("foo\nbar".to_string()))));
+    assert_eq!(string_val(br###""foo\tbar\t\a" "###), Ok((&br""[..], Record::String("foo\tbar\t\x07".to_string()))));
 }
 
-named!(tuple_val<&[u8], Value>,
+named!(tuple_val<&[u8], Record>,
     delimited!(apply!(sym,"("),
-               map!(separated_list!(apply!(sym,","), value), |v|Value::Tuple(v)),
+               map!(separated_list!(apply!(sym,","), record), |v|Record::Tuple(v)),
                apply!(sym,")"))
 );
 
 #[test]
 fn test_tuple() {
-    assert_eq!(tuple_val(br"( true, false)"), Ok((&br""[..], Value::Tuple(vec![Value::Bool(true), Value::Bool(false)]))));
+    assert_eq!(tuple_val(br"( true, false)"), Ok((&br""[..], Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]))));
 }
 
-named!(struct_val<&[u8], Value>,
+named!(struct_val<&[u8], Record>,
     do_parse!(
         cons: identifier >>
         val: delimited!(apply!(sym,"{"), apply!(constructor_args, cons), apply!(sym,"}")) >>
@@ -174,26 +174,26 @@ named!(struct_val<&[u8], Value>,
 #[test]
 fn test_struct() {
     assert_eq!(struct_val(br"Constructor { true, false }"), 
-               Ok((&br""[..], Value::Struct("Constructor".to_string(),
-                                            vec![Value::Bool(true), Value::Bool(false)]))));
+               Ok((&br""[..], Record::Struct("Constructor".to_string(),
+                                            vec![Record::Bool(true), Record::Bool(false)]))));
     assert_eq!(struct_val(br"_Constructor{true, false}"), 
-               Ok((&br""[..], Value::Struct("_Constructor".to_string(),
-                                            vec![Value::Bool(true), Value::Bool(false)]))));
+               Ok((&br""[..], Record::Struct("_Constructor".to_string(),
+                                            vec![Record::Bool(true), Record::Bool(false)]))));
     assert_eq!(struct_val(br###"Constructor1 { true, C{false, 25, "foo\nbar"} }"###), 
-               Ok((&br""[..], Value::Struct("Constructor1".to_string(),
-                                            vec![Value::Bool(true), 
-                                                 Value::Struct("C".to_string(),
-                                                               vec![Value::Bool(false),
-                                                                    Value::Int(25_i32.to_bigint().unwrap()),
-                                                                    Value::String("foo\nbar".to_string())])]))));
+               Ok((&br""[..], Record::Struct("Constructor1".to_string(),
+                                            vec![Record::Bool(true), 
+                                                 Record::Struct("C".to_string(),
+                                                               vec![Record::Bool(false),
+                                                                    Record::Int(25_i32.to_bigint().unwrap()),
+                                                                    Record::String("foo\nbar".to_string())])]))));
 }
 
-named!(int_val<&[u8], Value>,
-    alt!(map!(hex_val, Value::Int) |
-         map!(dec_val, Value::Int) | 
+named!(int_val<&[u8], Record>,
+    alt!(map!(hex_val, Record::Int) |
+         map!(dec_val, Record::Int) | 
          do_parse!(apply!(sym,"-") >> 
                    val: alt!(hex_val | dec_val) >>
-                   (Value::Int(-val))
+                   (Record::Int(-val))
                   )
         )
 );
@@ -214,14 +214,14 @@ named!(dec_val<&[u8], BigInt>,
 #[test]
 fn test_int() {
     assert_eq!(dec_val(br"1 ")     , Ok((&br""[..], 1_i32.to_bigint().unwrap())));
-    assert_eq!(int_val(br"1 ")     , Ok((&br""[..], Value::Int(1_i32.to_bigint().unwrap()))));
-    assert_eq!(value(br"-5 ")      , Ok((&br""[..], Value::Int(-5_i32.to_bigint().unwrap()))));
+    assert_eq!(int_val(br"1 ")     , Ok((&br""[..], Record::Int(1_i32.to_bigint().unwrap()))));
+    assert_eq!(record(br"-5 ")     , Ok((&br""[..], Record::Int(-5_i32.to_bigint().unwrap()))));
     assert_eq!(hex_val(br"0xabcd "), Ok((&br""[..], 0xabcd.to_bigint().unwrap())));
-    assert_eq!(int_val(br"0xabcd "), Ok((&br""[..], Value::Int(0xabcd.to_bigint().unwrap()))));
-    assert_eq!(value(br"0xabcd ")  , Ok((&br""[..], Value::Int(0xabcd.to_bigint().unwrap()))));
+    assert_eq!(int_val(br"0xabcd "), Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
+    assert_eq!(record(br"0xabcd ") , Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
 }
 
-named_args!(constructor_args(constructor: String)<Value>,
-    do_parse!(args: separated_list!(apply!(sym,","), value) >>
-              (Value::Struct(constructor, args)))
+named_args!(constructor_args(constructor: String)<Record>,
+    do_parse!(args: separated_list!(apply!(sym,","), record) >>
+              (Record::Struct(constructor, args)))
 );

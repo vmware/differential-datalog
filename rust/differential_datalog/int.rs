@@ -1,11 +1,12 @@
 use abomonation::Abomonation;
-use num::bigint::BigInt;
+use num::bigint::{BigInt, ToBigInt};
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
 use std::fmt;
+use cmd_parser::{FromRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
 pub struct Int{x:BigInt}
@@ -18,6 +19,9 @@ impl Default for Int {
 unsafe_abomonate!(Int);
 
 impl Int {
+    pub fn from_bigint(v: BigInt) -> Int {
+        Int{x: v}
+    }
     pub fn from_u64(v: u64) -> Int {
         Int{x: BigInt::from(v)}
     }
@@ -56,6 +60,20 @@ impl<'de> Deserialize<'de> for Int {
         }
     }
 }
+
+
+impl FromRecord for Int {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        Ok(Int::from_bigint(BigInt::from_record(val)?))
+    }
+}
+
+#[test]
+fn test_fromrecord() {
+    let v = (-25_i64).to_bigint().unwrap();
+    assert_eq!(Int::from_record(&Record::Int(v.clone())), Ok(Int::from_bigint(v)));
+}
+
 
 /*
 impl Uint {

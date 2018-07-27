@@ -5,10 +5,10 @@ extern crate rustyline;
 extern crate libc;
 
 mod parse;
-mod from_value;
+mod from_record;
 
 pub use parse::*;
-pub use from_value::*;
+pub use from_record::*;
 
 use nom::*;
 use std::io;

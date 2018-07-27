@@ -8,6 +8,9 @@ git="https://github.com/frankmcsherry/graph-map.git"
 [dependencies.differential-dataflow]
 git="https://github.com/frankmcsherry/differential-dataflow.git"
 
+[dependencies.cmd_parser]
+path = "../cmd_parser"
+
 [dev-dependencies]
 getopts="0.2.14"
 rand="0.3.13"
