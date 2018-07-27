@@ -16,6 +16,7 @@ use rustyline::Editor;
 
 const HISTORY_FILE: &str = "cmd_parser_history.txt";
 
+// We handle stdin differently depending on whether it is a user terminal or a pipe.
 enum Input {
     TTY(Editor<()>),
     Pipe(BufReader<io::Stdin>)
@@ -25,7 +26,7 @@ enum Input {
 pub fn interact(cb: fn(Command)) -> i32 {
     let mut buf: Vec<u8> = Vec::new(); 
 
-    let mut input = if unsafe { libc::isatty(libc::STDOUT_FILENO as i32) } != 0 {
+    let mut input = if unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0 {
         let mut rl = Editor::<()>::new();
         let _ = rl.load_history(HISTORY_FILE);
         Input::TTY(rl)
