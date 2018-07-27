@@ -7,6 +7,7 @@ extern crate serde_derive;
 extern crate serde;
 
 extern crate differential_datalog;
+extern crate cmd_parser;
 
 #[macro_use] 
 extern crate abomonation;
@@ -14,6 +15,7 @@ extern crate abomonation;
 use differential_datalog::program::*;
 use differential_datalog::uint::*;
 use differential_datalog::int::*;
+use cmd_parser::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};

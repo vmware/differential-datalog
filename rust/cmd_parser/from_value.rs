@@ -20,7 +20,7 @@ impl FromValue for u8 {
                 }
             },
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -45,7 +45,7 @@ impl FromValue for u16 {
                 }
             },
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -69,7 +69,7 @@ impl FromValue for u32 {
                 }
             },
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -94,7 +94,7 @@ impl FromValue for u64 {
                 }
             },
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -113,7 +113,7 @@ impl FromValue for BigInt {
         match val {
             Value::Int(i) => Result::Ok(i.clone()),
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -136,7 +136,7 @@ impl FromValue for BigUint {
                 }
             },
             v => {
-                Result::Err(format!("not an int {:?}", *v).to_string())
+                Result::Err(format!("not an int {:?}", *v))
             }
         }
     }
@@ -158,7 +158,7 @@ impl FromValue for bool {
         match val {
             Value::Bool(b) => { Result::Ok(*b) },
             v => {
-                Result::Err(format!("not a bool {:?}", *v).to_string())
+                Result::Err(format!("not a bool {:?}", *v))
             }
         }
     }
@@ -175,7 +175,7 @@ impl FromValue for String {
         match val {
             Value::String(s) => { Result::Ok(s.clone()) },
             v => {
-                Result::Err(format!("not a string {:?}", *v).to_string())
+                Result::Err(format!("not a string {:?}", *v))
             }
         }
     }
@@ -185,4 +185,301 @@ impl FromValue for String {
 fn test_string() {
     assert_eq!(String::from_value(&Value::String("foo".to_string())), Ok("foo".to_string()));
     assert_eq!(String::from_value(&Value::Bool(true)), Err("not a string Bool(true)".to_string()));
+}
+
+impl <T1: FromValue, T2: FromValue> FromValue for (T1,T2) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 2 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?))
+            },
+            v => { Result::Err(format!("not a 2-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue> FromValue for (T1,T2,T3) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 3 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?))
+            },
+            v => { Result::Err(format!("not a 3-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue> FromValue for (T1,T2,T3,T4) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 4 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?))
+            },
+            v => { Result::Err(format!("not a 4-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue> FromValue for (T1,T2,T3,T4,T5) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 5 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?))
+            },
+            v => { Result::Err(format!("not a 5-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue> FromValue for (T1,T2,T3,T4,T5,T6) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 6 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?))
+            },
+            v => { Result::Err(format!("not a 6-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 7 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?))
+            },
+            v => { Result::Err(format!("not a 7-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue, T8: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7,T8) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 8 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?,
+                    T8::from_value(&args[7])?))
+            },
+            v => { Result::Err(format!("not a 8-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue, T8: FromValue, T9: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7,T8,T9) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 9 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?,
+                    T8::from_value(&args[7])?,
+                    T9::from_value(&args[8])?))
+            },
+            v => { Result::Err(format!("not a 9-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue, T8: FromValue, T9: FromValue, T10: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 10 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?,
+                    T8::from_value(&args[7])?,
+                    T9::from_value(&args[8])?,
+                    T10::from_value(&args[9])?))
+            },
+            v => { Result::Err(format!("not a 10-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue, T8: FromValue, T9: FromValue, T10: FromValue, T11: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 11 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?,
+                    T8::from_value(&args[7])?,
+                    T9::from_value(&args[8])?,
+                    T10::from_value(&args[9])?,
+                    T11::from_value(&args[10])?))
+            },
+            v => { Result::Err(format!("not a 11-tuple {:?}", *v)) }
+        }
+    }
+}
+
+impl <T1: FromValue, T2: FromValue, T3: FromValue, T4: FromValue, T5: FromValue, T6: FromValue, T7: FromValue, T8: FromValue, T9: FromValue, T10: FromValue, T11: FromValue, T12: FromValue> FromValue for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12) {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Tuple(args) if args.len() == 12 => {
+                Ok((T1::from_value(&args[0])?, 
+                    T2::from_value(&args[1])?,
+                    T3::from_value(&args[2])?,
+                    T4::from_value(&args[3])?,
+                    T5::from_value(&args[4])?,
+                    T6::from_value(&args[5])?,
+                    T7::from_value(&args[6])?,
+                    T8::from_value(&args[7])?,
+                    T9::from_value(&args[8])?,
+                    T10::from_value(&args[9])?,
+                    T11::from_value(&args[10])?,
+                    T12::from_value(&args[11])?))
+            },
+            v => { Result::Err(format!("not a 12-tuple {:?}", *v)) }
+        }
+    }
+}
+
+#[test]
+fn test_tuple() {
+    assert_eq!(<(bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false)])), 
+               Ok((true, false)));
+    assert_eq!(<(bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false)])), 
+               Ok((true, false, false)));
+    assert_eq!(<(bool, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true)])), 
+               Ok((true, false, false, true)));
+    assert_eq!(<(bool, bool, bool, bool, String)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string())])), 
+               Ok((true, false, false, true, "foo".to_string())));
+    assert_eq!(<(bool, bool, bool, bool, String, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false)])), 
+               Ok((true, false, false, true, "foo".to_string(), false)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false), Value::Bool(false)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false, false)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false), Value::Bool(false), Value::Bool(true)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false, false, true)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::Bool(true)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::Bool(true), Value::Bool(true)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true)));
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool, bool)>::from_value(&Value::Tuple(vec![Value::Bool(true), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::String("foo".to_string()), Value::Bool(false), Value::Bool(false), Value::Bool(false), Value::Bool(true), Value::Bool(true), Value::Bool(true), Value::Bool(false)])), 
+               Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true, false)));
+
+
+
+
+
+}
+
+#[cfg(test)]
+#[derive(Eq, PartialEq, Debug)]
+struct Foo<T> {
+    f1: T
+}
+
+#[cfg(test)]
+impl <T: FromValue> FromValue for Foo<T> {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Struct(constr, args) => {
+                match constr.as_ref() {
+                    "Foo" if args.len() == 1 => {
+                        Ok(Foo{f1: T::from_value(&args[0])?})
+                    },
+                    c => Result::Err(format!("unknown constructor {} of type Foo in {:?}", c, *val))
+                }
+            },
+            v => {
+                Result::Err(format!("not a struct {:?}", *v))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+type Bbool = bool;
+
+#[cfg(test)]
+#[derive(Eq, PartialEq, Debug)]
+enum DummyEnum<T> {
+    Constr1{f1: Bbool, f2: String},
+    Constr2{f1: T, f2: BigInt, f3: Foo<T>},
+    Constr3{f1: (bool, bool)},
+}
+
+#[cfg(test)]
+impl <T: FromValue> FromValue for DummyEnum<T> {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Struct(constr, args) => {
+                match constr.as_ref() {
+                    "Constr1" if args.len() == 2 => {
+                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_value(&args[0])?,
+                                              f2: String::from_value(&args[1])?})
+                    },
+                    "Constr2" if args.len() == 3 => {
+                        Ok(DummyEnum::Constr2{f1: <T>::from_value(&args[0])?,
+                                              f2: <BigInt>::from_value(&args[1])?,
+                                              f3: <Foo<T>>::from_value(&args[2])?})
+                    },
+                    "Constr3" if args.len() == 1 => {
+                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_value(&args[0])?})
+                    },
+                    c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
+                }
+            },
+            v => {
+                Result::Err(format!("not a struct {:?}", *v))
+            }
+        }
+    }
+}
+
+
+#[test]
+fn test_enum() {
+    assert_eq!(DummyEnum::from_value(&Value::Struct("Constr1".to_string(),
+                                                    vec![Value::Bool(true), Value::String("foo".to_string())])),
+               Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
+    assert_eq!(DummyEnum::from_value(&Value::Struct("Constr2".to_string(),
+                                                    vec![Value::Int((5_i64).to_bigint().unwrap()), 
+                                                         Value::Int((25_i64).to_bigint().unwrap()), 
+                                                         Value::Struct("Foo".to_string(), vec![Value::Int((0_i64).to_bigint().unwrap())])])),
+               Ok(DummyEnum::Constr2::<u16>{f1: 5, 
+                                            f2: (25_i64).to_bigint().unwrap(),
+                                            f3: Foo{f1: 0}}));
 }

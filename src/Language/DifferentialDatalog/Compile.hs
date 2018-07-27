@@ -102,6 +102,10 @@ rustLibFiles =
         , ("differential_datalog/program.rs"  , $(embedFile "rust/differential_datalog/program.rs"))
         , ("differential_datalog/lib.rs"      , $(embedFile "rust/differential_datalog/lib.rs"))
         , ("differential_datalog/test.rs"     , $(embedFile "rust/differential_datalog/test.rs"))
+        , ("cmd_parser/Cargo.toml"            , $(embedFile "rust/cmd_parser/Cargo.toml"))
+        , ("cmd_parser/lib.rs"                , $(embedFile "rust/cmd_parser/lib.rs"))
+        , ("cmd_parser/parse.rs"              , $(embedFile "rust/cmd_parser/parse.rs"))
+        , ("cmd_parser/from_value.rs"         , $(embedFile "rust/cmd_parser/from_value.rs"))
         ]
 
 
@@ -289,20 +293,22 @@ compileLib d imports = header $+$ pp imports $+$ typedefs $+$ relenum $+$ valtyp
     valtype = mkValType d' $ cTypes cstate
 
 mkTypedef :: TypeDef -> Doc
-mkTypedef TypeDef{..} =
+mkTypedef tdef@TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive                                                                    $$
                              "pub struct" <+> pp tdefName <> targs <+> "{"                             $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
-                             impl_abomonate
+                             impl_abomonate                                                            $$
+                             mkFromValue tdef
                           | otherwise
                           -> derive                                                                    $$
                              "pub enum" <+> pp tdefName <> targs <+> "{"                               $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
-                             impl_abomonate
+                             impl_abomonate                                                            $$
+                             mkFromValue tdef
          Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
@@ -328,10 +334,68 @@ mkTypedef TypeDef{..} =
 
     impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> pp tdefName <> targs <> "{}"
 
+{-
+Generate FromValue trait implementation for a struct type:
+
+impl <T: FromValue> FromValue for DummyEnum<T> {
+    fn from_value(val: &Value) -> Result<Self, String> {
+        match val {
+            Value::Struct(constr, args) => {
+                match constr.as_ref() {
+                    "Constr1" if args.len() == 2 => {
+                        Ok(DummyEnum::Constr1{f1: bool::from_value(&args[0])?,
+                                              f2: String::from_value(&args[1])?})
+                    },
+                    "Constr2" if args.len() == 2 => {
+                        Ok(DummyEnum::Constr2{f1: T::from_value(&args[0])?,
+                                              f2: BigInt::from_value(&args[1])?})
+                    },
+                    c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
+                }
+            },
+            v => {
+                Result::Err(format!("not a struct {:?}", *v))
+            }
+        }
+    }
+}
+-}
+mkFromValue :: TypeDef -> Doc
+mkFromValue t@TypeDef{..} =
+    "impl" <+> targs_bounds <+> "FromValue for" <+> pp (name t) <> targs <+> "{"                                                $$
+    "    fn from_value(val: &Value) -> Result<Self, String> {"                                                                  $$
+    "        match val {"                                                                                                       $$
+    "            Value::Struct(constr, args) => {"                                                                              $$
+    "                match constr.as_ref() {"                                                                                   $$
+    (nest' $ nest' $ nest' $ nest' $ nest' constructors)                                                                        $$
+    "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> pp (name t) <+> "in {:?}\", c, *val))"  $$
+    "                }"                                                                                                         $$
+    "            },"                                                                                                            $$
+    "            v => {"                                                                                                        $$
+    "                Result::Err(format!(\"not a struct {:?}\", *v))"                                                           $$
+    "            }"                                                                                                             $$
+    "        }"                                                                                                                 $$
+    "    }"                                                                                                                     $$
+    "}"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": FromValue") . pp) tdefArgs) <> ">"
+    constructors = vcat $ map mkcons $ typeCons $ fromJust tdefType
+    mkcons :: Constructor -> Doc
+    mkcons c@Constructor{..} = 
+        "\"" <> pp (name c) <> "\"" <+> "if args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
+        "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
+        "},"
+        where
+        cname = if isStructType $ fromJust tdefType
+                   then pp (name t)
+                   else pp (name t) <> "::" <> pp (name c)
+        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType $ typ f) <> ">::from_value(&args[" <> pp i <> "])?") consArgs
+
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
     "fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
-    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                               $$
+    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                        $$
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
                           otherwise = "/* fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
