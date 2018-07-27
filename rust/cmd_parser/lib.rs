@@ -5,8 +5,10 @@ extern crate rustyline;
 extern crate libc;
 
 mod parse;
+mod from_value;
 
 pub use parse::*;
+pub use from_value::*;
 
 use nom::*;
 use std::io;
@@ -102,6 +104,9 @@ pub fn interact(cb: fn(Command)) -> i32 {
     }
 }
 
+// uncomment to test command line interaction
+
+/*
 #[cfg(test)]
 fn echo_cb(cmd: Command) {
     eprintln!("Command: {:?}", cmd)
@@ -112,3 +117,4 @@ fn test_interactive() {
     let res = interact(echo_cb);
     assert_eq!(res, 0);
 }
+*/

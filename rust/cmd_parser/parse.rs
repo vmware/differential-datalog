@@ -1,3 +1,5 @@
+//! nom-based parser for Datalog values.
+
 use num::bigint::*;
 use nom::*;
 
