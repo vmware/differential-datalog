@@ -90,7 +90,13 @@ vALUE_VAR2 = "__v2"
 header :: Doc
 header = pp $ BS.unpack $(embedFile "rust/template/lib.rs")
 
-cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
+--cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
+
+templateFiles :: String -> [(String, String)]
+templateFiles specname = 
+    map (mapSnd (BS.unpack)) $
+        [ (joinPath [specname, "Cargo.toml"]  , $(embedFile "rust/template/Cargo.toml"))
+        , (joinPath [specname, "main.rs"]     , $(embedFile "rust/template/main.rs"))]
 
 -- Rust differential_datalog library
 rustLibFiles :: [(String, String)]
@@ -235,14 +241,16 @@ compile d specname imports dir = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
     -- Update rustLibFiles if they changed.
-    mapM_ (\(path, content) -> 
-           do let path' = joinPath [dir, path]
-              updateFile path' content) 
+    mapM_ (\(path, content) -> do
+            let path' = joinPath [dir, path]
+            updateFile path' content) 
          rustLibFiles
-    -- Substitute specname in the Cargo.toml files; write Cargo.toml
-    -- if it changed.
-    let cargo = replace "datalog_example" specname cargoFile
-    updateFile (joinPath [dir, specname, "Cargo.toml"]) cargo
+    -- Substitute specname template files; write files if changed.
+    mapM_ (\(path, content) -> do
+            let path' = joinPath [dir, path]
+                content' = replace "datalog_example" specname content
+            updateFile path' content') 
+          $ templateFiles specname
     -- Generate lib.rs file if changed.
     updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
     return ()
@@ -273,7 +281,7 @@ compileLib d imports =
     valtype $+$ 
     funcs $+$ 
     prog $+$ 
-    if M.null (progRelations d') then empty else mkRunInteractive
+    mkRunInteractive d
     where
     -- Transform away rules with multiple heads
     d' = progExpandMultiheadRules d
@@ -452,8 +460,10 @@ mkRelname2Id d =
 
 -- `run_interactive` function to run the Datalog program in
 --   interactive mode.
-mkRunInteractive :: Doc
-mkRunInteractive = [r|
+mkRunInteractive :: DatalogProgram -> Doc
+mkRunInteractive d | M.null $ progRelations d = 
+    "pub fn run_interactive(upd_cb: UpdateCallback<Value>) -> i32 { 0 }"
+mkRunInteractive _ = [r|
 fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     match c {
         UpdCmd::Insert(rname, rec) => {
@@ -464,7 +474,7 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
         UpdCmd::Delete(rname, rec) => {
             let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
-            Ok(Update::Insert{relid: relid as RelId, v: val})
+            Ok(Update::Delete{relid: relid as RelId, v: val})
         }
     }
 }
