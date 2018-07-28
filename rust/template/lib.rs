@@ -29,3 +29,4 @@ use serde::ser::*;
 fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x).to_string()
 }
+

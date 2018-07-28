@@ -25,7 +25,9 @@ enum Input {
 }
 
 /// Parse commands from stdio.
-pub fn interact(cb: fn(Command)) -> i32 {
+pub fn interact<F>(cb: F) -> i32 
+    where F: Fn(Command)
+{
     let mut buf: Vec<u8> = Vec::new(); 
 
     let mut input = if unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0 {

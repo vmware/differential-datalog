@@ -13,7 +13,7 @@ pub enum Record {
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
-pub enum Update {
+pub enum UpdCmd {
     Insert (String, Record),
     Delete (String, Record)
 }
@@ -23,7 +23,7 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
-    Update(Update, bool)
+    Update(UpdCmd, bool)
 }
 
 named!(spaces<&[u8], ()>,
@@ -65,20 +65,20 @@ fn test_command() {
     assert_eq!(parse_command(br"rollback;"), Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"), 
                Ok((&br""[..], Command::Update(
-                   Update::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
+                   UpdCmd::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
                    true
                ))));
     assert_eq!(parse_command(br" insert Rel1[true];"), 
                Ok((&br""[..], Command::Update(
-                   Update::Insert("Rel1".to_string(), Record::Bool(true)), true
+                   UpdCmd::Insert("Rel1".to_string(), Record::Bool(true)), true
                ))));
     assert_eq!(parse_command(br"delete Rel1[(true,false)];"), 
                Ok((&br""[..], Command::Update(
-                   Update::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
+                   UpdCmd::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
                ))));
     assert_eq!(parse_command(br#"   delete Rel2("foo", 0xabcdef1, true) , "#), 
                Ok((&br""[..], Command::Update(
-                   Update::Delete("Rel2".to_string(), Record::Struct("Rel2".to_string(), 
+                   UpdCmd::Delete("Rel2".to_string(), Record::Struct("Rel2".to_string(), 
                                                                     vec![Record::String("foo".to_string()), 
                                                                          Record::Int(0xabcdef1.to_bigint().unwrap()),
                                                                          Record::Bool(true)])),
@@ -86,9 +86,9 @@ fn test_command() {
                ))));
 }
 
-named!(update<&[u8], Update>,
-    alt!(do_parse!(apply!(sym,"insert") >> rec: rel_record >> (Update::Insert(rec.0, rec.1))) |
-         do_parse!(apply!(sym,"delete") >> rec: rel_record >> (Update::Delete(rec.0, rec.1))))
+named!(update<&[u8], UpdCmd>,
+    alt!(do_parse!(apply!(sym,"insert") >> rec: rel_record >> (UpdCmd::Insert(rec.0, rec.1))) |
+         do_parse!(apply!(sym,"delete") >> rec: rel_record >> (UpdCmd::Delete(rec.0, rec.1))))
 );
 
 named!(rel_record<&[u8], (String, Record)>,

@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell, QuasiQuotes #-}
 
 {- | 
 Module     : Compile
@@ -56,6 +56,7 @@ import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import qualified Data.Graph.Inductive.Query.DFS as G
 import Debug.Trace
+import Text.RawString.QQ
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
@@ -263,7 +264,16 @@ updateFile path content = do
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
 compileLib :: DatalogProgram -> String -> Doc
-compileLib d imports = header $+$ pp imports $+$ typedefs $+$ valfromrec $+$ relenum $+$ valtype $+$ funcs $+$ prog
+compileLib d imports = 
+    header $+$ 
+    pp imports $+$ 
+    typedefs $+$ 
+    valfromrec $+$ 
+    relenum $+$ 
+    valtype $+$ 
+    funcs $+$ 
+    prog $+$ 
+    if M.null (progRelations d') then empty else mkRunInteractive
     where
     -- Transform away rules with multiple heads
     d' = progExpandMultiheadRules d
@@ -399,7 +409,7 @@ mkFromRecord t@TypeDef{..} =
         fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType $ typ f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
 
 {-
-pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
+ pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
     match rel {
         Relations::Rel1 => {
             Ok(Value::Rel1Constr(<Rel1Type>::from_record(rec)?))
@@ -411,7 +421,8 @@ pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
 -}
 mkValueFromRecord :: DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
-    "pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {"      $$
+    mkRelname2Id d                                                                          $$
+    "pub fn relval_from_record(rel: Relations, rec: &Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                       $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                        $$
     "    }"                                                                                 $$
@@ -424,6 +435,85 @@ mkValueFromRecord d@DatalogProgram{..} =
         "    Ok(Value::" <> mkConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
         "}"
         where t = typeNormalize d relType
+
+-- Convert string to RelId
+mkRelname2Id :: DatalogProgram -> Doc
+mkRelname2Id d =
+    "fn relname2id(rname: &str) -> Option<Relations> {"     $$
+    "   match rname {"                                      $$
+    (nest' $ nest' $ vcat $ entries)                        $$
+    "       _  => None"                                     $$
+    "   }"                                                  $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> pp (name rel) <> "),"
+
+-- `run_interactive` function to run the Datalog program in
+--   interactive mode.
+mkRunInteractive :: Doc
+mkRunInteractive = [r|
+fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
+    match c {
+        UpdCmd::Insert(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let val = relval_from_record(relid, rec)?;
+            Ok(Update::Insert{relid: relid as RelId, v: val})
+        },
+        UpdCmd::Delete(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let val = relval_from_record(relid, rec)?;
+            Ok(Update::Insert{relid: relid as RelId, v: val})
+        }
+    }
+}
+
+fn handle_cmd(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> () {
+    let resp = match cmd {
+        Command::Start => {
+            upds.clear();
+            p.transaction_start()
+        },
+        Command::Commit => {
+            upds.clear();
+            p.transaction_commit()
+        },
+        Command::Rollback => {
+            upds.clear();
+            p.transaction_rollback()
+        },
+        Command::Update(upd, last) => {
+             match updcmd2upd(&upd) {
+                Ok(u)  => upds.push(u),
+                Err(e) => {
+                    upds.clear();
+                    eprintln!("Error: {}", e);
+                    return;
+                }
+            };
+            if last {
+                let copy = upds.drain(..).collect();
+                p.apply_updates(copy)
+            } else {
+                Ok(())
+            }
+        }
+    };
+    match resp {
+        Ok(_) => println!("Ok"),
+        Err(e) => eprintln!("Error: {}", e)
+    }
+}
+
+pub fn run_interactive(upd_cb: UpdateCallback<Value>) -> i32 {
+    let p = prog(upd_cb);
+    let running = Arc::new(Mutex::new(p.run(1)));
+    let upds = Arc::new(Mutex::new(Vec::new()));
+    interact(|cmd| handle_cmd(&mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))       
+}
+|]
+
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =

@@ -27,3 +27,8 @@ debug-assertions = false
 [lib]
 name = "datalog_example"
 path = "./lib.rs"
+
+[[bin]]
+
+name = "datalog_example_cli"
+path = "./main.rs"
