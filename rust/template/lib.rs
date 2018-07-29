@@ -19,6 +19,7 @@ use cmd_parser::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
+use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
 use std::fmt::Display;
@@ -30,3 +31,14 @@ fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x).to_string()
 }
 
+pub type ValMap = FnvHashMap<RelId, FnvHashSet<Value>>;
+
+fn set_update(relid: RelId, s: &Arc<Mutex<ValMap>>, x : &Value, insert: bool)
+{
+    //println!("set_update({}) {:?} {}", rel, *x, insert);
+    if insert {
+        s.lock().unwrap().entry(relid).or_insert(FnvHashSet::default()).insert(x.clone());
+    } else {
+        s.lock().unwrap().entry(relid).or_insert(FnvHashSet::default()).remove(x);
+    }
+}

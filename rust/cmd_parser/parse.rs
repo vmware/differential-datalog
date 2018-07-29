@@ -23,6 +23,7 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
+    Dump,
     Update(UpdCmd, bool)
 }
 
@@ -50,6 +51,7 @@ named!(pub parse_command<&[u8], Command>,
         spaces >>
         upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    | 
                   do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   | 
+                  do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     | 
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
                   do_parse!(upd:  update >>
                             last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >> 
@@ -62,6 +64,7 @@ named!(pub parse_command<&[u8], Command>,
 fn test_command() {
     assert_eq!(parse_command(br"start;")   , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")  , Ok((&br""[..], Command::Commit)));
+    assert_eq!(parse_command(br"dump;")    , Ok((&br""[..], Command::Dump)));
     assert_eq!(parse_command(br"rollback;"), Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"), 
                Ok((&br""[..], Command::Update(

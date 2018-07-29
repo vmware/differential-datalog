@@ -462,7 +462,7 @@ mkRelname2Id d =
 --   interactive mode.
 mkRunInteractive :: DatalogProgram -> Doc
 mkRunInteractive d | M.null $ progRelations d = 
-    "pub fn run_interactive(upd_cb: UpdateCallback<Value>) -> i32 { 0 }"
+    "pub fn run_interactive(_db: Arc<Mutex<ValMap>>, _upd_cb: UpdateCallback<Value>) -> i32 { 0 }"
 mkRunInteractive _ = [r|
 fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     match c {
@@ -479,7 +479,7 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     }
 }
 
-fn handle_cmd(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> () {
+fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> () {
     let resp = match cmd {
         Command::Start => {
             upds.clear();
@@ -492,6 +492,10 @@ fn handle_cmd(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd:
         Command::Rollback => {
             upds.clear();
             p.transaction_rollback()
+        },
+        Command::Dump => {
+            println!("{:?}", *db.lock().unwrap());
+            Ok(())
         },
         Command::Update(upd, last) => {
              match updcmd2upd(&upd) {
@@ -516,11 +520,11 @@ fn handle_cmd(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd:
     }
 }
 
-pub fn run_interactive(upd_cb: UpdateCallback<Value>) -> i32 {
+pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>) -> i32 {
     let p = prog(upd_cb);
     let running = Arc::new(Mutex::new(p.run(1)));
     let upds = Arc::new(Mutex::new(Vec::new()));
-    interact(|cmd| handle_cmd(&mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))       
+    interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))       
 }
 |]
 
