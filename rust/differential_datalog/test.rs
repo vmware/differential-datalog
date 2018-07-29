@@ -222,7 +222,7 @@ fn test_one_relation(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol))
         }
     };
 
@@ -312,7 +312,7 @@ fn test_two_relations(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
@@ -324,7 +324,7 @@ fn test_two_relations(nthreads: usize) {
             id:           2,      
             rules:        vec![Rule{rel: 1, xforms: Vec::new()}],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol))
         }
     };
 
@@ -401,7 +401,7 @@ fn test_join(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -422,7 +422,7 @@ fn test_join(nthreads: usize) {
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
-            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol))
         }
     };
     fn jfun(_key: &Value, v1: &Value, v2: &Value) -> Option<Value> {
@@ -445,7 +445,7 @@ fn test_join(nthreads: usize) {
                 }]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T3", &relset3, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol))
         }
     };
 
@@ -496,7 +496,7 @@ fn test_antijoin(nthreads: usize) {
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -524,7 +524,7 @@ fn test_antijoin(nthreads: usize) {
             id:           2,      
             rules:        Vec::new(),
             arrangements: vec![],
-            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol))
         }
     };
 
@@ -551,7 +551,7 @@ fn test_antijoin(nthreads: usize) {
                         }]
                 }],
             arrangements: vec![],
-            change_cb:    Arc::new(move |v,pol| set_update("T21", &relset21, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T21", &relset21, v, pol))
         }
     };
 
@@ -570,7 +570,7 @@ fn test_antijoin(nthreads: usize) {
                 }]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T3", &relset3, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol))
         }
     };
 
@@ -630,7 +630,7 @@ fn test_map(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T1", &relset1, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol))
         }
     };
 
@@ -695,7 +695,7 @@ fn test_map(nthreads: usize) {
                 ]
             }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("T2", &relset2, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol))
         }
     };
 
@@ -789,7 +789,7 @@ fn test_recursion(nthreads: usize) {
                 name: "arrange_by_parent".to_string(),
                 afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
-            change_cb:    Arc::new(move |v,pol| set_update("parent", &parentset, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("parent", &parentset, v, pol))
         }
     };
 
@@ -822,7 +822,7 @@ fn test_recursion(nthreads: usize) {
                     name: "arrange_by_self".to_string(),
                     afun: &(arrange_by_self as ArrangeFunc<Value>)
                 }],
-            change_cb:    Arc::new(move |v,pol| set_update("ancestor", &ancestorset, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("ancestor", &ancestorset, v, pol))
         }
     };
 
@@ -862,7 +862,7 @@ fn test_recursion(nthreads: usize) {
                         }]
                 }],
             arrangements: Vec::new(),
-            change_cb:    Arc::new(move |v,pol| set_update("common_ancestor", &common_ancestorset, v, pol))
+            change_cb:    Arc::new(move |_,v,pol| set_update("common_ancestor", &common_ancestorset, v, pol))
         }
     };
 

@@ -192,7 +192,7 @@ emptyCompilerState = CompilerState {
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d = 
-    "#[derive(Copy,Clone)]"                                                                                     $$
+    "#[derive(Copy,Clone,Debug)]"                                                                               $$
     "pub enum Relations {"                                                                                      $$
     (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> pp rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
     "}"
