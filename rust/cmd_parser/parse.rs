@@ -24,6 +24,8 @@ pub enum Command {
     Commit,
     Rollback,
     Dump,
+    Exit,
+    Echo(String),
     Update(UpdCmd, bool)
 }
 
@@ -52,6 +54,11 @@ named!(pub parse_command<&[u8], Command>,
         upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    | 
                   do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   | 
                   do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     | 
+                  do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     | 
+                  do_parse!(apply!(sym,"echo")     >> 
+                            txt: take_until1!(";") >> 
+                            apply!(sym,";") >>
+                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        | 
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
                   do_parse!(upd:  update >>
                             last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >> 
@@ -62,10 +69,12 @@ named!(pub parse_command<&[u8], Command>,
 
 #[test]
 fn test_command() {
-    assert_eq!(parse_command(br"start;")   , Ok((&br""[..], Command::Start)));
-    assert_eq!(parse_command(br"commit;")  , Ok((&br""[..], Command::Commit)));
-    assert_eq!(parse_command(br"dump;")    , Ok((&br""[..], Command::Dump)));
-    assert_eq!(parse_command(br"rollback;"), Ok((&br""[..], Command::Rollback)));
+    assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
+    assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
+    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump)));
+    assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
+    assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
+    assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"), 
                Ok((&br""[..], Command::Update(
                    UpdCmd::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),

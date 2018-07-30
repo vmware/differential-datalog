@@ -12,13 +12,12 @@ use fnv::FnvHashSet;
 
 
 use datalog_example::*;
-use differential_datalog::*;
 use differential_datalog::program::*;
 
 
 fn upd_cb(db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
     set_update(relid, db, v, pol);
-    println!("{} {:?} {:?}", if pol { "insert" } else { "delete" }, relid, *v);
+    eprintln!("{} {:?} {:?}", if pol { "insert" } else { "delete" }, relid, *v);
 }
 
 fn set_update(relid: RelId, s: &Arc<Mutex<ValMap>>, x : &Value, insert: bool)

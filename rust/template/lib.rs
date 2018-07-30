@@ -23,6 +23,7 @@ use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
 use std::fmt::Display;
+use std::process::exit;
 
 use serde::de::*;
 use serde::ser::*;

@@ -497,6 +497,13 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             println!("{:?}", *db.lock().unwrap());
             Ok(())
         },
+        Command::Exit => {
+            exit(0);
+        },
+        Command::Echo(txt) => {
+            println!("{}", txt);
+            Ok(())
+        },
         Command::Update(upd, last) => {
              match updcmd2upd(&upd) {
                 Ok(u)  => upds.push(u),
@@ -515,7 +522,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         }
     };
     match resp {
-        Ok(_) => println!("Ok"),
+        Ok(_) => {},
         Err(e) => eprintln!("Error: {}", e)
     }
 }

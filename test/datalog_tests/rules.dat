@@ -1,0 +1,10 @@
+start;
+insert R3(0, true),
+insert R3(1, true),
+insert R3(2, true),
+insert R3(3, true),
+insert R3(4, true),
+insert R3(5, true),
+insert R3(6, true);
+commit;
+dump;

@@ -73,3 +73,4 @@ tests:
     - tasty-golden
     - filepath
     - process
+    - deepseq

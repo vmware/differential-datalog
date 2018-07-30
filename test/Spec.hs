@@ -21,8 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
+{-# LANGUAGE FlexibleContexts #-}
+
 import Test.Tasty
 import Test.Tasty.Golden
+import Test.Tasty.Golden.Advanced
+import System.IO
 import System.FilePath
 import System.Directory
 import System.Process
@@ -30,8 +34,11 @@ import Test.HUnit
 import Data.List
 import Data.List.Split
 import Control.Exception
+import Control.DeepSeq
 import Control.Monad
 import GHC.IO.Exception
+import Text.Printf
+import qualified Data.ByteString as BS
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
@@ -44,12 +51,17 @@ main = defaultMain =<< goldenTests
 
 goldenTests :: IO TestTree
 goldenTests = do
+  -- locate datalog files
   dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
-  return $ testGroup "datalog parser tests"
-    [ goldenVsFile (takeBaseName dlFile) expect output (testOne dlFile output)
-    | dlFile <- dlFiles 
-    , let expect = replaceExtension dlFile ".ast.expected"
-    , let output = replaceExtension dlFile ".ast"]
+  -- some of the tests may have accompanying .dat files
+  inFiles <- mapM (\dlFile -> do let datFile = replaceExtension dlFile "dat"
+                                 exists <- doesFileExist datFile
+                                 return $ if exists then [dlFile, datFile] else [dlFile]) dlFiles
+  return $ testGroup "datalog tests"
+    [ goldenVsFiles (takeBaseName $ head files) expect output (testOne $ head files)
+    | files <- inFiles 
+    , let expect = map (uncurry replaceExtension) $ zip files [".ast.expected", ".dump.expected"]
+    , let output = map (uncurry replaceExtension) $ zip files [".ast", ".dump"]]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do 
@@ -66,7 +78,7 @@ compileFailingProgram file program =
 
 -- Run Datalog compiler on spec in 'fname'.
 --
--- * Writes parsed AST to 'ofname'.
+-- * Writes parsed AST to specname.ast
 --
 -- * Creates Cargo project in a directory obtained by removing file
 -- extension from 'fname'.
@@ -74,12 +86,19 @@ compileFailingProgram file program =
 -- * Checks if a file with the same name as 'fname' and '.rs' extension 
 -- (instead of '.dl') exists and passes its content as the 'imports' argument to
 -- compiler.
-testOne :: FilePath -> FilePath -> IO ()
-testOne fname ofname = do
-    -- if a file contains .fail. in it's name it indicates a test
+--
+-- * If a .dat file exists for the given test, dump its content to the
+-- compiled datalog program, producing .dump and .err files
+testOne :: FilePath -> IO ()
+testOne fname = do
+    -- if a file contains .fail. in its name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
     let specname = takeBaseName fname
+    let astfile  = replaceExtension fname "ast"
+    let datfile  = replaceExtension fname "dat"
+    let dumpfile = replaceExtension fname "dump"
+    let errfile  = replaceExtension fname "err"
     let shouldFail = ".fail." `isInfixOf` fname
     if shouldFail
       then do
@@ -89,15 +108,16 @@ testOne fname ofname = do
         -- if the file should fail we expect an exception.
         -- the exception message is the expected output
         out <- mapM (compileFailingProgram fname) parts
-        writeFile ofname $ (intercalate "\n\n" out) ++ "\n"
+        writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
         prog <- parseValidate fname body
-        writeFile ofname (show prog ++ "\n")
+        writeFile astfile (show prog ++ "\n")
         -- parse reference output
-        prog' <- parseDatalogFile False ofname
+        prog' <- parseDatalogFile False astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
+        -- include any user-provided Rust code
         let importsfile = addExtension (dropExtension fname) "rs"
         hasimports <- doesFileExist importsfile
         imports <- if hasimports
@@ -113,5 +133,46 @@ testOne fname ofname = do
             errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++ 
                                      "\nstderr:\n" ++ stde ++
                                      "\n\nstdout:\n" ++ stdo
+        -- check for a test data file
+        hasdata <- doesFileExist datfile
+        when hasdata $ do 
+            hout <- openFile dumpfile WriteMode
+            herr <- openFile errfile  WriteMode
+            hdat <- openFile datfile ReadMode
+            withCurrentDirectory (joinPath [rust_dir, specname]) $ do
+                code <- withCreateProcess (proc "cargo" ["run"]){std_in=CreatePipe, std_out=UseHandle hout, std_err=UseHandle herr} $
+                    \(Just hin) _ _ phandle -> do
+                        dat <- hGetContents hdat
+                        hPutStrLn hin dat
+                        hPutStrLn hin "exit;"
+                        hFlush hin
+                        code <- waitForProcess phandle
+                        return code
+                when (code /= ExitSuccess) $ do
+                    errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++ 
+                                             "\nstderr written to:\n" ++ errfile ++
+                                             "\n\nstdout written to:\n" ++ dumpfile
+            hClose hout
+            hClose herr
+            hClose hdat
         return ()
     return ()
+
+
+-- A version of golden test that supports multiple output files
+goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
+goldenVsFiles name ref new act =
+  goldenTest name 
+             (do {refs <- mapM BS.readFile ref; evaluate $ rnf refs; return refs}) 
+             (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news}) 
+             cmp upd
+  where
+  cmp xs ys = return $ msum $
+              map (\((x,r),(y,n)) -> 
+                    if x == y 
+                       then Nothing
+                       else Just $ printf "Files '%s' and '%s' differ" r n) 
+                  $ zip (zip xs ref) (zip ys new)
+  upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
+                                 when (not exists) $ BS.writeFile r b)
+             $ zip ref bufs
