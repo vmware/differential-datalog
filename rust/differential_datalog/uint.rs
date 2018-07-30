@@ -8,7 +8,7 @@ use serde::de::Error;
 use std::fmt;
 use cmd_parser::{FromRecord, Record};
 
-#[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}
 
 impl Default for Uint {
@@ -36,6 +36,12 @@ impl Uint {
 impl fmt::Display for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.x)
+    }
+}
+
+impl fmt::Debug for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
     }
 }
 

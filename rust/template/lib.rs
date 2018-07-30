@@ -24,6 +24,9 @@ use fnv::FnvHashSet;
 use std::iter::FromIterator;
 use std::fmt::Display;
 use std::process::exit;
+use std::fmt;
+use std::io::{Stdout,stdout};
+use std::io;
 
 use serde::de::*;
 use serde::ser::*;
@@ -42,4 +45,14 @@ fn set_update(relid: RelId, s: &Arc<Mutex<ValMap>>, x : &Value, insert: bool)
     } else {
         s.lock().unwrap().entry(relid).or_insert(FnvHashSet::default()).remove(x);
     }
+}
+
+fn formatValMap(vmap: &ValMap, w: &mut io::Write) {
+   for (relid, relset) in vmap {
+       w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()));
+       for val in relset {
+            w.write_fmt(format_args!("{}\n", *val));
+       };
+       w.write_fmt(format_args!("\n"));
+   };
 }

@@ -8,7 +8,7 @@ use serde::de::Error;
 use std::fmt;
 use cmd_parser::{FromRecord, Record};
 
-#[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}
 
 impl Default for Int {
@@ -38,6 +38,13 @@ impl fmt::Display for Int {
         write!(f, "{}", self.x)
     }
 }
+
+impl fmt::Debug for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
+    }
+}
+
 
 impl Serialize for Int {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -51,17 +51,17 @@ named!(identifier<&[u8], String>,
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>
-        upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    | 
-                  do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   | 
-                  do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     | 
-                  do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     | 
-                  do_parse!(apply!(sym,"echo")     >> 
-                            txt: take_until1!(";") >> 
+        upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    |
+                  do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   |
+                  do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     |
+                  do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     |
+                  do_parse!(apply!(sym,"echo")     >>
+                            txt: take_until1!(";") >>
                             apply!(sym,";") >>
-                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        | 
+                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        |
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
                   do_parse!(upd:  update >>
-                            last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >> 
+                            last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >>
                             (Command::Update(upd, last)))) >>
         (upd)
     )

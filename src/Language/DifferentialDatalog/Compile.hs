@@ -273,15 +273,15 @@ updateFile path content = do
 -- the program for the Rust Datalog library
 compileLib :: DatalogProgram -> String -> Doc
 compileLib d imports = 
-    header $+$ 
-    pp imports $+$ 
-    typedefs $+$ 
-    valfromrec $+$ 
-    relenum $+$ 
-    valtype $+$ 
-    funcs $+$ 
-    prog $+$ 
-    mkRunInteractive d
+    header               $+$
+    pp imports           $+$
+    typedefs             $+$
+    mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
+    mkRelEnum d'         $+$ -- Relations enum
+    valtype              $+$
+    funcs                $+$
+    prog                 $+$
+    mkRunInteractive d'
     where
     -- Transform away rules with multiple heads
     d' = progExpandMultiheadRules d
@@ -300,12 +300,8 @@ compileLib d imports =
                                   mkProg d' nodes)
                               $ emptyCompilerState{cArrangements = arrs,
                                                    cTypes        = types}
-    -- Relations enum
-    relenum = mkRelEnum d'
     -- Type declarations
     typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
-    -- Function to convert cmd_parser::Record to Value
-    valfromrec = mkValueFromRecord d'
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
@@ -321,24 +317,30 @@ mkTypedef tdef@TypeDef{..} =
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord tdef
+                             mkFromRecord tdef                                                         $$
+                             display
                           | otherwise
                           -> derive                                                                    $$
                              "pub enum" <+> pp tdefName <> targs <+> "{"                               $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord tdef
+                             mkFromRecord tdef                                                         $$
+                             display
          Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
-    derive = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]"
+    derive = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">" 
     targs_traits = if null tdefArgs
                       then empty
                       else "<" <> (hsep $ punctuate comma $ map ((<> ": Val") . pp) tdefArgs) <> ">" 
+    targs_disp = if null tdefArgs
+                    then empty
+                    else "<" <> (hsep $ punctuate comma $ map ((<> ": fmt::Display + fmt::Debug") . pp) tdefArgs) <> ">" 
+
 
     mkField :: Field -> Doc
     mkField f = pp (name f) <> ":" <+> mkType (typ f)
@@ -353,6 +355,28 @@ mkTypedef tdef@TypeDef{..} =
                 "}"
 
     impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> pp tdefName <> targs <> "{}"
+
+    display = "impl" <+> targs_disp <+> "fmt::Display for" <+> pp tdefName <> targs <+> "{"                    $$
+              "    fn fmt(&self, __formatter: &mut fmt::Formatter) -> fmt::Result {"                           $$
+              "        match self {"                                                                           $$
+              (nest' $ nest' $ nest' $ vcat $ punctuate comma $ map mkDispCons $ typeCons $ fromJust tdefType) $$
+              "        }"                                                                                      $$
+              "    }"                                                                                          $$
+              "}"                                                                                              $$
+              "impl" <+> targs_disp <+> "fmt::Debug for" <+> pp tdefName <> targs <+> "{"                      $$
+              "    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {"                                     $$
+              "        fmt::Display::fmt(&self, f)"                                                            $$
+              "    }"                                                                                          $$
+              "}"
+    mkDispCons :: Constructor -> Doc
+    mkDispCons c@Constructor{..} = 
+        cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
+        "write!(__formatter, \"" <> cname <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+> 
+        (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
+        where cname = if (length $ typeCons $ fromJust tdefType) == 1
+                         then pp tdefName
+                         else pp tdefName <> "::" <> pp (name c)
+
 
 {-
 Generate FromRecord trait implementation for a struct type:
@@ -430,6 +454,7 @@ mkFromRecord t@TypeDef{..} =
 mkValueFromRecord :: DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
     mkRelname2Id d                                                                          $$
+    mkRelId2Relations d                                                                     $$
     "pub fn relval_from_record(rel: Relations, rec: &Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                       $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                        $$
@@ -457,6 +482,20 @@ mkRelname2Id d =
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
     mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> pp (name rel) <> "),"
+
+-- Convert string to RelId
+mkRelId2Relations :: DatalogProgram -> Doc
+mkRelId2Relations d =
+    "fn relid2rel(rid: RelId) -> Option<Relations> {"       $$
+    "   match rid {"                                        $$
+    (nest' $ nest' $ vcat $ entries)                        $$
+    "       _  => None"                                     $$
+    "   }"                                                  $$
+    "}"
+    where
+    entries = mapIdx mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Int -> Doc
+    mkrel rel i = pp i <+> "=> Some(Relations::" <> pp (name rel) <> "),"
 
 -- `run_interactive` function to run the Datalog program in
 --   interactive mode.
@@ -494,7 +533,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             p.transaction_rollback()
         },
         Command::Dump => {
-            println!("{:?}", *db.lock().unwrap());
+            formatValMap(&*db.lock().unwrap(), &mut stdout());
             Ok(())
         },
         Command::Exit => {
@@ -561,11 +600,21 @@ mkValType d types =
     "unsafe_abomonate!(Value);"                                                             $$
     "impl Default for Value {"                                                              $$
     "    fn default() -> Value {" <> tuple0 <> "}"                                          $$
+    "}"                                                                                     $$
+    "impl fmt::Display for Value {"                                                         $$
+    "    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {"                            $$
+    "        match self {"                                                                  $$
+    (nest' $ nest' $ nest' $ vcat $ punctuate comma $ map mkdisplay $ S.toList types)       $$
+    "        }"                                                                             $$
+    "    }"                                                                                 $$
     "}"
     where
+    consname t = mkConstructorName' d t
     mkValCons :: Type -> Doc
-    mkValCons t = mkConstructorName' d t <> (parens $ mkType t)
+    mkValCons t = consname t <> (parens $ mkType t)
     tuple0 = "Value::" <> mkConstructorName' d (tTuple []) <> "(())" 
+    mkdisplay :: Type -> Doc
+    mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
 
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode

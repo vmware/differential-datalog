@@ -139,19 +139,21 @@ testOne fname = do
             hout <- openFile dumpfile WriteMode
             herr <- openFile errfile  WriteMode
             hdat <- openFile datfile ReadMode
-            withCurrentDirectory (joinPath [rust_dir, specname]) $ do
-                code <- withCreateProcess (proc "cargo" ["run"]){std_in=CreatePipe, std_out=UseHandle hout, std_err=UseHandle herr} $
-                    \(Just hin) _ _ phandle -> do
-                        dat <- hGetContents hdat
-                        hPutStrLn hin dat
-                        hPutStrLn hin "exit;"
-                        hFlush hin
-                        code <- waitForProcess phandle
-                        return code
-                when (code /= ExitSuccess) $ do
-                    errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++ 
-                                             "\nstderr written to:\n" ++ errfile ++
-                                             "\n\nstdout written to:\n" ++ dumpfile
+            code <- withCreateProcess (proc "cargo" ["run"]){cwd = Just $ joinPath [rust_dir, specname],
+                                                             std_in=CreatePipe,
+                                                             std_out=UseHandle hout,
+                                                             std_err=UseHandle herr} $
+                \(Just hin) _ _ phandle -> do
+                    dat <- hGetContents hdat
+                    hPutStrLn hin dat
+                    hPutStrLn hin "exit;"
+                    hFlush hin
+                    code <- waitForProcess phandle
+                    return code
+            when (code /= ExitSuccess) $ do
+                errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++ 
+                                         "\nstderr written to:\n" ++ errfile ++
+                                         "\n\nstdout written to:\n" ++ dumpfile
             hClose hout
             hClose herr
             hClose hdat
@@ -159,7 +161,9 @@ testOne fname = do
     return ()
 
 
--- A version of golden test that supports multiple output files
+-- A version of golden test that supports multiple output files.
+-- Uses strict evluation to avoid errors lazily reading and then writing the
+-- same file.
 goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
 goldenVsFiles name ref new act =
   goldenTest name 
