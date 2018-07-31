@@ -9,7 +9,7 @@ use std::sync::{Arc,Mutex};
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
 
-const TEST_SIZE: u64 = 10000;
+const TEST_SIZE: u64 = 1000;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 struct P {

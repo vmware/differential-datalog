@@ -6,6 +6,8 @@ use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
 use std::fmt;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 use cmd_parser::{FromRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
@@ -32,6 +34,33 @@ impl Int {
         Int{x: BigInt::parse_bytes(buf, radix).unwrap()}
     }
 }
+
+#[no_mangle]
+pub extern "C" fn int_from_i64(v: i64) -> *mut Int {
+    Box::into_raw(Box::new(Int::from_i64(v)))
+}
+
+#[no_mangle]
+pub extern "C" fn int_from_u64(v: u64) -> *mut Int {
+    Box::into_raw(Box::new(Int::from_u64(v)))
+}
+
+#[no_mangle]
+pub extern "C" fn int_from_str(s: *const c_char, radix: u32) -> *mut Int {
+    let c_str = unsafe { CStr::from_ptr(s) };
+    Box::into_raw(Box::new(Int::parse_bytes(c_str.to_bytes(), radix)))
+}
+
+#[no_mangle]
+pub extern "C" fn int_free(x: *mut Int) {
+    if x.is_null() {
+        return;
+    }
+    unsafe {
+        Box::from_raw(x);
+    }
+}
+
 
 impl fmt::Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
