@@ -2,19 +2,7 @@ typedef node = string
 
 ground relation Edge(s: node, t: node)
 
-
 relation Path(s1: node, s2: node)
-
 
 Path(x, y) :- Edge(x,y).
 Path(x, z) :- Path(x, w), Edge(w, z).
-
-Edge("Palo Alto", "Palo Alto`").
-
-Edge("Palo Alto", "Redwood City").
-
-Edge("Redwood City", "San Bruno").
-
-/*
-Path("Palo Alto", "San Bruno").
-*/
