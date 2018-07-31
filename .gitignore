@@ -20,9 +20,15 @@ cabal.sandbox.config
 cabal.project.local
 .HTF/
 test/datalog_tests/*.ast
+test/datalog_tests/*.err
+test/datalog_tests/*.dump
 .idea/
 out/
 *.cabal
 cabal.config
 differential-datalog.iml
 **Cargo.lock
+**.swo
+test/datalog_tests/*/*
+**/target/*
+**cmd_parser_history.txt
