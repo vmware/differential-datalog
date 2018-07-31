@@ -1,0 +1,23 @@
+typedef person = string
+
+ground relation Human(h: person)
+ground relation Parent(child: person, parent: person)
+
+relation Sib(s1: person, s2: person)
+
+
+Sib(x, y) :- Parent(x, z), Parent(y, z), x != y.
+
+Parent("Alice", "Bob").
+
+Parent("Ben", "Bob").
+
+Parent("Bob", "Bob").
+
+/*
+Sib("Alice", "Bob").
+Sib("Bob", "Alice").
+Sib("Ben", "Alice").
+Sib("Alice", "Ben").
+Sib("Ben", "Bob").
+*/

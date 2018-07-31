@@ -114,7 +114,7 @@ pub enum ProgNode<V: Val> {
     SCCNode{rels: Vec<Relation<V>>}
 }
 
-pub type UpdateCallback<V> = Arc<Fn(&V, bool) + Send + Sync>;
+pub type UpdateCallback<V> = Arc<Fn(RelId, &V, bool) + Send + Sync>;
 
 /// Datalog relation.
 ///
@@ -401,7 +401,7 @@ impl<V:Val> Program<V>
                     for (relid, collection) in collections {
                         /* notify client about changes */
                         let cb = prog.get_relation(relid).change_cb.clone();
-                        collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(&x.0, x.2 == 1)})
+                        collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(relid, &x.0, x.2 == 1)})
                             .probe_with(&mut probe1);
                     };
 

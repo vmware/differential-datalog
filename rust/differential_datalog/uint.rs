@@ -1,13 +1,14 @@
 use abomonation::Abomonation;
-use num::bigint::BigUint;
+use num::bigint::{BigUint, BigInt, ToBigUint, ToBigInt};
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
 use std::fmt;
+use cmd_parser::{FromRecord, Record};
 
-#[derive(Eq, PartialOrd, PartialEq, Ord, Debug, Clone, Hash)]
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}
 
 impl Default for Uint {
@@ -18,6 +19,12 @@ impl Default for Uint {
 unsafe_abomonate!(Uint);
 
 impl Uint {
+    pub fn from_biguint(v: BigUint) -> Uint {
+        Uint{x: v}
+    }
+    pub fn from_bigint(v: BigInt) -> Uint {
+        Uint{x: v.to_biguint().unwrap()}
+    }
     pub fn from_u64(v: u64) -> Uint {
         Uint{x: BigUint::from(v)}
     }
@@ -29,6 +36,12 @@ impl Uint {
 impl fmt::Display for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.x)
+    }
+}
+
+impl fmt::Debug for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
     }
 }
 
@@ -52,6 +65,18 @@ impl<'de> Deserialize<'de> for Uint {
             Err(e) => Err(e)
         }
     }
+}
+
+impl FromRecord for Uint {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        Ok(Uint::from_biguint(BigUint::from_record(val)?))
+    }
+}
+
+#[test]
+fn test_fromrecord() {
+    let v = (25_u64).to_bigint().unwrap();
+    assert_eq!(Uint::from_record(&Record::Int(v.clone())), Ok(Uint::from_bigint(v)));
 }
 
 /*

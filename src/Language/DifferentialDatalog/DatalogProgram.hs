@@ -117,7 +117,7 @@ progExpandMultiheadRules d = progExpandMultiheadRules' d 0
 progExpandMultiheadRules' :: DatalogProgram -> Int -> DatalogProgram
 progExpandMultiheadRules' d@DatalogProgram{progRules=[], ..} _ = d
 progExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
-    | length (ruleRHS r) == 1 = progAddRules [r] d'
+    | length (ruleLHS r) == 1 = progAddRules [r] d'
     | otherwise               = progAddRules rules $ progAddRel rel d'
     where d' = progExpandMultiheadRules' d{progRules = rs} (i+1)
           (rel, rules) = expandMultiheadRule d r i
