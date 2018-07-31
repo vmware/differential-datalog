@@ -518,7 +518,7 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     }
 }
 
-fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> () {
+fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
     let resp = match cmd {
         Command::Start => {
             upds.clear();
@@ -549,7 +549,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
                 Err(e) => {
                     upds.clear();
                     eprintln!("Error: {}", e);
-                    return;
+                    return false;
                 }
             };
             if last {
@@ -561,8 +561,8 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         }
     };
     match resp {
-        Ok(_) => {},
-        Err(e) => eprintln!("Error: {}", e)
+        Ok(_)  => true,
+        Err(e) => {eprintln!("Error: {}", e); false}
     }
 }
 

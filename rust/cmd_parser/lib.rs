@@ -26,7 +26,7 @@ enum Input {
 
 /// Parse commands from stdio.
 pub fn interact<F>(cb: F) -> i32 
-    where F: Fn(Command)
+    where F: Fn(Command) -> bool
 {
     let mut buf: Vec<u8> = Vec::new(); 
 
@@ -36,6 +36,11 @@ pub fn interact<F>(cb: F) -> i32
         Input::TTY(rl)
     } else {
         Input::Pipe(BufReader::new(io::stdin()))
+    };
+
+    let istty = match &input {
+        Input::TTY(_) => true,
+        _             => false
     };
 
     loop {
@@ -83,12 +88,18 @@ pub fn interact<F>(cb: F) -> i32
         loop {
             let (rest, more) = match parse_command(buf.as_slice()) {
                 Ok((rest, cmd)) => {
-                    cb(cmd);
+                    let ok = cb(cmd);
+                    if !ok && !istty {
+                        return -1;
+                    };
                     (Some(rest.to_owned()), true)
                 },
                 Err(Err::Incomplete(_)) => { (None, false) },
                 Err(e) => {
                     eprintln!("Invalid input: {}", e);
+                    if !istty {
+                        return -1;
+                    };
                     (Some(Vec::new()), false)
                     //return -1;
                 }
