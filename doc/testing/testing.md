@@ -20,7 +20,7 @@ extension.
 1. Create a file named `test/datalog_tests/<test>.dl`, where `<test>` is
    the name of your test.
 1. Create your test program, including type declarations, relations, functions, and rules.
-1. Run `stack test` anywhere in the source tree.  The test script will
+1. Run `stack test` (or `stack test --ta '-p <test>'` to run an individual test only) anywhere in the source tree.  The test script will
    automatically validate and compile the program.  Fix any
    compilation errors.  If you get a rust compilation error message starting with
 something like `cargo test failed with exit code ExitFailure 101`,
