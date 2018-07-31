@@ -1,0 +1,17 @@
+typedef line = int
+typedef station = string
+
+ground relation Links(l: line, s1: station, s2: station)
+
+
+
+relation Reach(s1: station, s2: station)
+
+
+Reach(x, y) :- Links(l, x, y).
+Reach(x, y) :- Links(l, y, x).
+Reach(x, y):- Links(l, x, z), Reach(z, y).
+
+relation Answer(x: station)
+
+Answer(x) :- Reach("Odeon", x).
