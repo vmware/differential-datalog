@@ -64,7 +64,7 @@ outputs.
    program or the test workload changed; otherwise the test will fail.
 
 | Command                | Example                           | Description                                        |
-| ---------------------- |:---------------------------------:| --------------------------------------------------:|
+| ---------------------- |-----------------------------------| ---------------------------------------------------|
 | `start;`               |                                   | start a transaction                                |
 | `commit;`              |                                   | commit current transaction                         |
 | `rollback;`            |                                   | rollbak current transaction; reverting all changes |
