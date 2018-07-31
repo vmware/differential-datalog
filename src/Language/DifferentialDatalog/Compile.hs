@@ -223,7 +223,14 @@ tuple xs = parens $ hsep $ punctuate comma xs
 -- structs with multiple constructor are compiled into Rust enums.
 isStructType :: Type -> Bool
 isStructType TStruct{..} | length typeCons == 1 = True
-isStructType _                                  = False
+isStructType TStruct{..}                        = False
+isStructType t                                  = error $ "Compile.isStructType " ++ show t
+
+mkConstructorName :: Type -> String -> Doc
+mkConstructorName t c = 
+    if isStructType t
+       then pp (name t)
+       else pp (name t) <> "::" <> pp c
 
 -- | Create a compilable Cargo crate.  If the crate already exists, only writes files 
 -- modified by the recompilation.
@@ -343,7 +350,7 @@ mkTypedef tdef@TypeDef{..} =
 
 
     mkField :: Field -> Doc
-    mkField f = pp (name f) <> ":" <+> mkType (typ f)
+    mkField f = pp (name f) <> ":" <+> mkType f
 
     mkConstructor :: Constructor -> Doc
     mkConstructor c = 
@@ -373,10 +380,7 @@ mkTypedef tdef@TypeDef{..} =
         cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
         "write!(__formatter, \"" <> cname <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+> 
         (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
-        where cname = if (length $ typeCons $ fromJust tdefType) == 1
-                         then pp tdefName
-                         else pp tdefName <> "::" <> pp (name c)
-
+        where cname = mkConstructorName (fromJust tdefType) (name c)
 
 {-
 Generate FromRecord trait implementation for a struct type:
@@ -435,10 +439,8 @@ mkFromRecord t@TypeDef{..} =
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
-        cname = if isStructType $ fromJust tdefType
-                   then pp (name t)
-                   else pp (name t) <> "::" <> pp (name c)
-        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType $ typ f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
+        cname = mkConstructorName (fromJust tdefType) (name c)
+        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
 
 {-
  pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
@@ -465,7 +467,7 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkrel :: Relation ->  Doc
     mkrel rel@Relation{..} = 
         "Relations::" <> pp (name rel) <+> "=> {"                                                   $$
-        "    Ok(Value::" <> mkConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
         "}"
         where t = typeNormalize d relType
 
@@ -584,7 +586,7 @@ mkFunc d f@Function{..} | isJust funcDef =
                           otherwise = "/* fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
     where 
     mkArg :: Field -> Doc
-    mkArg a = pp (name a) <> ":" <+> "&" <> mkType (typ a)
+    mkArg a = pp (name a) <> ":" <+> "&" <> mkType a
 
     tvars = case funcTypeVars f of
                  []  -> empty
@@ -609,10 +611,10 @@ mkValType d types =
     "    }"                                                                                 $$
     "}"
     where
-    consname t = mkConstructorName' d t
+    consname t = mkValConstructorName' d t
     mkValCons :: Type -> Doc
     mkValCons t = consname t <> (parens $ mkType t)
-    tuple0 = "Value::" <> mkConstructorName' d (tTuple []) <> "(())" 
+    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> "(())" 
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
 
@@ -768,7 +770,7 @@ mkFlatMap d prefix rl idx v e = do
 openAtom :: DatalogProgram -> Doc -> Atom -> CompilerMonad Doc
 openAtom d var Atom{..} = do
     let rel = getRelation d atomRelation
-    constructor <- mkConstructorName d $ relType rel
+    constructor <- mkValConstructorName d $ relType rel
     let varnames = map pp $ exprVars atomVal
         vars = tuple varnames
         (pattern, cond) = mkPatExpr d "ref" atomVal
@@ -791,49 +793,49 @@ openTuple d var vs = do
         "};"
 
 -- Generate Rust constructor name for a type
-mkConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
-mkConstructorName d t = do
+mkValConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
+mkValConstructorName d t = do
     let t' = typeNormalize d t
     addType t'
-    return $ "Value::" <> mkConstructorName' d t'
+    return $ "Value::" <> mkValConstructorName' d t'
 
 -- Assumes that t is normalized
-mkConstructorName' :: DatalogProgram -> Type -> Doc
-mkConstructorName' d t =
+mkValConstructorName' :: DatalogProgram -> Type -> Doc
+mkValConstructorName' d t =
     case t of
          TTuple{..}  -> "tuple" <> pp (length typeTupArgs) <> "__" <>
-                        (hcat $ punctuate "_" $ map (mkConstructorName' d) typeTupArgs)
+                        (hcat $ punctuate "_" $ map (mkValConstructorName' d) typeTupArgs)
          TBool{}     -> "bool"
          TInt{}      -> "int"
          TString{}   -> "string"
          TBit{..}    -> "bit" <> pp typeWidth
          TUser{}     -> consuser
          TOpaque{}   -> consuser
-         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkConstructorName"
+         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
     where
     consuser = pp (typeName t) <> 
                case typeArgs t of
                     [] -> empty
-                    as -> "__" <> (hcat $ punctuate "_" $ map (mkConstructorName' d) as)
+                    as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName' d) as)
        
 mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue d ctx e = do
-    constructor <- mkConstructorName d $ exprType d ctx e
+    constructor <- mkValConstructorName d $ exprType d ctx e
     return $ constructor <> (parens $ mkExpr d ctx e EVal)
 
 mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> CompilerMonad Doc
 mkTupleValue d ctx es = do 
-    constructor <- mkConstructorName d $ tTuple $ map (exprType'' d ctx) es
+    constructor <- mkValConstructorName d $ tTuple $ map (exprType'' d ctx) es
     return $ constructor <> (parens $ tuple $ map (\e -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
-    constructor <- mkConstructorName d $ tTuple $ map typ vs
+    constructor <- mkValConstructorName d $ tTuple $ map typ vs
     return $ constructor <> (parens $ tuple $ map ((<> ".clone()") . pp . name) vs)
 
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
-    constructor <- mkConstructorName d $ tTuple $ map typ vs
+    constructor <- mkValConstructorName d $ tTuple $ map typ vs
     return $ (constructor <> (parens $ tuple $ map (("ref" <+>) . pp . name) vs), constructor)
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
@@ -1032,7 +1034,7 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
     patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
-    constructor <- mkConstructorName d $ relType rel
+    constructor <- mkValConstructorName d $ relType rel
     let afun = braces' $
                "match" <+> vALUE_VAR <+> "{"                                                                                  $$
                (nest' $ constructor <> parens pat <+> cond' <+> "=> Some((" <> patvars <> "," <+> vALUE_VAR <> ".clone())),") $$
@@ -1243,26 +1245,30 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
                  EInt{} -> True
                  _      -> False
 
-mkType :: Type -> Doc
-mkType TBool{}                    = "bool"
-mkType TInt{}                     = "Int"
-mkType TString{}                  = "String"
-mkType TBit{..} | typeWidth <= 8  = "u8"
+
+mkType :: (WithType a) => a -> Doc
+mkType x = mkType' $ typ x
+
+mkType' :: Type -> Doc
+mkType' TBool{}                    = "bool"
+mkType' TInt{}                     = "Int"
+mkType' TString{}                  = "String"
+mkType' TBit{..} | typeWidth <= 8  = "u8"
                 | typeWidth <= 16 = "u16"
                 | typeWidth <= 32 = "u32"
                 | typeWidth <= 64 = "u64"
                 | otherwise       = "Uint"
-mkType TTuple{..}                 = parens $ commaSep $ map mkType typeTupArgs
-mkType TUser{..}                  = pp typeName <>
+mkType' TTuple{..}                 = parens $ commaSep $ map mkType' typeTupArgs
+mkType' TUser{..}                  = pp typeName <>
                                     if null typeArgs 
                                        then empty 
-                                       else "<" <> (commaSep $ map mkType typeArgs) <> ">"
-mkType TOpaque{..}                = pp typeName <>
+                                       else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
+mkType' TOpaque{..}                = pp typeName <>
                                     if null typeArgs 
                                        then empty 
-                                       else "<" <> (commaSep $ map mkType typeArgs) <> ">"
-mkType TVar{..}                   = pp tvarName
-mkType t                          = error $ "Compile.mkType " ++ show t
+                                       else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
+mkType' TVar{..}                   = pp tvarName
+mkType' t                          = error $ "Compile.mkType' " ++ show t
 
 mkBinOp :: BOp -> Doc
 mkBinOp Eq     = "=="
