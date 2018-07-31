@@ -6,6 +6,10 @@ This is currently very early work-in-progress.
 Language reference for the Datalog dialect implemented by the tool
 can be found [here](doc/language_reference/language_reference.md).
 
+Instructions for writing and testing your own Datalog programs are
+[here](doc/testing/testing.md).
+
+
 # Requirements
 
 We have only tested our software on Ubuntu Linux.
