@@ -29,7 +29,11 @@ Description: Compile 'DatalogProgram' to Rust.  See program.rs for corresponding
 -}
 
 module Language.DifferentialDatalog.Compile (
-    compile
+    compile,
+    isStructType,
+    mkValConstructorName',
+    mkConstructorName,
+    mkType
 ) where
 
 -- TODO: 
@@ -226,11 +230,11 @@ isStructType TStruct{..} | length typeCons == 1 = True
 isStructType TStruct{..}                        = False
 isStructType t                                  = error $ "Compile.isStructType " ++ show t
 
-mkConstructorName :: Type -> String -> Doc
-mkConstructorName t c = 
+mkConstructorName :: String -> Type -> String -> Doc
+mkConstructorName tname t c = 
     if isStructType t
-       then pp (name t)
-       else pp (name t) <> "::" <> pp c
+       then pp tname
+       else pp tname <> "::" <> pp c
 
 -- | Create a compilable Cargo crate.  If the crate already exists, only writes files 
 -- modified by the recompilation.
@@ -380,7 +384,7 @@ mkTypedef tdef@TypeDef{..} =
         cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
         "write!(__formatter, \"" <> cname <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+> 
         (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
-        where cname = mkConstructorName (fromJust tdefType) (name c)
+        where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
 
 {-
 Generate FromRecord trait implementation for a struct type:
@@ -439,7 +443,7 @@ mkFromRecord t@TypeDef{..} =
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
-        cname = mkConstructorName (fromJust tdefType) (name c)
+        cname = mkConstructorName tdefName (fromJust tdefType) (name c)
         fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
 
 {-
