@@ -5,6 +5,7 @@ extern crate fnv;
 #[macro_use] 
 extern crate serde_derive;
 extern crate serde;
+extern crate libc;
 
 extern crate differential_datalog;
 extern crate cmd_parser;
@@ -29,6 +30,7 @@ use std::process::exit;
 use std::fmt;
 use std::io::{Stdout,stdout};
 use std::io;
+use libc::*;
 
 use serde::de::*;
 use serde::ser::*;

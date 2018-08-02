@@ -29,11 +29,16 @@ Description: Generate C foreign function interface to Rust programs compiled fro
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 
 module Language.DifferentialDatalog.FFI (
+    ffiMkFFIInterface
 ) where
 
 import Text.PrettyPrint
 import Data.Maybe
+import Data.List
+import qualified Data.Map as M
 
+import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
@@ -41,107 +46,104 @@ import Language.DifferentialDatalog.Type
 
 import {-# SOURCE #-} Language.DifferentialDatalog.Compile
 
--- Build FFI interface to a struct
---
--- Must be called once for each normalized struct that appears in
--- rules or relations.
---
--- 't' must be a TUser type pointing to a struct with all type
--- arguments assigned to concrete types. 
---
--- 't' must be normalized
-ffiMkStruct :: DatalogProgram -> Type -> Doc
-ffiMkStruct d t =
-    (vcat $ map mkCons $ typeCons t')                                          $$
-    "#[no_mangle]"                                                             $$
-    "pub extern \"C\" fn" <+> tname <> "_free(x:" <+> ffiMutCType d t <> ") {" $$
-    "    if x.is_null() { return; }"                                           $$
-    "    unsafe { Box::from_raw(x); }"                                         $$
-    "}"
+
+ffiMkFFIInterface :: DatalogProgram -> Doc
+ffiMkFFIInterface d = 
+    vcat tagenums $$
+    vcat structs
     where
-    t' = typ' d t
-    tname = mkValConstructorName' d t
+    tagenums = mapMaybe (\tdef -> case tdefType tdef of
+                                       Just t@TStruct{} -> ffiMkTagEnum d (name tdef) t
+                                       _                -> Nothing)
+               $ M.elems $ progTypedefs d
+    structs = map (ffiMkStruct d)
+              $ nub
+              $ concatMap tstructs
+              $ map relType
+              $ M.elems $ progRelations d
 
-    mkCons :: Constructor -> Doc
-    mkCons c@Constructor{..} = 
-        "#[no_mangle]"                                                                                                   $$
-        "pub extern \"C\" fn" <+> tname <> "_" <> pp consName <> "_new(" <> args <> ") -> *mut" <+> ffiCType d t <+> "{" $$
-        (nest' null_check)                                                                                               $$
-        "    Box::into_raw(Box::new(" <> cname <> "{" <> args' <> "}))"                                                  $$
-        "}"                                                                                                              $$
-        (vcat $ map mkAccessor consArgs)
-        where 
-        cname = mkConstructorName (typeName t) t' (name c)
-        args = hsep $ punctuate comma $ map (\a -> pp (name a) <> ":" <+> ffiConstCType d (typ a)) consArgs
-        args' = hsep $ punctuate comma $ map (\a -> ffiClone d (name a) (typ a)) consArgs
-        null_checks = mapMaybe (\a -> ffiNullCheck d (name a) (typ a)) consArgs
-        null_check = if null null_checks
-                        then empty
-                        else "if" <+> (hcat $ punctuate " || " null_checks) <+> "{" $$
-                             "    return ptr::null_mut();"                          $$
-                             "};"
-    
-    mkAccessor :: Field -> Doc
-    mkAccessor f@Field{..} = 
-        "#[no_mangle]"                                                                                                                 $$
-        "pub extern \"C\" fn" <+> tname <> "_" <> c <> fname <> "(x: *const" <+> tname <>") ->" <+> ffiConstCType d (typ f) <+> "{"    $$
-        "    let x = unsafe{&*x};"                                                                                                     $$
-        "    &x." <> fname <+> "as *const Int"                                                                                         $$
-        "}"
-        where
-        fname = pp $ name f
-        c = if isStructType t'
-               then pp (name c) <> "_"
-               else empty
-        ret = case typ f of 
-                  TString{} -> x <> fname <>
-                  _ | ffiIsScalar d (typ f)
-                    -> "x." <> fname
-                    | otherwise
-                    -> "&x." <> fname <+> "as *const "
+    tstructs :: Type -> [Type]
+    tstructs = nub . tstructs' . typeNormalize d
+
+    tstructs' :: Type -> [Type]
+    tstructs' TTuple{..}  = concatMap tstructs typeTupArgs
+    tstructs' t@TUser{..} = t : (concatMap (concatMap (tstructs . typ) . consArgs) $ typeCons $ typ' d t)
+    tstructs' TOpaque{..} = concatMap tstructs typeArgs
+    tstructs' _           = []
 
 
--- True if 't' is represented as a scalar value in C.
-ffiIsScalar :: DatalogProgram -> Type -> Bool
-ffiIsScalar d t = 
-    case typ' d t of
-         TBool{}  -> True
-         TBit{..} | typeWidth <= 64
-                  -> True
-         _        -> False
 
--- Generate a NULL-check for pointer variables 't' 
+-- Call once for each struct to generate a C-style for its tag enum.
+-- Returns 'Nothing' for structs with unique constructor, which don't
+-- need a tag.
+ffiMkTagEnum :: DatalogProgram -> String -> Type -> Maybe Doc
+ffiMkTagEnum d tname t@TStruct{..} | isStructType t = Nothing
+                                   | otherwise = Just $
+    "#[repr(C)]"                                                                              $$
+    "enum" <+> tagEnumName (pp tname) <+> "{"                                                 $$
+    (nest' $ vcat $ punctuate comma $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons) $$
+    "}"
+
+-- Generates FFI interface to a normalized TStruct or TTuple type.
 --
--- TODO: return Nothing for option_t
-ffiNullCheck :: DatalogProgram -> String -> Type -> Maybe Doc
-ffiNullCheck d v t | ffiIsScalar d t = Nothing
-                   | otherwise       = Just $ pp v <> ".is_null()"
+-- Assumes: 't' does not contain free type variables.
+--          't' is normalized
+--
+-- Must be called for each struct and tuple type occurring in normalized 
+-- input and output relations.
+ffiMkStruct :: DatalogProgram -> Type -> Doc
+ffiMkStruct d t@TUser{..}  = 
+    mkStruct d (pp typeName) (cStructName d t) (typeCons $ typ' d t)
+ffiMkStruct d t@TTuple{..} = 
+    mkStruct d (error "FFI.ffiMkStruct: tuple should not need tag enum") (cStructName d t) 
+               [Constructor nopos (error "FFI.ffiMkStruct: tuple should not need a tag") 
+                $ mapIdx (\at i -> Field nopos ("x" ++ show i) at) typeTupArgs]
+ffiMkStruct _ t          = error $ "FFI.ffiMkStruct " ++ show t
 
--- Type used to represent 'typ x' in the C API.
-ffiCType :: (WithType a) => DatalogProgram -> a -> Doc
-ffiCType d x = ffiCType' $ typeNormalize d $ typ x
+mkStruct :: DatalogProgram -> Doc -> Doc -> [Constructor] -> Doc
+mkStruct d _ type_name [Constructor _ _ cfields] =
+    "#[repr(C)]"                            $$
+    "struct" <+> type_name <+> "{"          $$
+    (nest' $ vcat $ punctuate comma fields) $$
+    "}"
+    where 
+    fields = map (\f -> pp (name f) <> ":" <+> mkCType d (typeNormalize d $ typ f)) cfields
 
-ffiCType' :: Type -> Doc
-ffiCType' TString{} = "c_char"
-ffiCType' t         = mkType t
+mkStruct d struct_name type_name cons  =
+    vcat constructors                                                 $$
+    "#[repr(C)]"                                                      $$
+    "union" <+> union_name <+> "{"                                    $$
+    (nest' $ vcat $ punctuate comma fields)                           $$
+    "}"                                                               $$
+    "#[repr(C)]"                                                      $$
+    "struct" <+> type_name <+> "{"                                    $$
+    "    tag:" <+> tagEnumName struct_name <> ","                     $$
+    "    x:"   <+> union_name                                         $$
+    "}"
+    where 
+    union_name = "__union_" <> type_name
+    constructors = map (\c -> mkStruct d undefined (consStructName type_name c) [c]) cons
+    fields = map (\c -> pp (name c) <> ": *const" <+> consStructName type_name c) cons
 
--- const pointer to type 't'
-ffiConstCType :: DatalogProgram -> Type -> Doc
-ffiConstCType d t | ffiIsScalar d t = ffiCType d t
-                  | otherwise       = "* const" <+> ffiCType d t
+cStructName :: DatalogProgram -> Type -> Doc
+cStructName d t = "__c_" <> mkValConstructorName' d t
 
--- mutable pointer to type 't'
-ffiMutCType :: DatalogProgram -> Type -> Doc
-ffiMutCType d t | ffiIsScalar d t = error $ "FFI.ffiMutCType called for scalar type " ++ show t
-                | otherwise       = "* mut" <+> ffiCType d t
+consStructName :: Doc -> Constructor -> Doc
+consStructName tname c = "__struct_" <> tname <> "_" <> (pp $ name c)
 
--- clone variable for use in the Rust world. 
--- Note: currently exits the function returning NULL if v is not a
--- valid UTF8 string.  Can be parameterized with this behavior if
--- needed.
-ffiClone :: DatalogProgram -> String -> Type -> Doc
-ffiClone d v t = 
-    case typ' d t of
-         TString{}           -> "(match (unsafe { CStr::from_ptr(" <> pp v <> ")}.to_str()) {Ok(" <> pp v <> ") => " <> pp v <> ".to_string(), _ => {return ptr::null_mut()} })"
-         _ | ffiIsScalar d t -> pp v <> ".clone()"
-           | otherwise       -> "unsafe{(*" <> pp v <> ").clone()}"
+tagEnumName :: Doc -> Doc
+tagEnumName tname = "__enum_" <> tname
+
+mkCType :: DatalogProgram -> Type -> Doc
+mkCType _ TBool{}        = "bool"
+mkCType _ TInt{}         = "*const Int"
+mkCType _ TString{}      = "*const c_char"
+mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
+                         | typeWidth <= 16 = "uint16_t"
+                         | typeWidth <= 32 = "uint32_t"
+                         | typeWidth <= 64 = "uint64_t"
+                         | otherwise       = "*const Uint"
+mkCType d t@TTuple{..}   = cStructName d t
+mkCType d t@TUser{..}    = cStructName d t
+mkCType d t@TOpaque{..}  = "*const" <+> mkValConstructorName' d t
+mkCType _ t              = error $ "FFI.mkCType " ++ show t

@@ -74,6 +74,7 @@ import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.FFI
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -292,7 +293,8 @@ compileLib d imports =
     valtype              $+$
     funcs                $+$
     prog                 $+$
-    mkRunInteractive d'
+    mkRunInteractive d'  $+$
+    ffiMkFFIInterface d'
     where
     -- Transform away rules with multiple heads
     d' = progExpandMultiheadRules d
@@ -1258,10 +1260,10 @@ mkType' TBool{}                    = "bool"
 mkType' TInt{}                     = "Int"
 mkType' TString{}                  = "String"
 mkType' TBit{..} | typeWidth <= 8  = "u8"
-                | typeWidth <= 16 = "u16"
-                | typeWidth <= 32 = "u32"
-                | typeWidth <= 64 = "u64"
-                | otherwise       = "Uint"
+                 | typeWidth <= 16 = "u16"
+                 | typeWidth <= 32 = "u32"
+                 | typeWidth <= 64 = "u64"
+                 | otherwise       = "Uint"
 mkType' TTuple{..}                 = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TUser{..}                  = pp typeName <>
                                     if null typeArgs 
