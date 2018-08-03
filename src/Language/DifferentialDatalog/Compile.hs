@@ -74,7 +74,7 @@ import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
-import Language.DifferentialDatalog.FFI
+import qualified Language.DifferentialDatalog.FFI as FFI
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -92,8 +92,11 @@ vALUE_VAR2 :: Doc
 vALUE_VAR2 = "__v2"
 
 -- Rust imports
-header :: Doc
-header = pp $ BS.unpack $(embedFile "rust/template/lib.rs")
+header :: String -> Doc
+header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
+
+ffiheader :: String -> Doc
+ffiheader specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/ffi.rs")
 
 --cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
 
@@ -249,7 +252,7 @@ mkConstructorName tname t c =
 -- exists
 compile :: DatalogProgram -> String -> String -> FilePath -> IO ()
 compile d specname imports dir = do
-    let lib = compileLib d imports
+    let (lib, ffi) = compileLib d specname imports
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
     -- Update rustLibFiles if they changed.
@@ -265,6 +268,8 @@ compile d specname imports dir = do
           $ templateFiles specname
     -- Generate lib.rs file if changed.
     updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
+    -- Generate ffi.rs file if changed.
+    updateFile (joinPath [dir, specname, "ffi.rs"]) (render ffi)
     return ()
 
 -- Replace file content if changed
@@ -283,21 +288,22 @@ updateFile path content = do
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
-compileLib :: DatalogProgram -> String -> Doc
-compileLib d imports = 
-    header               $+$
-    pp imports           $+$
-    typedefs             $+$
-    mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
-    mkRelEnum d'         $+$ -- Relations enum
-    valtype              $+$
-    funcs                $+$
-    prog                 $+$
-    mkRunInteractive d'  $+$
-    ffiMkFFIInterface d'
+compileLib :: DatalogProgram -> String -> String -> (Doc, Doc)
+compileLib d specname imports = 
+    (header specname      $+$
+     pp imports           $+$
+     typedefs             $+$
+     mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
+     mkRelEnum d'         $+$ -- Relations enum
+     valtype              $+$
+     funcs                $+$
+     prog
+    ,
+     ffiheader specname   $+$
+     FFI.mkFFIInterface d')
     where
     -- Transform away rules with multiple heads
-    d' = progExpandMultiheadRules d
+    d' = addDummyRel $ progExpandMultiheadRules d
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
     depgraph = progDependencyGraph d'
@@ -320,6 +326,13 @@ compileLib d imports =
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
     -- 'Value' enum type
     valtype = mkValType d' $ cTypes cstate
+
+-- Add dummy relation to the spec if it does not contain any.
+-- Otherwise, we have to tediously handle this corner case in various
+-- parts of the compiler.
+addDummyRel :: DatalogProgram -> DatalogProgram
+addDummyRel d | not $ M.null $ progRelations d = d
+              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos True "Null" $ tTuple []}
 
 mkTypedef :: TypeDef -> Doc
 mkTypedef tdef@TypeDef{..} =
@@ -480,7 +493,7 @@ mkValueFromRecord d@DatalogProgram{..} =
 -- Convert string to RelId
 mkRelname2Id :: DatalogProgram -> Doc
 mkRelname2Id d =
-    "fn relname2id(rname: &str) -> Option<Relations> {"     $$
+    "pub fn relname2id(rname: &str) -> Option<Relations> {"     $$
     "   match rname {"                                      $$
     (nest' $ nest' $ vcat $ entries)                        $$
     "       _  => None"                                     $$
@@ -494,7 +507,7 @@ mkRelname2Id d =
 -- Convert string to RelId
 mkRelId2Relations :: DatalogProgram -> Doc
 mkRelId2Relations d =
-    "fn relid2rel(rid: RelId) -> Option<Relations> {"       $$
+    "pub fn relid2rel(rid: RelId) -> Option<Relations> {"   $$
     "   match rid {"                                        $$
     (nest' $ nest' $ vcat $ entries)                        $$
     "       _  => None"                                     $$
@@ -504,84 +517,6 @@ mkRelId2Relations d =
     entries = mapIdx mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Int -> Doc
     mkrel rel i = pp i <+> "=> Some(Relations::" <> pp (name rel) <> "),"
-
--- `run_interactive` function to run the Datalog program in
---   interactive mode.
-mkRunInteractive :: DatalogProgram -> Doc
-mkRunInteractive d | M.null $ progRelations d = 
-    "pub fn run_interactive(_db: Arc<Mutex<ValMap>>, _upd_cb: UpdateCallback<Value>) -> i32 { 0 }"
-mkRunInteractive _ = [r|
-fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
-    match c {
-        UpdCmd::Insert(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
-            let val = relval_from_record(relid, rec)?;
-            Ok(Update::Insert{relid: relid as RelId, v: val})
-        },
-        UpdCmd::Delete(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
-            let val = relval_from_record(relid, rec)?;
-            Ok(Update::Delete{relid: relid as RelId, v: val})
-        }
-    }
-}
-
-fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
-    let resp = match cmd {
-        Command::Start => {
-            upds.clear();
-            p.transaction_start()
-        },
-        Command::Commit => {
-            upds.clear();
-            p.transaction_commit()
-        },
-        Command::Rollback => {
-            upds.clear();
-            p.transaction_rollback()
-        },
-        Command::Dump => {
-            formatValMap(&*db.lock().unwrap(), &mut stdout());
-            Ok(())
-        },
-        Command::Exit => {
-            exit(0);
-        },
-        Command::Echo(txt) => {
-            println!("{}", txt);
-            Ok(())
-        },
-        Command::Update(upd, last) => {
-             match updcmd2upd(&upd) {
-                Ok(u)  => upds.push(u),
-                Err(e) => {
-                    upds.clear();
-                    eprintln!("Error: {}", e);
-                    return false;
-                }
-            };
-            if last {
-                let copy = upds.drain(..).collect();
-                p.apply_updates(copy)
-            } else {
-                Ok(())
-            }
-        }
-    };
-    match resp {
-        Ok(_)  => true,
-        Err(e) => {eprintln!("Error: {}", e); false}
-    }
-}
-
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>) -> i32 {
-    let p = prog(upd_cb);
-    let running = Arc::new(Mutex::new(p.run(1)));
-    let upds = Arc::new(Mutex::new(Vec::new()));
-    interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))       
-}
-|]
-
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =

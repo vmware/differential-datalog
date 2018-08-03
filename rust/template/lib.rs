@@ -28,25 +28,15 @@ use std::iter::FromIterator;
 use std::fmt::Display;
 use std::process::exit;
 use std::fmt;
-use std::io::{Stdout,stdout};
-use std::io;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 use libc::*;
 
 use serde::de::*;
 use serde::ser::*;
 
+pub mod ffi;
+
 fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x).to_string()
-}
-
-pub type ValMap = BTreeMap<RelId, BTreeSet<Value>>;
-
-fn formatValMap(vmap: &ValMap, w: &mut io::Write) {
-   for (relid, relset) in vmap {
-       w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()));
-       for val in relset {
-            w.write_fmt(format_args!("{}\n", *val));
-       };
-       w.write_fmt(format_args!("\n"));
-   };
 }
