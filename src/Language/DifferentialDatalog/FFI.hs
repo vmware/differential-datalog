@@ -76,7 +76,7 @@ mkCValue :: DatalogProgram -> Doc
 mkCValue d =
     "#[repr(C)]"                                             $$
     "pub union __union_c_Value {"                            $$
-    (nest' $ vcat $ punctuate comma fields)                  $$
+    (nest' $ vcommaSep fields)                               $$
     "}"                                                      $$
     "#[repr(C)]"                                             $$
     "pub struct __c_Value {"                                 $$
@@ -86,7 +86,7 @@ mkCValue d =
     "impl __c_Value {"                                       $$
     "    pub fn to_native(&self) -> Value {"                 $$
     "        match self.tag {"                               $$
-    (nest' $ nest' $ nest' $ vcat $ punctuate comma matches) $$
+    (nest' $ nest' $ nest' $ vcommaSep matches)              $$
     "        }"                                              $$
     "    }"                                                  $$
     "    pub fn from_native(val: &Value) -> Self {"          $$
@@ -135,7 +135,7 @@ ffiMkTagEnum d tname t@TStruct{..} | isStructType t = Nothing
                                    | otherwise = Just $
     "#[repr(C)]"                                                                              $$
     "pub enum" <+> tagEnumName tname <+> "{"                                                  $$
-    (nest' $ vcat $ punctuate comma $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons) $$
+    (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons)              $$
     "}"
 
 -- Generates FFI interface to a normalized TStruct or TTuple type.
@@ -146,28 +146,77 @@ ffiMkTagEnum d tname t@TStruct{..} | isStructType t = Nothing
 -- Must be called for each struct and tuple type occurring in normalized 
 -- input and output relations.
 ffiMkStruct :: DatalogProgram -> Type -> Doc
-ffiMkStruct d t@TUser{..}  = 
-    mkStruct d t (cStructName d t) (typeCons $ typ' d t)
+ffiMkStruct d t@TUser{..}  =
+    mkStruct d t (cStructName d t) (typeCons $ typ' d t) $$
+    mkToFFIStruct d t
 ffiMkStruct d t@TTuple{..} = 
     mkStruct d t (cStructName d t) 
                  [Constructor nopos (error "FFI.ffiMkStruct: tuple should not need a tag") 
-                  $ mapIdx (\at i -> Field nopos ("x" ++ show i) at) typeTupArgs]
+                  $ mapIdx (\at i -> Field nopos ("x" ++ show i) at) typeTupArgs] $$
+    mkToFFITuple d t
 ffiMkStruct _ t            = error $ "FFI.ffiMkStruct " ++ show t
+
+mkToFFITuple :: DatalogProgram -> Type -> Doc
+mkToFFITuple d t@TTuple{..} =
+    "impl ToFFI for" <+> mkType t <+> "{"                                                   $$
+    "    type FFIType =" <+> mkCType d t <> ";"                                             $$
+    "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
+    (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
+    "    }"                                                                                 $$
+    "}"
+    where
+    fields = mapIdx (\at i -> "x" <> pp i <> ": self." <> pp i <> ".to_ffi()") $ typeTupArgs
+
+mkToFFIStruct :: DatalogProgram -> Type -> Doc
+mkToFFIStruct d t@TUser{..} | isStructType t' =
+    "impl ToFFI for" <+> mkType t <+> "{"                                                   $$
+    "    type FFIType =" <+> mkCType d t <> ";"                                             $$
+    "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
+    (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
+    "    }"                                                                                 $$
+    "}"
+    where
+    fields = map (\a -> pp (name a) <> ": self." <> pp (name a) <> ".to_ffi()") $ consArgs $ head $ typeCons t'
+    t' = typ' d t
+
+mkToFFIStruct d t@TUser{..} =
+    "impl ToFFI for" <+> mkType t <+> "{"                                                   $$
+    "    type FFIType =" <+> cstruct <> ";"                                                 $$
+    "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
+    "        match self {"                                                                  $$
+    (nest' $ nest' $ nest' $ vcommaSep matches)                                             $$
+    "        }"                                                                             $$
+    "    }"                                                                                 $$
+    "}"
+    where
+    t' = typ' d t
+    cstruct = cStructName d t
+    matches = map (\c -> 
+                    let cname = pp $ name c in
+                    mkConstructorName typeName t' (name c) <> 
+                    "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> cstruct <+> "{"                                   $$
+                    "    tag:" <+> tagEnumName typeName <> "::" <> cname <> ","                                                      $$
+                    "    x:" <+> "__union_" <> cstruct <+> "{"                                                                       $$
+                    "        " <> cname <> ": Box::into_raw(Box::new(" <> consStructName cstruct c <+> "{"                           $$ 
+                    (nest' $ nest' $ nest' $ vcommaSep $ map (\a -> pp (name a) <> ":" <+> pp (name a) <> ".to_ffi()") $ consArgs c) $$ 
+                    "        }))"                                                                                                    $$
+                    "    }"                                                                                                          $$
+                    "}")
+                  $ typeCons t'
 
 -- assumes: 't' is normalized
 mkStruct :: DatalogProgram -> Type -> Doc -> [Constructor] -> Doc
 mkStruct d t struct_name [Constructor _ cname cfields] =
     "#[repr(C)]"                                                                            $$
     "pub struct" <+> struct_name <+> "{"                                                    $$
-    (nest' $ vcat $ punctuate comma fields)                                                 $$
+    (nest' $ vcommaSep fields)                                                              $$
     "}"                                                                                     $$
     "impl" <+> struct_name <+> "{"                                                          $$
     "    pub fn to_native(&self) ->" <+> mkType t <+> "{"                                   $$
     (nest' $ nest' $
      case typ' d t of
           t'@TStruct{} -> mkConstructorName (typeName t) t' cname <> "{" $$
-                          (nest' 
-                           $ vcat $ punctuate comma 
+                          (nest' $ vcommaSep
                            $ map (\f -> pp (name f) <> ":" <+> mkfield f) cfields) $$
                           "}"
           TTuple{}     -> "(" <> (hsep $ punctuate comma $ map mkfield cfields) <> ")")     $$
@@ -197,7 +246,7 @@ mkStruct d t struct_name cons  =
     vcat constructors                                                 $$
     "#[repr(C)]"                                                      $$
     "pub union" <+> union_name <+> "{"                                $$
-    (nest' $ vcat $ punctuate comma fields)                           $$
+    (nest' $ vcommaSep fields)                                        $$
     "}"                                                               $$
     "#[repr(C)]"                                                      $$
     "pub struct" <+> struct_name <+> "{"                              $$
@@ -207,7 +256,7 @@ mkStruct d t struct_name cons  =
     "impl" <+> struct_name <+> "{"                                    $$
     "    pub fn to_native(&self) ->" <+> mkType t <+> "{"             $$
     "        match self.tag {"                                        $$
-    (nest' $ nest' $ nest' $ vcat $ punctuate comma cases)            $$
+    (nest' $ nest' $ nest' $ vcommaSep cases)                         $$
     "        }"                                                       $$
     "    }"                                                           $$
     "}"

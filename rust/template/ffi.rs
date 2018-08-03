@@ -5,12 +5,82 @@ use std::slice;
 use libc::*;
 use super::*;
 
-use std::ffi::CStr;
+use std::ffi::{CStr,CString};
 use std::os::raw::c_char;
 use differential_datalog::program::*;
 use differential_datalog::uint::*;
 use differential_datalog::int::*;
 
+
+trait ToFFI {
+    type FFIType;
+
+    fn to_ffi(&self) -> Self::FFIType;
+}
+
+impl ToFFI for bool {
+    type FFIType = bool;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        *self
+    }
+}
+
+impl ToFFI for u8 {
+    type FFIType = uint8_t;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        *self as Self::FFIType
+    }
+}
+
+impl ToFFI for u16 {
+    type FFIType = uint16_t;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        *self as Self::FFIType
+    }
+}
+
+impl ToFFI for u32 {
+    type FFIType = uint32_t;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        *self as Self::FFIType
+    }
+}
+
+impl ToFFI for u64 {
+    type FFIType = uint64_t;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        *self as Self::FFIType
+    }
+}
+
+impl ToFFI for String {
+    type FFIType = *mut c_char;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        CString::new(self.clone()).unwrap().into_raw()
+    }
+}
+
+impl ToFFI for Uint {
+    type FFIType = *mut Uint;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        Box::into_raw(Box::new(self.clone()))
+    }
+}
+
+impl ToFFI for Int {
+    type FFIType = *mut Int;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        Box::into_raw(Box::new(self.clone()))
+    }
+}
 
 type CUpdateCallback = extern fn(relid: size_t, val: *const __c_Value, pol: bool);
 

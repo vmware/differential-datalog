@@ -1,5 +1,7 @@
 use abomonation::Abomonation;
-use num::bigint::{BigInt, ToBigInt};
+use num::bigint::{BigInt};
+#[cfg(test)]
+use num::bigint::{ToBigInt};
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;
@@ -109,16 +111,6 @@ fn test_fromrecord() {
     let v = (-25_i64).to_bigint().unwrap();
     assert_eq!(Int::from_record(&Record::Int(v.clone())), Ok(Int::from_bigint(v)));
 }
-
-
-/*
-impl Uint {
-    #[inline]
-    pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
-        Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
-    }
-}
-*/
 
 impl Shr<usize> for Int {
     type Output = Int;

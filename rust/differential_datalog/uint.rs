@@ -1,5 +1,7 @@
 use abomonation::Abomonation;
-use num::bigint::{BigUint, BigInt, ToBigUint, ToBigInt};
+use num::bigint::{BigUint, BigInt};
+#[cfg(test)]
+use num::bigint::{ToBigInt};
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;
@@ -9,7 +11,6 @@ use std::fmt;
 use cmd_parser::{FromRecord, Record};
 use std::ffi::CStr;
 use std::os::raw::c_char;
-
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}
@@ -103,6 +104,7 @@ fn test_fromrecord() {
     let v = (25_u64).to_bigint().unwrap();
     assert_eq!(Uint::from_record(&Record::Int(v.clone())), Ok(Uint::from_bigint(v)));
 }
+
 
 /*
 impl Uint {
