@@ -74,24 +74,27 @@ mkFFIInterface d =
 
 mkCValue :: DatalogProgram -> Doc
 mkCValue d =
-    "#[repr(C)]"                                             $$
-    "pub union __union_c_Value {"                            $$
-    (nest' $ vcommaSep fields)                               $$
-    "}"                                                      $$
-    "#[repr(C)]"                                             $$
-    "pub struct __c_Value {"                                 $$
-    "    tag: Relations,"                                    $$
-    "    val: __union_c_Value"                               $$
-    "}"                                                      $$
-    "impl __c_Value {"                                       $$
-    "    pub fn to_native(&self) -> Value {"                 $$
-    "        match self.tag {"                               $$
-    (nest' $ nest' $ nest' $ vcommaSep matches)              $$
-    "        }"                                              $$
-    "    }"                                                  $$
-    "    pub fn from_native(val: &Value) -> Self {"          $$
-    "        panic!(\"__c_Value.from_native not implemented\")" $$
-    "    }"                                                  $$
+    "#[repr(C)]"                                                           $$
+    "pub union __union_c_Value {"                                          $$
+    (nest' $ vcommaSep fields)                                             $$
+    "}"                                                                    $$
+    "#[repr(C)]"                                                           $$
+    "pub struct __c_Value {"                                               $$
+    "    tag: Relations,"                                                  $$
+    "    val: __union_c_Value"                                             $$
+    "}"                                                                    $$
+    "impl __c_Value {"                                                     $$
+    "    pub fn to_native(&self) -> Value {"                               $$
+    "        match self.tag {"                                             $$
+    (nest' $ nest' $ nest' $ vcommaSep matches)                            $$
+    "        }"                                                            $$
+    "    }"                                                                $$
+    "    pub fn from_val(relid: RelId, val: &Value) -> Option<Self> {"     $$
+    "        match relid {"                                                $$
+    (nest' $ nest' $ nest' $ vcat $ map (<> ",") from_matches)             $$
+    "            _ => None"                                                $$
+    "        }"                                                            $$
+    "    }"                                                                $$
     "}"
     where
     rels = M.elems $ progRelations d
@@ -99,7 +102,29 @@ mkCValue d =
                           pp (name rel) <> ":" <+> scalarize t) rels
     matches = map (\rel -> let t = typeNormalize d $ relType rel in
                            "Relations::" <> pp (name rel) <+> "=> Value::" <> mkValConstructorName' d t
-                             <> "(" <> tonative (name rel) t <> ")")  rels
+                             <> "(" <> tonative (name rel) t <> ")") rels
+    from_matches = mapIdx (\rel i -> 
+                           let t  = typeNormalize d $ relType rel 
+                               rn = pp $ name rel 
+                               ptr = isStruct d t || isTuple d t
+                               toffi = if ptr
+                                          then "Box::into_raw(Box::new(v.to_ffi()))"
+                                          else "v.to_ffi()"
+                           in
+                           --"Relations::" <> rn <+> "=> {"                                                   $$
+                           pp i <+> "=> {"                                                                  $$
+                           "    match val {"                                                                $$
+                           "        Value::" <> mkValConstructorName' d t <> "(v) => Some("                 $$
+                           "            __c_Value {"                                                        $$
+                           "                tag: Relations::" <> rn <> ","                                  $$
+                           "                val: __union_c_Value{" <> rn <> ":" <+> toffi <> "},"           $$
+                           "            }),"                                                                $$
+                           "        v => {"                                                                 $$
+                           "            eprintln!(\"__c_Value::from_val: Invalid value {}\", *v);"          $$
+                           "            None"                                                               $$
+                           "        }"                                                                      $$
+                           "    }"                                                                          $$
+                           "}") rels
     -- rust currently does not allow non-scalar types in unions
     scalarize :: Type -> Doc
     scalarize t = 

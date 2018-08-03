@@ -1,4 +1,4 @@
-use differential_datalog::program::*;
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
 
 use std::sync::{Arc,Mutex};
 use std::slice;
@@ -7,9 +7,6 @@ use super::*;
 
 use std::ffi::{CStr,CString};
 use std::os::raw::c_char;
-use differential_datalog::program::*;
-use differential_datalog::uint::*;
-use differential_datalog::int::*;
 
 
 trait ToFFI {
@@ -86,7 +83,10 @@ type CUpdateCallback = extern fn(relid: size_t, val: *const __c_Value, pol: bool
 
 #[no_mangle]
 pub extern "C" fn datalog_example_run(upd_cb: CUpdateCallback) -> *mut Arc<Mutex<RunningProgram<Value>>> {
-    let p = prog(Arc::new(move |relid, val, pol|upd_cb(relid as size_t, Box::into_raw(Box::new(__c_Value::from_native(val))), pol)));
+    let p = prog(Arc::new(move |relid, val, pol|
+                          __c_Value::from_val(relid, val).map_or((), |v| upd_cb(relid as size_t, Box::into_raw(Box::new(v)), pol)))
+                          
+                 );
     let running = Box::new(Arc::new(Mutex::new(p.run(1))));
     Box::into_raw(running)
 }

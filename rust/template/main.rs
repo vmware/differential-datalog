@@ -1,3 +1,5 @@
+#![allow(non_snake_case, dead_code)]
+
 extern crate datalog_example;
 extern crate differential_datalog;
 extern crate cmd_parser;
