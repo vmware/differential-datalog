@@ -129,8 +129,8 @@ mkCValue d =
     scalarize :: Type -> Doc
     scalarize t = 
         case t of
-             TTuple{} -> "*const" <+> t'
-             TUser{}  -> "*const" <+> t'
+             TTuple{} -> "*mut" <+> t'
+             TUser{}  -> "*mut" <+> t'
              _        -> t'
         where t' = mkCType d t
     tonative :: String -> Type -> Doc
@@ -188,9 +188,13 @@ mkToFFITuple d t@TTuple{..} =
     "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
     (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
     "    }"                                                                                 $$
+    "    fn free(x: &mut Self::FFIType) {"                                                  $$
+    (nest' $ nest' $ vcat free_fields)                                                      $$
+    "    }"                                                                                 $$
     "}"
     where
     fields = mapIdx (\at i -> "x" <> pp i <> ": self." <> pp i <> ".to_ffi()") $ typeTupArgs
+    free_fields = mapIdx (\at i -> "<" <> mkType at <> ">::free(&mut x.x" <> pp i <> ");") $ typeTupArgs
 
 mkToFFIStruct :: DatalogProgram -> Type -> Doc
 mkToFFIStruct d t@TUser{..} | isStructType t' =
@@ -199,9 +203,13 @@ mkToFFIStruct d t@TUser{..} | isStructType t' =
     "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
     (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
     "    }"                                                                                 $$
+    "    fn free(x: &mut Self::FFIType) {"                                                  $$
+    (nest' $ nest' $ vcat free_fields)                                                      $$
+    "    }"                                                                                 $$
     "}"
     where
     fields = map (\a -> pp (name a) <> ": self." <> pp (name a) <> ".to_ffi()") $ consArgs $ head $ typeCons t'
+    free_fields = map (\a -> "<" <> mkType (typeNormalize d $ typ a) <> ">::free(&mut x." <> pp (name a) <> ");") $ consArgs $ head $ typeCons t'
     t' = typ' d t
 
 mkToFFIStruct d t@TUser{..} =
@@ -210,6 +218,11 @@ mkToFFIStruct d t@TUser{..} =
     "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
     "        match self {"                                                                  $$
     (nest' $ nest' $ nest' $ vcommaSep matches)                                             $$
+    "        }"                                                                             $$
+    "    }"                                                                                 $$
+    "    fn free(x: &mut Self::FFIType) {"                                                  $$
+    "        match x.tag {"                                                                 $$
+    (nest' $ nest' $ nest' $ vcommaSep free_matches)                                        $$
     "        }"                                                                             $$
     "    }"                                                                                 $$
     "}"
@@ -228,6 +241,15 @@ mkToFFIStruct d t@TUser{..} =
                     "    }"                                                                                                          $$
                     "}")
                   $ typeCons t'
+    free_matches = map (\c -> 
+                        let cname = pp $ name c in
+                        tagEnumName typeName <> "::" <> cname <+> "=> {"         $$
+                        (nest' $ vcat $ map (\a -> let at = mkType (typeNormalize d $ typ a) in
+                                                   "<" <> at <> ">::free(unsafe{&mut (*x.x." <> cname <> ")." <> pp (name a) <> "});") 
+                                      $ consArgs c)                              $$
+                        "    unsafe{ Box::from_raw(x.x." <> cname <> ") };"      $$
+                        "}")
+                   $ typeCons t'
 
 -- assumes: 't' is normalized
 mkStruct :: DatalogProgram -> Type -> Doc -> [Constructor] -> Doc
@@ -288,7 +310,7 @@ mkStruct d t struct_name cons  =
     where 
     union_name = "__union_" <> struct_name
     constructors = map (\c -> mkStruct d t (consStructName struct_name c) [c]) cons
-    fields = map (\c -> pp (name c) <> ": *const" <+> consStructName struct_name c) cons
+    fields = map (\c -> pp (name c) <> ": *mut" <+> consStructName struct_name c) cons
     cases = map (\c -> tagEnumName (typeName t) <> "::" <> pp (name c) <+> "=>" <+>
                        "unsafe {&*self.x." <> pp (name c) <> "}.to_native()") cons
 
@@ -304,14 +326,14 @@ tagEnumName tname = "__enum_" <> pp tname
 -- type must be normalized
 mkCType :: DatalogProgram -> Type -> Doc
 mkCType _ TBool{}        = "bool"
-mkCType _ TInt{}         = "*const Int"
-mkCType _ TString{}      = "*const c_char"
+mkCType _ TInt{}         = "*mut Int"
+mkCType _ TString{}      = "*mut c_char"
 mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                          | typeWidth <= 16 = "uint16_t"
                          | typeWidth <= 32 = "uint32_t"
                          | typeWidth <= 64 = "uint64_t"
-                         | otherwise       = "*const Uint"
+                         | otherwise       = "*mut Uint"
 mkCType d t@TTuple{..}   = cStructName d t
 mkCType d t@TUser{..}    = cStructName d t
-mkCType d t@TOpaque{..}  = "*const" <+> mkValConstructorName' d t
+mkCType d t@TOpaque{..}  = "*mut" <+> mkValConstructorName' d t
 mkCType _ t              = error $ "FFI.mkCType " ++ show t
