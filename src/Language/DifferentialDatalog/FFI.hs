@@ -95,6 +95,13 @@ mkCValue d =
     "            _ => None"                                                $$
     "        }"                                                            $$
     "    }"                                                                $$
+    "}"                                                                    $$
+    "#[no_mangle]"                                                         $$
+    "pub extern \"C\" fn val_free(val: *mut __c_Value){"                   $$
+    "    let mut val = unsafe{ Box::from_raw(val) };"                      $$
+    "    match val.tag {"                                                  $$
+    (nest' $ nest' $ vcommaSep free_matches)                               $$
+    "    }"                                                                $$
     "}"
     where
     rels = M.elems $ progRelations d
@@ -103,6 +110,15 @@ mkCValue d =
     matches = map (\rel -> let t = typeNormalize d $ relType rel in
                            "Relations::" <> pp (name rel) <+> "=> Value::" <> mkValConstructorName' d t
                              <> "(" <> tonative (name rel) t <> ")") rels
+    free_matches = map (\rel -> 
+                         let t = typeNormalize d $ relType rel
+                             rn = pp $ name rel in
+                         "Relations::" <> rn <+> "=> unsafe {"                                               $$
+                         (if isStruct d t || isTuple d t
+                             then "    <" <> mkType t <> ">::free(&mut *val.val." <> rn <> ");" $$
+                                  "    Box::from_raw(val.val." <> rn <> ");"
+                             else "    <" <> mkType t <> ">::free(&mut val.val." <> rn <> ");")              $$
+                         "}") rels
     from_matches = mapIdx (\rel i -> 
                            let t  = typeNormalize d $ relType rel 
                                rn = pp $ name rel 
