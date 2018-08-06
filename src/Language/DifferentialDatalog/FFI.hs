@@ -73,7 +73,8 @@ mkFFIInterface d =
     tstructs :: Type -> [Type]
     tstructs = nub . tstructs' . typeNormalize d
 
-    -- Order output to place dependency declarations before type declaration.
+    -- Order output to place dependency declarations before types that depend on them.
+    -- Rust does not care, but C expects this.
     tstructs' :: Type -> [Type]
     tstructs' t@TTuple{..} = concatMap tstructs typeTupArgs ++ [t]
     tstructs' t@TUser{..}  = (concatMap (concatMap (tstructs . typ) . consArgs) $ typeCons $ typ' d t) ++ [t]
