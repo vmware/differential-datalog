@@ -338,7 +338,6 @@ instance PP Relation where
 instance Show Relation where
     show = render . pp
 
-
 data Atom = Atom { atomPos      :: Pos
                  , atomRelation :: String
                  , atomVal      :: Expr

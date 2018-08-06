@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{- | 
+{- |
 Module     : FFI
 Description: Generate C foreign function interface to Rust programs compiled from Datalog
 -}
@@ -47,21 +47,29 @@ import Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Compile
 
 
-mkFFIInterface :: DatalogProgram -> Doc
-mkFFIInterface d = 
-    vcat tagenums $$
-    vcat structs  $$
-    mkCValue d
+mkFFIInterface :: DatalogProgram -> (Doc, Doc)
+mkFFIInterface d =
+    (vcat rtagenums $$
+     vcat rstructs  $$
+     rvalue,
+     vcat ctagenums $$
+     vcat cstructs  $$
+     cvalue)
     where
-    tagenums = mapMaybe (\tdef -> case tdefType tdef of
-                                       Just t@TStruct{} -> ffiMkTagEnum d (name tdef) t
-                                       _                -> Nothing)
-               $ M.elems $ progTypedefs d
-    structs = map (ffiMkStruct d)
-              $ nub
-              $ concatMap tstructs
-              $ map relType
-              $ M.elems $ progRelations d
+    (rvalue, cvalue) = mkCValue d
+    (rtagenums, ctagenums) = unzip
+                             $ mapMaybe (\tdef ->
+                                          case tdefType tdef of
+                                               Just t@TStruct{} -> ffiMkTagEnum d (name tdef) t
+                                               _                -> Nothing)
+                             $ M.elems $ progTypedefs d
+    (rstructs, cstructs) =
+                           unzip
+                           $ map (ffiMkStruct d)
+                           $ nub
+                           $ concatMap tstructs
+                           $ map relType
+                           $ M.elems $ progRelations d
 
     tstructs :: Type -> [Type]
     tstructs = nub . tstructs' . typeNormalize d
@@ -72,46 +80,59 @@ mkFFIInterface d =
     tstructs' TOpaque{..}  = concatMap tstructs typeArgs
     tstructs' _            = []
 
-mkCValue :: DatalogProgram -> Doc
-mkCValue d =
-    "#[repr(C)]"                                                           $$
-    "pub union __union_c_Value {"                                          $$
-    (nest' $ vcommaSep fields)                                             $$
-    "}"                                                                    $$
-    "#[repr(C)]"                                                           $$
-    "pub struct __c_Value {"                                               $$
-    "    tag: Relations,"                                                  $$
-    "    val: __union_c_Value"                                             $$
-    "}"                                                                    $$
-    "impl __c_Value {"                                                     $$
-    "    pub fn to_native(&self) -> Value {"                               $$
-    "        match self.tag {"                                             $$
-    (nest' $ nest' $ nest' $ vcommaSep matches)                            $$
-    "        }"                                                            $$
-    "    }"                                                                $$
-    "    pub fn from_val(relid: RelId, val: &Value) -> Option<Self> {"     $$
-    "        match relid {"                                                $$
-    (nest' $ nest' $ nest' $ vcat $ map (<> ",") from_matches)             $$
-    "            _ => None"                                                $$
-    "        }"                                                            $$
-    "    }"                                                                $$
-    "}"                                                                    $$
-    "#[no_mangle]"                                                         $$
-    "pub extern \"C\" fn val_free(val: *mut __c_Value){"                   $$
-    "    let mut val = unsafe{ Box::from_raw(val) };"                      $$
-    "    match val.tag {"                                                  $$
-    (nest' $ nest' $ vcommaSep free_matches)                               $$
-    "    }"                                                                $$
-    "}"
+mkCValue :: DatalogProgram -> (Doc, Doc)
+mkCValue d = (rust, hdr)
     where
+    rust =
+        "#[repr(C)]"                                                           $$
+        "pub union __union_c_Value {"                                          $$
+        (nest' $ vcommaSep fields)                                             $$
+        "}"                                                                    $$
+        "#[repr(C)]"                                                           $$
+        "pub struct __c_Value {"                                               $$
+        "    tag: Relations,"                                                  $$
+        "    val: __union_c_Value"                                             $$
+        "}"                                                                    $$
+        "impl __c_Value {"                                                     $$
+        "    pub fn to_native(&self) -> Value {"                               $$
+        "        match self.tag {"                                             $$
+        (nest' $ nest' $ nest' $ vcommaSep matches)                            $$
+        "        }"                                                            $$
+        "    }"                                                                $$
+        "    pub fn from_val(relid: RelId, val: &Value) -> Option<Self> {"     $$
+        "        match relid {"                                                $$
+        (nest' $ nest' $ nest' $ vcat $ map (<> ",") from_matches)             $$
+        "            _ => None"                                                $$
+        "        }"                                                            $$
+        "    }"                                                                $$
+        "}"                                                                    $$
+        "#[no_mangle]"                                                         $$
+        "pub extern \"C\" fn val_free(val: *mut __c_Value){"                   $$
+        "    let mut val = unsafe{ Box::from_raw(val) };"                      $$
+        "    match val.tag {"                                                  $$
+        (nest' $ nest' $ vcommaSep free_matches)                               $$
+        "    }"                                                                $$
+        "}"
+    hdr =
+        "union Value {"                                                        $$
+        (nest' $ vcat c_fields)                                                $$
+        "};"                                                                   $$
+        "struct Value {"                                                       $$
+        "    enum Relations tag;"                                              $$
+        "    union Value val;"                                                 $$
+        "};"                                                                   $$
+        "void val_free(struct Value *val);"
+
     rels = M.elems $ progRelations d
-    fields = map (\rel -> let t = typeNormalize d $ relType rel in 
-                          pp (name rel) <> ":" <+> scalarize t) rels
-    matches = map (\rel -> let t = typeNormalize d $ relType rel in
+    fields = map (\rel -> let t = typeNormalize d rel in
+                          pp (name rel) <> ":" <+> ffiScalarize t) rels
+    c_fields = map (\rel -> let t = typeNormalize d rel in
+                            cScalarize t <+> pp (name rel) <> ";") rels
+    matches = map (\rel -> let t = typeNormalize d rel in
                            "Relations::" <> pp (name rel) <+> "=> Value::" <> mkValConstructorName' d t
                              <> "(" <> tonative (name rel) t <> ")") rels
-    free_matches = map (\rel -> 
-                         let t = typeNormalize d $ relType rel
+    free_matches = map (\rel ->
+                         let t = typeNormalize d rel
                              rn = pp $ name rel in
                          "Relations::" <> rn <+> "=> unsafe {"                                               $$
                          (if isStruct d t || isTuple d t
@@ -119,9 +140,9 @@ mkCValue d =
                                   "    Box::from_raw(val.val." <> rn <> ");"
                              else "    <" <> mkType t <> ">::free(&mut val.val." <> rn <> ");")              $$
                          "}") rels
-    from_matches = mapIdx (\rel i -> 
-                           let t  = typeNormalize d $ relType rel 
-                               rn = pp $ name rel 
+    from_matches = mapIdx (\rel i ->
+                           let t  = typeNormalize d rel
+                               rn = pp $ name rel
                                ptr = isStruct d t || isTuple d t
                                toffi = if ptr
                                           then "Box::into_raw(Box::new(v.to_ffi()))"
@@ -142,15 +163,22 @@ mkCValue d =
                            "    }"                                                                          $$
                            "}") rels
     -- rust currently does not allow non-scalar types in unions
-    scalarize :: Type -> Doc
-    scalarize t = 
+    ffiScalarize :: Type -> Doc
+    ffiScalarize t =
         case t of
              TTuple{} -> "*mut" <+> t'
              TUser{}  -> "*mut" <+> t'
              _        -> t'
+        where t' = mkFFIType d t
+    cScalarize :: Type -> Doc
+    cScalarize t =
+        case t of
+             TTuple{} -> t' <> "*"
+             TUser{}  -> t' <> "*"
+             _        -> t'
         where t' = mkCType d t
     tonative :: String -> Type -> Doc
-    tonative relname t = 
+    tonative relname t =
         case t of
              TBool{}        -> n
              TInt{}         -> borrown <> ".clone()"
@@ -164,45 +192,53 @@ mkCValue d =
              TUser{..}      -> borrown <> ".to_native()"
              TOpaque{..}    -> borrown <> ".clone()"
              t              -> error $ "FFI.tonative " ++ show t
-        where 
+        where
         n = "self.val." <> pp relname
         borrown = "unsafe{&*" <> n <> "}"
 
 -- Call once for each struct to generate a C-style for its tag enum.
 -- Returns 'Nothing' for structs with unique constructor, which don't
 -- need a tag.
-ffiMkTagEnum :: DatalogProgram -> String -> Type -> Maybe Doc
+ffiMkTagEnum :: DatalogProgram -> String -> Type -> Maybe (Doc, Doc)
 ffiMkTagEnum d tname t@TStruct{..} | isStructType t = Nothing
-                                   | otherwise = Just $
-    "#[repr(C)]"                                                                              $$
-    "pub enum" <+> tagEnumName tname <+> "{"                                                  $$
-    (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons)              $$
-    "}"
+                                   | otherwise = Just (rust, hdr)
+    where
+    rust = "#[repr(C)]"                                                                 $$
+           "pub enum" <+> ffiTagEnumName tname <+> "{"                                  $$
+           (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons) $$
+           "}"
+    hdr = "enum" <+> cTagEnumName tname <+> "{"                                         $$
+          (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons)  $$
+          "};"
 
--- Generates FFI interface to a normalized TStruct or TTuple type.
+-- Generates FFI interface to a normalized TStruct or TTuple type,
+-- including Rust and C declarations, and C forward declaration
+-- to be included at the top of the header file.
 --
 -- Assumes: 't' does not contain free type variables.
 --          't' is normalized
 --
--- Must be called for each struct and tuple type occurring in normalized 
+-- Must be called for each struct and tuple type occurring in normalized
 -- input and output relations.
-ffiMkStruct :: DatalogProgram -> Type -> Doc
+ffiMkStruct :: DatalogProgram -> Type -> (Doc, Doc)
 ffiMkStruct d t@TUser{..}  =
-    mkStruct d t (cStructName d t) (typeCons $ typ' d t) $$
-    mkToFFIStruct d t
-ffiMkStruct d t@TTuple{..} = 
-    mkStruct d t (cStructName d t) 
-                 [Constructor nopos (error "FFI.ffiMkStruct: tuple should not need a tag") 
-                  $ mapIdx (\at i -> Field nopos ("x" ++ show i) at) typeTupArgs] $$
-    mkToFFITuple d t
+    (rust $$ mkToFFIStruct d t, hdr)
+    where
+    (rust, hdr) = mkStruct d t (cStructName d t) (ffiStructName d t) (typeCons $ typ' d t)
+ffiMkStruct d t@TTuple{..} =
+    (rust $$ mkToFFITuple d t, hdr)
+    where
+    (rust, hdr) = mkStruct d t (cStructName d t) (ffiStructName d t)
+                  [Constructor nopos (error "FFI.ffiMkStruct: tuple should not need a tag")
+                   $ mapIdx (\at i -> Field nopos ("x" ++ show i) at) typeTupArgs]
 ffiMkStruct _ t            = error $ "FFI.ffiMkStruct " ++ show t
 
 mkToFFITuple :: DatalogProgram -> Type -> Doc
 mkToFFITuple d t@TTuple{..} =
     "impl ToFFI for" <+> mkType t <+> "{"                                                   $$
-    "    type FFIType =" <+> mkCType d t <> ";"                                             $$
+    "    type FFIType =" <+> mkFFIType d t <> ";"                                           $$
     "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
-    (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
+    (nest' $ nest' $ ffiStructName d t <> "{" <> commaSep fields <> "}")                    $$
     "    }"                                                                                 $$
     "    fn free(x: &mut Self::FFIType) {"                                                  $$
     (nest' $ nest' $ vcat free_fields)                                                      $$
@@ -215,9 +251,9 @@ mkToFFITuple d t@TTuple{..} =
 mkToFFIStruct :: DatalogProgram -> Type -> Doc
 mkToFFIStruct d t@TUser{..} | isStructType t' =
     "impl ToFFI for" <+> mkType t <+> "{"                                                   $$
-    "    type FFIType =" <+> mkCType d t <> ";"                                             $$
+    "    type FFIType =" <+> mkFFIType d t <> ";"                                           $$
     "    fn to_ffi(&self) -> Self::FFIType {"                                               $$
-    (nest' $ nest' $ cStructName d t <> "{" <> commaSep fields <> "}")                      $$
+    (nest' $ nest' $ ffiStructName d t <> "{" <> commaSep fields <> "}")                    $$
     "    }"                                                                                 $$
     "    fn free(x: &mut Self::FFIType) {"                                                  $$
     (nest' $ nest' $ vcat free_fields)                                                      $$
@@ -225,7 +261,7 @@ mkToFFIStruct d t@TUser{..} | isStructType t' =
     "}"
     where
     fields = map (\a -> pp (name a) <> ": self." <> pp (name a) <> ".to_ffi()") $ consArgs $ head $ typeCons t'
-    free_fields = map (\a -> "<" <> mkType (typeNormalize d $ typ a) <> ">::free(&mut x." <> pp (name a) <> ");") $ consArgs $ head $ typeCons t'
+    free_fields = map (\a -> "<" <> mkType (typeNormalize d a) <> ">::free(&mut x." <> pp (name a) <> ");") $ consArgs $ head $ typeCons t'
     t' = typ' d t
 
 mkToFFIStruct d t@TUser{..} =
@@ -244,52 +280,58 @@ mkToFFIStruct d t@TUser{..} =
     "}"
     where
     t' = typ' d t
-    cstruct = cStructName d t
-    matches = map (\c -> 
+    cstruct = ffiStructName d t
+    matches = map (\c ->
                     let cname = pp $ name c in
-                    mkConstructorName typeName t' (name c) <> 
+                    mkConstructorName typeName t' (name c) <>
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> cstruct <+> "{"                                   $$
-                    "    tag:" <+> tagEnumName typeName <> "::" <> cname <> ","                                                      $$
+                    "    tag:" <+> ffiTagEnumName typeName <> "::" <> cname <> ","                                                   $$
                     "    x:" <+> "__union_" <> cstruct <+> "{"                                                                       $$
-                    "        " <> cname <> ": Box::into_raw(Box::new(" <> consStructName cstruct c <+> "{"                           $$ 
-                    (nest' $ nest' $ nest' $ vcommaSep $ map (\a -> pp (name a) <> ":" <+> pp (name a) <> ".to_ffi()") $ consArgs c) $$ 
+                    "        " <> cname <> ": Box::into_raw(Box::new(" <> ffiConsStructName cstruct c <+> "{"                        $$
+                    (nest' $ nest' $ nest' $ vcommaSep $ map (\a -> pp (name a) <> ":" <+> pp (name a) <> ".to_ffi()") $ consArgs c) $$
                     "        }))"                                                                                                    $$
                     "    }"                                                                                                          $$
                     "}")
                   $ typeCons t'
-    free_matches = map (\c -> 
+    free_matches = map (\c ->
                         let cname = pp $ name c in
-                        tagEnumName typeName <> "::" <> cname <+> "=> {"         $$
-                        (nest' $ vcat $ map (\a -> let at = mkType (typeNormalize d $ typ a) in
-                                                   "<" <> at <> ">::free(unsafe{&mut (*x.x." <> cname <> ")." <> pp (name a) <> "});") 
+                        ffiTagEnumName typeName <> "::" <> cname <+> "=> {"         $$
+                        (nest' $ vcat $ map (\a -> let at = mkType (typeNormalize d a) in
+                                                   "<" <> at <> ">::free(unsafe{&mut (*x.x." <> cname <> ")." <> pp (name a) <> "});")
                                       $ consArgs c)                              $$
                         "    unsafe{ Box::from_raw(x.x." <> cname <> ") };"      $$
                         "}")
                    $ typeCons t'
 
 -- assumes: 't' is normalized
-mkStruct :: DatalogProgram -> Type -> Doc -> [Constructor] -> Doc
-mkStruct d t struct_name [Constructor _ cname cfields] =
-    "#[repr(C)]"                                                                            $$
-    "pub struct" <+> struct_name <+> "{"                                                    $$
-    (nest' $ vcommaSep fields)                                                              $$
-    "}"                                                                                     $$
-    "impl" <+> struct_name <+> "{"                                                          $$
-    "    pub fn to_native(&self) ->" <+> mkType t <+> "{"                                   $$
-    (nest' $ nest' $
-     case typ' d t of
-          t'@TStruct{} -> mkConstructorName (typeName t) t' cname <> "{" $$
-                          (nest' $ vcommaSep
-                           $ map (\f -> pp (name f) <> ":" <+> mkfield f) cfields) $$
-                          "}"
-          TTuple{}     -> "(" <> (hsep $ punctuate comma $ map mkfield cfields) <> ")")     $$
-    "    }"                                                                                 $$
-    "}"
-    where 
-    fields = map (\f -> pp (name f) <> ":" <+> mkCType d (typeNormalize d $ typ f)) cfields
+mkStruct :: DatalogProgram -> Type -> Doc -> Doc -> [Constructor] -> (Doc, Doc)
+mkStruct d t c_struct_name ffi_struct_name [Constructor _ cname cfields] = (rust, hdr)
+    where
+    rust =
+         "#[repr(C)]"                                                                            $$
+         "pub struct" <+> ffi_struct_name <+> "{"                                                $$
+         (nest' $ vcommaSep fields)                                                              $$
+         "}"                                                                                     $$
+         "impl" <+> ffi_struct_name <+> "{"                                                      $$
+         "    pub fn to_native(&self) ->" <+> mkType t <+> "{"                                   $$
+         (nest' $ nest' $
+          case typ' d t of
+               t'@TStruct{} -> mkConstructorName (typeName t) t' cname <> "{" $$
+                               (nest' $ vcommaSep
+                                $ map (\f -> pp (name f) <> ":" <+> mkfield f) cfields) $$
+                               "}"
+               TTuple{}     -> "(" <> (hsep $ punctuate comma $ map mkfield cfields) <> ")")     $$
+         "    }"                                                                                 $$
+         "}"
+    hdr =
+         "struct" <+> c_struct_name <+> "{"                                                      $$
+         (nest' $ vcat $ hdr_fields)                                                             $$
+         "};"
+    fields = map (\f -> pp (name f) <> ":" <+> mkFFIType d (typeNormalize d f)) cfields
+    hdr_fields = map (\f -> mkCType d (typeNormalize d f) <+> pp (name f) <> ";") cfields
     mkfield :: Field -> Doc
-    mkfield f = 
-        case typeNormalize d $ typ f of
+    mkfield f =
+        case typeNormalize d f of
              TBool{}        -> n
              TInt{}         -> borrown <> ".clone()"
              TString{}      -> "unsafe { CStr::from_ptr(" <> n <> ")}.to_str().unwrap().to_string()"
@@ -305,51 +347,91 @@ mkStruct d t struct_name [Constructor _ cname cfields] =
         where n = "self." <> pp (name f)
               borrown = "unsafe{&*" <> n <> "}"
 
-mkStruct d t struct_name cons  =
-    vcat constructors                                                 $$
-    "#[repr(C)]"                                                      $$
-    "pub union" <+> union_name <+> "{"                                $$
-    (nest' $ vcommaSep fields)                                        $$
-    "}"                                                               $$
-    "#[repr(C)]"                                                      $$
-    "pub struct" <+> struct_name <+> "{"                              $$
-    "    tag:" <+> tagEnumName (typeName t) <> ","                    $$
-    "    x:"   <+> union_name                                         $$
-    "}"                                                               $$
-    "impl" <+> struct_name <+> "{"                                    $$
-    "    pub fn to_native(&self) ->" <+> mkType t <+> "{"             $$
-    "        match self.tag {"                                        $$
-    (nest' $ nest' $ nest' $ vcommaSep cases)                         $$
-    "        }"                                                       $$
-    "    }"                                                           $$
-    "}"
-    where 
-    union_name = "__union_" <> struct_name
-    constructors = map (\c -> mkStruct d t (consStructName struct_name c) [c]) cons
-    fields = map (\c -> pp (name c) <> ": *mut" <+> consStructName struct_name c) cons
-    cases = map (\c -> tagEnumName (typeName t) <> "::" <> pp (name c) <+> "=>" <+>
+mkStruct d t c_struct_name ffi_struct_name cons  = (rust, hdr)
+    where
+    rust =
+        vcat constructors                                                 $$
+        "#[repr(C)]"                                                      $$
+        "pub union" <+> ffi_union_name <+> "{"                            $$
+        (nest' $ vcommaSep fields)                                        $$
+        "}"                                                               $$
+        "#[repr(C)]"                                                      $$
+        "pub struct" <+> ffi_struct_name <+> "{"                          $$
+        "    tag:" <+> ffiTagEnumName (typeName t) <> ","                 $$
+        "    x:"   <+> ffi_union_name                                     $$
+        "}"                                                               $$
+        "impl" <+> ffi_struct_name <+> "{"                                $$
+        "    pub fn to_native(&self) ->" <+> mkType t <+> "{"             $$
+        "        match self.tag {"                                        $$
+        (nest' $ nest' $ nest' $ vcommaSep cases)                         $$
+        "        }"                                                       $$
+        "    }"                                                           $$
+        "}"
+    hdr =
+        vcat c_constructors                                               $$
+        "union" <+> c_union_name <+> "{"                                  $$
+        (nest' $ vcat c_fields)                                           $$
+        "};"                                                              $$
+        "struct" <+> c_struct_name <+> "{"                                $$
+        "    enum" <+> cTagEnumName (typeName t) <> "tag;"                $$
+        "    union" <+> c_union_name <+> "x;"                             $$
+        "};"
+
+    ffi_union_name = "__union_" <> ffi_struct_name
+    c_union_name = c_struct_name <> "_union"
+    (constructors, c_constructors) = unzip $
+        map (\c -> mkStruct d t (cConsStructName c_struct_name c)
+                                (ffiConsStructName ffi_struct_name c) [c])
+        cons
+    fields = map (\c -> pp (name c) <> ": *mut" <+> ffiConsStructName ffi_struct_name c) cons
+    c_fields = map (\c -> cConsStructName c_struct_name c <> "*" <+> pp (name c) <> ";") cons
+    cases = map (\c -> ffiTagEnumName (typeName t) <> "::" <> pp (name c) <+> "=>" <+>
                        "unsafe {&*self.x." <> pp (name c) <> "}.to_native()") cons
 
+ffiStructName :: DatalogProgram -> Type -> Doc
+ffiStructName d t = "__c_" <> cStructName d t
+
 cStructName :: DatalogProgram -> Type -> Doc
-cStructName d t = "__c_" <> mkValConstructorName' d t
+cStructName d t = mkValConstructorName' d t
 
-consStructName :: Doc -> Constructor -> Doc
-consStructName tname c = "__struct_" <> tname <> "_" <> (pp $ name c)
+cConsStructName :: Doc -> Constructor -> Doc
+cConsStructName tname c = tname <> "_" <> (pp $ name c)
 
-tagEnumName :: String -> Doc
-tagEnumName tname = "__enum_" <> pp tname
+ffiConsStructName :: Doc -> Constructor -> Doc
+ffiConsStructName tname c = "__struct_" <> cConsStructName tname c
+
+ffiTagEnumName :: String -> Doc
+ffiTagEnumName tname = "__enum_" <> pp tname
+
+cTagEnumName :: String -> Doc
+cTagEnumName tname = pp tname <> "_enum"
+
+-- type must be normalized
+mkFFIType :: DatalogProgram -> Type -> Doc
+mkFFIType _ TBool{}        = "bool"
+mkFFIType _ TInt{}         = "*mut Int"
+mkFFIType _ TString{}      = "*mut c_char"
+mkFFIType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
+                           | typeWidth <= 16 = "uint16_t"
+                           | typeWidth <= 32 = "uint32_t"
+                           | typeWidth <= 64 = "uint64_t"
+                           | otherwise       = "*mut Uint"
+mkFFIType d t@TTuple{..}   = ffiStructName d t
+mkFFIType d t@TUser{..}    = ffiStructName d t
+mkFFIType d t@TOpaque{..}  = "*mut" <+> mkValConstructorName' d t
+mkFFIType _ t              = error $ "FFI.mkFFIType " ++ show t
 
 -- type must be normalized
 mkCType :: DatalogProgram -> Type -> Doc
 mkCType _ TBool{}        = "bool"
-mkCType _ TInt{}         = "*mut Int"
-mkCType _ TString{}      = "*mut c_char"
+mkCType _ TInt{}         = "Int*"
+mkCType _ TString{}      = "char*"
 mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                          | typeWidth <= 16 = "uint16_t"
                          | typeWidth <= 32 = "uint32_t"
                          | typeWidth <= 64 = "uint64_t"
-                         | otherwise       = "*mut Uint"
-mkCType d t@TTuple{..}   = cStructName d t
-mkCType d t@TUser{..}    = cStructName d t
-mkCType d t@TOpaque{..}  = "*mut" <+> mkValConstructorName' d t
+                         | otherwise       = "Uint*"
+mkCType d t@TTuple{..}   = "struct" <+> cStructName d t
+mkCType d t@TUser{..}    = "struct" <+> cStructName d t
+mkCType d t@TOpaque{..}  = mkValConstructorName' d t <> "*"
 mkCType _ t              = error $ "FFI.mkCType " ++ show t

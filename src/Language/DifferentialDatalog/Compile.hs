@@ -252,7 +252,7 @@ mkConstructorName tname t c =
 -- exists
 compile :: DatalogProgram -> String -> String -> FilePath -> IO ()
 compile d specname imports dir = do
-    let (lib, ffi) = compileLib d specname imports
+    let (lib, rust_ffi, c_ffi) = compileLib d specname imports
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
     -- Update rustLibFiles if they changed.
@@ -269,7 +269,9 @@ compile d specname imports dir = do
     -- Generate lib.rs file if changed.
     updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
     -- Generate ffi.rs file if changed.
-    updateFile (joinPath [dir, specname, "ffi.rs"]) (render ffi)
+    updateFile (joinPath [dir, specname, "ffi.rs"]) (render rust_ffi)
+    -- Update matching C header file.
+    updateFile (joinPath [dir, specname, specname ++ ".h"]) (render c_ffi)
     return ()
 
 -- Replace file content if changed
@@ -288,7 +290,7 @@ updateFile path content = do
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing 
 -- the program for the Rust Datalog library
-compileLib :: DatalogProgram -> String -> String -> (Doc, Doc)
+compileLib :: DatalogProgram -> String -> String -> (Doc, Doc, Doc)
 compileLib d specname imports = 
     (header specname      $+$
      pp imports           $+$
@@ -300,8 +302,11 @@ compileLib d specname imports =
      prog
     ,
      ffiheader specname   $+$
-     FFI.mkFFIInterface d')
+     rust_ffi
+    ,
+     c_ffi)
     where
+    (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
     -- Transform away rules with multiple heads
     d' = addDummyRel $ progExpandMultiheadRules d
     -- Compute ordered SCCs of the dependency graph.  These will define the
