@@ -63,8 +63,7 @@ mkFFIInterface d =
                                                Just t@TStruct{} -> ffiMkTagEnum d (name tdef) t
                                                _                -> Nothing)
                              $ M.elems $ progTypedefs d
-    (rstructs, cstructs) =
-                           unzip
+    (rstructs, cstructs) = unzip
                            $ map (ffiMkStruct d)
                            $ nub
                            $ concatMap tstructs
@@ -74,11 +73,18 @@ mkFFIInterface d =
     tstructs :: Type -> [Type]
     tstructs = nub . tstructs' . typeNormalize d
 
+    -- Order output to place dependency declarations before type declaration.
     tstructs' :: Type -> [Type]
-    tstructs' t@TTuple{..} = t : concatMap tstructs typeTupArgs
-    tstructs' t@TUser{..}  = t : (concatMap (concatMap (tstructs . typ) . consArgs) $ typeCons $ typ' d t)
+    tstructs' t@TTuple{..} = concatMap tstructs typeTupArgs ++ [t]
+    tstructs' t@TUser{..}  = (concatMap (concatMap (tstructs . typ) . consArgs) $ typeCons $ typ' d t) ++ [t]
     tstructs' TOpaque{..}  = concatMap tstructs typeArgs
     tstructs' _            = []
+
+mkCRelEnum :: DatalogProgram -> Doc
+mkCRelEnum d =
+    "enum Relations {"                                                                                       $$
+    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> pp rel <+> "=" <+> pp i) $ M.keys $ progRelations d) $$
+    "};"
 
 mkCValue :: DatalogProgram -> (Doc, Doc)
 mkCValue d = (rust, hdr)
@@ -114,12 +120,13 @@ mkCValue d = (rust, hdr)
         "    }"                                                                $$
         "}"
     hdr =
-        "union Value {"                                                        $$
+        mkCRelEnum d                                                           $$
+        "union Value_union {"                                                  $$
         (nest' $ vcat c_fields)                                                $$
         "};"                                                                   $$
         "struct Value {"                                                       $$
         "    enum Relations tag;"                                              $$
-        "    union Value val;"                                                 $$
+        "    union Value_union val;"                                           $$
         "};"                                                                   $$
         "void val_free(struct Value *val);"
 
@@ -373,7 +380,7 @@ mkStruct d t c_struct_name ffi_struct_name cons  = (rust, hdr)
         (nest' $ vcat c_fields)                                           $$
         "};"                                                              $$
         "struct" <+> c_struct_name <+> "{"                                $$
-        "    enum" <+> cTagEnumName (typeName t) <> "tag;"                $$
+        "    enum" <+> cTagEnumName (typeName t) <+> "tag;"               $$
         "    union" <+> c_union_name <+> "x;"                             $$
         "};"
 
@@ -384,7 +391,7 @@ mkStruct d t c_struct_name ffi_struct_name cons  = (rust, hdr)
                                 (ffiConsStructName ffi_struct_name c) [c])
         cons
     fields = map (\c -> pp (name c) <> ": *mut" <+> ffiConsStructName ffi_struct_name c) cons
-    c_fields = map (\c -> cConsStructName c_struct_name c <> "*" <+> pp (name c) <> ";") cons
+    c_fields = map (\c -> "struct" <+> cConsStructName c_struct_name c <> "*" <+> pp (name c) <> ";") cons
     cases = map (\c -> ffiTagEnumName (typeName t) <> "::" <> pp (name c) <+> "=>" <+>
                        "unsafe {&*self.x." <> pp (name c) <> "}.to_native()") cons
 
@@ -424,13 +431,13 @@ mkFFIType _ t              = error $ "FFI.mkFFIType " ++ show t
 -- type must be normalized
 mkCType :: DatalogProgram -> Type -> Doc
 mkCType _ TBool{}        = "bool"
-mkCType _ TInt{}         = "Int*"
+mkCType _ TInt{}         = "struct Int*"
 mkCType _ TString{}      = "char*"
 mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                          | typeWidth <= 16 = "uint16_t"
                          | typeWidth <= 32 = "uint32_t"
                          | typeWidth <= 64 = "uint64_t"
-                         | otherwise       = "Uint*"
+                         | otherwise       = "struct Uint*"
 mkCType d t@TTuple{..}   = "struct" <+> cStructName d t
 mkCType d t@TUser{..}    = "struct" <+> cStructName d t
 mkCType d t@TOpaque{..}  = mkValConstructorName' d t <> "*"
