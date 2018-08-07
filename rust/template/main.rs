@@ -7,6 +7,7 @@
 extern crate datalog_example;
 extern crate differential_datalog;
 extern crate cmd_parser;
+extern crate time;
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -20,6 +21,7 @@ use std::collections::BTreeSet;
 use datalog_example::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
+use time::precise_time_ns;
 
 pub type ValMap = BTreeMap<RelId, BTreeSet<Value>>;
 
@@ -80,6 +82,10 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         Command::Rollback => {
             upds.clear();
             p.transaction_rollback()
+        },
+        Command::Timestamp => {
+            println!("Timestamp: {}", precise_time_ns());
+            Ok(())
         },
         Command::Dump(None) => {
             valMapFormat(&*db.lock().unwrap(), &mut stdout());

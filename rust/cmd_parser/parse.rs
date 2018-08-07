@@ -23,6 +23,7 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
+    Timestamp,
     Dump(Option<String>),
     Exit,
     Echo(String),
@@ -51,18 +52,19 @@ named!(identifier<&[u8], String>,
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>
-        upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    |
-                  do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   |
-                  do_parse!(apply!(sym,"dump")     >>
-                            rel: opt!(identifier)  >>
-                            apply!(sym,";") >>
-                            (Command::Dump(rel)))                                             |
-                  do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     |
-                  do_parse!(apply!(sym,"echo")     >>
-                            txt: take_until!(";")  >>
-                            apply!(sym,";") >>
-                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        |
-                  do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
+        upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
+                  do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
+                  do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
+                  do_parse!(apply!(sym,"dump")      >>
+                            rel: opt!(identifier)   >>
+                            apply!(sym,";")         >>
+                            (Command::Dump(rel)))                                               |
+                  do_parse!(apply!(sym,"exit")      >> apply!(sym,";") >> (Command::Exit))      |
+                  do_parse!(apply!(sym,"echo")      >>
+                            txt: take_until!(";")   >>
+                            apply!(sym,";")         >>
+                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))          |
+                  do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback))   |
                   do_parse!(upd:  update >>
                             last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >>
                             (Command::Update(upd, last)))) >>
@@ -74,11 +76,12 @@ named!(pub parse_command<&[u8], Command>,
 fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
+    assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
     assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
     assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
     assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
     assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
-    assert_eq!(parse_command(br"echo;"),      Ok((&br""[..], Command::Echo("".to_string()))));
+    assert_eq!(parse_command(br"echo;")     , Ok((&br""[..], Command::Echo("".to_string()))));
     assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"),
                Ok((&br""[..], Command::Update(
