@@ -131,6 +131,7 @@ testOne fname = do
                                      "\nstderr:\n" ++ stde ++
                                      "\n\nstdout:\n" ++ stdo
         cliTest fname specname rust_dir
+        ffiTest fname specname rust_dir
     return ()
 
 -- Feed test data via pipe if a .dat file exists
@@ -157,9 +158,40 @@ cliTest fname specname rust_dir = do
                 code <- waitForProcess phandle
                 return code
         when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++
+            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
                                      "\nstderr written to:\n" ++ errfile ++
                                      "\n\nstdout written to:\n" ++ dumpfile
+        hClose hout
+        hClose herr
+        hClose hdat
+
+-- Convert .dat file into C to test the FFI interface
+ffiTest :: FilePath -> String -> FilePath -> IO ()
+ffiTest fname specname rust_dir = do
+    let cfile    = replaceExtension fname "c"
+    let errfile  = replaceExtension fname "err"
+    let datfile  = replaceExtension fname "dat"
+    hasdata <- doesFileExist datfile
+    when hasdata $ do
+        hout <- openFile cfile WriteMode
+        herr <- openFile errfile  WriteMode
+        hdat <- openFile datfile ReadMode
+        code <- withCreateProcess (proc "cargo" ["run", "--bin", specname ++ "_ffi_test"]){
+                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       std_in=CreatePipe,
+                                       std_out=UseHandle hout,
+                                       std_err=UseHandle herr} $
+            \(Just hin) _ _ phandle -> do
+                dat <- hGetContents hdat
+                hPutStrLn hin dat
+                hPutStrLn hin "exit;"
+                hFlush hin
+                code <- waitForProcess phandle
+                return code
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
+                                     "\nstderr written to:\n" ++ errfile ++
+                                     "\n\nstdout written to:\n" ++ cfile
         hClose hout
         hClose herr
         hClose hdat

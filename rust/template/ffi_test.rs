@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::process::exit;
 
 use datalog_example::*;
+use datalog_example::ffi::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 
@@ -40,14 +41,12 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             println!("ret = datalog_example_transaction_rollback(prog);");
         },
         Command::Timestamp => {},
-        Command::Dump(_) => {
-            panic!("Dump: not implemented");
-        },
+        Command::Dump(_) => {},
         Command::Exit => {
             exit(0);
         },
         Command::Echo(txt) => {
-            println!("println(\"%s\", {})", txt);
+            println!("println(\"%s\", {:?})", txt);
         },
         Command::Update(upd, last) => {
              match updcmd2upd(&upd) {
@@ -60,9 +59,11 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             };
             if last {
                 let copy: Vec<Update<Value>> = upds.drain(..).collect();
+                println!("struct Update updates [] = {{");
                 for upd in &copy {
                     printUpd(upd);
                 }
+                println!("}};");
                 println!("ret = datalog_example_apply_updates(prog, updates, {});", copy.len());
             };
         }
@@ -71,7 +72,15 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
 }
 
 fn printUpd(upd: &Update<Value>) {
-    panic!("printUpd: not implemented");
+    let pol = match upd {
+        Update::Insert{..} => "true",
+        Update::Delete{..} => "false"
+    };
+    let v = match upd {
+        Update::Insert{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap(),
+        Update::Delete{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap()
+    };
+    println!("    struct Update{{ .pol={}, .v={} }},", pol, v);
 }
 
 pub fn run_interactive() -> i32 {

@@ -262,7 +262,7 @@ pub enum Update<V: Val> {
 }
 
 impl<V:Val> Update<V> {
-    fn relid(&self) -> RelId {
+    pub fn relid(&self) -> RelId {
         match self {
             Update::Insert{relid, v: _} => *relid,
             Update::Delete{relid, v: _} => *relid
@@ -270,7 +270,7 @@ impl<V:Val> Update<V> {
     }
 }
 
-/* A Datalog relation can depend on other relations and their arrangements. 
+/* A Datalog relation can depend on other relations and their arrangements.
  */
 #[derive(PartialEq,Eq,Hash,Debug)]
 enum Dep {

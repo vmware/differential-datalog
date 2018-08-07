@@ -2,7 +2,7 @@
 
 extern crate fnv;
 
-#[macro_use] 
+#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate libc;
@@ -10,7 +10,7 @@ extern crate libc;
 extern crate differential_datalog;
 extern crate cmd_parser;
 
-#[macro_use] 
+#[macro_use]
 extern crate abomonation;
 
 use differential_datalog::program::*;

@@ -119,6 +119,12 @@ mkCValue d = (rust, hdr)
         "    match val.tag {"                                                  $$
         (nest' $ nest' $ vcommaSep free_matches)                               $$
         "    }"                                                                $$
+        "}"                                                                    $$
+        "pub fn val_to_ccode(relid: RelId, val: &Value) -> Option<String> {"   $$
+        "   match relid {"                                                     $$
+        (nest' $ nest' $ nest' $ vcat $ map (<> ",") c_matches)                $$
+        "            _ => None"                                                $$
+        "   }"                                                                 $$
         "}"
     hdr =
         mkCRelEnum d                                                           $$
@@ -170,6 +176,23 @@ mkCValue d = (rust, hdr)
                            "        }"                                                                      $$
                            "    }"                                                                          $$
                            "}") rels
+    c_matches = mapIdx (\rel i ->
+                         let t  = typeNormalize d rel
+                             rn = pp $ name rel
+                             ptr = isStruct d t || isTuple d t
+                         in
+                         pp i <+> "=> {"                                                                  $$
+                         "    match val {"                                                                $$
+                         "        Value::" <> mkValConstructorName' d t <> "(v) => Some("                 $$
+                         "            format!(\"struct Value {{.tag: " <> rn <> ", .val: union Value_union{{." 
+                                              <> rn <> ": {} }} }}\", v.c_code())"                        $$
+                         "        ),"                                                                     $$
+                         "        v => {"                                                                 $$
+                         "            eprintln!(\"val_to_ccode: Invalid value {}\", *v);"                 $$
+                         "            None"                                                               $$
+                         "        }"                                                                      $$
+                         "    }"                                                                          $$
+                         "}") rels
     -- rust currently does not allow non-scalar types in unions
     ffiScalarize :: Type -> Doc
     ffiScalarize t =
