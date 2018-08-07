@@ -9,3 +9,15 @@ Path{"Palo Alto","Redwood City"}
 Path{"Palo Alto","San Bruno"}
 Path{"Redwood City","San Bruno"}
 
+Printing Path relation only
+
+Path{"Palo Alto","Palo Alto"}
+Path{"Palo Alto","Redwood City"}
+Path{"Palo Alto","San Bruno"}
+Path{"Redwood City","San Bruno"}
+
+Printing Edge relation only
+
+Edge{"Palo Alto","Palo Alto"}
+Edge{"Palo Alto","Redwood City"}
+Edge{"Redwood City","San Bruno"}

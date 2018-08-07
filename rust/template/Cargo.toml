@@ -13,6 +13,8 @@ abomonation="0.5"
 serde = "1.0.14"
 serde_derive = "1.0.14"
 fnv="1.0.2"
+libc="0.2"
+time="0.1"
 
 [features]
 default = []
@@ -32,3 +34,8 @@ path = "./lib.rs"
 
 name = "datalog_example_cli"
 path = "./main.rs"
+
+[[bin]]
+
+name = "datalog_example_ffi_test"
+path = "./ffi_test.rs"

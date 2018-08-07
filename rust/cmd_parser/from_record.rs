@@ -1,4 +1,4 @@
-//! `FromRecord` trait.  For types that 
+//! `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
 
 use parse::Record;
 use num::{ToPrimitive, BigInt, BigUint};

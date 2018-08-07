@@ -254,8 +254,6 @@ checkAcyclicTypes d@DatalogProgram{..} = do
                                 (intercalate " -> " $ map snd cyc))
           $ grCycle gfull
 
-
-
 funcValidateProto :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateProto d f@Function{..} = do
     uniqNames ("Multiple definitions of argument " ++) funcArgs

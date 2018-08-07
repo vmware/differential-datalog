@@ -27,7 +27,8 @@ module Language.DifferentialDatalog.PP(
         PP(..),
         nest',
         braces',
-        commaSep) where
+        commaSep,
+        vcommaSep) where
 
 import Text.PrettyPrint
 
@@ -66,3 +67,6 @@ braces' x = lbrace $+$ nest' x $+$ rbrace
 
 commaSep :: [Doc] -> Doc
 commaSep xs = hsep $ punctuate comma xs
+
+vcommaSep :: [Doc] -> Doc
+vcommaSep xs = vcat $ punctuate comma xs

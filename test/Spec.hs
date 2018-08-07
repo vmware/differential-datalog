@@ -59,14 +59,14 @@ goldenTests = do
                                  return $ if exists then [dlFile, datFile] else [dlFile]) dlFiles
   return $ testGroup "datalog tests"
     [ goldenVsFiles (takeBaseName $ head files) expect output (testOne $ head files)
-    | files <- inFiles 
+    | files <- inFiles
     , let expect = map (uncurry replaceExtension) $ zip files [".ast.expected", ".dump.expected"]
     , let output = map (uncurry replaceExtension) $ zip files [".ast", ".dump"]]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
-parseValidate file program = do 
+parseValidate file program = do
     d <- parseDatalogString True program file
-    case validate d of 
+    case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'
 
@@ -83,7 +83,7 @@ compileFailingProgram file program =
 -- * Creates Cargo project in a directory obtained by removing file
 -- extension from 'fname'.
 --
--- * Checks if a file with the same name as 'fname' and '.rs' extension 
+-- * Checks if a file with the same name as 'fname' and '.rs' extension
 -- (instead of '.dl') exists and passes its content as the 'imports' argument to
 -- compiler.
 --
@@ -96,9 +96,6 @@ testOne fname = do
     body <- readFile fname
     let specname = takeBaseName fname
     let astfile  = replaceExtension fname "ast"
-    let datfile  = replaceExtension fname "dat"
-    let dumpfile = replaceExtension fname "dump"
-    let errfile  = replaceExtension fname "err"
     let shouldFail = ".fail." `isInfixOf` fname
     if shouldFail
       then do
@@ -130,35 +127,42 @@ testOne fname = do
         let cargo_proc = (proc "cargo" ["test"]){cwd = Just $ joinPath [rust_dir, specname]}
         (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
         when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++ 
+            errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
                                      "\nstderr:\n" ++ stde ++
                                      "\n\nstdout:\n" ++ stdo
-        -- check for a test data file
-        hasdata <- doesFileExist datfile
-        when hasdata $ do 
-            hout <- openFile dumpfile WriteMode
-            herr <- openFile errfile  WriteMode
-            hdat <- openFile datfile ReadMode
-            code <- withCreateProcess (proc "cargo" ["run"]){cwd = Just $ joinPath [rust_dir, specname],
-                                                             std_in=CreatePipe,
-                                                             std_out=UseHandle hout,
-                                                             std_err=UseHandle herr} $
-                \(Just hin) _ _ phandle -> do
-                    dat <- hGetContents hdat
-                    hPutStrLn hin dat
-                    hPutStrLn hin "exit;"
-                    hFlush hin
-                    code <- waitForProcess phandle
-                    return code
-            when (code /= ExitSuccess) $ do
-                errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++ 
-                                         "\nstderr written to:\n" ++ errfile ++
-                                         "\n\nstdout written to:\n" ++ dumpfile
-            hClose hout
-            hClose herr
-            hClose hdat
-        return ()
+        cliTest fname specname rust_dir
     return ()
+
+-- Feed test data via pipe if a .dat file exists
+cliTest :: FilePath -> String -> FilePath -> IO ()
+cliTest fname specname rust_dir = do
+    let dumpfile = replaceExtension fname "dump"
+    let errfile  = replaceExtension fname "err"
+    let datfile  = replaceExtension fname "dat"
+    hasdata <- doesFileExist datfile
+    when hasdata $ do
+        hout <- openFile dumpfile WriteMode
+        herr <- openFile errfile  WriteMode
+        hdat <- openFile datfile ReadMode
+        code <- withCreateProcess (proc "cargo" ["run", "--bin", specname ++ "_cli"]){
+                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       std_in=CreatePipe,
+                                       std_out=UseHandle hout,
+                                       std_err=UseHandle herr} $
+            \(Just hin) _ _ phandle -> do
+                dat <- hGetContents hdat
+                hPutStrLn hin dat
+                hPutStrLn hin "exit;"
+                hFlush hin
+                code <- waitForProcess phandle
+                return code
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ "cargo run failed with exit code " ++ show code ++
+                                     "\nstderr written to:\n" ++ errfile ++
+                                     "\n\nstdout written to:\n" ++ dumpfile
+        hClose hout
+        hClose herr
+        hClose hdat
 
 
 -- A version of golden test that supports multiple output files.
@@ -166,16 +170,16 @@ testOne fname = do
 -- same file.
 goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
 goldenVsFiles name ref new act =
-  goldenTest name 
-             (do {refs <- mapM BS.readFile ref; evaluate $ rnf refs; return refs}) 
-             (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news}) 
+  goldenTest name
+             (do {refs <- mapM BS.readFile ref; evaluate $ rnf refs; return refs})
+             (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news})
              cmp upd
   where
   cmp xs ys = return $ msum $
-              map (\((x,r),(y,n)) -> 
-                    if x == y 
+              map (\((x,r),(y,n)) ->
+                    if x == y
                        then Nothing
-                       else Just $ printf "Files '%s' and '%s' differ" r n) 
+                       else Just $ printf "Files '%s' and '%s' differ" r n)
                   $ zip (zip xs ref) (zip ys new)
   upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
                                  when (not exists) $ BS.writeFile r b)

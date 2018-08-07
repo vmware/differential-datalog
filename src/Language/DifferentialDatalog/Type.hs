@@ -76,6 +76,9 @@ instance WithType Type where
 instance WithType Field where
     typ = fieldType
 
+instance WithType Relation where
+    typ = relType
+
 -- | True iff t is a polymorphic type, i.e., contains any type variables.
 typeIsPolymorphic :: Type -> Bool
 typeIsPolymorphic TBool{}     = False
@@ -363,12 +366,15 @@ checkTypesMatch p d x y =
 
 -- | True iff 'a' and 'b' have idential types up to type aliasing.
 typesMatch :: (WithType a, WithType b) => DatalogProgram -> a -> b -> Bool
-typesMatch d x y = typeNormalize d (typ x) == typeNormalize d (typ y)
+typesMatch d x y = typeNormalize d x == typeNormalize d y
 
 -- | Normalize type by applying typ'' to all its fields and type
 -- arguments. 
-typeNormalize :: DatalogProgram -> Type -> Type
-typeNormalize d t = 
+typeNormalize :: (WithType a) => DatalogProgram -> a -> Type
+typeNormalize d x = typeNormalize' d $ typ x
+
+typeNormalize' :: DatalogProgram -> Type -> Type
+typeNormalize' d t = 
     case t' of
          TBool{}            -> t'
          TBit{}             -> t'

@@ -23,7 +23,8 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
-    Dump,
+    Timestamp,
+    Dump(Option<String>),
     Exit,
     Echo(String),
     Update(UpdCmd, bool)
@@ -51,15 +52,19 @@ named!(identifier<&[u8], String>,
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>
-        upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    |
-                  do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   |
-                  do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     |
-                  do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     |
-                  do_parse!(apply!(sym,"echo")     >>
-                            txt: take_until1!(";") >>
-                            apply!(sym,";") >>
-                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        |
-                  do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
+        upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
+                  do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
+                  do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
+                  do_parse!(apply!(sym,"dump")      >>
+                            rel: opt!(identifier)   >>
+                            apply!(sym,";")         >>
+                            (Command::Dump(rel)))                                               |
+                  do_parse!(apply!(sym,"exit")      >> apply!(sym,";") >> (Command::Exit))      |
+                  do_parse!(apply!(sym,"echo")      >>
+                            txt: take_until!(";")   >>
+                            apply!(sym,";")         >>
+                            (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))          |
+                  do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback))   |
                   do_parse!(upd:  update >>
                             last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >>
                             (Command::Update(upd, last)))) >>
@@ -71,27 +76,30 @@ named!(pub parse_command<&[u8], Command>,
 fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
-    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump)));
+    assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
+    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
+    assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
     assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
     assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
+    assert_eq!(parse_command(br"echo;")     , Ok((&br""[..], Command::Echo("".to_string()))));
     assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
-    assert_eq!(parse_command(br"insert Rel1(true);"), 
+    assert_eq!(parse_command(br"insert Rel1(true);"),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
                    true
                ))));
-    assert_eq!(parse_command(br" insert Rel1[true];"), 
+    assert_eq!(parse_command(br" insert Rel1[true];"),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Insert("Rel1".to_string(), Record::Bool(true)), true
                ))));
-    assert_eq!(parse_command(br"delete Rel1[(true,false)];"), 
+    assert_eq!(parse_command(br"delete Rel1[(true,false)];"),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
                ))));
-    assert_eq!(parse_command(br#"   delete Rel2("foo", 0xabcdef1, true) , "#), 
+    assert_eq!(parse_command(br#"   delete Rel2("foo", 0xabcdef1, true) , "#),
                Ok((&br""[..], Command::Update(
-                   UpdCmd::Delete("Rel2".to_string(), Record::Struct("Rel2".to_string(), 
-                                                                    vec![Record::String("foo".to_string()), 
+                   UpdCmd::Delete("Rel2".to_string(), Record::Struct("Rel2".to_string(),
+                                                                    vec![Record::String("foo".to_string()),
                                                                          Record::Int(0xabcdef1.to_bigint().unwrap()),
                                                                          Record::Bool(true)])),
                    false
@@ -105,7 +113,7 @@ named!(update<&[u8], UpdCmd>,
 
 named!(rel_record<&[u8], (String, Record)>,
     do_parse!(cons: identifier >>
-              val: alt!(delimited!(apply!(sym,"["), record, apply!(sym,"]")) | 
+              val: alt!(delimited!(apply!(sym,"["), record, apply!(sym,"]")) |
                         delimited!(apply!(sym,"("), apply!(constructor_args, cons.clone()), apply!(sym,")"))) >>
               (cons, val))
 );
@@ -135,7 +143,7 @@ named!(string_val<&[u8], Record>,
             map!(tag!(b"\"\""), |_| vec![]) |
             delimited!(
                 char!('\"'),
-                escaped_transform!(take_until_either1!(b"\\\""), '\\', 
+                escaped_transform!(take_until_either1!(b"\\\""), '\\',
                                    alt!(tag!("\\") => { |_| &b"\\"[..] }   |
                                         tag!("\"") => { |_| &b"\""[..] }   |
                                         tag!("\'") => { |_| &b"\'"[..] }   |
@@ -185,15 +193,15 @@ named!(struct_val<&[u8], Record>,
 
 #[test]
 fn test_struct() {
-    assert_eq!(struct_val(br"Constructor { true, false }"), 
+    assert_eq!(struct_val(br"Constructor { true, false }"),
                Ok((&br""[..], Record::Struct("Constructor".to_string(),
                                             vec![Record::Bool(true), Record::Bool(false)]))));
-    assert_eq!(struct_val(br"_Constructor{true, false}"), 
+    assert_eq!(struct_val(br"_Constructor{true, false}"),
                Ok((&br""[..], Record::Struct("_Constructor".to_string(),
                                             vec![Record::Bool(true), Record::Bool(false)]))));
-    assert_eq!(struct_val(br###"Constructor1 { true, C{false, 25, "foo\nbar"} }"###), 
+    assert_eq!(struct_val(br###"Constructor1 { true, C{false, 25, "foo\nbar"} }"###),
                Ok((&br""[..], Record::Struct("Constructor1".to_string(),
-                                            vec![Record::Bool(true), 
+                                            vec![Record::Bool(true),
                                                  Record::Struct("C".to_string(),
                                                                vec![Record::Bool(false),
                                                                     Record::Int(25_i32.to_bigint().unwrap()),
@@ -202,8 +210,8 @@ fn test_struct() {
 
 named!(int_val<&[u8], Record>,
     alt!(map!(hex_val, Record::Int) |
-         map!(dec_val, Record::Int) | 
-         do_parse!(apply!(sym,"-") >> 
+         map!(dec_val, Record::Int) |
+         do_parse!(apply!(sym,"-") >>
                    val: alt!(hex_val | dec_val) >>
                    (Record::Int(-val))
                   )
@@ -211,14 +219,14 @@ named!(int_val<&[u8], Record>,
 );
 
 named!(hex_val<&[u8], BigInt>,
-    do_parse!(tag_no_case!("0x") >> 
-              bs: take_while1!(is_hex_digit) >> 
+    do_parse!(tag_no_case!("0x") >>
+              bs: take_while1!(is_hex_digit) >>
               spaces >>
               (BigInt::parse_bytes(bs, 16).unwrap()))
 );
 
 named!(dec_val<&[u8], BigInt>,
-    do_parse!(bs: take_while1!(is_digit) >> 
+    do_parse!(bs: take_while1!(is_digit) >>
               spaces >>
               (BigInt::parse_bytes(bs, 10).unwrap()))
 );

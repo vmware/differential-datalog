@@ -1,15 +1,14 @@
-#![allow(non_camel_case_types)]
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, dead_code)]
 
 use program::*;
 use uint::*;
-use int::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
 use fnv::FnvHashSet;
 use std::iter::FromIterator;
 
-const TEST_SIZE: u64 = 10000;
+const TEST_SIZE: u64 = 1000;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 struct P {
@@ -91,7 +90,7 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
     if {let v = &(*_2).f1; *v} { return None; };
     if {let V = _2.f1; V} { return None; };
     if {
-        let mut s = &mut S::S1{f1: 0, f2: "foo".to_string(), f3: Q{f1: true, f2: "bar".to_string()}, f4: Uint::from_u64(10)};
+        let s = &mut S::S1{f1: 0, f2: "foo".to_string(), f3: Q{f1: true, f2: "bar".to_string()}, f4: Uint::from_u64(10)};
         *s.f1() = 5;
         let q = s.f1();
         (*q) > 0
@@ -103,12 +102,12 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
         let ref mut p = P{f1: Q{f1: true, f2: "x".to_string()}, f2: true};
         let ref mut b = false;
         p.f1 = Q{f1: true, f2: "x".to_string()};
-        let ref mut pf1 = p.f1.clone();
-        let ref mut pf11 = p.f1.clone();
-        let ref mut pf2 = (p.f1.f1 || p.f1.f1);
-        let ref mut pf22 = (p.f2.clone());
+        let ref mut _pf1 = p.f1.clone();
+        let ref mut _pf11 = p.f1.clone();
+        let ref mut _pf2 = p.f1.f1 || p.f1.f1;
+        let ref mut _pf22 = p.f2.clone();
         let ref mut z = true;
-        let ref mut pclone = p.clone();
+        let ref mut _pclone = p.clone();
         let Q{f1: ref mut qf1, f2: ref mut qf2} = p.f1.clone();
         *qf1 = true;
         let ref mut neq = Q{f1: qf1.clone(), f2: qf2.clone()};
@@ -116,12 +115,12 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
 
         //*f2 = false.clone();
         //*f1 = Q{f1: true, f2: "x".to_string()};
-        let (ref mut v1, ref mut v2): (Q,bool) = (Q{f1: true, f2: "x".to_string()}, false);
+        let (ref mut _v1, ref mut _v2): (Q,bool) = (Q{f1: true, f2: "x".to_string()}, false);
         (*b) = false;
 
         let ref mut s = S::S1{f1: 0, f2: "f2".to_string(), f3: neq.clone(), f4: Uint::from_u64(10)};
-        match (s) {
-            S::S1{f1,f2,f3: _,f4: _} => {
+        match s {
+            S::S1{f1,f2: _,f3: _,f4: _} => {
                 *f1 = 2; ()
             },
             _         => return None
@@ -137,12 +136,12 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
         };*/
         let ref mut a: u64 = 5 as u64;
         let ref mut b: u64 = 5;
-        let ref mut c: u64 = *(a)+*(b);
+        let ref mut _c: u64 = *(a)+*(b);
         *a = *a+*a+*a;
-        let ref mut str1: String = (("str1".to_string()) as String);
+        let ref mut str1: String = ("str1".to_string()) as String;
         let ref mut str2 = "str2".to_string();
-        let ref mut str3 = (*str1).push_str(str2.as_str());
-        let (ref mut str4, _) = ("str4".to_string(), "str5".to_string());
+        let ref mut _str3 = (*str1).push_str(str2.as_str());
+        let (ref mut _str4, _) = ("str4".to_string(), "str5".to_string());
         match &(a,b) {
             (5, _) => (),
             _  => return None
