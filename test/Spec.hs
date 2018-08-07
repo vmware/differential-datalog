@@ -144,10 +144,11 @@ cliTest fname specname rust_dir = do
         hout <- openFile dumpfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "cargo" ["run"]){cwd = Just $ joinPath [rust_dir, specname],
-                                                         std_in=CreatePipe,
-                                                         std_out=UseHandle hout,
-                                                         std_err=UseHandle herr} $
+        code <- withCreateProcess (proc "cargo" ["run", "--bin", specname ++ "_cli"]){
+                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       std_in=CreatePipe,
+                                       std_out=UseHandle hout,
+                                       std_err=UseHandle herr} $
             \(Just hin) _ _ phandle -> do
                 dat <- hGetContents hdat
                 hPutStrLn hin dat

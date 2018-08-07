@@ -33,3 +33,8 @@ path = "./lib.rs"
 
 name = "datalog_example_cli"
 path = "./main.rs"
+
+[[bin]]
+
+name = "datalog_example_ffi_test"
+path = "./ffi_test.rs"

@@ -251,10 +251,15 @@ mkToFFITuple d t@TTuple{..} =
     "    fn free(x: &mut Self::FFIType) {"                                                  $$
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
-    "}"
+    "    fn c_code(&self) -> String {"                                                      $$
+    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length typeTupArgs))
+                    <> "{}" <> "}}\"," <+> c_fields <> ")"                                  $$
+    "    }"
+    "}"                                                                                     $$
     where
     fields = mapIdx (\at i -> "x" <> pp i <> ": self." <> pp i <> ".to_ffi()") $ typeTupArgs
     free_fields = mapIdx (\at i -> "<" <> mkType at <> ">::free(&mut x.x" <> pp i <> ");") $ typeTupArgs
+    c_fields = mapIdx (\at i -> "self." <> pp i <> ".c_code()") $ typeTupArgs
 
 mkToFFIStruct :: DatalogProgram -> Type -> Doc
 mkToFFIStruct d t@TUser{..} | isStructType t' =
@@ -266,10 +271,16 @@ mkToFFIStruct d t@TUser{..} | isStructType t' =
     "    fn free(x: &mut Self::FFIType) {"                                                  $$
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
+    "    fn c_code(&self) -> String {"                                                      $$
+    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length cargs))
+                    <> "{}" <> "}}\"," <+> c_fields <> ")"                                  $$
+    "    }"                                                                                 $$
     "}"
     where
-    fields = map (\a -> pp (name a) <> ": self." <> pp (name a) <> ".to_ffi()") $ consArgs $ head $ typeCons t'
-    free_fields = map (\a -> "<" <> mkType (typeNormalize d a) <> ">::free(&mut x." <> pp (name a) <> ");") $ consArgs $ head $ typeCons t'
+    cargs = consArgs $ head $ typeCons t'
+    fields = map (\a -> pp (name a) <> ": self." <> pp (name a) <> ".to_ffi()") cargs
+    free_fields = map (\a -> "<" <> mkType (typeNormalize d a) <> ">::free(&mut x." <> pp (name a) <> ");") cargs
+    c_fields = map (\a -> "self." <> pp (name a) <> ".c_code()") cargs
     t' = typ' d t
 
 mkToFFIStruct d t@TUser{..} =
@@ -283,6 +294,11 @@ mkToFFIStruct d t@TUser{..} =
     "    fn free(x: &mut Self::FFIType) {"                                                  $$
     "        match x.tag {"                                                                 $$
     (nest' $ nest' $ nest' $ vcommaSep free_matches)                                        $$
+    "        }"                                                                             $$
+    "    }"                                                                                 $$
+    "    fn c_code(&self) -> String {"                                                      $$
+    "        match self {"                                                                  $$
+    (nest' $ nest' $ nest' $ vcommaSep c_matches)                                           $$
     "        }"                                                                             $$
     "    }"                                                                                 $$
     "}"
@@ -301,13 +317,29 @@ mkToFFIStruct d t@TUser{..} =
                     "    }"                                                                                                          $$
                     "}")
                   $ typeCons t'
+    c_matches =
+              map (\c ->
+                    let cname = pp $ name c
+                        ccons = cConsStructName (cStructName d t) c
+                        nargs = length $ consArgs c in
+                    mkConstructorName typeName t' (name c) <>
+                    "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> "{"                                               $$
+                    "    format!(\"" <> mkCType d t <> "{{.tag = {}," <+> ".x =" <+> ccons <>
+                                 "{{." <> cname <+> "= {{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
+                                 cname <> "," <+> (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c) <> ")"                $$
+                    "    x:" <+> "__union_" <> cstruct <+> "{"                                                                       $$
+                    "        " <> cname <> ": Box::into_raw(Box::new(" <> ffiConsStructName cstruct c <+> "{"                        $$
+                    (nest' $ nest' $ nest' $ vcommaSep $ map (\a -> pp (name a) <> ":" <+> pp (name a) <> ".to_ffi()") $ consArgs c) $$
+                    "        }))"                                                                                                    $$
+                    "    }"                                                                                                          $$
+                    "}")
+                  $ typeCons t'
     free_matches = map (\c ->
                         let cname = pp $ name c in
                         ffiTagEnumName typeName <> "::" <> cname <+> "=> {"         $$
                         (nest' $ vcat $ map (\a -> let at = mkType (typeNormalize d a) in
                                                    "<" <> at <> ">::free(unsafe{&mut (*x.x." <> cname <> ")." <> pp (name a) <> "});")
-                                      $ consArgs c)                              $$
-                        "    unsafe{ Box::from_raw(x.x." <> cname <> ") };"      $$
+                                      $ consArgs c)                                 $$
                         "}")
                    $ typeCons t'
 

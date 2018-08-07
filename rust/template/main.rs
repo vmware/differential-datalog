@@ -1,3 +1,7 @@
+//! Test the generated Datalog program by reading Datalog commands from stdin (i.e., from a pipe or
+//! CLI), parsing them with cmd_parser crate, executing commands, and tracking database state in a
+//! map.
+
 #![allow(non_snake_case, dead_code)]
 
 extern crate datalog_example;
@@ -120,5 +124,3 @@ pub fn main() {
     let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(&db,relid,v,pol)));
     exit(ret);
 }
-
-
