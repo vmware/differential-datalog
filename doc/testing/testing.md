@@ -63,15 +63,17 @@ outputs.
 1. Make sure that you delete the `.expected` file whenever the datalog
    program or the test workload changed; otherwise the test will fail.
 
-| Command                | Example                           | Description                                        |
-| ---------------------- |-----------------------------------| ---------------------------------------------------|
-| `start;`               |                                   | start a transaction                                |
-| `commit;`              |                                   | commit current transaction                         |
-| `rollback;`            |                                   | rollbak current transaction; reverting all changes |
-| `dump;`                |                                   | dump the content of all relations                  |
-| `echo <text>;`         | echo Hello world;                 | copies arbitrary text to stdout                    |
-| `insert <record>;`     | insert Rel1(1,true,"foo");        | inserts record to relation Rel1                    |
-| `delete <record>;`     | delete Rel1(1,true,"foo");        | deletes record to relation Rel1                    |
+| Command                | Example                           | Description                                          |
+| ---------------------- |-----------------------------------| -----------------------------------------------------|
+| `start;`               |                                   | start a transaction                                  |
+| `commit;`              |                                   | commit current transaction                           |
+| `rollback;`            |                                   | rollback current transaction; reverting all changes  |
+| `timestamp;`           |                                   | print current time in ns since some unspecified epoch|
+| `dump;`                |                                   | dump the content of all relations                    |
+| `dump <relation>;`     | dump Rel1;                        | dump the content of an individual relation           |
+| `echo <text>;`         | echo Hello world;                 | copies arbitrary text to stdout                      |
+| `insert <record>;`     | insert Rel1(1,true,"foo");        | inserts record to relation Rel1                      |
+| `delete <record>;`     | delete Rel1(1,true,"foo");        | deletes record to relation Rel1                      |
 | comma-separated updates| insert Foo(1), delete Bar("buzz");| a sequence of insert and delete commands can be applied on one update|
 
 ### Example workload `path.dat`
