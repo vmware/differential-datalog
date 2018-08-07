@@ -252,10 +252,10 @@ mkToFFITuple d t@TTuple{..} =
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
     "    fn c_code(&self) -> String {"                                                      $$
-    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length typeTupArgs))
-                    <> "{}" <> "}}\"," <+> c_fields <> ")"                                  $$
-    "    }"
-    "}"                                                                                     $$
+    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length typeTupArgs) "{}")
+                     <> "}}\"," <+> commaSep c_fields <> ")"                                $$
+    "    }"                                                                                 $$
+    "}"
     where
     fields = mapIdx (\at i -> "x" <> pp i <> ": self." <> pp i <> ".to_ffi()") $ typeTupArgs
     free_fields = mapIdx (\at i -> "<" <> mkType at <> ">::free(&mut x.x" <> pp i <> ");") $ typeTupArgs
@@ -272,8 +272,8 @@ mkToFFIStruct d t@TUser{..} | isStructType t' =
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
     "    fn c_code(&self) -> String {"                                                      $$
-    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length cargs))
-                    <> "{}" <> "}}\"," <+> c_fields <> ")"                                  $$
+    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length cargs) "{}")
+                     <> "}}\"," <+> commaSep c_fields <> ")"                                $$
     "    }"                                                                                 $$
     "}"
     where
@@ -324,14 +324,9 @@ mkToFFIStruct d t@TUser{..} =
                         nargs = length $ consArgs c in
                     mkConstructorName typeName t' (name c) <>
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> "{"                                               $$
-                    "    format!(\"" <> mkCType d t <> "{{.tag = {}," <+> ".x =" <+> ccons <>
+                    "    format!(\"" <> mkCType d t <> "{{.tag =" <+> cname <> "," <+> ".x =" <+> ccons <>
                                  "{{." <> cname <+> "= {{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
-                                 cname <> "," <+> (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c) <> ")"                $$
-                    "    x:" <+> "__union_" <> cstruct <+> "{"                                                                       $$
-                    "        " <> cname <> ": Box::into_raw(Box::new(" <> ffiConsStructName cstruct c <+> "{"                        $$
-                    (nest' $ nest' $ nest' $ vcommaSep $ map (\a -> pp (name a) <> ":" <+> pp (name a) <> ".to_ffi()") $ consArgs c) $$
-                    "        }))"                                                                                                    $$
-                    "    }"                                                                                                          $$
+                                 (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c) <> ")"                                 $$
                     "}")
                   $ typeCons t'
     free_matches = map (\c ->

@@ -18,7 +18,7 @@ trait ToFFI {
 
     // Generate C code that creates a C representation of the value
     // (used for testing the FFI interface)
-    fn c_code(&self) -> String
+    fn c_code(&self) -> String;
 }
 
 impl ToFFI for bool {
@@ -30,8 +30,8 @@ impl ToFFI for bool {
 
     fn c_code(&self) -> String {
         match self {
-            &true  => "true",
-            &false => "false"
+            &true  => "true".to_string(),
+            &false => "false".to_string()
         }
     }
 }
