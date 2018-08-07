@@ -39,7 +39,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
         Command::Rollback => {
             println!("ret = datalog_example_transaction_rollback(prog);");
         },
-        Command::Dump => {
+        Command::Dump(_) => {
             panic!("Dump: not implemented");
         },
         Command::Exit => {

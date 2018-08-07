@@ -23,7 +23,7 @@ use cmd_parser::*;
 
 pub type ValMap = BTreeMap<RelId, BTreeSet<Value>>;
 
-fn formatValMap(vmap: &ValMap, w: &mut io::Write) {
+fn valMapFormat(vmap: &ValMap, w: &mut io::Write) {
    for (relid, relset) in vmap {
        w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()));
        for val in relset {
@@ -31,6 +31,10 @@ fn formatValMap(vmap: &ValMap, w: &mut io::Write) {
        };
        w.write_fmt(format_args!("\n"));
    };
+}
+
+fn valMapGetRel(vmap: &mut ValMap, relid: RelId) -> &BTreeSet<Value> {
+    vmap.entry(relid).or_insert(BTreeSet::default())
 }
 
 fn upd_cb(db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
@@ -77,8 +81,23 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             upds.clear();
             p.transaction_rollback()
         },
-        Command::Dump => {
-            formatValMap(&*db.lock().unwrap(), &mut stdout());
+        Command::Dump(None) => {
+            valMapFormat(&*db.lock().unwrap(), &mut stdout());
+            Ok(())
+        },
+        Command::Dump(Some(rname)) => {
+            let relid = match relname2id(&rname) {
+                None      => {
+                    eprintln!("Error: Unknown relation {}", rname);
+                    return false;
+                },
+                Some(rid) => rid as RelId
+            };
+            let mut db = db.lock().unwrap();
+            let set = valMapGetRel(&mut *db, relid);
+            for val in set {
+                println!("{}", *val);
+            };
             Ok(())
         },
         Command::Exit => {

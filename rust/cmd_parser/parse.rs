@@ -23,7 +23,7 @@ pub enum Command {
     Start,
     Commit,
     Rollback,
-    Dump,
+    Dump(Option<String>),
     Exit,
     Echo(String),
     Update(UpdCmd, bool)
@@ -53,10 +53,13 @@ named!(pub parse_command<&[u8], Command>,
         spaces >>
         upd: alt!(do_parse!(apply!(sym,"start")    >> apply!(sym,";") >> (Command::Start))    |
                   do_parse!(apply!(sym,"commit")   >> apply!(sym,";") >> (Command::Commit))   |
-                  do_parse!(apply!(sym,"dump")     >> apply!(sym,";") >> (Command::Dump))     |
+                  do_parse!(apply!(sym,"dump")     >>
+                            rel: opt!(identifier)  >>
+                            apply!(sym,";") >>
+                            (Command::Dump(rel)))                                             |
                   do_parse!(apply!(sym,"exit")     >> apply!(sym,";") >> (Command::Exit))     |
                   do_parse!(apply!(sym,"echo")     >>
-                            txt: take_until1!(";") >>
+                            txt: take_until!(";")  >>
                             apply!(sym,";") >>
                             (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))        |
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback)) |
@@ -71,11 +74,13 @@ named!(pub parse_command<&[u8], Command>,
 fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
-    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump)));
+    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
+    assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
     assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
     assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
+    assert_eq!(parse_command(br"echo;"),      Ok((&br""[..], Command::Echo("".to_string()))));
     assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
-    assert_eq!(parse_command(br"insert Rel1(true);"), 
+    assert_eq!(parse_command(br"insert Rel1(true);"),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
                    true

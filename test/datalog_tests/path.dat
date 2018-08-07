@@ -6,3 +6,14 @@ insert Edge("Redwood City", "San Bruno");
 
 commit;
 dump;
+
+echo Printing Path relation only
+;
+
+dump Path;
+
+echo;
+echo Printing Edge relation only
+;
+
+dump Edge;
