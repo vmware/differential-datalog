@@ -83,8 +83,8 @@ mkFFIInterface d =
 
 mkCRelEnum :: DatalogProgram -> Doc
 mkCRelEnum d =
-    "enum Relations {"                                                                                       $$
-    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> pp rel <+> "=" <+> pp i) $ M.keys $ progRelations d) $$
+    "enum Relations {"                                                                                                   $$
+    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> cRelEnumerator rel <+> "=" <+> pp i) $ M.keys $ progRelations d) $$
     "};"
 
 mkCValue :: DatalogProgram -> (Doc, Doc)
@@ -178,14 +178,14 @@ mkCValue d = (rust, hdr)
                            "}") rels
     c_matches = mapIdx (\rel i ->
                          let t  = typeNormalize d rel
-                             rn = pp $ name rel
-                             ptr = isStruct d t || isTuple d t
+                             rn = name rel
+                             ref = if isStruct d t || isTuple d t then "&" else empty
                          in
                          pp i <+> "=> {"                                                                  $$
                          "    match val {"                                                                $$
                          "        Value::" <> mkValConstructorName' d t <> "(v) => Some("                 $$
-                         "            format!(\"struct Value {{.tag: " <> rn <> ", .val: union Value_union{{." 
-                                              <> rn <> ": {} }} }}\", v.c_code())"                        $$
+                         "            format!(\"&(struct Value){{.tag= " <> cRelEnumerator rn <> ", .val= (union Value_union){{."
+                                              <> pp rn <> "=" <+> ref <> "{} }} }}\", v.c_code())"        $$
                          "        ),"                                                                     $$
                          "        v => {"                                                                 $$
                          "            eprintln!(\"val_to_ccode: Invalid value {}\", *v);"                 $$
@@ -295,7 +295,7 @@ mkToFFIStruct d t@TUser{..} | isStructType t' =
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
     "    fn c_code(&self) -> String {"                                                      $$
-    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length cargs) "{}")
+    "        format!(\"(" <> mkCType d t <> "){{" <> (commaSep $ replicate (length cargs) "{}")
                      <> "}}\"," <+> commaSep c_fields <> ")"                                $$
     "    }"                                                                                 $$
     "}"
@@ -343,12 +343,12 @@ mkToFFIStruct d t@TUser{..} =
     c_matches =
               map (\c ->
                     let cname = pp $ name c
-                        ccons = cConsStructName (cStructName d t) c
+                        ccons = "struct" <+> cConsStructName (cStructName d t) c
                         nargs = length $ consArgs c in
                     mkConstructorName typeName t' (name c) <>
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> "{"                                               $$
-                    "    format!(\"" <> mkCType d t <> "{{.tag =" <+> cname <> "," <+> ".x =" <+> ccons <>
-                                 "{{." <> cname <+> "= {{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
+                    "    format!(\"(" <> mkCType d t <> "){{.tag =" <+> cname <> "," <+> ".x = &(" <+> ccons <> "){{." <>
+                                 cname <+> "= {{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
                                  (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c) <> ")"                                 $$
                     "}")
                   $ typeCons t'
@@ -463,6 +463,9 @@ ffiTagEnumName tname = "__enum_" <> pp tname
 
 cTagEnumName :: String -> Doc
 cTagEnumName tname = pp tname <> "_enum"
+
+cRelEnumerator :: String -> Doc
+cRelEnumerator rel = "Relation_" <> pp rel
 
 -- type must be normalized
 mkFFIType :: DatalogProgram -> Type -> Doc

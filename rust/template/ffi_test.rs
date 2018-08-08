@@ -14,6 +14,25 @@ use datalog_example::ffi::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 
+static HEADER: &'static str = r###"
+#include "datalog_example.h"
+#include <stdio.h>
+#include <stdbool.h>
+
+void upd_cb(size_t relid, const struct Value* val, bool pol) {};
+
+int main () {
+    int ret;
+
+    RunningProgram* prog = datalog_example_run(upd_cb);
+    if (prog == NULL) return -1;
+
+"###;
+
+static FOOTER: &'static str = r###"
+}
+"###;
+
 fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     match c {
         UpdCmd::Insert(rname, rec) => {
@@ -43,10 +62,11 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
         Command::Timestamp => {},
         Command::Dump(_) => {},
         Command::Exit => {
+            println!("{}", FOOTER);
             exit(0);
         },
         Command::Echo(txt) => {
-            println!("println(\"%s\", {:?})", txt);
+            println!("printf(\"%s\\n\", {:?});", txt);
         },
         Command::Update(upd, last) => {
              match updcmd2upd(&upd) {
@@ -80,10 +100,11 @@ fn printUpd(upd: &Update<Value>) {
         Update::Insert{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap(),
         Update::Delete{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap()
     };
-    println!("    struct Update{{ .pol={}, .v={} }},", pol, v);
+    println!("    (struct Update){{ .pol={}, .v={} }},", pol, v);
 }
 
 pub fn run_interactive() -> i32 {
+    println!("{}", HEADER);
     let upds = Arc::new(Mutex::new(Vec::new()));
     interact(|cmd| handle_cmd(&mut upds.lock().unwrap(), cmd))
 }

@@ -109,7 +109,7 @@ impl ToFFI for Uint {
         unsafe { Box::from_raw(*x); }
     }
     fn c_code(&self) -> String {
-        format!("uint_from_str(\"{}\", 10);", *self)
+        format!("uint_from_str(\"{}\", 10)", *self)
     }
 }
 
@@ -123,7 +123,7 @@ impl ToFFI for Int {
         unsafe { Box::from_raw(*x); }
     }
     fn c_code(&self) -> String {
-        format!("int_from_str(\"{}\", 10);", *self)
+        format!("int_from_str(\"{}\", 10)", *self)
     }
 }
 

@@ -19,7 +19,7 @@ typedef void* RunningProgram;
 
 typedef void (*UpdateCallback)(size_t relid, const struct Value* val, bool pol);
 
-RunningProgram* datalog_example_run(UpdateCallback * upd_cb);
+RunningProgram* datalog_example_run(UpdateCallback upd_cb);
 int datalog_example_stop(RunningProgram *prog);
 int datalog_example_transaction_start(RunningProgram *prog);
 int datalog_example_transaction_commit(RunningProgram *prog);

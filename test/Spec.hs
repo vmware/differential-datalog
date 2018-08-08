@@ -168,11 +168,12 @@ cliTest fname specname rust_dir = do
 -- Convert .dat file into C to test the FFI interface
 ffiTest :: FilePath -> String -> FilePath -> IO ()
 ffiTest fname specname rust_dir = do
-    let cfile    = replaceExtension fname "c"
+    let cfile    = joinPath [rust_dir, specname, addExtension specname ".c"]
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
     hasdata <- doesFileExist datfile
     when hasdata $ do
+        -- Generate C program
         hout <- openFile cfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
@@ -194,6 +195,21 @@ ffiTest fname specname rust_dir = do
                                      "\n\nstdout written to:\n" ++ cfile
         hClose hout
         hClose herr
+        hClose hdat
+        -- Compile C program
+        hdat <- openFile datfile ReadMode
+        code <- withCreateProcess (proc "gcc" [addExtension specname ".c"]){
+                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       std_in=CreatePipe} $
+            \(Just hin) _ _ phandle -> do
+                dat <- hGetContents hdat
+                hPutStrLn hin dat
+                hPutStrLn hin "exit;"
+                hFlush hin
+                code <- waitForProcess phandle
+                return code
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
         hClose hdat
 
 
