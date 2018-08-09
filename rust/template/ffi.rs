@@ -130,11 +130,11 @@ impl ToFFI for Int {
 type CUpdateCallback = extern "C" fn(relid: size_t, val: *const __c_Value, pol: bool);
 
 #[no_mangle]
-pub extern "C" fn datalog_example_run(upd_cb: CUpdateCallback) -> *mut Arc<Mutex<RunningProgram<Value>>> {
+pub extern "C" fn datalog_example_run(upd_cb: CUpdateCallback) -> *mut RunningProgram<Value> {
     let p = prog(Arc::new(move |relid, val, pol|
                           __c_Value::from_val(relid, val).map_or((), |v| upd_cb(relid as size_t, Box::into_raw(Box::new(v)), pol)))
                  );
-    let running = Box::new(Arc::new(Mutex::new(p.run(1))));
+    let running = Box::new(p.run(1));
     Box::into_raw(running)
 }
 
