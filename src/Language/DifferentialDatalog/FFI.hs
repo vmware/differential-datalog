@@ -347,8 +347,8 @@ mkToFFIStruct d t@TUser{..} =
                         nargs = length $ consArgs c in
                     mkConstructorName typeName t' (name c) <>
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> "{"                                               $$
-                    "    format!(\"(" <> mkCType d t <> "){{.tag =" <+> cname <> "," <+> ".x = &(" <+> ccons <> "){{." <>
-                                 cname <+> "= {{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
+                    "    format!(\"(" <> mkCType d t <> "){{.tag =" <+> cname <> "," <+> ".x = &(" <+> ccons <> ")" <>
+                                 "{{" <+> (commaSep $ replicate nargs "{}") <> "}} }}\"," <+>
                                  (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c) <> ")"                                 $$
                     "}")
                   $ typeCons t'

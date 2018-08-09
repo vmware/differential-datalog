@@ -191,8 +191,11 @@ fn test_tuple() {
 named!(struct_val<&[u8], Record>,
     do_parse!(
         cons: identifier >>
-        val: delimited!(apply!(sym,"{"), apply!(constructor_args, cons), apply!(sym,"}")) >>
-        (val))
+        val: opt!(delimited!(apply!(sym,"{"), apply!(constructor_args, cons.clone()), apply!(sym,"}"))) >>
+        (match val {
+            None    => Record::Struct(cons, vec![]),
+            Some(r) => r
+         }))
 );
 
 #[test]
@@ -203,11 +206,11 @@ fn test_struct() {
     assert_eq!(struct_val(br"_Constructor{true, false}"),
                Ok((&br""[..], Record::Struct("_Constructor".to_string(),
                                             vec![Record::Bool(true), Record::Bool(false)]))));
-    assert_eq!(struct_val(br###"Constructor1 { true, C{false, 25, "foo\nbar"} }"###),
+    assert_eq!(struct_val(br###"Constructor1 { true, C{Constructor3, 25, "foo\nbar"} }"###),
                Ok((&br""[..], Record::Struct("Constructor1".to_string(),
                                             vec![Record::Bool(true),
                                                  Record::Struct("C".to_string(),
-                                                               vec![Record::Bool(false),
+                                                               vec![Record::Struct("Constructor3".to_string(), vec![]),
                                                                     Record::Int(25_i32.to_bigint().unwrap()),
                                                                     Record::String("foo\nbar".to_string())])]))));
 }
