@@ -1,8 +1,8 @@
 //! Datalog program.
 //!
 //! The client constructs a `struct Program` that describes Datalog relations and rules and
-//! calls `Program::run()` to instantiate the program.  The method returns an instance of 
-//! `RunningProgram` that can be used to interact with the program at runtime.  Interactions 
+//! calls `Program::run()` to instantiate the program.  The method returns an instance of
+//! `RunningProgram` that can be used to interact with the program at runtime.  Interactions
 //! include starting, committing or rolling back a transaction and modifying input relations.
 //! The engine invokes user-provided callbacks as records are added or removed from relations.
 //! `RunningProgram::stop()` terminates the Datalog program destroying all its state.
@@ -98,7 +98,7 @@ pub type ArrId = (RelId, usize);
 // - rules only refer to previously declared relations or relations in the local scc
 // - input relations do not occur in LHS of rules
 // - all references to arrangements are valid
-/// A Datalog program is a vector of nodes representing 
+/// A Datalog program is a vector of nodes representing
 /// individual non-recursive relations and stongly connected components
 /// comprised of one or more mutually recursive relations.
 #[derive(Clone)]
@@ -118,14 +118,14 @@ pub type UpdateCallback<V> = Arc<Fn(RelId, &V, bool) + Send + Sync>;
 
 /// Datalog relation.
 ///
-/// defines a set of rules and a set of arrangements with which this relation is used in 
-/// rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements 
+/// defines a set of rules and a set of arrangements with which this relation is used in
+/// rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements
 /// can also be empty if the relation is not used in the RHS of any rules.
 #[derive(Clone)]
 pub struct Relation<V: Val> {
     /// Relation name; does not have to be unique
     pub name:         String,
-    /// `true` is this is an input relation. Input relations are populated by the client 
+    /// `true` is this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input:        bool,
     /// Unique relation id
@@ -162,7 +162,7 @@ pub type FilterMapFunc<V>  = fn(V) -> Option<V>;
 pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 
 /// Function type used to assemble the result of a join into a value.
-/// Takes join key and a pair of values from the two joined relation 
+/// Takes join key and a pair of values from the two joined relation
 /// (see `XForm::Join`).
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
@@ -170,7 +170,7 @@ pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 #[derive(Clone)]
 pub struct Rule<V: Val> {
     /// First relation in the body of the rule
-    pub rel:    RelId,       
+    pub rel:    RelId,
     /// Chain of transformations applied to the relation.  Each subsequent transformation is
     /// applied to the relation produced by previous transformations.
     pub xforms: Vec<XForm<V>>
@@ -203,12 +203,12 @@ pub enum XForm<V: Val> {
         arrangement: ArrId,
         /// Function used to put together ouput value
         jfun: &'static JoinFunc<V>
-    }, 
-    /// Antijoin arranges the input relation using `afun` and retuns a subset of values that 
+    },
+    /// Antijoin arranges the input relation using `afun` and retuns a subset of values that
     /// correspond to keys not present in relation `rel`.
     Antijoin {
         /// Arrange the relation before performing antijoin.
-        afun: &'static ArrangeFunc<V>, 
+        afun: &'static ArrangeFunc<V>,
         /// Relation to antijoin with
         rel: RelId
     }
@@ -226,7 +226,7 @@ pub struct Arrangement<V: Val> {
 /* Relation content. */
 pub type ValSet<V> = FnvHashSet<V>;
 
-/* Relation delta */ 
+/* Relation delta */
 pub type DeltaSet<V> = FnvHashMap<V, bool>;
 
 /// Runtime representation of a datalog program.
@@ -286,7 +286,7 @@ enum Msg<V: Val> {
     Stop
 }
 
-impl<V:Val> Program<V> 
+impl<V:Val> Program<V>
 {
     /// Instantiate the program with `nworkers` timely threads.
     pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
@@ -294,7 +294,7 @@ impl<V:Val> Program<V>
         let prog = self.clone();
 
         /* Setup channel to communicate with the dataflow.
-         * We use sync channel with buffer size 0 to ensure that the receiver finishes 
+         * We use sync channel with buffer size 0 to ensure that the receiver finishes
          * processing commands by the time send() returns.
          */
         let (tx, rx) = mpsc::sync_channel::<Msg<V>>(MSG_BUF_SIZE);
@@ -304,7 +304,7 @@ impl<V:Val> Program<V>
         let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
         let flush_ack_send = flush_ack_send.clone();
 
-        let h = thread::spawn(move || 
+        let h = thread::spawn(move ||
             /* start up timely computation */
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Root<Allocator>| {
                 let probe = probe::Handle::new();
@@ -453,7 +453,7 @@ impl<V:Val> Program<V>
 
         let mut rels = FnvHashMap::default();
         for relid in self.input_relations() {
-            rels.insert(relid, 
+            rels.insert(relid,
                         RelationInstance{
                             input:    self.get_relation(relid).input,
                             elements: FnvHashSet::default(),
@@ -483,7 +483,7 @@ impl<V:Val> Program<V>
     fn flush(
         sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>,
         probe: &ProbeHandle<Product<RootTimestamp, u64>>,
-        worker: &mut Root<Allocator>) 
+        worker: &mut Root<Allocator>)
     {
         for (_,r) in sessions.into_iter() {
             //print!("flush\n");
@@ -536,7 +536,7 @@ impl<V:Val> Program<V>
     fn get_arrangement(&self, arrid: ArrId) -> &Arrangement<V> {
         &self.get_relation(arrid.0).arrangements[arrid.1]
     }
-    
+
     /* Return all relations required to compute rels, including rels themselves */
     fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
@@ -565,7 +565,7 @@ impl<V:Val> Program<V>
     fn mk_rule<'a,S:Scope,T,F>(&'a self,
                                rule: &Rule<V>,
                                lookup_collection: F,
-                               arrangements: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T>>) -> Collection<S,V> 
+                               arrangements: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T>>) -> Collection<S,V>
         where T : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
               S::Timestamp : Lattice,
               F: Fn(RelId) -> Option<&'a Collection<S,V>>
@@ -582,7 +582,7 @@ impl<V:Val> Program<V>
                 },
                 XForm::FlatMap{fmfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).
-                         flat_map(move |x| 
+                         flat_map(move |x|
                                   /* TODO: replace this with f(x).into_iter().flatten() when the
                                    * iterator_flatten feature makes it out of experimental API. */
                                   match f(x) {Some(iter) => iter, None => Box::new(None.into_iter())}))
@@ -644,12 +644,12 @@ impl<V:Val> RunningProgram<V> {
     }
 
     /// Start a transaction.  Does not return a transaction handle, as there
-    /// can be at most one transaction in progress at any given time.  Fails 
+    /// can be at most one transaction in progress at any given time.  Fails
     /// if there is already a transaction in progress.
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
             return resp_from_error!("transaction already in progress");
-        }; 
+        };
 
         self.transaction_in_progress = true;
         Result::Ok(())
@@ -673,8 +673,8 @@ impl<V:Val> RunningProgram<V> {
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
             return resp_from_error!("no transaction in progress");
-        } 
-        
+        }
+
         self.flush()
         .and_then(|_| self.delta_undo())
         .and_then(|_| {
@@ -691,7 +691,7 @@ impl<V:Val> RunningProgram<V> {
             v:     v
         }])
     }
- 
+
     /// Remove a record if it exists in the relation.
     pub fn delete(&mut self, relid: RelId, v: V) -> Response<()> {
         self.apply_updates(vec![Update::Delete {
@@ -699,7 +699,7 @@ impl<V:Val> RunningProgram<V> {
             v:     v
         }])
     }
-    
+
     /// Apply multiple insert and delete operations in one batch.
     /// Updates can only be applied to input relations (see `struct Relation`).
     pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
@@ -721,7 +721,7 @@ impl<V:Val> RunningProgram<V> {
             };
             let pass = match &upd {
                 Update::Insert{relid: _, v} => {
-                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, true) 
+                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, true)
                 },
                 Update::Delete{relid: _, v} => {
                     Self::set_update(&mut rel.elements, &mut rel.delta, &v, false)
@@ -859,7 +859,7 @@ impl<V:Val> RunningProgram<V> {
     /* Propagates all changes through the dataflow pipeline. */
     fn flush(&mut self) -> Response<()> {
         if !self.need_to_flush {return Ok(())};
-        
+
         self.send(Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
             match self.flush_ack.recv() {
