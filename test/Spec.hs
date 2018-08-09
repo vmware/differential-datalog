@@ -49,6 +49,10 @@ import Language.DifferentialDatalog.Compile
 main :: IO ()
 main = defaultMain =<< goldenTests
 
+bUILD_TYPE = "release"
+
+cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
+
 goldenTests :: IO TestTree
 goldenTests = do
   -- locate datalog files
@@ -124,7 +128,9 @@ testOne fname = do
         let rust_dir = joinPath [takeDirectory fname, specname]
         compile prog specname imports rust_dir
         -- compile it with Cargo
-        let cargo_proc = (proc "cargo" ["test"]){cwd = Just $ joinPath [rust_dir, specname]}
+        let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
+                              cwd = Just $ joinPath [rust_dir, specname]
+                         }
         (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
@@ -145,7 +151,7 @@ cliTest fname specname rust_dir = do
         hout <- openFile dumpfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "cargo" ["run", "--bin", specname ++ "_cli"]){
+        code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag)){
                                        cwd = Just $ joinPath [rust_dir, specname],
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
@@ -177,7 +183,7 @@ ffiTest fname specname rust_dir = do
         hout <- openFile cfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "cargo" ["run", "--bin", specname ++ "_ffi_test"]){
+        code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_ffi_test"] ++ cargo_build_flag)){
                                        cwd = Just $ joinPath [rust_dir, specname],
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
@@ -197,8 +203,9 @@ ffiTest fname specname rust_dir = do
         hClose herr
         hClose hdat
         -- Compile C program
+        let exefile = specname ++ "_test"
         hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "gcc" [addExtension specname ".c"]){
+        code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
                                        cwd = Just $ joinPath [rust_dir, specname],
                                        std_in=CreatePipe} $
             \(Just hin) _ _ phandle -> do
@@ -211,6 +218,13 @@ ffiTest fname specname rust_dir = do
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
         hClose hdat
+        -- Run C program
+        (code, _, _) <- readCreateProcessWithExitCode (proc ("./" ++ exefile) []){
+                            cwd = Just $ joinPath [rust_dir, specname],
+                            env = Just [("LD_LIBRARY_PATH", "target/" ++ bUILD_TYPE)]}
+                        ""
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ exefile ++ " failed with exit code " ++ show code
 
 
 -- A version of golden test that supports multiple output files.
