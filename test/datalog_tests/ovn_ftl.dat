@@ -1,0 +1,43 @@
+echo **** Creating logical routers ****
+;
+
+
+
+start;
+
+insert Logical_Router(0),
+insert Logical_Router(1),
+insert Logical_Router(2),
+insert Logical_Router(3),
+insert Logical_Router(4);
+
+commit;
+
+echo **** Flows ****
+;
+
+dump Flow;
+
+echo **** Adding logical router ports ****
+;
+
+start;
+
+insert Logical_Router_Port("lrp0", 0, "00:11:22:33:44:55", true),
+insert Logical_Router_Port("lrp1", 1, "aa:11:22:33:44:55", true),
+insert Logical_Router_Port("lrp2", 2, "bb:11:22:33:44:55", true),
+insert Logical_Router_Port("lrp3", 3, "cc:11:22:33:44:55", true),
+insert Logical_Router_Port("lrp4", 4, "dd:11:22:33:44:55", true),
+
+insert Logical_Router_Port("lrp0", 0, "aa:11:22:33:44:55", false),
+insert Logical_Router_Port("lrp1", 1, "bb:11:22:33:44:55", false),
+insert Logical_Router_Port("lrp2", 2, "cc:11:22:33:44:55", false),
+insert Logical_Router_Port("lrp3", 3, "dd:11:22:33:44:55", false),
+insert Logical_Router_Port("lrp4", 4, "ee:11:22:33:44:55", false);
+
+commit;
+
+echo **** Flows ****
+;
+
+dump Flow;

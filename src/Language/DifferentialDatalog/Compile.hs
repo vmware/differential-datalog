@@ -533,7 +533,7 @@ mkFunc d f@Function{..} | isJust funcDef =
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
                           otherwise = "/* fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
-    where 
+    where
     mkArg :: Field -> Doc
     mkArg a = pp (name a) <> ":" <+> "&" <> mkType a
 

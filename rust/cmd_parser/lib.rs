@@ -96,7 +96,7 @@ pub fn interact<F>(cb: F) -> i32
                 },
                 Err(Err::Incomplete(_)) => { (None, false) },
                 Err(e) => {
-                    eprintln!("Invalid input: {}", e);
+                    eprintln!("Invalid input: {}, ", err_str(&e));
                     if !istty {
                         return -1;
                     };
@@ -114,6 +114,14 @@ pub fn interact<F>(cb: F) -> i32
 
     fn save_history(rl: &Editor<()>) {
         rl.save_history(HISTORY_FILE).unwrap()
+    }
+}
+
+fn err_str<E>(e: &Err<&[u8], E>) -> String {
+    match e {
+        Err::Error(Context::Code(s,_))    => String::from_utf8(s.to_vec()).unwrap_or("not a UTF8 string".to_string()),
+        Err::Failure(Context::Code(s, _)) => String::from_utf8(s.to_vec()).unwrap_or("not a UTF8 string".to_string()),
+        _ => "".to_string()
     }
 }
 

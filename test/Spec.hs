@@ -227,7 +227,6 @@ ffiTest fname specname rust_dir = do
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ exefile ++ " failed with exit code " ++ show code
 
-
 -- A version of golden test that supports multiple output files.
 -- Uses strict evluation to avoid errors lazily reading and then writing the
 -- same file.
