@@ -96,12 +96,12 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             };
             if last {
                 let copy: Vec<Update<Value>> = upds.drain(..).collect();
-                println!("struct Update updates [] = {{");
+                println!("{{\n    struct Update updates [] = {{");
                 for upd in &copy {
                     printUpd(upd);
                 }
                 println!("}};");
-                println!("ret = datalog_example_apply_updates(prog, updates, {});", copy.len());
+                println!("    ret = datalog_example_apply_updates(prog, updates, {});\n}}", copy.len());
             };
         }
     };
@@ -117,7 +117,7 @@ fn printUpd(upd: &Update<Value>) {
         Update::Insert{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap(),
         Update::Delete{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap()
     };
-    println!("    (struct Update){{ .pol={}, .v={} }},", pol, v);
+    println!("        (struct Update){{ .pol={}, .v={} }},", pol, v);
 }
 
 pub fn run_interactive() -> i32 {
