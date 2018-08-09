@@ -104,7 +104,9 @@ templateFiles specname =
     map (mapSnd (BS.unpack)) $
         [ (joinPath [specname, "Cargo.toml"]  , $(embedFile "rust/template/Cargo.toml"))
         , (joinPath [specname, "main.rs"]     , $(embedFile "rust/template/main.rs"))
-        , (joinPath [specname, "ffi_test.rs"] , $(embedFile "rust/template/ffi_test.rs")) ]
+        , (joinPath [specname, "ffi_test.rs"] , $(embedFile "rust/template/ffi_test.rs"))
+        , (joinPath [specname, "valmap.rs"]   , $(embedFile "rust/template/valmap.rs"))
+        ]
 
 -- Rust differential_datalog library
 rustLibFiles :: [(String, String)]

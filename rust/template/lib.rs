@@ -24,6 +24,7 @@ use std::fmt::Display;
 use std::fmt;
 
 pub mod ffi;
+pub mod valmap;
 
 fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x).to_string()

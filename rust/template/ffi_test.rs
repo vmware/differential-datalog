@@ -19,12 +19,17 @@ static HEADER: &'static str = r###"
 #include <stdio.h>
 #include <stdbool.h>
 
-void upd_cb(size_t relid, const struct Value* val, bool pol) {};
+void upd_cb(uintptr_t ctx, RelId relid, struct Value* val, bool pol) {
+    ValMap vmap = (ValMap) ctx;
+    val_map_update(vmap, relid, val, pol);
+    val_free(val);
+};
 
 int main () {
     int ret;
+    ValMap vmap = val_map_new();
 
-    RunningProgram* prog = datalog_example_run(upd_cb);
+    RunningProgram* prog = datalog_example_run(upd_cb, (uintptr_t) vmap);
     if (prog == NULL) return -1;
 
 "###;
@@ -60,13 +65,25 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             println!("ret = datalog_example_transaction_rollback(prog);");
         },
         Command::Timestamp => {},
-        Command::Dump(_) => {},
+        Command::Dump(None) => {
+            println!("val_map_print(vmap);");
+        },
+        Command::Dump(Some(rname)) => {
+            let relid = match relname2id(&rname) {
+                None      => {
+                    eprintln!("Error: Unknown relation {}", rname);
+                    return false;
+                },
+                Some(rid) => rid as RelId
+            };
+            println!("val_map_print_rel(vmap, {});", relid);
+        },
         Command::Exit => {
             println!("{}", FOOTER);
             exit(0);
         },
         Command::Echo(txt) => {
-            println!("printf(\"%s\\n\", {:?});", txt);
+            println!("printf(\"%s\\n\", {:?}); fflush(stdout);", txt);
         },
         Command::Update(upd, last) => {
              match updcmd2upd(&upd) {
