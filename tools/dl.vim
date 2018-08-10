@@ -30,7 +30,7 @@ syn keyword dlTodo             contained TODO FIXME XXX
 "syn keyword dlRepeat
 
 "Conditionals
-syn keyword dlConditional      if else for
+syn keyword dlConditional      if else for in
 
 "Constants
 syn keyword dlConstant         true false
