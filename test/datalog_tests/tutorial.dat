@@ -1,0 +1,30 @@
+start;
+
+insert Word1("Hello,"      , CategoryOther),
+insert Word1("Goodbye,"    , CategoryOther),
+insert Word2("World"       , CategoryOther),
+insert Word2("Ruby Tuesday", CategoryOther);
+
+insert Word1("Help me,"      , CategoryStarWars),
+insert Word1("I am your"     , CategoryStarWars),
+insert Word2("Obi-Wan Kenobi", CategoryStarWars),
+insert Word2("father"        , CategoryStarWars);
+
+
+commit;
+
+echo Phrases:;
+dump Phrases;
+
+start;
+
+insert Host(0, "h0", 0xaabbccdd),
+insert Host(1, "h1", 0xaabbccee),
+insert Host(2, "h2", 0xaaff1234),
+insert Subnet(0, 0xaabb0000, 0xffff0000),
+insert Subnet(1, 0xaaff0000, 0xffff0000);
+
+commit;
+
+echo HostInSubnet:;
+dump HostInSubnet;

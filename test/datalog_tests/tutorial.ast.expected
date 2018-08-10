@@ -1,0 +1,20 @@
+typedef Category = CategoryStarWars{} | CategoryOther{}
+typedef Host = Host{id: UUID, name: string, ip: IPAddr}
+typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
+typedef IPAddr = bit<32>
+typedef NetMask = bit<32>
+typedef Phrases = Phrases{phrase: string}
+typedef Subnet = Subnet{id: UUID, ip: IPAddr, mask: NetMask}
+typedef UUID = bit<128>
+typedef Word1 = Word1{word: string, cat: Category}
+typedef Word2 = Word2{word: string, cat: Category}
+typedef set<'A>
+function __builtin_2string (x: 'X): string
+ground relation Host [Host]
+relation HostInSubnet [HostInSubnet]
+relation Phrases [Phrases]
+ground relation Subnet [Subnet]
+ground relation Word1 [Word1]
+ground relation Word2 [Word2]
+Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
+HostInSubnet(.host=hid, .subnet=sid) :- Host(.id=hid, .name=_, .ip=ip), Subnet(.id=sid, .ip=snip, .mask=mask), ((ip & mask) == snip).

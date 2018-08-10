@@ -1,0 +1,13 @@
+Phrases:
+Phrases{"Goodbye, Ruby Tuesday"}
+Phrases{"Goodbye, World"}
+Phrases{"Hello, Ruby Tuesday"}
+Phrases{"Hello, World"}
+Phrases{"Help me, Obi-Wan Kenobi"}
+Phrases{"Help me, father"}
+Phrases{"I am your Obi-Wan Kenobi"}
+Phrases{"I am your father"}
+HostInSubnet:
+HostInSubnet{0,0}
+HostInSubnet{1,0}
+HostInSubnet{2,1}
