@@ -3,7 +3,7 @@
 " Filenames:    *.dl
 "
 " Place this file (or a link to it) under ~/.vim/syntax and add
-" the following line to your .vimrc to enable syntax highlighting 
+" the following line to your .vimrc to enable syntax highlighting
 " automatically for Cocoon files:
 " au BufRead,BufNewFile *.dl             set filetype=dl
 
@@ -30,7 +30,7 @@ syn keyword dlTodo             contained TODO FIXME XXX
 "syn keyword dlRepeat
 
 "Conditionals
-syn keyword dlConditional      if else
+syn keyword dlConditional      if else for
 
 "Constants
 syn keyword dlConstant         true false
@@ -38,7 +38,7 @@ syn keyword dlConstant         true false
 "Storage class
 "syn keyword dlStorageClass
 
-"Operators 
+"Operators
 syn keyword dlOperator	        default
 
 "Keywords for ADTs
