@@ -44,6 +44,11 @@ To run the tests execute:
 stack test
 ```
 
+# vim syntax highlighting
+
+Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential 
+datalog syntax highlighting in `.dl` files.
+
 # Using IntelliJ IDEA
 
 You can download and install the community edition of IntelliJ IDEA

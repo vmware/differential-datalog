@@ -1,0 +1,25 @@
+typedef Category = CategoryStarWars
+                 | CategoryOther
+
+ground relation Word1(word: string, cat: Category)
+ground relation Word2(word: string, cat: Category)
+
+relation Phrases(phrase: string)
+
+Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
+
+
+/**************/
+
+typedef UUID    = bit<128>
+typedef IPAddr  = bit<32>
+typedef NetMask = bit<32>
+
+ground relation Host(id: UUID, name: string, ip: IPAddr)
+ground relation Subnet(id: UUID, ip: IPAddr, mask: NetMask)
+
+relation HostInSubnet(host: UUID, subnet: UUID)
+
+HostInSubnet(hid, sid) :- Host(hid, _, ip),
+                          Subnet(sid, snip, mask),
+                          ((ip & mask) == snip).
