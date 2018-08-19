@@ -22,6 +22,7 @@ cabal.project.local
 test/datalog_tests/*.ast
 test/datalog_tests/*.err
 test/datalog_tests/*.dump
+test/datalog_tests/*.c
 .idea/
 out/
 *.cabal
