@@ -37,11 +37,12 @@ ground relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
 // HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
 
-// Compute HostInSubnet by filtering all host-subnet pairs where host address matches
+// Compute `HostInSubnet` by filtering all host-subnet pairs where host address matches
 // subnet prefix and mask.
 //
 // Note that ddlog computes this space efficiently by applying the
-// filter at the same time as it computes Cartesian product.
+// filter at the same time as it computes Cartesian product of `Host` and 
+// `Subnet` relations.
 HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
                                     Subnet(subnet_id, subnet_prefix, subnet_mask),
                                     ((host_ip & subnet_mask) == subnet_prefix).    // filter condition
