@@ -4,7 +4,7 @@ typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
 typedef NetMask = bit<32>
 typedef Phrases = Phrases{phrase: string}
-typedef Subnet = Subnet{id: UUID, ip: IPAddr, mask: NetMask}
+typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}
 typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
@@ -17,4 +17,4 @@ ground relation Subnet [Subnet]
 ground relation Word1 [Word1]
 ground relation Word2 [Word2]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
-HostInSubnet(.host=hid, .subnet=sid) :- Host(.id=hid, .name=_, .ip=ip), Subnet(.id=sid, .ip=snip, .mask=mask), ((ip & mask) == snip).
+HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).

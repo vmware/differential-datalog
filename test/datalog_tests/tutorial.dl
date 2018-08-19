@@ -1,25 +1,47 @@
+/* Example 1: "Hello, world!" in Datalog */
+
+// Category type with two type constructors.  Since constructors have
+// no arguments, this is similar to a C enum.
 typedef Category = CategoryStarWars
                  | CategoryOther
 
+// Declare two input relations (the `ground` keyword indicates that
+// these relations can only be populated by ground facts and cannot
+// appear in the head of a rule).
+// `string` is a primitive type in ddlog.
 ground relation Word1(word: string, cat: Category)
 ground relation Word2(word: string, cat: Category)
 
+// Computed relation populated by facts derived from rules.
 relation Phrases(phrase: string)
 
+// Produce phrases by combining pairs of words from the same category.
+// The `++` operator is string concatenation.
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
-
 
 /**************/
 
+/* Example 2: Map hosts to IP subnets. */
+
+// Type aliases improve readability.
 typedef UUID    = bit<128>
 typedef IPAddr  = bit<32>
 typedef NetMask = bit<32>
 
+// IP host specified by its name and address.
 ground relation Host(id: UUID, name: string, ip: IPAddr)
-ground relation Subnet(id: UUID, ip: IPAddr, mask: NetMask)
 
+// IP subnet specified by its IP prefix and mask
+ground relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+
+// HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
 
-HostInSubnet(hid, sid) :- Host(hid, _, ip),
-                          Subnet(sid, snip, mask),
-                          ((ip & mask) == snip).
+// Compute HostInSubnet by filtering all host-subnet pairs where host address matches
+// subnet prefix and mask.
+//
+// Note that ddlog computes this space efficiently by applying the
+// filter at the same time as it computes Cartesian product.
+HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
+                                    Subnet(subnet_id, subnet_prefix, subnet_mask),
+                                    ((host_ip & subnet_mask) == subnet_prefix).    // filter condition
