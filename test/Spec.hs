@@ -32,6 +32,7 @@ import System.Directory
 import System.Process
 import Test.HUnit
 import Data.List
+import Data.Maybe
 import Data.List.Split
 import Control.Exception
 import Control.DeepSeq
@@ -62,7 +63,11 @@ goldenTests = do
                                  exists <- doesFileExist datFile
                                  return $ if exists then [dlFile, datFile, datFile] else [dlFile]) dlFiles
   return $ testGroup "datalog tests"
-    [ goldenVsFiles (takeBaseName $ head files) expect output (testOne $ head files)
+    [ testGroup (takeBaseName $ head files) $
+      (goldenVsFile "parser test" (head expect) (head output) (parserTest $ head files) :
+       if shouldFail $ head files
+          then []
+          else [goldenVsFiles "compiler test" (tail expect) (tail output) (compilerTest $ head files)])
     | files <- inFiles
     , let expect = map (uncurry replaceExtension) $ zip files [".ast.expected", ".dump.expected", ".dump.expected"]
     , let output = map (uncurry replaceExtension) $ zip files [".ast", ".dump", ".c.dump"]]
@@ -80,28 +85,20 @@ compileFailingProgram file program =
     (show <$> parseValidate file program) `catch`
              (\e -> return $ show (e::SomeException))
 
--- Run Datalog compiler on spec in 'fname'.
+shouldFail fname = ".fail." `isInfixOf` fname
+
+-- Test Datalog parser on spec in 'fname'.
 --
--- * Writes parsed AST to specname.ast
---
--- * Creates Cargo project in a directory obtained by removing file
--- extension from 'fname'.
---
--- * Checks if a file with the same name as 'fname' and '.rs' extension
--- (instead of '.dl') exists and passes its content as the 'imports' argument to
--- compiler.
---
--- * If a .dat file exists for the given test, dump its content to the
--- compiled datalog program, producing .dump and .err files
-testOne :: FilePath -> IO ()
-testOne fname = do
+-- * Parses the input spec; writes parsed AST to 'specname.ast', parses the generated AST file and
+-- checks that both ASTs are identical.
+parserTest :: FilePath -> IO ()
+parserTest fname = do
     -- if a file contains .fail. in its name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
     let specname = takeBaseName fname
     let astfile  = replaceExtension fname "ast"
-    let shouldFail = ".fail." `isInfixOf` fname
-    if shouldFail
+    if shouldFail fname
       then do
         -- To allow multiple negative tests in a single dl file
         -- we treat the file as multiple files separated by this comment
@@ -118,35 +115,51 @@ testOne fname = do
         prog' <- parseDatalogFile False astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
-        -- include any user-provided Rust code
-        let importsfile = addExtension (dropExtension fname) "rs"
-        hasimports <- doesFileExist importsfile
-        imports <- if hasimports
-                      then readFile importsfile
-                      else return ""
-        -- generate Rust project
-        let rust_dir = joinPath [takeDirectory fname]
-        compile prog specname imports rust_dir
-        -- compile it with Cargo
-        let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                              cwd = Just $ joinPath [rust_dir, specname]
-                         }
-        (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo build failed with exit code " ++ show code ++
-                                     "\nstderr:\n" ++ stde ++
-                                     "\n\nstdout:\n" ++ stdo
-        let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
-                              cwd = Just $ joinPath [rust_dir, specname]
-                         }
-        (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
-                                     "\nstderr:\n" ++ stde ++
-                                     "\n\nstdout:\n" ++ stdo
-        cliTest fname specname rust_dir
-        ffiTest fname specname rust_dir
-    return ()
+
+-- Run Datalog compiler on spec in 'fname'.
+--
+-- * Creates Cargo project in a directory obtained by removing file
+-- extension from 'fname'.
+--
+-- * Checks if a file with the same name as 'fname' and '.rs' extension
+-- (instead of '.dl') exists and passes its content as the 'imports' argument to
+-- compiler.
+--
+-- * If a .dat file exists for the given test, dump its content to the
+-- compiled datalog program, producing .dump and .err files
+compilerTest :: FilePath -> IO ()
+compilerTest fname = do
+    body <- readFile fname
+    let specname = takeBaseName fname
+    prog <- parseValidate fname body
+    -- include any user-provided Rust code
+    let importsfile = addExtension (dropExtension fname) "rs"
+    hasimports <- doesFileExist importsfile
+    imports <- if hasimports
+                  then readFile importsfile
+                  else return ""
+    -- generate Rust project
+    let rust_dir = joinPath [takeDirectory fname]
+    compile prog specname imports rust_dir
+    -- compile it with Cargo
+    let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
+                          cwd = Just $ joinPath [rust_dir, specname]
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "cargo build failed with exit code " ++ show code ++
+                                 "\nstderr:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
+    let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
+                          cwd = Just $ joinPath [rust_dir, specname]
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
+                                 "\nstderr:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
+    cliTest fname specname rust_dir
+    ffiTest fname specname rust_dir
 
 -- Feed test data via pipe if a .dat file exists
 cliTest :: FilePath -> String -> FilePath -> IO ()
@@ -245,7 +258,8 @@ goldenVsFiles name ref new act =
              (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news})
              cmp upd
   where
-  cmp xs ys = return $ msum $
+  cmp [] [] = return Nothing
+  cmp xs ys = return $ liftM (intercalate "\n") $ sequence $
               map (\((x,r),(y,n)) ->
                     if x == y
                        then Nothing

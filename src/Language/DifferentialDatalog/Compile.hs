@@ -991,7 +991,7 @@ mkArrangement d rel (Arrangement pattern) = do
                "}"
     return $
         "Arrangement{"                                                                                      $$
-        "   name: \"" <> pp pattern <> "\".to_string(),"                                                    $$
+        "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
         "}"
 
@@ -1016,18 +1016,18 @@ mkPatExpr' _ _         (EBool _ False)           = return ("false", empty)
 mkPatExpr' _ varprefix EInt{..}                  = do
     i <- get
     put $ i+1
-    let vname = pp $ "_" <> pp i
+    let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, "*" <> vname <+> "==" <+> mkInt exprIVal)
 mkPatExpr' _ varprefix EString{..}               = do
     i <- get
     put $ i+1
-    let vname = pp $ "_" <> pp i
+    let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, "*" <> vname <+> "==" <+> "\"" <> pp exprString <> "\"" <> ".to_string()")
 mkPatExpr' _ _         EBit{..} | exprWidth <= 64= return (pp exprIVal, empty)
 mkPatExpr' _ varprefix EBit{..}                  = do
     i <- get
     put $ i+1
-    let vname = pp $ "_" <> pp i
+    let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, "*" <> vname <+> "==" <+> "Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)")
 mkPatExpr' d _         EStruct{..}               = return (e, cond)
     where

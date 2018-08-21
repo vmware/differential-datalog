@@ -275,7 +275,7 @@ mkToFFITuple d t@TTuple{..} =
     (nest' $ nest' $ vcat free_fields)                                                      $$
     "    }"                                                                                 $$
     "    fn c_code(&self) -> String {"                                                      $$
-    "        format!(\"" <> mkCType d t <> "{{" <> (commaSep $ replicate (length typeTupArgs) "{}")
+    "        format!(\"(" <> mkCType d t <> "){{" <> (commaSep $ replicate (length typeTupArgs) "{}")
                      <> "}}\"," <+> commaSep c_fields <> ")"                                $$
     "    }"                                                                                 $$
     "}"
