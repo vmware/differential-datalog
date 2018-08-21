@@ -16,12 +16,13 @@ To this end, it has the following properties
 ## Compiling and running the "Hello, World!" example
 
 *Explain the three interfaces to the Datalog program*
+*Named vs positional arguments*
 
 ## Expressions
 
 *Extract subnet mask from IP address*
-
 *wildcard*
+*Lower case/upper case rules*
 
 ### String concatenation and interpolation
 

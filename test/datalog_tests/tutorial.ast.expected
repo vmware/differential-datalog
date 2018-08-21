@@ -1,20 +1,37 @@
 typedef Category = CategoryStarWars{} | CategoryOther{}
+typedef Flow = Flow{lr: int, stage: stage, prio: int, matchStr: string, actionStr: string}
+typedef Flow1 = Flow1{lr: int, stage: stage, prio: int, matchStr: string, actionStr: string}
 typedef Host = Host{id: UUID, name: string, ip: IPAddr}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
+typedef Load_Balancer = Load_Balancer{lb: int, ls: int, ip_addresses: string, protocol: option_t<string>, name: string}
+typedef Logical_Switch = Logical_Switch{ls: int}
 typedef NetMask = bit<32>
 typedef Phrases = Phrases{phrase: string}
 typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}
 typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
+typedef option_t<'A> = None{} | Some{value: 'A}
 typedef set<'A>
+typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
 function __builtin_2string (x: 'X): string
+relation Flow [Flow]
+relation Flow1 [Flow1]
 ground relation Host [Host]
 relation HostInSubnet [HostInSubnet]
+ground relation Load_Balancer [Load_Balancer]
+ground relation Logical_Switch [Logical_Switch]
 relation Phrases [Phrases]
 ground relation Subnet [Subnet]
 ground relation Word1 [Word1]
 ground relation Word2 [Word2]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
+Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
+Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
+Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
+                                                                                                                                                          Some{.value=_} -> true,
+                                                                                                                                                          None{} -> false
+                                                                                                                                                      }, var a = lb.ip_addresses.
+Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], Load_Balancer[lb], (lb.ls == ls.ls).

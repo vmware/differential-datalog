@@ -1,4 +1,6 @@
-/* Example 1: "Hello, world!" in Datalog */
+/*
+ * Example 1: "Hello, world!" in Datalog
+ */
 
 // Category type with two type constructors.  Since constructors have
 // no arguments, this is similar to a C enum.
@@ -19,9 +21,10 @@ relation Phrases(phrase: string)
 // The `++` operator is string concatenation.
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 
-/**************/
 
-/* Example 2: Map hosts to IP subnets. */
+/*
+ * Example 2: Map hosts to IP subnets.
+ */
 
 // Type aliases improve readability.
 typedef UUID    = bit<128>
@@ -40,9 +43,99 @@ relation HostInSubnet(host: UUID, subnet: UUID)
 // Compute `HostInSubnet` by filtering all host-subnet pairs where host address matches
 // subnet prefix and mask.
 //
-// Note that ddlog computes this space efficiently by applying the
+// Note the use of wildcard (`_`) for fields that are not relevant in this rule.
+//
+// Note: ddlog computes this space efficiently by applying the
 // filter at the same time as it computes Cartesian product of `Host` and 
 // `Subnet` relations.
 HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
                                     Subnet(subnet_id, subnet_prefix, subnet_mask),
                                     ((host_ip & subnet_mask) == subnet_prefix).    // filter condition
+
+
+/*
+ * Example 3: Advanced features
+ */
+
+// option_t is a generic type that can be use to represent optional values of any other type.
+// It is parameterized by type argument 'A.
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+// The Load_Balancer relation instantiates option_t type for strings.
+ground relation Load_Balancer (
+    lb:           int, // int is a primitive ddlog type that models 
+                       // unbounded mathematical integers.
+    ls:           int,
+    ip_addresses: string,
+    protocol:     option_t<string>,
+    name:         string
+)
+
+typedef stage = LS_IN_PRE_LB
+              | LS_OUT_PRE_LB
+
+ground relation Logical_Switch (
+    ls:  int
+)
+
+// Relation that represents OVS flows.
+relation Flow(lr: int,
+              stage: stage,
+              prio: int,
+              matchStr: string,
+              actionStr: string)
+
+// The following rule illustrates several new syntactic constructs.
+//
+// 1. Note the use of named arguments in the head of the relation (e.g., `.stage=LS_IN_PRE_LB`).
+//    This syntax is more verbose, but sometimes more readable especially for relations that have
+//    several arguments.
+// 2. Note the `$` syntax for string literals.  A string literal prefixed by `$` is an interpolated
+//    string.  It can contain arbitrary ddlog expressions enclosed in `${}`.  These expressions are
+//    automatically converted to string representation and concatenated with the rest of the string.
+// 3. The body of the rule uses pattern matching to filter only those Load_Balancer records whose
+//    protocol is specified (i.e., is not `None`).  Alternatively, one could match on a specific
+//    protocol, e.g., TCP, by writing `Some{"TCP"}` instead of `Some{_}`.
+Flow(.lr=ls,
+     .stage=LS_IN_PRE_LB,
+     .prio=100,
+     .matchStr= $"ip4.dst == ${addresses}",
+     .actionStr="{ reg0[0] = 1; next; }")   :-
+    Load_Balancer(_, ls, addresses, Some{_}, _).
+
+
+Flow(.lr=ls,
+     .stage=LS_OUT_PRE_LB,
+     .prio=100,
+     .matchStr="ip4",
+     .actionStr="{ reg0[0] = 1; next; }") :-
+    Logical_Switch(.ls=ls),
+    Load_Balancer(.ls=ls).
+
+
+// The above two rules can be equivalently written using FTL syntax.
+
+// Introduce another Flow relation, so that we can compare the results of the two encodings.
+relation Flow1(lr: int,
+               stage: stage,
+               prio: int,
+               matchStr: string,
+               actionStr: string)
+
+for (lb in Load_Balancer) {
+    let a = lb.ip_addresses in
+    match (lb.protocol) {
+        Some{_} -> Flow1(lb.ls, LS_IN_PRE_LB, 100, $"ip4.dst == ${a}", "{ reg0[0] = 1; next; }"),
+        None -> {}
+    }
+}
+
+
+for (ls in Logical_Switch) {
+    for (lb in Load_Balancer if lb.ls == ls.ls) {
+        Flow1(ls.ls, LS_OUT_PRE_LB, 100, "ip4", "{ reg0[0] = 1; next; }")
+    }
+}
+
+

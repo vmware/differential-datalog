@@ -28,3 +28,20 @@ commit;
 
 echo HostInSubnet:;
 dump HostInSubnet;
+
+start;
+
+insert Logical_Switch(0),
+insert Logical_Switch(1),
+insert Load_Balancer(0, 0, "10.10.10.101", Some{"TCP"}, "lb1"),
+insert Load_Balancer(0, 0, "10.10.10.102", None, "lb2"),
+insert Load_Balancer(0, 1, "10.10.10.103", Some{"UDP"}, "lb3"),
+insert Load_Balancer(0, 1, "10.10.10.104", None, "lb4");
+
+commit;
+
+echo Flows:;
+dump Flow;
+
+echo Flows generated using FTL:;
+dump Flow1;
