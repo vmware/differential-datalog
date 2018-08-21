@@ -147,13 +147,11 @@ for (lrp in Logical_Router_Port if lrp.enabled) {
 /////////////////////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-acls.ftl
 
-relation Logical_Switch (
+ground relation Logical_Switch (
     ls:  int,
     has_stateful_acl: bool,
     has_load_balancer: bool
 )
-
-
 
 /* Ingress and Egress ACL Table (Priority 0): Packets are allowed by
  * default.  A related rule at priority 1 is added below if there
@@ -300,7 +298,7 @@ ground relation Load_Balancer (
  * information, this will generate duplicate logical flows, but that's OK. */
 for (lb in Load_Balancer) {
     let a = lb.ip_addresses in
-        Flow(lb.ls, LS_IN_PRE_LB, 100, "ip4.dst == ${a}", "{ reg0[0] = 1; next; }")
+        Flow(lb.ls, LS_IN_PRE_LB, 100, $"ip4.dst == ${a}", "{ reg0[0] = 1; next; }")
 }
 for (ls in Logical_Switch) {
     if (ls.has_load_balancer) { // TODO: ls.load_balancer != [])

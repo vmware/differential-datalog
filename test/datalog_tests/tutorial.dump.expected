@@ -11,3 +11,13 @@ HostInSubnet:
 HostInSubnet{0,0}
 HostInSubnet{1,0}
 HostInSubnet{2,1}
+Flows:
+Flow{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flows generated using FTL:
+Flow1{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow1{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow1{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow1{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
