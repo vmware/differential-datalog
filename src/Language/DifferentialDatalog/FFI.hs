@@ -349,7 +349,7 @@ mkToFFIStruct d t@TUser{..} =
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> "{"                                               $$
                     "    format!(\"(" <> mkCType d t <> "){{.tag =" <+> cname <>
                                   (if nargs > 0
-                                      then ", .x = &(" <+> ccons <> ")" <> "{{" <+> (commaSep $ replicate nargs "{}") <> "}} }}\"," <+>
+                                      then ", .x = (union " <> cStructName d t <> "_union){{." <> cname <> " = &(" <+> ccons <> ")" <> "{{" <+> (commaSep $ replicate nargs "{}") <> "}} }} }}\"," <+>
                                            (commaSep $ map ((<> ".c_code()") . pp . name) $ consArgs c)
                                       else "}}\"") <> ")"                                                                             $$
                     "}")
