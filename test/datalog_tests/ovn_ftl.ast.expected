@@ -13,7 +13,7 @@ relation Flow [Flow]
 ground relation Load_Balancer [Load_Balancer]
 ground relation Logical_Router [Logical_Router]
 ground relation Logical_Router_Port [Logical_Router_Port]
-relation Logical_Switch [Logical_Switch]
+ground relation Logical_Switch [Logical_Switch]
 ground relation Logical_Switch_Port [Logical_Switch_Port]
 relation Logical_Switch_Port_IP [Logical_Switch_Port_IP]
 Flow(.lr=lr.lr, .stage=LR_IN_ADMISSION{}, .prio=100, .matchStr="vlan.present || eth.src[40]", .actionStr="{ drop; }") :- Logical_Router[lr].
@@ -56,7 +56,7 @@ Flow(.lr=ls.ls, .stage=LS_IN_PRE_ACL{}, .prio=110, .matchStr="nd", .actionStr="{
 Flow(.lr=ls.ls, .stage=LS_OUT_PRE_ACL{}, .prio=110, .matchStr="nd", .actionStr="{ next; }") :- Logical_Switch[ls], ls.has_stateful_acl.
 Flow(.lr=ls.ls, .stage=LS_IN_PRE_ACL{}, .prio=100, .matchStr="ip", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], ls.has_stateful_acl.
 Flow(.lr=ls.ls, .stage=LS_OUT_PRE_ACL{}, .prio=100, .matchStr="ip", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], ls.has_stateful_acl.
-Flow(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr="ip4.dst == ${a}", .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], var a = lb.ip_addresses.
+Flow(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], var a = lb.ip_addresses.
 Flow(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], ls.has_load_balancer.
 Flow(.lr=ls.ls, .stage=LS_IN_PRE_LB{}, .prio=0, .matchStr="1", .actionStr="{ next; }") :- Logical_Switch[ls].
 Flow(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=0, .matchStr="1", .actionStr="{ next; }") :- Logical_Switch[ls].
