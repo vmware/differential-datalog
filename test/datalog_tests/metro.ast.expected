@@ -1,7 +1,7 @@
 typedef Answer = Answer{x: station}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Reach = Reach{s1: station, s2: station}
-typedef line = int
+typedef line = bigint
 typedef set<'A>
 typedef station = string
 function __builtin_2string (x: 'X): string

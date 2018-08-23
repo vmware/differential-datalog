@@ -2,8 +2,8 @@ Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, colum
 unexpected '{'
 expecting "typedef", "ground", "relation", "function", identifier, "for" or end of input
 
-error: ./test/datalog_tests/constr.fail.dl:4:13-4:26: Multiple definitions of constructor C at the following locations:
-  ./test/datalog_tests/constr.fail.dl:4:13-4:26
+error: ./test/datalog_tests/constr.fail.dl:4:13-4:29: Multiple definitions of constructor C at the following locations:
+  ./test/datalog_tests/constr.fail.dl:4:13-4:29
   ./test/datalog_tests/constr.fail.dl:5:13-7:1
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):

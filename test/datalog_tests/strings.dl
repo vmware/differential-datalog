@@ -68,7 +68,7 @@ Strings("line1\n\
         \line2").
 
 function tostring1(): () = {
-    var a: int     = 5;
+    var a: bigint  = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
     var d: string  = "foo";
@@ -76,7 +76,7 @@ function tostring1(): () = {
     ()
 }
 
-typedef serializable_t = ConsInt {x: int}
+typedef serializable_t = ConsInt {x: bigint}
                        | ConsBit {y: bit<32>}
                        | ConsBool{z: bool}
                        | Cons0{}
@@ -92,7 +92,7 @@ function serializable_t2string(x: serializable_t): string = {
 }
 
 function tostring2(): () = {
-    var a: int     = 5;
+    var a: bigint     = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
     var d: string  = "foo";

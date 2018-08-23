@@ -88,7 +88,7 @@ reservedNames = ["_",
                  "if",
                  "in",
                  "insert",
-                 "int",
+                 "bigint",
                  "let",
                  "match",
                  "not",
@@ -327,7 +327,7 @@ typeSpecSimple = withPos $
               <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
-intType    = TInt    nopos <$ reserved "int"
+intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
 userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")

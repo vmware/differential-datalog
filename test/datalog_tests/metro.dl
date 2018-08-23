@@ -1,4 +1,4 @@
-typedef line = int
+typedef line = bigint
 typedef station = string
 
 ground relation Links(l: line, s1: station, s2: station)

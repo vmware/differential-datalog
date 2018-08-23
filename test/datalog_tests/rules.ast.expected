@@ -1,18 +1,18 @@
-typedef R1 = int
-typedef R3 = R3{f1: int, f2: bool}
-typedef R6 = R6{f: int}
-typedef R7 = R7{f1: int, f2: bit<16>} | R7Other{}
-typedef T = T{x: int, y: string}
-typedef X = X{b: int, c: R3, d: R1}
-typedef Y = Y{b: int, e: string}
-typedef Z = Z{x: int, y: R3}
+typedef R1 = bigint
+typedef R3 = R3{f1: bigint, f2: bool}
+typedef R6 = R6{f: bigint}
+typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
+typedef T = T{x: bigint, y: string}
+typedef X = X{b: bigint, c: R3, d: R1}
+typedef Y = Y{b: bigint, e: string}
+typedef Z = Z{x: bigint, y: R3}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
 ground relation R1 [R1]
-ground relation R2 [(int, int)]
+ground relation R2 [(bigint, bigint)]
 ground relation R3 [R3]
 relation R4 [R3]
-relation R5 [int]
+relation R5 [bigint]
 relation R6 [R6]
 relation R7 [R7]
 relation T [T]

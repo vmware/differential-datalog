@@ -221,7 +221,7 @@ instance WithPos Type where
 
 instance PP Type where
     pp (TBool _)        = "bool"
-    pp (TInt _)         = "int"
+    pp (TInt _)         = "bigint"
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons

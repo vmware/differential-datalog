@@ -1,11 +1,11 @@
 typedef Category = CategoryStarWars{} | CategoryOther{}
-typedef Flow = Flow{lr: int, stage: stage, prio: int, matchStr: string, actionStr: string}
-typedef Flow1 = Flow1{lr: int, stage: stage, prio: int, matchStr: string, actionStr: string}
+typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
+typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Host = Host{id: UUID, name: string, ip: IPAddr}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
-typedef Load_Balancer = Load_Balancer{lb: int, ls: int, ip_addresses: string, protocol: option_t<string>, name: string}
-typedef Logical_Switch = Logical_Switch{ls: int}
+typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
+typedef Logical_Switch = Logical_Switch{ls: bigint}
 typedef NetMask = bit<32>
 typedef Phrases = Phrases{phrase: string}
 typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}

@@ -59,7 +59,7 @@ typedef ::= "typedef" type_name (* unique type name *)
 
 ```EBNF
 (* A full form of typespec. Used in typedef's only. *)
-type_spec ::= int_type
+type_spec ::= bigint_type
             | bool_type
             | string_type
             | bitvector_type
@@ -71,7 +71,7 @@ type_spec ::= int_type
 (* A restricted form of typespec that does not declare new tagged
     unions (and hence does not introduce new constructor names to
     the namespace.  Used in argument, field, variable declarations. *)
-simple_type_spec ::= int_type
+simple_type_spec ::= bigint_type
                    | bool_type
                    | string_type
                    | bitvector_type
@@ -81,7 +81,7 @@ simple_type_spec ::= int_type
 ```
 
 ```EBNF
-int_type         ::= "int" (* unbounded mathematical integer *)
+bigint_type      ::= "bigint" (* unbounded mathematical integer *)
 bool_type        ::= "bool"
 string_type      ::= "string" (* UTF-8 string *)
 bitvector_type   ::= "bit" "<" decimal ">"
@@ -110,14 +110,14 @@ field            ::= field_name ":" simple_type_spec
 1. If multiple type constructors for the same type have arguments with
 identical names, their types must be identical, e.g., the following is invalid:
     ```
-    typedef type1 = Constr1{field1: string, field2: bool} | Constr2{field1: int}
+    typedef type1 = Constr1{field1: string, field2: bool} | Constr2{field1: bigint}
     ```
 1. A type must be instantiated with the number of type
 arguments matching its declaration:
     ```
     typedef type1<'A,'B>
     function f(): bool = {
-        var x: type1<int> // error: not enough type arguments
+        var x: type1<bigint> // error: not enough type arguments
     }
     ```
 1. Recursive type definitions are not allowed.
@@ -188,11 +188,11 @@ form explicitly specifies relation's element type.  The
 second form is more general:
 
 ```
-relation R(f1: int, f2: bool)
+relation R(f1: bigint, f2: bool)
 ```
 is equivalent to:
 ```
-typedef R = R{f1: int, f2:bool}
+typedef R = R{f1: bigint, f2:bool}
 relation R[R]
 ```
 
@@ -354,7 +354,7 @@ pattern ::= (* tuple pattern *)
 Values of arbitrary types that occur inside interpolated strings or as
 a second argument to the string concatenation operator (`++`) are
 automatically converted to strings.
-Values of primitive types (`string`, `int`, `bit`, and `bool`) are converted using 
+Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using 
 builtin methods.
 
 For user-defined types, conversion is performed by calling a user-defined function 
@@ -365,7 +365,7 @@ Compilation fails if a function with this name and signature is not found.
 
 For example, the last statement in
 ```
-typedef udf_t = Cons1 | Cons2{f: int}
+typedef udf_t = Cons1 | Cons2{f: bigint}
 function udf_t2string(x: udf_t): string = ...
 x: udf_t;
 
@@ -390,7 +390,7 @@ y = $"x:{udf_t2string(x)}";
    ...
 
    // ok: type of x specified explicitly
-   var x: int; 
+   var x: bigint; 
 
    // error: variable declared without a type
    var x;

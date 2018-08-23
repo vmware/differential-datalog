@@ -1,5 +1,5 @@
 typedef Strings = Strings{s: string}
-typedef serializable_t = ConsInt{x: int} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
+typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef set<'A>
 function __builtin_2string (x: 'X): string
 function dummy (x: string): string =
@@ -25,14 +25,14 @@ function strings (): () =
                                 dummy(x))) ++ "");
             ()))))))))
 function tostring1 (): () =
-    ((var a: int) = 5;
+    ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
         (var err = (((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ "");
          ())))))
 function tostring2 (): () =
-    ((var a: int) = 5;
+    ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";

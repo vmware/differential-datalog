@@ -57,9 +57,9 @@ typedef ip_subnet_t = IPSubnet4 {ip4_subnet : ip4_subnet_t}
 */
 
 ground relation NB_Global (
-    nb_cfg: int,
-    sb_cfg: int,
-    hv_cfg: int
+    nb_cfg: bigint,
+    sb_cfg: bigint,
+    hv_cfg: bigint
 )
 
 ground relation NB_Global_external_ids (
@@ -99,8 +99,8 @@ ground relation Connection (
     id:                 uuid,
     target:             string,
     is_connected:       bool,
-    max_backoff:        option_t<int>,
-    inactivity_probe:   option_t<int>
+    max_backoff:        option_t<bigint>,
+    inactivity_probe:   option_t<bigint>
 )
 
 ground relation Connection_other_config (
@@ -228,8 +228,8 @@ ground relation Logical_Switch_Port (
     id:                     uuid,
     logical_switch:         uuid,
     parent:                 option_t<string>,
-    tag_request:            option_t<int>,
-    tag:                    option_t<int>,
+    tag_request:            option_t<bigint>,
+    tag:                    option_t<bigint>,
     /* can up and enabled fields really be missing? */
     up:                     option_t<bool>,
     enabled:                option_t<bool>,
@@ -363,7 +363,7 @@ ground relation ACL (
     id:                 uuid,
     name:               option_t<string>,
     logical_switch:     uuid,
-    priority:           int,
+    priority:           bigint,
     direction:          string,
     _match:             string,
     action:             string,
@@ -407,7 +407,7 @@ ground relation ACL_external_ids (
 ground relation QoS (
     id:             uuid,
     logical_switch: uuid,
-    priority:       int,
+    priority:       bigint,
     direction:      string,
     _match:         string
 )
@@ -415,13 +415,13 @@ ground relation QoS (
 ground relation QoS_action (
     qos:            uuid,
     key:            string,
-    value:          int
+    value:          bigint
 )
 
 ground relation QoS_bandwidth (
     qos:            uuid,
     key:            string,
-    value:          int
+    value:          bigint
 )
 
 ground relation QoS_external_ids (
@@ -722,7 +722,7 @@ ground relation Gateway_Chassis (
     logical_router:     uuid,
     name:               string,
     chassis_name:       string,
-    priority:           int
+    priority:           bigint
 )
 
 ground relation Gateway_Chassis_external_ids (

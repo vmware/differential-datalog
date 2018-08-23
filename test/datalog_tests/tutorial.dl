@@ -64,9 +64,9 @@ typedef option_t<'A> = None
 
 // The Load_Balancer relation instantiates option_t type for strings.
 ground relation Load_Balancer (
-    lb:           int, // int is a primitive ddlog type that models 
+    lb:           bigint, // bigint is a primitive ddlog type that models 
                        // unbounded mathematical integers.
-    ls:           int,
+    ls:           bigint,
     ip_addresses: string,
     protocol:     option_t<string>,
     name:         string
@@ -76,13 +76,13 @@ typedef stage = LS_IN_PRE_LB
               | LS_OUT_PRE_LB
 
 ground relation Logical_Switch (
-    ls:  int
+    ls:  bigint
 )
 
 // Relation that represents OVS flows.
-relation Flow(lr: int,
+relation Flow(lr: bigint,
               stage: stage,
-              prio: int,
+              prio: bigint,
               matchStr: string,
               actionStr: string)
 
@@ -117,9 +117,9 @@ Flow(.lr=ls,
 // The above two rules can be equivalently written using FTL syntax.
 
 // Introduce another Flow relation, so that we can compare the results of the two encodings.
-relation Flow1(lr: int,
+relation Flow1(lr: bigint,
                stage: stage,
-               prio: int,
+               prio: bigint,
                matchStr: string,
                actionStr: string)
 
