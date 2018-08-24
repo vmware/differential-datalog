@@ -65,8 +65,8 @@ dump Pow2;
 
 start;
 
-insert NetHost(1, NetHost{0xaabbccdd, 0x112233445566}),
-insert NetHost(2, NetHost{0xa0b0c0d0, 0x102030405060});
+insert NetHost(1, NHost{IPAddr{0xaabbccdd}, MACAddr{0x112233445566}}),
+insert NetHost(2, NHost{IPAddr{0xa0b0c0d0}, MACAddr{0x102030405060}});
 
 commit;
 

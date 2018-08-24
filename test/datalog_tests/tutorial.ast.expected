@@ -6,28 +6,48 @@ typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
+typedef NetHost = NetHost{id: bigint, h: nethost_t}
+typedef NetHostString = NetHostString{id: bigint, s: string}
 typedef NetMask = bit<32>
+typedef Number = Number{n: bigint}
 typedef Phrases = Phrases{phrase: string}
+typedef Pow2 = Pow2{p: string}
 typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}
 typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
+typedef ip_addr_t = IPAddr{addr: bit<32>}
+typedef mac_addr_t = MACAddr{addr: bit<48>}
+typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 extern type set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
 extern function __builtin_2string (x: 'X): string
+extern function hex (x: 'X): string
+function ip_addr_t2string (ip: ip_addr_t): string =
+    (((((((("" ++ __builtin_2string(ip.addr[31:24])) ++ ".") ++ __builtin_2string(ip.addr[23:16])) ++ ".") ++ __builtin_2string(ip.addr[15:8])) ++ ".") ++ __builtin_2string(ip.addr[7:0])) ++ "")
+function mac_addr_t2string (mac: mac_addr_t): string =
+    (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
+function nethost_t2string (h: nethost_t): string =
+    (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
 relation Flow [Flow]
 relation Flow1 [Flow1]
 input relation Host [Host]
 relation HostInSubnet [HostInSubnet]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
+input relation NetHost [NetHost]
+relation NetHostString [NetHostString]
+input relation Number [Number]
 relation Phrases [Phrases]
+relation Pow2 [Pow2]
 input relation Subnet [Subnet]
 input relation Word1 [Word1]
 input relation Word2 [Word2]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
+Pow2(.p=(((("The square of " ++ __builtin_2string(x)) ++ " is ") ++ __builtin_2string((x * x))) ++ "")) :- Number(.n=x).
+NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id, .h=h).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {

@@ -32,9 +32,9 @@ To this end, it has the following properties
 
 *if-then-else, sequencing, assignments, var*
 
-## Procedures
+## Functions
 
-### Extern procedures
+### Extern functions
 
 ## Advanced rule syntax
 

@@ -3,6 +3,7 @@ typedef X = X{field: bigint}
 typedef Z = Z{field: bigint}
 extern type set<'A>
 extern function __builtin_2string (x: 'X): string
+extern function hex (x: 'X): string
 relation W [W]
 input relation X [X]
 relation Z [Z]

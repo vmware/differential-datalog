@@ -3,6 +3,7 @@ typedef Path = Path{s1: node, s2: node}
 typedef node = string
 extern type set<'A>
 extern function __builtin_2string (x: 'X): string
+extern function hex (x: 'X): string
 input relation Edge [Edge]
 relation Path [Path]
 Path(.s1=x, .s2=y) :- Edge(.s=x, .t=y).

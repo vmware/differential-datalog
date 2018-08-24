@@ -70,22 +70,22 @@ function ip_addr_t2string(ip: ip_addr_t): string = {
 }
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${mac.addr[47:40]}:${mac.addr[39:32]}:${mac.addr[31:24]}:${mac.addr[23:16]}:${mac.addr[15:8]}:${mac.addr[7:0]}"
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
 
-typedef nethost_t = NetHost {
-    ip:  bit<32>,
-    mac: bit<48>
+typedef nethost_t = NHost {
+    ip:  ip_addr_t,
+    mac: mac_addr_t
 }
 
 function nethost_t2string(h: nethost_t): string = {
     $"Host: IP=${h.ip}, MAC=${h.mac}"
 }
 
-input relation NetHost(id: bit<64>, h: nethost_t)
-relation NetHostString(id: bit<64>, s: string)
+input relation NetHost(id: bigint, h: nethost_t)
+relation NetHostString(id: bigint, s: string)
 
-NetHostString(id, $"{h}") :- NetHost(id, h).
+NetHostString(id, $"${h}") :- NetHost(id, h).
 
 /*
  * Example: Advanced features

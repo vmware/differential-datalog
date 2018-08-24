@@ -77,6 +77,7 @@ extern function eth_addr_from_string (str: string): option_t<mac_addr_t>
 extern function extract_ips (str: string): set<ip_addr_t>
 extern function extract_mac (str: string): (mac_addr_t, string)
 extern function extract_subnets (str: string): set<ip_subnet_t>
+extern function hex (x: 'X): string
 extern function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 extern function ip_address_and_port_from_lb_key (key: string): ip_port_t
 extern function ip_parse (str: string): option_t<ip_addr_t>

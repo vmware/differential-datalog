@@ -29,3 +29,7 @@ pub mod valmap;
 fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x).to_string()
 }
+
+fn hex<T: fmt::LowerHex>(x: &T) -> String {
+    format!("{:x}", *x).to_string()
+}

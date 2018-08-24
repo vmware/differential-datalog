@@ -36,6 +36,7 @@ function fnested (x: nested_t): string =
      res)
 extern function g (a: bigint): bigint
 extern function h (a: (bigint, bigint)): (bigint, bigint)
+extern function hex (x: 'X): string
 extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool =
     (x == y)

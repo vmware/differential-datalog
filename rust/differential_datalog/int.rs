@@ -70,6 +70,12 @@ impl fmt::Display for Int {
     }
 }
 
+impl fmt::LowerHex for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.x)
+    }
+}
+
 impl fmt::Debug for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self, f)

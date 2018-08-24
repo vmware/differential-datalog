@@ -65,6 +65,13 @@ impl fmt::Display for Uint {
     }
 }
 
+impl fmt::LowerHex for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.x)
+    }
+}
+
+
 impl fmt::Debug for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self, f)
