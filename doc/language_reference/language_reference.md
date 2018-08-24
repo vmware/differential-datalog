@@ -183,6 +183,11 @@ arg ::= arg_name ":" simple_type_spec
 1. The body of the function must be a valid expression whose type
    matches the return type of the function.
 1. Recursive functions are not allowed.
+1. Just like regular functions, `extern` functions are expected to be
+   side-effect-free.  While there is nothing preventing the user from
+   defining functions with side effects (e.g., for tracing purposes),
+   the language does not give any guarantees on the number, order, or 
+   timing of calls to these functions.
 
 ## Relations
 
