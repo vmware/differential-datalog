@@ -63,3 +63,13 @@ commit;
 echo Pow2:;
 dump Pow2;
 
+start;
+
+insert NetHost(1, NetHost{0xaabbccdd, 0x112233445566}),
+insert NetHost(2, NetHost{0xa0b0c0d0, 0x102030405060});
+
+commit;
+
+echo NetHostString:;
+dump NetHostString;
+

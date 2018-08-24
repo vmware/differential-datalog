@@ -62,6 +62,30 @@ relation Pow2(p: string)
 
 Pow2($"The square of ${x} is ${x*x}") :- Number(x).
 
+typedef ip_addr_t = IPAddr{addr: bit<32>}
+typedef mac_addr_t = MACAddr{addr: bit<48>}
+
+function ip_addr_t2string(ip: ip_addr_t): string = {
+    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+}
+
+function mac_addr_t2string(mac: mac_addr_t): string = {
+    $"${mac.addr[47:40]}:${mac.addr[39:32]}:${mac.addr[31:24]}:${mac.addr[23:16]}:${mac.addr[15:8]}:${mac.addr[7:0]}"
+}
+
+typedef nethost_t = NetHost {
+    ip:  bit<32>,
+    mac: bit<48>
+}
+
+function nethost_t2string(h: nethost_t): string = {
+    $"Host: IP=${h.ip}, MAC=${h.mac}"
+}
+
+input relation NetHost(id: bit<64>, h: nethost_t)
+relation NetHostString(id: bit<64>, s: string)
+
+NetHostString(id, $"{h}") :- NetHost(id, h).
 
 /*
  * Example: Advanced features
