@@ -151,5 +151,6 @@ forward_binop!(impl Add for Uint, add);
 forward_binop!(impl Sub for Uint, sub);
 forward_binop!(impl Div for Uint, div);
 forward_binop!(impl Rem for Uint, rem);
+forward_binop!(impl Mul for Uint, mul);
 forward_binop!(impl BitAnd for Uint, bitand);
 forward_binop!(impl BitOr for Uint, bitor);

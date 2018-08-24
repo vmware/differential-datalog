@@ -54,7 +54,17 @@ HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
 
 
 /*
- * Example 3: Advanced features
+ * Example: Strings
+ */
+
+input relation Number(n: bigint)
+relation Pow2(p: string)
+
+Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+
+
+/*
+ * Example: Advanced features
  */
 
 // option_t is a generic type that can be use to represent optional values of any other type.

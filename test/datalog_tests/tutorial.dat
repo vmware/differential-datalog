@@ -45,3 +45,21 @@ dump Flow;
 
 echo Flows generated using FTL:;
 dump Flow1;
+
+start;
+
+insert Number(1),
+insert Number(10),
+insert Number(100),
+insert Number(1000),
+insert Number(10000),
+insert Number(100000),
+insert Number(1000000),
+insert Number(10000000),
+insert Number(100000000);
+
+commit;
+
+echo Pow2:;
+dump Pow2;
+

@@ -148,3 +148,4 @@ forward_binop!(impl Add for Int, add);
 forward_binop!(impl Sub for Int, sub);
 forward_binop!(impl Div for Int, div);
 forward_binop!(impl Rem for Int, rem);
+forward_binop!(impl Mul for Int, mul);
