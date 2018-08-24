@@ -62,15 +62,19 @@ goldenTests = do
   inFiles <- mapM (\dlFile -> do let datFile = replaceExtension dlFile "dat"
                                  exists <- doesFileExist datFile
                                  return $ if exists then [dlFile, datFile, datFile] else [dlFile]) dlFiles
-  return $ testGroup "datalog tests"
-    [ testGroup (takeBaseName $ head files) $
-      (goldenVsFile "parser test" (head expect) (head output) (parserTest $ head files) :
-       if shouldFail $ head files
-          then []
-          else [goldenVsFiles "compiler test" (tail expect) (tail output) (compilerTest $ head files)])
-    | files <- inFiles
-    , let expect = map (uncurry replaceExtension) $ zip files [".ast.expected", ".dump.expected", ".dump.expected"]
-    , let output = map (uncurry replaceExtension) $ zip files [".ast", ".dump", ".c.dump"]]
+  let parser_tests = testGroup "parser tests" $
+          [ goldenVsFile (takeBaseName file) expect output (parserTest file)
+            | (file:_) <- inFiles
+            , let expect = replaceExtension file ".ast.expected"
+            , let output = replaceExtension file ".ast"]
+  let compiler_tests = testGroup "compiler tests" $ catMaybes $
+          [ if shouldFail $ file
+               then Nothing
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest file)
+            | file:files <- inFiles
+            , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
+            , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
+  return $ testGroup "datalog tests" [parser_tests, compiler_tests]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
