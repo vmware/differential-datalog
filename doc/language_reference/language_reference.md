@@ -48,14 +48,19 @@ decl ::= typedef
 ## Types
 
 Type definition introduces a new user-defined type, optionally
-parameterized by one or more type arguments.  Type given without
-definition is an *opaque* type implemented outside of the language.
+parameterized by one or more type arguments.
 
 ```EBNF
 typedef ::= "typedef" type_name (* unique type name *)
             ["<" typevar_name [("," typevar_name)*] ">"] (* optional type arguments *)
-            ["=" type_spec] (* optional type definition *)
+            "=" type_spec (* type definition *)
+          | "extern type" type_name ["<" typevar_name [("," typevar_name)*] ">"]
 ```
+
+The second form above declares an externally defined type.  Variables
+of such types can be used just like any normal variables.  The only builtin operators
+defined for extern types are `==` and `!=`.  All other operations must
+be implemented as extern functions.
 
 ```EBNF
 (* A full form of typespec. Used in typedef's only. *)

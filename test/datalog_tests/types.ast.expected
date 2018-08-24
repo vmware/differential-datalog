@@ -1,6 +1,6 @@
 typedef T16 = t15
 typedef T17 = bigint
-typedef set<'A>
+extern type set<'A>
 typedef t00 = bigint
 typedef t01 = bool
 typedef t02 = string

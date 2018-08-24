@@ -13,7 +13,7 @@ typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef option_t<'A> = None{} | Some{value: 'A}
-typedef set<'A>
+extern type set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
 extern function __builtin_2string (x: 'X): string
 relation Flow [Flow]

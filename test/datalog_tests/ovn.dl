@@ -15,8 +15,6 @@ function is_some(x: option_t<'A>): bool = {
     }
 }
 
-typedef set_t<'A>
-
 typedef uuid = bit<128>
 
 typedef mac_addr_t = bit<48>
@@ -771,7 +769,7 @@ relation Logical_Switch_Port_macs (
     mac:                 mac_addr_t
 )
 
-extern function extract_ips(str: string): set_t<ip_addr_t>
+extern function extract_ips(str: string): set<ip_addr_t>
 
 extern function extract_mac(str: string): (mac_addr_t, string)
 
@@ -812,7 +810,7 @@ relation Logical_Switch_Port_ps_macs (
 )
 
 
-extern function extract_subnets(str: string): set_t<ip_subnet_t>
+extern function extract_subnets(str: string): set<ip_subnet_t>
 
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),

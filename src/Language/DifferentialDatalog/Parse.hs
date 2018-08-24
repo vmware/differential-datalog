@@ -99,6 +99,7 @@ reservedNames = ["_",
                  "skip",
                  "string",
                  "true",
+                 "type",
                  "typedef",
                  "var"] ++ rustKeywords
 
@@ -224,7 +225,11 @@ decl = withPosMany $
 
 typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
-                             (optionMaybe $ reservedOp "=" *> typeSpec)
+                             (Just <$ reservedOp "=" <*> typeSpec)
+       <|>
+          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> identifier <*>
+                             (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                             (return Nothing)
 
 func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> funcIdent

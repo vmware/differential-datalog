@@ -267,11 +267,16 @@ instance WithName TypeDef where
     name = tdefName
 
 instance PP TypeDef where
-    pp TypeDef{..} = "typedef" <+> pp tdefName <>
+    pp TypeDef{..} | isJust tdefType
+                   = "typedef" <+> pp tdefName <>
                      (if null tdefArgs
                          then empty
                          else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
-                     maybe empty (("=" <+>) . pp) tdefType
+                     "=" <+> (pp $ fromJust tdefType)
+    pp TypeDef{..} = "extern type" <+> pp tdefName <>
+                     (if null tdefArgs
+                         then empty
+                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">")
 
 instance Show TypeDef where
     show = render . pp

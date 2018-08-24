@@ -2,7 +2,7 @@ typedef Human = Human{h: person}
 typedef Parent = Parent{child: person, parent: person}
 typedef Sib = Sib{s1: person, s2: person}
 typedef person = string
-typedef set<'A>
+extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 input relation Human [Human]
 input relation Parent [Parent]

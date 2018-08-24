@@ -44,7 +44,7 @@ tOSTRING_FUNC_SUFFIX = "2string"
 datalogPreamble :: String
 datalogPreamble = [r|/** BEGIN PREAMBLE **/
 
-typedef set<'A>
+extern type set<'A>
 
 extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
 

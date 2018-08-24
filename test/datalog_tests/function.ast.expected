@@ -2,7 +2,7 @@ typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef C = C{f1: string, f2: string}
 typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
-typedef set<'A>
+extern type set<'A>
 typedef string_syn = string
 extern function __builtin_2string (x: 'X): string
 function a0 (): bigint =

@@ -69,15 +69,14 @@ typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet
 typedef mac_addr_t = bit<48>
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
-typedef set<'A>
-typedef set_t<'A>
+extern type set<'A>
 typedef uuid = bit<128>
 extern function __builtin_2string (x: 'X): string
 extern function build_dhcp_netmask (cidr: string): string
 extern function eth_addr_from_string (str: string): option_t<mac_addr_t>
-extern function extract_ips (str: string): set_t<ip_addr_t>
+extern function extract_ips (str: string): set<ip_addr_t>
 extern function extract_mac (str: string): (mac_addr_t, string)
-extern function extract_subnets (str: string): set_t<ip_subnet_t>
+extern function extract_subnets (str: string): set<ip_subnet_t>
 extern function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 extern function ip_address_and_port_from_lb_key (key: string): ip_port_t
 extern function ip_parse (str: string): option_t<ip_addr_t>

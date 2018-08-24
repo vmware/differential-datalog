@@ -42,7 +42,7 @@ syn keyword dlConstant         true false
 syn keyword dlOperator	        default
 
 "Keywords for ADTs
-syn keyword dlType	        bool string bigint bit typedef
+syn keyword dlType	        bool string bigint bit type typedef
 
 syn sync lines=250
 

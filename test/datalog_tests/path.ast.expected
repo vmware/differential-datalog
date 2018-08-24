@@ -1,7 +1,7 @@
 typedef Edge = Edge{s: node, t: node}
 typedef Path = Path{s1: node, s2: node}
 typedef node = string
-typedef set<'A>
+extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 input relation Edge [Edge]
 relation Path [Path]

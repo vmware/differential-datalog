@@ -2,7 +2,7 @@ typedef Answer = Answer{x: station}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Reach = Reach{s1: station, s2: station}
 typedef line = bigint
-typedef set<'A>
+extern type set<'A>
 typedef station = string
 extern function __builtin_2string (x: 'X): string
 relation Answer [Answer]

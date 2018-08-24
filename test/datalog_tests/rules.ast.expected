@@ -6,7 +6,7 @@ typedef T = T{x: bigint, y: string}
 typedef X = X{b: bigint, c: R3, d: R1}
 typedef Y = Y{b: bigint, e: string}
 typedef Z = Z{x: bigint, y: R3}
-typedef set<'A>
+extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 input relation R1 [R1]
 input relation R2 [(bigint, bigint)]
