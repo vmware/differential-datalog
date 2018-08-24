@@ -40,8 +40,8 @@ typedef stage = LS_IN_ACL
               | LS_OUT_PORT_SEC_L2
 
 relation Flow(lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string)
-ground relation Logical_Router(lr: bigint)
-ground relation Logical_Router_Port(name: string, lr: bigint, mac: string, enabled: bool)
+input relation Logical_Router(lr: bigint)
+input relation Logical_Router_Port(name: string, lr: bigint, mac: string, enabled: bool)
 
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lrouter.ftl
@@ -147,7 +147,7 @@ for (lrp in Logical_Router_Port if lrp.enabled) {
 /////////////////////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-acls.ftl
 
-ground relation Logical_Switch (
+input relation Logical_Switch (
     ls:  bigint,
     has_stateful_acl: bool,
     has_load_balancer: bool
@@ -280,7 +280,7 @@ for (ls in Logical_Switch if ls.has_stateful_acl) {
     Flow(ls.ls, LS_OUT_PRE_ACL, 100, "ip", "{ reg0[0] = 1; next; }")
 }
 
-ground relation Load_Balancer (
+input relation Load_Balancer (
     lb:           bigint,
     ls:           bigint,
     ip_addresses: string,
@@ -365,7 +365,7 @@ for (ls in Logical_Switch) {
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch.ftl
 
-ground relation Logical_Switch_Port (
+input relation Logical_Switch_Port (
     lsp:                     bigint,
     ls:                      bigint,
     parent:                  option_t<string>,

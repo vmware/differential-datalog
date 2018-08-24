@@ -7,12 +7,12 @@
 typedef Category = CategoryStarWars
                  | CategoryOther
 
-// Declare two input relations (the `ground` keyword indicates that
-// these relations can only be populated by ground facts and cannot
+// Declare two input relations (the `input` keyword indicates that
+// these relations can only be populated by input facts and cannot
 // appear in the head of a rule).
 // `string` is a primitive type in ddlog.
-ground relation Word1(word: string, cat: Category)
-ground relation Word2(word: string, cat: Category)
+input relation Word1(word: string, cat: Category)
+input relation Word2(word: string, cat: Category)
 
 // Computed relation populated by facts derived from rules.
 relation Phrases(phrase: string)
@@ -32,10 +32,10 @@ typedef IPAddr  = bit<32>
 typedef NetMask = bit<32>
 
 // IP host specified by its name and address.
-ground relation Host(id: UUID, name: string, ip: IPAddr)
+input relation Host(id: UUID, name: string, ip: IPAddr)
 
 // IP subnet specified by its IP prefix and mask
-ground relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+input relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
@@ -63,7 +63,7 @@ typedef option_t<'A> = None
                      | Some {value : 'A}
 
 // The Load_Balancer relation instantiates option_t type for strings.
-ground relation Load_Balancer (
+input relation Load_Balancer (
     lb:           bigint, // bigint is a primitive ddlog type that models 
                        // unbounded mathematical integers.
     ls:           bigint,
@@ -75,7 +75,7 @@ ground relation Load_Balancer (
 typedef stage = LS_IN_PRE_LB
               | LS_OUT_PRE_LB
 
-ground relation Logical_Switch (
+input relation Logical_Switch (
     ls:  bigint
 )
 

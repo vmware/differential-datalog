@@ -10,11 +10,11 @@ typedef set<'A>
 typedef stage = LS_IN_ACL{} | LS_OUT_ACL{} | LR_IN_ADMISSION{} | LR_IN_IP_INPUT{} | LR_IN_UNSNAT{} | LR_OUT_SNAT{} | LR_IN_DNAT{} | LR_IN_ARP_RESOLVE{} | LR_IN_ARP_REQUEST{} | LR_IN_DEFRAG{} | LR_OUT_DELIVERY{} | LS_IN_LB{} | LS_OUT_LB{} | LS_IN_PRE_ACL{} | LS_OUT_PRE_ACL{} | LS_IN_PRE_LB{} | LS_OUT_PRE_LB{} | LS_IN_PRE_STATEFUL{} | LS_OUT_PRE_STATEFUL{} | LS_IN_STATEFUL{} | LS_OUT_STATEFUL{} | LS_IN_PORT_SEC_L2{} | LS_IN_PORT_SEC_IP{} | LS_IN_PORT_SEC_ND{} | LS_IN_ARP_RSP{} | LS_IN_DHCP_OPTIONS{} | LS_IN_DHCP_RESPONSE{} | LS_IN_L2_LKUP{} | LS_OUT_PORT_SEC_IP{} | LS_OUT_PORT_SEC_L2{}
 function __builtin_2string (x: 'X): string
 relation Flow [Flow]
-ground relation Load_Balancer [Load_Balancer]
-ground relation Logical_Router [Logical_Router]
-ground relation Logical_Router_Port [Logical_Router_Port]
-ground relation Logical_Switch [Logical_Switch]
-ground relation Logical_Switch_Port [Logical_Switch_Port]
+input relation Load_Balancer [Load_Balancer]
+input relation Logical_Router [Logical_Router]
+input relation Logical_Router_Port [Logical_Router_Port]
+input relation Logical_Switch [Logical_Switch]
+input relation Logical_Switch_Port [Logical_Switch_Port]
 relation Logical_Switch_Port_IP [Logical_Switch_Port_IP]
 Flow(.lr=lr.lr, .stage=LR_IN_ADMISSION{}, .prio=100, .matchStr="vlan.present || eth.src[40]", .actionStr="{ drop; }") :- Logical_Router[lr].
 Flow(.lr=lrp.lr, .stage=LR_IN_ADMISSION{}, .prio=50, .matchStr=(((("inport == " ++ p) ++ " && (eth.mcast || eth.dst == ") ++ e) ++ ")"), .actionStr="{ next; }") :- Logical_Router_Port[lrp], lrp.enabled, var p = lrp.name, var e = lrp.mac.

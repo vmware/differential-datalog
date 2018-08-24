@@ -1,11 +1,15 @@
-Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 19):
-unexpected ":"
-expecting letter or digit, "_", "(" or "["
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 1):
+unexpected 'g'
+expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
 
-./test/datalog_tests/rules.fail.dl:5:1-7:1: Multiple definitions of type R1 at the following locations:
-  ./test/datalog_tests/rules.fail.dl:5:1-7:1
-  ./test/datalog_tests/rules.fail.dl:7:1-9:1
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 7, column 1):
+unexpected 'g'
+expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
 
-error: ./test/datalog_tests/rules.fail.dl:12:1-13:1: At most one relation in the right-hand side of a rule can be mutually recursive with its head. The following RHS literals are mutually recursive with R2: R3(.a3=x, .b3=y), R4(.a4=y, .b4=z)
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 5, column 1):
+unexpected 'g'
+expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
 
-error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 5, column 1):
+unexpected 'g'
+expecting "typedef", "input", "relation", "function", identifier, "for" or end of input

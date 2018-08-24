@@ -1,4 +1,4 @@
-ground relation X(field: bigint)
+input relation X(field: bigint)
 relation Z(field: bigint)
 
 relation W(f1: bigint, f2: bigint, f3: bigint)

@@ -332,7 +332,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "ground" else empty) <+>
+    pp Relation{..} = (if relGround then "input" else empty) <+>
                       "relation" <+> pp relName <+> "[" <> pp relType <> "]"
 
 instance Show Relation where

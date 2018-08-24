@@ -1,7 +1,7 @@
 typedef line = bigint
 typedef station = string
 
-ground relation Links(l: line, s1: station, s2: station)
+input relation Links(l: line, s1: station, s2: station)
 
 
 

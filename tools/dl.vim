@@ -22,7 +22,7 @@ syn match  dlDelimiter	       "[\[\]!?@#\~&|\^=<>%+-,;\:\.@]"
 syn region dlRawString start='\[|' end="|]"
 
 "Regular keywords
-syn keyword dlStatement        and function not or ground relation match var let switch FlatMap Aggregate
+syn keyword dlStatement        and function not or input relation match var let switch FlatMap Aggregate
 
 syn keyword dlTodo             contained TODO FIXME XXX
 

@@ -87,6 +87,7 @@ reservedNames = ["_",
                  "function",
                  "if",
                  "in",
+                 "input",
                  "insert",
                  "bigint",
                  "let",
@@ -231,7 +232,7 @@ func = Function nopos <$  reserved "function"
                       <*> (optionMaybe $ reservedOp "=" *> expr)
 
 relation = do
-    ground <-  True <$ reserved "ground" <* reserved "relation" 
+    ground <-  True <$ reserved "input" <* reserved "relation"
            <|> False <$ reserved "relation"
     relName <- relIdent
     ((do start <- getPosition
@@ -245,7 +246,7 @@ relation = do
       <|>
        (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
            return [SpRelation rel]))
-        
+
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = ForStatement nopos <$ reserved "for"

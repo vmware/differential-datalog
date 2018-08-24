@@ -4,8 +4,8 @@ typedef Sib = Sib{s1: person, s2: person}
 typedef person = string
 typedef set<'A>
 function __builtin_2string (x: 'X): string
-ground relation Human [Human]
-ground relation Parent [Parent]
+input relation Human [Human]
+input relation Parent [Parent]
 relation Sib [Sib]
 Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (x != y).
 Parent(.child="Alice", .parent="Bob").

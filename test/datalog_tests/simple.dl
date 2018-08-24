@@ -1,7 +1,7 @@
 typedef person = string
 
-ground relation Human(h: person)
-ground relation Parent(child: person, parent: person)
+input relation Human(h: person)
+input relation Parent(child: person, parent: person)
 
 relation Sib(s1: person, s2: person)
 

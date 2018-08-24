@@ -179,8 +179,8 @@ arg ::= arg_name ":" simple_type_spec
 ## Relations
 
 ```EBNF
-relation ::= ["ground"] "relation" rel_name "(" [arg ","] arg ")"
-           | ["ground"] "relation" rel_name "[" simple_type_spec "]"
+relation ::= ["input"] "relation" rel_name "(" [arg ","] arg ")"
+           | ["input"] "relation" rel_name "[" simple_type_spec "]"
 ```
 
 The first form declares relation by listing its arguments.  The second 

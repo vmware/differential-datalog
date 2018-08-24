@@ -1,12 +1,12 @@
 typedef R1 = bigint
 
-ground relation R1[R1]
-ground relation R2[(bigint, bigint)]
+input relation R1[R1]
+input relation R2[(bigint, bigint)]
 
 R1[1].
 R2[(1,2)].
 
-ground relation R3(f1: bigint, f2: bool)
+input relation R3(f1: bigint, f2: bool)
 relation R4[R3]
 relation R5[bigint]
 relation R6(f: bigint)
@@ -15,11 +15,11 @@ R4[x] :- R3[x].
 R5[x.f1] :- R3[x].
 R6(x.f1) :- R3[x].
 
-ground relation X(b: bigint, c: R3, d: R1)
+input relation X(b: bigint, c: R3, d: R1)
 relation Z(x: bigint, y: R3)
 Z(a.b, a.c) :- X[a].
 
-ground relation Y(b: bigint, e: string)
+input relation Y(b: bigint, e: string)
 relation T(x: bigint, y: string)
 
 T(a.b, e) :- X[a], Y(a.d, e).

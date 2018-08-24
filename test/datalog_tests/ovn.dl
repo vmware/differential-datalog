@@ -56,13 +56,13 @@ typedef ip_subnet_t = IPSubnet4 {ip4_subnet : ip4_subnet_t}
     "isRoot": true},
 */
 
-ground relation NB_Global (
+input relation NB_Global (
     nb_cfg: bigint,
     sb_cfg: bigint,
     hv_cfg: bigint
 )
 
-ground relation NB_Global_external_ids (
+input relation NB_Global_external_ids (
     key:   string,
     value: string
 )
@@ -95,7 +95,7 @@ ground relation NB_Global_external_ids (
                             "ephemeral": true}},
     "indexes": [["target"]]},
 */
-ground relation Connection (
+input relation Connection (
     id:                 uuid,
     target:             string,
     is_connected:       bool,
@@ -103,17 +103,17 @@ ground relation Connection (
     inactivity_probe:   option_t<bigint>
 )
 
-ground relation Connection_other_config (
+input relation Connection_other_config (
     connection:   uuid,
     other_config: string
 )
 
-ground relation Connection_external_ids (
+input relation Connection_external_ids (
     connection: uuid,
     value:      string
 )
 
-ground relation Connection_status (
+input relation Connection_status (
     connection: uuid,
     key:        string,
     value:      string
@@ -157,19 +157,19 @@ ground relation Connection_status (
     "isRoot": true},
 */
 
-ground relation Logical_Switch (
+input relation Logical_Switch (
     id:         uuid,
     name:       string,
     _type:      string
 )
 
-ground relation Logical_Switch_other_config (
+input relation Logical_Switch_other_config (
     logical_switch: uuid,
     key:            string,
     value:          string
 )
 
-ground relation Logical_Switch_external_ids (
+input relation Logical_Switch_external_ids (
     logical_switch: uuid,
     key:            string,
     value:          string
@@ -224,7 +224,7 @@ ground relation Logical_Switch_external_ids (
     "isRoot": false},
 */
 
-ground relation Logical_Switch_Port (
+input relation Logical_Switch_Port (
     id:                     uuid,
     logical_switch:         uuid,
     parent:                 option_t<string>,
@@ -239,28 +239,28 @@ ground relation Logical_Switch_Port (
     _type:                  string
 )
 
-ground relation Logical_Switch_Port_options (
+input relation Logical_Switch_Port_options (
     logical_switch_port:    uuid,
     key:                    string,
     value:                  string
 )
 
-ground relation Logical_Switch_Port_addresses (
+input relation Logical_Switch_Port_addresses (
     logical_switch_port:    uuid,
     address:                string
 )
 
-ground relation Logical_Switch_Port_dynamic_addresses (
+input relation Logical_Switch_Port_dynamic_addresses (
     logical_switch_port:    uuid,
     dynamic_address:        string
 )
 
-ground relation Logical_Switch_Port_port_security (
+input relation Logical_Switch_Port_port_security (
     logical_switch_port:    uuid,
     port_security:          string
 )
 
-ground relation Logical_Switch_Port_external_ids (
+input relation Logical_Switch_Port_external_ids (
     logical_switch_port:    uuid,
     key:                    string,
     value:                  string
@@ -280,17 +280,17 @@ ground relation Logical_Switch_Port_external_ids (
     "isRoot": true},
 */
 
-ground relation Address_Set (
+input relation Address_Set (
     id:             uuid,
     name:           string
 )
 
-ground relation Address_Set_addresses (
+input relation Address_Set_addresses (
     address_set:    uuid,
     address:        string
 )
 
-ground relation Address_Set_external_ids (
+input relation Address_Set_external_ids (
     address_set:    uuid,
     key:            string,
     value:          string
@@ -313,20 +313,20 @@ ground relation Address_Set_external_ids (
     "isRoot": true},
 */
 
-ground relation Load_Balancer (
+input relation Load_Balancer (
     id:             uuid,
     logical_switch: uuid,
     protocol:       option_t<string>,
     name:           string
 )
 
-ground relation Load_Balancer_vips (
+input relation Load_Balancer_vips (
     load_balancer:  uuid,
     key:            string,
     value:          string
 )
 
-ground relation Load_Balancer_external_ids (
+input relation Load_Balancer_external_ids (
     load_balancer:  uuid,
     key:            string,
     value:          string
@@ -359,7 +359,7 @@ ground relation Load_Balancer_external_ids (
     "isRoot": false},
 */
 
-ground relation ACL (
+input relation ACL (
     id:                 uuid,
     name:               option_t<string>,
     logical_switch:     uuid,
@@ -371,7 +371,7 @@ ground relation ACL (
     severity:           option_t<string>
 )
 
-ground relation ACL_external_ids (
+input relation ACL_external_ids (
     acl:                uuid,
     key:                string,
     value:              string
@@ -404,7 +404,7 @@ ground relation ACL_external_ids (
                      "min": 0, "max": "unlimited"}}},
     "isRoot": false},
 */
-ground relation QoS (
+input relation QoS (
     id:             uuid,
     logical_switch: uuid,
     priority:       bigint,
@@ -412,19 +412,19 @@ ground relation QoS (
     _match:         string
 )
 
-ground relation QoS_action (
+input relation QoS_action (
     qos:            uuid,
     key:            string,
     value:          bigint
 )
 
-ground relation QoS_bandwidth (
+input relation QoS_bandwidth (
     qos:            uuid,
     key:            string,
     value:          bigint
 )
 
-ground relation QoS_external_ids (
+input relation QoS_external_ids (
     qos:            uuid,
     key:            string,
     value:          string
@@ -465,19 +465,19 @@ ground relation QoS_external_ids (
                      "min": 0, "max": "unlimited"}}},
     "isRoot": true},
 */
-ground relation Logical_Router (
+input relation Logical_Router (
     id:             uuid,
     enabled:        option_t<bool>,
     name:           string
 )
 
-ground relation Logical_Router_options (
+input relation Logical_Router_options (
     logical_router: uuid,
     key:            string,
     value:          string
 )
 
-ground relation Logical_Router_external_ids (
+input relation Logical_Router_external_ids (
     logical_router: uuid,
     key:            string,
     value:          string
@@ -514,7 +514,7 @@ ground relation Logical_Router_external_ids (
     "isRoot": false},
 */
 
-ground relation Logical_Router_Port (
+input relation Logical_Router_Port (
     id:                     uuid,
     logical_router:         uuid,
     name:                   string,
@@ -523,24 +523,24 @@ ground relation Logical_Router_Port (
     enabled:                option_t<bool>
 )
 
-ground relation Logical_Router_Port_options (
+input relation Logical_Router_Port_options (
     logical_router_port:    uuid,
     key:                    string,
     value:                  string
 )
 
-ground relation Logical_Router_Port_networks (
+input relation Logical_Router_Port_networks (
     logical_router_port:    uuid,
     network:                string
 )
 
-ground relation Logical_Router_Port_ipv6_ra_configs (
+input relation Logical_Router_Port_ipv6_ra_configs (
     logical_router_port:    uuid,
     key:                    string,
     value:                  string
 )
 
-ground relation Logical_Router_Port_external_ids (
+input relation Logical_Router_Port_external_ids (
     logical_router_port:    uuid,
     key:                    string,
     value:                  string
@@ -561,7 +561,7 @@ ground relation Logical_Router_Port_external_ids (
                      "min": 0, "max": "unlimited"}}},
     "isRoot": false},
 */
-ground relation Logical_Router_Static_Route (
+input relation Logical_Router_Static_Route (
     id:                             uuid,
     logical_router:                 uuid,
     ip_prefix:                      string,
@@ -570,7 +570,7 @@ ground relation Logical_Router_Static_Route (
     output_port:                    option_t<string>
 )
 
-ground relation Logical_Router_Static_Route_external_ids (
+input relation Logical_Router_Static_Route_external_ids (
     logical_router_static_route:    uuid,
     key:                            string,
     value:                          string
@@ -595,7 +595,7 @@ ground relation Logical_Router_Static_Route_external_ids (
                      "min": 0, "max": "unlimited"}}},
     "isRoot": false},
 */
-ground relation NAT (
+input relation NAT (
     id:             uuid,
     logical_router: uuid,
     external_ip:    string,
@@ -605,7 +605,7 @@ ground relation NAT (
     _type:          option_t<string>
 )
 
-ground relation NAT_external_ids (
+input relation NAT_external_ids (
     nat:            uuid,
     key:            string,
     value:          string
@@ -622,18 +622,18 @@ ground relation NAT_external_ids (
                      "min": 0, "max": "unlimited"}}},
     "isRoot": true},
 */
-ground relation DHCP_Options (
+input relation DHCP_Options (
     id:             uuid,
     cidr:           string
 )
 
-ground relation DHCP_Options_options (
+input relation DHCP_Options_options (
     dhcp_options:   uuid,
     key:            string,
     value:          string
 )
 
-ground relation DHCP_Options_external_ids (
+input relation DHCP_Options_external_ids (
     dhcp_options:   uuid,
     key:            string,
     value:          string
@@ -653,18 +653,18 @@ ground relation DHCP_Options_external_ids (
                          "max": "unlimited"}}},
     "isRoot": true},
 */
-ground relation DNS (
+input relation DNS (
     id:             uuid,
     logical_switch: uuid
 )
 
-ground relation DNS_records (
+input relation DNS_records (
     dns:            uuid,
     key:            string,
     value:          string
 )
 
-ground relation DNS_external_ids (
+input relation DNS_external_ids (
     dns:            uuid,
     key:            string,
     value:          string
@@ -685,7 +685,7 @@ ground relation DNS_external_ids (
                                   "max": "unlimited"}}},
     "maxRows": 1},
 */
-ground relation SSL (
+input relation SSL (
     id:                 uuid,
     private_key:        string,
     certificate:        string,
@@ -694,7 +694,7 @@ ground relation SSL (
     ssl_ciphers:        string
 )
 
-ground relation SSL_external_ids (
+input relation SSL_external_ids (
     ssl:                uuid,
     key:                string,
     value:              string
@@ -717,7 +717,7 @@ ground relation SSL_external_ids (
     "indexes": [["name"]],
     "isRoot": false}}
 */
-ground relation Gateway_Chassis (
+input relation Gateway_Chassis (
     id:                 uuid,
     logical_router:     uuid,
     name:               string,
@@ -725,13 +725,13 @@ ground relation Gateway_Chassis (
     priority:           bigint
 )
 
-ground relation Gateway_Chassis_external_ids (
+input relation Gateway_Chassis_external_ids (
     gateway_chassis:    uuid,
     key:                string,
     value:              string
 )
 
-ground relation Gateway_Chassis_options (
+input relation Gateway_Chassis_options (
     gateway_chassis:    uuid,
     key:                string,
     value:              string

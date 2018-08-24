@@ -1,4 +1,4 @@
-ground relation Strings(s: string)
+input relation Strings(s: string)
 
 Strings("").
 Strings("foo").

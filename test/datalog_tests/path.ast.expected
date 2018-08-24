@@ -3,7 +3,7 @@ typedef Path = Path{s1: node, s2: node}
 typedef node = string
 typedef set<'A>
 function __builtin_2string (x: 'X): string
-ground relation Edge [Edge]
+input relation Edge [Edge]
 relation Path [Path]
 Path(.s1=x, .s2=y) :- Edge(.s=x, .t=y).
 Path(.s1=x, .s2=z) :- Path(.s1=x, .s2=w), Edge(.s=w, .t=z).
