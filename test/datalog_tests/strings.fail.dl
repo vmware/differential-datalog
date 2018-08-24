@@ -27,18 +27,18 @@ function strings(): () = {
 
 //---
 
-typedef serializable_t = ConsInt {x: int}
+typedef serializable_t = ConsInt {x: bigint}
                        | ConsBit {y: bit<32>}
                        | ConsBool{z: bool}
                        | Cons0{}
 
 // error: argument type must be serializable_t
-function serializable_t2string(x: int): string = {
+function serializable_t2string(x: bigint): string = {
     "foo"
 }
 
 function tostring2(): () = {
-    var a: int     = 5;
+    var a: bigint  = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
     var d: string  = "foo";

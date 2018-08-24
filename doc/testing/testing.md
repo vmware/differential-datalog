@@ -38,7 +38,7 @@ The following example computes all paths in a graph as a transitive closure of t
 ```
 typedef node = string
 
-ground relation Edge(s: node, t: node)
+input relation Edge(s: node, t: node)
 
 relation Path(s1: node, s2: node)
 

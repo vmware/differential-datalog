@@ -1,4 +1,4 @@
-Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 19):
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 18):
 unexpected ":"
 expecting letter or digit, "_", "(" or "["
 

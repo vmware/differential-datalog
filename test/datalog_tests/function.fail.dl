@@ -1,6 +1,6 @@
 // variable declaration cannot be the last statement in a block
 function vars(): () = {
-    var x: int
+    var x: bigint
 }
 
 //---
@@ -57,11 +57,11 @@ function shadow(): () = {
 
 // recursive functions
 
-function f1(arg: int): int = {
+function f1(arg: bigint): bigint = {
     f2(arg)
 }
 
-function f2(arg: int): int = {
+function f2(arg: bigint): bigint = {
     f1(arg)
 }
 
@@ -94,10 +94,10 @@ function f(x: t<'A>): () = {
 
 function parameterized(x: 'A, y: 'A): 'A
 
-function use_parameterized(x: string, y: int): string = 
+function use_parameterized(x: string, y: bigint): string = 
     parameterized(x,y) // error: x and y must have the same type
 
 //---
 
-function foo(x: int): string = 
+function foo(x: bigint): string = 
     x.bar // x is not a struct

@@ -1,8 +1,7 @@
 Failed to parse input file: "./test/datalog_tests/dupfield.fail.dl" (line 2, column 1):
 unexpected 't'
-expecting "typedef", "ground", "relation", "function", identifier, "for" or end of input
+expecting "typedef", "extern", "input", "relation", "function", identifier, "for" or end of input
 
-typedef f = int
-typedef set<'A>
-function __builtin_2string (x: 'X): string
-function f (): int
+Failed to parse input file: "./test/datalog_tests/dupfield.fail.dl" (line 6, column 1):
+unexpected end of input
+expecting "="
