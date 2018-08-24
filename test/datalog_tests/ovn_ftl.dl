@@ -39,9 +39,9 @@ typedef stage = LS_IN_ACL
               | LS_OUT_PORT_SEC_IP
               | LS_OUT_PORT_SEC_L2
 
-relation Flow(lr: int, stage: stage, prio: int, matchStr: string, actionStr: string)
-ground relation Logical_Router(lr: int)
-ground relation Logical_Router_Port(name: string, lr: int, mac: string, enabled: bool)
+relation Flow(lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string)
+input relation Logical_Router(lr: bigint)
+input relation Logical_Router_Port(name: string, lr: bigint, mac: string, enabled: bool)
 
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lrouter.ftl
@@ -147,8 +147,8 @@ for (lrp in Logical_Router_Port if lrp.enabled) {
 /////////////////////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch-acls.ftl
 
-ground relation Logical_Switch (
-    ls:  int,
+input relation Logical_Switch (
+    ls:  bigint,
     has_stateful_acl: bool,
     has_load_balancer: bool
 )
@@ -280,9 +280,9 @@ for (ls in Logical_Switch if ls.has_stateful_acl) {
     Flow(ls.ls, LS_OUT_PRE_ACL, 100, "ip", "{ reg0[0] = 1; next; }")
 }
 
-ground relation Load_Balancer (
-    lb:           int,
-    ls:           int,
+input relation Load_Balancer (
+    lb:           bigint,
+    ls:           bigint,
     ip_addresses: string,
     protocol:     option_t<string>,
     name:         string
@@ -365,12 +365,12 @@ for (ls in Logical_Switch) {
 ///////////////////////////
 // https://github.com/blp/ovs-reviews/blob/ftl/ovn/northd/lswitch.ftl
 
-ground relation Logical_Switch_Port (
-    lsp:                     int,
-    ls:                      int,
+input relation Logical_Switch_Port (
+    lsp:                     bigint,
+    ls:                      bigint,
     parent:                  option_t<string>,
-    tag_request:             option_t<int>,
-    tag:                     option_t<int>,
+    tag_request:             option_t<bigint>,
+    tag:                     option_t<bigint>,
     /* can up and enabled fields really be missing? */
     up:                      option_t<bool>,
     enabled:                 bool,
@@ -439,13 +439,13 @@ for (ls in Logical_Switch)
 
 
 relation Logical_Switch_Port_IP (
-    lspip:               int,
-    ip_version:          int,
-    lsp:                 int,
+    lspip:               bigint,
+    ip_version:          bigint,
+    lsp:                 bigint,
     lsp_name:            string,
     lsp_enabled:         bool,
     lsp_type:            string,
-    ls:                  int,
+    ls:                  bigint,
     mac:                 string,
     ip:                  string,
     sn_ip:               string,

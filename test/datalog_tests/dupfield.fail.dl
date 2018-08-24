@@ -1,8 +1,8 @@
 // two fields with the same name
-type t = Constr { f: int, f: int }
+type t = Constr { f: bigint, f: bigint }
 
 //---
 
 // Two symbols with the same name
-typedef f = int
-function f(): int
+typedef f = bigint
+function f(): bigint

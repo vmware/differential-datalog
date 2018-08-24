@@ -1,7 +1,7 @@
-ground relation X(field: int)
-relation Z(field: int)
+input relation X(field: bigint)
+relation Z(field: bigint)
 
-relation W(f1: int, f2: int, f3: int)
+relation W(f1: bigint, f2: bigint, f3: bigint)
 
 for (a in X)
    skip

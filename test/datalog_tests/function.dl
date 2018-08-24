@@ -1,13 +1,13 @@
 // Tests for datalog functions and expressions
 
-function f(): int
-function g(a: int): int
-function h(a: (int, int)): (int, int)
+extern function f(): bigint
+extern function g(a: bigint): bigint
+extern function h(a: (bigint, bigint)): (bigint, bigint)
 
-function a0(): int
+function a0(): bigint
     = 1
 
-function a1(): int
+function a1(): bigint
     = 1 + 2
 
 function a2(): bit<32>
@@ -63,7 +63,7 @@ function x(): Alt
 typedef C = C{f1: string, f2: string}
 
 function vars(): () = {
-    var x: int = 0;
+    var x: bigint = 0;
     x = 10;
     var y = C{.f1 = "foo", .f2 = "bar"};
     var z: C = C{.f1 = "bar", .f2 = "foo"};
@@ -109,7 +109,7 @@ function fnested(x: nested_t): string = {
     res
 }
 
-function parameterized(x: 'A, y: 'A): 'A
+extern function parameterized(x: 'A, y: 'A): 'A
 
 function parameterized2(x: 'A, y: 'A): bool = x == y
 

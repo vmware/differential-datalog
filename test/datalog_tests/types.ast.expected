@@ -1,22 +1,22 @@
 typedef T16 = t15
-typedef T17 = int
-typedef set<'A>
-typedef t00 = int
+typedef T17 = bigint
+extern type set<'A>
+typedef t00 = bigint
 typedef t01 = bool
 typedef t02 = string
 typedef t03 = bit<32>
-typedef t04 = int
-typedef t05 = (int, int)
-typedef t06 = (int, int, int)
+typedef t04 = bigint
+typedef t05 = (bigint, bigint)
+typedef t06 = (bigint, bigint, bigint)
 typedef t07 = ()
 typedef t08 = ((), (), ())
-typedef t09 = (int, (), int)
-typedef t10 = (int, bool, string, bit<32>)
-typedef t11 = (int, (bool, (string, bit<32>)))
+typedef t09 = (bigint, (), bigint)
+typedef t10 = (bigint, bool, string, bit<32>)
+typedef t11 = (bigint, (bool, (string, bit<32>)))
 typedef t12 = t11
 typedef t13 = (t00, t01, t02, t03)
 typedef t14 = (t04, t04)
-typedef t15 = Const15{f: int}
-typedef t18 = Const18{f0: int, f1: string, f2: t00}
-typedef t19 = C0{f0: int} | C1{f0: int} | C2{f0: int}
-function __builtin_2string (x: 'X): string
+typedef t15 = Const15{f: bigint}
+typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
+typedef t19 = C0{f0: bigint} | C1{f0: bigint} | C2{f0: bigint}
+extern function __builtin_2string (x: 'X): string

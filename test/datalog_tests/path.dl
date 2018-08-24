@@ -1,6 +1,6 @@
 typedef node = string
 
-ground relation Edge(s: node, t: node)
+input relation Edge(s: node, t: node)
 
 relation Path(s1: node, s2: node)
 

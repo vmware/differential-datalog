@@ -221,7 +221,7 @@ instance WithPos Type where
 
 instance PP Type where
     pp (TBool _)        = "bool"
-    pp (TInt _)         = "int"
+    pp (TInt _)         = "bigint"
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
@@ -267,11 +267,16 @@ instance WithName TypeDef where
     name = tdefName
 
 instance PP TypeDef where
-    pp TypeDef{..} = "typedef" <+> pp tdefName <>
+    pp TypeDef{..} | isJust tdefType
+                   = "typedef" <+> pp tdefName <>
                      (if null tdefArgs
                          then empty
                          else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
-                     maybe empty (("=" <+>) . pp) tdefType
+                     "=" <+> (pp $ fromJust tdefType)
+    pp TypeDef{..} = "extern type" <+> pp tdefName <>
+                     (if null tdefArgs
+                         then empty
+                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">")
 
 instance Show TypeDef where
     show = render . pp
@@ -332,7 +337,7 @@ instance WithName Relation where
     name = relName
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "ground" else empty) <+>
+    pp Relation{..} = (if relGround then "input" else empty) <+>
                       "relation" <+> pp relName <+> "[" <> pp relType <> "]"
 
 instance Show Relation where
@@ -632,7 +637,8 @@ instance WithName Function where
     name = funcName
 
 instance PP Function where
-    pp Function{..} = ("function" <+> pp funcName
+    pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
+                      ("function" <+> pp funcName
                        <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
                        <> colon <+> pp funcType
                        <+> (maybe empty (\_ -> "=") funcDef))

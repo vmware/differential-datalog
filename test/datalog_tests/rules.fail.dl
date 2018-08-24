@@ -1,6 +1,6 @@
 // cannot use parenthes if type name does not match relation name
 
-ground relation R1: int
+input relation R1: int
 
 R1(1).
 
@@ -10,13 +10,13 @@ R1(1).
 
 typedef R1 = int
 
-ground relation R1(a1: string)
+input relation R1(a1: string)
 
 //---
 
 // non-linear rules
 
-ground relation R1(a1: string)
+input relation R1(a1: string)
 
 relation R2(a2: string)
 relation R3(a3: string, b3: string)
@@ -30,7 +30,7 @@ R3(x,y), R4(x,y) :- R2(x), R2(y).
 
 // non-stratified negation
 
-ground relation R1(a1: string)
+input relation R1(a1: string)
 
 relation R2(a2: string)
 relation R3(a3: string, b3: string)

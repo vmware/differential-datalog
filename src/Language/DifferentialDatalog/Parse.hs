@@ -81,14 +81,16 @@ reservedNames = ["_",
                  "bit",
                  "bool",
                  "default",
+                 "extern",
                  "else",
                  "false",
                  "for",
                  "function",
                  "if",
                  "in",
+                 "input",
                  "insert",
-                 "int",
+                 "bigint",
                  "let",
                  "match",
                  "not",
@@ -97,6 +99,7 @@ reservedNames = ["_",
                  "skip",
                  "string",
                  "true",
+                 "type",
                  "typedef",
                  "var"] ++ rustKeywords
 
@@ -222,16 +225,26 @@ decl = withPosMany $
 
 typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
-                             (optionMaybe $ reservedOp "=" *> typeSpec)
+                             (Just <$ reservedOp "=" <*> typeSpec)
+       <|>
+          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> identifier <*>
+                             (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                             (return Nothing)
 
-func = Function nopos <$  reserved "function"
-                      <*> funcIdent
-                      <*> (parens $ commaSep arg)
-                      <*> (colon *> typeSpecSimple)
-                      <*> (optionMaybe $ reservedOp "=" *> expr)
+func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
+                       <*> funcIdent
+                       <*> (parens $ commaSep arg)
+                       <*> (colon *> typeSpecSimple)
+                       <*> (return Nothing))
+       <|>
+       (Function nopos <$  reserved "function"
+                       <*> funcIdent
+                       <*> (parens $ commaSep arg)
+                       <*> (colon *> typeSpecSimple)
+                       <*> (Just <$ reservedOp "=" <*> expr))
 
 relation = do
-    ground <-  True <$ reserved "ground" <* reserved "relation" 
+    ground <-  True <$ reserved "input" <* reserved "relation"
            <|> False <$ reserved "relation"
     relName <- relIdent
     ((do start <- getPosition
@@ -245,7 +258,7 @@ relation = do
       <|>
        (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
            return [SpRelation rel]))
-        
+
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = ForStatement nopos <$ reserved "for"
@@ -302,7 +315,7 @@ atom = withPos $ do
        val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
               <|>
               brackets expr
-       return $ Atom nopos rname val 
+       return $ Atom nopos rname val
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
@@ -327,7 +340,7 @@ typeSpecSimple = withPos $
               <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
-intType    = TInt    nopos <$ reserved "int"
+intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
 userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
