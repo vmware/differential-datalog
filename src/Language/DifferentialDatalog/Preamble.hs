@@ -46,7 +46,7 @@ datalogPreamble = [r|/** BEGIN PREAMBLE **/
 
 typedef set<'A>
 
-function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
+extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
 
 /** END PREAMBLE **/
 |]

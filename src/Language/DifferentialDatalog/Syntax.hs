@@ -632,7 +632,8 @@ instance WithName Function where
     name = funcName
 
 instance PP Function where
-    pp Function{..} = ("function" <+> pp funcName
+    pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
+                      ("function" <+> pp funcName
                        <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
                        <> colon <+> pp funcType
                        <+> (maybe empty (\_ -> "=") funcDef))

@@ -1,15 +1,15 @@
 Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 1):
 unexpected 'g'
-expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
+expecting "typedef", "input", "relation", "extern", "function", identifier, "for" or end of input
 
 Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 7, column 1):
 unexpected 'g'
-expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
+expecting "typedef", "input", "relation", "extern", "function", identifier, "for" or end of input
 
 Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 5, column 1):
 unexpected 'g'
-expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
+expecting "typedef", "input", "relation", "extern", "function", identifier, "for" or end of input
 
 Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 5, column 1):
 unexpected 'g'
-expecting "typedef", "input", "relation", "function", identifier, "for" or end of input
+expecting "typedef", "input", "relation", "extern", "function", identifier, "for" or end of input

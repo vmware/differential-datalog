@@ -1,8 +1,8 @@
 // Tests for datalog functions and expressions
 
-function f(): bigint
-function g(a: bigint): bigint
-function h(a: (bigint, bigint)): (bigint, bigint)
+extern function f(): bigint
+extern function g(a: bigint): bigint
+extern function h(a: (bigint, bigint)): (bigint, bigint)
 
 function a0(): bigint
     = 1
@@ -109,7 +109,7 @@ function fnested(x: nested_t): string = {
     res
 }
 
-function parameterized(x: 'A, y: 'A): 'A
+extern function parameterized(x: 'A, y: 'A): 'A
 
 function parameterized2(x: 'A, y: 'A): bool = x == y
 

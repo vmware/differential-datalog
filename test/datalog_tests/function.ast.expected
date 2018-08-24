@@ -4,7 +4,7 @@ typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef set<'A>
 typedef string_syn = string
-function __builtin_2string (x: 'X): string
+extern function __builtin_2string (x: 'X): string
 function a0 (): bigint =
     1
 function a1 (): bigint =
@@ -30,13 +30,13 @@ function b1 (a: bool): bool =
 function c0 (a: bit<32>, b: bit<16>): bit<16> =
     (a;
      b)
-function f (): bigint
+extern function f (): bigint
 function fnested (x: nested_t): string =
     (N{.field=C{.f1=var res, .f2=_}} = x;
      res)
-function g (a: bigint): bigint
-function h (a: (bigint, bigint)): (bigint, bigint)
-function parameterized (x: 'A, y: 'A): 'A
+extern function g (a: bigint): bigint
+extern function h (a: (bigint, bigint)): (bigint, bigint)
+extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool =
     (x == y)
 function patterns (): () =

@@ -81,6 +81,7 @@ reservedNames = ["_",
                  "bit",
                  "bool",
                  "default",
+                 "extern",
                  "else",
                  "false",
                  "for",
@@ -225,11 +226,17 @@ typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                              (optionMaybe $ reservedOp "=" *> typeSpec)
 
-func = Function nopos <$  reserved "function"
-                      <*> funcIdent
-                      <*> (parens $ commaSep arg)
-                      <*> (colon *> typeSpecSimple)
-                      <*> (optionMaybe $ reservedOp "=" *> expr)
+func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
+                       <*> funcIdent
+                       <*> (parens $ commaSep arg)
+                       <*> (colon *> typeSpecSimple)
+                       <*> (return Nothing))
+       <|>
+       (Function nopos <$  reserved "function"
+                       <*> funcIdent
+                       <*> (parens $ commaSep arg)
+                       <*> (colon *> typeSpecSimple)
+                       <*> (Just <$ reservedOp "=" <*> expr))
 
 relation = do
     ground <-  True <$ reserved "input" <* reserved "relation"
@@ -303,7 +310,7 @@ atom = withPos $ do
        val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
               <|>
               brackets expr
-       return $ Atom nopos rname val 
+       return $ Atom nopos rname val
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)

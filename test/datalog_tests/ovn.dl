@@ -753,7 +753,7 @@ relation Load_Balancer_ip_addresses (
 )
 
 // external function
-function ip_address_and_port_from_lb_key(key: string): ip_port_t
+extern function ip_address_and_port_from_lb_key(key: string): ip_port_t
 
 Load_Balancer_ip_addresses(lb, ip_address_and_port_from_lb_key(key).ip)
     :- Load_Balancer_vips(lb, key, _).
@@ -771,9 +771,9 @@ relation Logical_Switch_Port_macs (
     mac:                 mac_addr_t
 )
 
-function extract_ips(str: string): set_t<ip_addr_t>
+extern function extract_ips(str: string): set_t<ip_addr_t>
 
-function extract_mac(str: string): (mac_addr_t, string)
+extern function extract_mac(str: string): (mac_addr_t, string)
 
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
@@ -812,7 +812,7 @@ relation Logical_Switch_Port_ps_macs (
 )
 
 
-function extract_subnets(str: string): set_t<ip_subnet_t>
+extern function extract_subnets(str: string): set_t<ip_subnet_t>
 
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),
@@ -841,7 +841,7 @@ relation DHCP_Options_server_mac (
     server_mac:         mac_addr_t
 )
 
-function eth_addr_from_string(str: string): option_t<mac_addr_t>
+extern function eth_addr_from_string(str: string): option_t<mac_addr_t>
 
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_mac", val),
@@ -858,14 +858,14 @@ relation DHCP_Options_server_ip (
     server_ip:          string
 )
 
-function ip_parse(str: string): option_t<ip_addr_t>
+extern function ip_parse(str: string): option_t<ip_addr_t>
 
 DHCP_Options_server_ip(opts, val) :-
     DHCP_Options_options(opts, "server_id", val),
     Some{var ip4} = ip_parse(val).
 
-function in6_generate_lla(mac: mac_addr_t): ip6_addr_t
-function ipv6_string_mapped(addr: ip6_addr_t): string
+extern function in6_generate_lla(mac: mac_addr_t): ip6_addr_t
+extern function ipv6_string_mapped(addr: ip6_addr_t): string
 
 DHCP_Options_server_ip(opts, ipv6_string_mapped(lla)) :-
     DHCP_Options_options(opts, "server_id", val),
@@ -880,7 +880,7 @@ relation DHCP_Options_netmask (
     netmask:            string
 )
 
-function build_dhcp_netmask(cidr: string): string
+extern function build_dhcp_netmask(cidr: string): string
 
 DHCP_Options_netmask(opts, build_dhcp_netmask(cidr)) :-
     DHCP_Options(opts, cidr).

@@ -155,14 +155,17 @@ arguments matching its declaration:
 
 ## Functions
 
-Functions are pure (side-effect-free computations).  A function can have 
-optional definition.  A function without definition refers to a
-foreign function implemented outside of Datalog.
+Functions are pure (side-effect-free computations).  A function
+declared with `extern` keyword refers to an external function
+defined outside of Datalog.  Such functions are declared without a
+body.
 
 ```EBNF
 function ::= "function" func_name "(" [arg(,arg)*]")"
               ":" simple_type_spec (* return type *)
-              ["=" expr]    (* optional function definition *)
+              ["=" expr]
+           | "extern function" func_name "(" [arg(,arg)*]")"
+              ":" simple_type_spec
 ```
 
 ```EBNF
@@ -545,7 +548,7 @@ Logical_Switch_Port_ips(lsp, mac, ip) :-
 
 Here, `extract_ips` must return a *set* of IP addresses:
 ```
-function extract_ips(addrs: string): set<ip_addr_t>
+extern function extract_ips(addrs: string): set<ip_addr_t>
 ```
 
 The sixth form groups records computed so far by a subset of fields,

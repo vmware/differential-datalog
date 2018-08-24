@@ -15,7 +15,7 @@ typedef Word2 = Word2{word: string, cat: Category}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
-function __builtin_2string (x: 'X): string
+extern function __builtin_2string (x: 'X): string
 relation Flow [Flow]
 relation Flow1 [Flow1]
 input relation Host [Host]
