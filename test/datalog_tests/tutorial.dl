@@ -1,5 +1,5 @@
 /*
- * Example 1: "Hello, world!" in Datalog
+ * Example: "Hello, world!" in Datalog
  */
 
 // Category type with two type constructors.  Since constructors have
@@ -23,7 +23,7 @@ Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 
 
 /*
- * Example 2: Map hosts to IP subnets.
+ * Example: Map hosts to IP subnets.
  */
 
 // Type aliases improve readability.
@@ -86,6 +86,77 @@ input relation NetHost(id: bigint, h: nethost_t)
 relation NetHostString(id: bigint, s: string)
 
 NetHostString(id, $"${h}") :- NetHost(id, h).
+
+/*
+ * Example: arithmetics
+ */
+
+// Form IP address from bytes using bit vector concatenation
+function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+    : ip_addr_t = 
+{
+    IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
+}
+
+// Check for multicast IP address using bit slicing
+function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+
+input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+relation Address(addr: ip_addr_t)
+relation MCastAddress(addr: ip_addr_t)
+
+Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
+MCastAddress(a) :- Address(a), is_multicast_addr(a).
+
+/*
+ * Example: control flow
+ */
+
+function addr_port(ip: ip_addr_t,
+                   proto: string,
+                   preferred_port: bit<16>): string = {
+    var port: bit<16> = 
+        match (proto) {
+            "FTP"   -> 20,
+            "HTTPS" -> 443,
+            _       -> {
+                if (preferred_port != 0) 
+                    preferred_port 
+                else 
+                    16'd80 // assume HTTP
+            }
+        };
+    $"${ip}:${port}"
+}
+
+input relation Connection(ip: ip_addr_t,
+                          proto: string,
+                          preferred_port: bit<16>)
+
+relation ConnectionString(s: string)
+
+ConnectionString(addr_port(ip, proto, preferred_port)) :-
+    Connection(ip, proto, preferred_port).
+
+/*
+ * Example: assignment clauses and antijoins
+ */
+input relation Blacklisted(ep: string)
+relation Endpoint(ep: string)
+
+Endpoint(endpoint) :- 
+    Connection(ip, proto, preferred_port),
+    var endpoint = addr_port(ip, proto, preferred_port),
+    not Blacklisted(endpoint).
+
+/*
+ * Example: recursion
+ * (see path.dl)
+ */
+
+/*
+ * Example: FlatMap
+ */
 
 /*
  * Example: Advanced features

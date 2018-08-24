@@ -73,3 +73,38 @@ commit;
 echo NetHostString:;
 dump NetHostString;
 
+start;
+
+insert Bytes(10,10,10,101),
+insert Bytes(127,0,0,1),
+insert Bytes(224,0,0,1);
+
+commit;
+
+echo Address:;
+dump Address;
+
+echo MCastAddress:;
+dump MCastAddress;
+
+start;
+
+insert Connection(IPAddr{0xaabbccdd}, "FTP",   0),
+insert Connection(IPAddr{0xaabbccdd}, "HTTPS", 0),
+insert Connection(IPAddr{0xaabbccdd}, "HTTP",  0),
+insert Connection(IPAddr{0xaabbccdd}, "HTTP",  8080);
+
+commit;
+
+echo ConnectionString;
+dump ConnectionString;
+
+start;
+
+insert Blacklisted("170.187.204.221:80"),
+insert Blacklisted("170.187.204.221:20");
+
+commit;
+
+echo Endpoint:;
+dump Endpoint;

@@ -1,4 +1,10 @@
+typedef Address = Address{addr: ip_addr_t}
+typedef Blacklisted = Blacklisted{ep: string}
+typedef Bytes = Bytes{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef Category = CategoryStarWars{} | CategoryOther{}
+typedef Connection = Connection{ip: ip_addr_t, proto: string, preferred_port: bit<16>}
+typedef ConnectionString = ConnectionString{s: string}
+typedef Endpoint = Endpoint{ep: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Host = Host{id: UUID, name: string, ip: IPAddr}
@@ -6,6 +12,7 @@ typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
+typedef MCastAddress = MCastAddress{addr: ip_addr_t}
 typedef NetHost = NetHost{id: bigint, h: nethost_t}
 typedef NetHostString = NetHostString{id: bigint, s: string}
 typedef NetMask = bit<32>
@@ -23,19 +30,41 @@ typedef option_t<'A> = None{} | Some{value: 'A}
 extern type set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
 extern function __builtin_2string (x: 'X): string
+function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
+    ((var port: bit<16>) = match (proto) {
+                               "FTP" -> 16'd20,
+                               "HTTPS" -> 16'd443,
+                               _ -> if (preferred_port != 16'd0) {
+                                        preferred_port
+                                    } else {
+                                          16'd80
+                                      }
+                           };
+     (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ __builtin_2string(port)) ++ ""))
 extern function hex (x: 'X): string
 function ip_addr_t2string (ip: ip_addr_t): string =
     (((((((("" ++ __builtin_2string(ip.addr[31:24])) ++ ".") ++ __builtin_2string(ip.addr[23:16])) ++ ".") ++ __builtin_2string(ip.addr[15:8])) ++ ".") ++ __builtin_2string(ip.addr[7:0])) ++ "")
+function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t =
+    IPAddr{.addr=(((b3 ++ b2) ++ b1) ++ b0)}
+function is_multicast_addr (ip: ip_addr_t): bool =
+    (ip.addr[31:28] == 4'd14)
 function mac_addr_t2string (mac: mac_addr_t): string =
     (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
     (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
+relation Address [Address]
+input relation Blacklisted [Blacklisted]
+input relation Bytes [Bytes]
+input relation Connection [Connection]
+relation ConnectionString [ConnectionString]
+relation Endpoint [Endpoint]
 relation Flow [Flow]
 relation Flow1 [Flow1]
 input relation Host [Host]
 relation HostInSubnet [HostInSubnet]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
+relation MCastAddress [MCastAddress]
 input relation NetHost [NetHost]
 relation NetHostString [NetHostString]
 input relation Number [Number]
@@ -48,6 +77,10 @@ Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
 Pow2(.p=(((("The square of " ++ __builtin_2string(x)) ++ " is ") ++ __builtin_2string((x * x))) ++ "")) :- Number(.n=x).
 NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id, .h=h).
+Address(.addr=ip_from_bytes(b3, b2, b1, b0)) :- Bytes(.b3=b3, .b2=b2, .b1=b1, .b0=b0).
+MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
+ConnectionString(.s=addr_port(ip, proto, preferred_port)) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port).
+Endpoint(.ep=endpoint) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {

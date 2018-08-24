@@ -28,6 +28,8 @@ To this end, it has the following properties
 
 ### Arithmetic expressions
 
+*Link to language reference*
+
 ### Control flow and variables
 
 *if-then-else, sequencing, assignments, var*
@@ -52,7 +54,7 @@ To this end, it has the following properties
 
 ### Aggregation
 
-## The power of types
+## The type system
 
 ### Tagged unions
 
