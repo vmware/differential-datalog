@@ -1,0 +1,58 @@
+Phrases:
+Phrases{"Goodbye, Ruby Tuesday"}
+Phrases{"Goodbye, World"}
+Phrases{"Hello, Ruby Tuesday"}
+Phrases{"Hello, World"}
+Phrases{"Help me, Obi-Wan Kenobi"}
+Phrases{"Help me, father"}
+Phrases{"I am your Obi-Wan Kenobi"}
+Phrases{"I am your father"}
+HostInSubnet:
+HostInSubnet{0,0}
+HostInSubnet{1,0}
+HostInSubnet{2,1}
+Flows:
+Flow{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flows generated using FTL:
+Flow1{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow1{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow1{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow1{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Pow2:
+Pow2{"The square of 1 is 1"}
+Pow2{"The square of 10 is 100"}
+Pow2{"The square of 100 is 10000"}
+Pow2{"The square of 1000 is 1000000"}
+Pow2{"The square of 10000 is 100000000"}
+Pow2{"The square of 100000 is 10000000000"}
+Pow2{"The square of 1000000 is 1000000000000"}
+Pow2{"The square of 10000000 is 100000000000000"}
+Pow2{"The square of 100000000 is 10000000000000000"}
+NetHostString:
+NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
+NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
+Address:
+Address{ip_addr_t{168430090}}
+Address{ip_addr_t{2139062143}}
+Address{ip_addr_t{3772834016}}
+MCastAddress:
+MCastAddress{ip_addr_t{3772834016}}
+ConnectionString
+ConnectionString{"170.187.204.221:20"}
+ConnectionString{"170.187.204.221:443"}
+ConnectionString{"170.187.204.221:80"}
+ConnectionString{"170.187.204.221:8080"}
+Endpoint:
+Endpoint{"170.187.204.221:443"}
+Endpoint{"170.187.204.221:8080"}
+HostIP:
+HostIP{1,"10.10.10.101"}
+HostIP{1,"10.10.10.102"}
+HostIP{2,"192.168.0.1"}
+HostIP{3,"192.168.0.3"}
+HostIP{3,"192.168.0.4"}
+HostIP{3,"192.168.0.5"}
+HostIP{3,"192.168.0.6"}

@@ -158,6 +158,14 @@ Endpoint(endpoint) :-
  * Example: FlatMap
  */
 
+extern function split_ip_list(x: string): set<string>
+
+input relation HostAddresses(host: bit<64>, addrs: string)
+relation HostIP(host: bit<64>, addr: string)
+
+HostIP(host, addr) :- HostAddresses(host, addrs), 
+                      FlatMap(addr=split_ip_list(addrs)).
+
 /*
  * Example: Advanced features
  */

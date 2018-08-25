@@ -108,3 +108,15 @@ commit;
 
 echo Endpoint:;
 dump Endpoint;
+
+
+start;
+
+insert HostAddresses(1, "10.10.10.101 10.10.10.102"),
+insert HostAddresses(2, "192.168.0.1"),
+insert HostAddresses(3, "192.168.0.3 192.168.0.4 192.168.0.5 192.168.0.6");
+
+commit;
+
+echo HostIP:;
+dump HostIP;

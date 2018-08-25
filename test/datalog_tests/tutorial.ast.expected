@@ -8,6 +8,8 @@ typedef Endpoint = Endpoint{ep: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Host = Host{id: UUID, name: string, ip: IPAddr}
+typedef HostAddresses = HostAddresses{host: bit<64>, addrs: string}
+typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
@@ -52,6 +54,7 @@ function mac_addr_t2string (mac: mac_addr_t): string =
     (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
     (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
+extern function split_ip_list (x: string): set<string>
 relation Address [Address]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
@@ -61,6 +64,8 @@ relation Endpoint [Endpoint]
 relation Flow [Flow]
 relation Flow1 [Flow1]
 input relation Host [Host]
+input relation HostAddresses [HostAddresses]
+relation HostIP [HostIP]
 relation HostInSubnet [HostInSubnet]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
@@ -81,6 +86,7 @@ Address(.addr=ip_from_bytes(b3, b2, b1, b0)) :- Bytes(.b3=b3, .b2=b2, .b1=b1, .b
 MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 ConnectionString(.s=addr_port(ip, proto, preferred_port)) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port).
 Endpoint(.ep=endpoint) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
+HostIP(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), FlatMap(addr = split_ip_list(addrs)).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
