@@ -1,17 +1,20 @@
-# Differential Datalog
+# Differential Datalog (DDlog)
 
-An in-memory incremental Datalog engine based on Differential Dataflow.
-This is currently very early work-in-progress.
+DDlog is an in-memory incremental Datalog engine based on Differential 
+Dataflow.  This is currently work-in-progress.
 
-Language reference for the Datalog dialect implemented by the tool
+Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step 
+introduction to DDlog.
+
+Language reference for the Datalog dialect implemented in DDlog
 can be found [here](doc/language_reference/language_reference.md).
 
 Instructions for writing and testing your own Datalog programs are
 [here](doc/testing/testing.md).
 
+# Installation
 
-# Requirements
-
+## Prerequisites
 We have only tested our software on Ubuntu Linux.
 
 The compilers are written in Haskell.  One needs the Glasgow Haskell
@@ -35,9 +38,10 @@ curl https://sh.rustup.rs -sSf | sh
 at the next login attempt.  To configure your current shell run 
 `source $HOME/.cargo/env`.
 
-# Building
+## Building
 
-To build the software execute:
+To build the software execute the following command anywhere inside 
+the project directory tree:
 
 ```
 stack build
@@ -48,6 +52,9 @@ To run the tests execute:
 ```
 stack test
 ```
+
+**Note:** Running tests for the first time will take a while (~30 
+minutes on my system).
 
 # vim syntax highlighting
 

@@ -155,7 +155,7 @@ Endpoint(endpoint) :-
  */
 
 /*
- * Example: FlatMap
+ * Example: FlatMap, extern functions
  */
 
 extern function split_ip_list(x: string): set<string>
