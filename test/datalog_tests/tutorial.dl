@@ -167,6 +167,106 @@ HostIP(host, addr) :- HostAddresses(host, addrs),
                       FlatMap(addr=split_ip_list(addrs)).
 
 /*
+ * Example: Multiple heads
+ */
+input relation X(x: bit<16>)
+
+relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
+relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
+
+Sum(x,y,x+y),
+Product(x,y,x*y) :- X(x), X(y).
+
+/*
+ * Example: tagged unions
+ */
+
+typedef ip4_addr_t = bit<32>
+typedef ip6_addr_t = bit<128>
+
+typedef eth_pkt_t = EthPacket { src     : bit<48>
+                              , dst     : bit<48>
+                              , payload : eth_payload_t}
+
+typedef eth_payload_t = EthIP4   {ip4 : ip4_pkt_t}
+                      | EthIP6   {ip6 : ip6_pkt_t}
+                      | EthOther
+
+typedef ip4_pkt_t = IP4Pkt { ttl      : bit<8>
+                           , src      : ip4_addr_t
+                           , dst      : ip4_addr_t
+                           , payload  : ip_payload_t}
+
+typedef ip6_pkt_t = IP6Pkt { ttl     : bit<8>
+                           , src     : ip6_addr_t
+                           , dst     : ip6_addr_t
+                           , payload : ip_payload_t}
+
+typedef ip_payload_t = IPTCP   { tcp : tcp_pkt_t}
+                     | IPUDP   { udp : udp_pkt_t}
+                     | IPOther
+
+typedef tcp_pkt_t = TCPPkt { src   : bit<16>
+                           , dst   : bit<16>
+                           , flags : bit<9> }
+
+typedef udp_pkt_t = UDPPkt { src     : bit<16>
+                           , dst     : bit<16> 
+                           , len     : bit<16>}
+
+
+input relation Packet(pkt: eth_pkt_t)
+
+relation TCPDstPort(port: bit<16>)
+
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        _ -> 0
+    }
+}
+
+relation UDPDstPort(port: bit<16>)
+
+UDPDstPort(port) :- Packet(pkt), var port = pkt_udp_port(pkt), port != 0.
+
+function pkt_udp_port2(pkt: eth_pkt_t): option_t<bit<16>> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
+        EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
+        _ -> None
+    }
+}
+
+relation UDPDstPort2(port: bit<16>)
+
+UDPDstPort2(port) :- Packet(pkt), Some{var port} = pkt_udp_port2(pkt).
+
+/*
+ * Example: tuples
+ */
+
+input relation KnownHost(addr: ip4_addr_t)
+
+function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) = {
+    (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+}
+
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
+
+/*
+ * Example: explicit relation type
+ */
+
+
+
+/*
  * Example: Advanced features
  */
 

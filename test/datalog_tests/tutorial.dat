@@ -120,3 +120,99 @@ commit;
 
 echo HostIP:;
 dump HostIP;
+
+start;
+
+insert X(10),
+insert X(20),
+insert X(100),
+insert X(1000);
+
+commit;
+
+echo Sum:;
+dump Sum;
+
+echo Product;
+dump Product;
+
+start;
+
+insert Packet(EthPacket{
+    0xaabbccddeeff,
+    0x112233445566, 
+    EthIP4{
+        IP4Pkt{
+            5,
+            0xa1b1c1d1,
+            0xa1a2a3a4,
+            IPTCP {
+                TCPPkt {
+                    100,
+                    80,
+                    0
+                }
+            }
+        }
+    }
+}),
+insert Packet(EthPacket{
+    0x112233445566,
+    0xaabbccddeeff, 
+    EthIP6{
+        IP6Pkt{
+            5,
+            0xa1b1c1d1,
+            0xa1a2a3a4,
+            IPTCP {
+                TCPPkt {
+                    200,
+                    8080,
+                    0
+                }
+            }
+        }
+    }
+}),
+insert Packet(EthPacket{
+    0x112233445566,
+    0xaabbccddeeff, 
+    EthIP6{
+        IP6Pkt{
+            5,
+            0xa1b1c1d1,
+            0xa1a2a3a4,
+            IPUDP {
+                UDPPkt {
+                    300,
+                    22,
+                    100
+                }
+            }
+        }
+    }
+});
+
+
+commit;
+
+echo TCPDstPort:;
+dump TCPDstPort;
+
+echo UDPDstPort:;
+dump UDPDstPort;
+
+echo UDPDstPort2:;
+dump UDPDstPort2;
+
+start;
+
+insert KnownHost(0xc0a80001),
+insert KnownHost(0xc0a80102),
+insert KnownHost(0xc0100001),
+insert KnownHost(0x0a0a0001);
+
+commit;
+
+echo IntranetHost:;
+dump IntranetHost;

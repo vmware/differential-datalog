@@ -12,6 +12,8 @@ typedef HostAddresses = HostAddresses{host: bit<64>, addrs: string}
 typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IPAddr = bit<32>
+typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
+typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
 typedef MCastAddress = MCastAddress{addr: ip_addr_t}
@@ -19,18 +21,34 @@ typedef NetHost = NetHost{id: bigint, h: nethost_t}
 typedef NetHostString = NetHostString{id: bigint, s: string}
 typedef NetMask = bit<32>
 typedef Number = Number{n: bigint}
+typedef Packet = Packet{pkt: eth_pkt_t}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
+typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}
+typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
+typedef TCPDstPort = TCPDstPort{port: bit<16>}
+typedef UDPDstPort = UDPDstPort{port: bit<16>}
+typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
+typedef X = X{x: bit<16>}
+typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} | EthIP6{ip6: ip6_pkt_t} | EthOther{}
+typedef eth_pkt_t = EthPacket{src: bit<48>, dst: bit<48>, payload: eth_payload_t}
+typedef ip4_addr_t = bit<32>
+typedef ip4_pkt_t = IP4Pkt{ttl: bit<8>, src: ip4_addr_t, dst: ip4_addr_t, payload: ip_payload_t}
+typedef ip6_addr_t = bit<128>
+typedef ip6_pkt_t = IP6Pkt{ttl: bit<8>, src: ip6_addr_t, dst: ip6_addr_t, payload: ip_payload_t}
 typedef ip_addr_t = IPAddr{addr: bit<32>}
+typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} | IPUDP{udp: udp_pkt_t} | IPOther{}
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 extern type set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
+typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
 extern function __builtin_2string (x: 'X): string
 function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
     ((var port: bit<16>) = match (proto) {
@@ -43,6 +61,8 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                       }
                            };
      (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ __builtin_2string(port)) ++ ""))
+function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) =
+    (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
 extern function hex (x: 'X): string
 function ip_addr_t2string (ip: ip_addr_t): string =
     (((((((("" ++ __builtin_2string(ip.addr[31:24])) ++ ".") ++ __builtin_2string(ip.addr[23:16])) ++ ".") ++ __builtin_2string(ip.addr[15:8])) ++ ".") ++ __builtin_2string(ip.addr[7:0])) ++ "")
@@ -54,6 +74,18 @@ function mac_addr_t2string (mac: mac_addr_t): string =
     (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
     (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
+function pkt_udp_port (pkt: eth_pkt_t): bit<16> =
+    match (pkt) {
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> port,
+        EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> port,
+        _ -> 16'd0
+    }
+function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
+    match (pkt) {
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
+        EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
+        _ -> None{}
+    }
 extern function split_ip_list (x: string): set<string>
 relation Address [Address]
 input relation Blacklisted [Blacklisted]
@@ -67,17 +99,26 @@ input relation Host [Host]
 input relation HostAddresses [HostAddresses]
 relation HostIP [HostIP]
 relation HostInSubnet [HostInSubnet]
+relation IntranetHost [IntranetHost]
+input relation KnownHost [KnownHost]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
 relation MCastAddress [MCastAddress]
 input relation NetHost [NetHost]
 relation NetHostString [NetHostString]
 input relation Number [Number]
+input relation Packet [Packet]
 relation Phrases [Phrases]
 relation Pow2 [Pow2]
+relation Product [Product]
 input relation Subnet [Subnet]
+relation Sum [Sum]
+relation TCPDstPort [TCPDstPort]
+relation UDPDstPort [UDPDstPort]
+relation UDPDstPort2 [UDPDstPort2]
 input relation Word1 [Word1]
 input relation Word2 [Word2]
+input relation X [X]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
 Pow2(.p=(((("The square of " ++ __builtin_2string(x)) ++ " is ") ++ __builtin_2string((x * x))) ++ "")) :- Number(.n=x).
@@ -87,6 +128,13 @@ MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 ConnectionString(.s=addr_port(ip, proto, preferred_port)) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port).
 Endpoint(.ep=endpoint) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
 HostIP(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), FlatMap(addr = split_ip_list(addrs)).
+Sum(.x=x, .y=y, .sum=(x + y)),
+Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
+TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
+TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
+UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).
+UDPDstPort2(.port=port) :- Packet(.pkt=pkt), Some{.value=var port} = pkt_udp_port2(pkt).
+IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
