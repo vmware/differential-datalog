@@ -33,3 +33,5 @@ differential-datalog.iml
 test/datalog_tests/*/*
 **/target/*
 **cmd_parser_history.txt
+TAGS
+tags

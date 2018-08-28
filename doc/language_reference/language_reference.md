@@ -138,7 +138,7 @@ arguments matching its declaration:
                   |                       \---used here---/
                   \- type variables declared here
    ```
-   
+
    In a function declaration, type variables are declared implicitly
    by referring to them in function arguments.  They are used in the
    return type of the function and in its body:
@@ -186,7 +186,7 @@ arg ::= arg_name ":" simple_type_spec
 1. Just like regular functions, `extern` functions are expected to be
    side-effect-free.  While there is nothing preventing the user from
    defining functions with side effects (e.g., for tracing purposes),
-   the language does not give any guarantees on the number, order, or 
+   the language does not give any guarantees on the number, order, or
    timing of calls to these functions.
 
 ## Relations
@@ -196,7 +196,7 @@ relation ::= ["input"] "relation" rel_name "(" [arg ","] arg ")"
            | ["input"] "relation" rel_name "[" simple_type_spec "]"
 ```
 
-The first form declares relation by listing its arguments.  The second 
+The first form declares relation by listing its arguments.  The second
 form explicitly specifies relation's element type.  The
 second form is more general:
 
@@ -297,11 +297,11 @@ We support two types of UTF-8 string literals: quoted strings with escaping,
 e.g., `"foo\nbar"`
 (**We rely on parsec's standard parser for strings, which
 supports unicode and escaping. TODO: check and document its exact
-functionality.**) and raw strings where all characters, including backslash and 
+functionality.**) and raw strings where all characters, including backslash and
 line breaks are interpreted as is:
 
 ```EBNF
-string_literal   ::= ( '"' utf8_character* '"' 
+string_literal   ::= ( '"' utf8_character* '"'
                      | "[|" utf8_character* "|]")+
 ```
 
@@ -309,17 +309,17 @@ Multiple string literals are automatically concatenated, e.g.,
 `"foo" [|bar|]` is equivalent to `"foobar"`.
 
 Interpolated strings are string literals, that can contain
-expressions inside curly brackets, whose values are substituted at runtime. 
+expressions inside curly brackets, whose values are substituted at runtime.
 Interpolated strings are preceded by the `$` character (syntax
 borrowed from C#).
 
 ```EBNF
-interpolated_string ::= ( '$"' utf8_character* '"' 
+interpolated_string ::= ( '$"' utf8_character* '"'
                         | "$[|" utf8_character* "|]")+
 ```
 
 For example,
-`$"x: {x}, y: {y}, f(x): {f(x)}"` is equivalent to 
+`$"x: {x}, y: {y}, f(x): {f(x)}"` is equivalent to
 `"x: " ++ x ++ ", y: " ++ y ++ ", f(x): " ++ f(x)`.
 
 Expressions in curly brackets can be arbitrarily complex, as long as
@@ -333,7 +333,7 @@ bool_literal ::= "true" | "false"
 cons_term    ::= (* positional arguments *)
                  cons_name ["{" [expr (,expr)*] "}"]
                  (* named arguments *)
-               | cons_name ["{" "." field_name "=" expr 
+               | cons_name ["{" "." field_name "=" expr
                             ("," "." field_name "=" expr)* "}"]
 apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
@@ -347,14 +347,14 @@ match_clause ::= pattern "-" expr
 ```EBNF
 (* match pattern *)
 pattern ::= (* tuple pattern *)
-            "(" [pattern (,pattern)* ")"                      
+            "(" [pattern (,pattern)* ")"
             (* constructor pattern with positional arguments *)
-          | cons_name ["{" [pattern (,pattern)*] "}"]   
+          | cons_name ["{" [pattern (,pattern)*] "}"]
             (* constructor pattern with named arguments *)
-          | cons_name "{" ["." field_name "=" pattern 
+          | cons_name "{" ["." field_name "=" pattern
                            ("," "." field_name "=" pattern)*] "}"
           | vardecl_term    (* binds variable to a field inside the matched value *)
-          | var_term        (* binds variable to a field inside the matched value           
+          | var_term        (* binds variable to a field inside the matched value
                                (shorthand for vardecl_term) *)
           | bool_literal    (* matches specified bool value *)
           | string_literal  (* matches specified string value *)
@@ -367,13 +367,13 @@ pattern ::= (* tuple pattern *)
 Values of arbitrary types that occur inside interpolated strings or as
 a second argument to the string concatenation operator (`++`) are
 automatically converted to strings.
-Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using 
+Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using
 builtin methods.
 
-For user-defined types, conversion is performed by calling a user-defined function 
-whose name is formed from the type name by changing the first letter of the type name 
-to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function 
-must take exactly one argument of the given type and return a string.  
+For user-defined types, conversion is performed by calling a user-defined function
+whose name is formed from the type name by changing the first letter of the type name
+to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function
+must take exactly one argument of the given type and return a string.
 Compilation fails if a function with this name and signature is not found.
 
 For example, the last statement in
@@ -392,10 +392,10 @@ y = $"x:{udf_t2string(x)}";
 ### Constraints on expressions
 
 1. Number and types of arguments to a function must match function
-   declaration.  
+   declaration.
 1. Variable declarations can occur in the left-hand side of an
    assignment or as a separate statement followed by another
-   statement.  In the latter case variable type must be explicitly 
+   statement.  In the latter case variable type must be explicitly
    specified:
    ```
    typedef C = C{x: string}
@@ -403,12 +403,12 @@ y = $"x:{udf_t2string(x)}";
    ...
 
    // ok: type of x specified explicitly
-   var x: bigint; 
+   var x: bigint;
 
    // error: variable declared without a type
    var x;
 
-   // ok: the type of y is derived from the right-hand side 
+   // ok: the type of y is derived from the right-hand side
    // of the assignment
    var y = C{.x = "foo"};
 
@@ -420,7 +420,7 @@ y = $"x:{udf_t2string(x)}";
    (var a, var b) = (x+5, x-5);
    C{var c} = y;
 
-   // ok 
+   // ok
    var t = TwoFields{.f1 = "foo", .f2 = "bar"};
 
    // ok: field f2 omitted in the left-hand side of an assignment
@@ -430,8 +430,8 @@ y = $"x:{udf_t2string(x)}";
    var h = TwoFields{.f1 = "foo"}
    ```
 1. A variable declaration cannot shadow existing variables visible
-   in the local scope.  Variables visible inside the body of a function 
-   include: function arguments, local variables declared using `var`, and 
+   in the local scope.  Variables visible inside the body of a function
+   include: function arguments, local variables declared using `var`, and
    variables introduced through `match` patterns:
    ```
    var i: bit<32> = match (a) {
@@ -448,7 +448,7 @@ y = $"x:{udf_t2string(x)}";
    Variables in rules are discussed below.
 1. *Guarded fields* of tagged unions cannot be accessed using '.field'
    syntax.  A guarded field is a field that is present in some but not
-   all of the type constructors, e.g., `value` in the `option_t` type 
+   all of the type constructors, e.g., `value` in the `option_t` type
    ```
    typedef option_t<'A> = None
                         | Some {value : 'A}
@@ -476,7 +476,7 @@ y = $"x:{udf_t2string(x)}";
 
 ## Rules
 
-A Datalog rule consists of the *head* comprised of one or more *atoms* (multiple 
+A Datalog rule consists of the *head* comprised of one or more *atoms* (multiple
 atoms abbreviate rules with identical right-hand sides) and zero or more *body* clauses.
 
 ```EBNF
@@ -492,12 +492,12 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | expr "=" expr                             (* 4.assignment *)
              | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
              | "Aggregate" "("                           (* 6.aggregation *)
-                "(" [var_name ("," var_name)*] ")" "," 
+                "(" [var_name ("," var_name)*] ")" ","
                 var_name "=" expr ")"
 ```
 
 An atom is a predicate that holds when a given value belongs to a relation.
-It can be specified by listing its fields or by giving its value explicitly.  
+It can be specified by listing its fields or by giving its value explicitly.
 The former is a special case of the latter:
 
 ```
@@ -522,7 +522,7 @@ Cousins(x,y) :- Parent(z,x),
 We say that the atom appears with *positive polarity* (in the
 non-negated case) or *negative polarity* in the rule.
 
-The third form is a Boolean expression over variables introduced in the 
+The third form is a Boolean expression over variables introduced in the
 body of the rule. It filters the result of the query.
 
 ```
@@ -540,12 +540,12 @@ DHCP_Options_server_ip(opts, ipv6_string_mapped(in6_generate_lla(mac))) :-
 ```
 
 Here we first filter the relation, only keeping records where
-`ip_parse(val) == NoIP4Addr`. Next we extract Ethernet address from 
-`val` and bind the result to new variable `mac`, while filtering out 
+`ip_parse(val) == NoIP4Addr`. Next we extract Ethernet address from
+`val` and bind the result to new variable `mac`, while filtering out
 those values that do not parse to a valid Ethernet address.
 
 The fifth form is a flat-map operation, which expands each record in
-the relation computed so far to a set of records, computes a union of 
+the relation computed so far to a set of records, computes a union of
 all sets and binds a record in the resulting relation to a fresh
 variable, e.g.:
 
@@ -562,7 +562,7 @@ extern function extract_ips(addrs: string): set<ip_addr_t>
 ```
 
 The sixth form groups records computed so far by a subset of fields,
-computes an aggreagate for each group using specified aggregate function 
+computes an aggreagate for each group using specified aggregate function
 (*requirements on aggregate function signature to be specified*), and
 binds the result to a new variable:
 
@@ -577,7 +577,7 @@ visible in clauses following it and in the head of the rule. Variables
 are introduced *explicitly* in the left-hand side of an assignment
 clause, a flat-map or an aggregate clause or *implicitly*,
 by referring to them in a positive atom.  An implicit declaration must
-appear in a *pattern expression*, i.e., an expression built 
+appear in a *pattern expression*, i.e., an expression built
 recursively out of variable names, wildcards, tuples, type
 constructors, and constants (i.e., string, integer, booleand or
 bit-vector literals).
@@ -589,7 +589,7 @@ second occurrence (in `T(x,y)`) refers to it:
 R(x,y) :- S(Some{(_, x)}), T(x, y).
 ```
 
-It is illegal to introduce a new variable in an expression that is not 
+It is illegal to introduce a new variable in an expression that is not
 a pattern:
 ```
 R(x,y) :- S(f(x)), T(x, y). // illegal, as f(x) is not a pattern.
@@ -599,7 +599,7 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
 ### Constraints on rules
 
 1. Negative atoms and condition clauses may not introduce new variables.
-1. Variables introduced in a clause are visible in clauses following it.  An aggregate 
+1. Variables introduced in a clause are visible in clauses following it.  An aggregate
    clause has the effect of concealing all variables except for the
    group-by variables and the aggregate variable.
    ```
@@ -622,7 +622,7 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
    R(f(x)) :- S(x). //ok
    R(f(y)) :- S(x). //error: y is not declared
    ```
-1. A flat-map expression must have type `set<x>` for some type `x`. 
+1. A flat-map expression must have type `set<x>` for some type `x`.
 
 ### Constraints on dependency graph
 
@@ -631,11 +631,11 @@ relations.  For each rule that contains relation 'R1' in its head and
 relation 'R2' with polarity 'p' in the body, there is an edge in the
 graph from 'R2' to 'R1' labeled 'p'.
 
-1. *Linearity*: For each atom 'R(...)' in the head of a rule, at most one 
+1. *Linearity*: For each atom 'R(...)' in the head of a rule, at most one
    relation in the body of the rule can be mutually recursive with 'R'.
 1. *Stratified negation*: No cycle in a graph can contain an edge
    labeled with negative polarity.
-1. A body of a rule with an aggregate clause cannot contain an atom mutually 
+1. A body of a rule with an aggregate clause cannot contain an atom mutually
    recursive with its head.
 
 
@@ -648,26 +648,26 @@ https://en.wikipedia.org/wiki/FLWOR.
 rule ::= forStatement
 
 forStatement ::= "for" "(" expr "in" rel_name ")" statement
-             | "for" "(" expr "in" rel_name "if" expression ")" statement           
+             | "for" "(" expr "in" rel_name "if" expression ")" statement
 
 statement ::= forStatement
           | ifStatement
           | matchStatement
-          | letStatement
+          | varStatement
           | insertStatement
           | blockStatement
           | emptyStatement
-          
+
 ifStatement ::= "if" "(" expression ")" statement
             |   "if" "(" expression ")" statement "else" statement
-             
-matchStatement ::= "match" "(" expression ")" "{" expression "->" statement (, expression "->" statement )* "}"                                               
-             
-letStatement ::= "let" identifier "=" expression (, identifier "=" expression )* in" statement
+
+matchStatement ::= "match" "(" expression ")" "{" expression "->" statement (, expression "->" statement )* "}"
+
+varStatement ::= "var" identifier [ ":" simple_type_spec ] "=" expression (, identifier "=" expression )* in" statement
 
 insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 
 blockStatement ::= "{" statement ( ";" statement )* "}"
 
-emptyStatement ::= "skip"            
+emptyStatement ::= "skip"
 ```
