@@ -91,7 +91,6 @@ reservedNames = ["_",
                  "input",
                  "insert",
                  "bigint",
-                 "let",
                  "match",
                  "not",
                  "or",
@@ -178,7 +177,7 @@ instance WithPos SpecItem where
     atPos (SpRule         r) p = SpRule      $ atPos r p
     atPos (SpFunc         f) p = SpFunc      $ atPos f p
     atPos (SpStatement    s) p = SpStatement $ atPos s p
-   
+
 
 datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
@@ -271,11 +270,12 @@ statement = parseForStatement
         <|> parseEmptyStatement
         <|> parseIfStatement
         <|> parseMatchStatement
-        <|> parseLetStatement
+        <|> parseVarStatement
         <|> parseInsertStatement
         <|> parseBlockStatement
 
 parseAssignment = withPos $ (Assignment nopos) <$> identifier
+                                               <*> (optionMaybe etype)
                                                <*> (reserved "=" *> expr)
 
 parseEmptyStatement = withPos $ (EmptyStatement nopos) <$ reserved "skip"
@@ -289,7 +289,7 @@ parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
 parseMatchStatement = withPos $ (MatchStatement nopos) <$ reserved "match" <*> parens expr
                       <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
-parseLetStatement = withPos $ (LetStatement nopos) <$ reserved "let"
+parseVarStatement = withPos $ (VarStatement nopos) <$ reserved "var"
                                                   <*> commaSep parseAssignment
                                                   <*> (reserved "in" *> statement)
 

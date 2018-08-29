@@ -46,7 +46,7 @@ relation HostInSubnet(host: UUID, subnet: UUID)
 // Note the use of wildcard (`_`) for fields that are not relevant in this rule.
 //
 // Note: ddlog computes this space efficiently by applying the
-// filter at the same time as it computes Cartesian product of `Host` and 
+// filter at the same time as it computes Cartesian product of `Host` and
 // `Subnet` relations.
 HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
                                     Subnet(subnet_id, subnet_prefix, subnet_mask),
@@ -64,7 +64,7 @@ typedef option_t<'A> = None
 
 // The Load_Balancer relation instantiates option_t type for strings.
 input relation Load_Balancer (
-    lb:           bigint, // bigint is a primitive ddlog type that models 
+    lb:           bigint, // bigint is a primitive ddlog type that models
                        // unbounded mathematical integers.
     ls:           bigint,
     ip_addresses: string,
@@ -124,7 +124,7 @@ relation Flow1(lr: bigint,
                actionStr: string)
 
 for (lb in Load_Balancer) {
-    let a = lb.ip_addresses in
+    var a = lb.ip_addresses in
     match (lb.protocol) {
         Some{_} -> Flow1(lb.ls, LS_IN_PRE_LB, 100, $"ip4.dst == ${a}", "{ reg0[0] = 1; next; }"),
         None -> {}
@@ -137,5 +137,3 @@ for (ls in Logical_Switch) {
         Flow1(ls.ls, LS_OUT_PRE_LB, 100, "ip4", "{ reg0[0] = 1; next; }")
     }
 }
-
-

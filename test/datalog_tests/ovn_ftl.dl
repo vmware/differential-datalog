@@ -55,7 +55,7 @@ for (lr in Logical_Router) {
 
 /* Logical router ingress table 0: match (priority 50). */
 for (lrp in Logical_Router_Port if lrp.enabled) {
-    let p = lrp.name,
+    var p = lrp.name,
         e = lrp.mac in {
         Flow(lrp.lr, LR_IN_ADMISSION, 50,
              $"inport == ${p} && (eth.mcast || eth.dst == ${e})", "{ next; }")
@@ -139,7 +139,7 @@ for (lr in Logical_Router) {
  *
  * Priority 100 rules deliver packets to enabled logical ports. */
 for (lrp in Logical_Router_Port if lrp.enabled) {
-    let p = lrp.name in {
+    var p = lrp.name in {
         Flow(lrp.lr, LR_OUT_DELIVERY, 100, $"outport == ${p}", "{ output; }")
     }
 }
@@ -297,7 +297,7 @@ input relation Load_Balancer (
  * If multiple load balancers have the same IP address but different L4
  * information, this will generate duplicate logical flows, but that's OK. */
 for (lb in Load_Balancer) {
-    let a = lb.ip_addresses in
+    var a = lb.ip_addresses in
         Flow(lb.ls, LS_IN_PRE_LB, 100, $"ip4.dst == ${a}", "{ reg0[0] = 1; next; }")
 }
 for (ls in Logical_Switch) {
@@ -374,7 +374,7 @@ input relation Logical_Switch_Port (
     /* can up and enabled fields really be missing? */
     up:                      option_t<bool>,
     enabled:                 bool,
-    port_security_not_empty: bool,         
+    port_security_not_empty: bool,
     port_security_l2:        string,
     port_security_ip_ingress:string,
     port_security_ip_egress: string,
@@ -402,7 +402,7 @@ for (lsp in Logical_Switch_Port) {
  *  Ingress table 2: Ingress port security - ND (priority 90 and 80)
  */
 for (lsp in Logical_Switch_Port if lsp.enabled) {
-    let  p = lsp.name,
+    var  p = lsp.name,
          l2 = lsp.port_security_l2,
          ip = lsp.port_security_ip_ingress,
          nd = lsp.port_security_nd in
@@ -430,7 +430,7 @@ for (lsp in Logical_Switch_Port) {
  * router ports (up or not), but not from localnet ports. */
 for (lsp in Logical_Switch_Port)
     if (lsp._type == "localnet") {
-        let p = lsp.name in
+        var p = lsp.name in
             Flow(lsp.ls, LS_IN_ARP_RSP, 100, $"inport == \"${p}\"", "{ next; }")
     }
 
@@ -453,7 +453,7 @@ relation Logical_Switch_Port_IP (
 )
 
 for (lspip in Logical_Switch_Port_IP if lspip.up) {
-    let e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
+    var e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
         if (lspip.ip_version == 4) {
             Flow(lspip.ls, LS_IN_ARP_RSP, 50, $"arp.tpa == ${a} && arp.op == 1", $[|
                 arp.tpa == ${a} && arp.op == 1) {
@@ -487,7 +487,7 @@ for (lspip in Logical_Switch_Port_IP if lspip.up) {
             /* For ND solicitations, we need to listen for both the unicast
              * IPv6 address and its all-nodes multicast address, but always
              * respond with the unicast IPv6 address. */
-            let s = lspip.sn_ip in {
+            var s = lspip.sn_ip in {
                 Flow(lspip.ls, LS_IN_ARP_RSP, 50,
                      $"nd_ns && ip6.dst == {${a}, ${s}} && nd.target == ${a}", $[|{
                      nd_na {
@@ -519,14 +519,14 @@ for (ls in Logical_Switch) {
 
 //for (lspip in Logical_Switch_Port_IP
 //     if lspip.lsp_enabled and lspip.lsp_type != "router") {
-//    let p = lspip.lsp.name,
+//    var p = lspip.lsp.name,
 //        a = lspip.ip,
 //        e = lspip.mac in {
 //        if (lspip.ip_version == 4) {
 //            if (lspip.lsb.has_dhcpv4_options  // TODO lspip.lsp.dhcpv4_options != []
 //                /*&& !((lspip.ip ^ lspip.lsp.dhcpv4_options.host)
 //                  & lspip.lsp.dhcpv4_options.netmask)*/) {
-//                let m  = lspip.lsp.dhcpv4_options.netmask,
+//                var m  = lspip.lsp.dhcpv4_options.netmask,
 //                    o  = lspip.lsp.dhcpv4_options.option_args,
 //                    sm = lspip.lsp.dhcpv4_options.server_mac,
 //                    si = lspip.lsp.dhcpv4_options.server_ip in {
@@ -558,7 +558,7 @@ for (ls in Logical_Switch) {
 //                }
 //            }
 //        } else {
-//            let o  = lspip.lsp.dhcpv6_options.option_args,
+//            var o  = lspip.lsp.dhcpv6_options.option_args,
 //                sm = lspip.lsp.dhcpv6_options.server_mac,
 //                si = lspip.lsp.dhcpv6_options.server_ip in {
 //                /* Stateful DHCPv6 includes an IP address,
@@ -615,7 +615,7 @@ for (ls in Logical_Switch) {
 /* Ingress table 12: Destination lookup, unicast handling (priority 50), */
 for (lsp in Logical_Switch_Port) {
     if (lsp.macs != "") {
-        let p = lsp.name, m = lsp.macs in {
+        var p = lsp.name, m = lsp.macs in {
             Flow(lsp.ls, LS_IN_L2_LKUP, 50, $"eth.dst == {${m}}", [|{
                 outport = "${P}";
                 output;
@@ -641,7 +641,7 @@ for (ls in Logical_Switch) {
  * Priority 150 rules drop packets to disabled logical ports: so that they
  * don't even receive multicast or broadcast packets. */
 for (lsp in Logical_Switch_Port) {
-    let p = lsp.name,
+    var p = lsp.name,
         l2 = lsp.port_security_l2,
         ip = lsp.port_security_ip_egress in {
         if (lsp.port_security_not_empty) { // TODO: lsp.port_security != [])

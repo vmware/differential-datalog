@@ -95,17 +95,17 @@ Z(a+c) :- X(a), X(c).
 Z(a+b), Z(a+c) :- X(a), X(b), X(c).
 
 for (a in X)
-   let b = a.field+2 in
+   var b = a.field+2 in
        skip
 
 for (a in X)
-   let b = a.field+2 in
+   var b: bigint = a.field+2 in
        Z(a.field+b)
 // equivalent to
 Z(a+b) :- X(a), var b = a+2.
 
 for (a in X)
-   let b = a.field+2, c = b+a.field in
+   var b = a.field+2, c = b+a.field in
        W(a.field, b, c)
 // equivalent to
 W(a, b, c) :- X(a), var b = a+2, var c = b+a.

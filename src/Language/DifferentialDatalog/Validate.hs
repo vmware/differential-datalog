@@ -127,6 +127,10 @@ addRhsToRules:: RuleRHS -> [Rule] -> [Rule]
 addRhsToRules toAdd rules =
      map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
 
+convertAssignment :: Assignment -> Expr
+convertAssignment (Assignment p l Nothing r) = E $ ESet p (E $ EVarDecl p l) r
+convertAssignment (Assignment p l (Just t) r) = E $ ESet p (E $ ETyped p (E $ EVarDecl p l) t) r
+
 convertFtlStatement :: Statement -> [Rule]
 convertFtlStatement (ForStatement p e r mc s) =
     let rules = convertFtlStatement s
@@ -148,9 +152,9 @@ convertFtlStatement (MatchStatement p e c) =
         matchList = explodeMatchCases $ map fst c
         matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
     in concat $ zipWith addRhsToRules matchExpressions rulesList
-convertFtlStatement (LetStatement p l s) =
+convertFtlStatement (VarStatement p l s) =
     let rules = convertFtlStatement s
-        exprs = map (\a -> eSet (E $ EVarDecl (pos a) $ leftAssign a) (rightAssign a)) l
+        exprs = map convertAssignment l
         rhs = map RHSCondition exprs in
     map (\r -> r{ruleRHS = (ruleRHS r) ++ rhs}) rules
 convertFtlStatement (BlockStatement p l) =
@@ -164,7 +168,7 @@ convertFtlStatement (InsertStatement p a) =
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 progDesugar d = progExprMapCtxM d (exprDesugar d)
- 
+
 -- Desugar expressions: convert all type constructor calls to named
 -- field syntax.
 -- Precondition: typedefs must be validated before calling this
@@ -313,7 +317,7 @@ ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
     let vars = ruleRHSVars d rl idx
     -- variable cannot be declared and used in the same atom
     uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
-        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars) 
+        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars)
         $ exprVarOccurrences (CtxRuleRAtom rl idx)
         $ atomVal atom
 
@@ -410,7 +414,7 @@ exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was perform
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
-exprValidate1 d _ ctx (EVarDecl p v)      = do 
+exprValidate1 d _ ctx (EVarDecl p v)      = do
     check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
     checkNoVar p d ctx v
 {-                                     | otherwise
@@ -514,7 +518,7 @@ exprValidate2 d _  (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 _ _   _                   = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
-checkLExpr d ctx e | ctxIsRuleRCond ctx = 
+checkLExpr d ctx e | ctxIsRuleRCond ctx =
     check (exprIsPattern e) (pos e)
         $ "Left-hand side of an assignment term can only contain variable declarations, type constructors, and tuples"
                    | otherwise =
@@ -576,12 +580,11 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
 
 exprInjectStringConversions _ _   e = return $ E e
 
-
 progConvertIntsToBVs :: DatalogProgram -> DatalogProgram
 progConvertIntsToBVs d = progExprMapCtx d (exprConvertIntToBV d)
 
 exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
-exprConvertIntToBV d ctx e@(EInt p v) = 
+exprConvertIntToBV d ctx e@(EInt p v) =
     case exprType' d ctx (E e) of
          TBit _ w -> E $ EBit p w v
          _        -> E e
