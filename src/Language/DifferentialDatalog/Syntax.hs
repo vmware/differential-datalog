@@ -431,7 +431,7 @@ instance WithPos Assignment where
     atPos r p = r{assignPos = p}
 
 instance PP Assignment where
-    pp (Assignment _ l t r) = pp l <> ":" <+> pp t <+> "=" <+> pp r
+    pp (Assignment _ l t r) = pp l <> (maybe empty (\t' -> ":" <+> pp t') t) <+> "=" <+> pp r
 
 instance Show Assignment where
     show = render . pp

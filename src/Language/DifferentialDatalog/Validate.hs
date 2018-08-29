@@ -128,8 +128,8 @@ addRhsToRules toAdd rules =
      map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
 
 convertAssignment :: Assignment -> Expr
-convertAssignment (Assignment p l Nothing r) = eSet (E $ EVarDecl p l) r
-convertAssignment (Assignment p l (Just t) r) = eSet (E $ ETyped p (E $ EVarDecl p l) t) r
+convertAssignment (Assignment p l Nothing r) = E $ ESet p (E $ EVarDecl p l) r
+convertAssignment (Assignment p l (Just t) r) = E $ ESet p (E $ ETyped p (E $ EVarDecl p l) t) r
 
 convertFtlStatement :: Statement -> [Rule]
 convertFtlStatement (ForStatement p e r mc s) =
