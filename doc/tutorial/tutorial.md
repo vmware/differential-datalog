@@ -145,7 +145,8 @@ An atom is true iff the relation contains the specified record.  The
 atom to the left of `:-` is the *head* of the rule; atoms to the right
 of `:-` form the *body* of the rule.  Commas in the body of the rule
 represent logical conjunctions, i.e., if all atoms in the body are
-true, then the head of the rule holds.
+true, then the head of the rule holds.  Finally, note the mandatory
+dot in the end of the rule.
 
 The above rule computes an inner join of `Word1` and `Word2` relations
 on the `cat` field.
@@ -160,15 +161,95 @@ on the `cat` field.
 1. A type name can start with an upper-case or a lower-case letter or
 an underscore.
 
-## Running the "Hello, World!" example
+### Ordering of declarations
 
-`playpen.dat` file.
+DDlog does not care about the order in which various program entities
+(types, relations, rules, functions) are declared.  Reordering
+declarations in the above program does not have any effect on program
+semantics.
+
+## Compiling the example
+
+Run `stack test --ta '-p playpen'` to compile the "Hello, world!"
+program.  This command performs two actions.  First, it runs the DDlog
+compiler to generate a Rust library that implements the semantics of
+your DDlog program, along with C bindings to invoke the library from
+C/C++ programs.  Second, it invokes the Rust compiler to compile the
+library.  The latter step is unfortunately quite slow at the moment,
+typically taking a couple of minutes.  Once the `stack test` command
+completes, you should find the following artifacts in the same
+directory with the `playpen.dl` file.
+
+1. The DDlog compiler creates three Rust packages (or "crates") that
+comprise a Rust library that implements your DDlog relations and
+rules:
+    * `./differential_dataflow/`
+    * `./cmd_parser/`
+    * `./playpen/` (this is the main crate, which imports the two
+      others)
+
+1. If you plan to use this library directly from a Rust program, have
+a look at the `./playpen/lib.rs` file, which contains the Rust API to
+DDlog.
+
+**TODO: link to a separate document explaining the structure and API
+of the Rust project**
+
+1. If you plan to use the library from a C/C++ program, your program
+must link against the `./playpen/target/release/libplaypen.so`
+library, which wraps the DDlog program into a C API.  This API is
+declared in the auto-generated `./playpen/playpen.h` header file.
+
+**TODO: link to a separate document explaining the use of the C FFI**
+
+1.
+
+CLI interface.
+
+## Running the example
+
+What kind of a "Hello, world!" program does not contain "Hello" or
+"world" strings anywhere in the source code?  Well, those strings are
+data, and DDlog offers several ways to feed data to the program:
+
+1. Statically, by listing ground facts as part of the program.
+
+1. Via text-based interface.
+
+1. From a Rust program.
+
+1. From a C or C++ program.
+
+In the following sections, we expand on each method.
+
+### Specifying ground facts statically in the program source code
+
+**TODO: This does not currently work: DDlog will accept such ground
+facts, but they will not actually be added to the DB, see issue #55**
+
+This method is useful for specifying ground facts that are guaranteed
+to hold in every instantiation of the program.  Such facts can be
+specified statically to save the hassle of adding them manually on
+every program instantiation.  A ground fact is just a rule without a
+body.  Add the following declarations to the program to pre-populate
+`Word1` and `Word2` relations:
+
+```
+Word1("Hello,", CategoryOther).
+Word2("world!", CategoryOther).
+```
+
+### Feeding data through text-based interface
+
+
+
+ `playpen.dat` file.
 
 Command language described in ...
 
 output in `playpen.dump`
 
-set semantics.
+*set semantics.*
 
 *Explain the three interfaces to the Datalog program*
 
@@ -179,6 +260,8 @@ set semantics.
 *wildcard*
 
 *Named vs positional arguments*
+
+*Bitvector constants*
 
 ### String concatenation and interpolation
 
