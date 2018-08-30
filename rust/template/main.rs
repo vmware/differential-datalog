@@ -14,6 +14,7 @@ use std::sync::Mutex;
 use std::process::exit;
 use std::io;
 use std::io::{Stdout,stdout};
+use std::env;
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -24,9 +25,13 @@ use differential_datalog::program::*;
 use cmd_parser::*;
 use time::precise_time_ns;
 
-fn upd_cb(db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
-    db.lock().unwrap().update(relid, v, pol);
-    eprintln!("{} {:?} {:?}", if pol { "insert" } else { "delete" }, relid, *v);
+fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
+    if do_store {
+        db.lock().unwrap().update(relid, v, pol);
+    };
+    if do_print {
+        eprintln!("{} {:?} {:?}", if pol { "insert" } else { "delete" }, relid, *v);
+    };
 }
 
 fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
@@ -115,8 +120,11 @@ pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>) ->
 }
 
 pub fn main() {
+    let do_store = env::args().find(|a| a.as_str() == "--no-store") == None;
+    let do_print = env::args().find(|a| a.as_str() == "--no-print") == None;
+
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
-    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(&db,relid,v,pol)));
+    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(do_print,do_store,&db,relid,v,pol)));
     exit(ret);
 }
