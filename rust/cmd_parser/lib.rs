@@ -73,6 +73,9 @@ pub fn interact<F>(cb: F) -> i32
                 let mut line = String::new();
                 let res = reader.read_line(&mut line);
                 match res {
+                    Ok(0)  => {
+                        return 0;
+                    },
                     Ok(_)  => {},
                     Err(e) => {
                         eprintln!("Failed to read stdin: {}", e);
