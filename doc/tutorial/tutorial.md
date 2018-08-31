@@ -241,13 +241,85 @@ Use the `--no-print` command-line option to disable this behavior.  See [this
 document](../testing/testing.md#command-reference) for a complete list of commands supported by the
 tool.
 
- `playpen.dat` file.
+You won't get very far by typing commands manually every time.  Fortunately, you can also run the
+program in batch mode, feeding commands via a UNIX pipe from a file or another program.  Create a
+file called `playpen.dat` with the following content:
 
-output in `playpen.dump`
+```
+start;
 
-*set semantics.*
+insert Word1("Hello,"      , CategoryOther),
+insert Word1("Goodbye,"    , CategoryOther),
+insert Word2("World"       , CategoryOther),
+insert Word2("Ruby Tuesday", CategoryOther);
+
+insert Word1("Help me,"      , CategoryStarWars),
+insert Word1("I am your"     , CategoryStarWars),
+insert Word2("Obi-Wan Kenobi", CategoryStarWars),
+insert Word2("father"        , CategoryStarWars);
+
+commit;
+
+echo Phrases:;
+dump Phrases;
+```
+
+You can run the program either manually:
+
+```
+playpen/target/release/playpen_cli < playpen.dat
+```
+
+or using DDlog's test framework:
+```
+`stack test --ta '-p playpen'`
+```
+
+The latter will automatically recompile the program if it has changed, check if a file named
+`playpen.dat` exists under `tests/datalog_tests` and invoke `playpen_cli` on this file, dumping its
+output to `playpen.dump`.  In this example, it will produce the following output:
+
+```
+Phrases:
+Phrases{"Goodbye, Ruby Tuesday"}
+Phrases{"Goodbye, World"}
+Phrases{"Hello, Ruby Tuesday"}
+Phrases{"Hello, World"}
+Phrases{"Help me, Obi-Wan Kenobi"}
+Phrases{"Help me, father"}
+Phrases{"I am your Obi-Wan Kenobi"}
+Phrases{"I am your father"}
+```
+
+### Set semantics
+
+DDlog implements set semantics for relations, i.e., multiple identical records are merged into a
+single record.  Try modifying the `.dat` file to add the same input record twice and dump the
+relation to make sure that it contains one instance of the record.  The same is true for derived
+relations: when the same record can be derived in multiple ways, the resulting relation will still
+contain a single copy.
+
+### Incremental evaluation
+
+Before moving on to more interesting programs, we use the "Hello, world!" example to demonstrate
+the incremental aspect of DDlog.  Add the following commands to the `.dat` file to delete one of the
+input records.  All phrases ending with "World" should disappear from `Phrases`.  DDlog performs
+this computation incrementally, without recomputing the entire relation from scratch.
+
+```
+start;
+delete Word2("World", CategoryOther);
+commit;
+
+echo Phrases:;
+dump Phrases;
+```
 
 ## Expressions
+
+DDlog features a powerful expression language.  Expressions are used inside DDlog rules to filter
+input records and compute derived records.  The following example illustrates the use of expressions
+to filter values in the body of a rule along with several other features of DDlog.
 
 *Extract subnet mask from IP address*
 
@@ -286,6 +358,8 @@ output in `playpen.dump`
 ### Antijoins
 
 ### Aggregation
+
+**TODO**
 
 ## The type system
 
