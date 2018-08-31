@@ -48,5 +48,7 @@ extern type set<'A>
 
 extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
 
+extern function hash64(x: 'X): bit<64>
+
 /** END PREAMBLE **/
 |]

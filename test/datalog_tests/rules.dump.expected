@@ -34,3 +34,13 @@ R6{4}
 R6{5}
 R6{6}
 
+Table12{1121923567552759129,"foo",S{(true, true),5}}
+Table12{4428539042948225172,"foo",S{(false, true),10000}}
+Table12{7435003661972021728,"foo",S{(true, false),43981}}
+Table12{9410446881884268228,"foo",S{(false, true),10000}}
+Table12{9414678929135670610,"foo",S{(true, false),43981}}
+Table12{11477792685297466936,"foo",S{(true, true),5}}
+Table12{11835915661136091658,"foo",S{(true, true),5}}
+Table12{13991715483694827944,"buzzzzzzzz",S{(true, true),5}}
+Table12{16943942368384903648,"foo",S{(false, true),10000}}
+Table12{17613145073510969360,"foo",S{(true, false),43981}}
