@@ -114,7 +114,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
 
 pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>) -> i32 {
     let p = prog(upd_cb);
-    let running = Arc::new(Mutex::new(p.run(1)));
+    let running = Arc::new(Mutex::new(p.run(4)));
     let upds = Arc::new(Mutex::new(Vec::new()));
     interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))
 }
