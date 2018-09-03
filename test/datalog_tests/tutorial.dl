@@ -98,7 +98,7 @@ NetHostString(id, $"${h}") :- NetHost(id, h).
 
 // Form IP address from bytes using bit vector concatenation
 function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-    : ip_addr_t = 
+    : ip_addr_t =
 {
     IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
 }

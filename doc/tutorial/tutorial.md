@@ -391,30 +391,30 @@ type contains UTF-8 strings.  Two forms of string literals are supported:
 
 1. *Quoted strings* are Unicode strings enclosed in quotes, with the same single-character
 escapes as in C, e.g.,
-```
-"bar", "\tbar\n", "\"buzz", "\\buzz", "barΔ"
-```
-A quoted string may not contain an unescaped new-line character, backslash, or quote, e.g.,
-```
-"foo
-bar"
-```
-is illegal.  Long strings can be broken into multiple lines using backslash:
-```
-"foo\
-   \bar"
-```
-is equivalent to `"foobar"`
+  ```
+  "bar", "\tbar\n", "\"buzz", "\\buzz", "barΔ"
+  ```
+  A quoted string may not contain an unescaped new-line character, backslash, or quote, e.g.,
+  ```
+  "foo
+  bar"
+  ```
+  is illegal.  Long strings can be broken into multiple lines using backslash:
+  ```
+  "foo\
+     \bar"
+  ```
+  is equivalent to `"foobar"`
 
 1. *Raw strings*, enclosed in `[| |]`, can contain arbitrary Unicode characters, except the `|]`
 sequence, including newlines and backslashes, e.g.,
-```
-[|
-foo\n
-buzz
-bar|]
-```
-is the same string as `"foo\\n\nbuzz\nbar"`.
+  ```
+  [|
+  foo\n
+  buzz
+  bar|]
+  ```
+  is the same string as `"foo\\n\nbuzz\nbar"`.
 
 Adjacent string literals (of both kinds) are automatically concatenated, e.g., `"foo" "bar"` is
 converted to `"foobar"`.
@@ -538,13 +538,109 @@ NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 
 ### Bit vectors
 
-*Bitvector constants*
+The design of DDlog was strongly influenced by applications from the domain of networking, where
+programmers frequently deal with bit vectors of non-standard sizes.  This motivated DDlog's
+bit-vector type.  We have encountered several instances of this type, e.g., `typedef UUID=bit<128>`.
+In addition to standard arithmetic and bitwise operators over bit vectors (see [language
+reference](../language_reference/language_reference.md#expressions)), DDlog supports bit vector
+slicing and concatenation.  Slicing is expressed using the `x[N:M]` syntax examplified in the
+previous section.  Bit vector concatenation is implemented by the `++` operator (which is also
+overloaded for strings).  Concatenation can be applied to bit vectors of arbitrary width, producing
+a bit vector whose width is the sum of the widths of its arguments.  The following example
+illustrates both operators:
 
-*Link to language reference*
+```
+// Form IP address from bytes using bit vector concatenation
+function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+    : ip_addr_t =
+{
+    IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
+}
+
+// Check for multicast IP address using bit slicing
+function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+
+input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+
+// convert bytes to IP addresses
+relation Address(addr: ip_addr_t)
+Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
+
+// filter multicast IP addresses
+relation MCastAddress(addr: ip_addr_t)
+MCastAddress(a) :- Address(a), is_multicast_addr(a).
+```
+
+DDlog offers two ways to write bit vector literals. First, they can be written as decimal numbers.
+DDlog performs *type inference* to determine whether the number should be interpreted as an unbounded
+mathematical integer or a bit vector.  In the latter case it also infers its bit width.  For
+example, the literal `125` is interpreted as a mathematical integer in `var x: int = 125` and as an
+8-bit bit-vector in `var x: bit<8> = 125`.
+
+Second, bit vector literals can be written with explicit width and radix specifiers using the
+`[<width>]<radix_specifier><value>` syntax, where `<radix>` is one of `'d`, `'h`, `'o`, `'b` for
+decimal, hexadecimal, octal and binary numbers respectively:
+
+```
+32'd15              // 32-bit decimal
+48'haabbccddeeff    // 48-bit hexadecimal
+3'b101              // 3-bit binary
+'d15                // bit vector whose value is 15 and whose width is determined from the context
+```
 
 ### Control flow and variables
 
-*if-then-else, sequencing, assignments, var*
+Complex computations can be expressed in DDlog using control-flow constructs:
+
+1. *Sequencing* evaluates semicolumn-separated expressions in order.
+
+1. *`if (cond) e1 else e2`* evaluates one of its subexpressions depending on the value of `cond`.
+
+1. Matching chooses among one of several expressions by matching its argument against a series of
+patterns.
+
+Note that DDlog currently does not support loops.
+
+The following example illustrates these constructs:
+
+```
+function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
+{
+    var port: bit<16> = match (proto) {
+        "FTP"   -> 20,  // default FTP port
+        "HTTPS" -> 443, // default HTTP port
+        _       -> {    // other protocol
+            if (preferred_port != 0)
+                preferred_port // return preferred_port if specified
+            else
+                16'd80         // assume HTTP otherwise
+        }
+    };
+    // Return the address:port string
+    $"${ip}:${port}"
+}
+```
+
+This example highlights several important aspects of DDlog's control flow constructs.  First, note
+that the function does not have a `return` statement (in fact, there is currently no `return`
+statemnt in DDlog).  DDlog is an *expression-oriented language*, which does not differentiate
+between expressions and statements.  All control flow constructs are expressions that have a
+statically assigned type and a dynamically assigned value and can be used as terms in other
+expressions.  The function's return value is simply the value produced by the expression in its
+body.  In particular, a sequential block returns the value of the last expression in the sequence;
+`if-else` and `match` expressions return the value of the taken branch.  As a consequence, the
+`else` clause is not optional in an `if-else` expression, and match clauses must be exhaustive.
+
+Second, this example illustrates the use of local *variables* in DDlog. Similar to other languages,
+variables store intermediate values.  DDlog enforces that a variable is assigned when it is
+declared, thus ruling out uninitialized variables.  In this example, the `port` variable is assigned
+the result of the `match` expression.  A variable can be assigned multiple times, overwriting
+previous values.
+
+Finally, this example shows DDlog's `match` syntax, which matches the value of its argument against
+a series of *patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.  Another pattern
+used in this example is the wildcard pattern (`_`) that matches any value.  We discuss more complex
+pattern [below](#tagged-unions).
 
 ## Functions
 
@@ -578,11 +674,7 @@ NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 
 ### Tuples
 
-### Type synonyms
-
 ### Generic types
-
-### Built-in types
 
 ## Explicit relation types
 

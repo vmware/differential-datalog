@@ -7,11 +7,11 @@ typedef ConnectionString = ConnectionString{s: string}
 typedef Endpoint = Endpoint{ep: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
-typedef Host = Host{id: UUID, name: string, ip: IPAddr}
+typedef Host = Host{id: UUID, name: string, ip: IP4}
 typedef HostAddresses = HostAddresses{host: bit<64>, addrs: string}
 typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
-typedef IPAddr = bit<32>
+typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
@@ -25,7 +25,7 @@ typedef Packet = Packet{pkt: eth_pkt_t}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
-typedef Subnet = Subnet{id: UUID, prefix: IPAddr, mask: NetMask}
+typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
 typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
 typedef TCPDstPort = TCPDstPort{port: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
@@ -120,6 +120,8 @@ input relation Word1 [Word1]
 input relation Word2 [Word2]
 input relation X [X]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
+Word1(.word="Hello,", .cat=CategoryOther{}).
+Word2(.word="World!", .cat=CategoryOther{}).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
 Pow2(.p=(((("The square of " ++ __builtin_2string(x)) ++ " is ") ++ __builtin_2string((x * x))) ++ "")) :- Number(.n=x).
 NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id, .h=h).
