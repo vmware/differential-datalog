@@ -379,11 +379,96 @@ position:
 Host(.id=host_id, .ip=host_ip)
 ```
 
-While more verbose than the original version, this syntax is less error-prone, especially for
-relations with many arguments.  In addition, it only requires the programmer to list arguments that
-are used in the rule.  Omitted arguments are automaticaly wildcarded.
+While this syntax is more verbose, it improves code clarity and prevents errors due to incorrect
+ordering of arguments.  In addition, it only requires the programmer to list arguments that are used
+in the rule.  Omitted arguments are automaticaly wildcarded.
+
+### String literals
+
+DDlog has built-in support for strings, allowing many string-manipulating programs to be expressed
+completely within the language, without relying on external functions.  DDlog's primitive `string`
+type contains UTF-8 strings.  Two forms of string literals are supported:
+
+1. *Quoted strings* are Unicode strings enclosed in quotes, with the same single-character
+escapes as in C, e.g.,
+```
+"bar", "\tbar\n", "\"buzz", "\\buzz", "barΔ"
+```
+A quoted string may not contain an unescaped new-line character, backslash, or quote, e.g.,
+```
+"foo
+bar"
+```
+is illegal.  Long strings can be broken into multiple lines using backslash:
+```
+"foo\
+   \bar"
+```
+is equivalent to `"foobar"`
+
+1. *Raw strings*, enclosed in `[| |]`, can contain arbitrary Unicode characters, except the `|]`
+sequence, including newlines and backslashes, e.g.,
+```
+[|
+foo\n
+buzz
+bar|]
+```
+is the same string as `"foo\\n\nbuzz\nbar"`.
+
+Adjacent string literals (of both kinds) are automatically concatenated, e.g., `"foo" "bar"` is
+converted to `"foobar"`.
+
+See [`strings.dl`](../../test/datalog_tests/strings.dl) for more examples of string literals.
 
 ### String concatenation and interpolation
+
+We have already encountered the string concatenation operator `++`.  Another way to construct
+strings in DDlog is using *string interpolation*, which allows embedding arbitrary DDlog expressions
+inside a string literal.  At runtime, the result of the expression is automatically converted to a
+string and concatenated with the string literal. Interpolated strings are preceded by the `$`
+character, and embedded expession are wrapped in `${}`:
+
+```
+input relation Number(n: bigint)
+relation Pow2(p: string)
+Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+```
+
+Values of primitive types  (`string`, `bigint`, `bit<N>`, and `bool`) are converted to strings using
+builtin methods.  For user-defined types, conversion is performed by calling a user-provided
+function whose name is formed from the name of the type by changing the first letter of the type
+name to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function must
+take exactly one argument of the given type and return a string.
+
+In the following example, we would like to print...
+
+```
+typedef ip_addr_t = IPAddr{addr: bit<32>}
+typedef mac_addr_t = MACAddr{addr: bit<48>}
+
+function ip_addr_t2string(ip: ip_addr_t): string = {
+    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+}
+
+function mac_addr_t2string(mac: mac_addr_t): string = {
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+}
+
+typedef nethost_t = NHost {
+    ip:  ip_addr_t,
+    mac: mac_addr_t
+}
+
+function nethost_t2string(h: nethost_t): string = {
+    $"Host: IP=${h.ip}, MAC=${h.mac}"
+}
+
+input relation NetHost(id: bigint, h: nethost_t)
+relation NetHostString(id: bigint, s: string)
+
+NetHostString(id, $"${h}") :- NetHost(id, h).
+```
 
 ### Arithmetic expressions
 
