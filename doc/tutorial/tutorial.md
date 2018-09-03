@@ -1,7 +1,7 @@
 # Tutorial: Differential Datalog
 
-**Note:**: All examples from this tutorial can be found in the
-[`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl) file.  Test inputs are in
+**Note:**: All examples from this tutorial can be found in
+[`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl).  Test inputs are in
 [`test/datalog_tests/tutorial.dat`](../../test/datalog_tests/tutorial.dat) and outputs are in
 [`test/datalog_tests/tutorial.dump.expected`](../../test/datalog_tests/tutorial.dump.expected).
 
@@ -318,20 +318,76 @@ dump Phrases;
 ## Expressions
 
 DDlog features a powerful expression language.  Expressions are used inside DDlog rules to filter
-input records and compute derived records.  The following example illustrates the use of expressions
-to filter values in the body of a rule along with several other features of DDlog.
+input records and compute derived records.  In this section of the tutorial, we introduce the use of
+expressions with a series of examples.  See the [language
+reference](../language_reference/language_reference.md#expressions) for a complete description.
 
-*Extract subnet mask from IP address*
+The following example illustrates the use of expressions to filter records in the body of a rule
+along with several other features of DDlog.  Given a set of IP hosts and subnets, this DDlog program
+computes a host-to-subnet mapping by matching IP addresses against subnet masks.
 
-*wildcard*
+```
+// Type aliases improve readability.
+typedef UUID    = bit<128>
+typedef IPAddr  = bit<32>
+typedef NetMask = bit<32>
 
-*Named vs positional arguments*
+//IP host specified by its name and address.
+input relation Host(id: UUID, name: string, ip: IPAddr)
 
-*Bitvector constants*
+//IP subnet specified by its IP prefix and mask
+input relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+
+// HostInSubnet relation maps hosts to known subnets
+relation HostInSubnet(host: UUID, subnet: UUID)
+
+HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
+                                    Subnet(subnet_id, subnet_prefix, subnet_mask),
+                                    ((host_ip & subnet_mask) == subnet_prefix). // filter condition
+```
+
+First, note the three *type alias* declarations in the first lines of the example.  A type alias is
+a shortcut that can be used interchangeably with the type it aliases.  Type aliases improve code
+readability and simplify refactoring.  For example, while in this example `IPAddr` and `bit<32>`
+refer to the exact same type (a 32-bit unsigned integer), the former makes it explicit that the
+corresponding variable or field stores an IP address value.
+
+Next we declare the two input relations that store known IP hosts and subnets respectively, followed
+by the derived `HostInSubnet` relation.  `HostInSubnet` is computed by filtering all host-subnet
+pairs where host address matches subnet prefix and mask.  This is captured by the rule in the end of
+the program.  The first two clauses use already familiar syntax two *bind* `host_id`, `host_ip`,
+`subnet_id`, `subnet_prefix`, `subnet_mask` variables to records from `Host` and `Subnet` relations.
+
+The first two clauses iterate over all host-subnet pairs.  We would like to narrow this set down to
+only those pairs where the host's IP address belongs to the subnet.  This is captured by the
+expression in the third clause of the rule: `(host_ip & subnet_mask) == subnet_prefix`, where `&` is
+the bitwise "and" operaror, and `==` is the equality operator.  In DDlog, a clause that is a Boolean
+expression is a *filter* clause that eliminates all tuples that do not satisfy the condition.
+
+Note that this rule does not use the `name` field of the `Host` relation.  We do not want to pollute
+the name space with an unused variable and instead use the *wildcard* symbol (`_`) in the first
+clause of the rule to indicate that the value of the field is immaterial:
+
+```
+Host(host_id, _, host_ip)
+```
+
+DDlog supports an alternative syntax for atoms, identifying relation arguments by name instead of by
+position:
+
+```
+Host(.id=host_id, .ip=host_ip)
+```
+
+While more verbose than the original version, this syntax is less error-prone, especially for
+relations with many arguments.  In addition, it only requires the programmer to list arguments that
+are used in the rule.  Omitted arguments are automaticaly wildcarded.
 
 ### String concatenation and interpolation
 
 ### Arithmetic expressions
+
+*Bitvector constants*
 
 *Link to language reference*
 
