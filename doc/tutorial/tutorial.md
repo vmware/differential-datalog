@@ -329,14 +329,14 @@ computes a host-to-subnet mapping by matching IP addresses against subnet masks.
 ```
 // Type aliases improve readability.
 typedef UUID    = bit<128>
-typedef IPAddr  = bit<32>
+typedef IP4     = bit<32>
 typedef NetMask = bit<32>
 
 //IP host specified by its name and address.
-input relation Host(id: UUID, name: string, ip: IPAddr)
+input relation Host(id: UUID, name: string, ip: IP4)
 
 //IP subnet specified by its IP prefix and mask
-input relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
@@ -348,7 +348,7 @@ HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
 
 First, note the three *type alias* declarations in the first lines of the example.  A type alias is
 a shortcut that can be used interchangeably with the type it aliases.  Type aliases improve code
-readability and simplify refactoring.  For example, while in this example `IPAddr` and `bit<32>`
+readability and simplify refactoring.  For example, while in this example `IP4` and `bit<32>`
 refer to the exact same type (a 32-bit unsigned integer), the former makes it explicit that the
 corresponding variable or field stores an IP address value.
 
@@ -441,20 +441,59 @@ function whose name is formed from the name of the type by changing the first le
 name to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function must
 take exactly one argument of the given type and return a string.
 
-In the following example, we would like to print...
+In the following example, we would like to print information about network hosts, including their IP
+and Ethernet addresses, in the standard human-readable format, e.g., `"192.168.0.1"` for IP
+addresses and `"aa:b6:d0:11:ae:c1"` for Ethernet addresses.  Earlier in this tutorial, we declared
+the `IP4` type as an alias to 32-bit numbers.  When embedded in an interpolated string, such a
+number is automatically printed as a decimal integer.  One way to obtain the desired formatting
+would be to implement a custom formatting function for IP addresses and call it every time we would
+like to convert an IP address to a string, e.g., `$"IP address: ${format_bit32_as_ip(addr)}"`.  This
+is somewhat inelegant and error-prone (since forgetting to call the formatting function causes DDlog
+to apply the standard conversion function for numbers).  A better option is to declare a new type for
+IP addresses rather than a type alias:
 
 ```
 typedef ip_addr_t = IPAddr{addr: bit<32>}
-typedef mac_addr_t = MACAddr{addr: bit<48>}
+```
 
+This declares the `ip_addr_t` type with a single *type constructor* called `IPAddr`.  We discuss the
+type system in more detail below.  For the time being, think of this declaration as a C struct with
+a single field of type `bit<32>`.  DDlog does not have a default way to print this type, giving us
+an opportunity to provide a user-defined formatting method:
+
+```
 function ip_addr_t2string(ip: ip_addr_t): string = {
     $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
+```
+
+This function introduces two new constructs.  First, it shows the C-style notation for accessing
+struct fields, e.g., `ip.addr`.  Second, it demonstrates the bit slicing syntax (`ip.addr[31:24]`),
+which selects a range of bits from a bit vector and returns it as a new bit vector of type `bit<N>`,
+where `N` is the width of the selected range.
+
+One might feel that our new type for IP addresses is more cumbersome to use than the simple
+`bit<32>` alias.  Both declarations are valid and choosing one over the other is a matter of taste.
+We do point out that the new declaration offers additional type safety, as it prevents one from
+accidentally mixing IP addresses and numbers.
+
+Next, we declare a data type for Ethernet addresses (aka MAC addresses) and associate a string
+conversion function with it in a similar way.  One little twist here is that individual bytes of the
+Ethernet address must be printed in hexadecimal format.  Since DDlog's default formatter uses
+decimal format, we call the built-in `hex()` function to perform the conversion:
+
+```
+typedef mac_addr_t = MACAddr{addr: bit<48>}
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
     $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
+```
 
+We can now declare the `NHost` type that describes a network host and contains the host's IP and MAC
+addresses, and define a string conversion function for it.
+
+```
 typedef nethost_t = NHost {
     ip:  ip_addr_t,
     mac: mac_addr_t
@@ -463,14 +502,41 @@ typedef nethost_t = NHost {
 function nethost_t2string(h: nethost_t): string = {
     $"Host: IP=${h.ip}, MAC=${h.mac}"
 }
+```
 
+DDlog will automatically invoke the user-defined string conversion functions for `ip_addr_t` and
+`mac_addr_t` types to format `ip` and `mac` fields respectively.
+
+The following DDlog program tests the above types and functions.  It maps values of type `nethost_t`
+in the input relation to string representation and stores them in the derived relation:
+
+```
 input relation NetHost(id: bigint, h: nethost_t)
 relation NetHostString(id: bigint, s: string)
 
 NetHostString(id, $"${h}") :- NetHost(id, h).
 ```
+Try feeding the following `.dat` file to this program:
 
-### Arithmetic expressions
+```
+start;
+
+insert NetHost(1, NHost{IPAddr{0xaabbccdd}, MACAddr{0x112233445566}}),
+insert NetHost(2, NHost{IPAddr{0xa0b0c0d0}, MACAddr{0x102030405060}});
+
+commit;
+
+dump NetHostString;
+```
+
+You should obtain the following output:
+
+```
+NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
+NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
+```
+
+### Bit vectors
 
 *Bitvector constants*
 

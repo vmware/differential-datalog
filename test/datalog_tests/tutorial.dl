@@ -33,14 +33,14 @@ Word2("World!", CategoryOther).
 
 // Type aliases improve readability.
 typedef UUID    = bit<128>
-typedef IPAddr  = bit<32>
+typedef IP4     = bit<32>
 typedef NetMask = bit<32>
 
 // IP host specified by its name and address.
-input relation Host(id: UUID, name: string, ip: IPAddr)
+input relation Host(id: UUID, name: string, ip: IP4)
 
 // IP subnet specified by its IP prefix and mask
-input relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
