@@ -99,6 +99,10 @@ commit;
 echo ConnectionString;
 dump ConnectionString;
 
+echo First5;
+
+dump First5;
+
 start;
 
 insert Blacklisted("170.187.204.221:80"),

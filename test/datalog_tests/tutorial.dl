@@ -144,6 +144,16 @@ ConnectionString(addr_port(ip, proto, preferred_port)) :-
     Connection(ip, proto, preferred_port).
 
 /*
+ * Example: extern functions
+ */
+extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
+
+relation First5(str: string)
+
+First5(string_slice(p, 0,5)) :- Phrases(p).
+
+
+/*
  * Example: assignment clauses and antijoins
  */
 input relation Blacklisted(ep: string)

@@ -635,24 +635,37 @@ Second, this example illustrates the use of local *variables* in DDlog. Similar 
 variables store intermediate values.  DDlog enforces that a variable is assigned when it is
 declared, thus ruling out uninitialized variables.  In this example, the `port` variable is assigned
 the result of the `match` expression.  A variable can be assigned multiple times, overwriting
-previous values.
+previous values.  Like other expressions, assignments produce values; however, unlike C assignments,
+DDlog assignments return an empty [tuple](#tuples) (roughly, DDlog's equivalent of null), as opposed
+to the assigned value, hence DDlog assignments cannot be chained.
 
 Finally, this example shows DDlog's `match` syntax, which matches the value of its argument against
 a series of *patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.  Another pattern
 used in this example is the wildcard pattern (`_`) that matches any value.  We discuss more complex
-pattern [below](#tagged-unions).
+patterns [below](#tagged-unions).
 
 ## Functions
 
+We have already encountered several functions in this tutorial.  Functions facilitate modularity and
+code reuse.  DDlog functions are pure (side-effect-free) computations.  A function may not modify
+its arguments.  The body of a function is an expression whose type must match the function's return
+type.  A function call can be inserted anywhere an expression of the function's return type can be
+used.  DDlog currently does not allow recursive functions.
+
 ### Extern functions
+
+Despite its rich expression syntax and type system, DDlog does not strive to be a general-purpose
+programming language.  In particular, the absence of loops, recursion, and inductive data types make
+it impossible to express many computations in DDlog.  Such computations must be implemented in Rust
+and invoked from DDlog programs as *extern* functions.  The Rust implementation may in turn invoke a
+function implemented in C or any other language.
 
 ## Advanced rule syntax
 
-### Filter literals
+### FlatMap literals
 
 ### Assignment literals
 
-### FlatMap literals
 
 ### Rules with multiple heads
 
@@ -673,6 +686,8 @@ pattern [below](#tagged-unions).
 ### match expressions
 
 ### Tuples
+
+*Can be used to return multiple values*
 
 ### Generic types
 
