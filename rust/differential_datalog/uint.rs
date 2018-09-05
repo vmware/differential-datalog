@@ -65,6 +65,13 @@ impl fmt::Display for Uint {
     }
 }
 
+impl fmt::LowerHex for Uint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.x)
+    }
+}
+
+
 impl fmt::Debug for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self, f)
@@ -151,5 +158,6 @@ forward_binop!(impl Add for Uint, add);
 forward_binop!(impl Sub for Uint, sub);
 forward_binop!(impl Div for Uint, div);
 forward_binop!(impl Rem for Uint, rem);
+forward_binop!(impl Mul for Uint, mul);
 forward_binop!(impl BitAnd for Uint, bitand);
 forward_binop!(impl BitOr for Uint, bitor);

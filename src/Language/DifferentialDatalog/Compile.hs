@@ -1081,7 +1081,7 @@ mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EString{..} = ("r###\"" <> pp exprString <> "\"###.to_string()", EVal)
-mkExpr' _ _ EBit{..} | exprWidth <= 64 = (pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
+mkExpr' _ _ EBit{..} | exprWidth <= 64 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise       = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values

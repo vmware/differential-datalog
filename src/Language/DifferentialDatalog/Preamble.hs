@@ -38,6 +38,9 @@ import Text.RawString.QQ
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "__builtin_2string"
 
+bUILTIN_2HEX_STRING_FUNC :: String
+bUILTIN_2HEX_STRING_FUNC = "hex"
+
 tOSTRING_FUNC_SUFFIX :: String
 tOSTRING_FUNC_SUFFIX = "2string"
 
@@ -47,6 +50,7 @@ datalogPreamble = [r|/** BEGIN PREAMBLE **/
 extern type set<'A>
 
 extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
+extern function |] ++ bUILTIN_2HEX_STRING_FUNC ++ [r|(x: 'X): string
 
 /** END PREAMBLE **/
 |]
