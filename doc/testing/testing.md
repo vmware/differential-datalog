@@ -63,6 +63,9 @@ outputs.
 1. Make sure that you delete the `.expected` file whenever the datalog
    program or the test workload changed; otherwise the test will fail.
 
+## Command reference
+
+
 | Command                | Example                           | Description                                          |
 | ---------------------- |-----------------------------------| -----------------------------------------------------|
 | `start;`               |                                   | start a transaction                                  |
@@ -75,6 +78,7 @@ outputs.
 | `insert <record>;`     | insert Rel1(1,true,"foo");        | inserts record to relation Rel1                      |
 | `delete <record>;`     | delete Rel1(1,true,"foo");        | deletes record to relation Rel1                      |
 | comma-separated updates| insert Foo(1), delete Bar("buzz");| a sequence of insert and delete commands can be applied on one update|
+| `exit`                 |                                   | terminates execution                                 |
 
 ### Example workload `path.dat`
 

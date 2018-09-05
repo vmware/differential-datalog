@@ -70,6 +70,12 @@ impl fmt::Display for Int {
     }
 }
 
+impl fmt::LowerHex for Int {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:x}", self.x)
+    }
+}
+
 impl fmt::Debug for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self, f)
@@ -148,3 +154,4 @@ forward_binop!(impl Add for Int, add);
 forward_binop!(impl Sub for Int, sub);
 forward_binop!(impl Div for Int, div);
 forward_binop!(impl Rem for Int, rem);
+forward_binop!(impl Mul for Int, mul);

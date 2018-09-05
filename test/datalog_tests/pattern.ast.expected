@@ -63,3 +63,4 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
+extern function hex (x: 'X): string

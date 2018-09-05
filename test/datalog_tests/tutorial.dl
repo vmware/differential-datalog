@@ -1,5 +1,5 @@
 /*
- * Example 1: "Hello, world!" in Datalog
+ * Example: "Hello, world!" in Datalog
  */
 
 // Category type with two type constructors.  Since constructors have
@@ -21,21 +21,26 @@ relation Phrases(phrase: string)
 // The `++` operator is string concatenation.
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 
+// Let's add some static facts (which have not effect in the current
+// implementation)
+Word1("Hello,", CategoryOther).
+Word2("World!", CategoryOther).
+
 
 /*
- * Example 2: Map hosts to IP subnets.
+ * Example: Map hosts to IP subnets.
  */
 
 // Type aliases improve readability.
 typedef UUID    = bit<128>
-typedef IPAddr  = bit<32>
+typedef IP4     = bit<32>
 typedef NetMask = bit<32>
 
 // IP host specified by its name and address.
-input relation Host(id: UUID, name: string, ip: IPAddr)
+input relation Host(id: UUID, name: string, ip: IP4)
 
 // IP subnet specified by its IP prefix and mask
-input relation Subnet(id: UUID, prefix: IPAddr, mask: NetMask)
+input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
 relation HostInSubnet(host: UUID, subnet: UUID)
@@ -54,7 +59,231 @@ HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
 
 
 /*
- * Example 3: Advanced features
+ * Example: Strings
+ */
+
+input relation Number(n: bigint)
+relation Pow2(p: string)
+
+Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+
+typedef ip_addr_t = IPAddr{addr: bit<32>}
+typedef mac_addr_t = MACAddr{addr: bit<48>}
+
+function ip_addr_t2string(ip: ip_addr_t): string = {
+    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+}
+
+function mac_addr_t2string(mac: mac_addr_t): string = {
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+}
+
+typedef nethost_t = NHost {
+    ip:  ip_addr_t,
+    mac: mac_addr_t
+}
+
+function nethost_t2string(h: nethost_t): string = {
+    $"Host: IP=${h.ip}, MAC=${h.mac}"
+}
+
+input relation NetHost(id: bigint, h: nethost_t)
+relation NetHostString(id: bigint, s: string)
+
+NetHostString(id, $"${h}") :- NetHost(id, h).
+
+/*
+ * Example: arithmetics
+ */
+
+// Form IP address from bytes using bit vector concatenation
+function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+    : ip_addr_t =
+{
+    IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
+}
+
+// Check for multicast IP address using bit slicing
+function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+
+input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+relation Address(addr: ip_addr_t)
+relation MCastAddress(addr: ip_addr_t)
+
+Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
+MCastAddress(a) :- Address(a), is_multicast_addr(a).
+
+/*
+ * Example: control flow
+ */
+
+function addr_port(ip: ip_addr_t,
+                   proto: string,
+                   preferred_port: bit<16>): string = {
+    var port: bit<16> = 
+        match (proto) {
+            "FTP"   -> 20,
+            "HTTPS" -> 443,
+            _       -> {
+                if (preferred_port != 0) 
+                    preferred_port 
+                else 
+                    16'd80 // assume HTTP
+            }
+        };
+    $"${ip}:${port}"
+}
+
+input relation Connection(ip: ip_addr_t,
+                          proto: string,
+                          preferred_port: bit<16>)
+
+relation ConnectionString(s: string)
+
+ConnectionString(addr_port(ip, proto, preferred_port)) :-
+    Connection(ip, proto, preferred_port).
+
+/*
+ * Example: extern functions
+ */
+extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
+
+relation First5(str: string)
+
+First5(string_slice(p, 0,5)) :- Phrases(p).
+
+
+/*
+ * Example: assignment clauses and antijoins
+ */
+input relation Blacklisted(ep: string)
+relation Endpoint(ep: string)
+
+Endpoint(endpoint) :- 
+    Connection(ip, proto, preferred_port),
+    var endpoint = addr_port(ip, proto, preferred_port),
+    not Blacklisted(endpoint).
+
+/*
+ * Example: recursion
+ * (see path.dl)
+ */
+
+/*
+ * Example: FlatMap, extern functions
+ */
+
+extern function split_ip_list(x: string): set<string>
+
+input relation HostAddresses(host: bit<64>, addrs: string)
+relation HostIP(host: bit<64>, addr: string)
+
+HostIP(host, addr) :- HostAddresses(host, addrs), 
+                      FlatMap(addr=split_ip_list(addrs)).
+
+/*
+ * Example: Multiple heads
+ */
+input relation X(x: bit<16>)
+
+relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
+relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
+
+Sum(x,y,x+y),
+Product(x,y,x*y) :- X(x), X(y).
+
+/*
+ * Example: tagged unions
+ */
+
+typedef ip4_addr_t = bit<32>
+typedef ip6_addr_t = bit<128>
+
+typedef eth_pkt_t = EthPacket { src     : bit<48>
+                              , dst     : bit<48>
+                              , payload : eth_payload_t}
+
+typedef eth_payload_t = EthIP4   {ip4 : ip4_pkt_t}
+                      | EthIP6   {ip6 : ip6_pkt_t}
+                      | EthOther
+
+typedef ip4_pkt_t = IP4Pkt { ttl      : bit<8>
+                           , src      : ip4_addr_t
+                           , dst      : ip4_addr_t
+                           , payload  : ip_payload_t}
+
+typedef ip6_pkt_t = IP6Pkt { ttl     : bit<8>
+                           , src     : ip6_addr_t
+                           , dst     : ip6_addr_t
+                           , payload : ip_payload_t}
+
+typedef ip_payload_t = IPTCP   { tcp : tcp_pkt_t}
+                     | IPUDP   { udp : udp_pkt_t}
+                     | IPOther
+
+typedef tcp_pkt_t = TCPPkt { src   : bit<16>
+                           , dst   : bit<16>
+                           , flags : bit<9> }
+
+typedef udp_pkt_t = UDPPkt { src     : bit<16>
+                           , dst     : bit<16> 
+                           , len     : bit<16>}
+
+
+input relation Packet(pkt: eth_pkt_t)
+
+relation TCPDstPort(port: bit<16>)
+
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        _ -> 0
+    }
+}
+
+relation UDPDstPort(port: bit<16>)
+
+UDPDstPort(port) :- Packet(pkt), var port = pkt_udp_port(pkt), port != 0.
+
+function pkt_udp_port2(pkt: eth_pkt_t): option_t<bit<16>> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
+        EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
+        _ -> None
+    }
+}
+
+relation UDPDstPort2(port: bit<16>)
+
+UDPDstPort2(port) :- Packet(pkt), Some{var port} = pkt_udp_port2(pkt).
+
+/*
+ * Example: tuples
+ */
+
+input relation KnownHost(addr: ip4_addr_t)
+
+function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) = {
+    (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+}
+
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
+
+/*
+ * Example: explicit relation type
+ */
+
+
+
+/*
+ * Example: Advanced features
  */
 
 // option_t is a generic type that can be use to represent optional values of any other type.
