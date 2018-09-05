@@ -4,6 +4,8 @@ extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 function dummy (x: string): string =
     (x ++ " dummy")
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 function serializable_t2string (x: serializable_t): string =
     match (x) {

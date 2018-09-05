@@ -83,6 +83,33 @@ impl ToFFI for u64 {
     }
 }
 
+#[repr(C)]
+pub struct Uint128_le_t {
+    word0: uint64_t,
+    word1: uint64_t
+}
+
+impl Uint128_le_t {
+    pub fn to_u128(&self) -> u128 {
+        (self.word0 as u128) | ((self.word1 as u128) << 64)
+    }
+}
+
+impl ToFFI for u128 {
+    type FFIType = Uint128_le_t;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        Uint128_le_t{
+            word0: ((*self) & 0xffffffffffffffff) as uint64_t,
+            word1: ((*self) >> 64) as uint64_t
+        }
+    }
+
+    fn c_code(&self) -> String {
+        format!("(struct Uint128_le_t){{(__uint64_t)0x{:x}, (__uint64_t)0x{:x}}}", (*self) & 0xffffffffffffffff, (*self) >> 64)
+    }
+}
+
 impl ToFFI for String {
     type FFIType = *mut c_char;
 

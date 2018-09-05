@@ -108,6 +108,32 @@ fn test_u64() {
     assert_eq!(u64::from_record(&Record::Int((-0xabcdef).to_bigint().unwrap())), Err("cannot conver -11259375 to u64".to_string()));
 }
 
+impl FromRecord for u128 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_u128() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot conver {} to u128", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+#[test]
+fn test_u128() {
+    assert_eq!(u128::from_record(&Record::Int(25_u128.to_bigint().unwrap())), Ok(25));
+    assert_eq!(u128::from_record(&Record::Int(100000000000000000000000000000000000000_u128.to_bigint().unwrap())), Ok(100000000000000000000000000000000000000));
+    assert_eq!(u128::from_record(&Record::Int(0xab.to_bigint().unwrap())), Ok(0xab));
+    assert_eq!(u128::from_record(&Record::Int(0xabcdef.to_bigint().unwrap())), Ok(0xabcdef));
+    assert_eq!(u128::from_record(&Record::Int((-0xabcdef).to_bigint().unwrap())), Err("cannot conver -11259375 to u128".to_string()));
+}
+
+
 impl FromRecord for BigInt {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {

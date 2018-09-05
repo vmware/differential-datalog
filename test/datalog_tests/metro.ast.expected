@@ -5,6 +5,8 @@ typedef line = bigint
 extern type set<'A>
 typedef station = string
 extern function __builtin_2string (x: 'X): string
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 relation Answer [Answer]
 input relation Links [Links]

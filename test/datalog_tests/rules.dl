@@ -40,6 +40,6 @@ typedef S = S {
 input relation Table1(id: bit<64>, name: string)
 input relation Table2(name: string, f2: bigint, f3: S)
 
-relation Table12(id: bit<64>, name: string, f3: S)
+relation Table12(id: bit<128>, name: string, f3: S)
 
-Table12(hash64((id,name,f2,f3)), name, f3) :- Table1(id, name), Table2(name, f2, f3).
+Table12(hash128((id,name,f2,f3)), name, f3) :- Table1(id, name), Table2(name, f2, f3).

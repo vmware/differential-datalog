@@ -20,4 +20,6 @@ typedef t15 = Const15{f: bigint}
 typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
 typedef t19 = C0{f0: bigint} | C1{f0: bigint} | C2{f0: bigint}
 extern function __builtin_2string (x: 'X): string
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string

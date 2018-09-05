@@ -5,13 +5,14 @@ typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef T = T{x: bigint, y: string}
 typedef Table1 = Table1{id: bit<64>, name: string}
-typedef Table12 = Table12{id: bit<64>, name: string, f3: S}
+typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
 typedef X = X{b: bigint, c: R3, d: R1}
 typedef Y = Y{b: bigint, e: string}
 typedef Z = Z{x: bigint, y: R3}
 extern type set<'A>
 extern function __builtin_2string (x: 'X): string
+extern function hash128 (x: 'X): bit<128>
 extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 input relation R1 [R1]
@@ -38,4 +39,4 @@ T(.x=a.b, .y=e) :- X[a], Y(.b=a.d, .e=e).
 R7(.f1=1, .f2=16'd2).
 R7(.f1=1, .f2=16'd3).
 R7[R7Other{}].
-Table12(.id=hash64((id, name, f2, f3)), .name=name, .f3=f3) :- Table1(.id=id, .name=name), Table2(.name=name, .f2=f2, .f3=f3).
+Table12(.id=hash128((id, name, f2, f3)), .name=name, .f3=f3) :- Table1(.id=id, .name=name), Table2(.name=name, .f2=f2, .f3=f3).

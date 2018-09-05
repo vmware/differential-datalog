@@ -53,6 +53,7 @@ extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
 extern function |] ++ bUILTIN_2HEX_STRING_FUNC ++ [r|(x: 'X): string
 
 extern function hash64(x: 'X): bit<64>
+extern function hash128(x: 'X): bit<128>
 
 /** END PREAMBLE **/
 |]
