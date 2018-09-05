@@ -45,6 +45,11 @@ ConnectionString{"170.187.204.221:20"}
 ConnectionString{"170.187.204.221:443"}
 ConnectionString{"170.187.204.221:80"}
 ConnectionString{"170.187.204.221:8080"}
+First5
+First5{"Goodb"}
+First5{"Hello"}
+First5{"Help "}
+First5{"I am "}
 Endpoint:
 Endpoint{"170.187.204.221:443"}
 Endpoint{"170.187.204.221:8080"}

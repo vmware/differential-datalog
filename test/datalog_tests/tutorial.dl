@@ -75,7 +75,8 @@ function ip_addr_t2string(ip: ip_addr_t): string = {
 }
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
 
 typedef nethost_t = NHost {

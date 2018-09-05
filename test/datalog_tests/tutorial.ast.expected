@@ -5,6 +5,7 @@ typedef Category = CategoryStarWars{} | CategoryOther{}
 typedef Connection = Connection{ip: ip_addr_t, proto: string, preferred_port: bit<16>}
 typedef ConnectionString = ConnectionString{s: string}
 typedef Endpoint = Endpoint{ep: string}
+typedef First5 = First5{str: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Host = Host{id: UUID, name: string, ip: IP4}
@@ -87,12 +88,14 @@ function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
         _ -> None{}
     }
 extern function split_ip_list (x: string): set<string>
+extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 relation Address [Address]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
 input relation Connection [Connection]
 relation ConnectionString [ConnectionString]
 relation Endpoint [Endpoint]
+relation First5 [First5]
 relation Flow [Flow]
 relation Flow1 [Flow1]
 input relation Host [Host]
@@ -128,6 +131,7 @@ NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id,
 Address(.addr=ip_from_bytes(b3, b2, b1, b0)) :- Bytes(.b3=b3, .b2=b2, .b1=b1, .b0=b0).
 MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 ConnectionString(.s=addr_port(ip, proto, preferred_port)) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port).
+First5(.str=string_slice(p, 64'd0, 64'd5)) :- Phrases(.phrase=p).
 Endpoint(.ep=endpoint) :- Connection(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
 HostIP(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), FlatMap(addr = split_ip_list(addrs)).
 Sum(.x=x, .y=y, .sum=(x + y)),
