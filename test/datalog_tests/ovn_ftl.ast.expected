@@ -9,6 +9,8 @@ typedef option_t<'A> = None{} | Some{value: 'A}
 extern type set<'A>
 typedef stage = LS_IN_ACL{} | LS_OUT_ACL{} | LR_IN_ADMISSION{} | LR_IN_IP_INPUT{} | LR_IN_UNSNAT{} | LR_OUT_SNAT{} | LR_IN_DNAT{} | LR_IN_ARP_RESOLVE{} | LR_IN_ARP_REQUEST{} | LR_IN_DEFRAG{} | LR_OUT_DELIVERY{} | LS_IN_LB{} | LS_OUT_LB{} | LS_IN_PRE_ACL{} | LS_OUT_PRE_ACL{} | LS_IN_PRE_LB{} | LS_OUT_PRE_LB{} | LS_IN_PRE_STATEFUL{} | LS_OUT_PRE_STATEFUL{} | LS_IN_STATEFUL{} | LS_OUT_STATEFUL{} | LS_IN_PORT_SEC_L2{} | LS_IN_PORT_SEC_IP{} | LS_IN_PORT_SEC_ND{} | LS_IN_ARP_RSP{} | LS_IN_DHCP_OPTIONS{} | LS_IN_DHCP_RESPONSE{} | LS_IN_L2_LKUP{} | LS_OUT_PORT_SEC_IP{} | LS_OUT_PORT_SEC_L2{}
 extern function __builtin_2string (x: 'X): string
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 relation Flow [Flow]
 input relation Load_Balancer [Load_Balancer]

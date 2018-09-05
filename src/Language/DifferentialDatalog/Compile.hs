@@ -57,6 +57,7 @@ import qualified Data.Graph.Inductive as G
 import qualified Data.Graph.Inductive.Query.DFS as G
 import Debug.Trace
 import Text.RawString.QQ
+import Data.WideWord
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
@@ -1023,7 +1024,7 @@ mkPatExpr' _ varprefix EString{..}               = do
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, "*" <> vname <+> "==" <+> "\"" <> pp exprString <> "\"" <> ".to_string()")
-mkPatExpr' _ _         EBit{..} | exprWidth <= 64= return (pp exprIVal, empty)
+mkPatExpr' _ _         EBit{..} | exprWidth <= 128= return (pp exprIVal, empty)
 mkPatExpr' _ varprefix EBit{..}                  = do
     i <- get
     put $ i+1
@@ -1081,8 +1082,8 @@ mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EString{..} = ("r###\"" <> pp exprString <> "\"###.to_string()", EVal)
-mkExpr' _ _ EBit{..} | exprWidth <= 64 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
-                     | otherwise       = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
+                     | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -1205,6 +1206,7 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 16 = "u16"
                  | typeWidth <= 32 = "u32"
                  | typeWidth <= 64 = "u64"
+                 | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
 mkType' TTuple{..}                 = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TUser{..}                  = pp typeName <>
@@ -1246,10 +1248,10 @@ bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 castBV :: Doc -> Int -> Int -> Doc
 castBV e w1 w2 | t1 == t2
                = e
-               | w1 <= 64 && w2 <= 64
+               | w1 <= 128 && w2 <= 128
                = parens $ e <+> "as" <+> t2
-               | w2 > 64
-               = "Uint::from_u64(" <> e <> ")"
+               | w2 > 128
+               = "Uint::from_u128(" <> e <> ")"
                | otherwise
                = e <> "to_" <> t2 <> "().unwrap()"
     where
@@ -1272,7 +1274,7 @@ mkSlice (e, w) h l = castBV res w (h - l + 1)
     mask = mkBVMask (h - l + 1)
 
 mkBVMask :: Int -> Doc
-mkBVMask w | w > 64    = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
+mkBVMask w | w > 128   = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
            | otherwise = "0x" <> m
     where
     m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
@@ -1287,14 +1289,14 @@ mkTruncate v t =
     needsTruncation :: Int -> Bool
     needsTruncation w = mask w /= empty
     mask :: Int -> Doc
-    mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 || w > 64
+    mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 || w > 64 && w < 128
            = mkBVMask w
     mask _ = empty
 
 mkInt :: Integer -> Doc
-mkInt v | v <= (toInteger (maxBound::Word64)) && v >= (toInteger (minBound::Word64))
-        = "Int::from_u64(" <> pp v <> ")"
-        | v <= (toInteger (maxBound::Int64))  && v >= (toInteger (minBound::Int64))
-        = "Int::from_i64(" <> pp v <> ")"
+mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
+        = "Int::from_u128(" <> pp v <> ")"
+        | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
+        = "Int::from_i128(" <> pp v <> ")"
         | otherwise
         = "Int::parse_bytes(b\"" <> pp v <> "\", 10)"

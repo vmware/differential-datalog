@@ -32,6 +32,12 @@ impl Int {
     pub fn from_i64(v: i64) -> Int {
         Int{x: BigInt::from(v)}
     }
+    pub fn from_u128(v: u128) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_i128(v: i128) -> Int {
+        Int{x: BigInt::from(v)}
+    }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Int {
         Int{x: BigInt::parse_bytes(buf, radix).unwrap()}
     }

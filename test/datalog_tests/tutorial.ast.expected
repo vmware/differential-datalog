@@ -64,6 +64,8 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
      (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ __builtin_2string(port)) ++ ""))
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) =
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 function ip_addr_t2string (ip: ip_addr_t): string =
     (((((((("" ++ __builtin_2string(ip.addr[31:24])) ++ ".") ++ __builtin_2string(ip.addr[23:16])) ++ ".") ++ __builtin_2string(ip.addr[15:8])) ++ ".") ++ __builtin_2string(ip.addr[7:0])) ++ "")

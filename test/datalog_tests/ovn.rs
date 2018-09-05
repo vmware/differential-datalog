@@ -18,7 +18,7 @@ fn extract_subnets(_str: &String) -> set_t<ip_subnet_t> {
 }
 
 fn in6_generate_lla(_mac: &mac_addr_t) -> ip6_addr_t {
-    Uint::from_u64(0)
+    0
 }
 fn ip_address_and_port_from_lb_key(_key: &String) -> ip_port_t {
     ip_port_t{ip: "0.0.0.0".to_string(), port: option_t::None}

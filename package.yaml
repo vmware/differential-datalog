@@ -33,6 +33,7 @@ dependencies:
 - tuple
 - file-embed
 - filepath
+- wide-word
 
 library:
   source-dirs: src

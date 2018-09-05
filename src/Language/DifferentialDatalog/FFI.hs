@@ -218,6 +218,7 @@ mkCValue d = (rust, hdr)
                             | typeWidth <= 16 -> n <+> "as u16"
                             | typeWidth <= 32 -> n <+> "as u32"
                             | typeWidth <= 64 -> n <+> "as u64"
+                            | typeWidth <= 128-> n <+> ".to_u128()"
                             | otherwise       -> borrown <> ".clone()"
              TTuple{}       -> borrown <> ".to_native()"
              TUser{..}      -> borrown <> ".to_native()"
@@ -399,6 +400,7 @@ mkStruct d t c_struct_name ffi_struct_name [Constructor _ cname cfields] = (rust
                             | typeWidth <= 16 -> n <+> "as u16"
                             | typeWidth <= 32 -> n <+> "as u32"
                             | typeWidth <= 64 -> n <+> "as u64"
+                            | typeWidth <= 128-> n <+> ".to_u128()"
                             | otherwise       -> borrown <> ".clone()"
              TTuple{}       -> n <> ".to_native()"
              TUser{..}      -> n <> ".to_native()"
@@ -478,6 +480,7 @@ mkFFIType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                            | typeWidth <= 16 = "uint16_t"
                            | typeWidth <= 32 = "uint32_t"
                            | typeWidth <= 64 = "uint64_t"
+                           | typeWidth <= 128= "Uint128_le_t"
                            | otherwise       = "*mut Uint"
 mkFFIType d t@TTuple{..}   = ffiStructName d t
 mkFFIType d t@TUser{..}    = ffiStructName d t
@@ -493,6 +496,7 @@ mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                          | typeWidth <= 16 = "uint16_t"
                          | typeWidth <= 32 = "uint32_t"
                          | typeWidth <= 64 = "uint64_t"
+                         | typeWidth <= 128= "struct Uint128_le_t"
                          | otherwise       = "struct Uint*"
 mkCType d t@TTuple{..}   = "struct" <+> cStructName d t
 mkCType d t@TUser{..}    = "struct" <+> cStructName d t

@@ -63,4 +63,6 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string

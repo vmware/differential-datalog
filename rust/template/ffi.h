@@ -16,6 +16,11 @@ struct Int* int_from_u64(uint64_t v);
 struct Int* int_from_str(const char *s, uint32_t radix);
 void int_free(struct Int*);
 
+struct Uint128_le_t {
+    uint64_t word0;
+    uint64_t word1;
+};
+
 struct Value;
 typedef void* RunningProgram;
 

@@ -4,6 +4,8 @@ typedef Sib = Sib{s1: person, s2: person}
 typedef person = string
 extern type set<'A>
 extern function __builtin_2string (x: 'X): string
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
 extern function hex (x: 'X): string
 input relation Human [Human]
 input relation Parent [Parent]
