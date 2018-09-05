@@ -419,18 +419,19 @@ instance Show Rule where
 
 data Assignment = Assignment     { assignPos :: Pos
                                  , leftAssign :: String
+                                 , typeAssign :: Maybe Type
                                  , rightAssign :: Expr }
 
 instance Eq Assignment where
-    (==) (Assignment _ l1 r1) (Assignment _ l2 r2) =
-      l1 == l2 && r1 == r2
+    (==) (Assignment _ l1 t1 r1) (Assignment _ l2 t2 r2) =
+      l1 == l2 && t1 == t2 && r1 == r2
 
 instance WithPos Assignment where
     pos = assignPos
     atPos r p = r{assignPos = p}
 
 instance PP Assignment where
-    pp (Assignment _ l r) = pp l <+> "=" <+> pp r
+    pp (Assignment _ l t r) = pp l <> (maybe empty (\t' -> ":" <+> pp t') t) <+> "=" <+> pp r
 
 instance Show Assignment where
     show = render . pp
@@ -447,9 +448,9 @@ data Statement = ForStatement    { statPos :: Pos
                | MatchStatement  { statPos :: Pos
                                  , matchExpr :: Expr
                                  , cases :: [(Expr, Statement)] }
-               | LetStatement    { statPos :: Pos
-                                 , letList :: [Assignment]
-                                 , letStatement :: Statement }
+               | VarStatement    { statPos :: Pos
+                                 , varList :: [Assignment]
+                                 , varStatement :: Statement }
                | InsertStatement { statPos :: Pos
                                  , insertAtom :: Atom }
                | BlockStatement  { statPos :: Pos
@@ -463,7 +464,7 @@ instance Eq Statement where
           c1 == c2 && s1 == s2 && e1 == e2
     (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
           e1 == e2 && l1 == l1
-    (==) (LetStatement _ l1 s1) (LetStatement _ l2 s2) =
+    (==) (VarStatement _ l1 s1) (VarStatement _ l2 s2) =
           l1 == l2 && s1 == s2
     (==) (InsertStatement _ a1) (InsertStatement _ a2) =
           a1 == a2
@@ -479,7 +480,7 @@ instance PP Statement where
     pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
                                 (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
                                 $$ "}"
-    pp (LetStatement _ l s) = "let" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
+    pp (VarStatement _ l s) = "var" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
     pp (InsertStatement _ a) =  pp a
     pp (BlockStatement _ l) =  "{" $+$
                                 (nest' $ vcat $ (punctuate ";" $ map pp l))

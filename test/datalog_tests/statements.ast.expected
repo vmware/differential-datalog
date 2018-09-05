@@ -72,5 +72,5 @@ Z(.field=a.field) :- X[a], (a.field >= 2), (a.field > 2).
 Z(.field=(a.field + 2)) :- X[a], (a.field >= 2), (a.field > 2).
 Z(.field=(a.field + b.field)) :- X[a], X[b].
 Z(.field=(a.field + c.field)) :- X[a], X[c].
-Z(.field=(a.field + b)) :- X[a], var b = (a.field + 2).
+Z(.field=(a.field + b)) :- X[a], (var b: bigint) = (a.field + 2).
 W(.f1=a.field, .f2=b, .f3=c) :- X[a], var b = (a.field + 2), var c = (b + a.field).
