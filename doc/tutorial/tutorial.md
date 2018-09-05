@@ -28,11 +28,11 @@ that a small change to ground facts often triggers only a trivial amount of comp
 
 1. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
 is used in conjunction with a persistent database, with database records being fed to DDlog as
-grounds, and derived facts computed by DDlog being written back to the database.
+ground facts and the derived facts computed by DDlog being written back to the database.
 
-At the moment, DDlog can only operate on databases that completely fit in memory of a single host.
-(This may change in the future, as DDlog builds on the differential dataflow library that supports
-distributed computation over partitioned data).
+At the moment, DDlog can only operate on databases that completely fit the memory of a single
+machine. (This may change in the future, as DDlog builds on the differential dataflow library that
+supports distributed computation over partitioned data).
 
 1. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
 primary use case is to integrate with other applications that require deductive database
@@ -48,8 +48,8 @@ is more of a mathematical formalism than a practical tool for programmers.  In p
 Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
 writing of safe, clear, and concise code, DDlog extends pure Datalog with these concepts, including:
 
-1. A powerful type system, including Booleans, integers, bitvectors, strings, tuples, and tagged
-unions.
+1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
+tuples, and tagged unions.
 
 1. Standard integer and bitvector arithmetic.
 
@@ -99,29 +99,29 @@ relations, and a rule.  We discuss the type system in more detail below.  For th
 the `Category` type as a C-style enum with two possible values: `CategoryStarWars` and
 `CategoryOther`.
 
-Datalog relations are similar to database tables in that they store sets of records.  `Word1` and
-`Word2` are two *input* relations in our example.  Input relations (aka *extensional* relations in
-the Datalog world) are populated by user-provided ground facts.  The other kind of relations are
-*derived* (or *intensional*) relations that are computed based on rules.  The two kinds do not
-overlap: a relation must be populated exclusively by either ground or derived facts.  The `input`
-qualifier is used to declare an input relation; relations declared without this qualifier are
-derived relations.
+Datalog relations are similar to database tables in that they store sets of records.  Relation names
+in DDlog always start with an uppercase letter.  `Word1` and `Word2` are two *input* relations in
+our example.  Input relations (aka *extensional* relations in the Datalog world) are populated by
+user-provided *ground* facts.  The other kind of relations are *derived* (or *intensional*)
+relations that are computed based on rules.  The two kinds do not overlap: a relation must be
+populated exclusively by either ground or derived facts.  The `input` qualifier is used to declare
+an input relation; relations declared without this qualifier are derived relations.
 
-`Word1` and `Word2` relations have the same record type, including a `word` field of type `string`
-and a `cat` field of type `Category`.  We would like to combine strings from `Word1` and `Word2`
+The records in `Word1` and `Word2` have the same type, including a `word` field of type `string` and
+a `cat` field of type `Category`.  We would like to combine strings from `Word1` and `Word2`
 relations into phrases and store them in the `Phrases` relation.  However, we only want to combine
 words that belong to the same category.  This is captured by the DDlog rule in the end of the
 listing.  The rule can be read as follows: *for every `w1`, `w2`, and `cat`, such that `(w1, cat)`
-is in `Word1` and `(w2, cat)` is in `Word2`, there is a record `w1 ++ " " ++ w2` in Phrases*, where,
-`++` is a string concatenation operator.
+is in `Word1` and `(w2, cat)` is in `Word2`, there is a record `w1 ++ " " ++ w2` in Phrases*.  `++`
+is a string concatenation operator.
 
-Clauses of the form `<Relation_name>(<arguments>)` are called *atoms*.  An atom is true iff the
-relation contains the specified record.  The atom to the left of `:-` is the *head* of the rule;
-atoms to the right of `:-` form the *body* of the rule.  Commas in the body of the rule represent
-logical conjunctions, i.e., if all atoms in the body are true, then the head of the rule holds.
-Finally, note the mandatory dot in the end of the rule.
+The fact to the left of `:-` is called the *head* of the rule; facts to the right of `:-` form the
+*body* of the rule.  Commas in the body of the rule should be read as "and", i.e., if all facts in
+the body are true, then the head of the rule holds.  Finally, note the mandatory dot in the end of
+the rule.
 
-The above rule computes an inner join of `Word1` and `Word2` relations on the `cat` field.
+Using database terminology, the above rule computes an inner join of `Word1` and `Word2` relations
+on the `cat` field.
 
 ### Capitalization rules
 
@@ -301,10 +301,10 @@ contain a single copy.
 
 ### Incremental evaluation
 
-Before moving on to more interesting programs, we use the "Hello, world!" example to demonstrate
-the incremental aspect of DDlog.  Add the following commands to the `.dat` file to delete one of the
-input records.  All phrases ending with "World" should disappear from `Phrases`.  DDlog performs
-this computation incrementally, without recomputing the entire relation from scratch.
+We use the "Hello, world!" example to demonstrate the incremental aspect of DDlog.  Add the
+following commands to the `.dat` file to delete one of the input records.  All phrases ending with
+"World" should disappear from `Phrases`.  DDlog performs this computation incrementally, without
+recomputing the entire relation from scratch.
 
 ```
 start;
@@ -355,24 +355,24 @@ corresponding variable or field stores an IP address value.
 Next we declare the two input relations that store known IP hosts and subnets respectively, followed
 by the derived `HostInSubnet` relation.  `HostInSubnet` is computed by filtering all host-subnet
 pairs where host address matches subnet prefix and mask.  This is captured by the rule in the end of
-the program.  The first two clauses use already familiar syntax two *bind* `host_id`, `host_ip`,
+the program.  The first two lines use already familiar syntax to *bind* `host_id`, `host_ip`,
 `subnet_id`, `subnet_prefix`, `subnet_mask` variables to records from `Host` and `Subnet` relations.
 
-The first two clauses iterate over all host-subnet pairs.  We would like to narrow this set down to
-only those pairs where the host's IP address belongs to the subnet.  This is captured by the
-expression in the third clause of the rule: `(host_ip & subnet_mask) == subnet_prefix`, where `&` is
-the bitwise "and" operaror, and `==` is the equality operator.  In DDlog, a clause that is a Boolean
-expression is a *filter* clause that eliminates all tuples that do not satisfy the condition.
+The first two lines of the rule iterate over all host-subnet pairs.  We would like to narrow this
+set down to only those pairs where the host's IP address belongs to the subnet.  This is captured by
+the expression in the third line: `(host_ip & subnet_mask) == subnet_prefix`, where `&` is the
+bitwise "and" operaror, and `==` is the equality operator.  This expression acts as a *filter* that
+eliminates all tuples that do not satisfy the condition.
 
 Note that this rule does not use the `name` field of the `Host` relation.  We do not want to pollute
-the name space with an unused variable and instead use the *wildcard* symbol (`_`) in the first
-clause of the rule to indicate that the value of the field is immaterial:
+the name space with an unused variable and instead use the *"don't care"* symbol (`_`) to indicate
+that the value of the field is immaterial:
 
 ```
 Host(host_id, _, host_ip)
 ```
 
-DDlog supports an alternative syntax for atoms, identifying relation arguments by name instead of by
+DDlog supports an alternative syntax for facts, identifying relation arguments by name instead of by
 position:
 
 ```
@@ -385,9 +385,9 @@ in the rule.  Omitted arguments are automaticaly wildcarded.
 
 ### String literals
 
-DDlog has built-in support for strings, allowing many string-manipulating programs to be expressed
-completely within the language, without relying on external functions.  DDlog's primitive `string`
-type contains UTF-8 strings.  Two forms of string literals are supported:
+DDlog supports a small set of operations on strings, allowing many string-manipulating programs to
+be expressed completely within the language, without relying on external functions.  DDlog's
+primitive `string` type contains UTF-8 strings.  Two forms of string literals are supported:
 
 1. *Quoted strings* are Unicode strings enclosed in quotes, with the same single-character
 escapes as in C, e.g.,
@@ -425,9 +425,10 @@ See [`strings.dl`](../../test/datalog_tests/strings.dl) for more examples of str
 
 We have already encountered the string concatenation operator `++`.  Another way to construct
 strings in DDlog is using *string interpolation*, which allows embedding arbitrary DDlog expressions
-inside a string literal.  At runtime, the result of the expression is automatically converted to a
-string and concatenated with the string literal. Interpolated strings are preceded by the `$`
-character, and embedded expession are wrapped in `${}`:
+inside a string literal.  At runtime, expressions are evaluated and converted to strings.
+Interpolated strings are preceded by the `$` character, and embedded expession are wrapped in `${}`.
+The following program will insert in relation `Pow2` the squares of all numbers in relation
+`Number`.
 
 ```
 input relation Number(n: bigint)
@@ -435,11 +436,11 @@ relation Pow2(p: string)
 Pow2($"The square of ${x} is ${x*x}") :- Number(x).
 ```
 
-Values of primitive types  (`string`, `bigint`, `bit<N>`, and `bool`) are converted to strings using
+Values of primitive types (`string`, `bigint`, `bit<N>`, and `bool`) are converted to strings using
 builtin methods.  For user-defined types, conversion is performed by calling a user-provided
-function whose name is formed from the name of the type by changing the first letter of the type
-name to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function must
-take exactly one argument of the given type and return a string.
+function (see [below](#functions)) whose name is formed from the name of the type by changing the
+first letter of the type name to lower case (if it is in upper case) and adding the `"2string"`
+suffix.  The function must take exactly one argument of the given type and return a string.
 
 In the following example, we would like to print information about network hosts, including their IP
 and Ethernet addresses, in the standard human-readable format, e.g., `"192.168.0.1"` for IP
@@ -473,9 +474,9 @@ which selects a range of bits from a bit vector and returns it as a new bit vect
 where `N` is the width of the selected range.
 
 One might feel that our new type for IP addresses is more cumbersome to use than the simple
-`bit<32>` alias.  Both declarations are valid and choosing one over the other is a matter of taste.
-We do point out that the new declaration offers additional type safety, as it prevents one from
-accidentally mixing IP addresses and numbers.
+`bit<32>` alias.  Both implementations are valid and choosing one over the other is a matter of
+taste.  We do point out that the new declaration offers additional type safety, as it prevents one
+from accidentally mixing IP addresses and numbers.
 
 Next, we declare a data type for Ethernet addresses (aka MAC addresses) and associate a string
 conversion function with it in a similar way.  One little twist here is that individual bytes of the
@@ -486,7 +487,8 @@ decimal format, we call the built-in `hex()` function to perform the conversion:
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
 ```
 
@@ -539,9 +541,9 @@ NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 ### Bit vectors
 
 The design of DDlog was strongly influenced by applications from the domain of networking, where
-programmers frequently deal with bit vectors of non-standard sizes.  This motivated DDlog's
-bit-vector type.  We have encountered several instances of this type, e.g., `typedef UUID=bit<128>`.
-In addition to standard arithmetic and bitwise operators over bit vectors (see [language
+programmers frequently deal with bit vectors of non-standard sizes. We have encountered several
+instances of the bitvector type, e.g., `typedef UUID=bit<128>`.  In addition to standard arithmetic
+and bitwise operators over bit vectors (see [language
 reference](../language_reference/language_reference.md#expressions)), DDlog supports bit vector
 slicing and concatenation.  Slicing is expressed using the `x[N:M]` syntax examplified in the
 previous section.  Bit vector concatenation is implemented by the `++` operator (which is also
@@ -596,10 +598,9 @@ Complex computations can be expressed in DDlog using control-flow constructs:
 
 1. *`if (cond) e1 else e2`* evaluates one of its subexpressions depending on the value of `cond`.
 
-1. Matching chooses among one of several expressions by matching its argument against a series of
-patterns.
+1. Matching evaluates one of several expressions based on the an argument and a series of patterns.
 
-Note that DDlog currently does not support loops.
+Note that DDlog does not support loops.
 
 The following example illustrates these constructs:
 
@@ -627,9 +628,11 @@ statemnt in DDlog).  DDlog is an *expression-oriented language*, which does not 
 between expressions and statements.  All control flow constructs are expressions that have a
 statically assigned type and a dynamically assigned value and can be used as terms in other
 expressions.  The function's return value is simply the value produced by the expression in its
-body.  In particular, a sequential block returns the value of the last expression in the sequence;
-`if-else` and `match` expressions return the value of the taken branch.  As a consequence, the
-`else` clause is not optional in an `if-else` expression, and match clauses must be exhaustive.
+body.  In particular, a sequential block returns the value of the last evaluated expression in the
+sequence; `if-else` and `match` expressions return the value of the taken branch.  As a consequence,
+the `else` clause is not optional in an `if-else` expression, and match clauses must be exhaustive
+(for instance, the match expression above would not be valid without the last "catch-all" (`_`)
+clause).
 
 Second, this example illustrates the use of local *variables* in DDlog. Similar to other languages,
 variables store intermediate values.  DDlog enforces that a variable is assigned when it is
