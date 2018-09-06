@@ -231,6 +231,41 @@ typedef udp_pkt_t = UDPPkt { src     : bit<16>
                            , len     : bit<16>}
 
 
+function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
+                     ipsrc: ip6_addr_t, ipdst: ip6_addr_t,
+                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+{
+    EthPacket {
+        // Explicitly name constructor arguments for clarity
+        .src = ethsrc,
+        .dst = ethdst,
+        .payload = EthIP6 {
+            // Omit argument name here
+            IP6Pkt {
+                .ttl = 10,
+                .src = ipsrc,
+                .dst = ipdst,
+                .payload = IPTCP {
+                    TCPPkt {
+                        .src = srcport,
+                        .dst = dstport,
+                        .flags = 0
+                    }
+                }
+            }
+        }
+    }
+}
+
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> ip4,
+        _                                 -> IP4Pkt{0,0,0,IPOther}
+    }
+}
+
+
+
 input relation Packet(pkt: eth_pkt_t)
 
 relation TCPDstPort(port: bit<16>)
