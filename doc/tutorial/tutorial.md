@@ -1051,7 +1051,53 @@ IntranetHost(addr) :- KnownHost(addr),
 
 ### Generic types
 
+Let's revise the `pkt_ip4()` function defined above.  The function extracts IPv4 header from a
+packet.  If the packet does not have an IPv4 header, it returns a default value with all fields set
+to 0:
+
+```
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> ip4,
+        _                                 -> IP4Pkt{0,0,0,IPOther}
+    }
+}
+```
+
+This does not feel satisfactory.  A well-designed interface should give an explicit indication that
+the requested header is missing.  One solution would be to return a variant type with two
+constructors:
+
+```
+// A type that represents an IP4 header or its absence.
+typedef option_ip4_pkt_t = IP4Some{ p: ip4_pkt_t }
+                         | IP4None
+```
+
+However, defining an extra variant type for each type in the program quickly becomes a burden on
+the programmer.  Fortunately, DDlog allows us to define a generic option type that can be
+instantiated for any concrete type:
+
+```
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+```
+
+Here `'A` is a *type argument* that must be replaced with a concrete type to create a concrete
+instantiation of `option_t`.  We can now rewrite the `pkt_ip4()` function using `option_t`:
+
+```
+function pkt_ip4(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
+        _                                 -> None
+    }
+}
+```
+
 ### Extern types
+
+**TODO**
 
 ## Explicit relation types
 

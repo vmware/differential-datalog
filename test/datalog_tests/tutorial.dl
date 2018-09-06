@@ -264,6 +264,12 @@ function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
     }
 }
 
+function pkt_ip4_(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
+        _                                 -> None
+    }
+}
 
 
 input relation Packet(pkt: eth_pkt_t)

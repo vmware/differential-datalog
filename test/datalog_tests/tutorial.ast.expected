@@ -83,6 +83,11 @@ function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t =
         EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> ip4,
         _ -> IP4Pkt{.ttl=8'd0, .src=32'd0, .dst=32'd0, .payload=IPOther{}}
     }
+function pkt_ip4_ (pkt: eth_pkt_t): option_t<ip4_pkt_t> =
+    match (pkt) {
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> Some{.value=ip4},
+        _ -> None{}
+    }
 function pkt_udp_port (pkt: eth_pkt_t): bit<16> =
     match (pkt) {
         EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> port,
