@@ -309,7 +309,14 @@ function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) = {
 
 relation IntranetHost(addr: ip4_addr_t)
 
-IntranetHost(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
+IntranetHost(addr) :- KnownHost(addr),
+                      (var b3, var b2, _, _) = addr_to_tuple(addr),
+                      b3 == 192,
+                      b2 == 168.
+
+relation IntranetHost2(addr: ip4_addr_t)
+
+IntranetHost2(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
 
 /*
  * Example: explicit relation type

@@ -1000,10 +1000,54 @@ the TCP destination port of the packet and add a record with this value to the `
 relation".  Note that this example requires two rules to capture two separate patterns (for IPv4 and
 IPv6 packets).
 
+It is possible to pattern-match the structure and content of a value at the same time.  For
+instance, we can modify the last rule above to match only TCP packets whose source port number
+is 100:
+
+```
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.src=100, .dst=port}}}}}).
+```
 
 ### Tuples
 
-*Can be used to return multiple values*
+Imagine that we wanted to write a function that takes a 32-bit IP address and splits it into
+individual bytes.  How do we define a function that returns multiple values?  In languages like C or
+Java this can be achieved by modifying function arguments passed by reference.  Another option is to
+define a new type with four fields, e.g., `typedef four_bytes_t = FourBytes{b3: bit<8>, b2: bit<8>,
+b1: bit<8>, b0: bit<8>}`.  DDlog offers a nicer solution based on *tuple types*.  A tuple is just a
+group of related values of possibly different types.  A tuple type lists the types of its values.
+For example, our IP address splitting function could return a tuple with four 8-bit fields:
+
+```
+function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>) =
+{
+    // construct an instance of a tuple
+    (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+}
+```
+
+We use this function to compute a subset of IP addresses on the `192.168.*.*` subnet:
+
+```
+input relation KnownHost(addr: ip4_addr_t)
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr),
+                      (var b3, var b2, _, _) = addr_to_tuple(addr),
+                      b3 == 192,
+                      b2 == 168.
+```
+
+Note the assignment that binds variables `b2` and `b3` to individual fields of the tuple returned by
+`addr_to_tuple()`.  DDlog allows an even more compact and intuitive way to express this rule by
+combining assignment and pattern matching:
+
+```
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr),
+                      (192, 168, _, _) = addr_to_tuple(addr).
+```
 
 ### Generic types
 

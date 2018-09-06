@@ -13,6 +13,7 @@ typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
+typedef IntranetHost2 = IntranetHost2{addr: ip4_addr_t}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
@@ -111,6 +112,7 @@ input relation HostAddress [HostAddress]
 relation HostIP [HostIP]
 relation HostInSubnet [HostInSubnet]
 relation IntranetHost [IntranetHost]
+relation IntranetHost2 [IntranetHost2]
 input relation KnownHost [KnownHost]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
@@ -149,7 +151,8 @@ TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).
 UDPDstPort2(.port=port) :- Packet(.pkt=pkt), Some{.value=var port} = pkt_udp_port2(pkt).
-IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
+IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
+IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
