@@ -89,15 +89,15 @@ dump MCastAddress;
 
 start;
 
-insert Connection(IPAddr{0xaabbccdd}, "FTP",   0),
-insert Connection(IPAddr{0xaabbccdd}, "HTTPS", 0),
-insert Connection(IPAddr{0xaabbccdd}, "HTTP",  0),
-insert Connection(IPAddr{0xaabbccdd}, "HTTP",  8080);
+insert Endpoint(IPAddr{0xaabbccdd}, "FTP",   0),
+insert Endpoint(IPAddr{0xaabbccdd}, "HTTPS", 0),
+insert Endpoint(IPAddr{0xaabbccdd}, "HTTP",  0),
+insert Endpoint(IPAddr{0xaabbccdd}, "HTTP",  8080);
 
 commit;
 
-echo ConnectionString;
-dump ConnectionString;
+echo EndpointString;
+dump EndpointString;
 
 echo First5;
 
@@ -110,8 +110,8 @@ insert Blacklisted("170.187.204.221:20");
 
 commit;
 
-echo Endpoint:;
-dump Endpoint;
+echo SanitizedEndpoint:;
+dump SanitizedEndpoint;
 
 
 start;

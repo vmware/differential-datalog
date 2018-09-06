@@ -40,19 +40,19 @@ Address{ip_addr_t{2139062143}}
 Address{ip_addr_t{3772834016}}
 MCastAddress:
 MCastAddress{ip_addr_t{3772834016}}
-ConnectionString
-ConnectionString{"170.187.204.221:20"}
-ConnectionString{"170.187.204.221:443"}
-ConnectionString{"170.187.204.221:80"}
-ConnectionString{"170.187.204.221:8080"}
+EndpointString
+EndpointString{"170.187.204.221:20"}
+EndpointString{"170.187.204.221:443"}
+EndpointString{"170.187.204.221:80"}
+EndpointString{"170.187.204.221:8080"}
 First5
 First5{"Goodb"}
 First5{"Hello"}
 First5{"Help "}
 First5{"I am "}
-Endpoint:
-Endpoint{"170.187.204.221:443"}
-Endpoint{"170.187.204.221:8080"}
+SanitizedEndpoint:
+SanitizedEndpoint{"170.187.204.221:443"}
+SanitizedEndpoint{"170.187.204.221:8080"}
 HostIP:
 HostIP{1,"10.10.10.101"}
 HostIP{1,"10.10.10.102"}

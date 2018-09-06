@@ -121,28 +121,28 @@ MCastAddress(a) :- Address(a), is_multicast_addr(a).
 function addr_port(ip: ip_addr_t,
                    proto: string,
                    preferred_port: bit<16>): string = {
-    var port: bit<16> = 
+    var port: bit<16> =
         match (proto) {
             "FTP"   -> 20,
             "HTTPS" -> 443,
             _       -> {
-                if (preferred_port != 0) 
-                    preferred_port 
-                else 
+                if (preferred_port != 0)
+                    preferred_port
+                else
                     16'd80 // assume HTTP
             }
         };
     $"${ip}:${port}"
 }
 
-input relation Connection(ip: ip_addr_t,
-                          proto: string,
-                          preferred_port: bit<16>)
+input relation Endpoint(ip: ip_addr_t,
+                        proto: string,
+                        preferred_port: bit<16>)
 
-relation ConnectionString(s: string)
+relation EndpointString(s: string)
 
-ConnectionString(addr_port(ip, proto, preferred_port)) :-
-    Connection(ip, proto, preferred_port).
+EndpointString(addr_port(ip, proto, preferred_port)) :-
+    Endpoint(ip, proto, preferred_port).
 
 /*
  * Example: extern functions
@@ -158,10 +158,10 @@ First5(string_slice(p, 0,5)) :- Phrases(p).
  * Example: assignment clauses and antijoins
  */
 input relation Blacklisted(ep: string)
-relation Endpoint(ep: string)
+relation SanitizedEndpoint(ep: string)
 
-Endpoint(endpoint) :- 
-    Connection(ip, proto, preferred_port),
+SanitizedEndpoint(endpoint) :-
+    Endpoint(ip, proto, preferred_port),
     var endpoint = addr_port(ip, proto, preferred_port),
     not Blacklisted(endpoint).
 
@@ -176,10 +176,10 @@ Endpoint(endpoint) :-
 
 extern function split_ip_list(x: string): set<string>
 
-input relation HostAddresses(host: bit<64>, addrs: string)
+input relation HostAddress(host: bit<64>, addrs: string)
 relation HostIP(host: bit<64>, addr: string)
 
-HostIP(host, addr) :- HostAddresses(host, addrs), 
+HostIP(host, addr) :- HostAddress(host, addrs),
                       FlatMap(addr=split_ip_list(addrs)).
 
 /*
@@ -227,7 +227,7 @@ typedef tcp_pkt_t = TCPPkt { src   : bit<16>
                            , flags : bit<9> }
 
 typedef udp_pkt_t = UDPPkt { src     : bit<16>
-                           , dst     : bit<16> 
+                           , dst     : bit<16>
                            , len     : bit<16>}
 
 
