@@ -144,7 +144,7 @@ start;
 
 insert Packet(EthPacket{
     0xaabbccddeeff,
-    0x112233445566, 
+    0x112233445566,
     EthIP4{
         IP4Pkt{
             5,
@@ -162,7 +162,7 @@ insert Packet(EthPacket{
 }),
 insert Packet(EthPacket{
     0x112233445566,
-    0xaabbccddeeff, 
+    0xaabbccddeeff,
     EthIP6{
         IP6Pkt{
             5,
@@ -180,7 +180,7 @@ insert Packet(EthPacket{
 }),
 insert Packet(EthPacket{
     0x112233445566,
-    0xaabbccddeeff, 
+    0xaabbccddeeff,
     EthIP6{
         IP6Pkt{
             5,

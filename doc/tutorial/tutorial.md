@@ -645,7 +645,7 @@ to the assigned value, hence DDlog assignments cannot be chained.
 Finally, this example shows DDlog's `match` syntax, which matches the value of its argument against
 a series of *patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.  Another pattern
 used in this example is the wildcard pattern (`_`) that matches any value.  We discuss more complex
-patterns [below](#tagged-unions).
+patterns [below](#variant-types).
 
 Let's put the `addr_port()` function to work.  The following program converts its input relation
 that stores a set of network endpoints represented by their IP addresses, protocols, and preferred
@@ -850,7 +850,69 @@ precise specification of valid recursive programs that DDlog accepts.
 
 ## The type system
 
-### Tagged unions
+Throughout the tutorial we have encountered many examples of DDlog types, including built-in types,
+alias types, and user-defined types.  In this part of the tutorial we explore more advanced aspects
+of the DDlog type system.
+
+### Variant types
+
+Let us declare a data type for Ethernet packet headers, including source and destination Ethernet
+addresses and the payload, which models level-3 protocol headers.
+
+```
+typedef eth_pkt_t = EthPacket {
+    src     : bit<48>,
+    dst     : bit<48>,
+    payload : eth_payload_t
+}
+```
+
+So far so good.  Next, we define the payload type.  Things get trickier now, as the payload can be
+one of several things: an IPv4 header, and IPv6 header, or some other level-3 protocol header.
+Fortunately, DDlog allows such types to be expressed in a natural way:
+
+```
+typedef eth_payload_t = EthIP4   {ip4 : ip4_pkt_t}
+                      | EthIP6   {ip6 : ip6_pkt_t}
+                      | EthOther
+```
+
+This declaration is an example of a *variant type*, found modern programming languages like Haskell,
+OCaml, and Rust.  `EthIP4`, `EthIP6`, and `EthOther` are the three *type constructors* and variables
+in curly braces are *arguments* of type constructor.  Variant types generalize several concepts from
+languages like C, e.g., a variant type where all type constructors have no arguments are similar to
+C enums (see e.g., the `Category` type from ["Hello, world!"](#hello-world)); a variant type with a
+single constructor is similar to a C struct.  Variant types also resemble C unions; however, as we
+will see below, unlike unions, they enforce safe access to their content statically.
+
+We continue the example and define types for IP4, IP6, and transport protocol headers:
+
+```
+// IPv4 header
+typedef ip4_pkt_t = IP4Pkt { ttl      : bit<8>
+                           , src      : ip4_addr_t
+                           , dst      : ip4_addr_t
+                           , payload  : ip_payload_t}
+
+// IPv6 header
+typedef ip6_pkt_t = IP6Pkt { ttl     : bit<8>
+                           , src     : ip6_addr_t
+                           , dst     : ip6_addr_t
+                           , payload : ip_payload_t}
+
+// Transport protocol header
+typedef ip_payload_t = IPTCP   { tcp : tcp_pkt_t}
+                     | IPUDP   { udp : udp_pkt_t}
+                     | IPOther
+
+typedef tcp_pkt_t = TCPPkt { src   : bit<16>
+                           , dst   : bit<16>
+                           , flags : bit<9> }
+
+typedef udp_pkt_t = UDPPkt { src     : bit<16>
+                           , dst     : bit<16>
+                           , len     : bit<16>}
+```
 
 ### Filtering relations with structural matching
 
