@@ -13,6 +13,7 @@ typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
+typedef IntranetHost2 = IntranetHost2{addr: ip4_addr_t}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
@@ -77,6 +78,16 @@ function mac_addr_t2string (mac: mac_addr_t): string =
     (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
     (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
+function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t =
+    match (pkt) {
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> ip4,
+        _ -> IP4Pkt{.ttl=8'd0, .src=32'd0, .dst=32'd0, .payload=IPOther{}}
+    }
+function pkt_ip4_ (pkt: eth_pkt_t): option_t<ip4_pkt_t> =
+    match (pkt) {
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> Some{.value=ip4},
+        _ -> None{}
+    }
 function pkt_udp_port (pkt: eth_pkt_t): bit<16> =
     match (pkt) {
         EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> port,
@@ -93,6 +104,8 @@ extern function split (s: string, sep: string): set<string>
 function split_ip_list (x: string): set<string> =
     split(x, " ")
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
+function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+    EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
 relation Address [Address]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
@@ -106,6 +119,7 @@ input relation HostAddress [HostAddress]
 relation HostIP [HostIP]
 relation HostInSubnet [HostInSubnet]
 relation IntranetHost [IntranetHost]
+relation IntranetHost2 [IntranetHost2]
 input relation KnownHost [KnownHost]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
@@ -144,7 +158,8 @@ TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).
 UDPDstPort2(.port=port) :- Packet(.pkt=pkt), Some{.value=var port} = pkt_udp_port2(pkt).
-IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
+IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
+IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {

@@ -105,3 +105,6 @@ UDPDstPort2{22}
 IntranetHost:
 IntranetHost{3232235521}
 IntranetHost{3232235778}
+IntranetHost2:
+IntranetHost2{3232235521}
+IntranetHost2{3232235778}

@@ -789,19 +789,190 @@ typedef udp_pkt_t = UDPPkt { srcPort : bit<16>
                            , len     : bit<16>}
 ```
 
-*TODO* show match examples using variants
+The following function creates a packet with Ethernet, IPv6 and TCP headers:
 
-### Filtering relations with structural matching
+```
+function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
+                     ipsrc: ip6_addr_t, ipdst: ip6_addr_t,
+                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+{
+    EthPacket {
+        // Explicitly name constructor arguments for clarity
+        .src = ethsrc,
+        .dst = ethdst,
+        .payload = EthIP6 {
+            // Omit argument name here
+            IP6Pkt {
+                .ttl = 10,
+                .src = ipsrc,
+                .dst = ipdst,
+                .payload = IPTCP {
+                    TCPPkt {
+                        .src = srcport,
+                        .dst = dstport,
+                        .flags = 0
+                    }
+                }
+            }
+        }
+    }
+}
+```
 
-### match expressions
+As with relations, type constructor arguments can be identified by name or by position in the
+argument list.  The above function uses both notations.
+
+How does one access the content of a variant type?  Let's say we have a variable `pkt` of type
+`eth_pkt_t`.  We can access `pkt` fields just like a C struct, e.g., `pkt.ttl`, `pkt.src`.  This is
+safe, as `eth_pkt_t` has a single type constructor and hence every instance of this type has this
+field.  In contrast, `pkt.payload.ip4` is unsafe, since `eth_payload_t` has multiple constructors,
+and the packet may or may not have the `ip4` field depending on its specific constructor.  DDlog
+will therefore reject this expression.  Instead, a safe way to access variant types is using match
+expressions.  The following function extracts IPv4 header from a packet or returns a default value
+if the packet is not of type IPv4 (we will see a nicer way to deal with non-existent values
+[below](#generic-types)):
+
+```
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> ip4,
+        _                                 -> IP4Pkt{0,0,0,IPOther}
+    }
+}
+```
+
+Note how the match pattern simultaneously constrains the shape of the packet and binds its relevant
+fields to fresh variable names (`ip4` in this case).
+
+Structural matching can be performed up to arbitrary depth.  For example, the following function
+matches both level-3 and level-4 protocol headers to extract destination UDP port number from a
+packet.
+
+```
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
+        _ -> 0
+    }
+}
+```
+
+Structural matching can also be performed directly in the body of a rule.  The following program
+extracts all TCP destination port numbers from an input relation that stores a set of packets.
+
+```
+input relation Packet(pkt: eth_pkt_t)
+relation TCPDstPort(port: bit<16>)
+
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
+```
+
+Consider, the first of these rules.  DDlog interprets it as follows: "for every packet in the
+`Packet` relation that matches the specified pattern, bind a fresh variable `port` to the value of
+the TCP destination port of the packet and add a record with this value to the `TCPDstPort`
+relation".  Note that this example requires two rules to capture two separate patterns (for IPv4 and
+IPv6 packets).
+
+It is possible to pattern-match the structure and content of a value at the same time.  For
+instance, we can modify the last rule above to match only TCP packets whose source port number
+is 100:
+
+```
+TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.src=100, .dst=port}}}}}).
+```
 
 ### Tuples
 
-*Can be used to return multiple values*
+Imagine that we wanted to write a function that takes a 32-bit IP address and splits it into
+individual bytes.  How do we define a function that returns multiple values?  In languages like C or
+Java this can be achieved by modifying function arguments passed by reference.  Another option is to
+define a new type with four fields, e.g., `typedef four_bytes_t = FourBytes{b3: bit<8>, b2: bit<8>,
+b1: bit<8>, b0: bit<8>}`.  DDlog offers a nicer solution based on *tuple types*.  A tuple is just a
+group of related values of possibly different types.  A tuple type lists the types of its values.
+For example, our IP address splitting function could return a tuple with four 8-bit fields:
+
+```
+function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>) =
+{
+    // construct an instance of a tuple
+    (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+}
+```
+
+We use this function to compute a subset of IP addresses on the `192.168.*.*` subnet:
+
+```
+input relation KnownHost(addr: ip4_addr_t)
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr),
+                      (var b3, var b2, _, _) = addr_to_tuple(addr),
+                      b3 == 192,
+                      b2 == 168.
+```
+
+Note the assignment that binds variables `b2` and `b3` to individual fields of the tuple returned by
+`addr_to_tuple()`.  DDlog allows an even more compact and intuitive way to express this rule by
+combining assignment and pattern matching:
+
+```
+relation IntranetHost(addr: ip4_addr_t)
+
+IntranetHost(addr) :- KnownHost(addr),
+                      (192, 168, _, _) = addr_to_tuple(addr).
+```
 
 ### Generic types
 
+Let's revise the `pkt_ip4()` function defined above.  The function extracts IPv4 header from a
+packet.  If the packet does not have an IPv4 header, it returns a default value with all fields set
+to 0:
+
+```
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> ip4,
+        _                                 -> IP4Pkt{0,0,0,IPOther}
+    }
+}
+```
+
+This does not feel satisfactory.  A well-designed interface should give an explicit indication that
+the requested header is missing.  One solution would be to return a variant type with two
+constructors:
+
+```
+// A type that represents an IP4 header or its absence.
+typedef option_ip4_pkt_t = IP4Some{ p: ip4_pkt_t }
+                         | IP4None
+```
+
+However, defining an extra variant type for each type in the program quickly becomes a burden on
+the programmer.  Fortunately, DDlog allows us to define a generic option type that can be
+instantiated for any concrete type:
+
+```
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+```
+
+Here `'A` is a *type argument* that must be replaced with a concrete type to create a concrete
+instantiation of `option_t`.  We can now rewrite the `pkt_ip4()` function using `option_t`:
+
+```
+function pkt_ip4(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
+    match (pkt) {
+        EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
+        _                                 -> None
+    }
+}
+```
+
 ### Extern types
+
+**TODO**
 
 ## Explicit relation types
 
@@ -843,7 +1014,7 @@ ground facts and the derived facts computed by DDlog being written back to the d
 is more of a mathematical formalism than a practical tool for programmers.  In particular, pure
 Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
 writing of safe, clear, and concise code, DDlog extends pure Datalog with:
- 
+
     1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
     tuples, and tagged unions.
 

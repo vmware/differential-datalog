@@ -220,3 +220,6 @@ commit;
 
 echo IntranetHost:;
 dump IntranetHost;
+
+echo IntranetHost2:;
+dump IntranetHost2;
