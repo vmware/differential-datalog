@@ -1,4 +1,4 @@
-# Datalog Language Reference
+# Differential Datalog Language Reference
 
 ## Identifiers
 
@@ -319,7 +319,7 @@ interpolated_string ::= ( '$"' utf8_character* '"'
 ```
 
 For example,
-`$"x: ${x}, y: ${y}, f(x): ${f(x)}"` is equivalent to 
+`$"x: ${x}, y: ${y}, f(x): ${f(x)}"` is equivalent to
 `"x: " ++ x ++ ", y: " ++ y ++ ", f(x): " ++ f(x)`.
 
 Expressions in curly brackets can be arbitrarily complex, as long as

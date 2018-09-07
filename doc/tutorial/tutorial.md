@@ -1,80 +1,55 @@
-# Tutorial: Differential Datalog
+# A Differential Datalog (DDlog) tutorial
 
 **Note:**: All examples from this tutorial can be found in
-[`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl).  Test inputs are in
-[`test/datalog_tests/tutorial.dat`](../../test/datalog_tests/tutorial.dat) and outputs are in
+[`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl).
+The examples can be executed using test inputs from
+[`test/datalog_tests/tutorial.dat`](../../test/datalog_tests/tutorial.dat)
+and the expected outputs are in
 [`test/datalog_tests/tutorial.dump.expected`](../../test/datalog_tests/tutorial.dump.expected).
 
 ## Introduction
 
-Differential Datalog, or **DDlog** for short, is a *bottom-up*, *incremental*, *in-memory* Datalog
-engine for writing *application-integrated* deductive database engines.  Let's decipher some of
-these keywords:
+Differential Datalog or **DDlog** is an implementation of an enhanced
+version of the [Datalog](https://en.wikipedia.org/wiki/Datalog)
+programming language.  A DDlog program can be used in two ways:
 
-1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
-computes *all* possible derived facts by following Datalog rules in a bottom-up fashion.  This is in
-contrast to top-down engines that are optimized to answer individual user queries without computing
-all possible facts ahead of time.  For example, given a Datalog program that computes pairs of
-connected vertices in a graph, a bottom-up engine maintains the set of all such pairs.  A top-down
-engine, on the other hand, is triggered by a user query to determine whether a pair of vertices is
-connected and handles the query by searching for a derivation chain back to ground facts.  The
-bottom-up approach is preferable in applications where all derived facts must be computed ahead of
-time and in applications where the cost of initial computation is amortized across a large number of
-queries.
+- integrated in other applications as a library.  This is the main use case that DDlog is optimized for.
+- as a standalone program with a command-line interface (CLI)
 
-1. **Incremental**: whenever the set of ground facts changes, DDlog updates derived facts
-incrementally, avoiding complete recomputation as much as possible.  In practical terms, the means
-that a small change to ground facts often triggers only a trivial amount of computation.
+In this tutorial we use DDlog using the CLI.  The
+following diagram shows how we will use DDlog in the tutorial.  The
+DDlog compiler generates [Rust](https://www.rust-lang.org/en-US/)
+code.
 
-1. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
-is used in conjunction with a persistent database, with database records being fed to DDlog as
-ground facts and the derived facts computed by DDlog being written back to the database.
+```
+                                                 input data
+           ------------           ------------       |
+  DDlog    | DDlog    |   Rust    | Rust     |       V
+program -> | compiler |-> code -> | compiler |--> executable
+           ------------           ------------       |
+                         runtime         ^           V
+                         libraries ------/       output data
 
-At the moment, DDlog can only operate on databases that completely fit the memory of a single
-machine. (This may change in the future, as DDlog builds on the differential dataflow library that
-supports distributed computation over partitioned data).
-
-1. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
-primary use case is to integrate with other applications that require deductive database
-functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust or
-C/C++ program (bindings for other languages can be easily added, but Rust and C are the only ones we
-support at the moment).  This enables good performance, but somewhat limits the flexibility, as
-changes to the relational schema or rules require re-compilation.
-
-### Not your textbook Datalog
-
-Although Datalog is typically described as a programming language, in its classical textbook form it
-is more of a mathematical formalism than a practical tool for programmers.  In particular, pure
-Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
-writing of safe, clear, and concise code, DDlog extends pure Datalog with these concepts, including:
-
-1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
-tuples, and tagged unions.
-
-1. Standard integer and bitvector arithmetic.
-
-1. A simple procedural language that allows expressing many computations natively in DDlog without
-resorting to external functions.
-
-1. String operations, including string concatenation and interpolation.
+```
 
 ## Installing DDlog
 
-**TODO: document proper installation procedure when we have one.**
+Installation instructions are found in the [README](../../README.md).
 
-Follow instructions in Installation sections of the
-[README](README.md).
+## "Hello, World!" in DDlog
 
-## "Hello, World!"
+Files storing DDlog programs have the `.dl` suffix.
+[dl.vim](../../tools/dl.vim) is a file that offers syntax highlighting
+and indentation support for the vim editor.
 
-We start with the obligatory "Hello, World!" example.  Let's create a file with `.dl` extension, say
-`playpen.dl`, in the `test/datalog_tests` directory.  Next time you run `stack test`, the test
-framework will pickup the program, and automatically compile and run it.  Alternatively, running
-`stack test --ta '-p playpen'` will execute just your test instead of the entire test framework.
+If you add a file called `playpen.dl`, in the `test/datalog_tests`
+directory, it will be executed automatically when you run the DDlog tests, by
+typing `stack test`.  You can execute just this file by typing `stack
+test --ta '-p playpen'`.
 
 **TODO: replace these instructions once issue #64 has been fixed**
 
-Copy the following code to `playpen.dl`:
+You should create the following `playpen.dl` file:
 
 ```
 /* First DDlog example */
@@ -91,94 +66,837 @@ relation Phrases(phrase: string)
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 ```
 
-This may not look like a typical "Hello, world!" program, yet that is exactly what it is.  Let's
-dissect this code snippet.  First, note the use of C++ style comments (`//` and `/* */`).
+DDlog comments are like C++ and Java comments (`//` and `/* */`).
 
-Comments aside, this program contains several DDlog declarations: a data type declaration, three
-relations, and a rule.  We discuss the type system in more detail below.  For the moment, think of
-the `Category` type as a C-style enum with two possible values: `CategoryStarWars` and
-`CategoryOther`.
+This program contains several declarations:
+- a data type declaration, `Category`
+- two input relations (collections) called `Word1` and `Word2`
+- an output relation called `Phrases`
+- a rule describing how to compute `Phrases`
 
-Datalog relations are similar to database tables in that they store sets of records.  Relation names
-in DDlog always start with an uppercase letter.  `Word1` and `Word2` are two *input* relations in
-our example.  Input relations (aka *extensional* relations in the Datalog world) are populated by
-user-provided *ground* facts.  The other kind of relations are *derived* (or *intensional*)
-relations that are computed based on rules.  The two kinds do not overlap: a relation must be
-populated exclusively by either ground or derived facts.  The `input` qualifier is used to declare
-an input relation; relations declared without this qualifier are derived relations.
+When this program is executed it expects to be given as input the
+contents of collections `Word1` and `Word2` and it produces as output the contents
+of `Phrases`.
 
-The records in `Word1` and `Word2` have the same type, including a `word` field of type `string` and
-a `cat` field of type `Category`.  We would like to combine strings from `Word1` and `Word2`
-relations into phrases and store them in the `Phrases` relation.  However, we only want to combine
-words that belong to the same category.  This is captured by the DDlog rule in the end of the
-listing.  The rule can be read as follows: *for every `w1`, `w2`, and `cat`, such that `(w1, cat)`
-is in `Word1` and `(w2, cat)` is in `Word2`, there is a record `w1 ++ " " ++ w2` in Phrases*.  `++`
-is a string concatenation operator.
+The `Category` type is similar to a C or Java `enum`, and has only two
+possible values: `CategoryStarWars` and `CategoryOther`.
 
-The fact to the left of `:-` is called the *head* of the rule; facts to the right of `:-` form the
-*body* of the rule.  Commas in the body of the rule should be read as "and", i.e., if all facts in
-the body are true, then the head of the rule holds.  Finally, note the mandatory dot in the end of
-the rule.
+DDlog relations are similar to database tables (the term 'relation'
+also comes from databases): a relation is a set of records.  Records
+are like C `struct`s: objects with multiple named and fields.  Relation names must be uppercase.
 
-Using database terminology, the above rule computes an inner join of `Word1` and `Word2` relations
-on the `cat` field.
+Output relations are also called *derived* relations, and their contents is computed based on rules.
+Relations without an `input` qualifier are always derived relations.
+
+The declaration of `Word1`: 
+`input relation Word1(word: string, cat: Category)` indicates the type of its records: each
+record has a `word` field of type `string`, and a `cat` field of type `Category`.
+The records of `Word2` happen to have the same type.
+
+From this declaration: `relation Phrases(phrase: string)`
+we know that he output relation `Phrases` has records with a single field named `phrase`, 
+which is a `string`.
+
+Finally, the rule
+
+```
+Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
+^^^^^^^^^^^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+          head                           body             dot
+```
+
+shows how to compute the records that belong to `Phrases`: for every
+`w1`, `w2`, and `cat`, such that `(w1, cat)` is an element of `Word1` and `(w2,
+cat)` is an element of `Word2`, there is a record in Phrases obtained by
+concatenating the strings `w1`, a space and `w2`: `w1 ++ " " ++ w2`.
+The rule's body shows how to compute the rule's head.
+A comma in a rule is read as "and".  Rules end with a mandatory dot.
+
+In database terminology the above rule computes an inner join of
+the `Word1` and `Word2` relations on the `cat` field.
 
 ### Capitalization rules
 
-1. A relation name must start with an upper-case letter.
+1. Identifiers start with letters or underscore `_`, and may contain digits.
 
-1. A variable name must start with a lower-case letter or underscore
-(`_`).
+1. Relation names must be capitalized (start with an uppercase symbol).
 
-1. A type name can start with an upper-case or a lower-case letter or
-an underscore.
+1. Variable names must start with a lowercase symbol or `_`.
 
-### Ordering of declarations
+1. Type names have no restrictions.
 
-DDlog does not care about the order in which various program entities (types, relations, rules,
-functions) are declared.  Reordering declarations in the above program does not have any effect on
-program semantics.
+### Declaration order
 
-## Compiling the example
+The order of declarations in a DDlog program is unimportant; you
+should use the order that makes programs easiest to read.
 
-Run `stack test --ta '-p playpen'` to compile the "Hello, world!" program.  This command performs
-two actions.  First, it runs the DDlog compiler to generate a Rust library that implements the
-semantics of your DDlog program, along with C bindings to invoke the library from C/C++ programs.
-Second, it invokes the Rust compiler to compile the library.  The latter step is unfortunately quite
-slow at the moment, typically taking a couple of minutes.  Once the `stack test` command completes,
-you should find the following artifacts in the same directory with the `playpen.dl` file.
+### Compiling the hello world program
 
-1. The DDlog compiler creates three Rust packages (or "crates") that comprise a Rust library that
-implements your DDlog relations and rules:
+Run `stack test --ta '-p playpen'` to compile this program.
+(Unfortunately the Rust compiler is quite slow, so this may take a few
+minutes).
+
+### Running the hello world program
+
+The text-based interface offers a convenient way to interact with the
+DDlog program during development and debugging.  In your favorite Unix
+shell start the program that was generated by the compiler `./playpen/target/release/playpen_cli`.  
+The CLI shows you a prompt `>>`.  Now you can type some commands that are executed by the datalog engine.
+
+CLI commands can be used to show the contents of relations, or to
+insert or delete records from input relations.
+
+We can display the contents of the ``Phrases` relation:
+
+```
+>> dump Phrases
+>>
+```
+
+Initially all relations are empty, so nothing is printed.  Records can
+be added or removed from relations.  All insertion and deletion
+operations must be part of a *transaction*.  We start a transaction
+with `start`:
+
+```
+>> start;
+>>
+```
+
+Then we insert some records:
+
+```
+>> insert Word1("Hello,", CategoryOther);
+>> insert Word2("world!", CategoryOther);
+```
+
+And finally we complete the transaction with `commit`:
+
+```
+>> commit;
+insert 30 Word1(Word1{"Hello,",Category::CategoryOther{}})
+insert 31 Word2(Word2{"world!",Category::CategoryOther{}})
+insert 21 Phrases(Phrases{"Hello, world!"})
+```
+
+The CLI has executed all the operations that we have requested.  It
+has inserted records in relations `Word1` and `Word2`, and the rule
+describing `Phrases` has inferred that a new record should be added to
+this relation.  When commiting a transaction DDlog reports all
+*changes* to all (input and derived) relations.
+
+We can now again inspect the contents of `Phrases`:
+
+```
+>> dump Phrases;
+Phrases{"Hello, world!"}
+>>
+```
+
+## DDlog language basics
+
+In the rest of this document we introduce other features of DDlog through simple examples.
+
+### Relations are sets
+
+All DDlog relations are sets, i.e., a relation cannot contain multiple
+identical records.  Try adding an existing record to `Word1` and
+check that it only appears once.
+
+### Incremental evaluation
+
+We can delete records from input relations:
+
+```
+start;
+delete Word2("World", CategoryOther);
+commit;
+
+dump Prases;
+```
+
+`Phrases` should be empty again.  DDlog only computes the change of `Phrases`
+incrementally, without recomputing all records.
+
+### Expressions
+
+Expressions can be used to filter records and to compute derived
+records.  In the previous example we have used a string
+concatenation expression.
+
+Let us write a program to manipulate a network information database.
+Given a set of IP hosts and subnets, the following DDlog program
+computes a host-to-subnet mapping by matching IP addresses against subnet masks.
+
+We use type aliases to give an alternative names to types:
+
+```
+// Type aliases
+typedef UUID    = bit<128>
+typedef IP4     = bit<32>
+typedef NetMask = bit<32>
+```
+
+In this example `IP4` and `bit<32>` refer to the exact same type, a
+32-bit unsigned integer.
+
+```
+//IP host specified by its name and address.
+input relation Host(id: UUID, name: string, ip: IP4)
+
+//IP subnet specified by its IP prefix and mask
+input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
+
+// HostInSubnet relation maps hosts to known subnets
+relation HostInSubnet(host: UUID, subnet: UUID)
+
+HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
+                                    Subnet(subnet_id, subnet_prefix, subnet_mask),
+                                    ((host_ip & subnet_mask) == subnet_prefix). // filter condition
+```
+
+Two input relations store known IP hosts and subnets respectively.
+The `HostInSubnet` relation is computed by filtering all host-subnet
+pairs where the host address matches the subnet prefix and mask.
+
+This clause:
+
+```
+Host(host_id, _, host_ip)
+```
+
+*binds* variables `host_id` and `host_ip`, to corresponding fields of records from
+the `Host` relation.  So the first two lines of the rule iterate over
+all host-subnet pairs.  The expression on the third line `(host_ip &
+subnet_mask) == subnet_prefix` uses `&` (bitwise "and"), and `==`
+(equality test).  This expression acts as a *filter* that eliminates
+all tuples that do not satisfy the condition that the host subnet
+(computed using the mask) is the same as the `subnet_prefix`.
+
+This rule does not care about the `name` field of the `Host` relation,
+so it uses the *"don't care"* symbol (`_`) for the second field:
+
+```
+Host(host_id, _, host_ip)
+              ^ don't care
+```
+
+In these examples relation field names are identified by position, but
+they can also be specified by name:
+
+```
+Host(.id=host_id, .ip=host_ip)
+```
+
+Omitted fields (e.g., `name` in this example) are don't cares.
+
+### String constants (literals)
+
+DDlog strings are sequences of UTF-8 symbols.  Two forms of string constants are supported:
+
+1. *Quoted strings* are Unicode strings enclosed in quotes,  and use the same single-character
+escapes as in C, e.g.:
+    ```
+    "bar", "\tbar\n", "\"buzz", "\\buzz", "barΔ"
+    ```
+    Long strings can be broken into multiple lines using a pair backslash characters; the spaces
+    between backslashes are ignored:
+    ```
+    "foo\
+       \bar"
+    ```
+    is equivalent to `"foobar"`
+
+2. *Raw strings*, enclosed in `[| |]`, can contain arbitrary Unicode characters, (except the `|]`
+sequence), including newlines and backslashes, e.g.,
+    ```
+    [|
+    foo\n
+    buzz
+    bar|]
+    ```
+    is the same string as `"foo\\n\nbuzz\nbar"`.
+
+### String concatenation and interpolation
+
+Adjacent string literals (of both kinds) are automatically concatenated, e.g., `"foo" "bar"` is
+converted to `"foobar"`.
+
+*String interpolation* allows evaluating arbitrary DDlog expressions
+to construct a string (this feature is inspired by JavaScript).
+Interpolated strings start with the `$` character, embedded expressions
+are wrapped in `${}`.  The following program defins relation
+`Pow2` to contain strings that enumerate the squares of all numbers in relation `Number`.
+
+```
+input relation Number(n: bigint)
+relation Pow2(p: string)
+Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+```
+
+Built-in types have built-in conversions to strings.  To convert a
+user-defined type (such as `Category` above) the user can implement a
+function named Category2string that returns a string given a category
+(functions are described [below](#functions)).
+
+### Creating new types
+
+Let's say we want to display IP and Ethernet
+addresses in a standard format, e.g., `"192.168.0.1"` and
+`"aa:b6:d0:11:ae:c1"` respectively.  Since `IP4` is an alias to 32-bit
+numbers, in an interpolated string an IP address is formatted as a
+decimal integer.  We can create a custom formatting function for IP
+addresses called `format_bit32_as_ip`, which we can then invoke: e.g., 
+`$"IP address: ${format_bit32_as_ip(addr)}"`, but
+this is error-prone, since it is easy to forget to call the
+formatting function when printing IP addresses.  An alternative is to declare a new type for IP addresses:
+
+```
+typedef ip_addr_t = IPAddr{addr: bit<32>}
+```
+
+This declares a new type named `ip_addr_t`, having a single *type constructor* called `IPAddr`.
+Think of this declaration as a C struct with
+a single field of type `bit<32>`.  We can write a user-defined formatting method:
+
+```
+function ip_addr_t2string(ip: ip_addr_t): string = {
+    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+}
+```
+
+We have used two new operators: dot to access a field:
+`ip.addr`, and bit slicing: `ip.addr[31:24]` to selects a contiguous
+range of bits from a bit vector.  Bits are numbered from the
+least-significant, which is bit 0.  The slice boundaries are both
+inclusive, so the result of `ip.addr[31:24]` has 8 bits.  Using our new
+type `ip_addr_t` prevents one from accidentally mixing IP addresses and numbers.
+
+We do the same for Ethernet addresses; for formatting we invoke the built-in
+`hex()` function to convert a number to a hexadecimal string
+representation:
+
+```
+typedef mac_addr_t = MACAddr{addr: bit<48>}
+
+function mac_addr_t2string(mac: mac_addr_t): string = {
+    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+}
+```
+
+The `NHost` type describes a network host and contains the host's IP and MAC
+addresses:
+
+```
+typedef nethost_t = NHost {
+    ip:  ip_addr_t,
+    mac: mac_addr_t
+}
+
+function nethost_t2string(h: nethost_t): string = {
+    $"Host: IP=${h.ip}, MAC=${h.mac}"
+}
+```
+
+DDlog will automatically invoke the user-defined string conversion
+functions to format the `ip` and `mac` fields when it needs to produce strings.
+
+Here is a program that computes a derived relation storing string
+representation of hosts:
+
+```
+input relation NetHost(id: bigint, h: nethost_t)
+relation NetHostString(id: bigint, s: string)
+
+NetHostString(id, $"${h}") :- NetHost(id, h).
+```
+
+Try feeding the following `.dat` file to this program:
+
+```
+start;
+
+insert NetHost(1, NHost{IPAddr{0xaabbccdd}, MACAddr{0x112233445566}}),
+insert NetHost(2, NHost{IPAddr{0xa0b0c0d0}, MACAddr{0x102030405060}});
+
+commit;
+
+dump NetHostString;
+```
+
+You should obtain the following output:
+
+```
+NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
+NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
+```
+
+### Bit vectors and integers
+
+The type `bigint` describes arbitrary-precision (unbounded) integers.
+`var x: bigint = 125` declares a variable `x` with type integer and
+initial value 125.
+
+Bit-vectors types are described by `bit<N>`, where `N` is the
+bit-vector width.  Bit-vectors are unsigned integers when performing
+arithmetic.  DDlog supports all standard arithmetic, and bitwise
+operators over bit vectors DDlog.  Concatenation of bit-vectors is
+expressed with the `++` operator (same notation as string
+concatenation).
+
+```
+// Form IP address from bytes using bit vector concatenation
+function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+    : ip_addr_t =
+{
+    IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
+}
+
+// Check for multicast IP address using bit slicing
+function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+
+input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
+
+// convert bytes to IP addresses
+relation Address(addr: ip_addr_t)
+Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
+
+// filter multicast IP addresses
+relation MCastAddress(addr: ip_addr_t)
+MCastAddress(a) :- Address(a), is_multicast_addr(a).
+```
+
+Bit vector constants can be written as decimal numbers.  If the width is not specified
+DDlog computes the width using *type inference*.
+
+Bit vector constants can also specify the width explicitly and be written in 
+binary, octal or hexadecimal:
+`[<width>]<radix_specifier><value>` syntax, where `<radix>` is one of
+`'d`, `'h`, `'o`, `'b` for decimal, hexadecimal, octal and binary
+numbers respectively:
+
+```
+32'd15              // 32-bit decimal
+48'haabbccddeeff    // 48-bit hexadecimal
+3'b101              // 3-bit binary
+'d15                // bit vector whose value is 15 and whose width is determined from the context
+```
+
+### Control flow
+
+DDlog functions are written using an *expression-oriented language*,
+where all statements are expressions.  DDlog does not support loops.
+Evaluation order can be controlled using several constructs:
+
+1. Semicolon is used to separate expressions that are evaluated in sequence, from left to right.
+
+1. *`if (cond) e1 else e2`* evaluates one of two subexpressions depending on the value of `cond`.
+
+1. *Matching* is a generalization of C/Java `switch` statements.
+
+1. A new block (scope) can be created with curly braces `{ }`
+
+The following example illustrates all these constructs:
+
+```
+function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
+{
+    var port: bit<16> = match (proto) {  // match protocol string
+        "FTP"   -> 20,  // default FTP port
+        "HTTPS" -> 443, // default HTTP port
+        _       -> {    // other protocol
+            if (preferred_port != 0)
+                preferred_port // return preferred_port if specified
+            else
+                16'd80         // assume HTTP otherwise
+        }
+    };  // semicolon required for sequencing
+    // Return the address:port string
+    $"${ip}:${port}"
+}
+```
+
+The result computed by a function is the result of the last expression
+evaluated.  There is no `return` statement.  The `else` clause is
+mandatory for an `if`.  In `match` expressions the patterns must cover
+all possible cases (for instance, the match expression above would not
+be correct without the last "catch-all" (`_`) case).
+
+DDlog variables must always be initialized when declared.  In this
+example, the `port` variable is assigned the result of the `match`
+expression.  A variable can be assigned multiple times, overwriting
+previous values.
+
+DDlog assignments cannot be chained like in C; although an assignment
+is an expression, it produces the value `()` (an empty tuple,
+described [below](#tuples)).
+
+`match` matches the value of its argument against a series of
+*patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.
+The don't care pattern (`_`) matches any value.  More
+complex patterns are shown [below](#variant-types).
+
+In the following example the input relation stores a set of network endpoints
+represented by their IP addresses, protocols, and preferred port
+numbers.  The `EndpointString` relation contains a string
+representation of the endpoints, computed using the function
+`addr_port()`, which is invoked in the head of the rule:
+
+```
+input relation Endpoint(ip: ip_addr_t,
+                        proto: string,
+                        preferred_port: bit<16>)
+
+relation EndpointString(s: string)
+
+EndpointString(addr_port(ip, proto, preferred_port)) :-
+    Endpoint(ip, proto, preferred_port).
+```
+
+### Functions
+
+DDlog functions are pure (side-effect-free) computations.  A function
+may not modify its arguments.  The body of a function is an expression
+whose type must match the function's return type.  A function call can
+be inserted anywhere an expression of the function's return type can
+be used.  DDlog currently does not allow recursive functions.
+
+### Extern functions
+
+DDlog is not a Turing-complete programming language.  (In particular,
+it lacks loops, recursion, and inductive data types.)  If needed, such
+computations must be implemented as *extern* functions.  Currently
+these must be written in Rust; the Rust implementation may in turn
+invoke implementations in C or any other language.
+
+For instance, DDlog does not provide a substring function.  We can
+declare such a function as `extern`:
+
+```
+extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
+```
+
+We can invoke `string_slice()` just like a normal DDlog function, e.g.,
+
+```
+relation First5(str: string)
+First5(string_slice(p, 0, 5)) :- Phrases(p).
+```
+
+To build this program we must provide a Rust implementation of
+`string_slice()`.  DDlog generates a commented out function prototype
+in `playpen/lib.rs`.  Do not modify this file; instead, create a new
+file called `playpen.rs` in the same directory:
+
+```
+fn string_slice(x: &String, from: &u64, to: &u64) -> String {
+    x.as_str()[(*from as usize)..(*to as usize)].to_string()
+}
+```
+
+### Advanced rules
+
+#### Negations and antijoins
+
+Let's assume we want to compute a relation `SanitizedEndpoint`
+containing the endpoints that do not appear in a `Blacklisted`
+relation:
+
+```
+input relation Blacklisted(ep: string)
+relation SanitizedEndpoint(ep: string)
+
+SanitizedEndpoint(endpoint) :-
+    EndpointString(endpoint),
+    not Blacklisted(endpoint).
+```
+
+The `not` operator in the last line eliminates all endpoint values
+that appear in `Blacklisted`.  In database terminology this is known
+as *antijoin*.
+
+### Assignments in rules
+
+We can directly use assignments in rules:
+
+```
+SanitizedEndpoint(endpoint) :-
+    Endpoint(ip, proto, preferred_port),
+    var endpoint = addr_port(ip, proto, preferred_port),
+    not Blacklisted(endpoint).
+```
+
+#### Sets and FlatMap
+
+`set` is a built-in *generic* data type representing a set of values.  `set` is parameterized
+by any other DDlog type, e.g., `set<string>` is a set of strings.
+
+Let us assume that we have an extern function that splits a string
+into a list of substrings according to a separator:
+
+```
+extern function split(s: string, sep: string): set<string>
+```
+
+The Rust implementation can be as follows:
+
+```
+fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
+    s.as_str().split(sep).map(|x| x.to_string()).collect()
+}
+```
+
+(Note that the Rust function returns a vector, not a set.  In fact, any
+Rust type that implements the `IntoIterator` trait can be used to
+return sets.)
+
+We define a DDlog function which splits IP addresses at spaces:
+
+```
+function split_ip_list(x: string): set<string> =
+   split(x, " ")
+```
+
+Consider an input relation `HostAddress` associating each host with a
+string of all its IP addresses, separated by whitespaces.  We want to
+compute a `HostIP` relation that consists of (host, ip) pairs:
+
+```
+input relation HostAddress(host: bit<64>, addrs: string)
+relation HostIP(host: bit<64>, addr: string)
+```
+
+For this purpose we can use `FlatMap`: this operator applies a
+function that produces a *set* for each value in a relation, and creates a
+result that is the union of all the resulting sets:
+
+```
+HostIP(host, addr) :- HostAddress(host, addrs),
+                      FlatMap(addr=split_ip_list(addrs)).
+```
+
+You can read this rule as follows:
+
+1. For every `(host, addrs)` pair in the `HostAddress` relation, use `split_ip_list()`
+to split `addrs` into individul addresses.
+
+1. Bind each address in the resulting set to the `addr` variable, producing a new set of `(host,
+addr)` records.
+
+1. Store the resulting records int the `HostIP` relation.
+
+#### Rules with multiple heads
+
+The following program computes the sums and products of pairs of values from `X`:
+
+```
+input relation X(x: bit<16>)
+
+relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
+relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
+
+Sum(x,y,x*y) :- X(x), X(y).
+Product(x,y,x*y) :- X(x), X(y).
+```
+
+The last two rules can be written more compactly as a rule with multiple heads:
+
+```
+Sum(x,y,x+y), Product(x,y,x*y) :- X(x), X(y).
+```
+
+#### Recursive rules
+
+The same relation can appear both in the head and the body of a rule.  The
+following program computes pairs of connected nodes in a graph given
+the set of edges:
+
+```
+input relation Edge(s: node, t: node)
+
+relation Path(s1: node, s2: node)
+
+Path(x, y) :- Edge(x,y).
+Path(x, z) :- Path(x, w), Edge(w, z).
+```
+
+This is an example of a *recursive* program, where a relation depends
+on itself, either directly or via a chain of rules.  The [language
+reference](../language_reference/language_reference.md#constraints-on-dependency-graph)
+describes constraints on the recursive programs accepted by DDlog.
+
+#### Aggregation
+
+**TODO**
+
+## Advanced types
+
+### Variant types
+
+`EthPacket` below is a data type modeling the essential contents
+Ethernet packets, including source and destination addresses, and the
+payload:
+
+```
+typedef eth_pkt_t = EthPacket {
+    src     : bit<48>,
+    dst     : bit<48>,
+    payload : eth_payload_t
+}
+```
+
+A payload can be one of several things: an IPv4 packet, an IPv6
+packet, or some other level-3 protocol:
+
+```
+typedef eth_payload_t = EthIP4   {ip4 : ip4_pkt_t}
+                      | EthIP6   {ip6 : ip6_pkt_t}
+                      | EthOther
+```
+
+This declaration is an example of a *variant type*.  `EthIP4`,
+`EthIP6`, and `EthOther` are the three *type constructors* and
+variables in curly braces are *arguments* of type constructor.
+`Category` from ["Hello, world!"](#hello-world) was also a variant
+type, without arguments. `ip_addr_t` is another variant type, but with a 
+single constructor.
+
+We continue by defining types holding important fields of IP4, IP6,
+and transport protocol packets:
+
+```
+typedef ip4_pkt_t = IP4Pkt { ttl      : bit<8>
+                           , src      : ip4_addr_t
+                           , dst      : ip4_addr_t
+                           , payload  : ip_payload_t}
+
+typedef ip6_pkt_t = IP6Pkt { ttl     : bit<8>
+                           , src     : ip6_addr_t
+                           , dst     : ip6_addr_t
+                           , payload : ip_payload_t}
+
+typedef ip_payload_t = IPTCP   { tcp : tcp_pkt_t}
+                     | IPUDP   { udp : udp_pkt_t}
+                     | IPOther
+
+typedef tcp_pkt_t = TCPPkt { srcPort : bit<16>
+                           , dst{prt : bit<16>
+                           , flags   : bit<9> }
+
+typedef udp_pkt_t = UDPPkt { srcPort : bit<16>
+                           , dstPort : bit<16>
+                           , len     : bit<16>}
+```
+
+*TODO* show match examples using variants
+
+### Filtering relations with structural matching
+
+### match expressions
+
+### Tuples
+
+*Can be used to return multiple values*
+
+### Generic types
+
+### Extern types
+
+## Explicit relation types
+
+## Flow Template Language
+
+## Advanced topics
+
+*TODO* probably these should be moved out of the tutorial into a more
+ detailed reference document.
+
+### Not your textbook Datalog
+
+DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog
+engine for writing *application-integrated* deductive database engines.
+
+1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
+computes *all* possible derived facts by following Datalog rules, in a bottom-up fashion.  In
+contrast, top-down engines are optimized to answer individual user queries without computing
+all possible facts ahead of time.  For example, given a Datalog program that computes pairs of
+connected vertices in a graph, a bottom-up engine maintains the set of all such pairs.  A top-down
+engine, on the other hand, is triggered by a user query to determine whether a pair of vertices is
+connected and handles the query by searching for a derivation chain back to ground facts.  The
+bottom-up approach is preferable in applications where all derived facts must be computed ahead of
+time and in applications where the cost of initial computation is amortized across a large number of
+queries.
+
+2. **Incremental**: whenever the set of ground facts changes, DDlog only performs the minimum computation
+necessary to compute all changes in the derived facts.  This has significant performance benefits for many queries.
+
+3. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
+is used in conjunction with a persistent database, with database records being fed to DDlog as
+ground facts and the derived facts computed by DDlog being written back to the database.
+
+    At the moment, DDlog can only operate on databases that completely fit the memory of a single
+    machine. (This may change in the future, as DDlog builds on the differential dataflow library that
+    supports distributed computation over partitioned data).
+
+4. **Typed**: Although Datalog is a programming language, in its classical textbook form it
+is more of a mathematical formalism than a practical tool for programmers.  In particular, pure
+Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
+writing of safe, clear, and concise code, DDlog extends pure Datalog with:
+ 
+    1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
+    tuples, and tagged unions.
+
+    2. Standard integer and bitvector arithmetic.
+
+    3. A simple procedural language that allows expressing many computations natively in DDlog without
+resorting to external functions.
+
+    4. String operations, including string concatenation and interpolation.
+
+5. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
+primary use case is to integrate with other applications that require deductive database
+functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust or
+C/C++ program (bindings for other languages can be easily added, but Rust and C are the only ones we
+support at the moment).  This enables good performance, but somewhat limits the flexibility, as
+changes to the relational schema or rules require re-compilation.
+
+### Using DDlog programs as libraries
+
+Place your program in the `test/datalog_tests` folder.  Let's assume your
+program is `playpen.dl`.
+Run `stack test --ta '-p playpen'` to compile the `playpen` program.
+When compilation completes the following artifacts are
+produced in the same directory with the input file:
+
+1. Three Rust packages (or "crates") in separate directories:
     * `./differential_dataflow/`
     * `./cmd_parser/`
-    * `./playpen/` (this is the main crate, which imports the two
-      others)
+    * `./playpen/` (this is the main crate, which imports the other two)
 
 1. If you plan to use this library directly from a Rust program, have a look at the
 `./playpen/lib.rs` file, which contains the Rust API to DDlog.
 
-**TODO: link to a separate document explaining the structure and API of the Rust project**
+    **TODO: link to a separate document explaining the structure and API of the Rust project**
 
 1. If you plan to use the library from a C/C++ program, your program must link against the
 `./playpen/target/release/libplaypen.so` library, which wraps the DDlog program into a C API.  This
 API is declared in the auto-generated `./playpen/playpen.h` header file.
 
-**TODO: link to a separate document explaining the use of the C FFI**
+    **TODO: link to a separate document explaining the use of the C FFI**
 
-1. Throughout this tutorial, we will use DDlog via its text-based interface.  This interface is
+1. The text-based interface is implemented by an
+auto-generated executable `./playpen/target/release/playpen_cli`.  This interface is
 primarily meant for testing and debugging purposes, as it does not offer the same performance and
-flexibility as the API-based interfaces.  The text-based interface is implemented by an
-auto-generated executable `./playpen/target/release/playpen_cli`.
+flexibility as the API-based interfaces.
 
-## Running the example
+### Input/output to DDlog
 
-What kind of a "Hello, world!" program does not contain "Hello" or "world" strings anywhere in the
-code?  Well, those strings are data, and DDlog offers several ways to feed data to the program:
+DDlog offers several ways to feed data to a program:
 
 1. Statically, by listing ground facts as part of the program.
 
-1. Via text-based interface.
+1. Via a text-based command-line interface.
 
 1. From a Rust program.
 
@@ -186,7 +904,7 @@ code?  Well, those strings are data, and DDlog offers several ways to feed data 
 
 In the following sections, we expand on each method.
 
-### Specifying ground facts statically in the program source code
+#### Specifying ground facts statically in the program source code
 
 **TODO: This does not currently work: DDlog will accept such ground facts, but they will not
 actually be added to the DB, see issue #55**
@@ -201,48 +919,17 @@ Word1("Hello,", CategoryOther).
 Word2("world!", CategoryOther).
 ```
 
-### Feeding data through text-based interface
+#### Feeding data through text-based interface
 
 The text-based interface offers a convenient way to interact with the DDlog program during
-development and debugging.  Let's try this interface in the command-line mode first.  Execute the
-`./playpen/target/release/playpen_cli` program from terminal and enter the following commands in its
-command line:
-
-```
-start;
-
-insert Word1("Hello,", CategoryOther),
-insert Word2("world!", CategoryOther);
-
-commit;
-dump Phrases;
-```
-
-You should see the following output:
-
-```
->> start;
->>
->> insert Word1("Hello,", CategoryOther),
->> insert Word2("world!", CategoryOther);
->>
->> commit;
-insert 30 Word1(Word1{"Hello,",Category::CategoryOther{}})
-insert 31 Word2(Word2{"world!",Category::CategoryOther{}})
-insert 21 Phrases(Phrases{"Hello, world!"})
->> dump Phrases;
-Phrases{"Hello, world!"}
->>
-```
-
-Note the three lines printed by the program in response to the `commit;` command.  At commit time,
-DDlog reports incremental changes to all of its relations, including input and derived relations.
-Use the `--no-print` command-line option to disable this behavior.  See [this
+development and debugging.  The compiler automatically generates a CLI program
+`./playpen/target/release/playpen_cli` to interact with your DDL program.
+See [this
 document](../testing/testing.md#command-reference) for a complete list of commands supported by the
-tool.
+CLI tool.
 
-You won't get very far by typing commands manually every time.  Fortunately, you can also run the
-program in batch mode, feeding commands via a UNIX pipe from a file or another program.  Create a
+You can also run the
+CLI in batch mode, feeding commands via a UNIX pipe from a file or another program.  Create a
 file called `playpen.dat` with the following content:
 
 ```
@@ -290,642 +977,3 @@ Phrases{"Help me, father"}
 Phrases{"I am your Obi-Wan Kenobi"}
 Phrases{"I am your father"}
 ```
-
-### Set semantics
-
-DDlog implements set semantics for relations, i.e., multiple identical records are merged into a
-single record.  Try modifying the `.dat` file to add the same input record twice and dump the
-relation to make sure that it contains one instance of the record.  The same is true for derived
-relations: when the same record can be derived in multiple ways, the resulting relation will still
-contain a single copy.
-
-### Incremental evaluation
-
-We use the "Hello, world!" example to demonstrate the incremental aspect of DDlog.  Add the
-following commands to the `.dat` file to delete one of the input records.  All phrases ending with
-"World" should disappear from `Phrases`.  DDlog performs this computation incrementally, without
-recomputing the entire relation from scratch.
-
-```
-start;
-delete Word2("World", CategoryOther);
-commit;
-
-echo Phrases:;
-dump Phrases;
-```
-
-## Expressions
-
-DDlog features a powerful expression language.  Expressions are used inside DDlog rules to filter
-input records and compute derived records.  In this section of the tutorial, we introduce the use of
-expressions with a series of examples.  See the [language
-reference](../language_reference/language_reference.md#expressions) for a complete description.
-
-The following example illustrates the use of expressions to filter records in the body of a rule
-along with several other features of DDlog.  Given a set of IP hosts and subnets, this DDlog program
-computes a host-to-subnet mapping by matching IP addresses against subnet masks.
-
-```
-// Type aliases improve readability.
-typedef UUID    = bit<128>
-typedef IP4     = bit<32>
-typedef NetMask = bit<32>
-
-//IP host specified by its name and address.
-input relation Host(id: UUID, name: string, ip: IP4)
-
-//IP subnet specified by its IP prefix and mask
-input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
-
-// HostInSubnet relation maps hosts to known subnets
-relation HostInSubnet(host: UUID, subnet: UUID)
-
-HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
-                                    Subnet(subnet_id, subnet_prefix, subnet_mask),
-                                    ((host_ip & subnet_mask) == subnet_prefix). // filter condition
-```
-
-First, note the three *type alias* declarations in the first lines of the example.  A type alias is
-a shortcut that can be used interchangeably with the type it aliases.  Type aliases improve code
-readability and simplify refactoring.  For example, while in this example `IP4` and `bit<32>`
-refer to the exact same type (a 32-bit unsigned integer), the former makes it explicit that the
-corresponding variable or field stores an IP address value.
-
-Next we declare the two input relations that store known IP hosts and subnets respectively, followed
-by the derived `HostInSubnet` relation.  `HostInSubnet` is computed by filtering all host-subnet
-pairs where host address matches subnet prefix and mask.  This is captured by the rule in the end of
-the program.  The first two lines use already familiar syntax to *bind* `host_id`, `host_ip`,
-`subnet_id`, `subnet_prefix`, `subnet_mask` variables to records from `Host` and `Subnet` relations.
-
-The first two lines of the rule iterate over all host-subnet pairs.  We would like to narrow this
-set down to only those pairs where the host's IP address belongs to the subnet.  This is captured by
-the expression in the third line: `(host_ip & subnet_mask) == subnet_prefix`, where `&` is the
-bitwise "and" operaror, and `==` is the equality operator.  This expression acts as a *filter* that
-eliminates all tuples that do not satisfy the condition.
-
-Note that this rule does not use the `name` field of the `Host` relation.  We do not want to pollute
-the name space with an unused variable and instead use the *"don't care"* symbol (`_`) to indicate
-that the value of the field is immaterial:
-
-```
-Host(host_id, _, host_ip)
-```
-
-DDlog supports an alternative syntax for facts, identifying relation arguments by name instead of by
-position:
-
-```
-Host(.id=host_id, .ip=host_ip)
-```
-
-While this syntax is more verbose, it improves code clarity and prevents errors due to incorrect
-ordering of arguments.  In addition, it only requires the programmer to list arguments that are used
-in the rule.  Omitted arguments are automaticaly wildcarded.
-
-### String literals
-
-DDlog supports a small set of operations on strings, allowing many string-manipulating programs to
-be expressed completely within the language, without relying on external functions.  DDlog's
-primitive `string` type contains UTF-8 strings.  Two forms of string literals are supported:
-
-1. *Quoted strings* are Unicode strings enclosed in quotes, with the same single-character
-escapes as in C, e.g.,
-  ```
-  "bar", "\tbar\n", "\"buzz", "\\buzz", "barΔ"
-  ```
-  A quoted string may not contain an unescaped new-line character, backslash, or quote, e.g.,
-  ```
-  "foo
-  bar"
-  ```
-  is illegal.  Long strings can be broken into multiple lines using backslash:
-  ```
-  "foo\
-     \bar"
-  ```
-  is equivalent to `"foobar"`
-
-1. *Raw strings*, enclosed in `[| |]`, can contain arbitrary Unicode characters, except the `|]`
-sequence, including newlines and backslashes, e.g.,
-  ```
-  [|
-  foo\n
-  buzz
-  bar|]
-  ```
-  is the same string as `"foo\\n\nbuzz\nbar"`.
-
-Adjacent string literals (of both kinds) are automatically concatenated, e.g., `"foo" "bar"` is
-converted to `"foobar"`.
-
-See [`strings.dl`](../../test/datalog_tests/strings.dl) for more examples of string literals.
-
-### String concatenation and interpolation
-
-We have already encountered the string concatenation operator `++`.  Another way to construct
-strings in DDlog is using *string interpolation*, which allows embedding arbitrary DDlog expressions
-inside a string literal.  At runtime, expressions are evaluated and converted to strings.
-Interpolated strings are preceded by the `$` character, and embedded expession are wrapped in `${}`.
-The following program will insert in relation `Pow2` the squares of all numbers in relation
-`Number`.
-
-```
-input relation Number(n: bigint)
-relation Pow2(p: string)
-Pow2($"The square of ${x} is ${x*x}") :- Number(x).
-```
-
-Values of primitive types (`string`, `bigint`, `bit<N>`, and `bool`) are converted to strings using
-builtin methods.  For user-defined types, conversion is performed by calling a user-provided
-function (see [below](#functions)) whose name is formed from the name of the type by changing the
-first letter of the type name to lower case (if it is in upper case) and adding the `"2string"`
-suffix.  The function must take exactly one argument of the given type and return a string.
-
-In the following example, we would like to print information about network hosts, including their IP
-and Ethernet addresses, in the standard human-readable format, e.g., `"192.168.0.1"` for IP
-addresses and `"aa:b6:d0:11:ae:c1"` for Ethernet addresses.  Earlier in this tutorial, we declared
-the `IP4` type as an alias to 32-bit numbers.  When embedded in an interpolated string, such a
-number is automatically printed as a decimal integer.  One way to obtain the desired formatting
-would be to implement a custom formatting function for IP addresses and call it every time we would
-like to convert an IP address to a string, e.g., `$"IP address: ${format_bit32_as_ip(addr)}"`.  This
-is somewhat inelegant and error-prone (since forgetting to call the formatting function causes DDlog
-to apply the standard conversion function for numbers).  A better option is to declare a new type for
-IP addresses rather than a type alias:
-
-```
-typedef ip_addr_t = IPAddr{addr: bit<32>}
-```
-
-This declares the `ip_addr_t` type with a single *type constructor* called `IPAddr`.  We discuss the
-type system in more detail below.  For the time being, think of this declaration as a C struct with
-a single field of type `bit<32>`.  DDlog does not have a default way to print this type, giving us
-an opportunity to provide a user-defined formatting method:
-
-```
-function ip_addr_t2string(ip: ip_addr_t): string = {
-    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
-}
-```
-
-This function introduces two new constructs.  First, it shows the C-style notation for accessing
-struct fields, e.g., `ip.addr`.  Second, it demonstrates the bit slicing syntax (`ip.addr[31:24]`),
-which selects a range of bits from a bit vector and returns it as a new bit vector of type `bit<N>`,
-where `N` is the width of the selected range.
-
-One might feel that our new type for IP addresses is more cumbersome to use than the simple
-`bit<32>` alias.  Both implementations are valid and choosing one over the other is a matter of
-taste.  We do point out that the new declaration offers additional type safety, as it prevents one
-from accidentally mixing IP addresses and numbers.
-
-Next, we declare a data type for Ethernet addresses (aka MAC addresses) and associate a string
-conversion function with it in a similar way.  One little twist here is that individual bytes of the
-Ethernet address must be printed in hexadecimal format.  Since DDlog's default formatter uses
-decimal format, we call the built-in `hex()` function to perform the conversion:
-
-```
-typedef mac_addr_t = MACAddr{addr: bit<48>}
-
-function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
-     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
-}
-```
-
-We can now declare the `NHost` type that describes a network host and contains the host's IP and MAC
-addresses, and define a string conversion function for it.
-
-```
-typedef nethost_t = NHost {
-    ip:  ip_addr_t,
-    mac: mac_addr_t
-}
-
-function nethost_t2string(h: nethost_t): string = {
-    $"Host: IP=${h.ip}, MAC=${h.mac}"
-}
-```
-
-DDlog will automatically invoke the user-defined string conversion functions for `ip_addr_t` and
-`mac_addr_t` types to format `ip` and `mac` fields respectively.
-
-The following DDlog program tests the above types and functions.  It maps values of type `nethost_t`
-in the input relation to string representation and stores them in the derived relation:
-
-```
-input relation NetHost(id: bigint, h: nethost_t)
-relation NetHostString(id: bigint, s: string)
-
-NetHostString(id, $"${h}") :- NetHost(id, h).
-```
-Try feeding the following `.dat` file to this program:
-
-```
-start;
-
-insert NetHost(1, NHost{IPAddr{0xaabbccdd}, MACAddr{0x112233445566}}),
-insert NetHost(2, NHost{IPAddr{0xa0b0c0d0}, MACAddr{0x102030405060}});
-
-commit;
-
-dump NetHostString;
-```
-
-You should obtain the following output:
-
-```
-NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
-NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
-```
-
-### Bit vectors
-
-The design of DDlog was strongly influenced by applications from the domain of networking, where
-programmers frequently deal with bit vectors of non-standard sizes. We have encountered several
-instances of the bitvector type, e.g., `typedef UUID=bit<128>`.  In addition to standard arithmetic
-and bitwise operators over bit vectors (see [language
-reference](../language_reference/language_reference.md#expressions)), DDlog supports bit vector
-slicing and concatenation.  Slicing is expressed using the `x[N:M]` syntax examplified in the
-previous section.  Bit vector concatenation is implemented by the `++` operator (which is also
-overloaded for strings).  Concatenation can be applied to bit vectors of arbitrary width, producing
-a bit vector whose width is the sum of the widths of its arguments.  The following example
-illustrates both operators:
-
-```
-// Form IP address from bytes using bit vector concatenation
-function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-    : ip_addr_t =
-{
-    IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
-}
-
-// Check for multicast IP address using bit slicing
-function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
-
-input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-
-// convert bytes to IP addresses
-relation Address(addr: ip_addr_t)
-Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
-
-// filter multicast IP addresses
-relation MCastAddress(addr: ip_addr_t)
-MCastAddress(a) :- Address(a), is_multicast_addr(a).
-```
-
-DDlog offers two ways to write bit vector literals. First, they can be written as decimal numbers.
-DDlog performs *type inference* to determine whether the number should be interpreted as an unbounded
-mathematical integer or a bit vector.  In the latter case it also infers its bit width.  For
-example, the literal `125` is interpreted as a mathematical integer in `var x: int = 125` and as an
-8-bit bit-vector in `var x: bit<8> = 125`.
-
-Second, bit vector literals can be written with explicit width and radix specifiers using the
-`[<width>]<radix_specifier><value>` syntax, where `<radix>` is one of `'d`, `'h`, `'o`, `'b` for
-decimal, hexadecimal, octal and binary numbers respectively:
-
-```
-32'd15              // 32-bit decimal
-48'haabbccddeeff    // 48-bit hexadecimal
-3'b101              // 3-bit binary
-'d15                // bit vector whose value is 15 and whose width is determined from the context
-```
-
-### Control flow
-
-Complex computations can be expressed in DDlog using control-flow constructs:
-
-1. *Sequencing* evaluates semicolumn-separated expressions in order.
-
-1. *`if (cond) e1 else e2`* evaluates one of its subexpressions depending on the value of `cond`.
-
-1. Matching evaluates one of several expressions based on the an argument and a series of patterns.
-
-Note that DDlog does not support loops.
-
-The following example illustrates these constructs:
-
-```
-function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
-{
-    var port: bit<16> = match (proto) {
-        "FTP"   -> 20,  // default FTP port
-        "HTTPS" -> 443, // default HTTP port
-        _       -> {    // other protocol
-            if (preferred_port != 0)
-                preferred_port // return preferred_port if specified
-            else
-                16'd80         // assume HTTP otherwise
-        }
-    };
-    // Return the address:port string
-    $"${ip}:${port}"
-}
-```
-
-This example highlights several important aspects of DDlog's control flow constructs.  First, note
-that the function does not have a `return` statement (in fact, there is currently no `return`
-statemnt in DDlog).  DDlog is an *expression-oriented language*, which does not differentiate
-between expressions and statements.  All control flow constructs are expressions that have a
-statically assigned type and a dynamically assigned value and can be used as terms in other
-expressions.  The function's return value is simply the value produced by the expression in its
-body.  In particular, a sequential block returns the value of the last evaluated expression in the
-sequence; `if-else` and `match` expressions return the value of the taken branch.  As a consequence,
-the `else` clause is not optional in an `if-else` expression, and match clauses must be exhaustive
-(for instance, the match expression above would not be valid without the last "catch-all" (`_`)
-clause).
-
-Second, this example illustrates the use of local *variables* in DDlog. Similar to other languages,
-variables store intermediate values.  DDlog enforces that a variable is assigned when it is
-declared, thus ruling out uninitialized variables.  In this example, the `port` variable is assigned
-the result of the `match` expression.  A variable can be assigned multiple times, overwriting
-previous values.  Like other expressions, assignments produce values; however, unlike C assignments,
-DDlog assignments return an empty [tuple](#tuples) (roughly, DDlog's equivalent of null), as opposed
-to the assigned value, hence DDlog assignments cannot be chained.
-
-Finally, this example shows DDlog's `match` syntax, which matches the value of its argument against
-a series of *patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.  Another pattern
-used in this example is the wildcard pattern (`_`) that matches any value.  We discuss more complex
-patterns [below](#variant-types).
-
-Let's put the `addr_port()` function to work.  The following program converts its input relation
-that stores a set of network endpoints represented by their IP addresses, protocols, and preferred
-port numbers and converts these endpoints to string representation using `addr_port()`.  Note the
-use of the function in the head of the rule:
-
-```
-input relation Endpoint(ip: ip_addr_t,
-                        proto: string,
-                        preferred_port: bit<16>)
-
-relation EndpointString(s: string)
-
-EndpointString(addr_port(ip, proto, preferred_port)) :-
-    Endpoint(ip, proto, preferred_port).
-```
-
-## Functions
-
-We have already encountered several functions in this tutorial.  Functions facilitate modularity and
-code reuse.  DDlog functions are pure (side-effect-free) computations.  A function may not modify
-its arguments.  The body of a function is an expression whose type must match the function's return
-type.  A function call can be inserted anywhere an expression of the function's return type can be
-used.  DDlog currently does not allow recursive functions.
-
-### Extern functions
-
-Despite its rich expression syntax and type system, DDlog does not strive to be a general-purpose
-programming language.  In particular, the absence of loops, recursion, and inductive data types make
-it impossible to express many computations in DDlog.  Such computations must be implemented in Rust
-and invoked from DDlog programs as *extern* functions.  The Rust implementation may in turn invoke a
-function implemented in C or any other language.
-
-For instance, DDlog does not provide native means to extract a substring of a string.  To achieve
-this functionality, we must implement it as an extern function:
-
-```
-extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
-```
-
-We can invoke `string_slice()` just like a normal DDlog function, e.g.,
-
-```
-relation First5(str: string)
-First5(string_slice(p, 0, 5)) :- Phrases(p).
-```
-
-For this code to compile, we must provide an implementation of `string_slice()` in Rust.  To help
-with this step, DDlog generates a commented out function prototype that can be found in
-`playpen/lib.rs`.  Do not modify this autogenerated file.  Instead, create a new file called
-`playpen.rs` in the same directory as `playpen.dl` with the following content:
-
-```
-fn string_slice(x: &String, from: &u64, to: &u64) -> String {
-    x.as_str()[(*from as usize)..(*to as usize)].to_string()
-}
-```
-
-This file will be automatically inlined in `lib.rs` next time you run `stack test`.  If your program
-uses many extern functions, you may choose to partition them into multiple modules and import them
-from `playpen.rs`.
-
-**TODO: the above method is good for writing tests only.  Describe a proper way to do this once it
-is implemented**
-
-## Advanced rule syntax
-
-### Antijoins
-
-It is sometimes necessary to restrict the set of records produced by a rule to those that do *not*
-appear in some relation.  Consider, for example, the `EndpointString` relation from
-[before](#control-flow).  Imagine that we would like to compute a subset of endpoints that do not
-appear in the `Blacklisted` relation and store this subset in a new relation called
-`SanitizedEndpoint`:
-
-```
-input relation Blacklisted(ep: string)
-relation SanitizedEndpoint(ep: string)
-
-SanitizedEndpoint(endpoint) :-
-    EndpointString(endpoint),
-    not Blacklisted(endpoint).
-```
-
-Note the `not` prefix in the last line of the rule, which has the effect of eliminating all endpoint
-values that appear in `Blacklisted`. This operation is known as *antijoin* in the database world.
-
-### Assignments
-
-To make things more interesting, let us assume that the `EndpointString` relation did not exist, so
-we need to convert endpoints to strings before matching them against the `Blacklisted` relation.  An
-obvious solution would be to introduce `EndpointString` first; however DDlog allows a more concise
-and space-efficient implementation that performs string conversion and antijoin within the same
-rule:
-
-```
-SanitizedEndpoint(endpoint) :-
-    Endpoint(ip, proto, preferred_port),
-    var endpoint = addr_port(ip, proto, preferred_port),
-    not Blacklisted(endpoint).
-```
-
-Note the `endpoint` variable declaration embedded in the rule.  It is functionally equivalent to
-substituting the righ-hand side of the assignment everywhere the `endpoint` variable is used, but is
-more compact and efficient.
-
-### FlatMap
-
-The `FlatMap` operator maps all elements of a relation to sets of values and yields a union of the
-resulting sets.  Consider a `HostAddress` relation that associates each network host with a string
-that lists all IP addresses assigned to this host separated by whitespaces.  We would like
-to break these strings into individual IP addresses and compute a `HostIP` relation that consists of
-(host, ip) pairs:
-
-```
-input relation HostAddress(host: bit<64>, addrs: string)
-relation HostIP(host: bit<64>, addr: string)
-```
-
-To this end, we will use a helper function that splits a string into components:
-
-```
-extern function split_ip_list(x: string): set<string>
-```
-
-The function returns the builtin `set` data type.  `set` is a *generic* type ([see
-below](#generic-types)) that can be parameterized by any other DDlog type, e.g., `set<string>` is a
-set of strings.
-
-We can now use this function in conjunction with the `FlatMap` operator to compute `HostIP`:
-
-```
-HostIP(host, addr) :- HostAddress(host, addrs),
-                      FlatMap(addr=split_ip_list(addrs)).
-```
-
-This rule can be read as follows:
-
-1. For every `(host, addrs)` pair in the `HostAddress` relation, use `split_ip_list()`
-to split `addrs` into individul addresses.
-
-1. Bind each address in the resulting set to the `addr` variable, producing a new set of `(host,
-addr)` tuples.
-
-1. Store the resulting tuples int the `HostIP` relation.
-
-Let us look at the implementation of `split_ip_list`.  It is an extern function defined in Rust as
-follows:
-
-```
-fn split_ip_list(x: &String) -> Vec<String> {
-    x.as_str().split(" ").map(|x| x.to_string()).collect()
-}
-```
-
-Note that the function returns a vector, not a set.  In fact, any Rust type that implements the
-`IntoIterator` trait can be used to represent sets for `FlatMap` purposes.
-
-### Rules with multiple heads
-
-Consider a DDlog program that computes pairwise sums and products of values from `X`.
-
-```
-input relation X(x: bit<16>)
-
-relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
-relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
-
-Sum(x,y,x*y) :- X(x), X(y).
-Product(x,y,x*y) :- X(x), X(y).
-```
-
-Note that both rules in this program have identical bodies.  Such rules can be merged into one rule
-with multiple comma-separated heads:
-
-```
-Sum(x,y,x+y), Product(x,y,x*y) :- X(x), X(y).
-```
-
-### Recursive rules
-
-DDlog allows rules that refer to the same relation in the body and in the head.  For example, the
-following program computes pairs of connected nodes in a graph given the set of edges:
-
-```
-input relation Edge(s: node, t: node)
-
-relation Path(s1: node, s2: node)
-
-Path(x, y) :- Edge(x,y).
-Path(x, z) :- Path(x, w), Edge(w, z).
-```
-
-This is an example of a *recursive* program, where a relation depends on itself, either directly or
-via a chain of rules.  See the [language
-reference](../language_reference/language_reference.md#constraints-on-dependency-graph) for a more
-precise specification of valid recursive programs that DDlog accepts.
-
-### Aggregation
-
-**TODO**
-
-## The type system
-
-Throughout the tutorial we have encountered many examples of DDlog types, including built-in types,
-alias types, and user-defined types.  In this part of the tutorial we explore more advanced aspects
-of the DDlog type system.
-
-### Variant types
-
-Let us declare a data type for Ethernet packet headers, including source and destination Ethernet
-addresses and the payload, which models level-3 protocol headers.
-
-```
-typedef eth_pkt_t = EthPacket {
-    src     : bit<48>,
-    dst     : bit<48>,
-    payload : eth_payload_t
-}
-```
-
-So far so good.  Next, we define the payload type.  Things get trickier now, as the payload can be
-one of several things: an IPv4 header, and IPv6 header, or some other level-3 protocol header.
-Fortunately, DDlog allows such types to be expressed in a natural way:
-
-```
-typedef eth_payload_t = EthIP4   {ip4 : ip4_pkt_t}
-                      | EthIP6   {ip6 : ip6_pkt_t}
-                      | EthOther
-```
-
-This declaration is an example of a *variant type*, found modern programming languages like Haskell,
-OCaml, and Rust.  `EthIP4`, `EthIP6`, and `EthOther` are the three *type constructors* and variables
-in curly braces are *arguments* of type constructor.  Variant types generalize several concepts from
-languages like C, e.g., a variant type where all type constructors have no arguments are similar to
-C enums (see e.g., the `Category` type from ["Hello, world!"](#hello-world)); a variant type with a
-single constructor is similar to a C struct.  Variant types also resemble C unions; however, as we
-will see below, unlike unions, they enforce safe access to their content statically.
-
-We continue the example and define types for IP4, IP6, and transport protocol headers:
-
-```
-// IPv4 header
-typedef ip4_pkt_t = IP4Pkt { ttl      : bit<8>
-                           , src      : ip4_addr_t
-                           , dst      : ip4_addr_t
-                           , payload  : ip_payload_t}
-
-// IPv6 header
-typedef ip6_pkt_t = IP6Pkt { ttl     : bit<8>
-                           , src     : ip6_addr_t
-                           , dst     : ip6_addr_t
-                           , payload : ip_payload_t}
-
-// Transport protocol header
-typedef ip_payload_t = IPTCP   { tcp : tcp_pkt_t}
-                     | IPUDP   { udp : udp_pkt_t}
-                     | IPOther
-
-typedef tcp_pkt_t = TCPPkt { src   : bit<16>
-                           , dst   : bit<16>
-                           , flags : bit<9> }
-
-typedef udp_pkt_t = UDPPkt { src     : bit<16>
-                           , dst     : bit<16>
-                           , len     : bit<16>}
-```
-
-### Filtering relations with structural matching
-
-### match expressions
-
-### Tuples
-
-*Can be used to return multiple values*
-
-### Generic types
-
-### Extern types
-
-## Explicit relation types
-
-## Flow Template Language

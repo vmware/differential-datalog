@@ -1,7 +1,7 @@
 
 
-fn split_ip_list(x: &String) -> Vec<String> {
-    x.as_str().split(" ").map(|x| x.to_string()).collect()
+fn split(x: &String, sep: &String) -> Vec<String> {
+    x.as_str().split(sep).map(|x| x.to_string()).collect()
 }
 
 fn string_slice(x: &String, from: &u64, to: &u64) -> String {
