@@ -25,11 +25,9 @@ SOFTWARE.
 
 import System.Environment
 import System.FilePath.Posix
---import System.Directory
 import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
---import Text.Parsec
 import Data.List
 
 import Language.DifferentialDatalog.Syntax
