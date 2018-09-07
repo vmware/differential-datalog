@@ -25,17 +25,19 @@ SOFTWARE.
 
 import System.Environment
 import System.FilePath.Posix
---import System.Directory
 import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
---import Text.Parsec
+import Data.List
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Parse
+import Language.DifferentialDatalog.Validate
+import Language.DifferentialDatalog.Compile
 
 data TOption = Datalog String
              | Action String
+             | RustFile String
 
 data DLAction = ActionCompile
               | ActionValidate
@@ -43,16 +45,19 @@ data DLAction = ActionCompile
               deriving Eq
 
 options :: [OptDescr TOption]
-options = [ Option ['i'] []                 (ReqArg Datalog "FILE")        "Datalog program"
-          , Option []    ["action"]         (ReqArg Action "ACTION")       "action: [validate, compile]"
+options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "DDlog program"
+          , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
+          , Option ['r'] ["inline-rust-file"] (ReqArg RustFile "FILE")        "extra Rust source to be inlined in the generated library"
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
+                     , confRustFiles     :: [FilePath]
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionNone
+                       , confRustFiles     = []
                        }
 
 
@@ -63,6 +68,7 @@ addOption config (Action a)     = do a' <- case a of
                                                 "compile"    -> return ActionCompile
                                                 _            -> error "invalid action"
                                      return config{confAction = a'}
+addOption config (RustFile f)   = return config { confRustFiles = nub (f:confRustFiles config)}
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
@@ -81,24 +87,26 @@ main = do
                                       `catch`
                                       (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                 throw (e::SomeException))
-                   _ -> error $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options 
-
-    let fname  = confDatalogFile config
-        (dir, file) = splitFileName fname
-        (basename,_) = splitExtension file
-        --workdir = dir </> basename
+                   _ -> error $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
     case confAction config of
-         ActionValidate -> readValidate fname
-         ActionCompile -> error "not implemented"
+         ActionValidate -> do { parseValidate config; return () }
+         ActionCompile -> compileProg config
          ActionNone -> error "action not specified"
 
 
-readValidate :: FilePath -> IO DatalogProgram
-readValidate fname = do
-    prog <- parseDatalogFile True fname
---    case validate prog of
---         Left e  -> error $ "Validation error: " ++ e
---         Right _ -> return ()
-    putStrLn "Validation complete"
-    return prog
+parseValidate :: Config -> IO DatalogProgram
+parseValidate Config{..} = do
+    d <- parseDatalogFile True confDatalogFile
+    case validate d of
+         Left e   -> errorWithoutStackTrace $ "error: " ++ e
+         Right d' -> return d'
 
+compileProg :: Config -> IO ()
+compileProg conf@Config{..} = do
+    let specname = takeBaseName confDatalogFile
+    prog <- parseValidate conf
+    -- include any user-provided Rust code
+    imports <- mapM readFile confRustFiles
+    -- generate Rust project
+    let rust_dir = joinPath [takeDirectory confDatalogFile]
+    compile prog specname (concat imports) rust_dir

@@ -38,7 +38,7 @@ dependencies:
 library:
   source-dirs: src
 executables:
-  differential-datalog-exe:
+  ddlog:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

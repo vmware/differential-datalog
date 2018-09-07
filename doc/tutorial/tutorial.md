@@ -139,6 +139,15 @@ Run `stack test --ta '-p playpen'` to compile this program.
 (Unfortunately the Rust compiler is quite slow, so this may take a few
 minutes).
 
+Alternatively, run the DDlog compiler directly to produce the Rust program
+```
+ddlog -i playpen.dl --action=compile
+```
+and call the Rust toolchain to compile the program:
+```
+cd playpen; cargo build --release
+```
+
 ### Running the "Hello, world!" program
 
 The text-based interface offers a convenient way to interact with the
@@ -651,6 +660,13 @@ file called `playpen.rs` in the same directory:
 fn string_slice(x: &String, from: &u64, to: &u64) -> String {
     x.as_str()[(*from as usize)..(*to as usize)].to_string()
 }
+```
+
+`stack test` will automatically pick up this file. Alternatively, if calling
+the DDlog compiler directly, modify the command line as follows:
+
+```
+ddlog -i tutorial.dl --action=compile --inline-rust-file=playpen.rs
 ```
 
 ### Advanced rules
