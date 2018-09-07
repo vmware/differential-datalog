@@ -1031,6 +1031,46 @@ function pkt_ip4(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
 
 ## Explicit relation types
 
+Consider the following relation:
+
+```
+input relation Person (name: string, nationality: string, occupation: string)
+```
+
+We would like to define a function that filters this relation based on some criteria, e.g., selects
+all US nationals who are students.  Such a function could take all fields of the relation as
+arguments; however a better software engineering practice is to pass the entire `Person` record to
+the function:
+
+```
+function is_target_audience(person: Person): bool = {
+    (person.nationality == "USA") and
+    (person.occupation == "student")
+}
+```
+
+Note how we use relation name as a type name here.  In fact, the above relation declaration is merely
+syntactic sugar that expands into the following:
+
+```
+typedef Person = Person{name: string, nationality: string, occupation: string}
+input relation Person [Person]
+```
+
+The square bracket syntax declares a relation by specifying its record type rather that a list of
+fields.  Using this syntax, we declare the `TargetAudience` relation that has the same record type
+as `Person` and apply the `is_target_audience()` function to filter the `Person` relation.
+
+```
+relation TargetAudience[Person]
+
+TargetAudience[person] :- Person[person], is_target_audience(person).
+```
+
+In the context of a rule, square brackets are used to select or assign the entire record rather than
+its individual fields.
+
+
 ## Flow Template Language
 
 
