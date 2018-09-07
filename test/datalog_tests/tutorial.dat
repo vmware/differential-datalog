@@ -223,3 +223,14 @@ dump IntranetHost;
 
 echo IntranetHost2:;
 dump IntranetHost2;
+
+start;
+
+insert Person("Alice", "USA", "student");
+insert Person("Bob", "USA", "engineer");
+insert Person("Eve", "UK", "student");
+
+commit;
+
+echo TargetAudience:;
+dump TargetAudience;

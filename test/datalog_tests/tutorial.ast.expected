@@ -23,16 +23,19 @@ typedef NetHostString = NetHostString{id: bigint, s: string}
 typedef NetMask = bit<32>
 typedef Number = Number{n: bigint}
 typedef Packet = Packet{pkt: eth_pkt_t}
+typedef Person = Person{name: string, nationality: string, occupation: string}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
+extern type Set<'A>
 typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
 typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
 typedef TCPDstPort = TCPDstPort{port: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
 typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
+extern type Vec<'A>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef X = X{x: bit<16>}
@@ -47,7 +50,6 @@ typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} | IPUDP{udp: udp_pkt_t} | IPOther{}
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
-extern type set<'A>
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
 typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
@@ -74,6 +76,8 @@ function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr
     IPAddr{.addr=(((b3 ++ b2) ++ b1) ++ b0)}
 function is_multicast_addr (ip: ip_addr_t): bool =
     (ip.addr[31:28] == 4'd14)
+function is_target_audience (person: Person): bool =
+    ((person.nationality == "USA") and (person.occupation == "student"))
 function mac_addr_t2string (mac: mac_addr_t): string =
     (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
@@ -100,7 +104,9 @@ function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
         EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
         _ -> None{}
     }
-extern function split_ip_list (x: string): set<string>
+extern function split (s: string, sep: string): Vec<string>
+function split_ip_list (x: string): Vec<string> =
+    split(x, " ")
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
@@ -126,6 +132,7 @@ input relation NetHost [NetHost]
 relation NetHostString [NetHostString]
 input relation Number [Number]
 input relation Packet [Packet]
+input relation Person [Person]
 relation Phrases [Phrases]
 relation Pow2 [Pow2]
 relation Product [Product]
@@ -133,6 +140,7 @@ relation SanitizedEndpoint [SanitizedEndpoint]
 input relation Subnet [Subnet]
 relation Sum [Sum]
 relation TCPDstPort [TCPDstPort]
+relation TargetAudience [Person]
 relation UDPDstPort [UDPDstPort]
 relation UDPDstPort2 [UDPDstPort2]
 input relation Word1 [Word1]
@@ -158,6 +166,7 @@ UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port 
 UDPDstPort2(.port=port) :- Packet(.pkt=pkt), Some{.value=var port} = pkt_udp_port2(pkt).
 IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
 IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
+TargetAudience[person] :- Person[person], is_target_audience(person).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {

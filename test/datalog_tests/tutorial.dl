@@ -174,7 +174,9 @@ SanitizedEndpoint(endpoint) :-
  * Example: FlatMap, extern functions
  */
 
-extern function split_ip_list(x: string): set<string>
+extern function split(s: string, sep: string): Vec<string>
+function split_ip_list(x: string): Vec<string> =
+   split(x, " ")
 
 input relation HostAddress(host: bit<64>, addrs: string)
 relation HostIP(host: bit<64>, addr: string)
@@ -328,7 +330,16 @@ IntranetHost2(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
  * Example: explicit relation type
  */
 
+input relation Person (name: string, nationality: string, occupation: string)
 
+function is_target_audience(person: Person): bool = {
+    (person.nationality == "USA") and
+    (person.occupation == "student")
+}
+
+relation TargetAudience[Person]
+
+TargetAudience[person] :- Person[person], is_target_audience(person).
 
 /*
  * Example: Advanced features

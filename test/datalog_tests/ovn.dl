@@ -769,7 +769,7 @@ relation Logical_Switch_Port_macs (
     mac:                 mac_addr_t
 )
 
-extern function extract_ips(str: string): set<ip_addr_t>
+extern function extract_ips(str: string): Set<ip_addr_t>
 
 extern function extract_mac(str: string): (mac_addr_t, string)
 
@@ -810,7 +810,7 @@ relation Logical_Switch_Port_ps_macs (
 )
 
 
-extern function extract_subnets(str: string): set<ip_subnet_t>
+extern function extract_subnets(str: string): Set<ip_subnet_t>
 
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),

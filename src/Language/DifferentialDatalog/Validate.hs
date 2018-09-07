@@ -49,6 +49,8 @@ import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Preamble
 
+sET_TYPES = ["Set", "Vec"]
+
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 validate d0 = do
@@ -328,8 +330,8 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     let ctx = CtxRuleRFlatMap rl idx
     exprValidate d [] ctx e
     case exprType' d ctx e of
-         TOpaque _ sET_TYPE_NAME [_] -> return ()
-         t  -> err (pos e) $ "FlatMap expression must be of type set<>, but its type is " ++ show t
+         TOpaque _ tname [_] | elem tname sET_TYPES -> return ()
+         t  -> err (pos e) $ "FlatMap expression must be of these types: " ++ intercalate ", " sET_TYPES ++ ", but its type is " ++ show t
 
 ruleRHSValidate _ _ RHSAggregate{..} _ =
     err (pos rhsAggExpr) "Aggregates not implemented"

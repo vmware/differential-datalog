@@ -1,8 +1,9 @@
 typedef Answer = Answer{x: station}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Reach = Reach{s1: station, s2: station}
+extern type Set<'A>
+extern type Vec<'A>
 typedef line = bigint
-extern type set<'A>
 typedef station = string
 extern function __builtin_2string (x: 'X): string
 extern function hash128 (x: 'X): bit<128>
