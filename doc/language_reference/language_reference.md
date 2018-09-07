@@ -558,7 +558,7 @@ Logical_Switch_Port_ips(lsp, mac, ip) :-
 
 Here, `extract_ips` must return a *set* of IP addresses:
 ```
-extern function extract_ips(addrs: string): set<ip_addr_t>
+extern function extract_ips(addrs: string): Set<ip_addr_t>
 ```
 
 The sixth form groups records computed so far by a subset of fields,
@@ -622,7 +622,7 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
    R(f(x)) :- S(x). //ok
    R(f(y)) :- S(x). //error: y is not declared
    ```
-1. A flat-map expression must have type `set<x>` for some type `x`.
+1. A flat-map expression must have type `Set<x>` or `Vec<x>` for some type `x`.
 
 ### Constraints on dependency graph
 

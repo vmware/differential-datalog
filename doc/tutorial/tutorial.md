@@ -687,14 +687,15 @@ SanitizedEndpoint(endpoint) :-
 
 #### Sets and FlatMap
 
-`set` is a built-in *generic* data type representing a set of values.  `set` is parameterized
-by any other DDlog type, e.g., `set<string>` is a set of strings.
+DDlog supports teo built-in container data types: `Vec`, `Set`.
+`Vec` and `Set` are *generic* types that can be parameterized
+by any other DDlog type, e.g., `Vec<string>` is a vector of strings.
 
 Let us assume that we have an extern function that splits a string
 into a list of substrings according to a separator:
 
 ```
-extern function split(s: string, sep: string): set<string>
+extern function split(s: string, sep: string): Vec<string>
 ```
 
 The Rust implementation can be as follows:
@@ -705,14 +706,10 @@ fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
 }
 ```
 
-(Note that the Rust function returns a vector, not a set.  In fact, any
-Rust type that implements the `IntoIterator` trait can be used to
-return sets.)
-
 We define a DDlog function which splits IP addresses at spaces:
 
 ```
-function split_ip_list(x: string): set<string> =
+function split_ip_list(x: string): Vec<string> =
    split(x, " ")
 ```
 
@@ -726,7 +723,7 @@ relation HostIP(host: bit<64>, addr: string)
 ```
 
 For this purpose we can use `FlatMap`: this operator applies a
-function that produces a *set* for each value in a relation, and creates a
+function that produces a set or a vector for each value in a relation, and creates a
 result that is the union of all the resulting sets:
 
 ```

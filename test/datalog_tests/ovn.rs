@@ -1,19 +1,19 @@
-type set_t<T> = FnvHashSet<T>;
+type Set<T> = FnvHashSet<T>;
 
 fn build_dhcp_netmask(_cidr: &String) -> String {
     "not implemented: build_dhcp_netmask".to_string()
-} 
+}
 fn eth_addr_from_string(_str: &String) -> option_t<mac_addr_t> {
     option_t::None
 }
-fn extract_ips(_str: &String) -> set_t<ip_addr_t> {
+fn extract_ips(_str: &String) -> Set<ip_addr_t> {
     FnvHashSet::default()
 }
 
 fn extract_mac(_str: &String) -> (mac_addr_t, String) {
     (0, "extract_mac not implemented".to_string())
 }
-fn extract_subnets(_str: &String) -> set_t<ip_subnet_t> {
+fn extract_subnets(_str: &String) -> Set<ip_subnet_t> {
     FnvHashSet::default()
 }
 

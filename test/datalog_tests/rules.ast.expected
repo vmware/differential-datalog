@@ -3,14 +3,15 @@ typedef R3 = R3{f1: bigint, f2: bool}
 typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
+extern type Set<'A>
 typedef T = T{x: bigint, y: string}
 typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
+extern type Vec<'A>
 typedef X = X{b: bigint, c: R3, d: R1}
 typedef Y = Y{b: bigint, e: string}
 typedef Z = Z{x: bigint, y: R3}
-extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 extern function hash128 (x: 'X): bit<128>
 extern function hash64 (x: 'X): bit<64>
