@@ -978,59 +978,11 @@ function pkt_ip4(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
 
 ## Flow Template Language
 
+
 ## Advanced topics
 
 *TODO* probably these should be moved out of the tutorial into a more
  detailed reference document.
-
-### Not your textbook Datalog
-
-DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog
-engine for writing *application-integrated* deductive database engines.
-
-1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
-computes *all* possible derived facts by following Datalog rules, in a bottom-up fashion.  In
-contrast, top-down engines are optimized to answer individual user queries without computing
-all possible facts ahead of time.  For example, given a Datalog program that computes pairs of
-connected vertices in a graph, a bottom-up engine maintains the set of all such pairs.  A top-down
-engine, on the other hand, is triggered by a user query to determine whether a pair of vertices is
-connected and handles the query by searching for a derivation chain back to ground facts.  The
-bottom-up approach is preferable in applications where all derived facts must be computed ahead of
-time and in applications where the cost of initial computation is amortized across a large number of
-queries.
-
-2. **Incremental**: whenever the set of ground facts changes, DDlog only performs the minimum computation
-necessary to compute all changes in the derived facts.  This has significant performance benefits for many queries.
-
-3. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
-is used in conjunction with a persistent database, with database records being fed to DDlog as
-ground facts and the derived facts computed by DDlog being written back to the database.
-
-    At the moment, DDlog can only operate on databases that completely fit the memory of a single
-    machine. (This may change in the future, as DDlog builds on the differential dataflow library that
-    supports distributed computation over partitioned data).
-
-4. **Typed**: Although Datalog is a programming language, in its classical textbook form it
-is more of a mathematical formalism than a practical tool for programmers.  In particular, pure
-Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
-writing of safe, clear, and concise code, DDlog extends pure Datalog with:
-
-    1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
-    tuples, and tagged unions.
-
-    2. Standard integer and bitvector arithmetic.
-
-    3. A simple procedural language that allows expressing many computations natively in DDlog without
-resorting to external functions.
-
-    4. String operations, including string concatenation and interpolation.
-
-5. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
-primary use case is to integrate with other applications that require deductive database
-functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust or
-C/C++ program (bindings for other languages can be easily added, but Rust and C are the only ones we
-support at the moment).  This enables good performance, but somewhat limits the flexibility, as
-changes to the relational schema or rules require re-compilation.
 
 ### Using DDlog programs as libraries
 
