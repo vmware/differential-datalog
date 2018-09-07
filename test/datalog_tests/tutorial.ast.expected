@@ -89,7 +89,9 @@ function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
         EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
         _ -> None{}
     }
-extern function split_ip_list (x: string): set<string>
+extern function split (s: string, sep: string): set<string>
+function split_ip_list (x: string): set<string> =
+    split(x, " ")
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 relation Address [Address]
 input relation Blacklisted [Blacklisted]

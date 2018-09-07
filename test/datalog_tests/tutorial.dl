@@ -174,7 +174,7 @@ SanitizedEndpoint(endpoint) :-
  * Example: FlatMap, extern functions
  */
 
-extern function split(s: string, sep: separator): set<string>
+extern function split(s: string, sep: string): set<string>
 function split_ip_list(x: string): set<string> =
    split(x, " ")
 
