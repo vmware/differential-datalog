@@ -174,7 +174,9 @@ SanitizedEndpoint(endpoint) :-
  * Example: FlatMap, extern functions
  */
 
-extern function split_ip_list(x: string): set<string>
+extern function split(s: string, sep: string): Vec<string>
+function split_ip_list(x: string): Vec<string> =
+   split(x, " ")
 
 input relation HostAddress(host: bit<64>, addrs: string)
 relation HostIP(host: bit<64>, addr: string)

@@ -1,8 +1,9 @@
 typedef Human = Human{h: person}
 typedef Parent = Parent{child: person, parent: person}
+extern type Set<'A>
 typedef Sib = Sib{s1: person, s2: person}
+extern type Vec<'A>
 typedef person = string
-extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 extern function hash128 (x: 'X): bit<128>
 extern function hash64 (x: 'X): bit<64>

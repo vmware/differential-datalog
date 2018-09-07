@@ -1,6 +1,7 @@
+extern type Set<'A>
 typedef Strings = Strings{s: string}
+extern type Vec<'A>
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
-extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 function dummy (x: string): string =
     (x ++ " dummy")

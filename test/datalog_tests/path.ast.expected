@@ -1,7 +1,8 @@
 typedef Edge = Edge{s: node, t: node}
 typedef Path = Path{s1: node, s2: node}
+extern type Set<'A>
+extern type Vec<'A>
 typedef node = string
-extern type set<'A>
 extern function __builtin_2string (x: 'X): string
 extern function hash128 (x: 'X): bit<128>
 extern function hash64 (x: 'X): bit<64>
