@@ -8,7 +8,7 @@ extern crate serde_derive;
 extern crate serde;
 
 extern crate timely;
-extern crate timely_communication;
+//extern crate timely_communication;
 extern crate differential_dataflow;
 extern crate fnv;
 
