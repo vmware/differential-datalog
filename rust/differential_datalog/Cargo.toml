@@ -20,10 +20,7 @@ itertools="^0.6"
 
 [dependencies]
 abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
-abomonation_derive = "0.3"
-#timely="0.6"
 timely = { git = "https://github.com/frankmcsherry/timely-dataflow" }
-#timely_communication="0.6"
 fnv="1.0.2"
 num = "0.2"
 serde = "1.0.14"
