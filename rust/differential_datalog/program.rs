@@ -28,7 +28,7 @@ use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
 use timely;
-use timely::communication::initialize::{Configuration, WorkerGuards};
+use timely::communication::initialize::{Configuration};
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::dataflow::operators::probe;
