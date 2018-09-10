@@ -28,8 +28,8 @@ use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
 use timely;
-use timely_communication::initialize::{Configuration, WorkerGuards};
-use timely_communication::Allocator;
+use timely::communication::initialize::{Configuration};
+use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
@@ -237,7 +237,7 @@ pub struct RunningProgram<V: Val> {
     flush_ack: mpsc::Receiver<()>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     /* timely worker threads */
-    thread_handle: thread::JoinHandle<Result<WorkerGuards<()>, String>>,
+    thread_handle: thread::JoinHandle<Result<(), String>>,
     transaction_in_progress: bool,
     need_to_flush: bool
 }
@@ -447,7 +447,8 @@ impl<V:Val> Program<V>
                         }
                     };
                 };
-            }));
+            }).map(|g| {g.join(); ()})
+        );
 
         //println!("timely computation started");
 
@@ -635,8 +636,7 @@ impl<V:Val> RunningProgram<V> {
             match self.thread_handle.join() {
                 Err(_) => resp_from_error!("timely thread terminated with an error"),
                 Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
-                Ok(Ok(guards)) => {
-                    guards.join();
+                Ok(Ok(())) => {
                     Ok(())
                 }
             }
