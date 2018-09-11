@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes #-}
 
-module Compile (compileSchema) where
+module Compile (compileSchemas, compileSchemaFiles) where
 
 import qualified Data.Map as M
 import Text.PrettyPrint
@@ -27,8 +27,20 @@ typedef option_t<'A> = Some{x: 'A}
                      | None
 |]
 
-compileSchema :: (MonadError String me) => [OVSDBSchema] -> [String] -> me Doc
-compileSchema schemas outputs = do
+compileSchemaFiles :: [FilePath] -> [String] -> IO Doc
+compileSchemaFiles file_names outputs = do
+    schemas <- mapM (\fname -> do 
+                      content <- readFile fname
+                      case parseSchema content fname of
+                           Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
+                           Right prog -> return prog)
+                    file_names
+    case compileSchemas schemas outputs of
+         Left e    -> errorWithoutStackTrace e
+         Right doc -> return doc
+
+compileSchemas :: (MonadError String me) => [OVSDBSchema] -> [String] -> me Doc
+compileSchemas schemas outputs = do
     let tables = concatMap renameTables schemas
     mapM_ (\o -> do let t = find ((==o) . name) tables
                     when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs

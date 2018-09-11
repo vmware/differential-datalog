@@ -1,4 +1,4 @@
-name:                differential-datalog
+name:                differential-datalog-ovsdb
 version:             0.1.0.0
 github:              "ryzhyk/differential-datalog"
 license:             BSD3
@@ -6,38 +6,25 @@ author:              "Leonid Ryzhyk"
 maintainer:          "lryzhyk@vmware.com"
 copyright:           "VMware, Inc"
 
-extra-source-files:
-- README.md
-- ChangeLog.md
-
 # Metadata used when publishing your package
-# synopsis:            Incremental Datalog engine based on differential dataflow
+# synopsis:            OVSDB adapter for differential datalog
 # category:            Language
 
-description:         Please see the README on Github at <https://github.com/ryzhyk/differential-datalog#readme>
+description:         OVSDB adapter for differential datalog
 
 dependencies:
 - base >= 4.7 && < 5
-- mtl
 - parsec
 - pretty
-- directory
+- differential-datalog
 - containers
-- binary
-- bytestring
-- fgl
-- split
-- MissingH
 - raw-strings-qq
-- tuple
-- file-embed
-- filepath
-- wide-word
+- mtl
 
 library:
   source-dirs: src
 executables:
-  ddlog:
+  ovsdb2ddlog:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -46,10 +33,12 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - differential-datalog
+    - differential-datalog-ovsdb
     - filepath
+    - containers
 
 tests:
-  differential-datalog-test:
+  differential-datalog-ovsdb-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -63,5 +52,3 @@ tests:
     - HUnit
     - tasty-golden
     - filepath
-    - process
-    - deepseq

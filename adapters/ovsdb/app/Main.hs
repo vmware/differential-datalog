@@ -30,7 +30,6 @@ import Control.Exception
 import Data.List
 import Control.Monad
 
-import Parse
 import Compile
 
 data TOption = OVSFile     String
@@ -70,14 +69,6 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    schemas <- mapM (\fname -> do 
-                     content <- readFile fname
-                     case parseSchema content fname of
-                          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
-                          Right prog -> return prog)
-                   confOVSFiles
-    dlschema <- case compileSchema schemas confOutputTables of
-                     Left e    -> errorWithoutStackTrace e
-                     Right doc -> return doc
+    dlschema <- compileSchemaFiles confOVSFiles confOutputTables
     putStrLn $ render dlschema
     return ()
