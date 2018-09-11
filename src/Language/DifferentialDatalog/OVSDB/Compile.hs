@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes #-}
 
-module Compile (compileSchemas, compileSchemaFiles) where
+module Language.DifferentialDatalog.OVSDB.Compile (compileSchemas, compileSchemaFiles) where
 
 import qualified Data.Map as M
 import Text.PrettyPrint
@@ -11,7 +11,7 @@ import Data.Maybe
 import Data.Char
 import Data.List
 
-import Parse
+import Language.DifferentialDatalog.OVSDB.Parse
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name

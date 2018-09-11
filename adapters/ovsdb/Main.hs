@@ -30,7 +30,7 @@ import Control.Exception
 import Data.List
 import Control.Monad
 
-import Compile
+import Language.DifferentialDatalog.OVSDB.Compile
 
 data TOption = OVSFile     String
              | InputTable  String

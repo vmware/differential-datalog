@@ -28,7 +28,7 @@ SOFTWARE.
    https://tools.ietf.org/html/rfc7047
 -}
 
-module Parse(
+module Language.DifferentialDatalog.OVSDB.Parse(
     parseSchema,
     OVSDBSchema(..),
     Table(..),

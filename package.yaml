@@ -47,6 +47,17 @@ executables:
     dependencies:
     - differential-datalog
     - filepath
+  ovsdb2ddlog:
+    main:                Main.hs
+    source-dirs:         adapters/ovsdb
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - differential-datalog
+    - filepath
+    - containers
 
 tests:
   differential-datalog-test:
@@ -58,7 +69,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - differential-datalog
-    - differential-datalog-ovsdb
     - tasty
     - HUnit
     - tasty-golden
