@@ -49,8 +49,8 @@ executables:
     - differential-datalog
     - filepath
   schema-converter-exe:
-    main:                SchemaConverter.hs
-    source-dirs:         schemaConverter
+    main:                Main.hs
+    source-dirs:         adapters/ovsdb
     ghc-options:
     - -threaded
     - -rtsopts

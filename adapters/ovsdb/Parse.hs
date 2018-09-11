@@ -28,30 +28,44 @@ SOFTWARE.
    https://tools.ietf.org/html/rfc7047
 -}
 
+module Parse(
+    parseSchema,
+    OVSDBSchema(..),
+    Table(..),
+    TableProperty(..),
+    TableColumn(..),
+    ColumnType(..),
+    ComplexType(..),
+    IntegerOrUnlimited(..),
+    BaseType(..),
+    ComplexBaseType(..),
+    Value(..),
+    Atom(..),
+    Constant(..),
+    AtomicType(..)
+) where
+
 import Control.Applicative hiding (many,optional,Const)
-import System.Environment
 import Text.Parsec hiding ((<|>))
 import qualified Text.Parsec.Token as T
 import Text.Parsec.Language
 import Data.List
+import Data.Maybe
 
-main = do
-    args <- getArgs
-    let file = args!!0
-    content <- readFile file
-    putStr $ show $ parseJson content file
+import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Name
 
-parseJson :: String -> String -> String
-parseJson jsonContent fileName =
+parseSchema :: String -> String -> Either String OVSDBSchema
+parseSchema jsonContent fileName =
   case parse jsonGrammar fileName jsonContent of
-         Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-         Right prog -> show prog
+       Left  e    -> Left $ show e
+       Right prog -> Right prog
 
 jsonDef = emptyDef { T.commentStart      = "<!--"
-                  , T.commentEnd        = "-->"
-                  , T.identStart        = letter <|> char '_'
-                  , T.identLetter       = alphaNum <|> char '_'
-                  , T.caseSensitive     = True}
+                   , T.commentEnd        = "-->"
+                   , T.identStart        = letter <|> char '_'
+                   , T.identLetter       = alphaNum <|> char '_'
+                   , T.caseSensitive     = True}
 
 lexer   = T.makeTokenParser jsonDef
 
@@ -82,39 +96,57 @@ booleanLit = (True <$ symbol "true") <|> (False <$ symbol "false")
 
 ----------- schema grammar ---------
 
-jsonGrammar :: Parsec String u [Table]
+data SchemaProperty = PropertyName String
+                    | PropertyTables [Table]
+                    | PropertyIgnored
+
+jsonGrammar :: Parsec String u OVSDBSchema
 jsonGrammar = removeTabs *> ((optional whiteSpace) *> databaseSchema <* eof)
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-databaseSchema :: Parsec String u [Table]
-databaseSchema = braces $ concat <$> commaSep databaseSchemaProperties
+databaseSchema :: Parsec String u OVSDBSchema
+databaseSchema = do 
+    properties <- braces $ commaSep databaseSchemaProperties
+    name <- case mapMaybe (\case
+                            PropertyName n -> Just n
+                            _              -> Nothing) properties of
+                 [n] -> return n
+                 []  -> fail "Schema name is missing" 
+                 _   -> fail "Multiple \"name\" fields"
+    tables <- case mapMaybe (\case
+                             PropertyTables ts -> Just ts
+                             _                 -> Nothing) properties of
+                   [ts] -> return ts
+                   []   -> fail "Schema is empty" 
+                   _    -> fail "Multiple \"tables\" fields"                   
+    return $ OVSDBSchema name tables
 
-databaseSchemaProperties :: Parsec String u [Table]
+databaseSchemaProperties :: Parsec String u SchemaProperty
 databaseSchemaProperties = databaseCksum
-                           <|> databaseName
-                           <|> databaseVersion
-                           <|> databaseTables
+                       <|> databaseName
+                       <|> databaseVersion
+                       <|> databaseTables
 
 -- output is currently ignored
-databaseName :: Parsec String u [Table]
-databaseName = [] <$ ((simpleOrQuoted "name") *> colon *> stringLit)
+databaseName :: Parsec String u SchemaProperty
+databaseName = PropertyName <$> (simpleOrQuoted "name" *> colon *> stringLit)
 
 -- output is currently ignored
-databaseCksum :: Parsec String u [Table]
-databaseCksum = [] <$ ((simpleOrQuoted "cksum") *> colon *> stringLit)
+databaseCksum :: Parsec String u SchemaProperty
+databaseCksum = PropertyIgnored <$ ((simpleOrQuoted "cksum") *> colon *> stringLit)
 
 -- output is currently ignored
-databaseVersion :: Parsec String u [Table]
-databaseVersion = [] <$ ((simpleOrQuoted "version") *> colon *> stringLit)
+databaseVersion :: Parsec String u SchemaProperty
+databaseVersion = PropertyIgnored <$ ((simpleOrQuoted "version") *> colon *> stringLit)
 
-databaseTables :: Parsec String u [Table]
-databaseTables = (simpleOrQuoted "tables") *> colon *> (braces $ commaSep table)
+databaseTables :: Parsec String u SchemaProperty
+databaseTables = PropertyTables <$> (simpleOrQuoted "tables" *> colon *> (braces $ commaSep table))
 
 table :: Parsec String u Table
-table = Table <$> stringLit <*> (colon *> braces tableSchema)
+table = withPos $ Table nopos <$> stringLit <*> (colon *> braces tableSchema)
 
 tableSchema :: Parsec String u [TableProperty]
 tableSchema = commaSep tableProperty
@@ -140,45 +172,54 @@ tableColumns :: Parsec String u TableProperty
 tableColumns = ColumnsProperty <$> ((simpleOrQuoted "columns") *> colon *> (braces $ commaSep tableColumn))
 
 tableColumn :: Parsec String u TableColumn
-tableColumn = do name <- stringLit <* (colon *> (symbol "{"))
-                 properties <- addColumnProperties (TCP name UndefinedType Nothing Nothing)
-                 return $ TableColumn properties
+tableColumn = do
+    name <- stringLit <* (colon *> (symbol "{"))
+    properties <- withPos $ addColumnProperties (TableColumn nopos name ColumnTypeUndefined Nothing Nothing)
+    case columnType properties of
+         ColumnTypeUndefined -> fail "Missing required field \"type\""
+         _                   -> return properties
 
-addColumnProperties :: TableColumnProperties -> Parsec String u TableColumnProperties
+addColumnProperties :: TableColumn -> Parsec String u TableColumn
 addColumnProperties init = comma *> addColumnProperties init
                             <|> (symbol "}") *> (return init)
                             <|> do init' <- addColumnProperty init
                                    final <- addColumnProperties init'
                                    return final
 
-addColumnProperty :: TableColumnProperties -> Parsec String u TableColumnProperties
+addColumnProperty :: TableColumn -> Parsec String u TableColumn
 addColumnProperty init =
   (\x -> init{columnType = x}) <$> ((simpleOrQuoted "type") *> colon *> parseColumnType) <|>
   (\x -> init{columnEphemeral = Just x}) <$> ((simpleOrQuoted "ephemeral") *> colon *> booleanLit) <|>
   (\x -> init{columnMutable = Just x}) <$> ((simpleOrQuoted "mutable") *> colon *> booleanLit)
 
 parseColumnType :: Parsec String u ColumnType
-parseColumnType = (AtomicType <$> atomicType) <|> complexType
+parseColumnType = (ColumnTypeAtomic <$> atomicType) <|> complexType
 
 atomicType :: Parsec String u AtomicType
-atomicType = (IntegerType <$ try (symbol $ quoted "integer")) <|>
-             (StringType <$ try (symbol $ quoted "string")) <|>
-             (BooleanType <$ try (symbol $ quoted "boolean")) <|>
-             (RealType <$ try (symbol $ quoted "real")) <|>
-             (UUIDType <$ try (symbol $ quoted "uuid"))
+atomicType = withPos $
+             (IntegerType nopos <$ try (symbol $ quoted "integer")) <|>
+             (StringType nopos <$ try (symbol $ quoted "string"))   <|>
+             (BooleanType nopos <$ try (symbol $ quoted "boolean")) <|>
+             (RealType nopos <$ try (symbol $ quoted "real"))       <|>
+             (UUIDType nopos <$ try (symbol $ quoted "uuid"))
 
 complexType :: Parsec String u ColumnType
-complexType = let init = (CTP UndefinedBaseType Nothing Nothing Nothing) in
-                (symbol "{") *> (ComplexType <$> addComplexTypeProperties init)
+complexType = do
+    let init = ComplexType nopos BaseTypeUndefined Nothing Nothing Nothing
+    symbol "{"
+    t <- withPos $ addComplexTypeProperties init
+    case keyComplexType t of 
+         BaseTypeUndefined -> fail "Missing required field \"key\""
+         _                 -> return $ ColumnTypeComplex t 
 
-addComplexTypeProperties :: ComplexTypeProperties -> Parsec String u ComplexTypeProperties
+addComplexTypeProperties :: ComplexType -> Parsec String u ComplexType
 addComplexTypeProperties init = comma *> addComplexTypeProperties init
                              <|> (symbol "}") *> (return init)
                              <|> do init' <- addComplexTypeProperty init
                                     final <- addComplexTypeProperties init'
                                     return final
 
-addComplexTypeProperty :: ComplexTypeProperties -> Parsec String u ComplexTypeProperties
+addComplexTypeProperty :: ComplexType -> Parsec String u ComplexType
 addComplexTypeProperty init =
   (\x -> init{keyComplexType = x}) <$> ((simpleOrQuoted "key") *> colon *> baseType) <|>
   (\x -> init{valueComplexType = Just x}) <$> ((simpleOrQuoted "value") *> colon *> baseType) <|>
@@ -187,22 +228,27 @@ addComplexTypeProperty init =
 
 
 baseType :: Parsec String u BaseType
-baseType = (SimpleBaseType <$> atomicType) <|>
-           let init = (ComplexBaseTypeInfo UndefinedAtomicType Nothing Nothing Nothing Nothing Nothing) in
-             (symbol "{") *> (ComplexBaseType <$> addComplexBaseTypeProperties init)
+baseType = 
+    (BaseTypeSimple <$> atomicType) <|>
+    do let init = ComplexBaseType (UndefinedAtomicType nopos) Nothing Nothing Nothing Nothing Nothing
+       symbol "{"
+       t <- addComplexBaseTypeProperties init
+       case typeBaseType t of
+            UndefinedAtomicType _ -> fail "Missing required field \"type\""
+            _                     -> return $ BaseTypeComplex t
 
 decimalOrUnlimited :: Parsec String u IntegerOrUnlimited
 decimalOrUnlimited = (Some <$> decimal) <|>
                      (Unlimited <$ (symbol $ quoted "unlimited"))
 
-addComplexBaseTypeProperties :: ComplexBaseTypeInfo -> Parsec String u ComplexBaseTypeInfo
+addComplexBaseTypeProperties :: ComplexBaseType -> Parsec String u ComplexBaseType
 addComplexBaseTypeProperties init = comma *> addComplexBaseTypeProperties init
                              <|> (symbol "}") *> (return init)
                              <|> do init' <- addComplexBaseTypeProperty init
                                     final <- addComplexBaseTypeProperties init'
                                     return final
 
-addComplexBaseTypeProperty :: ComplexBaseTypeInfo -> Parsec String u ComplexBaseTypeInfo
+addComplexBaseTypeProperty :: ComplexBaseType -> Parsec String u ComplexBaseType
 addComplexBaseTypeProperty init =
   (\x -> init{typeBaseType = x}) <$> ((simpleOrQuoted "type") *> colon *> atomicType) <|>
   (\x -> init{minBaseType = Just $ Integer x}) <$> ((simpleOrQuoted "minInteger") *> colon *> decimal) <|>
@@ -235,31 +281,47 @@ uuid = stringLit
 
 -------------------------------------------------------------------------------------------
 
-data Table = Table { tableName :: String
+data OVSDBSchema = OVSDBSchema { schemaName   :: String
+                               , schemaTables :: [Table]
+                               }
+
+data Table = Table { tablePos :: Pos
+                   , tableName :: String
                    , tableProperties :: [TableProperty]
                    }
 
 instance Show Table where
-  show (Table n props) = "Table " ++ n ++ "\n" ++ (intercalate "\n\t" $ map show props)
+    show (Table _ n props) = "Table " ++ n ++ "\n" ++ (intercalate "\n\t" $ map show props)
 
-data TableProperty = NameProperty String
-                   | IgnoredProperty
+instance WithName Table where
+    name = tableName
+
+instance WithPos Table where
+    pos = tablePos
+    atPos t p = t{tablePos = p}
+
+data TableProperty = IgnoredProperty
                    | RootProperty Bool
                    | ColumnsProperty [TableColumn]
 
 instance Show TableProperty where
-  show (NameProperty n) = "name=" ++ n
   show IgnoredProperty = ""
   show (RootProperty b) = "isRoot=" ++ show b
   show (ColumnsProperty cols) = intercalate "," $ map show cols
 
-data TableColumn = TableColumn TableColumnProperties
+data TableColumn = TableColumn { columnPos       :: Pos
+                               , columnName      :: String
+                               , columnType      :: ColumnType
+                               , columnEphemeral :: Maybe Bool
+                               , columnMutable   :: Maybe Bool
+                               }
 
-data TableColumnProperties = TCP { columnName      :: String
-                                 , columnType      :: ColumnType
-                                 , columnEphemeral :: Maybe Bool
-                                 , columnMutable   :: Maybe Bool
-                                 }
+instance WithPos TableColumn where
+    pos = columnPos
+    atPos t p = t{columnPos = p}
+
+instance WithName TableColumn where
+    name = columnName
 
 -- If the maybe value is not Nothing, show it like key=value
 showMaybeWithKey :: Show a => String -> Maybe a -> String
@@ -267,20 +329,25 @@ showMaybeWithKey s Nothing = ""
 showMaybeWithKey s (Just x) = " " ++ s ++ "=" ++ (show x)
 
 instance Show TableColumn where
-  show (TableColumn (TCP name t e m)) = "Column " ++ (quoted name) ++ ", " ++
+  show (TableColumn _ name t e m) = "Column " ++ (quoted name) ++ ", " ++
     (show t) ++
     (showMaybeWithKey "ephemeral" e) ++
     (showMaybeWithKey "mutable" m)
 
-data ColumnType = AtomicType AtomicType
-                | ComplexType ComplexTypeProperties
-                | UndefinedType
+data ColumnType = ColumnTypeAtomic  AtomicType
+                | ColumnTypeComplex ComplexType
+                | ColumnTypeUndefined
 
-data ComplexTypeProperties = CTP { keyComplexType   :: BaseType
-                                 , valueComplexType :: Maybe BaseType
-                                 , minComplexType   :: Maybe Integer
-                                 , maxComplexType   :: Maybe IntegerOrUnlimited
-                                 }
+data ComplexType = ComplexType { posComplexType   :: Pos
+                               , keyComplexType   :: BaseType
+                               , valueComplexType :: Maybe BaseType
+                               , minComplexType   :: Maybe Integer
+                               , maxComplexType   :: Maybe IntegerOrUnlimited
+                               }
+
+instance WithPos ComplexType where
+    pos = posComplexType
+    atPos t p = t{posComplexType = p}
 
 data IntegerOrUnlimited = Some Integer
                         | Unlimited
@@ -290,33 +357,33 @@ instance Show IntegerOrUnlimited where
   show Unlimited = "unlimited"
 
 instance Show ColumnType where
-  show (AtomicType a) = show a
-  show (ComplexType c) = show c
+  show (ColumnTypeAtomic a)  = show a
+  show (ColumnTypeComplex c) = show c
 
-instance Show ComplexTypeProperties where
-  show (CTP k v min max) = "key=" ++ (show k) ++
-                           (showMaybeWithKey "value" v) ++
-                           (showMaybeWithKey "min" min) ++
-                           (showMaybeWithKey "max" max)
+instance Show ComplexType where
+  show (ComplexType _ k v min max) = "key=" ++ (show k) ++
+                                     (showMaybeWithKey "value" v) ++
+                                     (showMaybeWithKey "min" min) ++
+                                     (showMaybeWithKey "max" max)
 
-data BaseType = SimpleBaseType AtomicType
-              | ComplexBaseType ComplexBaseTypeInfo
-              | UndefinedBaseType
+data BaseType = BaseTypeSimple  AtomicType
+              | BaseTypeComplex ComplexBaseType
+              | BaseTypeUndefined
 
 instance Show BaseType where
-  show (SimpleBaseType a) = show a
-  show (ComplexBaseType c) = show c
+  show (BaseTypeSimple a)  = show a
+  show (BaseTypeComplex c) = show c
 
-data ComplexBaseTypeInfo = ComplexBaseTypeInfo { typeBaseType :: AtomicType
-                                               , typeEnum :: Maybe Value
-                                               , minBaseType :: Maybe Constant
-                                               , maxBaseType :: Maybe Constant
-                                               , refTableBaseType :: Maybe UUID
-                                               , refTypeBaseType :: Maybe ReferenceType
-                                               }
+data ComplexBaseType = ComplexBaseType { typeBaseType :: AtomicType
+                                       , typeEnum :: Maybe Value
+                                       , minBaseType :: Maybe Constant
+                                       , maxBaseType :: Maybe Constant
+                                       , refTableBaseType :: Maybe UUID
+                                       , refTypeBaseType :: Maybe ReferenceType
+                                       }
 
-instance Show ComplexBaseTypeInfo where
-  show (ComplexBaseTypeInfo t e min max refTable refType) = (show t) -- TODO
+instance Show ComplexBaseType where
+  show (ComplexBaseType t e min max refTable refType) = (show t) -- TODO
 
 data Value = AtomValue Atom
            | SetValue Set
@@ -359,17 +426,21 @@ instance Show Constant where
   show (Real r)    = show r
   show (StringLength i) = show i
 
-data AtomicType = IntegerType
-                | RealType
-                | BooleanType
-                | StringType
-                | UUIDType
-                | UndefinedAtomicType
+data AtomicType = IntegerType         {atypePos :: Pos}
+                | RealType            {atypePos :: Pos}
+                | BooleanType         {atypePos :: Pos}
+                | StringType          {atypePos :: Pos}
+                | UUIDType            {atypePos :: Pos}
+                | UndefinedAtomicType {atypePos :: Pos}
 
 instance Show AtomicType where
-  show IntegerType = "integer"
-  show RealType = "real"
-  show StringType = "string"
-  show BooleanType = "boolean"
-  show UUIDType = "uuid"
-  show UndefinedAtomicType = "???"
+  show IntegerType{}         = "integer"
+  show RealType{}            = "real"
+  show StringType{}          = "string"
+  show BooleanType{}         = "boolean"
+  show UUIDType{}            = "uuid"
+  show UndefinedAtomicType{} = "???"
+
+instance WithPos AtomicType where
+    pos = atypePos
+    atPos t p = t{atypePos = p}
