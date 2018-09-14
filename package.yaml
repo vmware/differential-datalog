@@ -18,7 +18,6 @@ description:         Please see the README on Github at <https://github.com/ryzh
 
 dependencies:
 - base >= 4.7 && < 5
-- base
 - mtl
 - parsec
 - pretty
@@ -48,9 +47,9 @@ executables:
     dependencies:
     - differential-datalog
     - filepath
-  schema-converter-exe:
-    main:                SchemaConverter.hs
-    source-dirs:         schemaConverter
+  ovsdb2ddlog:
+    main:                Main.hs
+    source-dirs:         adapters/ovsdb
     ghc-options:
     - -threaded
     - -rtsopts
@@ -58,6 +57,7 @@ executables:
     dependencies:
     - differential-datalog
     - filepath
+    - containers
 
 tests:
   differential-datalog-test:

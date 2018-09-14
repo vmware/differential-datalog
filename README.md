@@ -79,19 +79,13 @@ shell run `source $HOME/.cargo/env`.
 
 ## Building
 
-To build the software execute the following command anywhere inside the project directory tree:
+To build the software:
 
 ```
+git clone https://github.com/ryzhyk/differential-datalog.git
+cd differential-datalog
 stack build
 ```
-
-To run the tests execute:
-
-```
-stack test
-```
-
-**Note:** Running tests for the first time will take a while (~30 minutes on my system).
 
 To install DDlog binaries in Haskell stack's default binary directory:
 
@@ -103,6 +97,13 @@ To install to a different location:
 
 ```
 stack install --local-bin-path <custom_path>
+```
+
+To run the tests execute (**Note:** this take a while (~30 minutes on my system) and requires ~20GB
+of disk space):
+
+```
+stack test
 ```
 
 # vim syntax highlighting

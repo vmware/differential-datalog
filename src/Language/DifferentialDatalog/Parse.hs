@@ -157,9 +157,6 @@ removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
-withPosMany x = (\ s as e -> map (\a -> atPos a (s,e)) as) <$> getPosition <*> x <*> getPosition
-
 data SpecItem = SpType      TypeDef
               | SpRelation  Relation
               | SpRule      Rule

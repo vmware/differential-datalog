@@ -28,8 +28,11 @@ module Language.DifferentialDatalog.Pos(
         WithPos(..),
         spos,
         nopos,
-        posInside) where
+        posInside,
+        withPos,
+        withPosMany) where
 
+import Text.Parsec
 import Text.Parsec.Pos
 
 type Pos = (SourcePos,SourcePos)
@@ -59,3 +62,6 @@ posInside p (p1, p2) = sourceLine p >= sourceLine p1 && sourceLine p <= sourceLi
                            then sourceColumn p <= sourceColumn p2
                            else True)
 
+
+withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
+withPosMany x = (\ s as e -> map (\a -> atPos a (s,e)) as) <$> getPosition <*> x <*> getPosition
