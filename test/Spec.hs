@@ -39,6 +39,7 @@ import Control.DeepSeq
 import Control.Monad
 import GHC.IO.Exception
 import Text.Printf
+import Text.PrettyPrint
 import qualified Data.ByteString as BS
 
 import Language.DifferentialDatalog.Parse
@@ -46,6 +47,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Preamble
 import Language.DifferentialDatalog.Compile
+import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
 main :: IO ()
 main = defaultMain =<< goldenTests
@@ -74,7 +76,18 @@ goldenTests = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "datalog tests" [parser_tests, compiler_tests]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests]
+
+ovsdbTests :: TestTree
+ovsdbTests =
+  testGroup "ovsdb tests" $
+        [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" ovnTest]
+
+ovnTest = do
+    prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"] 
+                                   ["OVN_Southbound_Logical_Flow", "OVN_Southbound_Address_Set"]
+    writeFile "test/ovsdb/ovn_schema.dl" (render prog)
+    compilerTest "test/ovsdb/ovn_schema.dl"
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
