@@ -29,7 +29,7 @@ typedef option_t<'A> = Some{x: 'A}
 
 compileSchemaFiles :: [FilePath] -> [String] -> IO Doc
 compileSchemaFiles file_names outputs = do
-    schemas <- mapM (\fname -> do 
+    schemas <- mapM (\fname -> do
                       content <- readFile fname
                       case parseSchema content fname of
                            Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
@@ -45,7 +45,7 @@ compileSchemas schemas outputs = do
     mapM_ (\o -> do let t = find ((==o) . name) tables
                     when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
     uniqNames ("Multiple declarations of table " ++ ) tables
-    rels <- vcat <$> mapM (\t -> if elem (name t) outputs 
+    rels <- vcat <$> mapM (\t -> if elem (name t) outputs
                                     then mkTable False t
                                     else mkTable True t) tables
     return $ pp builtinTypes $+$ rels
