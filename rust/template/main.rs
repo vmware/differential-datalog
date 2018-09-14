@@ -9,11 +9,14 @@ extern crate differential_datalog;
 extern crate cmd_parser;
 extern crate time;
 
+#[macro_use]
+extern crate rustop;
+
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::process::exit;
 use std::io;
-use std::io::{Stdout,stdout};
+use std::io::{Stdout,stdout,stderr};
 use std::env;
 
 use std::collections::BTreeMap;
@@ -112,19 +115,33 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>) -> i32 {
+pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>, nworkers: usize) -> i32 {
     let p = prog(upd_cb);
-    let running = Arc::new(Mutex::new(p.run(4)));
+    let running = Arc::new(Mutex::new(p.run(nworkers)));
     let upds = Arc::new(Mutex::new(Vec::new()));
     interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))
 }
 
 pub fn main() {
-    let do_store = env::args().find(|a| a.as_str() == "--no-store") == None;
-    let do_print = env::args().find(|a| a.as_str() == "--no-print") == None;
+    let parser = opts! {
+        synopsis "DDlog CLI interface.";
+        auto_shorts false;
+        opt store:bool=true, desc:"Do not store relation state (for benchmarking only)."; // --no-store
+        opt print:bool=true, desc:"Do not print deltas.";                                 // --no-print
+        opt workers:usize=4, short:'w', desc:"The number of worker threads.";             // --workers or -w
+    };
+    let (args, rest) = parser.parse_or_exit();
+
+    if rest.len() != 0 || args.workers == 0 {
+        panic!("Invalid command line arguments; try -h for help");
+    }
+
+    let print   = args.print;
+    let store   = args.store;
+    let workers = args.workers;
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
-    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(do_print,do_store,&db,relid,v,pol)));
+    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(print,store,&db,relid,v,pol)), workers);
     exit(ret);
 }
