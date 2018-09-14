@@ -334,14 +334,14 @@ impl<V:Val> Program<V>
                 let prof_send1 = prof_send.clone();
                 let prof_send2 = prof_send.clone();
 
-                worker.log_register().insert::<TimelyEvent,_>("timely", move |time, data| {
+                worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
                     let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
                         TimelyEvent::Operates(_) => true,
                         _ => false
                     }).map(|x|(x, get_prof_context())).collect();
                     if filtered.len() > 0 {
                         //eprintln!("timely event {:?}", filtered);
-                        prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect()));
+                        prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect())).unwrap();
                     }
                 });
 
@@ -350,7 +350,7 @@ impl<V:Val> Program<V>
                         return;
                     }
                     /* Send update to profiling channel */
-                    prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect()));
+                    prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect())).unwrap();
                 });
 
                 let rx = rx.clone();
@@ -711,8 +711,10 @@ impl<V:Val> RunningProgram<V> {
                 Err(_) => resp_from_error!("timely thread terminated with an error"),
                 Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
                 Ok(Ok(())) => {
-                    self.prof_thread_handle.join();
-                    Ok(())
+                    match self.prof_thread_handle.join() {
+                        Err(_) => resp_from_error!("profiling thread terminated with an error"),
+                        Ok(_)  => Ok(())
+                    }
                 }
             }
         })
