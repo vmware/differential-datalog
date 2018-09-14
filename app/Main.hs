@@ -56,7 +56,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
-                       , confAction        = ActionNone
+                       , confAction        = ActionCompile
                        , confRustFiles     = []
                        }
 
