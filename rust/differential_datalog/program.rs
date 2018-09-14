@@ -23,6 +23,7 @@ use std::collections::hash_map;
 // creating relations
 use std::fmt;
 use std::thread;
+use std::time::Duration;
 use std::sync::mpsc;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
@@ -35,16 +36,22 @@ use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
 use timely::progress::nested::product::Product;
 use timely::progress::timestamp::RootTimestamp;
+use timely::logging::TimelyEvent;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
+use differential_dataflow::logging::DifferentialEvent;
 use variable::*;
+use profile::*;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
+
+/* Message buffer for profiling messages */
+const PROF_MSD_BUF_SIZE: usize = 1000;
 
 /// Error type returned by this library
 #[derive(Debug)]
@@ -239,7 +246,11 @@ pub struct RunningProgram<V: Val> {
     /* timely worker threads */
     thread_handle: thread::JoinHandle<Result<(), String>>,
     transaction_in_progress: bool,
-    need_to_flush: bool
+    need_to_flush: bool,
+    /* profiling thread */
+    prof_thread_handle: thread::JoinHandle<()>,
+    /* profiling statistics */
+    pub profile: Arc<Mutex<Profile>>
 }
 
 /* Runtime representation of relation */
@@ -304,12 +315,43 @@ impl<V:Val> Program<V>
         let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
         let flush_ack_send = flush_ack_send.clone();
 
+        /* Profiling channel */
+        let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSD_BUF_SIZE);
+
+        /* Profile data structure */
+        let profile = Arc::new(Mutex::new(Profile::new()));
+        let profile2 = profile.clone();
+
+        /* Thread to collect profiling data */
+        let prof_thread = thread::spawn(move||Self::prof_thread_func(prof_recv, profile2));
+
         let h = thread::spawn(move ||
             /* start up timely computation */
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Root<Allocator>| {
                 let probe = probe::Handle::new();
                 let mut probe1 = probe.clone();
                 let worker_index = worker.index();
+                let prof_send1 = prof_send.clone();
+                let prof_send2 = prof_send.clone();
+
+                worker.log_register().insert::<TimelyEvent,_>("timely", move |time, data| {
+                    let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
+                        TimelyEvent::Operates(_) => true,
+                        _ => false
+                    }).map(|x|(x, get_prof_context())).collect();
+                    if filtered.len() > 0 {
+                        //eprintln!("timely event {:?}", filtered);
+                        prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect()));
+                    }
+                });
+
+                worker.log_register().insert::<DifferentialEvent,_>("differential/arrange", move |_time, data| {
+                    if data.len() == 0 {
+                        return;
+                    }
+                    /* Send update to profiling channel */
+                    prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect()));
+                });
 
                 let rx = rx.clone();
                 let mut sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
@@ -327,10 +369,12 @@ impl<V:Val> Program<V>
                                 for rule in &r.rules {
                                     collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
                                 };
-                                collection = collection.distinct();
+                                collection = with_prof_context(&r.name,
+                                                               ||collection.distinct_total());
                                 /* create arrangements */
                                 for (i,arr) in r.arrangements.iter().enumerate() {
-                                    arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key());
+                                    with_prof_context(&arr.name,
+                                                      ||arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key()));
                                 };
                                 collections.insert(r.id, collection);
                             },
@@ -350,11 +394,15 @@ impl<V:Val> Program<V>
                                      * relations they depend on. */
                                     let mut vars = FnvHashMap::default();
                                     let mut inner_arrangements = FnvHashMap::default();
+                                    let mut inner_collections = FnvHashMap::default();
+                                    for r in rs.iter() {
+                                        vars.insert(&r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
+                                    };
                                     for dep in Self::dependencies(&rs) {
                                         match dep {
                                             Dep::DepRel(relid) => {
                                                 if !vars.contains_key(&relid) {
-                                                    vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                                    inner_collections.insert(relid, collections.get(&relid).unwrap().enter(inner));
                                                 }
                                             },
                                             Dep::DepArr(arrid) => {
@@ -364,7 +412,7 @@ impl<V:Val> Program<V>
                                                     },
                                                     None        => {
                                                         if !vars.contains_key(&arrid.0) {
-                                                            vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
+                                                            inner_collections.insert(arrid.0, collections.get(&arrid.0).unwrap().enter(inner));
                                                         };
                                                     } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
                                                 };
@@ -374,7 +422,10 @@ impl<V:Val> Program<V>
                                     /* apply rules to variables */
                                     for rel in rs {
                                         for rule in &rel.rules {
-                                            let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&(**v)), &inner_arrangements);
+                                            let c = prog.mk_rule(
+                                                rule,
+                                                |rid| vars.get(&rid).map(|v|&(**v)).or(inner_collections.get(&rid)),
+                                                &inner_arrangements);
                                             vars.get_mut(&rel.id).unwrap().add(&c);
                                         };
                                         /* var.distinct() will be called automatically by var.drop() */
@@ -391,7 +442,9 @@ impl<V:Val> Program<V>
                                 /* create arrangements */
                                 for rel in rs {
                                     for (i, arr) in rel.arrangements.iter().enumerate() {
-                                        arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key());
+                                        with_prof_context(
+                                            &arr.name,
+                                            ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
                                     };
                                 };
                             }
@@ -468,7 +521,22 @@ impl<V:Val> Program<V>
             relations: rels,
             thread_handle: h,
             transaction_in_progress: false,
-            need_to_flush: false
+            need_to_flush: false,
+            prof_thread_handle: prof_thread,
+            profile: profile
+        }
+    }
+
+    /* Profiler thread function */
+    fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) -> () {
+        loop {
+            match chan.recv() {
+                Ok(msg) => profile.lock().unwrap().update(&msg),
+                _ => {
+                    //eprintln!("profiling thread exiting");
+                    return ()
+                }
+            }
         }
     }
 
@@ -538,11 +606,10 @@ impl<V:Val> Program<V>
         &self.get_relation(arrid.0).arrangements[arrid.1]
     }
 
-    /* Return all relations required to compute rels, including rels themselves */
+    /* Return all relations required to compute rels */
     fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
-            result.insert(Dep::DepRel(rel.id));
             for rule in &rel.rules {
                 result.insert(Dep::DepRel(rule.rel));
                 for xform in &rule.xforms {
@@ -595,18 +662,25 @@ impl<V:Val> Program<V>
                     Some(rhs.as_ref().unwrap_or(first).flat_map(f))
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
+                    let arrname = &self.get_arrangement(*arrid).name;
                     match arrangements.get(&arrid) {
                         Some(arranged) => {
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).arrange_by_key().
-                                 join_core(arranged, jf))
+                            with_prof_context(
+                                arrname,
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                  flat_map(af).arrange_by_key().
+                                  join_core(arranged, jf)))
                         },
                         None      => {
                             let arrangement = self.get_arrangement(*arrid);
-                            let arranged = lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key();
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).arrange_by_key().
-                                 join_core(&arranged, jf))
+                            let arranged = with_prof_context(
+                                &arrangement.name,
+                                ||lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key());
+                            with_prof_context(
+                                arrname,
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                       flat_map(af).arrange_by_key().
+                                       join_core(&arranged, jf)))
                         }
                     }
                 },
@@ -637,6 +711,7 @@ impl<V:Val> RunningProgram<V> {
                 Err(_) => resp_from_error!("timely thread terminated with an error"),
                 Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
                 Ok(Ok(())) => {
+                    self.prof_thread_handle.join();
                     Ok(())
                 }
             }

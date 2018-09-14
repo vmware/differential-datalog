@@ -4,6 +4,9 @@
 
 #![allow(non_snake_case, dead_code)]
 
+//#![feature(alloc_system)]
+//extern crate alloc_system;
+
 extern crate datalog_example;
 extern crate differential_datalog;
 extern crate cmd_parser;
@@ -65,6 +68,11 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         },
         Command::Timestamp => {
             println!("Timestamp: {}", precise_time_ns());
+            Ok(())
+        },
+        Command::Profile => {
+            let profile = (*p.profile.lock().unwrap()).clone();
+            println!("Profile:\n{}", profile);
             Ok(())
         },
         Command::Dump(None) => {
