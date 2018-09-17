@@ -1086,9 +1086,49 @@ TargetAudience[person] :- Person[person], is_target_audience(person).
 In the context of a rule, square brackets are used to select or assign the entire record rather than
 its individual fields.
 
+## A more imperative syntax
 
-## Flow Template Language
+Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog
+provides an alternative syntax for writing rules which resembles more traditional imperative 
+languages.  For example, the previous program can be written as follows:
 
+```
+for (person in Person if is_target_audience(person))
+    TargetAudience(person)
+```
+
+Yet another way to write this program is:
+
+```
+for (person in Person)
+   if (is_target_audience(person))
+       TargetAudience(person)
+```
+
+One can also define variables:
+
+```
+for (person in Person)
+    var is_audience: bool = is_target_audience(person);
+    if (is_audience)
+        TargetAudience(person)
+```
+
+and one can also use `match` statements:
+
+```
+for (person in Person)
+   var is_audience = is_target_audience(person);
+   match (is_audience) {
+       true -> TargetAudience(person)
+       _    -> skip
+   }
+```
+
+These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested in 
+arbitrary ways.  When using this syntax semicolons must be used as separators between statements.  Also
+note that the `if` statement is not an expression, and thus the `else` clause is not required when using 
+this syntax.  The DDlog compiler translates such programs in regular DDlog programs.  
 
 ## Advanced topics
 
