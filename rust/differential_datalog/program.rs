@@ -522,7 +522,8 @@ impl<V:Val> Program<V>
                             if !worker.step() {
                                 return
                             };
-                        }
+                        };
+                        progress_barrier.wait();
                     }
                 }
             }
@@ -593,6 +594,7 @@ impl<V:Val> Program<V>
                 //println!("flush.step");
                 worker.step();
             };
+            progress_barrier.wait();
         }
     }
 
