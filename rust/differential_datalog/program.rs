@@ -15,7 +15,7 @@ use serde::de::*;
 use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock, Barrier};
 use std::error;
 use std::result::Result;
 use std::collections::hash_map;
@@ -23,6 +23,7 @@ use std::collections::hash_map;
 // creating relations
 use std::fmt;
 use std::thread;
+use std::time::Duration;
 use std::sync::mpsc;
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
@@ -35,16 +36,23 @@ use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
 use timely::progress::nested::product::Product;
 use timely::progress::timestamp::RootTimestamp;
+use timely::logging::TimelyEvent;
+use timely::worker::Worker;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
+use differential_dataflow::logging::DifferentialEvent;
 use variable::*;
+use profile::*;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
+
+/* Message buffer for profiling messages */
+const PROF_MSD_BUF_SIZE: usize = 1000;
 
 /// Error type returned by this library
 #[derive(Debug)]
@@ -239,7 +247,11 @@ pub struct RunningProgram<V: Val> {
     /* timely worker threads */
     thread_handle: thread::JoinHandle<Result<(), String>>,
     transaction_in_progress: bool,
-    need_to_flush: bool
+    need_to_flush: bool,
+    /* profiling thread */
+    prof_thread_handle: thread::JoinHandle<()>,
+    /* profiling statistics */
+    pub profile: Arc<Mutex<Profile>>
 }
 
 /* Runtime representation of relation */
@@ -304,150 +316,217 @@ impl<V:Val> Program<V>
         let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
         let flush_ack_send = flush_ack_send.clone();
 
+        /* Profiling channel */
+        let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSD_BUF_SIZE);
+
+        /* Profile data structure */
+        let profile = Arc::new(Mutex::new(Profile::new()));
+        let profile2 = profile.clone();
+
+        /* Thread to collect profiling data */
+        let prof_thread = thread::spawn(move||Self::prof_thread_func(prof_recv, profile2));
+
+        /* Shared timestamp managed by worker 0 and read by all other workers */
+        let progress_lock = Arc::new(RwLock::new(Product::new(RootTimestamp,0)));
+        let progress_barrier = Arc::new(Barrier::new(nworkers));
+
         let h = thread::spawn(move ||
             /* start up timely computation */
-            timely::execute(Configuration::Process(nworkers), move |worker: &mut Root<Allocator>| {
-                let probe = probe::Handle::new();
-                let mut probe1 = probe.clone();
+            timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| {
                 let worker_index = worker.index();
+                let probe = probe::Handle::new();
+                {
+                    let mut probe1 = probe.clone();
+                    let prof_send1 = prof_send.clone();
+                    let prof_send2 = prof_send.clone();
+                    let progress_barrier = progress_barrier.clone();
 
-                let rx = rx.clone();
-                let mut sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Root<Allocator>, u64>| {
-                    let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
-                    let mut collections : FnvHashMap<RelId, Collection<Child<Root<Allocator>, u64>,V,isize>> = FnvHashMap::default();
-                    let mut arrangements = FnvHashMap::default();
-                    for node in &prog.nodes {
-                        match node {
-                            ProgNode::RelNode{rel:r} => {
-                                let (session, mut collection) = outer.new_collection::<V,isize>();
-                                if r.input {
-                                    sessions.insert(r.id, session);
-                                };
-                                /* apply rules */
-                                for rule in &r.rules {
-                                    collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
-                                };
-                                collection = collection.distinct();
-                                /* create arrangements */
-                                for (i,arr) in r.arrangements.iter().enumerate() {
-                                    arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key());
-                                };
-                                collections.insert(r.id, collection);
-                            },
-                            ProgNode::SCCNode{rels:rs} => {
-                                /* create collections; add them to map; we will overwrite them with
-                                 * updated collections returned from the inner scope. */
-                                for r in rs.iter() {
-                                    let (session, collection) = outer.new_collection::<V,isize>();
+                    worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
+                        let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
+                            TimelyEvent::Operates(_) => true,
+                            _ => false
+                        }).map(|x|(x, get_prof_context())).collect();
+                        if filtered.len() > 0 {
+                            //eprintln!("timely event {:?}", filtered);
+                            prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect())).unwrap();
+                        }
+                    });
+
+                    worker.log_register().insert::<DifferentialEvent,_>("differential/arrange", move |_time, data| {
+                        if data.len() == 0 {
+                            return;
+                        }
+                        /* Send update to profiling channel */
+                        prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect())).unwrap();
+                    });
+
+                    let rx = rx.clone();
+                    let mut sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Worker<Allocator>, u64>| {
+                        let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
+                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, u64>,V,isize>> = FnvHashMap::default();
+                        let mut arrangements = FnvHashMap::default();
+                        for node in &prog.nodes {
+                            match node {
+                                ProgNode::RelNode{rel:r} => {
+                                    let (session, mut collection) = outer.new_collection::<V,isize>();
                                     if r.input {
                                         sessions.insert(r.id, session);
-                                    }
+                                    };
+                                    /* apply rules */
+                                    for rule in &r.rules {
+                                        collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
+                                    };
+                                    collection = with_prof_context(&r.name,
+                                                                   ||collection.distinct_total());
+                                    /* create arrangements */
+                                    for (i,arr) in r.arrangements.iter().enumerate() {
+                                        with_prof_context(&arr.name,
+                                                          ||arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key()));
+                                    };
                                     collections.insert(r.id, collection);
-                                };
-                                /* create a nested scope for mutually recursive relations */
-                                let new_collections = outer.scoped(|inner| {
-                                    /* create variables for relations defined in the SCC, as well as all
-                                     * relations they depend on. */
-                                    let mut vars = FnvHashMap::default();
-                                    let mut inner_arrangements = FnvHashMap::default();
-                                    for dep in Self::dependencies(&rs) {
-                                        match dep {
-                                            Dep::DepRel(relid) => {
-                                                if !vars.contains_key(&relid) {
-                                                    vars.insert(relid, Variable::from(&collections.get(&relid).unwrap().enter(inner)));
+                                },
+                                ProgNode::SCCNode{rels:rs} => {
+                                    /* create collections; add them to map; we will overwrite them with
+                                     * updated collections returned from the inner scope. */
+                                    for r in rs.iter() {
+                                        let (session, collection) = outer.new_collection::<V,isize>();
+                                        if r.input {
+                                            sessions.insert(r.id, session);
+                                        }
+                                        collections.insert(r.id, collection);
+                                    };
+                                    /* create a nested scope for mutually recursive relations */
+                                    let new_collections = outer.scoped(|inner| {
+                                        /* create variables for relations defined in the SCC, as well as all
+                                         * relations they depend on. */
+                                        let mut vars = FnvHashMap::default();
+                                        let mut inner_arrangements = FnvHashMap::default();
+                                        let mut inner_collections = FnvHashMap::default();
+                                        for r in rs.iter() {
+                                            vars.insert(&r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
+                                        };
+                                        for dep in Self::dependencies(&rs) {
+                                            match dep {
+                                                Dep::DepRel(relid) => {
+                                                    if !vars.contains_key(&relid) {
+                                                        inner_collections.insert(relid, collections.get(&relid).unwrap().enter(inner));
+                                                    }
+                                                },
+                                                Dep::DepArr(arrid) => {
+                                                    match arrangements.get(&arrid) {
+                                                        Some(arr)   => {
+                                                            inner_arrangements.insert(arrid, arr.enter(inner));
+                                                        },
+                                                        None        => {
+                                                            if !vars.contains_key(&arrid.0) {
+                                                                inner_collections.insert(arrid.0, collections.get(&arrid.0).unwrap().enter(inner));
+                                                            };
+                                                        } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
+                                                    };
                                                 }
+                                            }
+                                        };
+                                        /* apply rules to variables */
+                                        for rel in rs {
+                                            for rule in &rel.rules {
+                                                let c = prog.mk_rule(
+                                                    rule,
+                                                    |rid| vars.get(&rid).map(|v|&(**v)).or(inner_collections.get(&rid)),
+                                                    &inner_arrangements);
+                                                vars.get_mut(&rel.id).unwrap().add(&c);
+                                            };
+                                            /* var.distinct() will be called automatically by var.drop() */
+                                        };
+                                        /* bring new relations back to the outer scope */
+                                        let mut new_collections = FnvHashMap::default();
+                                        for rel in rs {
+                                            new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
+                                        };
+                                        new_collections
+                                    });
+                                    /* add new collections to the map */
+                                    collections.extend(new_collections);
+                                    /* create arrangements */
+                                    for rel in rs {
+                                        for (i, arr) in rel.arrangements.iter().enumerate() {
+                                            with_prof_context(
+                                                &arr.name,
+                                                ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                        };
+                                    };
+                                }
+                            };
+                        };
+
+                        for (relid, collection) in collections {
+                            /* notify client about changes */
+                            let cb = prog.get_relation(relid).change_cb.clone();
+                            collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(relid, &x.0, x.2 == 1)})
+                                .probe_with(&mut probe1);
+                        };
+
+                        sessions
+                    });
+                    //println!("worker {} started", worker.index());
+
+                    /* Only worker 0 receives data */
+                    if worker_index == 0 {
+                        let mut epoch: u64 = 0;
+                        let rx = rx.lock().unwrap();
+                        loop {
+                            match rx.recv() {
+                                Err(_)  => {
+                                    /* Sender hung */
+                                    eprintln!("Sender hung");
+                                    Self::stop_workers(&progress_lock, &progress_barrier);
+                                    break;
+                                },
+                                Ok(Msg::Update(mut updates)) => {
+                                    //println!("updates: {:?}", updates);
+                                    for update in updates.drain(..) {
+                                        match update {
+                                            Update::Insert{relid, v} => {
+                                                sessions.get_mut(&relid).unwrap().insert(v);
                                             },
-                                            Dep::DepArr(arrid) => {
-                                                match arrangements.get(&arrid) {
-                                                    Some(arr)   => {
-                                                        inner_arrangements.insert(arrid, arr.enter(inner));
-                                                    },
-                                                    None        => {
-                                                        if !vars.contains_key(&arrid.0) {
-                                                            vars.insert(arrid.0, Variable::from(&collections.get(&arrid.0).unwrap().enter(inner)));
-                                                        };
-                                                    } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
-                                                };
+                                            Update::Delete{relid, v} => {
+                                                sessions.get_mut(&relid).unwrap().remove(v);
                                             }
                                         }
                                     };
-                                    /* apply rules to variables */
-                                    for rel in rs {
-                                        for rule in &rel.rules {
-                                            let c = prog.mk_rule(rule, |rid|vars.get(&rid).map(|v|&(**v)), &inner_arrangements);
-                                            vars.get_mut(&rel.id).unwrap().add(&c);
-                                        };
-                                        /* var.distinct() will be called automatically by var.drop() */
-                                    };
-                                    /* bring new relations back to the outer scope */
-                                    let mut new_collections = FnvHashMap::default();
-                                    for rel in rs {
-                                        new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
-                                    };
-                                    new_collections
-                                });
-                                /* add new collections to the map */
-                                collections.extend(new_collections);
-                                /* create arrangements */
-                                for rel in rs {
-                                    for (i, arr) in rel.arrangements.iter().enumerate() {
-                                        arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key());
-                                    };
-                                };
-                            }
-                        };
-                    };
-
-                    for (relid, collection) in collections {
-                        /* notify client about changes */
-                        let cb = prog.get_relation(relid).change_cb.clone();
-                        collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(relid, &x.0, x.2 == 1)})
-                            .probe_with(&mut probe1);
-                    };
-
-                    sessions
-                });
-                //println!("worker {} started", worker.index());
-
-                /* Only worker 0 receives data */
-                if worker_index != 0 {return;};
-
-                let mut epoch: u64 = 0;
-                let rx = rx.lock().unwrap();
-                loop {
-                    match rx.recv() {
-                        Err(_)  => {
-                            /* Sender hung */
-                            break;
-                        },
-                        Ok(Msg::Update(mut updates)) => {
-                            //println!("updates: {:?}", updates);
-                            for update in updates.drain(..) {
-                                match update {
-                                    Update::Insert{relid, v} => {
-                                        sessions.get_mut(&relid).unwrap().insert(v);
-                                    },
-                                    Update::Delete{relid, v} => {
-                                        sessions.get_mut(&relid).unwrap().remove(v);
-                                    }
+                                    epoch = epoch+1;
+                                    //print!("epoch: {}\n", epoch);
+                                    Self::advance(&mut sessions, epoch);
+                                },
+                                Ok(Msg::Flush) => {
+                                    //println!("flushing");
+                                    Self::flush(&mut sessions, &probe, worker, &progress_lock, &progress_barrier);
+                                    //println!("flushed");
+                                    flush_ack_send.send(()).unwrap();
+                                },
+                                Ok(Msg::Stop) => {
+                                    Self::stop_workers(&progress_lock, &progress_barrier);
+                                    break;
                                 }
                             };
-                            epoch = epoch+1;
-                            //print!("epoch: {}\n", epoch);
-                            Self::advance(&mut sessions, epoch);
-                        },
-                        Ok(Msg::Flush) => {
-                            //println!("flushing");
-                            Self::flush(&mut sessions, &probe, worker);
-                            //println!("flushed");
-                            flush_ack_send.send(()).unwrap();
-                        },
-                        Ok(Msg::Stop) => {
-                            break;
                         }
                     };
-                };
-            }).map(|g| {g.join(); ()})
+                }
+                if worker_index != 0 {
+                    loop {
+                        progress_barrier.wait();
+                        let time = *progress_lock.read().unwrap();
+                        if time == Product::new(RootTimestamp, 0xffffffffffffffff as u64) {
+                            return
+                        };
+                        while probe.less_than(&time) {
+                            if !worker.step() {
+                                return
+                            };
+                        }
+                    }
+                }
+            }
+        ).map(|g| {g.join(); ()})
         );
 
         //println!("timely computation started");
@@ -468,7 +547,22 @@ impl<V:Val> Program<V>
             relations: rels,
             thread_handle: h,
             transaction_in_progress: false,
-            need_to_flush: false
+            need_to_flush: false,
+            prof_thread_handle: prof_thread,
+            profile: profile
+        }
+    }
+
+    /* Profiler thread function */
+    fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) -> () {
+        loop {
+            match chan.recv() {
+                Ok(msg) => profile.lock().unwrap().update(&msg),
+                _ => {
+                    //eprintln!("profiling thread exiting");
+                    return ()
+                }
+            }
         }
     }
 
@@ -484,19 +578,31 @@ impl<V:Val> Program<V>
     fn flush(
         sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>,
         probe: &ProbeHandle<Product<RootTimestamp, u64>>,
-        worker: &mut Root<Allocator>)
+        worker: &mut Worker<Allocator>,
+        progress_lock: &RwLock<Product<RootTimestamp, u64>>,
+        progress_barrier: &Barrier)
     {
         for (_,r) in sessions.into_iter() {
             //print!("flush\n");
             r.flush();
         };
         if let Some((_,session)) = sessions.into_iter().nth(0) {
+            *progress_lock.write().unwrap() = *session.time();
+            progress_barrier.wait();
             while probe.less_than(session.time()) {
                 //println!("flush.step");
                 worker.step();
             };
         }
     }
+
+    fn stop_workers(progress_lock: &RwLock<Product<RootTimestamp, u64>>,
+                    progress_barrier: &Barrier)
+    {
+        *progress_lock.write().unwrap() = Product::new(RootTimestamp, 0xffffffffffffffff as u64);
+        progress_barrier.wait();
+    }
+
 
     /* Lookup relation by id */
     fn get_relation(&self, relid: RelId) -> &Relation<V> {
@@ -538,11 +644,10 @@ impl<V:Val> Program<V>
         &self.get_relation(arrid.0).arrangements[arrid.1]
     }
 
-    /* Return all relations required to compute rels, including rels themselves */
+    /* Return all relations required to compute rels */
     fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
-            result.insert(Dep::DepRel(rel.id));
             for rule in &rel.rules {
                 result.insert(Dep::DepRel(rule.rel));
                 for xform in &rule.xforms {
@@ -595,18 +700,25 @@ impl<V:Val> Program<V>
                     Some(rhs.as_ref().unwrap_or(first).flat_map(f))
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
+                    let arrname = &self.get_arrangement(*arrid).name;
                     match arrangements.get(&arrid) {
                         Some(arranged) => {
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).arrange_by_key().
-                                 join_core(arranged, jf))
+                            with_prof_context(
+                                arrname,
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                  flat_map(af).arrange_by_key().
+                                  join_core(arranged, jf)))
                         },
                         None      => {
                             let arrangement = self.get_arrangement(*arrid);
-                            let arranged = lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key();
-                            Some(rhs.as_ref().unwrap_or(first).
-                                 flat_map(af).arrange_by_key().
-                                 join_core(&arranged, jf))
+                            let arranged = with_prof_context(
+                                &arrangement.name,
+                                ||lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key());
+                            with_prof_context(
+                                arrname,
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                       flat_map(af).arrange_by_key().
+                                       join_core(&arranged, jf)))
                         }
                     }
                 },
@@ -637,7 +749,10 @@ impl<V:Val> RunningProgram<V> {
                 Err(_) => resp_from_error!("timely thread terminated with an error"),
                 Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
                 Ok(Ok(())) => {
-                    Ok(())
+                    match self.prof_thread_handle.join() {
+                        Err(_) => resp_from_error!("profiling thread terminated with an error"),
+                        Ok(_)  => Ok(())
+                    }
                 }
             }
         })

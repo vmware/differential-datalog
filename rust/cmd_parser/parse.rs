@@ -24,6 +24,7 @@ pub enum Command {
     Commit,
     Rollback,
     Timestamp,
+    Profile,
     Dump(Option<String>),
     Exit,
     Echo(String),
@@ -59,6 +60,7 @@ named!(pub parse_command<&[u8], Command>,
         upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
                   do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
                   do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
+                  do_parse!(apply!(sym,"profile")   >> apply!(sym,";") >> (Command::Profile))   |
                   do_parse!(apply!(sym,"dump")      >>
                             rel: opt!(identifier)   >>
                             apply!(sym,";")         >>
@@ -81,6 +83,7 @@ fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
     assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
+    assert_eq!(parse_command(br"profile;")  , Ok((&br""[..], Command::Profile)));
     assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
     assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
     assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));

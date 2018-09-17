@@ -117,6 +117,7 @@ rustLibFiles =
         , ("differential_datalog/int.rs"      , $(embedFile "rust/differential_datalog/int.rs"))
         , ("differential_datalog/uint.rs"     , $(embedFile "rust/differential_datalog/uint.rs"))
         , ("differential_datalog/variable.rs" , $(embedFile "rust/differential_datalog/variable.rs"))
+        , ("differential_datalog/profile.rs"  , $(embedFile "rust/differential_datalog/profile.rs"))
         , ("differential_datalog/program.rs"  , $(embedFile "rust/differential_datalog/program.rs"))
         , ("differential_datalog/lib.rs"      , $(embedFile "rust/differential_datalog/lib.rs"))
         , ("differential_datalog/test.rs"     , $(embedFile "rust/differential_datalog/test.rs"))

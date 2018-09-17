@@ -65,6 +65,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             println!("ret = datalog_example_transaction_rollback(prog);");
         },
         Command::Timestamp => {},
+        Command::Profile => {},
         Command::Dump(None) => {
             println!("val_map_print(vmap);");
         },

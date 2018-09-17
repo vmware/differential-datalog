@@ -7,7 +7,7 @@ git="https://github.com/frankmcsherry/graph-map.git"
 
 [dependencies.differential-dataflow]
 git="https://github.com/frankmcsherry/differential-dataflow.git"
-rev="578f48bb9a8d03fb36d9791e1532f4b619edd95c"
+tag="v0.7.0"
 
 [dependencies.cmd_parser]
 path = "../cmd_parser"
@@ -20,7 +20,7 @@ itertools="^0.6"
 
 [dependencies]
 abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
-timely = { git = "https://github.com/frankmcsherry/timely-dataflow" }
+timely = { git = "https://github.com/frankmcsherry/timely-dataflow", tag = "v0.7.0" }
 fnv="1.0.2"
 num = "0.2"
 serde = "1.0.14"

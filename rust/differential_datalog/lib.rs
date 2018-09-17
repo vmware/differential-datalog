@@ -14,6 +14,7 @@ extern crate fnv;
 
 extern crate cmd_parser;
 
+mod profile;
 mod variable;
 #[cfg(test)]
 mod test;
