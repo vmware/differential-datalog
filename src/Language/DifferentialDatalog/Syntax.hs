@@ -86,7 +86,7 @@ module Language.DifferentialDatalog.Syntax (
         Function(..),
         funcShowProto,
         funcTypeVars,
-        ModuleName,
+        ModuleName(..),
         Import(..),
         DatalogProgram(..),
         emptyDatalogProgram,
@@ -590,13 +590,19 @@ funcShowProto Function{..} = render $
 funcTypeVars :: Function -> [String]
 funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 
+data ModuleName = ModuleName {modulePath :: [String]}
+                  deriving (Eq, Ord)
 
-type ModuleName = [String]
+instance PP ModuleName where
+    pp (ModuleName p) = hcat $ punctuate "." $ map pp p
+
+instance Show ModuleName where
+    show = render . pp
 
 -- | Import statement
-data Import = Import { importPos   :: Pos
-                     , importPath  :: ModuleName
-                     , importAlias :: ModuleName 
+data Import = Import { importPos    :: Pos
+                     , importModule :: ModuleName
+                     , importAlias  :: ModuleName 
                      }
 
 instance WithPos Import where
@@ -604,7 +610,7 @@ instance WithPos Import where
     atPos i p = i { importPos = p }
 
 instance PP Import where
-    pp Import{..} = "import" <+> (hcat $ punctuate "." $ map pp importPath) <+> "as" <+> (hcat $ punctuate "." $ map pp importAlias)
+    pp Import{..} = "import" <+> pp importModule <+> "as" <+> pp importAlias
 
 instance Show Import where
     show = render . pp

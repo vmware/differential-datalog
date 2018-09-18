@@ -198,8 +198,8 @@ spec preamble = do
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
-                 uniq importPath (\imp -> "Alias " ++ intercalate "." (importAlias imp) ++ " used multiple times ") imports
-                 uniq importAlias (\imp -> "Module " ++ intercalate "." (importPath imp) ++ " is imported multiple times ") imports
+                 uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
+                 uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
                  return $ DatalogProgram { progImports    = progImports preamble ++ imports
                                          , progTypedefs   = M.fromList types
                                          , progFunctions  = M.fromList funcs
@@ -217,9 +217,9 @@ decl = (withPosMany $
          <|> (return . SpRule)           <$> rule)
    <|> (map SpRule . convertStatement) <$> parseForStatement
 
-imprt = (\path malias -> Import nopos path $ maybe path id malias) <$ reserved "import" <*> modulePath <*> (optionMaybe $ reserved "as" *> modulePath)
+imprt = (\path malias -> Import nopos path $ maybe path id malias) <$ reserved "import" <*> modname <*> (optionMaybe $ reserved "as" *> modname)
 
-modulePath = modIdent `sepBy1` reservedOp "."
+modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
 
 typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>

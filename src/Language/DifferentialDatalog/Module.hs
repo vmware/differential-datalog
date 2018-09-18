@@ -34,7 +34,7 @@ module Language.DifferentialDatalog.Module(
 import Control.Monad.State.Lazy
 import Control.Monad.Except
 import qualified Data.Map as M
-import System.FilePath
+import qualified System.FilePath as F
 import System.Directory
 import Data.List
 import Data.String.Utils
@@ -61,7 +61,7 @@ data DatalogModule = DatalogModule {
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO DatalogProgram
 parseDatalogProgram roots insert_preamble fdata fname = do
     prog <- parseDatalogString insert_preamble fdata fname
-    let main_mod = DatalogModule [] prog
+    let main_mod = DatalogModule (ModuleName []) prog
     imports <- evalStateT (parseImports roots main_mod) []
     flattenNamespace $ main_mod : imports
 
@@ -78,7 +78,7 @@ mergeModules mods =
 parseImports :: [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
 parseImports roots mod = concat <$> 
     mapM (\imp@Import{..} -> do 
-           exists <- gets $ elem importPath
+           exists <- gets $ elem importModule
            if exists
               then return []
               else parseImport roots mod imp)
@@ -86,28 +86,27 @@ parseImports roots mod = concat <$>
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod Import{..} = do
-    modify $ \imports -> if elem importPath imports then imports else (importPath : imports)
-    prog <- lift $ do fname <- findModule roots mod importPath
+    modify $ \imports -> if elem importModule imports then imports else (importModule : imports)
+    prog <- lift $ do fname <- findModule roots mod importModule
                       fdata <- readFile fname
                       parseDatalogString False fdata fname
-    let mod' = DatalogModule importPath prog
+    let mod' = DatalogModule importModule prog
     imports <- parseImports roots mod'
     return $ mod' : imports
 
 findModule :: [FilePath] -> DatalogModule -> ModuleName -> IO FilePath
 findModule roots mod imp = do
-    let fpath = addExtension (joinPath imp) ".dl"
-    let modpath = intercalate "." imp
-    let candidates = map (</> fpath) roots
+    let fpath = (F.joinPath $ modulePath imp) F.<.> ".dl"
+    let candidates = map (F.</> fpath) roots
     mods <- filterM doesFileExist candidates
     case mods of
          [m]   -> return m
          []    -> errorWithoutStackTrace $
-                     "Module " ++ modpath ++ " imported by " ++ (intercalate "." $ moduleName mod) ++ 
+                     "Module " ++ show imp ++ " imported by " ++ show (moduleName mod) ++ 
                      " not found. Paths searched:\n" ++
                      (intercalate "\n" candidates)
          _     -> errorWithoutStackTrace $ 
-                    "Found multiple candidates for module " ++ modpath ++ " imported by " ++ (intercalate "." $ moduleName mod) ++ ":\n" ++
+                    "Found multiple candidates for module " ++ show imp ++ " imported by " ++ show (moduleName mod) ++ ":\n" ++
                     (intercalate "\n" candidates)
 
 
@@ -135,16 +134,22 @@ flattenNamespace1 mod@DatalogModule{..} = do
     prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mod e)
     return prog4
 
-namePrefix :: String -> [String]
-namePrefix n = init $ split "." n
+nameScope :: String -> Maybe ModuleName
+nameScope n = 
+    case init $ split "." n of
+         [] -> Nothing
+         xs -> Just $ ModuleName xs
+
+(<.>) :: ModuleName -> String -> String
+(<.>) mod n = show mod ++ "." ++ n
 
 flattenName :: (MonadError String me) => DatalogModule -> Pos -> String -> me String
 flattenName DatalogModule{..} pos n =
-    case namePrefix n of
-         [] -> return $ intercalate "." (moduleName ++ [n])
-         pref -> case find ((==pref) . importAlias) $ progImports moduleDefs of
-                      Nothing  -> err pos $ "Unknown module " ++ intercalate "." pref ++ ".  Did you forget to import it?"
-                      Just imp -> return $ intercalate "." (importPath imp ++ [n])
+    case nameScope n of
+         Nothing   -> return $ moduleName <.> n
+         Just mod -> case find ((==mod) . importAlias) $ progImports moduleDefs of
+                          Nothing  -> err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
+                          Just imp -> return $ importModule imp <.> n
 
 namedFlatten :: (MonadError String me, WithName a, WithPos a) => DatalogModule -> a -> me a
 namedFlatten mod x = setName x <$> flattenName mod (pos x) (name x)
