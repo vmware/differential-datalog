@@ -260,7 +260,7 @@ ffiTest fname specname rust_dir = do
         cwd <- makeAbsolute $ joinPath [rust_dir, specname]
         code <- withCreateProcess (proc (cwd </> exefile) []){
                             std_out = UseHandle hout,
-                            env = Just [("LD_LIBRARY_PATH", "target/" ++ bUILD_TYPE)]} $
+                            env = Just [("LD_LIBRARY_PATH", cwd </> "target" </> bUILD_TYPE)]} $
             \_ _ _ phandle -> waitForProcess phandle
         hClose hout
         when (code /= ExitSuccess) $ do
