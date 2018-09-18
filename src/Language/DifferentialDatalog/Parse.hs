@@ -39,6 +39,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.Either
 import Data.List
+import Data.Char
 import Numeric
 import Debug.Trace
 
@@ -142,12 +143,29 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-consIdent    = ucIdentifier
-relIdent     = ucIdentifier
-varIdent     = lcIdentifier
-typevarIdent = ucIdentifier
-funcIdent    = lcIdentifier
-modIdent     = identifier
+varIdent     = lcIdentifier <?> "vairable name"
+typevarIdent = ucIdentifier <?> "type variable name"
+modIdent     = identifier   <?> "module name"
+
+consIdent    = ucScopedIdentifier <?> "constructor name"
+relIdent     = ucScopedIdentifier <?> "relation name"
+funcIdent    = lcScopedIdentifier <?> "function name"
+typeIdent    = scopedIdentifier   <?> "type name"
+
+scopedIdentifier = do
+    (intercalate ".") <$> identifier `sepBy1` char '.'
+
+ucScopedIdentifier = do
+    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    if isUpper $ head $ last path
+       then scopedIdentifier
+       else unexpected (last path)
+
+lcScopedIdentifier = do
+    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    if isLower (head $ last path) || head (last path) == '_'
+       then scopedIdentifier
+       else unexpected (last path)
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
@@ -221,11 +239,11 @@ imprt = (\path malias -> Import nopos path $ maybe path id malias) <$ reserved "
 
 modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
 
-typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
+typeDef = (TypeDef nopos) <$ reserved "typedef" <*> typeIdent <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                              (Just <$ reservedOp "=" <*> typeSpec)
        <|>
-          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> identifier <*>
+          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> typeIdent <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                              (return Nothing)
 
@@ -274,7 +292,7 @@ statement = parseForStatement
         <|> parseInsertStatement
         <|> parseBlockStatement
 
-parseAssignment = withPos $ (Assignment nopos) <$> identifier
+parseAssignment = withPos $ (Assignment nopos) <$> varIdent
                                                <*> (optionMaybe etype)
                                                <*> (reserved "=" *> expr)
 
@@ -343,7 +361,7 @@ bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decima
 intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
-userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
+userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
 typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
     where isstruct = try $ lookAhead $ consIdent *> (symbol "{" <|> symbol "|")

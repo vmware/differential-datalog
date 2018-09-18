@@ -1,6 +1,6 @@
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, column 23):
 unexpected '{'
-expecting "import", "typedef", "extern", "input", "relation", "function", identifier, "for" or end of input
+expecting "import", "typedef", "extern", "input", "relation", "function", relation name, "for" or end of input
 
 error: ./test/datalog_tests/constr.fail.dl:4:13-4:29: Multiple definitions of constructor C at the following locations:
   ./test/datalog_tests/constr.fail.dl:4:13-4:29
@@ -8,15 +8,15 @@ error: ./test/datalog_tests/constr.fail.dl:4:13-4:29: Multiple definitions of co
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 9):
 unexpected "("
-expecting end of "function" or identifier
+expecting end of "function" or function name
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
 unexpected "{"
-expecting "<", "," or "}"
+expecting ".", "<", "," or "}"
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
-unexpected "F"
-expecting identifier
+unexpected F
+expecting function name
 
 error: ./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types
 
