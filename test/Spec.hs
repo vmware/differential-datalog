@@ -157,7 +157,7 @@ compilerTest fname = do
                   then readFile importsfile
                   else return ""
     -- generate Rust project
-    let rust_dir = joinPath [takeDirectory fname]
+    let rust_dir = takeDirectory fname
     compile prog specname imports rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {

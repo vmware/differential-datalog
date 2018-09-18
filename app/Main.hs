@@ -109,5 +109,5 @@ compileProg conf@Config{..} = do
     -- include any user-provided Rust code
     imports <- mapM readFile confRustFiles
     -- generate Rust project
-    let rust_dir = joinPath [takeDirectory confDatalogFile]
+    let rust_dir = takeDirectory confDatalogFile
     compile prog specname (concat imports) rust_dir
