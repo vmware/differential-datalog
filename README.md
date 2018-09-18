@@ -55,7 +55,7 @@ Instructions for writing and testing your own Datalog programs are [here](doc/te
 # Installing from sources
 
 ## Prerequisites
-We have only tested our software on Ubuntu Linux.
+We have tested our software on Ubuntu Linux and MacOS.
 
 The compilers are written in Haskell.  One needs the Glasgow Haskell
 Compiler.  The Haskell compiler is managed by the

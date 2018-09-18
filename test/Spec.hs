@@ -256,8 +256,8 @@ ffiTest fname specname rust_dir = do
         hClose hdat
         -- Run C program
         hout <- openFile dumpfile WriteMode
-        code <- withCreateProcess (proc ("./" ++ exefile) []){
-                            cwd = Just $ joinPath [rust_dir, specname],
+        cwd <- makeAbsolute $ joinPath [rust_dir, specname]
+        code <- withCreateProcess (proc (cwd </> exefile) []){
                             std_out = UseHandle hout,
                             env = Just [("LD_LIBRARY_PATH", "target/" ++ bUILD_TYPE)]} $
             \_ _ _ phandle -> waitForProcess phandle
