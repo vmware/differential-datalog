@@ -4,6 +4,7 @@ import Language.DifferentialDatalog.Syntax
 
 class WithType a where
     typ  :: a -> Type
+    setType :: a -> Type -> a
 
 instance WithType Type where
 instance WithType Field where

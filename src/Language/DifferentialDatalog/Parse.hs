@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, LambdaCase #-}
 
 module Language.DifferentialDatalog.Parse (
     parseDatalogString,
@@ -38,10 +38,12 @@ import qualified Text.Parsec.Token as T
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Either
+import Data.List
 import Numeric
 import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Statement
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
@@ -65,7 +67,8 @@ rustKeywords = ["type"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
-reservedNames = ["_",
+reservedNames = ["as",
+                 "_",
                  "Aggregate",
                  "FlatMap",
                  "and",
@@ -78,6 +81,7 @@ reservedNames = ["_",
                  "for",
                  "function",
                  "if",
+                 "import",
                  "in",
                  "input",
                  "insert",
@@ -143,28 +147,29 @@ relIdent     = ucIdentifier
 varIdent     = lcIdentifier
 typevarIdent = ucIdentifier
 funcIdent    = lcIdentifier
+modIdent     = identifier
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-data SpecItem = SpType      TypeDef
+data SpecItem = SpImport    Import
+              | SpType      TypeDef
               | SpRelation  Relation
               | SpRule      Rule
               | SpFunc      Function
-              | SpStatement Statement
 
 instance WithPos SpecItem where
     pos   (SpType         t)   = pos t
     pos   (SpRelation     r)   = pos r
     pos   (SpRule         r)   = pos r
     pos   (SpFunc         f)   = pos f
-    pos   (SpStatement    s)   = pos s
+    pos   (SpImport       i)   = pos i
     atPos (SpType         t) p = SpType      $ atPos t p
     atPos (SpRelation     r) p = SpRelation  $ atPos r p
     atPos (SpRule         r) p = SpRule      $ atPos r p
     atPos (SpFunc         f) p = SpFunc      $ atPos f p
-    atPos (SpStatement    s) p = SpStatement $ atPos s p
+    atPos (SpImport       i) p = SpImport    $ atPos i p
 
 
 datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
@@ -172,43 +177,49 @@ exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
 spec preamble = do
     items <- concat <$> many decl
-
+    let imports = mapMaybe (\case
+                             SpImport i -> Just i
+                             _          -> Nothing) items
     let relations = (M.toList $ progRelations preamble) ++
-                    mapMaybe (\i -> case i of
-                                         SpRelation r -> Just (name r, r)
-                                         _            -> Nothing) items
+                    mapMaybe (\case
+                               SpRelation r -> Just (name r, r)
+                               _            -> Nothing) items
     let types = (M.toList $ progTypedefs preamble) ++
-                mapMaybe (\i -> case i of
-                                     SpType t         -> Just (name t, t)
-                                     _        -> Nothing) items
+                mapMaybe (\case
+                           SpType t -> Just (name t, t)
+                           _        -> Nothing) items
     let funcs = (M.toList $ progFunctions preamble) ++
-                mapMaybe (\i -> case i of
-                                     SpFunc f -> Just (name f, f)
-                                     _        -> Nothing) items
-    let rules = mapMaybe (\i -> case i of
-                                     SpRule r -> Just r
-                                     _        -> Nothing) items
-    let statements = mapMaybe (\i -> case i of
-                                     SpStatement r -> Just r
-                                     _             -> Nothing) items
+                mapMaybe (\case
+                           SpFunc f -> Just (name f, f)
+                           _        -> Nothing) items
+    let rules = mapMaybe (\case
+                           SpRule r -> Just r
+                           _        -> Nothing) items
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
-                 return $ DatalogProgram { progTypedefs   = M.fromList types
+                 uniq importPath (\imp -> "Alias " ++ intercalate "." (importAlias imp) ++ " used multiple times ") imports
+                 uniq importAlias (\imp -> "Module " ++ intercalate "." (importPath imp) ++ " is imported multiple times ") imports
+                 return $ DatalogProgram { progImports    = progImports preamble ++ imports
+                                         , progTypedefs   = M.fromList types
                                          , progFunctions  = M.fromList funcs
                                          , progRelations  = M.fromList relations
-                                         , progRules      = progRules preamble ++ rules
-                                         , progStatements = progStatements preamble ++ statements}
+                                         , progRules      = progRules preamble ++ rules }
     case res of
          Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
 
-decl = withPosMany $
-        (return . SpType)      <$> typeDef
-    <|> relation
-    <|> (return . SpFunc)      <$> func
-    <|> (return . SpRule)      <$> rule
-    <|> (return . SpStatement) <$> parseForStatement
+decl = (withPosMany $
+             (return . SpImport)         <$> imprt
+         <|> (return . SpType)           <$> typeDef
+         <|> relation
+         <|> (return . SpFunc)           <$> func
+         <|> (return . SpRule)           <$> rule)
+   <|> (map SpRule . convertStatement) <$> parseForStatement
+
+imprt = (\path malias -> Import nopos path $ maybe path id malias) <$ reserved "import" <*> modulePath <*> (optionMaybe $ reserved "as" *> modulePath)
+
+modulePath = modIdent `sepBy1` reservedOp "."
 
 typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
@@ -248,7 +259,8 @@ relation = do
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
-parseForStatement = ForStatement nopos <$ reserved "for"
+parseForStatement = withPos $
+                    ForStatement nopos <$ reserved "for"
                                        <*> (symbol "(" *> expr)
                                        <*> (reserved "in" *> relIdent)
                                        <*> (optionMaybe (reserved "if" *> expr))

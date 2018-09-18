@@ -31,7 +31,7 @@ import Control.Monad
 import Data.List
 
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Parse
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 
@@ -96,7 +96,8 @@ main = do
 
 parseValidate :: Config -> IO DatalogProgram
 parseValidate Config{..} = do
-    d <- parseDatalogFile True confDatalogFile
+    fdata <- readFile confDatalogFile
+    d <- parseDatalogProgram [takeDirectory confDatalogFile] True fdata confDatalogFile
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'

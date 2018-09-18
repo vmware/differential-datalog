@@ -42,7 +42,7 @@ import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
 
-import Language.DifferentialDatalog.Parse
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Preamble
@@ -91,7 +91,7 @@ ovnTest = do
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
-    d <- parseDatalogString True program file
+    d <- parseDatalogProgram [takeDirectory file] True program file
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'
@@ -129,7 +129,8 @@ parserTest fname = do
         prog <- parseValidate fname body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
-        prog' <- parseDatalogFile False astfile
+        fdata <- readFile astfile
+        prog' <- parseDatalogProgram [] False fdata astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
 
