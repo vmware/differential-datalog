@@ -161,7 +161,7 @@ compilerTest fname = do
     compile prog specname imports rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                          cwd = Just $ joinPath [rust_dir, specname]
+                          cwd = Just $ rust_dir </> specname
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -169,7 +169,7 @@ compilerTest fname = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
     let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
-                          cwd = Just $ joinPath [rust_dir, specname]
+                          cwd = Just $ rust_dir </> specname
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -191,7 +191,7 @@ cliTest fname specname rust_dir = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag)){
-                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       cwd = Just $ rust_dir </> specname,
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
                                        std_err=UseHandle herr} $
@@ -212,7 +212,7 @@ cliTest fname specname rust_dir = do
 -- Convert .dat file into C to test the FFI interface
 ffiTest :: FilePath -> String -> FilePath -> IO ()
 ffiTest fname specname rust_dir = do
-    let cfile    = joinPath [rust_dir, specname, addExtension specname ".c"]
+    let cfile    = rust_dir </> specname </> specname <.> "c"
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
     let dumpfile = replaceExtension fname ".c.dump"
@@ -223,7 +223,7 @@ ffiTest fname specname rust_dir = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_ffi_test"] ++ cargo_build_flag)){
-                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       cwd = Just $ rust_dir </> specname,
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
                                        std_err=UseHandle herr} $
@@ -244,7 +244,7 @@ ffiTest fname specname rust_dir = do
         let exefile = specname ++ "_test"
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
-                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       cwd = Just $ rust_dir </> specname,
                                        std_in=CreatePipe} $
             \(Just hin) _ _ phandle -> do
                 dat <- hGetContents hdat
@@ -257,7 +257,7 @@ ffiTest fname specname rust_dir = do
         hClose hdat
         -- Run C program
         hout <- openFile dumpfile WriteMode
-        cwd <- makeAbsolute $ joinPath [rust_dir, specname]
+        cwd <- makeAbsolute $ rust_dir </> specname
         code <- withCreateProcess (proc (cwd </> exefile) []){
                             std_out = UseHandle hout,
                             env = Just [("LD_LIBRARY_PATH", cwd </> "target" </> bUILD_TYPE)]} $
