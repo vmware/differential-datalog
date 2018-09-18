@@ -24,7 +24,6 @@ SOFTWARE.
 {-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections #-}
 
 module Language.DifferentialDatalog.Parse (
-    parseDatalogFile,
     parseDatalogString,
     datalogGrammar,
     exprGrammar) where
@@ -48,15 +47,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Preamble
-
--- | Parse a file containing a datalog program and produce the intermediate representation
--- if 'insert_preamble' is true, prepends the content of
--- 'datalotPreamble' to the file before parsing it.
-parseDatalogFile :: Bool -> FilePath -> IO DatalogProgram
-parseDatalogFile insert_preamble fname = do
-    fdata <- readFile fname
-    parseDatalogString insert_preamble fdata fname
-
+    
 -- parse a string containing a datalog program and produce the intermediate representation
 parseDatalogString :: Bool -> String -> String -> IO DatalogProgram
 parseDatalogString insert_preamble program file = do
@@ -65,8 +56,8 @@ parseDatalogString insert_preamble program file = do
                  else return emptyDatalogProgram
 
   case parse (datalogGrammar preamble) file program of
-         Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-         Right prog -> return prog
+       Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
+       Right prog -> return prog
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
