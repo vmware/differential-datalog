@@ -67,8 +67,8 @@ goldenTests = do
   let parser_tests = testGroup "parser tests" $
           [ goldenVsFile (takeBaseName file) expect output (parserTest file)
             | (file:_) <- inFiles
-            , let expect = replaceExtension file ".ast.expected"
-            , let output = replaceExtension file ".ast"]
+            , let expect = file -<.> "ast.expected"
+            , let output = file -<.> "ast"]
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
