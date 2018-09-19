@@ -1,7 +1,20 @@
-# Adapted from https://github.com/commercialhaskell/stack
-language: nix
+# This is the simple Travis configuration, which is intended for use
+# on applications which do not require cross-platform and
+# multiple-GHC-version support. For more information and other
+# options, see:
+#
+# https://docs.haskellstack.org/en/stable/travis_ci/
+#
+# Copy these contents into the root directory of your Github project in a file
+# named .travis.yml
+
+# Use new container infrastructure to enable caching
 sudo: false
 
+# Do not choose a language; we provide our own build tools.
+language: rust
+
+# Caching so the next build will be fast too.
 cache:
     directories:
         - $HOME/.ghc
@@ -14,9 +27,6 @@ matrix:
   fast_finish: true
   include:
     # Add build targets here
-    - env: GHCVER=8.0.2 CACHE_NAME=8.0.2
-      compiler: ": #stack 8.0.2"
-      addons: {apt: {packages: [ghc-8.0.2], sources: [hvr-ghc]}}
 
     - env: GHCVER=8.2.1 CACHE_NAME=8.2.1 BUILD_BINARY=1
       compiler: ": #stack 8.2.1"
@@ -27,22 +37,25 @@ matrix:
       compiler: ": #stack 8.2.1"
       addons: {apt: {packages: [ghc-8.2.1], sources: [hvr-ghc]}}
 
+# Ensure necessary system libraries are present
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+before_install:
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
 install:
- - unset CC
- - export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH
- - ./.travis/install-ghr.sh
- - ./.travis/install-stack.sh
- - curl https://sh.rustup.rs -sSf | sh -s -- -y
- - source $HOME/.cargo/env
+# Build dependencies
+- stack --no-terminal --install-ghc test --only-dependencies
 
 script:
- - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
- - GHC_OPTIONS="-Werror"
- - |
-   set -ex
-   # Run tests
-   stack --no-terminal test --ta '-p tutorial' --ghc-options="$GHC_OPTIONS"
-   set +ex
+# Build the package, its tests, and its docs and run the tests
+- stack --no-terminal test --ta '-p tutorial' --haddock --no-haddock-deps
 
 after_success:
  - |
