@@ -3,6 +3,7 @@
    Datalog programs written in the Differential Datalog dialect"""
 
 import parglare # parser generator
+import json
 
 skip_files = False
 current_namespace = None
@@ -92,7 +93,7 @@ def process_input(inputdecl, files):
     data = open(filename, "r")
     for line in data:
         fields = line.rstrip('\n').split(separator)
-        fields = map(lambda a: "[|" + a + "|]", fields)
+        fields = map(lambda a: json.dumps(a), fields)
         files.outputData("insert " + relationname.value + "(" + ", ".join(fields) + ")")
     data.close()
 
