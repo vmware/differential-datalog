@@ -1,0 +1,141 @@
+Program: DeclarationList EOF
+       ;
+
+DeclarationList: EMPTY
+               | Declaration DeclarationList
+               ;
+
+Declaration: TypeDecl
+           | InputDecl
+           | RelationDecl
+           | Rule
+           | Init
+           | Namespace
+           ;
+
+Init: INIT Identifier "=" Identifier
+    ;
+
+Namespace: COMP Identifier "{" DeclarationList "}"
+         ;
+
+TypeDecl: TYPE Identifier
+        | TYPE Identifier "=" Identifier
+        ;
+
+RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT?
+            ;
+
+InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITER "=" String ")"
+         ;
+
+ParameterList: Parameter "," ParameterList
+             | Parameter
+             ;
+
+Parameter: QIdentifier ":" Identifier
+         ;
+
+ArgumentList: Argument
+            | Argument "," ArgumentList
+            ;
+
+Argument: Identifier "=" String
+        ;
+
+Rule: Head ":-" Tail DOT
+    ;
+
+Head: ClauseList
+    ;
+
+ClauseList: Clause
+          | ClauseList "," Clause
+          ;
+
+Clause: Identifier "(" ClauseArgList ")"
+      ;
+
+ClauseArgList: ClauseArg
+             | ClauseArg "," ClauseArgList
+             ;
+
+ClauseArg: VarName
+         | String
+         ;
+
+VarName: QIdentifier
+       ;
+
+Tail: ConjunctionsOrDisjunctions
+    ;
+
+ConjunctionsOrDisjunctions: Expression
+                          | ConjunctionsOrDisjunctions "," ConjunctionsOrDisjunctions {left,1}
+                          | ConjunctionsOrDisjunctions OR ConjunctionsOrDisjunctions {left,2}
+                          | "(" ConjunctionsOrDisjunctions ")"
+                          ;
+
+Expression: Assignment
+          | "!" Relation
+          | Relation
+          | QIdentifier NE QIdentifier
+          | QIdentifier NE String
+          ;
+
+Relation: Path "(" ClauseArgList ")"
+        ;
+
+Path: Identifier
+    | Identifier DOT Path
+    ;
+
+Assignment: QIdentifier "=" FunctionCall
+          | QIdentifier "=" QIdentifier
+          | QIdentifier "=" String
+          ;
+
+FunctionCall: Identifier "(" FunctionArgumentList ")"
+            ;
+
+QIdentifier: "?"? Identifier
+           ;
+
+FunctionArgumentList: FunctionArgument
+                    | FunctionArgument "," FunctionArgumentList
+                    ;
+
+FunctionArgument: QIdentifier
+                | String
+                ;
+
+////// Special stuff
+
+LAYOUT: LayoutItem
+      | LAYOUT LayoutItem
+      ;
+
+LayoutItem: WS
+          | LineComment
+          | EMPTY
+          ;
+
+terminals
+DOT: "." ;
+IO: "IO" ;
+FILE: "\"file\"" ;
+FILENAME: "filename" ;
+DELIMITER: "delimiter" ;
+NE: "!=" ;
+TYPE: ".type" ;
+INIT: ".init" ;
+COMP: ".comp" ;
+DECL: ".decl" ;
+INPUT: ".input" ;
+OUTPUT: "output" ;
+OR: ";" ;
+KEYWORD: /[\w-]+/ ;
+WS: /\s+/ ;
+LineComment: /\/\/.*/ ;
+String: /\"[^"]*\"/ ;
+Identifier: /[_\w][_\d\w]*/ ;
