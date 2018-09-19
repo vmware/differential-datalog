@@ -29,7 +29,8 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 {-# LANGUAGE RecordWildCards, FlexibleContexts #-}
 
 module Language.DifferentialDatalog.Module(
-    parseDatalogProgram) where
+    parseDatalogProgram,
+    progRustizeNamespace) where
 
 import Control.Monad.State.Lazy
 import Control.Monad.Except
@@ -46,6 +47,7 @@ import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
     moduleName :: ModuleName,
@@ -66,15 +68,22 @@ parseDatalogProgram roots insert_preamble fdata fname = do
     imports <- evalStateT (parseImports roots main_mod) []
     flattenNamespace $ main_mod : imports
 
-mergeModules :: [DatalogProgram] -> DatalogProgram
-mergeModules mods =
-    DatalogProgram {
+mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
+mergeModules mods = do
+    let prog = DatalogProgram {
         progImports    = [],
         progTypedefs   = M.unions $ map progTypedefs mods,
         progFunctions  = M.unions $ map progFunctions mods,
         progRelations  = M.unions $ map progRelations mods,
         progRules      = concatMap progRules mods
     }
+    uniq (name2rust . name) (\_ -> "The following function declarations will cause name collision in Rust: ") 
+         $ M.elems $ progFunctions prog
+    uniq (name2rust . name) (\_ -> "The following relations will cause name collision in Rust: ") 
+         $ M.elems $ progRelations prog
+    uniq (name2rust . name) (\_ -> "The following type declarations will cause name collision in Rust: ") 
+         $ M.elems $ progTypedefs prog
+    return prog
 
 parseImports :: [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
 parseImports roots mod = concat <$> 
@@ -113,10 +122,11 @@ findModule roots mod imp = do
 
 flattenNamespace :: [DatalogModule] -> IO DatalogProgram
 flattenNamespace mods = do
-    mods' <- case mapM flattenNamespace1 mods of
-                  Left e   -> errorWithoutStackTrace e
-                  Right ms -> return ms
-    return $ mergeModules mods'
+    let prog = do mods' <- mapM flattenNamespace1 mods 
+                  mergeModules mods'
+    case prog of
+         Left e  -> errorWithoutStackTrace e
+         Right p -> return p
 
 flattenNamespace1 :: (MonadError String me) => DatalogModule -> me DatalogProgram
 flattenNamespace1 mod@DatalogModule{..} = do
@@ -142,7 +152,7 @@ nameScope n =
          xs -> Just $ ModuleName xs
 
 scoped :: ModuleName -> String -> String
-scoped mod n = intercalate "_" (modulePath mod ++ [n])
+scoped mod n = intercalate "." (modulePath mod ++ [n])
 
 flattenName :: (MonadError String me) => DatalogModule -> Pos -> String -> me String
 flattenName DatalogModule{..} pos n =
@@ -174,3 +184,43 @@ exprFlatten mod e@EStruct{..} = do
     c <- flattenName mod (pos e) exprConstructor
     return $ E $ e { exprConstructor = c }
 exprFlatten _   e = return $ E e 
+
+
+----------
+
+name2rust :: String -> String
+name2rust = replace "." "_"
+
+named2rust :: (WithName a) => a -> a
+named2rust x = setName x $ name2rust (name x)
+
+-- | Replace "." with "_" in all identifiers in the program.  Must be called before converting
+-- program to Rust.  The output of a function is not a valid DDlog program, as it may violate
+-- capitalization rules.
+progRustizeNamespace :: DatalogProgram -> DatalogProgram
+progRustizeNamespace prog@DatalogProgram{..} =
+    case validate prog4 of
+         Left e -> error $ "progRustizeNamespace produced invalid program: " ++ e
+         _      -> prog4
+    where
+    prog1 = prog {
+        progTypedefs   = namedListToMap $ map named2rust (M.elems progTypedefs),
+        progFunctions  = namedListToMap $ map named2rust (M.elems progFunctions),
+        progRelations  = namedListToMap $ map named2rust (M.elems progRelations)
+    }
+    prog2 = progAtomMap prog1 named2rust
+    prog3 = progTypeMap prog2 type2rust
+    prog4 = progExprMapCtx prog3 (\_ e -> expr2rust e)
+
+type2rust :: Type -> Type
+type2rust t =
+    case t of
+         TStruct{..} -> t { typeCons = map named2rust typeCons }
+         TUser{..}   -> t { typeName = name2rust typeName }
+         TOpaque{..} -> t { typeName = name2rust typeName }
+         _           -> t
+
+expr2rust :: ENode -> Expr
+expr2rust e@EApply{..}  = E $ e { exprFunc = name2rust exprFunc }
+expr2rust e@EStruct{..} = E $ e { exprConstructor = name2rust exprConstructor }
+expr2rust e             = E e

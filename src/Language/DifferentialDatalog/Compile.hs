@@ -68,6 +68,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
@@ -311,9 +312,12 @@ compileLib d specname imports =
      cheader specname     $+$
      c_ffi)
     where
+    -- Massage program to Rust-friendly form:
+    -- * Rename program entities to Rust-friendly names
+    -- * Transform away rules with multiple heads
+    -- * Make sure the program has at least one relation
+    d' = addDummyRel $ progExpandMultiheadRules $ progRustizeNamespace d
     (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
-    -- Transform away rules with multiple heads
-    d' = addDummyRel $ progExpandMultiheadRules d
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
     depgraph = progDependencyGraph d'
@@ -323,7 +327,7 @@ compileLib d specname imports =
     -- Initialize types
     -- Make sure that empty tuple is always in Value, so it can be
     -- used to implement Value::default()
-    types = S.fromList $ (tTuple []) : (map (typeNormalize d . relType) $ M.elems $ progRelations d')
+    types = S.fromList $ (tTuple []) : (map (typeNormalize d' . relType) $ M.elems $ progRelations d')
     -- Compile SCCs
     (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
                                   mkProg d' nodes)

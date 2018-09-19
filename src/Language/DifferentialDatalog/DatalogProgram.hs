@@ -31,7 +31,9 @@ module Language.DifferentialDatalog.DatalogProgram (
     progExprMapCtxM,
     progExprMapCtx,
     progTypeMapM,
+    progTypeMap,
     progAtomMapM,
+    progAtomMap,
     DepGraph,
     progDependencyGraph,
     progExpandMultiheadRules
@@ -91,7 +93,7 @@ progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun 
 
 -- | Apply function to all type referenced in the program
 progTypeMapM :: (Monad m) => DatalogProgram -> (Type -> m Type) -> m DatalogProgram
-progTypeMapM p@DatalogProgram{..} fun = do
+progTypeMapM d@DatalogProgram{..} fun = do
     ts <- M.traverseWithKey (\_ (TypeDef p n a t) -> TypeDef p n a <$> mapM (typeMapM fun) t) progTypedefs
     fs <- M.traverseWithKey (\_ f -> do ret <- typeMapM fun $ funcType f
                                         as  <- mapM (\f -> setType f <$> (typeMapM fun $ typ f)) $ funcArgs f
@@ -99,15 +101,18 @@ progTypeMapM p@DatalogProgram{..} fun = do
                                         return f{ funcType = ret, funcArgs = as, funcDef = d }) progFunctions
     rels <- M.traverseWithKey (\_ rel -> setType rel <$> (typeMapM fun $ typ rel)) progRelations
     rules <- mapM (ruleTypeMapM fun) progRules
-    return p { progTypedefs  = ts
+    return d { progTypedefs  = ts
              , progFunctions = fs
              , progRelations = rels
              , progRules     = rules
              }
 
+progTypeMap :: DatalogProgram -> (Type -> Type) -> DatalogProgram
+progTypeMap d fun = runIdentity $ progTypeMapM d (return . fun)
+
 -- | Apply function to all atoms in the program
 progAtomMapM :: (Monad m) => DatalogProgram -> (Atom -> m Atom) -> m DatalogProgram
-progAtomMapM p fun = do
+progAtomMapM d fun = do
     rs <- mapM (\r -> do
                  lhs <- mapM fun $ ruleLHS r
                  rhs <- mapM (\case
@@ -115,9 +120,11 @@ progAtomMapM p fun = do
                                                       return lit { rhsAtom = a }
                                rhs              -> return rhs) $ ruleRHS r
                  return r { ruleLHS = lhs, ruleRHS = rhs })
-               $ progRules p
-    return p { progRules = rs }
+               $ progRules d
+    return d { progRules = rs }
 
+progAtomMap :: DatalogProgram -> (Atom -> Atom) -> DatalogProgram
+progAtomMap d fun = runIdentity $ progAtomMapM d (return . fun)
 
 type DepGraph = G.Gr String Bool
 
