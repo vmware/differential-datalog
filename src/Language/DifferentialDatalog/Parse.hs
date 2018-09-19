@@ -215,7 +215,7 @@ spec preamble = do
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
-                 uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
+                 --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
                  uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
                  return $ DatalogProgram { progImports    = progImports preamble ++ imports
                                          , progTypedefs   = M.fromList types
@@ -234,7 +234,7 @@ decl = (withPosMany $
          <|> (return . SpRule)           <$> rule)
    <|> (map SpRule . convertStatement) <$> parseForStatement
 
-imprt = (\path malias -> Import nopos path $ maybe path id malias) <$ reserved "import" <*> modname <*> (optionMaybe $ reserved "as" *> modname)
+imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
 
 modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
 

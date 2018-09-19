@@ -19,12 +19,9 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Control.Monad.Except
 
-builtinTypes :: String
-builtinTypes = [r|
-typedef integer      = bit<64>
-typedef uuid         = bit<128>
-typedef option_t<'A> = Some{x: 'A}
-                     | None
+
+builtins :: String
+builtins = [r|import types
 |]
 
 compileSchemaFile :: FilePath -> [String] -> IO Doc
@@ -46,7 +43,7 @@ compileSchema schema outputs = do
     rels <- vcat <$> mapM (\t -> if elem (name t) outputs
                                     then mkTable False t
                                     else mkTable True t) tables
-    return $ pp builtinTypes $+$ rels
+    return $ pp builtins $+$ rels
 
 mkTable :: (MonadError String me) => Bool -> Table -> me Doc
 mkTable isinput t@Table{..} = do

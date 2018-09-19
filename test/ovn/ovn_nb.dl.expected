@@ -1,8 +1,4 @@
-
-typedef integer      = bit<64>
-typedef uuid         = bit<128>
-typedef option_t<'A> = Some{x: 'A}
-                     | None
+import types
 
 input relation NB_Global(
     _uuid: uuid,

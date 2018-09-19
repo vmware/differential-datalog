@@ -4,7 +4,7 @@ error: Mutually recursive types: t -> t
 
 error: Mutually recursive types: t -> t1 -> t
 
-error: ./test/datalog_tests/rectype.fail.dl:3:13-5:1: Unknown type: undef
+./test/datalog_tests/rectype.fail.dl:3:13-5:1: Unknown type undef
 
 Failed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
 unexpected "{"

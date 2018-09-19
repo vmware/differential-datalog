@@ -26,7 +26,7 @@ Module     : Module
 Description: DDlog's module system implemented as syntactic sugar over core syntax.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections #-}
 
 module Language.DifferentialDatalog.Module(
     parseDatalogProgram,
@@ -39,15 +39,17 @@ import qualified System.FilePath as F
 import System.Directory
 import Data.List
 import Data.String.Utils
+import Data.Maybe
 import Debug.Trace
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
-import Language.DifferentialDatalog.Validate
+--import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
     moduleName :: ModuleName,
@@ -96,6 +98,8 @@ parseImports roots mod = concat <$>
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod Import{..} = do
+    when (importModule == moduleName mod) 
+         $ errorWithoutStackTrace $ "Module " ++ show (moduleName mod) ++ " is trying to import self"
     modify (importModule:)
     prog <- lift $ do fname <- findModule roots mod importModule
                       fdata <- readFile fname
@@ -119,71 +123,99 @@ findModule roots mod imp = do
                     "Found multiple candidates for module " ++ show imp ++ " imported by " ++ show (moduleName mod) ++ ":\n" ++
                     (intercalate "\n" candidates)
 
+type MMap = M.Map ModuleName DatalogModule
 
 flattenNamespace :: [DatalogModule] -> IO DatalogProgram
 flattenNamespace mods = do
-    let prog = do mods' <- mapM flattenNamespace1 mods 
+    let mmap = M.fromList $ map (\m -> (moduleName m, m)) mods
+    let prog = do mods' <- mapM (flattenNamespace1 mmap) mods 
                   mergeModules mods'
     case prog of
          Left e  -> errorWithoutStackTrace e
          Right p -> return p
 
-flattenNamespace1 :: (MonadError String me) => DatalogModule -> me DatalogProgram
-flattenNamespace1 mod@DatalogModule{..} = do
+flattenNamespace1 :: (MonadError String me) => MMap -> DatalogModule -> me DatalogProgram
+flattenNamespace1 mmap mod@DatalogModule{..} = do
     -- rename typedefs, functions, and relations declared in this module
-    types' <- namedListToMap <$> mapM (namedFlatten mod) (M.elems $ progTypedefs moduleDefs)
-    funcs' <- namedListToMap <$> mapM (namedFlatten mod) (M.elems $ progFunctions moduleDefs)
-    rels'  <- namedListToMap <$> mapM (namedFlatten mod) (M.elems $ progRelations moduleDefs)
+    let types' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTypedefs moduleDefs)
+        funcs' = namedListToMap $ map (namedFlatten mod) (M.elems $ progFunctions moduleDefs)
+        rels'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progRelations moduleDefs)
     let prog1 = moduleDefs { progTypedefs   = types'
                            , progFunctions  = funcs'
                            , progRelations  = rels' }
     -- flatten relation references
-    prog2 <- progAtomMapM prog1 (namedFlatten mod)
+    prog2 <- progAtomMapM prog1 (\a -> setName a <$> flattenRelName mmap mod (pos a) (name a))
     -- rename types
-    prog3 <- progTypeMapM prog2 (typeFlatten mod)
+    prog3 <- progTypeMapM prog2 (typeFlatten mmap mod)
     -- rename constructors and functions
-    prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mod e)
+    prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
     return prog4
 
-nameScope :: String -> Maybe ModuleName
-nameScope n = 
-    case init $ split "." n of
-         [] -> Nothing
-         xs -> Just $ ModuleName xs
+nameScope :: String -> ModuleName
+nameScope n = ModuleName $ init $ split "." n
+
+nameLocal :: String -> String
+nameLocal n = last $ split "." n
 
 scoped :: ModuleName -> String -> String
 scoped mod n = intercalate "." (modulePath mod ++ [n])
 
-flattenName :: (MonadError String me) => DatalogModule -> Pos -> String -> me String
-flattenName DatalogModule{..} pos n =
-    case nameScope n of
-         Nothing   -> return $ scoped moduleName n
-         Just mod -> case find ((==mod) . importAlias) $ progImports moduleDefs of
-                          Nothing  -> err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
-                          Just imp -> return $ scoped (importModule imp) n
+candidates :: (MonadError String me) => DatalogModule -> Pos -> String -> me [ModuleName]
+candidates DatalogModule{..} pos n = do
+    let mod = nameScope n
+    let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++ 
+               (if mod == ModuleName [] then [moduleName] else [])
+    when (null mods) $ 
+        err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
+    return mods
 
-namedFlatten :: (MonadError String me, WithName a, WithPos a) => DatalogModule -> a -> me a
-namedFlatten mod x = setName x <$> flattenName mod (pos x) (name x)
+flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me String
+flattenName lookup_fun entity mmap mod p c = do
+    cand_mods <- candidates mod p c
+    let lname = nameLocal c
+    let cands = filter ((\m -> isJust $ lookup_fun (moduleDefs m) lname)) $ map (mmap M.!) cand_mods
+    case cands of
+         [m] -> return $ scoped (moduleName m) lname
+         []  -> err p $ "Unknown " ++ entity ++ " " ++ c
+         _   -> err p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
+                        " found in the following modules: " ++ 
+                        (intercalate ", " $ map (show . moduleName) cands)
 
-typeFlatten :: (MonadError String me) => DatalogModule -> Type -> me Type
-typeFlatten mod t = do
+
+flattenConsName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenConsName = flattenName lookupConstructor "constructor"
+
+flattenTypeName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenTypeName = flattenName lookupType "type"
+
+flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenFuncName = flattenName lookupFunc "function"
+
+flattenRelName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenRelName = flattenName lookupRelation "relation"
+
+namedFlatten :: (WithName a) => DatalogModule -> a -> a
+namedFlatten mod x = setName x $ scoped (moduleName mod) (name x)
+
+typeFlatten :: (MonadError String me) => MMap -> DatalogModule -> Type -> me Type
+typeFlatten mmap mod t = do
     case t of
-         TStruct{..} -> do c <- mapM (namedFlatten mod) typeCons
-                           return $ t { typeCons = c }
-         TUser{..}   -> do n <- flattenName mod (pos t) typeName
+         TStruct{..} -> do cs <- mapM (\c -> setName c <$> flattenConsName mmap mod (pos c) (name c)) typeCons
+                           return $ t { typeCons = cs }
+         TUser{..}   -> do n <- flattenTypeName mmap mod (pos t) typeName
                            return $ t { typeName = n }
-         TOpaque{..} -> do n <- flattenName mod (pos t) typeName
+         TOpaque{..} -> do n <- flattenTypeName mmap mod (pos t) typeName
                            return $ t { typeName = n }
          _           -> return t
 
-exprFlatten :: (MonadError String me) => DatalogModule -> ENode -> me Expr
-exprFlatten mod e@EApply{..} = do
-    f <- flattenName mod (pos e) exprFunc
+exprFlatten :: (MonadError String me) => MMap -> DatalogModule -> ENode -> me Expr
+exprFlatten mmap mod e@EApply{..} = do
+    f <- flattenFuncName mmap mod (pos e) exprFunc
     return $ E $ e { exprFunc = f }
-exprFlatten mod e@EStruct{..} = do
-    c <- flattenName mod (pos e) exprConstructor
+exprFlatten mmap mod e@EStruct{..} = do
+    c <- flattenConsName mmap mod (pos e) exprConstructor
     return $ E $ e { exprConstructor = c }
-exprFlatten _   e = return $ E e 
+exprFlatten _    _   e = return $ E e 
 
 
 ----------
@@ -198,10 +230,10 @@ named2rust x = setName x $ name2rust (name x)
 -- program to Rust.  The output of a function is not a valid DDlog program, as it may violate
 -- capitalization rules.
 progRustizeNamespace :: DatalogProgram -> DatalogProgram
-progRustizeNamespace prog@DatalogProgram{..} =
-    case validate prog4 of
-         Left e -> error $ "progRustizeNamespace produced invalid program: " ++ e
-         _      -> prog4
+progRustizeNamespace prog@DatalogProgram{..} = prog4
+    --case validate prog4 of
+    --     Left e -> error $ "progRustizeNamespace produced invalid program: " ++ e
+    --     _      -> prog4
     where
     prog1 = prog {
         progTypedefs   = namedListToMap $ map named2rust (M.elems progTypedefs),
