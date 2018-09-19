@@ -57,7 +57,6 @@ parseDatalogString insert_preamble program file = do
   preamble <- if insert_preamble
                  then parseDatalogString False datalogPreamble "Preamble"
                  else return emptyDatalogProgram
-
   case parse (datalogGrammar preamble) file program of
          Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
          Right prog -> return prog

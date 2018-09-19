@@ -38,6 +38,7 @@ import qualified System.FilePath as F
 import System.Directory
 import Data.List
 import Data.String.Utils
+import Debug.Trace
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
@@ -65,14 +66,14 @@ parseDatalogProgram roots insert_preamble fdata fname = do
     imports <- evalStateT (parseImports roots main_mod) []
     flattenNamespace $ main_mod : imports
 
-mergeModules :: [DatalogModule] -> DatalogProgram
+mergeModules :: [DatalogProgram] -> DatalogProgram
 mergeModules mods =
     DatalogProgram {
         progImports    = [],
-        progTypedefs   = M.unions $ map (progTypedefs  . moduleDefs) mods,
-        progFunctions  = M.unions $ map (progFunctions . moduleDefs) mods,
-        progRelations  = M.unions $ map (progRelations . moduleDefs) mods,
-        progRules      = concatMap (progRules . moduleDefs)          mods
+        progTypedefs   = M.unions $ map progTypedefs mods,
+        progFunctions  = M.unions $ map progFunctions mods,
+        progRelations  = M.unions $ map progRelations mods,
+        progRules      = concatMap progRules mods
     }
 
 parseImports :: [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
@@ -86,7 +87,7 @@ parseImports roots mod = concat <$>
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod Import{..} = do
-    modify $ \imports -> if elem importModule imports then imports else (importModule : imports)
+    modify (importModule:)
     prog <- lift $ do fname <- findModule roots mod importModule
                       fdata <- readFile fname
                       parseDatalogString False fdata fname
@@ -114,7 +115,7 @@ flattenNamespace :: [DatalogModule] -> IO DatalogProgram
 flattenNamespace mods = do
     mods' <- case mapM flattenNamespace1 mods of
                   Left e   -> errorWithoutStackTrace e
-                  Right ms -> return mods
+                  Right ms -> return ms
     return $ mergeModules mods'
 
 flattenNamespace1 :: (MonadError String me) => DatalogModule -> me DatalogProgram
@@ -140,16 +141,16 @@ nameScope n =
          [] -> Nothing
          xs -> Just $ ModuleName xs
 
-(<.>) :: ModuleName -> String -> String
-(<.>) mod n = show mod ++ "." ++ n
+scoped :: ModuleName -> String -> String
+scoped mod n = intercalate "_" (modulePath mod ++ [n])
 
 flattenName :: (MonadError String me) => DatalogModule -> Pos -> String -> me String
 flattenName DatalogModule{..} pos n =
     case nameScope n of
-         Nothing   -> return $ moduleName <.> n
+         Nothing   -> return $ scoped moduleName n
          Just mod -> case find ((==mod) . importAlias) $ progImports moduleDefs of
                           Nothing  -> err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
-                          Just imp -> return $ importModule imp <.> n
+                          Just imp -> return $ scoped (importModule imp) n
 
 namedFlatten :: (MonadError String me, WithName a, WithPos a) => DatalogModule -> a -> me a
 namedFlatten mod x = setName x <$> flattenName mod (pos x) (name x)

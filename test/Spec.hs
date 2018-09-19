@@ -42,6 +42,7 @@ import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
 
+import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
@@ -76,18 +77,26 @@ goldenTests = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests, ovnTests]
 
 ovsdbTests :: TestTree
 ovsdbTests =
   testGroup "ovsdb tests" $
-        [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" ovnTest]
+        [ goldenVsFile "ovn_nb" "test/ovn/ovn_nb.dl.expected" "test/ovn/ovn_nb.dl" nbTest
+        , goldenVsFile "ovn_sb" "test/ovn/ovn_sb.dl.expected" "test/ovn/ovn_sb.dl" sbTest]
 
-ovnTest = do
-    prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"] 
-                                   ["OVN_Southbound_Logical_Flow", "OVN_Southbound_Address_Set"]
-    writeFile "test/ovsdb/ovn_schema.dl" (render prog)
-    compilerTest "test/ovsdb/ovn_schema.dl"
+nbTest = do
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
+    writeFile "test/ovn/ovn_nb.dl" (render prog)
+
+sbTest = do
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" ["Logical_Flow", "Address_Set"]
+    writeFile "test/ovn/ovn_sb.dl" (render prog)
+
+ovnTests :: TestTree
+ovnTests =
+  testGroup "ovn tests" $
+        [ goldenVsFile "ovn" "test/ovn/ovn.dump.expected" "test/ovn/ovn.dump" $ do {parserTest "test/ovn/ovn.dl"; compilerTest "test/ovn/ovn.dl"}]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
@@ -130,7 +139,7 @@ parserTest fname = do
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
-        prog' <- parseDatalogProgram [] False fdata astfile
+        prog' <- parseDatalogString False fdata astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
 

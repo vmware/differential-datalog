@@ -41,22 +41,24 @@ options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")  "OVSDB sc
           , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE") "output table name"
           ]
 
-data Config = Config { confOVSFiles     :: [FilePath]
+data Config = Config { confOVSFile      :: FilePath
                      , confOutputTables :: [String]
                      }
 
-defaultConfig = Config { confOVSFiles     = []
+defaultConfig = Config { confOVSFile      = ""
                        , confOutputTables = []
                        }
 
 
 addOption :: Config -> TOption -> IO Config
-addOption config (OVSFile f)     = return config{ confOVSFiles     = nub (f : confOVSFiles     config)}
+addOption config (OVSFile f) = do
+    when (confOVSFile config == "") $ errorWithoutStackTrace "Multiple input files specified"
+    return config {confOVSFile = f}
 addOption config (OutputTable t) = return config{ confOutputTables = nub (t : confOutputTables config)}
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
-    when (null confOVSFiles) $ error "Input files not specified"
+    when (confOVSFile == "") $ errorWithoutStackTrace "Input file not specified"
 
 main = do
     args <- getArgs
@@ -69,6 +71,6 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    dlschema <- compileSchemaFiles confOVSFiles confOutputTables
+    dlschema <- compileSchemaFile confOVSFile confOutputTables
     putStrLn $ render dlschema
     return ()
