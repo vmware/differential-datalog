@@ -52,9 +52,8 @@ install:
 # Build dependencies
 - stack --no-terminal --install-ghc test --only-dependencies
 
-script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --ta $TEST_SUITE  --haddock --no-haddock-deps
+script: "stack --no-terminal test --ta $TEST_SUITE  --haddock --no-haddock-deps"
 
 after_success:
  - |
