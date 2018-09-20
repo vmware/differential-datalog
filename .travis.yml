@@ -45,7 +45,6 @@ addons:
 
 before_install:
 # Download and unpack the stack executable
-- pwd
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
@@ -57,7 +56,6 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 - stack --no-terminal test --ta '-p tutorial' --haddock --no-haddock-deps
-- LD_LIBRARY_PATH=/home/travis/build/remysucre/differential-datalog/test/datalog_tests/tutorial/target/release/ /home/travis/build/remysucre/differential-datalog/test/datalog_tests/tutorial/tutorial_test
 
 after_success:
  - |
