@@ -214,7 +214,7 @@ ffiTest fname specname rust_dir = do
     let cfile    = joinPath [rust_dir, specname, addExtension specname ".c"]
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
-    let dumpfile = replaceExtension fname ".c.dump"
+    let dumpfile = replaceExtension fname ".c.dump.2"
     hasdata <- doesFileExist datfile
     when hasdata $ do
         -- Generate C program
