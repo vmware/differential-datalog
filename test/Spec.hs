@@ -84,7 +84,7 @@ ovsdbTests =
         [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" ovnTest]
 
 ovnTest = do
-    prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"] 
+    prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"]
                                    ["OVN_Southbound_Logical_Flow", "OVN_Southbound_Address_Set"]
     writeFile "test/ovsdb/ovn_schema.dl" (render prog)
     compilerTest "test/ovsdb/ovn_schema.dl"
@@ -241,19 +241,11 @@ ffiTest fname specname rust_dir = do
         hClose hdat
         -- Compile C program
         let exefile = specname ++ "_test"
-        hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
-                                       cwd = Just $ joinPath [rust_dir, specname],
-                                       std_in=CreatePipe} $
-            \(Just hin) _ _ phandle -> do
-                dat <- hGetContents hdat
-                hPutStrLn hin dat
-                hPutStrLn hin "exit;"
-                hFlush hin
-                waitForProcess phandle
+                                       cwd = Just $ joinPath [rust_dir, specname]} $
+            \_ _ _ phandle -> waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
-        hClose hdat
         -- Run C program
         hout <- openFile dumpfile WriteMode
         cwd <- makeAbsolute $ joinPath [rust_dir, specname]
