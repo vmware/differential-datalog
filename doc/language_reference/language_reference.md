@@ -71,6 +71,13 @@ the local namespaces of the importing module.  This may cause name clashes with 
 or one of its other imports.  The second form creates a local alias for the imported module, making
 its declarations accessible via dot notation: `alias.name`.
 
+The DDlog compiler resolves imports by searching all known *library directories* for the imported
+module.  By default, the directory where the main module (specified via the `-i` command-line
+switch) is located is searched.  The user can specify additional library paths via the `-L` switch
+to the compiler.  The compiler converts each import path to a file path by replacing `.` with `/`
+and adding the `.dl` extension and checks for a file with the given path under each library
+directory.  For example, `import lib_name.mod_name` is converted to `lib_name/mod_name.dl`.
+
 ## Types
 
 Type definition introduces a new user-defined type, optionally
