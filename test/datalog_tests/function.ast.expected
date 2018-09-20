@@ -1,11 +1,10 @@
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef C = C{f1: string, f2: string}
-extern type Set<'A>
-extern type Vec<'A>
 typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
+extern type std.Set<'A>
+extern type std.Vec<'A>
 typedef string_syn = string
-extern function __builtin_2string (x: 'X): string
 function a0 (): bigint =
     1
 function a1 (): bigint =
@@ -37,9 +36,6 @@ function fnested (x: nested_t): string =
      res)
 extern function g (a: bigint): bigint
 extern function h (a: (bigint, bigint)): (bigint, bigint)
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
 extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool =
     (x == y)
@@ -64,6 +60,10 @@ function shadow (): string =
           Some{.value=var v} -> v,
           None{} -> ""
       }))
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 function use_parameterized (x: string, y: string_syn): string =
     parameterized(x, y)
 function v (): string =

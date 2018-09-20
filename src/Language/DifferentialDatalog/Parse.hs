@@ -49,17 +49,13 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
-import Language.DifferentialDatalog.Preamble
 
 -- parse a string containing a datalog program and produce the intermediate representation
-parseDatalogString :: Bool -> String -> String -> IO DatalogProgram
-parseDatalogString insert_preamble program file = do
-  preamble <- if insert_preamble
-                 then parseDatalogString False datalogPreamble "Preamble"
-                 else return emptyDatalogProgram
-  case parse (datalogGrammar preamble) file program of
-         Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-         Right prog -> return prog
+parseDatalogString :: String -> String -> IO DatalogProgram
+parseDatalogString program file = do
+  case parse datalogGrammar file program of
+       Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
+       Right prog -> return prog
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
@@ -189,24 +185,21 @@ instance WithPos SpecItem where
     atPos (SpImport       i) p = SpImport    $ atPos i p
 
 
-datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
+datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
-spec preamble = do
+spec = do
     items <- concat <$> many decl
     let imports = mapMaybe (\case
                              SpImport i -> Just i
                              _          -> Nothing) items
-    let relations = (M.toList $ progRelations preamble) ++
-                    mapMaybe (\case
+    let relations = mapMaybe (\case
                                SpRelation r -> Just (name r, r)
                                _            -> Nothing) items
-    let types = (M.toList $ progTypedefs preamble) ++
-                mapMaybe (\case
+    let types = mapMaybe (\case
                            SpType t -> Just (name t, t)
                            _        -> Nothing) items
-    let funcs = (M.toList $ progFunctions preamble) ++
-                mapMaybe (\case
+    let funcs = mapMaybe (\case
                            SpFunc f -> Just (name f, f)
                            _        -> Nothing) items
     let rules = mapMaybe (\case
@@ -217,11 +210,11 @@ spec preamble = do
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
                  --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
                  uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
-                 return $ DatalogProgram { progImports    = progImports preamble ++ imports
+                 return $ DatalogProgram { progImports    = imports
                                          , progTypedefs   = M.fromList types
                                          , progFunctions  = M.fromList funcs
                                          , progRelations  = M.fromList relations
-                                         , progRules      = progRules preamble ++ rules }
+                                         , progRules      = rules }
     case res of
          Left err   -> errorWithoutStackTrace err
          Right prog -> return prog

@@ -47,9 +47,9 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
-import Language.DifferentialDatalog.Preamble
+import Language.DifferentialDatalog.StdLib
 
-sET_TYPES = ["Set", "Vec"]
+sET_TYPES = ["std.Set", "std.Vec"]
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -491,10 +491,10 @@ exprInjectStringConversions :: (MonadError String me) => DatalogProgram -> ECtx 
 exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (tr /= tString) = do
     -- find string conversion function
     fname <- case tr of
-                  TBool{}     -> return bUILTIN_2STRING_FUNC
-                  TInt{}      -> return bUILTIN_2STRING_FUNC
-                  TString{}   -> return bUILTIN_2STRING_FUNC
-                  TBit{}      -> return bUILTIN_2STRING_FUNC
+                  TBool{}     -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TInt{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TString{}   -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TBit{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"

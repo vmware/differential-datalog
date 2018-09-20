@@ -59,8 +59,6 @@ typedef QoS_bandwidth = QoS_bandwidth{qos: uuid, key: string, value: bigint}
 typedef QoS_external_ids = QoS_external_ids{qos: uuid, key: string, value: string}
 typedef SSL = SSL{id: uuid, private_key: string, certificate: string, bootstrap_ca_cert: bool, ssl_protocols: string, ssl_ciphers: string}
 typedef SSL_external_ids = SSL_external_ids{ssl: uuid, key: string, value: string}
-extern type Set<'A>
-extern type Vec<'A>
 typedef ip4_addr_t = bit<32>
 typedef ip4_subnet_t = IP4Subnet{addr: ip4_addr_t, mask: ip4_addr_t}
 typedef ip6_addr_t = bit<128>
@@ -71,16 +69,14 @@ typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet
 typedef mac_addr_t = bit<48>
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
+extern type std.Set<'A>
+extern type std.Vec<'A>
 typedef uuid = bit<128>
-extern function __builtin_2string (x: 'X): string
 extern function build_dhcp_netmask (cidr: string): string
 extern function eth_addr_from_string (str: string): option_t<mac_addr_t>
-extern function extract_ips (str: string): Set<ip_addr_t>
+extern function extract_ips (str: string): std.Set<ip_addr_t>
 extern function extract_mac (str: string): (mac_addr_t, string)
-extern function extract_subnets (str: string): Set<ip_subnet_t>
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern function extract_subnets (str: string): std.Set<ip_subnet_t>
 extern function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 extern function ip_address_and_port_from_lb_key (key: string): ip_port_t
 extern function ip_parse (str: string): option_t<ip_addr_t>
@@ -95,6 +91,10 @@ function is_some (x: option_t<'A>): bool =
         Some{.value=_} -> true,
         _ -> false
     }
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 input relation ACL [ACL]
 input relation ACL_external_ids [ACL_external_ids]
 input relation Address_Set [Address_Set]

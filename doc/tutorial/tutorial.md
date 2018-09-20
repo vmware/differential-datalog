@@ -1174,8 +1174,7 @@ type, function, relation, and constructor declarations from the module available
 namespace of the module importing it.  The second form (`import <module_path> as <alias>`) makes all
 declarations available to the importing module using the `<alias>.<name>` notation.
 
-We create some data to feed to the test program.  Note that we must refer to relations and
-constructor names via their fully qualified names.
+We create some data to feed to the test program in a `test.dat` file.
 
 ```
 start;
@@ -1187,13 +1186,14 @@ commit;
 dump;
 ```
 
+Note that we refer to relations and constructors via their fully qualified names.
 Compile and run the test:
 
 ```
 ddlog -i test.dl
 cd test
 cargo build --release
-target/release/test_cli < test.dat
+target/release/test_cli < ../test.dat
 ```
 
 Modules do not have to be in the same directory with the main program.  Assuming that our module

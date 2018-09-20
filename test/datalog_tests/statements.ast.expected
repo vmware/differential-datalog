@@ -1,12 +1,12 @@
-extern type Set<'A>
-extern type Vec<'A>
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef X = X{field: bigint}
 typedef Z = Z{field: bigint}
-extern function __builtin_2string (x: 'X): string
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 relation W [W]
 input relation X [X]
 relation Z [Z]

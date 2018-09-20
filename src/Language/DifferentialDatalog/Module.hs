@@ -39,7 +39,9 @@ import System.Directory
 import Data.List
 import Data.String.Utils
 import Data.Maybe
+import Data.Either
 import Debug.Trace
+import qualified Text.Parsec as Parsec
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
@@ -48,6 +50,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.StdLib
 --import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
@@ -56,18 +59,37 @@ data DatalogModule = DatalogModule {
     moduleDefs :: DatalogProgram
 }
 
+-- standard library module name
+stdname :: ModuleName
+stdname = ModuleName ["std"]
+
+-- import standard library
+stdimp = Import nopos stdname (ModuleName [])
+
+-- standard library module
+stdmod :: DatalogModule
+stdmod = DatalogModule {
+    moduleName = stdname,
+    moduleFile = "std.hs",
+    moduleDefs = (\(Right x) -> x) $ Parsec.parse datalogGrammar "std.hs" stdlibModule
+}
+
 -- | Parse a datalog program along with all its imports; returns a "flat"
 -- program without imports.
 --
 -- 'roots' is the list of directories to search for imports
 --
--- if 'insert_preamble' is true, prepends the content of
--- 'datalogPreamble' to the file before parsing it.
+-- if 'import_std' is true, imports the standard library ('stdlibModule')
+-- to each module.
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO DatalogProgram
-parseDatalogProgram roots insert_preamble fdata fname = do
-    prog <- parseDatalogString insert_preamble fdata fname
-    let main_mod = DatalogModule (ModuleName []) fname prog
-    imports <- evalStateT (parseImports roots main_mod) []
+parseDatalogProgram roots import_std fdata fname = do
+    prog <- parseDatalogString fdata fname
+    let prog' = if import_std 
+                   then prog { progImports = stdimp : progImports prog }
+                   else prog
+    let main_mod = DatalogModule (ModuleName []) fname prog'
+    imports <- evalStateT ((stdmod:) <$> parseImports roots main_mod)
+                          (if import_std then [stdname] else [])
     flattenNamespace $ main_mod : imports
 
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
@@ -103,8 +125,8 @@ parseImport roots mod Import{..} = do
     modify (importModule:)
     fname <- lift $ findModule roots mod importModule
     prog <- lift $ do fdata <- readFile fname
-                      parseDatalogString False fdata fname
-    let mod' = DatalogModule importModule fname prog
+                      parseDatalogString fdata fname
+    let mod' = DatalogModule importModule fname $ prog { progImports = stdimp : progImports prog }
     imports <- parseImports roots mod'
     return $ mod' : imports
 

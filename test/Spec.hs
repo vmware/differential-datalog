@@ -47,7 +47,6 @@ import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
-import Language.DifferentialDatalog.Preamble
 import Language.DifferentialDatalog.Compile
 import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
@@ -140,7 +139,7 @@ parserTest fname = do
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
-        prog' <- parseDatalogString False fdata astfile
+        prog' <- parseDatalogString fdata astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
 
