@@ -24,8 +24,8 @@ cache:
         - .stack-work
 
 env:
-   - TEST_SUITE=tutorial
-   - TEST_SUITE=path
+   - TEST_SUITE='-p tutorial'
+   - TEST_SUITE='-p path'
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -54,7 +54,7 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --ta '-p $TEST_SUITE' --haddock --no-haddock-deps
+- stack --no-terminal test --ta $TEST_SUITE  --haddock --no-haddock-deps
 
 after_success:
  - |
