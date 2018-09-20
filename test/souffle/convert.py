@@ -4,10 +4,12 @@
 
 import parglare # parser generator
 import json
+import gzip
+import os
 
 skip_files = False
 current_namespace = None
-relation_names = set()
+relations = dict()  # Maps relation to bool indicating whether the relation is an input
 path_rename = dict()
 
 class Files(object):
@@ -82,27 +84,38 @@ def parse(parser, text):
 def strip_quotes(string):
     return string[1:-1].decode('string_escape')
 
-def process_input(inputdecl, files):
-    if skip_files:
-        return
-    relationname = getField(inputdecl, "Identifier")
+def process_input(inputdecl, files, preprocess):
+    rel = getField(inputdecl, "Identifier")
     strings = getArray(inputdecl, "String")
     filename = strip_quotes(strings[0].value)
     separator = strip_quotes(strings[1].value)
-    print "Reading", relationname.value, "from", filename
-    data = open(filename, "r")
+
+    relationname = relation_name(rel.value)
+    relations[relationname] = True  # Input relation
+
+    if skip_files or preprocess:
+        return
+
+    print "Reading", rel.value, "from", filename
+    if os.path.isfile(filename):
+        data = open(filename, "r")
+    elif os.path.isfile(filename + ".gz"):
+        data = gzip.open(filename + ".gz", "r")
+    else:
+        raise Exception("Cannot find file " + filename)
+
     for line in data:
         fields = line.rstrip('\n').split(separator)
         fields = map(lambda a: json.dumps(a), fields)
-        files.outputData("insert " + relationname.value + "(" + ", ".join(fields) + ")")
+        files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")")
     data.close()
 
-def process_namespace(namespace, files):
+def process_namespace(namespace, files, preprocess):
     global current_namespace
     if current_namespace != None:
         raise Exception("Nested namespaces: " + current_namespace + "." + namespace)
     current_namespace = getIdentifier(namespace)
-    process(namespace, files)
+    process(namespace, files, preprocess)
     current_namespace = None
 
 def getIdentifier(node):
@@ -110,24 +123,30 @@ def getIdentifier(node):
     return id.value
 
 def register_relation(identifier):
+    global relations
     prefix = current_namespace + "_" if current_namespace != None else ""
     name = "R" + prefix + identifier;
-    if name in relation_names:
+    if name in relations:
         raise Exception("duplicate relation name " + name)
-    relation_names.add(name)
+    relations[name] = False
     # print "Registered relation " + name
     return name
 
 def relation_name(identifier):
+    global relations
     name = "R" + identifier
-    if name in relation_names:
+    if name in relations:
         return name
     prefix = current_namespace + "_" if current_namespace != None else ""
     name = "R" + prefix + identifier
-    if name in relation_names:
+    if name in relations:
         return name
     # Declarations can be out of order
     return name
+
+def is_input_relation(identifier):
+    name = relation_name(identifier)
+    return relations[name]
 
 def get_qidentifier(node):
     q = getField(node, "QIdentifier")
@@ -138,7 +157,7 @@ def var_name(id):
         return id
     return "_" + id
 
-def process_arg(clauseArg):
+def convert_arg(clauseArg):
     varName = getOptField(clauseArg, "VarName")
     string = getOptField(clauseArg, "String")
     if string != None:
@@ -147,10 +166,10 @@ def process_arg(clauseArg):
         return var_name(get_qidentifier(varName))
     raise Exception("Unexpected clause argument " + clauseArg.tree_str())
 
-def process_head_clause(clause):
+def convert_head_clause(clause):
     name = getField(clause, "Identifier")
     args = getListField(clause, "ClauseArg", "ClauseArgList")
-    args_strings = map(process_arg, args)
+    args_strings = map(convert_arg, args)
     return relation_name(name.value) + "(" + ", ".join(args_strings) + ")"
 
 def convert_path(path):
@@ -162,7 +181,7 @@ def convert_relation(relation, negated):
     path = getField(relation, "Path")
     cp = relation_name(convert_path(path))
     args = getListField(relation, "ClauseArg", "ClauseArgList")
-    args_strings = map(process_arg, args)
+    args_strings = map(convert_arg, args)
     if negated:
         cp = "not " + cp
     return cp + "(" + ", ".join(args_strings) + ")"
@@ -204,23 +223,24 @@ def convert_expression(expr):
     ne = getOptField(expr, "NE")
     if ne != None:
         idents = getArray(expr, "QIdentifier")
-        id0 = getIdentifier(idents[0])
+        id0 = var_name(getIdentifier(idents[0]))
         strg = getOptField(expr, "String")
         if strg == None:
-            id1 = getIdentifier(idents[1])
+            id1 = var_name(getIdentifier(idents[1]))
         else:
             id1 = strg.value
         return "not (" + id0 + " = " + id1 + ")"
     raise Exception("Unexpected expression" + expr.tree_str())
 
-def process_conjunction(conj):
+def convert_conjunction(conj):
+    """Convert a conjunction of expressions into a string"""
     expr = getOptField(conj, "Expression")
     if expr != None:
         return convert_expression(expr)
     children = getArray(conj, "ConjunctionsOrDisjunctions")
     operator = getOptField(conj, "OR")
     assert operator == None
-    rec = map(process_conjunction, children)
+    rec = map(convert_conjunction, children)
     return ", ".join(rec)
 
 def normalize_tail(tail):
@@ -229,27 +249,57 @@ def normalize_tail(tail):
     # TODO
     return [getField(tail, "ConjunctionsOrDisjunctions")]
 
-def process_rule(rule, files):
+def expression_has_relations(expression):
+    relation = getOptField(expression, "Relation")
+    return relation != None
+
+def has_relations(conj):
+    """True if a conjunction contains any relations"""
+    expr = getOptField(conj, "Expression")
+    if expr != None:
+        return expression_has_relations(expr)
+    children = getArray(conj, "ConjunctionsOrDisjunctions")
+    rec = map(has_relations, children)
+    return reduce(lambda a,b: a or b, rec, False)
+
+def process_rule(rule, files, preprocess):
+    """Convert a rule and emit the output"""
     head = getField(rule, "Head")
     tail = getField(rule, "Tail")
     headClauses = getListField(head, "Clause", "ClauseList")
-    heads = map(process_head_clause, headClauses)
     tails = normalize_tail(tail)
-    convertedTails = map(process_conjunction, tails)
-    for ct in convertedTails:
-        files.output(",\n\t".join(heads) + " :- " + ct + ".")
 
-def process_decl_param(param):
+    if not has_relations(tail) and preprocess:
+        # If there are no clauses in the tail we
+        # mark all input relations as input relations
+        for clause in headClauses:
+            name = getField(clause, "Identifier")
+            relations[relation_name(name.value)] = True
+        # TODO: we should also emit the facts as data...
+    else:
+        heads = map(convert_head_clause, headClauses)
+        convertedTails = map(convert_conjunction, tails)
+        for ct in convertedTails:
+            files.output(",\n\t".join(heads) + " :- " + ct + ".")
+
+def convert_decl_param(param):
+    """Convert a declaration parameter and return the corresponding string"""
     type = getField(param, "Identifier")
     return var_name(get_qidentifier(param)) + ": " + type.value
 
-def process_relation_decl(relationdecl, files):
+def process_relation_decl(relationdecl, files, preprocess):
+    """Process a relation declaration and emit output to files"""
     id = getField(relationdecl, "Identifier")
     params = getListField(relationdecl, "Parameter", "ParameterList")
-    paramdecls = map(process_decl_param, params)
-    files.output("relation " + register_relation(id.value) + "(" + ", ".join(paramdecls) + ")")
+    if preprocess:
+        relname = register_relation(id.value)
+        return
+    relname = relation_name(id.value)
+    paramdecls = map(convert_decl_param, params)
+    is_input = "input " if relations[relname] else ""
+    files.output(is_input + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
 
-def process_decl(decl, files):
+def process_decl(decl, files, preprocess):
     files.log(decl.tree_str())
     typedecl = getOptField(decl, "TypeDecl")
     if typedecl != None:
@@ -258,19 +308,19 @@ def process_decl(decl, files):
         return
     relationdecl = getOptField(decl, "RelationDecl")
     if relationdecl != None:
-        process_relation_decl(relationdecl, files)
+        process_relation_decl(relationdecl, files, preprocess)
         return
     inputdecl = getOptField(decl, "InputDecl")
     if inputdecl != None:
-        process_input(inputdecl, files)
+        process_input(inputdecl, files, preprocess)
         return
     rule = getOptField(decl, "Rule")
     if rule != None:
-        process_rule(rule, files)
+        process_rule(rule, files, preprocess)
         return
     namespace = getOptField(decl, "Namespace")
     if namespace != None:
-        process_namespace(namespace, files)
+        process_namespace(namespace, files, preprocess)
         return
     init = getOptField(decl, "Init")
     if init != None:
@@ -279,17 +329,18 @@ def process_decl(decl, files):
         return
     raise Exception("Unexpected node " + decl.tree_str())
 
-def process(tree, files):
+def process(tree, files, preprocess):
     decls = getListField(tree, "Declaration", "DeclarationList")
     for decl in decls:
-        process_decl(decl, files)
+        process_decl(decl, files, preprocess)
 
 def main():
     files = Files()
     parser = getParser()
     input = ""
     tree = parser.parse(files.inputFile.read())
-    process(tree, files)
+    process(tree, files, True)
+    process(tree, files, False)
     files.done()
 
 if __name__ == "__main__":
