@@ -38,26 +38,29 @@ import Language.DifferentialDatalog.Compile
 data TOption = Datalog String
              | Action String
              | RustFile String
+             | LibDir String
 
 data DLAction = ActionCompile
               | ActionValidate
-              | ActionNone
               deriving Eq
 
 options :: [OptDescr TOption]
 options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "DDlog program"
           , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
           , Option ['r'] ["inline-rust-file"] (ReqArg RustFile "FILE")        "extra Rust source to be inlined in the generated library"
+          , Option ['L'] []                   (ReqArg LibDir   "PATH")        "extra DDlog library directory"
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
                      , confRustFiles     :: [FilePath]
+                     , confLibDirs       :: [FilePath]
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionCompile
                        , confRustFiles     = []
+                       , confLibDirs       = []
                        }
 
 
@@ -69,11 +72,10 @@ addOption config (Action a)     = do a' <- case a of
                                                 _            -> error "invalid action"
                                      return config{confAction = a'}
 addOption config (RustFile f)   = return config { confRustFiles = nub (f:confRustFiles config)}
+addOption config (LibDir d)     = return config { confLibDirs = nub (d:confLibDirs config)}
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
-    when (confAction == ActionNone)
-         $ error "action not specified"
     when (confDatalogFile == "")
          $ error "input file not specified"
 
@@ -91,13 +93,12 @@ main = do
     case confAction config of
          ActionValidate -> do { parseValidate config; return () }
          ActionCompile -> compileProg config
-         ActionNone -> error "action not specified"
 
 
 parseValidate :: Config -> IO DatalogProgram
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
-    d <- parseDatalogProgram [takeDirectory confDatalogFile] True fdata confDatalogFile
+    d <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'
