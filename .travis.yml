@@ -57,6 +57,7 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 - stack --no-terminal test --ta '-p tutorial' --haddock --no-haddock-deps
+- LD_LIBRARY_PATH=/home/travis/build/remysucre/differential-datalog/test/datalog_tests/tutorial/target/release/ /home/travis/build/remysucre/differential-datalog/test/datalog_tests/tutorial/tutorial_test
 
 after_success:
  - |
