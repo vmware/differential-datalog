@@ -53,6 +53,7 @@ import Language.DifferentialDatalog.DatalogProgram
 
 data DatalogModule = DatalogModule {
     moduleName :: ModuleName,
+    moduleFile :: FilePath,
     moduleDefs :: DatalogProgram
 }
 
@@ -66,7 +67,7 @@ data DatalogModule = DatalogModule {
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO DatalogProgram
 parseDatalogProgram roots insert_preamble fdata fname = do
     prog <- parseDatalogString insert_preamble fdata fname
-    let main_mod = DatalogModule (ModuleName []) prog
+    let main_mod = DatalogModule (ModuleName []) fname prog
     imports <- evalStateT (parseImports roots main_mod) []
     flattenNamespace $ main_mod : imports
 
@@ -101,10 +102,10 @@ parseImport roots mod Import{..} = do
     when (importModule == moduleName mod) 
          $ errorWithoutStackTrace $ "Module " ++ show (moduleName mod) ++ " is trying to import self"
     modify (importModule:)
-    prog <- lift $ do fname <- findModule roots mod importModule
-                      fdata <- readFile fname
+    fname <- lift $ findModule roots mod importModule
+    prog <- lift $ do fdata <- readFile fname
                       parseDatalogString False fdata fname
-    let mod' = DatalogModule importModule prog
+    let mod' = DatalogModule importModule fname prog
     imports <- parseImports roots mod'
     return $ mod' : imports
 
@@ -116,11 +117,11 @@ findModule roots mod imp = do
     case mods of
          [m]   -> return m
          []    -> errorWithoutStackTrace $
-                     "Module " ++ show imp ++ " imported by " ++ show (moduleName mod) ++ 
+                     "Module " ++ show imp ++ " imported by " ++ moduleFile mod ++ 
                      " not found. Paths searched:\n" ++
                      (intercalate "\n" candidates)
          _     -> errorWithoutStackTrace $ 
-                    "Found multiple candidates for module " ++ show imp ++ " imported by " ++ show (moduleName mod) ++ ":\n" ++
+                    "Found multiple candidates for module " ++ show imp ++ " imported by " ++ moduleFile mod ++ ":\n" ++
                     (intercalate "\n" candidates)
 
 type MMap = M.Map ModuleName DatalogModule
@@ -179,7 +180,7 @@ flattenName lookup_fun entity mmap mod p c = do
          []  -> err p $ "Unknown " ++ entity ++ " " ++ c
          _   -> err p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
                         " found in the following modules: " ++ 
-                        (intercalate ", " $ map (show . moduleName) cands)
+                        (intercalate ", " $ map moduleFile cands)
 
 
 flattenConsName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
