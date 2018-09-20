@@ -29,11 +29,15 @@ matrix:
     # Add build targets here
 
     - env: GHCVER=8.2.2 CACHE_NAME=8.2.2 BUILD_BINARY=1
+           - TEST_SUITE=tutorial
+           - TEST_SUITE=path
       compiler: ": #stack 8.2.2"
       addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
     - env: GHCVER=8.2.2 CACHE_NAME=8.2.2-osx BUILD_BINARY=1
       os: osx
+           - TEST_SUITE=tutorial
+           - TEST_SUITE=path
       compiler: ": #stack 8.2.2"
       addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -55,7 +59,7 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --ta '-p tutorial' --haddock --no-haddock-deps
+- stack --no-terminal test --ta '-p $TEST_SUITE' --haddock --no-haddock-deps
 
 after_success:
  - |
