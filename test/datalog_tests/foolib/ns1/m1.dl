@@ -1,0 +1,7 @@
+import foolib.ns1.m2
+
+input relation R1(f1: T2)
+
+typedef T1 = T1 {f1: bigint} 
+
+function fM1(a1: T1): R1 = R1{T2{a1.f1}}

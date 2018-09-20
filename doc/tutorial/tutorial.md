@@ -1175,14 +1175,13 @@ namespace of the module importing it.  The second form (`import <module_path> as
 declarations available to the importing module using the `<alias>.<name>` notation.
 
 We create some data to feed to the test program.  Note that we must refer to relations and
-constructor names via their fully qualified names and using underscore (`_`) instead of dot(`.`)
-notation (**TODO: this must be fixed**).
+constructor names via their fully qualified names.
 
 ```
 start;
 
-insert mod1_R1(true),
-insert lib_mod2_R2("hello");
+insert mod1.R1(true),
+insert lib.mod2.R2("hello");
 
 commit;
 dump;

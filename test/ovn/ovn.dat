@@ -1,6 +1,6 @@
 start;
 
-insert ovn_nb_NB_Global(0, 1, 2, 3, types_None);
+insert ovn_nb.NB_Global(0, 1, 2, 3, types.None);
 
 commit;
 

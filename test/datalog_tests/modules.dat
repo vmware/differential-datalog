@@ -1,9 +1,9 @@
 start;
 
-insert Rmain(foolib_lib_Tlib{0}, foolib_ns1_m1_T1{1}),
-insert foolib_lib_Rlib(foolib_ns1_m2_T2{2}),
-insert foolib_ns1_m1_R1(foolib_ns1_m2_T2{3}),
-insert foolib_ns1_m2_R2(true);
+insert Rmain(foolib.lib.Tlib{0}, foolib.ns1.m1.T1{1}),
+insert foolib.lib.Rlib(foolib.ns1.m2.T2{2}),
+insert foolib.ns1.m1.R1(foolib.ns1.m2.T2{3}),
+insert foolib.ns1.m2.R2(true);
 
 commit;
 

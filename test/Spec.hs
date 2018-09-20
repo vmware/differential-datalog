@@ -41,6 +41,7 @@ import GHC.IO.Exception
 import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
+import qualified Data.Set as S
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
@@ -60,7 +61,7 @@ cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 goldenTests :: IO TestTree
 goldenTests = do
   -- locate datalog files
-  dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
+  dlFiles <- findByExtensionNonRec [".dl"] "./test/datalog_tests"
   -- some of the tests may have accompanying .dat files
   inFiles <- mapM (\dlFile -> do let datFile = replaceExtension dlFile "dat"
                                  exists <- doesFileExist datFile
@@ -287,3 +288,24 @@ goldenVsFiles name ref new act =
   upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
                                  when (not exists) $ BS.writeFile r b)
              $ zip ref bufs
+
+-- A non-recursive version of findByExtension
+findByExtensionNonRec
+  :: [FilePath] -- ^ extensions
+  -> FilePath -- ^ directory
+  -> IO [FilePath] -- ^ paths
+findByExtensionNonRec extsList = go where
+  exts = S.fromList extsList
+  go dir = do
+    allEntries <- getDirectoryContents dir
+    let entries = filter (not . (`elem` [".", ".."])) allEntries
+    liftM concat $ forM entries $ \e -> do
+      let path = dir ++ "/" ++ e
+      isDir <- doesDirectoryExist path
+      if isDir
+        then return []
+        else
+          return $
+            if takeExtension path `S.member` exts
+              then [path]
+              else []

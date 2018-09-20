@@ -29,8 +29,7 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 {-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections #-}
 
 module Language.DifferentialDatalog.Module(
-    parseDatalogProgram,
-    progRustizeNamespace) where
+    parseDatalogProgram) where
 
 import Control.Monad.State.Lazy
 import Control.Monad.Except
@@ -218,40 +217,5 @@ exprFlatten mmap mod e@EStruct{..} = do
     return $ E $ e { exprConstructor = c }
 exprFlatten _    _   e = return $ E e 
 
-
--- | Replace "." with "_" in all identifiers in the program.  Must be called before converting
--- program to Rust.  The output of a function is not a valid DDlog program, as it may violate
--- capitalization rules.
-progRustizeNamespace :: DatalogProgram -> DatalogProgram
-progRustizeNamespace prog@DatalogProgram{..} = prog4
-    --case validate prog4 of
-    --     Left e -> error $ "progRustizeNamespace produced invalid program: " ++ e
-    --     _      -> prog4
-    where
-    prog1 = prog {
-        progTypedefs   = namedListToMap $ map named2rust (M.elems progTypedefs),
-        progFunctions  = namedListToMap $ map named2rust (M.elems progFunctions),
-        progRelations  = namedListToMap $ map named2rust (M.elems progRelations)
-    }
-    prog2 = progAtomMap prog1 named2rust
-    prog3 = progTypeMap prog2 type2rust
-    prog4 = progExprMapCtx prog3 (\_ e -> expr2rust e)
-
 name2rust :: String -> String
 name2rust = replace "." "_"
-
-named2rust :: (WithName a) => a -> a
-named2rust x = setName x $ name2rust (name x)
-
-type2rust :: Type -> Type
-type2rust t =
-    case t of
-         TStruct{..} -> t { typeCons = map named2rust typeCons }
-         TUser{..}   -> t { typeName = name2rust typeName }
-         TOpaque{..} -> t { typeName = name2rust typeName }
-         _           -> t
-
-expr2rust :: ENode -> Expr
-expr2rust e@EApply{..}  = E $ e { exprFunc = name2rust exprFunc }
-expr2rust e@EStruct{..} = E $ e { exprConstructor = name2rust exprConstructor }
-expr2rust e             = E e
