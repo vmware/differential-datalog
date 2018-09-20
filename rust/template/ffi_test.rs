@@ -80,6 +80,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             println!("val_map_print_rel(vmap, {});", relid);
         },
         Command::Exit => {
+            println!("return datalog_example_stop(prog);");
             println!("{}", FOOTER);
             exit(0);
         },
