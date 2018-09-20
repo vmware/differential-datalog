@@ -303,6 +303,8 @@ def process_decl(decl, files, preprocess):
     files.log(decl.tree_str())
     typedecl = getOptField(decl, "TypeDecl")
     if typedecl != None:
+        if preprocess:
+            return
         id = getField(typedecl, "Identifier")
         files.output("typedef " + id.value + " = string")
         return
