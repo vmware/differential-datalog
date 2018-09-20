@@ -117,10 +117,10 @@ findModule roots mod imp = do
     case mods of
          [m]   -> return m
          []    -> errorWithoutStackTrace $
-                     "Module " ++ show imp ++ " imported by " ++ moduleFile mod ++ 
+                     "Module " ++ show imp ++ " imported by " ++ moduleFile mod ++
                      " not found. Paths searched:\n" ++
                      (intercalate "\n" candidates)
-         _     -> errorWithoutStackTrace $ 
+         _     -> errorWithoutStackTrace $
                     "Found multiple candidates for module " ++ show imp ++ " imported by " ++ moduleFile mod ++ ":\n" ++
                     (intercalate "\n" candidates)
 
@@ -164,7 +164,7 @@ scoped mod n = intercalate "." (modulePath mod ++ [n])
 candidates :: (MonadError String me) => DatalogModule -> Pos -> String -> me [ModuleName]
 candidates DatalogModule{..} pos n = do
     let mod = nameScope n
-    let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++ 
+    let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++
                (if mod == ModuleName [] then [moduleName] else [])
     when (null mods) $ 
         err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
@@ -179,7 +179,7 @@ flattenName lookup_fun entity mmap mod p c = do
          [m] -> return $ scoped (moduleName m) lname
          []  -> err p $ "Unknown " ++ entity ++ " " ++ c
          _   -> err p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
-                        " found in the following modules: " ++ 
+                        " found in the following modules: " ++
                         (intercalate ", " $ map moduleFile cands)
 
 
@@ -219,14 +219,6 @@ exprFlatten mmap mod e@EStruct{..} = do
 exprFlatten _    _   e = return $ E e 
 
 
-----------
-
-name2rust :: String -> String
-name2rust = replace "." "_"
-
-named2rust :: (WithName a) => a -> a
-named2rust x = setName x $ name2rust (name x)
-
 -- | Replace "." with "_" in all identifiers in the program.  Must be called before converting
 -- program to Rust.  The output of a function is not a valid DDlog program, as it may violate
 -- capitalization rules.
@@ -244,6 +236,12 @@ progRustizeNamespace prog@DatalogProgram{..} = prog4
     prog2 = progAtomMap prog1 named2rust
     prog3 = progTypeMap prog2 type2rust
     prog4 = progExprMapCtx prog3 (\_ e -> expr2rust e)
+
+name2rust :: String -> String
+name2rust = replace "." "_"
+
+named2rust :: (WithName a) => a -> a
+named2rust x = setName x $ name2rust (name x)
 
 type2rust :: Type -> Type
 type2rust t =
