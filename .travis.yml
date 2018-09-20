@@ -29,7 +29,9 @@ env:
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
-os: osx
+os: 
+  - osx
+  - linux
 
 matrix:
   fast_finish: true
