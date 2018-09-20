@@ -251,19 +251,11 @@ ffiTest fname specname rust_dir = do
         hClose hdat
         -- Compile C program
         let exefile = specname ++ "_test"
-        hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
-                                       cwd = Just $ rust_dir </> specname,
-                                       std_in=CreatePipe} $
-            \(Just hin) _ _ phandle -> do
-                dat <- hGetContents hdat
-                hPutStrLn hin dat
-                hPutStrLn hin "exit;"
-                hFlush hin
-                waitForProcess phandle
+                                       cwd = Just $ rust_dir </> specname} $
+            \_ _ _ phandle -> waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
-        hClose hdat
         -- Run C program
         hout <- openFile dumpfile WriteMode
         cwd <- makeAbsolute $ rust_dir </> specname
