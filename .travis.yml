@@ -26,6 +26,8 @@ cache:
 env:
    - TEST_SUITE='-p tutorial'
    - TEST_SUITE='-p path'
+   - TEST_SUITE='-p ovn'
+   - TEST_SUITE='-p ovn_ftl'
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
