@@ -1,0 +1,10 @@
+start;
+
+insert Rmain(foolib_lib_Tlib{0}, foolib_ns1_m1_T1{1}),
+insert foolib_lib_Rlib(foolib_ns1_m2_T2{2}),
+insert foolib_ns1_m1_R1(foolib_ns1_m2_T2{3}),
+insert foolib_ns1_m2_R2(true);
+
+commit;
+
+dump;

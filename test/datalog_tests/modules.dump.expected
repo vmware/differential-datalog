@@ -1,0 +1,15 @@
+Rmain:
+Rmain{foolib_lib_Tlib{0},foolib_ns1_m1_T1{1}}
+
+Rout:
+Rout{true,0}
+
+foolib_lib_Rlib:
+foolib_lib_Rlib{foolib_ns1_m2_T2{2}}
+
+foolib_ns1_m1_R1:
+foolib_ns1_m1_R1{foolib_ns1_m2_T2{3}}
+
+foolib_ns1_m2_R2:
+foolib_ns1_m2_R2{true}
+

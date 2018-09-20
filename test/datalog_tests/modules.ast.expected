@@ -1,0 +1,25 @@
+typedef Rmain = Rmain{f1: foolib.lib.Tlib, f2: foolib.ns1.m1.T1}
+typedef Rout = Rout{f1: bool, f2: bigint}
+extern type Set<'A>
+typedef Tmain = Tmain{f1: foolib.ns1.m1.T1}
+extern type Vec<'A>
+typedef foolib.lib.Rlib = foolib.lib.Rlib{f1: foolib.ns1.m2.T2}
+typedef foolib.lib.Tlib = foolib.lib.Tlib{f1: bigint}
+typedef foolib.ns1.m1.R1 = foolib.ns1.m1.R1{f1: foolib.ns1.m2.T2}
+typedef foolib.ns1.m1.T1 = foolib.ns1.m1.T1{f1: bigint}
+typedef foolib.ns1.m2.R2 = foolib.ns1.m2.R2{f1: bool}
+typedef foolib.ns1.m2.T2 = foolib.ns1.m2.T2{f1: bigint}
+extern function __builtin_2string (x: 'X): string
+function fmain (a1: foolib.lib.Rlib): foolib.ns1.m1.R1 =
+    foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=0}}
+function foolib.ns1.m1.fM1 (a1: foolib.ns1.m1.T1): foolib.ns1.m1.R1 =
+    foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=a1.f1}}
+extern function hash128 (x: 'X): bit<128>
+extern function hash64 (x: 'X): bit<64>
+extern function hex (x: 'X): string
+input relation Rmain [Rmain]
+relation Rout [Rout]
+input relation foolib.lib.Rlib [foolib.lib.Rlib]
+input relation foolib.ns1.m1.R1 [foolib.ns1.m1.R1]
+input relation foolib.ns1.m2.R2 [foolib.ns1.m2.R2]
+Rout(.f1=q, .f2=x) :- Rmain(.f1=foolib.lib.Tlib{.f1=x}, .f2=foolib.ns1.m1.T1{.f1=y}), foolib.lib.Rlib(.f1=foolib.ns1.m2.T2{.f1=z}), foolib.ns1.m1.R1(.f1=foolib.ns1.m2.T2{.f1=p}), foolib.ns1.m2.R2(.f1=q).
