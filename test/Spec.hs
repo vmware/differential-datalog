@@ -30,6 +30,7 @@ import System.IO
 import System.FilePath
 import System.Directory
 import System.Process
+import System.Environment
 import Test.HUnit
 import Data.List
 import Data.Maybe
@@ -37,10 +38,12 @@ import Data.List.Split
 import Control.Exception
 import Control.DeepSeq
 import Control.Monad
+import Control.Concurrent
 import GHC.IO.Exception
 import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
+import GHC.Conc.Sync
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Syntax
@@ -50,14 +53,17 @@ import Language.DifferentialDatalog.Compile
 import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
 main :: IO ()
-main = defaultMain =<< goldenTests
+main = do
+    progress <- isJust <$> lookupEnv "DDLOG_TEST_PROGRESS"
+    tests <- goldenTests progress
+    defaultMain tests
 
 bUILD_TYPE = "release"
 
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 
-goldenTests :: IO TestTree
-goldenTests = do
+goldenTests :: Bool -> IO TestTree
+goldenTests progress = do
   -- locate datalog files
   dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
   -- some of the tests may have accompanying .dat files
@@ -72,22 +78,22 @@ goldenTests = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest file)
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file)
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests progress]
 
-ovsdbTests :: TestTree
-ovsdbTests =
+ovsdbTests :: Bool -> TestTree
+ovsdbTests progress =
   testGroup "ovsdb tests" $
-        [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" ovnTest]
+        [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" $ ovnTest progress]
 
-ovnTest = do
+ovnTest progress = do
     prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"]
                                    ["OVN_Southbound_Logical_Flow", "OVN_Southbound_Address_Set"]
     writeFile "test/ovsdb/ovn_schema.dl" (render prog)
-    compilerTest "test/ovsdb/ovn_schema.dl"
+    compilerTest progress "test/ovsdb/ovn_schema.dl"
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
@@ -144,8 +150,8 @@ parserTest fname = do
 --
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: FilePath -> IO ()
-compilerTest fname = do
+compilerTest :: Bool -> FilePath -> IO ()
+compilerTest progress fname = do
     body <- readFile fname
     let specname = takeBaseName fname
     prog <- parseValidate fname body
@@ -162,25 +168,42 @@ compilerTest fname = do
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ joinPath [rust_dir, specname]
                      }
-    (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
+    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "cargo build failed with exit code " ++ show code ++
-                                 "\nstderr:\n" ++ stde ++
+                                 "\nstdout:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
-    let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
+    {-let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
                           cwd = Just $ joinPath [rust_dir, specname]
                      }
-    (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
+
+    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
-                                 "\nstderr:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
-    cliTest fname specname rust_dir
-    ffiTest fname specname rust_dir
+                                 "\nstdout:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo -}
+    cliTest progress fname specname rust_dir
+    ffiTest progress fname specname rust_dir
+
+progressThread :: IO ()
+progressThread = do
+    threadDelay 1000000
+    putStr "."
+    hFlush stdout
+    progressThread
+
+-- execute IO action with progress indicator
+withProgress :: Bool -> IO a -> IO a
+withProgress False action = action
+withProgress True action = do
+    hprogress <- forkIO progressThread
+    res <- action
+    killThread hprogress
+    return res
 
 -- Feed test data via pipe if a .dat file exists
-cliTest :: FilePath -> String -> FilePath -> IO ()
-cliTest fname specname rust_dir = do
+cliTest :: Bool -> FilePath -> String -> FilePath -> IO ()
+cliTest progress fname specname rust_dir = do
     let dumpfile = replaceExtension fname "dump"
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
@@ -199,18 +222,18 @@ cliTest fname specname rust_dir = do
                 hPutStrLn hin dat
                 hPutStrLn hin "exit;"
                 hFlush hin
-                waitForProcess phandle
+                withProgress progress $ waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
-                                     "\nstderr written to:\n" ++ errfile ++
+                                     "\nstdout written to:\n" ++ errfile ++
                                      "\n\nstdout written to:\n" ++ dumpfile
         hClose hout
         hClose herr
         hClose hdat
 
 -- Convert .dat file into C to test the FFI interface
-ffiTest :: FilePath -> String -> FilePath -> IO ()
-ffiTest fname specname rust_dir = do
+ffiTest :: Bool -> FilePath -> String -> FilePath -> IO ()
+ffiTest progress fname specname rust_dir = do
     let cfile    = joinPath [rust_dir, specname, addExtension specname ".c"]
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
@@ -231,10 +254,10 @@ ffiTest fname specname rust_dir = do
                 hPutStrLn hin dat
                 hPutStrLn hin "exit;"
                 hFlush hin
-                waitForProcess phandle
+                withProgress progress $ waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
-                                     "\nstderr written to:\n" ++ errfile ++
+                                     "\nstdout written to:\n" ++ errfile ++
                                      "\n\nstdout written to:\n" ++ cfile
         hClose hout
         hClose herr
@@ -243,7 +266,7 @@ ffiTest fname specname rust_dir = do
         let exefile = specname ++ "_test"
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
                                        cwd = Just $ joinPath [rust_dir, specname]} $
-            \_ _ _ phandle -> waitForProcess phandle
+            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
         -- Run C program
@@ -252,7 +275,7 @@ ffiTest fname specname rust_dir = do
         code <- withCreateProcess (proc (cwd </> exefile) []){
                             std_out = UseHandle hout,
                             env = Just [("LD_LIBRARY_PATH", cwd </> "target" </> bUILD_TYPE)]} $
-            \_ _ _ phandle -> waitForProcess phandle
+            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
         hClose hout
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ exefile ++ " failed with exit code " ++ show code
