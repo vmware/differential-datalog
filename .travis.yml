@@ -56,7 +56,7 @@ install:
 
 script: 
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
+- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 
 after_success:
  - |
