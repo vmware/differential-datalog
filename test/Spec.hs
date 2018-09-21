@@ -83,13 +83,7 @@ goldenTests progress = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests, ovnTests progress]
-
-ovsdbTests :: TestTree
-ovsdbTests =
-  testGroup "ovsdb tests" $
-        [ goldenVsFile "ovn_nb" "test/ovn/ovn_nb.dl.expected" "test/ovn/ovn_nb.dl" nbTest
-        , goldenVsFile "ovn_sb" "test/ovn/ovn_sb.dl.expected" "test/ovn/ovn_sb.dl" sbTest]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress]
 
 nbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
@@ -102,7 +96,10 @@ sbTest = do
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
-        [ goldenVsFile "ovn" "test/ovn/ovn.dump.expected" "test/ovn/ovn.dump" $ do {parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl"}]
+        [ goldenVsFiles "ovn_ovsdb" 
+          ["test/ovn/ovn_nb.dl.expected", "test/ovn/ovn_sb.dl.expected", "test/ovn/ovn.dump.expected"] 
+          ["test/ovn/ovn_nb.dl", "test/ovn/ovn_sb.dl", "test/ovn/ovn.dump"]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl"}]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
