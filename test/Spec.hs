@@ -85,8 +85,8 @@ goldenTests progress = do
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests, ovnTests progress]
 
-ovsdbTests :: Bool -> TestTree
-ovsdbTests progress =
+ovsdbTests :: TestTree
+ovsdbTests =
   testGroup "ovsdb tests" $
         [ goldenVsFile "ovn_nb" "test/ovn/ovn_nb.dl.expected" "test/ovn/ovn_nb.dl" nbTest
         , goldenVsFile "ovn_sb" "test/ovn/ovn_sb.dl.expected" "test/ovn/ovn_sb.dl" sbTest]
