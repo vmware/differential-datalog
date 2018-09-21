@@ -105,28 +105,28 @@ cheader specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embed
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (joinPath [specname, "Cargo.toml"]  , $(embedFile "rust/template/Cargo.toml"))
-        , (joinPath [specname, "main.rs"]     , $(embedFile "rust/template/main.rs"))
-        , (joinPath [specname, "ffi_test.rs"] , $(embedFile "rust/template/ffi_test.rs"))
-        , (joinPath [specname, "valmap.rs"]   , $(embedFile "rust/template/valmap.rs"))
+        [ (specname </> "Cargo.toml"  , $(embedFile "rust/template/Cargo.toml"))
+        , (specname </> "main.rs"     , $(embedFile "rust/template/main.rs"))
+        , (specname </> "ffi_test.rs" , $(embedFile "rust/template/ffi_test.rs"))
+        , (specname </> "valmap.rs"   , $(embedFile "rust/template/valmap.rs"))
         ]
 
 -- Rust differential_datalog library
-rustLibFiles :: [(String, String)]
-rustLibFiles =
+rustLibFiles :: String -> [(String, String)]
+rustLibFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ ("differential_datalog/Cargo.toml"  , $(embedFile "rust/differential_datalog/Cargo.toml"))
-        , ("differential_datalog/int.rs"      , $(embedFile "rust/differential_datalog/int.rs"))
-        , ("differential_datalog/uint.rs"     , $(embedFile "rust/differential_datalog/uint.rs"))
-        , ("differential_datalog/variable.rs" , $(embedFile "rust/differential_datalog/variable.rs"))
-        , ("differential_datalog/profile.rs"  , $(embedFile "rust/differential_datalog/profile.rs"))
-        , ("differential_datalog/program.rs"  , $(embedFile "rust/differential_datalog/program.rs"))
-        , ("differential_datalog/lib.rs"      , $(embedFile "rust/differential_datalog/lib.rs"))
-        , ("differential_datalog/test.rs"     , $(embedFile "rust/differential_datalog/test.rs"))
-        , ("cmd_parser/Cargo.toml"            , $(embedFile "rust/cmd_parser/Cargo.toml"))
-        , ("cmd_parser/lib.rs"                , $(embedFile "rust/cmd_parser/lib.rs"))
-        , ("cmd_parser/parse.rs"              , $(embedFile "rust/cmd_parser/parse.rs"))
-        , ("cmd_parser/from_record.rs"        , $(embedFile "rust/cmd_parser/from_record.rs"))
+        [ (specname </> "differential_datalog/Cargo.toml"  , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
+        , (specname </> "differential_datalog/int.rs"      , $(embedFile "rust/template/differential_datalog/int.rs"))
+        , (specname </> "differential_datalog/uint.rs"     , $(embedFile "rust/template/differential_datalog/uint.rs"))
+        , (specname </> "differential_datalog/variable.rs" , $(embedFile "rust/template/differential_datalog/variable.rs"))
+        , (specname </> "differential_datalog/profile.rs"  , $(embedFile "rust/template/differential_datalog/profile.rs"))
+        , (specname </> "differential_datalog/program.rs"  , $(embedFile "rust/template/differential_datalog/program.rs"))
+        , (specname </> "differential_datalog/lib.rs"      , $(embedFile "rust/template/differential_datalog/lib.rs"))
+        , (specname </> "differential_datalog/test.rs"     , $(embedFile "rust/template/differential_datalog/test.rs"))
+        , (specname </> "cmd_parser/Cargo.toml"            , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
+        , (specname </> "cmd_parser/lib.rs"                , $(embedFile "rust/template/cmd_parser/lib.rs"))
+        , (specname </> "cmd_parser/parse.rs"              , $(embedFile "rust/template/cmd_parser/parse.rs"))
+        , (specname </> "cmd_parser/from_record.rs"        , $(embedFile "rust/template/cmd_parser/from_record.rs"))
         ]
 
 
@@ -265,23 +265,23 @@ compile d specname imports dir = do
     let (lib, rust_ffi, c_ffi) = compileLib d specname imports
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
-    -- Update rustLibFiles if they changed.
-    mapM_ (\(path, content) -> do
-            let path' = joinPath [dir, path]
-            updateFile path' content)
-         rustLibFiles
     -- Substitute specname template files; write files if changed.
     mapM_ (\(path, content) -> do
-            let path' = joinPath [dir, path]
+            let path' = dir </> path
                 content' = replace "datalog_example" specname content
             updateFile path' content')
           $ templateFiles specname
+    -- Update rustLibFiles if they changed.
+    mapM_ (\(path, content) -> do
+            let path' = dir </> path
+            updateFile path' content)
+         $ rustLibFiles specname
     -- Generate lib.rs file if changed.
-    updateFile (joinPath [dir, specname, "lib.rs"]) (render lib)
+    updateFile (dir </> specname </> "lib.rs") (render lib)
     -- Generate ffi.rs file if changed.
-    updateFile (joinPath [dir, specname, "ffi.rs"]) (render rust_ffi)
+    updateFile (dir </> specname </> "ffi.rs") (render rust_ffi)
     -- Update matching C header file.
-    updateFile (joinPath [dir, specname, specname ++ ".h"]) (render c_ffi)
+    updateFile (dir </> specname </> specname <.> "h") (render c_ffi)
     return ()
 
 -- Replace file content if changed
