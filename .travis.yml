@@ -23,19 +23,20 @@ cache:
         - $HOME/.cargo
         - .stack-work
 
+env:
+   - TEST_SUITE='-j 1 -p tutorial'
+   - TEST_SUITE='-j 1 -p path'
+   # - TEST_SUITE='-p ovn'
+   - TEST_SUITE='-j 1 -p ovn_ftl'
+
+addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
+
+os: 
+  - osx
+  - linux
+
 matrix:
   fast_finish: true
-  include:
-    # Add build targets here
-
-    - env: GHCVER=8.2.2 CACHE_NAME=8.2.2 BUILD_BINARY=1
-      compiler: ": #stack 8.2.2"
-      addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
-
-    - env: GHCVER=8.2.2 CACHE_NAME=8.2.2-osx BUILD_BINARY=1
-      os: osx
-      compiler: ": #stack 8.2.2"
-      addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
 # Ensure necessary system libraries are present
 addons:
@@ -45,7 +46,6 @@ addons:
 
 before_install:
 # Download and unpack the stack executable
-- pwd
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
@@ -54,9 +54,9 @@ install:
 # Build dependencies
 - stack --no-terminal --install-ghc test --only-dependencies
 
-script:
+script: 
 # Build the package, its tests, and its docs and run the tests
-- stack --no-terminal test --ta '-p tutorial' --haddock --no-haddock-deps
+- stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 
 after_success:
  - |
