@@ -3,10 +3,10 @@ name = "datalog_example"
 version = "0.1.0"
 
 [dependencies.differential_datalog]
-path = "../differential_datalog"
+path = "./differential_datalog"
 
 [dependencies.cmd_parser]
-path = "../cmd_parser"
+path = "./cmd_parser"
 
 [dependencies]
 abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
