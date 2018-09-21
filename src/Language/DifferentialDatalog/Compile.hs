@@ -33,7 +33,8 @@ module Language.DifferentialDatalog.Compile (
     isStructType,
     mkValConstructorName',
     mkConstructorName,
-    mkType
+    mkType,
+    rname
 ) where
 
 import Control.Monad.State
@@ -68,6 +69,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
@@ -202,15 +204,19 @@ emptyCompilerState = CompilerState {
     cArrangements = M.empty
 }
 
+-- Convert name to a valid Rust identifier by replacing "." with "_"
+rname :: String -> Doc
+rname = pp . replace "." "_"
+
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =
-    "#[derive(Copy,Clone,Debug)]"                                                                               $$
-    "pub enum Relations {"                                                                                      $$
-    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> pp rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
+    "#[derive(Copy,Clone,Debug)]"                                                                                  $$
+    "pub enum Relations {"                                                                                         $$
+    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> rname rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
     "}"
 
 relId :: String -> Doc
-relId rel = "Relations::" <> pp rel <+> "as RelId"
+relId rel = "Relations::" <> rname rel <+> "as RelId"
 
 -- t must be normalized
 addType :: Type -> CompilerMonad ()
@@ -241,8 +247,8 @@ isStructType t                                  = error $ "Compile.isStructType 
 mkConstructorName :: String -> Type -> String -> Doc
 mkConstructorName tname t c =
     if isStructType t
-       then pp tname
-       else pp tname <> "::" <> pp c
+       then rname tname
+       else rname tname <> "::" <> rname c
 
 -- | Create a compilable Cargo crate.  If the crate already exists, only writes files
 -- modified by the recompilation.
@@ -311,9 +317,12 @@ compileLib d specname imports =
      cheader specname     $+$
      c_ffi)
     where
-    (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
-    -- Transform away rules with multiple heads
+    -- Massage program to Rust-friendly form:
+    -- * Rename program entities to Rust-friendly names
+    -- * Transform away rules with multiple heads
+    -- * Make sure the program has at least one relation
     d' = addDummyRel $ progExpandMultiheadRules d
+    (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
     depgraph = progDependencyGraph d'
@@ -323,7 +332,7 @@ compileLib d specname imports =
     -- Initialize types
     -- Make sure that empty tuple is always in Value, so it can be
     -- used to implement Value::default()
-    types = S.fromList $ (tTuple []) : (map (typeNormalize d . relType) $ M.elems $ progRelations d')
+    types = S.fromList $ (tTuple []) : (map (typeNormalize d' . relType) $ M.elems $ progRelations d')
     -- Compile SCCs
     (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
                                   mkProg d' nodes)
@@ -349,7 +358,7 @@ mkTypedef tdef@TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive                                                                    $$
-                             "pub struct" <+> pp tdefName <> targs <+> "{"                             $$
+                             "pub struct" <+> rname tdefName <> targs <+> "{"                          $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
@@ -357,13 +366,13 @@ mkTypedef tdef@TypeDef{..} =
                              display
                           | otherwise
                           -> derive                                                                    $$
-                             "pub enum" <+> pp tdefName <> targs <+> "{"                               $$
+                             "pub enum" <+> rname tdefName <> targs <+> "{"                            $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
                              display
-         Just t           -> "type" <+> pp tdefName <+> targs <+> "=" <+> mkType t <> ";"
+         Just t           -> "type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     derive = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
@@ -385,21 +394,21 @@ mkTypedef tdef@TypeDef{..} =
     mkConstructor c =
         let args = vcat $ punctuate comma $ map mkField $ consArgs c in
         if null $ consArgs c
-           then pp (name c)
-           else pp (name c) <+> "{" $$
+           then rname (name c)
+           else rname (name c) <+> "{" $$
                 nest' args $$
                 "}"
 
-    impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> pp tdefName <> targs <> "{}"
+    impl_abomonate = "impl" <+> targs_traits <+> "Abomonation for" <+> rname tdefName <> targs <> "{}"
 
-    display = "impl" <+> targs_disp <+> "fmt::Display for" <+> pp tdefName <> targs <+> "{"                    $$
+    display = "impl" <+> targs_disp <+> "fmt::Display for" <+> rname tdefName <> targs <+> "{"                 $$
               "    fn fmt(&self, __formatter: &mut fmt::Formatter) -> fmt::Result {"                           $$
               "        match self {"                                                                           $$
               (nest' $ nest' $ nest' $ vcat $ punctuate comma $ map mkDispCons $ typeCons $ fromJust tdefType) $$
               "        }"                                                                                      $$
               "    }"                                                                                          $$
               "}"                                                                                              $$
-              "impl" <+> targs_disp <+> "fmt::Debug for" <+> pp tdefName <> targs <+> "{"                      $$
+              "impl" <+> targs_disp <+> "fmt::Debug for" <+> rname tdefName <> targs <+> "{"                   $$
               "    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {"                                     $$
               "        fmt::Display::fmt(&self, f)"                                                            $$
               "    }"                                                                                          $$
@@ -407,7 +416,7 @@ mkTypedef tdef@TypeDef{..} =
     mkDispCons :: Constructor -> Doc
     mkDispCons c@Constructor{..} =
         cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
-        "write!(__formatter, \"" <> cname <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+>
+        "write!(__formatter, \"" <> pp (name c) <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+>
         (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
         where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
 
@@ -443,13 +452,13 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
 -}
 mkFromRecord :: TypeDef -> Doc
 mkFromRecord t@TypeDef{..} =
-    "impl" <+> targs_bounds <+> "FromRecord for" <+> pp (name t) <> targs <+> "{"                                               $$
+    "impl" <+> targs_bounds <+> "FromRecord for" <+> rname (name t) <> targs <+> "{"                                            $$
     "    fn from_record(val: &Record) -> Result<Self, String> {"                                                                $$
     "        match val {"                                                                                                       $$
     "            Record::Struct(constr, args) => {"                                                                             $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' constructors)                                                                        $$
-    "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> pp (name t) <+> "in {:?}\", c, *val))"  $$
+    "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
     "            v => {"                                                                                                        $$
@@ -495,7 +504,7 @@ mkValueFromRecord d@DatalogProgram{..} =
     entries = map mkrel $ M.elems progRelations
     mkrel :: Relation ->  Doc
     mkrel rel@Relation{..} =
-        "Relations::" <> pp (name rel) <+> "=> {"                                                      $$
+        "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
         "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
         "}"
         where t = typeNormalize d relType
@@ -512,7 +521,7 @@ mkRelname2Id d =
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> pp (name rel) <> "),"
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
 
 -- Convert string to RelId
 mkRelId2Relations :: DatalogProgram -> Doc
@@ -526,15 +535,15 @@ mkRelId2Relations d =
     where
     entries = mapIdx mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Int -> Doc
-    mkrel rel i = pp i <+> "=> Some(Relations::" <> pp (name rel) <> "),"
+    mkrel rel i = pp i <+> "=> Some(Relations::" <> rname (name rel) <> "),"
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
-    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                        $$
+    "fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
+    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                           $$
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
-                          otherwise = "/* fn" <+> pp (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
+                          otherwise = "/* fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
     where
     mkArg :: Field -> Doc
     mkArg a = pp (name a) <> ":" <+> "&" <> mkType a
@@ -624,25 +633,25 @@ let ancestor = {
 };
 -}
 compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
-compileRelation d rname = do
-    let Relation{..} = getRelation d rname
+compileRelation d rn = do
+    let Relation{..} = getRelation d rn
     -- collect all rules for this relation
     let rules = filter (not . null . ruleRHS)
-                $ filter ((== rname) . atomRelation . head . ruleLHS)
+                $ filter ((== rn) . atomRelation . head . ruleLHS)
                 $ progRules d
     rules' <- mapM (compileRule d) rules
     let f arrangements =
             "Relation {"                                                                $$
-            "    name:         \"" <> pp rname <> "\".to_string(),"                     $$
+            "    name:         \"" <> pp rn <> "\".to_string(),"                        $$
             "    input:        " <> (if relGround then "true" else "false") <> ","      $$
-            "    id:           Relations::" <> pp rname <+> "as RelId,"                 $$
+            "    id:           Relations::" <> rname rn <+> "as RelId,"                 $$
             "    rules:        vec!["                                                   $$
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$
             "    arrangements: vec!["                                                   $$
             (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")               $$
             "    change_cb:    __update_cb.clone()"                                     $$
             "}"
-    return (rname, f)
+    return (rn, f)
 
 {- Generate Rust representation of a Datalog rule
 
@@ -661,10 +670,10 @@ compileRule d rl@Rule{..} = do
     let fstrel = atomRelation $ rhsAtom $ head ruleRHS
     xforms <- compileRule' d rl 0
     return $ "/*" <+> pp rl <+> "*/"                             $$
-             "Rule{"                                             $$
-             "    rel: Relations::" <> pp fstrel <+> "as RelId," $$
-             "    xforms: vec!["                                 $$
-             (nest' $ nest' $ vcat $ punctuate comma xforms)     $$
+             "Rule{"                                                $$
+             "    rel: Relations::" <> rname fstrel <+> "as RelId," $$
+             "    xforms: vec!["                                    $$
+             (nest' $ nest' $ vcat $ punctuate comma xforms)        $$
              "    ]}"
 
 -- Generates one XForm in the chain
@@ -764,7 +773,7 @@ mkValConstructorName' d t =
          TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
     where
-    consuser = pp (typeName t) <>
+    consuser = rname (typeName t) <>
                case typeArgs t of
                     [] -> empty
                     as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName' d) as)
@@ -862,7 +871,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
                          "Some" <> parens ret
     let doc = "XForm::Join{"                                                                                                                      $$
               (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")                                  $$
-              "    arrangement: (Relations::" <> pp (atomRelation atom) <+> "as RelId," <> pp aid <> "),"                                         $$
+              "    arrangement: (Relations::" <> rname (atomRelation atom) <+> "as RelId," <> pp aid <> "),"                                      $$
               (nest' $ "jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>" $$ jfun $$ "__f}") $$
               "}"
     return (doc, last_idx')
@@ -876,7 +885,7 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
                          "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                                                 $$
              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-             "    rel:  Relations::" <> pp atomRelation <+> "as RelId"                                          $$
+             "    rel:  Relations::" <> rname atomRelation <+> "as RelId"                                        $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
@@ -946,10 +955,10 @@ rhsVarsAfter d rl i =
 mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
 mkProg d nodes = do
     rels <- vcat <$>
-            mapM (\(rname, rel) -> do
-                  relarrs <- gets ((M.! rname) . cArrangements)
-                  arrs <- mapM (mkArrangement d (getRelation d rname)) relarrs
-                  return $ "let" <+> pp rname <+> "=" <+> rel arrs <> ";")
+            mapM (\(rn, rel) -> do
+                  relarrs <- gets ((M.! rn) . cArrangements)
+                  arrs <- mapM (mkArrangement d (getRelation d rn)) relarrs
+                  return $ "let" <+> rname rn <+> "=" <+> rel arrs <> ";")
                  (concatMap nodeRels nodes)
     let pnodes = map mkNode nodes
         prog = "Program {"                                      $$
@@ -963,9 +972,9 @@ mkProg d nodes = do
 
 mkNode :: ProgNode -> Doc
 mkNode (RelNode (rel,_)) =
-    "ProgNode::RelNode{rel:" <+> pp rel <> "}"
+    "ProgNode::RelNode{rel:" <+> rname rel <> "}"
 mkNode (SCCNode rels)    =
-    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (pp . fst) rels) <> "]}"
+    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . fst) rels) <> "]}"
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (Arrangement pattern) = do
@@ -1035,8 +1044,8 @@ mkPatExpr' d _         EStruct{..}               = return (e, cond)
     where
     t = consType d exprConstructor
     struct_name = name t
-    e = pp struct_name <>
-        (if isStructType (fromJust $ tdefType t) then empty else ("::" <> pp exprConstructor)) <>
+    e = rname struct_name <>
+        (if isStructType (fromJust $ tdefType t) then empty else ("::" <> rname exprConstructor)) <>
         (braces $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
     cond = hsep $ intersperse "&&" $ filter (/= empty)
                                    $ map (\(_,(_,c)) -> c) exprStructFields
@@ -1074,7 +1083,7 @@ mkExpr' _ _ EVar{..}    = (pp exprVar, ERef)
 -- Function arguments are passed as read-only references
 -- Functions return real values.
 mkExpr' _ _ EApply{..}  =
-    (pp exprFunc <> (parens $ commaSep $ map ref exprArgs), EVal)
+    (rname exprFunc <> (parens $ commaSep $ map ref exprArgs), EVal)
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
@@ -1092,12 +1101,12 @@ mkExpr' d ctx EStruct{..} | ctxInSetL ctx
                           | isstruct
                           = (tname <> fieldvals, EVal)
                           | otherwise
-                          = (tname <> "::" <> pp exprConstructor <> fieldvals, EVal)
+                          = (tname <> "::" <> rname exprConstructor <> fieldvals, EVal)
     where fieldvals  = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> val v) exprStructFields
           fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
           tdef = consType d exprConstructor
           isstruct = isStructType $ fromJust $ tdefType tdef
-          tname = pp $ name tdef
+          tname = rname $ name tdef
 
 -- Tuple fields must be values
 mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
@@ -1210,11 +1219,11 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
 mkType' TTuple{..}                 = parens $ commaSep $ map mkType' typeTupArgs
-mkType' TUser{..}                  = pp typeName <>
+mkType' TUser{..}                  = rname typeName <>
                                     if null typeArgs
                                        then empty
                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
-mkType' TOpaque{..}                = pp typeName <>
+mkType' TOpaque{..}                = rname typeName <>
                                     if null typeArgs
                                        then empty
                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"

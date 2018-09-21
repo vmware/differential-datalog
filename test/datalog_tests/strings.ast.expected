@@ -1,21 +1,21 @@
-extern type Set<'A>
 typedef Strings = Strings{s: string}
-extern type Vec<'A>
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
-extern function __builtin_2string (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
 function dummy (x: string): string =
     (x ++ " dummy")
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
 function serializable_t2string (x: serializable_t): string =
     match (x) {
-        ConsInt{.x=var v} -> (("ConsInt(" ++ __builtin_2string(v)) ++ ")"),
-        ConsBit{.y=var v} -> (("ConsBool(" ++ __builtin_2string(v)) ++ ")"),
+        ConsInt{.x=var v} -> (("ConsInt(" ++ std.__builtin_2string(v)) ++ ")"),
+        ConsBit{.y=var v} -> (("ConsBool(" ++ std.__builtin_2string(v)) ++ ")"),
         ConsBool{.z=true} -> "ConsBool(true)",
         ConsBool{.z=false} -> "ConsBool(false)",
         Cons0{} -> "Cons0"
     }
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");
@@ -33,7 +33,7 @@ function tostring1 (): () =
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
-        (var err = (((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ "");
+        (var err = (((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ "");
          ())))))
 function tostring2 (): () =
     ((var a: bigint) = 5;
@@ -41,7 +41,7 @@ function tostring2 (): () =
       ((var c: bool) = true;
        ((var d: string) = "foo";
         ((var e: serializable_t) = ConsInt{.x=0};
-         (var err = (((((((((("a=" ++ __builtin_2string(a)) ++ ", b=") ++ __builtin_2string(b)) ++ ", c=") ++ __builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
+         (var err = (((((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
           ()))))))
 input relation Strings [Strings]
 Strings(.s="").

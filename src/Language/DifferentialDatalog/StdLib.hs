@@ -24,13 +24,13 @@ SOFTWARE.
 {-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
 
 {- | 
-Module     : Preamble
-Description: Preamble automatically inserted in all Datalog programs
+Module     : StdLib
+Description: DDlog "standard library" automatically imported into every module
 -}
-module Language.DifferentialDatalog.Preamble(
+module Language.DifferentialDatalog.StdLib(
     bUILTIN_2STRING_FUNC,
     tOSTRING_FUNC_SUFFIX,
-    datalogPreamble)
+    stdlibModule)
 where
 
 import Text.RawString.QQ
@@ -44,9 +44,8 @@ bUILTIN_2HEX_STRING_FUNC = "hex"
 tOSTRING_FUNC_SUFFIX :: String
 tOSTRING_FUNC_SUFFIX = "2string"
 
-datalogPreamble :: String
-datalogPreamble = [r|/** BEGIN PREAMBLE **/
-
+stdlibModule :: String
+stdlibModule = [r| 
 extern type Set<'A>
 extern type Vec<'A>
 
@@ -55,6 +54,4 @@ extern function |] ++ bUILTIN_2HEX_STRING_FUNC ++ [r|(x: 'X): string
 
 extern function hash64(x: 'X): bit<64>
 extern function hash128(x: 'X): bit<128>
-
-/** END PREAMBLE **/
 |]

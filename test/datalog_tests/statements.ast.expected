@@ -1,41 +1,16 @@
-extern type Set<'A>
-extern type Vec<'A>
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef X = X{field: bigint}
 typedef Z = Z{field: bigint}
-extern function __builtin_2string (x: 'X): string
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 relation W [W]
 input relation X [X]
 relation Z [Z]
 Z(.field=a.field) :- X[a].
-Z(.field=a) :- X(.field=a), match (a) {
-                                1 -> true,
-                                _ -> false
-                            }.
-Z(.field=(a + 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> true,
-                                      _ -> false
-                                  }.
-Z(.field=(a - 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> false,
-                                      _ -> true
-                                  }.
-Z(.field=a) :- X(.field=a), ((a % 2) == 0).
-Z(.field=(a + 1)) :- X(.field=a), (a == 2).
-Z(.field=a) :- X(.field=a), (a != 1).
-Z(.field=a) :- X(.field=a), (a >= 2), (a > 2).
-Z(.field=(a + 2)) :- X(.field=a), (a >= 2), (a > 2).
-Z(.field=(a + b)) :- X(.field=a), X(.field=b).
-Z(.field=(a + c)) :- X(.field=a), X(.field=c).
-Z(.field=(a + b)),
-Z(.field=(a + c)) :- X(.field=a), X(.field=b), X(.field=c).
-Z(.field=(a + b)) :- X(.field=a), var b = (a + 2).
-W(.f1=a, .f2=b, .f3=c) :- X(.field=a), var b = (a + 2), var c = (b + a).
 Z(.field=a.field) :- X[a].
 Z(.field=a.field) :- X[a], match (a.field) {
                                1 -> true,
@@ -67,13 +42,38 @@ Z(.field=(a - 1)) :- X(.field=a), match (a) {
                                       2 -> false,
                                       _ -> true
                                   }.
+Z(.field=a) :- X(.field=a), match (a) {
+                                1 -> true,
+                                _ -> false
+                            }.
+Z(.field=(a + 1)) :- X(.field=a), match (a) {
+                                      1 -> false,
+                                      2 -> true,
+                                      _ -> false
+                                  }.
+Z(.field=(a - 1)) :- X(.field=a), match (a) {
+                                      1 -> false,
+                                      2 -> false,
+                                      _ -> true
+                                  }.
 Z(.field=a.field) :- X[a], ((a.field % 2) == 0).
 Z(.field=a.field) :- X[a], ((a.field % 2) == 0).
+Z(.field=a) :- X(.field=a), ((a % 2) == 0).
 Z(.field=(a.field + 1)) :- X[a], (a.field == 2).
 Z(.field=a.field) :- X[a], (not (a.field == 2)).
+Z(.field=(a + 1)) :- X(.field=a), (a == 2).
+Z(.field=a) :- X(.field=a), (a != 1).
 Z(.field=a.field) :- X[a], (a.field >= 2), (a.field > 2).
 Z(.field=(a.field + 2)) :- X[a], (a.field >= 2), (a.field > 2).
+Z(.field=a) :- X(.field=a), (a >= 2), (a > 2).
+Z(.field=(a + 2)) :- X(.field=a), (a >= 2), (a > 2).
 Z(.field=(a.field + b.field)) :- X[a], X[b].
 Z(.field=(a.field + c.field)) :- X[a], X[c].
+Z(.field=(a + b)) :- X(.field=a), X(.field=b).
+Z(.field=(a + c)) :- X(.field=a), X(.field=c).
+Z(.field=(a + b)),
+Z(.field=(a + c)) :- X(.field=a), X(.field=b), X(.field=c).
 Z(.field=(a.field + b)) :- X[a], (var b: bigint) = (a.field + 2).
+Z(.field=(a + b)) :- X(.field=a), var b = (a + 2).
 W(.f1=a.field, .f2=b, .f3=c) :- X[a], var b = (a.field + 2), var c = (b + a.field).
+W(.f1=a, .f2=b, .f3=c) :- X(.field=a), var b = (a + 2), var c = (b + a).

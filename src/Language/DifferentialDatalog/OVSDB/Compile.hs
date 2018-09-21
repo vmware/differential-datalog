@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes #-}
 
-module Language.DifferentialDatalog.OVSDB.Compile (compileSchemas, compileSchemaFiles) where
+module Language.DifferentialDatalog.OVSDB.Compile (compileSchema, compileSchemaFile) where
 
 import qualified Data.Map as M
 import Text.PrettyPrint
@@ -19,40 +19,31 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Control.Monad.Except
 
-builtinTypes :: String
-builtinTypes = [r|
-typedef integer      = bit<64>
-typedef uuid         = bit<128>
-typedef option_t<'A> = Some{x: 'A}
-                     | None
+
+builtins :: String
+builtins = [r|import types
 |]
 
-compileSchemaFiles :: [FilePath] -> [String] -> IO Doc
-compileSchemaFiles file_names outputs = do
-    schemas <- mapM (\fname -> do
-                      content <- readFile fname
-                      case parseSchema content fname of
-                           Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
-                           Right prog -> return prog)
-                    file_names
-    case compileSchemas schemas outputs of
+compileSchemaFile :: FilePath -> [String] -> IO Doc
+compileSchemaFile fname outputs = do
+    content <- readFile fname
+    schema <- case parseSchema content fname of
+                   Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
+                   Right prog -> return prog
+    case compileSchema schema outputs of
          Left e    -> errorWithoutStackTrace e
          Right doc -> return doc
 
-compileSchemas :: (MonadError String me) => [OVSDBSchema] -> [String] -> me Doc
-compileSchemas schemas outputs = do
-    let tables = concatMap renameTables schemas
+compileSchema :: (MonadError String me) => OVSDBSchema -> [String] -> me Doc
+compileSchema schema outputs = do
+    let tables = schemaTables schema
     mapM_ (\o -> do let t = find ((==o) . name) tables
                     when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
     uniqNames ("Multiple declarations of table " ++ ) tables
     rels <- vcat <$> mapM (\t -> if elem (name t) outputs
                                     then mkTable False t
                                     else mkTable True t) tables
-    return $ pp builtinTypes $+$ rels
-
-renameTables :: OVSDBSchema -> [Table]
-renameTables OVSDBSchema{..} =
-    map (\t -> t{tableName = schemaName ++ "_" ++ tableName t}) schemaTables
+    return $ pp builtins $+$ rels
 
 mkTable :: (MonadError String me) => Bool -> Table -> me Doc
 mkTable isinput t@Table{..} = do

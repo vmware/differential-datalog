@@ -1125,10 +1125,85 @@ for (person in Person)
    }
 ```
 
-These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested in 
-arbitrary ways.  When using this syntax semicolons must be used as separators between statements.  Also
-note that the `if` statement is not an expression, and thus the `else` clause is not required when using 
-this syntax.  The DDlog compiler translates such programs in regular DDlog programs.  
+These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested
+in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
+Also note that the `if` statement is not an expression, and thus the `else` clause is not required
+when using this syntax.  The DDlog compiler translates such programs in regular DDlog programs.
+
+## Modules
+
+Modules make it easy to write DDlog programs that span multiple files.  DDlog supports a simple
+module system, where each file is a separate module, and the module hierachy matches the directory
+structure.
+
+Let's create a file called `mod1.dl` that declares a single relation `R1`:
+
+```
+input relation R1(f1: bool)
+```
+
+Next, create a directory called `lib` with a single file `lib/mod2.dl`:
+
+```
+input relation R2(f2: string)
+```
+
+We have just built a simple module hierarchy:
+
+```
+|-mod1
+|-lib
+   |-mod2
+```
+
+Finally, create the main test file `test.dl` in the same directory as `mod1.dl`:
+
+```
+// declarations from mod1 are added to the local name space
+import mod1
+// declarations from mod2 are available via the "m2." prefix
+import lib.mod2 as m2
+
+relation Main(f1: bool, f2: string)
+
+Main(f1, f2) :- R1(f1), m2.R2(f2).
+```
+
+Note the two forms of the `import` directive.  The first form (`import <module_path>`) makes all
+type, function, relation, and constructor declarations from the module available in the local
+namespace of the module importing it.  The second form (`import <module_path> as <alias>`) makes all
+declarations available to the importing module using the `<alias>.<name>` notation.
+
+We create some data to feed to the test program in a `test.dat` file.
+
+```
+start;
+
+insert mod1.R1(true),
+insert lib.mod2.R2("hello");
+
+commit;
+dump;
+```
+
+Note that we refer to relations and constructors via their fully qualified names.
+Compile and run the test:
+
+```
+ddlog -i test.dl
+cd test
+cargo build --release
+target/release/test_cli < ../test.dat
+```
+
+Modules do not have to be in the same directory with the main program.  Assuming that our module
+hierarchy is located, e.g., in `../modules`,  the first command above must be changed as follows:
+
+```
+ddlog -i test.dl -L../modules
+```
+
+Multiple `-L` options are allowed to access modules scattered across multiple directories.
 
 ## Advanced topics
 

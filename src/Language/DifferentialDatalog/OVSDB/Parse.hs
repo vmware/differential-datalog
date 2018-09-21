@@ -295,6 +295,7 @@ instance Show Table where
 
 instance WithName Table where
     name = tableName
+    setName t n = t { tableName = n }
 
 instance WithPos Table where
     pos = tablePos
@@ -322,6 +323,7 @@ instance WithPos TableColumn where
 
 instance WithName TableColumn where
     name = columnName
+    setName c n = c { columnName = n }
 
 -- If the maybe value is not Nothing, show it like key=value
 showMaybeWithKey :: Show a => String -> Maybe a -> String

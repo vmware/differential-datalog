@@ -1,13 +1,13 @@
 typedef Human = Human{h: person}
 typedef Parent = Parent{child: person, parent: person}
-extern type Set<'A>
 typedef Sib = Sib{s1: person, s2: person}
-extern type Vec<'A>
 typedef person = string
-extern function __builtin_2string (x: 'X): string
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 input relation Human [Human]
 input relation Parent [Parent]
 relation Sib [Sib]

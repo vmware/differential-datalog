@@ -47,14 +47,13 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
-import Language.DifferentialDatalog.Preamble
+import Language.DifferentialDatalog.StdLib
 
-sET_TYPES = ["Set", "Vec"]
+sET_TYPES = ["std.Set", "std.Vec"]
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
-validate d0 = do
-    let d = convertFtl d0
+validate d = do
     uniqNames ("Multiple definitions of constructor " ++)
               $ progConstructors d
     -- Validate typedef's
@@ -108,64 +107,6 @@ funcGraph DatalogProgram{..} =
                              Just e  -> foldl' (\g' f' -> G.insEdge (i, M.findIndex f' progFunctions, ()) g')
                                                g (exprFuncs e))
            g0 $ zip [0..] $ M.elems progFunctions
-
--- convert FTL into rules
-convertFtl :: DatalogProgram -> DatalogProgram
-convertFtl d0 =
-    let rules = map convertFtlStatement $ progStatements d0 in
-    d0{progStatements = [], progRules = (progRules d0) ++ concat rules}
-
--- given a list of match labels generates a matrix
--- [a,b,c] -> [[(a,true), (b,false), (c,false)],
---             [(a,false), (b,true), (c,false)],
---             [(a,false), (b,false), (c,true)]]
-explodeMatchCases :: [Expr] -> [[(Expr, Expr)]]
-explodeMatchCases l =
-    let pairs = [ [(i1, i2) | i1 <- [0..(length l - 1)]] | i2 <- [0..(length l - 1)]] in
-    map (map (\(a,b) -> (l !! a, if a == b then eTrue else eFalse))) pairs
-
--- add the specified RHS to all the rules
-addRhsToRules:: RuleRHS -> [Rule] -> [Rule]
-addRhsToRules toAdd rules =
-     map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
-
-convertAssignment :: Assignment -> Expr
-convertAssignment (Assignment p l Nothing r) = E $ ESet p (E $ EVarDecl p l) r
-convertAssignment (Assignment p l (Just t) r) = E $ ESet p (E $ ETyped p (E $ EVarDecl p l) t) r
-
-convertFtlStatement :: Statement -> [Rule]
-convertFtlStatement (ForStatement p e r mc s) =
-    let rules = convertFtlStatement s
-        atom = Atom p r e
-        rhs0 = RHSLiteral True atom
-        rhs1 = map RHSCondition $ maybeToList mc in
-    map (\r -> r{ruleRHS=(rhs0 : rhs1 ++ ruleRHS r)}) rules
-convertFtlStatement (IfStatement p c s Nothing) =
-    let rules = convertFtlStatement s in
-    addRhsToRules (RHSCondition c) rules
-convertFtlStatement (IfStatement p c s (Just e)) =
-    let rules0 = convertFtlStatement s
-        rules1 = convertFtlStatement e
-        rules0' = addRhsToRules (RHSCondition c) rules0
-        rules1' = addRhsToRules (RHSCondition $ eNot c) rules1 in
-    rules0' ++ rules1'
-convertFtlStatement (MatchStatement p e c) =
-    let rulesList = map (\(co, s) -> convertFtlStatement s) c
-        matchList = explodeMatchCases $ map fst c
-        matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
-    in concat $ zipWith addRhsToRules matchExpressions rulesList
-convertFtlStatement (VarStatement p l s) =
-    let rules = convertFtlStatement s
-        exprs = map convertAssignment l
-        rhs = map RHSCondition exprs in
-    map (\r -> r{ruleRHS = (ruleRHS r) ++ rhs}) rules
-convertFtlStatement (BlockStatement p l) =
-    let rulesList = map convertFtlStatement l in
-    concat rulesList
-convertFtlStatement (EmptyStatement p) =
-    []
-convertFtlStatement (InsertStatement p a) =
-    [Rule p [a] []]
 
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -550,10 +491,10 @@ exprInjectStringConversions :: (MonadError String me) => DatalogProgram -> ECtx 
 exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (tr /= tString) = do
     -- find string conversion function
     fname <- case tr of
-                  TBool{}     -> return bUILTIN_2STRING_FUNC
-                  TInt{}      -> return bUILTIN_2STRING_FUNC
-                  TString{}   -> return bUILTIN_2STRING_FUNC
-                  TBit{}      -> return bUILTIN_2STRING_FUNC
+                  TBool{}     -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TInt{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TString{}   -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TBit{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
