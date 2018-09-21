@@ -23,11 +23,11 @@ class Files(object):
         self.logFile = open(logName, 'w')
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
-        self.output("typedef number = bigint")
+        self.output("typedef number = string")
         self.output("typedef symbol = string")
         self.output("function cat(s: string, t: string): string = s ++ t")
         self.outputDataFile = open(outputDataName, 'w')
-        self.outputData("begin")
+        self.outputData("start")
         print "Reading from", inputName, "writing output to", outputName, "writing data to", outputDataName
 
     def log(self, text):
@@ -40,7 +40,9 @@ class Files(object):
         self.outputDataFile.write(text + ";\n")
 
     def done(self):
+        self.outputData("echo Finished adding data")
         self.outputData("commit")
+        self.outputData("echo done")
         self.logFile.close()
         self.inputFile.close()
         self.outFile.close()
@@ -104,10 +106,20 @@ def process_input(inputdecl, files, preprocess):
     else:
         raise Exception("Cannot find file " + filename)
 
+    counter = 0
+    total = 0
     for line in data:
         fields = line.rstrip('\n').split(separator)
         fields = map(lambda a: json.dumps(a), fields)
         files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")")
+        counter = counter + 1
+        total = total + 1
+        if counter == 1000:
+            files.outputData("commit")
+            files.outputData("profile")
+            files.outputData("echo total: " + str(total))
+            files.outputData("start")
+            counter = 0
     data.close()
 
 def process_namespace(namespace, files, preprocess):
@@ -229,7 +241,7 @@ def convert_expression(expr):
             id1 = var_name(getIdentifier(idents[1]))
         else:
             id1 = strg.value
-        return "not (" + id0 + " = " + id1 + ")"
+        return "not (" + id0 + " == " + id1 + ")"
     raise Exception("Unexpected expression" + expr.tree_str())
 
 def convert_conjunction(conj):
