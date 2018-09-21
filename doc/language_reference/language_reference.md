@@ -24,8 +24,9 @@ is defined in the local scope).
     field_name   ::= lc_identifier
     arg_name     ::= lc_identifier
 
-    uc_scoped_identifier ::= [identifier "."]* uc_identifier
-    lc_scoped_identifier ::= [identifier "."]* lc_identifier
+    scope ::= [identifier "."]*
+    uc_scoped_identifier ::= scope uc_identifier
+    lc_scoped_identifier ::= scope lc_identifier
     scoped_identifier ::= uc_scoped_identifier | lc_scoped_identifier
 
     rel_name     ::= uc_scoped_identifier
@@ -66,17 +67,16 @@ import ::= "import" module_path ["as" module_alias]
 module_alias ::- identifier
 ```
 
-The first form of the `import` statement (without the `as` clause) adds all imported declarations to
-the local namespaces of the importing module.  This may cause name clashes with the importing module
-or one of its other imports.  The second form creates a local alias for the imported module, making
-its declarations accessible via dot notation: `alias.name`.
+`import` statement without the `as` clause adds all imported declarations to the local namespaces of
+the importing module.  The `as` clause is used to prevent name clashes.  It creates a local alias
+for the imported module, making its declarations accessible via dot notation: `alias.name`.
 
 The DDlog compiler resolves imports by searching all known *library directories* for the imported
-module.  By default, the directory where the main module (specified via the `-i` command-line
-switch) is located is searched.  The user can specify additional library paths via the `-L` switch
-to the compiler.  The compiler converts each import path to a file path by replacing `.` with `/`
-and adding the `.dl` extension and checks for a file with the given path under each library
-directory.  For example, `import lib_name.mod_name` is converted to `lib_name/mod_name.dl`.
+module.  By default, the directory of the main module (specified via the `-i` command-line switch)
+is searched.  The user can specify additional library paths via the `-L` switch to the compiler.
+The compiler converts each import path to a file path by replacing `.` with `/` and adding the `.dl`
+extension and checks for a file with the given path under each library directory.  For example,
+`import lib_name.mod_name` is converted to `lib_name/mod_name.dl`.
 
 ## Types
 

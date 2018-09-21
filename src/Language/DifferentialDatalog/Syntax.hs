@@ -610,7 +610,8 @@ instance WithPos Import where
     atPos i p = i { importPos = p }
 
 instance PP Import where
-    pp Import{..} = "import" <+> pp importModule <+> "as" <+> pp importAlias
+    pp Import{..} = "import" <+> pp importModule <+>
+                    (if null (modulePath importAlias) then empty else "as" <+> pp importAlias)
 
 instance Show Import where
     show = render . pp

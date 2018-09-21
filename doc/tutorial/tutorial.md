@@ -1125,16 +1125,16 @@ for (person in Person)
    }
 ```
 
-These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested in 
-arbitrary ways.  When using this syntax semicolons must be used as separators between statements.  Also
-note that the `if` statement is not an expression, and thus the `else` clause is not required when using 
-this syntax.  The DDlog compiler translates such programs in regular DDlog programs.  
+These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested
+in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
+Also note that the `if` statement is not an expression, and thus the `else` clause is not required
+when using this syntax.  The DDlog compiler translates such programs in regular DDlog programs.
 
 ## Modules
 
-It is often desirable to decompose a DDlog program into multiple files for modularity and code
-reuse.  DDlog supports a simple module system, where each file is a separate module, and the module
-hierachy matches the directory structure.
+Modules make it easy to write DDlog programs that span multiple files.  DDlog supports a simple
+module system, where each file is a separate module, and the module hierachy matches the directory
+structure.
 
 Let's create a file called `mod1.dl` that declares a single relation `R1`:
 
