@@ -1,5 +1,5 @@
 // two fields with the same name
-type t = Constr { f: bigint, f: bigint }
+typedef t = Constr { f: bigint, f: bigint }
 
 //---
 

@@ -41,11 +41,12 @@ import GHC.IO.Exception
 import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
+import qualified Data.Set as S
 
 import Language.DifferentialDatalog.Parse
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
-import Language.DifferentialDatalog.Preamble
 import Language.DifferentialDatalog.Compile
 import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
@@ -59,7 +60,7 @@ cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 goldenTests :: IO TestTree
 goldenTests = do
   -- locate datalog files
-  dlFiles <- findByExtension [".dl"] "./test/datalog_tests"
+  dlFiles <- findByExtensionNonRec [".dl"] "./test/datalog_tests"
   -- some of the tests may have accompanying .dat files
   inFiles <- mapM (\dlFile -> do let datFile = replaceExtension dlFile "dat"
                                  exists <- doesFileExist datFile
@@ -67,8 +68,8 @@ goldenTests = do
   let parser_tests = testGroup "parser tests" $
           [ goldenVsFile (takeBaseName file) expect output (parserTest file)
             | (file:_) <- inFiles
-            , let expect = replaceExtension file ".ast.expected"
-            , let output = replaceExtension file ".ast"]
+            , let expect = file -<.> "ast.expected"
+            , let output = file -<.> "ast"]
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
@@ -76,22 +77,30 @@ goldenTests = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovsdbTests, ovnTests]
 
 ovsdbTests :: TestTree
 ovsdbTests =
   testGroup "ovsdb tests" $
-        [goldenVsFile "ovn" "test/ovsdb/ovn_schema.dl.expected" "test/ovsdb/ovn_schema.dl" ovnTest]
+        [ goldenVsFile "ovn_nb" "test/ovn/ovn_nb.dl.expected" "test/ovn/ovn_nb.dl" nbTest
+        , goldenVsFile "ovn_sb" "test/ovn/ovn_sb.dl.expected" "test/ovn/ovn_sb.dl" sbTest]
 
-ovnTest = do
-    prog <- OVS.compileSchemaFiles ["test/ovsdb/ovn-nb.ovsschema", "test/ovsdb/ovn-sb.ovsschema"]
-                                   ["OVN_Southbound_Logical_Flow", "OVN_Southbound_Address_Set"]
-    writeFile "test/ovsdb/ovn_schema.dl" (render prog)
-    compilerTest "test/ovsdb/ovn_schema.dl"
+nbTest = do
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
+    writeFile "test/ovn/ovn_nb.dl" (render prog)
+
+sbTest = do
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" ["Logical_Flow", "Address_Set"]
+    writeFile "test/ovn/ovn_sb.dl" (render prog)
+
+ovnTests :: TestTree
+ovnTests =
+  testGroup "ovn tests" $
+        [ goldenVsFile "ovn" "test/ovn/ovn.dump.expected" "test/ovn/ovn.dump" $ do {parserTest "test/ovn/ovn.dl"; compilerTest "test/ovn/ovn.dl"}]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
-    d <- parseDatalogString True program file
+    d <- parseDatalogProgram [takeDirectory file] True program file
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
          Right d' -> return d'
@@ -129,7 +138,8 @@ parserTest fname = do
         prog <- parseValidate fname body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
-        prog' <- parseDatalogFile False astfile
+        fdata <- readFile astfile
+        prog' <- parseDatalogString fdata astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
 
@@ -156,11 +166,11 @@ compilerTest fname = do
                   then readFile importsfile
                   else return ""
     -- generate Rust project
-    let rust_dir = joinPath [takeDirectory fname]
+    let rust_dir = takeDirectory fname
     compile prog specname imports rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                          cwd = Just $ joinPath [rust_dir, specname]
+                          cwd = Just $ rust_dir </> specname
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -168,7 +178,7 @@ compilerTest fname = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
     let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
-                          cwd = Just $ joinPath [rust_dir, specname]
+                          cwd = Just $ rust_dir </> specname
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -190,7 +200,7 @@ cliTest fname specname rust_dir = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag)){
-                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       cwd = Just $ rust_dir </> specname,
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
                                        std_err=UseHandle herr} $
@@ -211,7 +221,7 @@ cliTest fname specname rust_dir = do
 -- Convert .dat file into C to test the FFI interface
 ffiTest :: FilePath -> String -> FilePath -> IO ()
 ffiTest fname specname rust_dir = do
-    let cfile    = joinPath [rust_dir, specname, addExtension specname ".c"]
+    let cfile    = rust_dir </> specname </> specname <.> "c"
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
     let dumpfile = replaceExtension fname ".c.dump"
@@ -222,7 +232,7 @@ ffiTest fname specname rust_dir = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_ffi_test"] ++ cargo_build_flag)){
-                                       cwd = Just $ joinPath [rust_dir, specname],
+                                       cwd = Just $ rust_dir </> specname,
                                        std_in=CreatePipe,
                                        std_out=UseHandle hout,
                                        std_err=UseHandle herr} $
@@ -242,13 +252,13 @@ ffiTest fname specname rust_dir = do
         -- Compile C program
         let exefile = specname ++ "_test"
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
-                                       cwd = Just $ joinPath [rust_dir, specname]} $
+                                       cwd = Just $ rust_dir </> specname} $
             \_ _ _ phandle -> waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
         -- Run C program
         hout <- openFile dumpfile WriteMode
-        cwd <- makeAbsolute $ joinPath [rust_dir, specname]
+        cwd <- makeAbsolute $ rust_dir </> specname
         code <- withCreateProcess (proc (cwd </> exefile) []){
                             std_out = UseHandle hout,
                             env = Just [("LD_LIBRARY_PATH", cwd </> "target" </> bUILD_TYPE)]} $
@@ -277,3 +287,24 @@ goldenVsFiles name ref new act =
   upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
                                  when (not exists) $ BS.writeFile r b)
              $ zip ref bufs
+
+-- A non-recursive version of findByExtension
+findByExtensionNonRec
+  :: [FilePath] -- ^ extensions
+  -> FilePath -- ^ directory
+  -> IO [FilePath] -- ^ paths
+findByExtensionNonRec extsList = go where
+  exts = S.fromList extsList
+  go dir = do
+    allEntries <- getDirectoryContents dir
+    let entries = filter (not . (`elem` [".", ".."])) allEntries
+    liftM concat $ forM entries $ \e -> do
+      let path = dir ++ "/" ++ e
+      isDir <- doesDirectoryExist path
+      if isDir
+        then return []
+        else
+          return $
+            if takeExtension path `S.member` exts
+              then [path]
+              else []

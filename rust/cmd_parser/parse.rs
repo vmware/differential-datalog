@@ -45,7 +45,7 @@ named_args!(sym<'a>(s: &str)<()>,
 
 named!(identifier<&[u8], String>,
     do_parse!(first: alt!(alpha | tag!("_")) >>
-              bytes: fold_many0!(alt!(alphanumeric1 | tag!("_")),
+              bytes: fold_many0!(alt!(alphanumeric1 | tag!("_") | tag!(".")),
                                  "".to_string(),
                                  |acc, bs: &[u8]| acc + (&*String::from_utf8(bs.to_vec()).unwrap())) >>
               spaces >>
@@ -103,9 +103,9 @@ fn test_command() {
                Ok((&br""[..], Command::Update(
                    UpdCmd::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
                ))));
-    assert_eq!(parse_command(br#"   delete Logical_Router("foo", 0xabcdef1, true) , "#),
+    assert_eq!(parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
                Ok((&br""[..], Command::Update(
-                   UpdCmd::Delete("Logical_Router".to_string(), Record::Struct("Logical_Router".to_string(),
+                   UpdCmd::Delete("NB.Logical_Router".to_string(), Record::Struct("NB.Logical_Router".to_string(),
                                                                     vec![Record::String("foo".to_string()),
                                                                          Record::Int(0xabcdef1.to_bigint().unwrap()),
                                                                          Record::Bool(true)])),

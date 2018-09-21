@@ -1,9 +1,8 @@
-extern type Set<'A>
 typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T2 = C21{f1: T1, f2: bigint} | C22{f3: (bool, T1)}
 typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} | C32{f3: ((bool, (bool, bool, bool)), T1)}
-extern type Vec<'A>
-extern function __builtin_2string (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
 function f1 (x: T1, y: T2, q: T3): bool =
     (match (x) {
          C11{.f1=_, .f2=_} -> true,
@@ -64,6 +63,7 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string

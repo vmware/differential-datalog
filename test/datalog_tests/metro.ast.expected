@@ -1,14 +1,14 @@
 typedef Answer = Answer{x: station}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Reach = Reach{s1: station, s2: station}
-extern type Set<'A>
-extern type Vec<'A>
 typedef line = bigint
 typedef station = string
-extern function __builtin_2string (x: 'X): string
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 relation Answer [Answer]
 input relation Links [Links]
 relation Reach [Reach]

@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/ryzhyk/differential-datalog.svg?branch=master)](https://travis-ci.com/ryzhyk/differential-datalog)
+
 # Differential Datalog (DDlog)
 
 DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog engine for writing

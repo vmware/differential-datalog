@@ -28,14 +28,12 @@ typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
-extern type Set<'A>
 typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
 typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
 typedef TCPDstPort = TCPDstPort{port: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
 typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
-extern type Vec<'A>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef X = X{x: bit<16>}
@@ -51,9 +49,10 @@ typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+extern type std.Set<'A>
+extern type std.Vec<'A>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
 typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
-extern function __builtin_2string (x: 'X): string
 function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
     ((var port: bit<16>) = match (proto) {
                                "FTP" -> 16'd20,
@@ -64,14 +63,11 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                           16'd80
                                       }
                            };
-     (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ __builtin_2string(port)) ++ ""))
+     (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ std.__builtin_2string(port)) ++ ""))
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) =
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
-extern function hash128 (x: 'X): bit<128>
-extern function hash64 (x: 'X): bit<64>
-extern function hex (x: 'X): string
 function ip_addr_t2string (ip: ip_addr_t): string =
-    (((((((("" ++ __builtin_2string(ip.addr[31:24])) ++ ".") ++ __builtin_2string(ip.addr[23:16])) ++ ".") ++ __builtin_2string(ip.addr[15:8])) ++ ".") ++ __builtin_2string(ip.addr[7:0])) ++ "")
+    (((((((("" ++ std.__builtin_2string(ip.addr[31:24])) ++ ".") ++ std.__builtin_2string(ip.addr[23:16])) ++ ".") ++ std.__builtin_2string(ip.addr[15:8])) ++ ".") ++ std.__builtin_2string(ip.addr[7:0])) ++ "")
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t =
     IPAddr{.addr=(((b3 ++ b2) ++ b1) ++ b0)}
 function is_multicast_addr (ip: ip_addr_t): bool =
@@ -79,7 +75,7 @@ function is_multicast_addr (ip: ip_addr_t): bool =
 function is_target_audience (person: Person): bool =
     ((person.nationality == "USA") and (person.occupation == "student"))
 function mac_addr_t2string (mac: mac_addr_t): string =
-    (((((((((((("" ++ hex(mac.addr[47:40])) ++ ":") ++ hex(mac.addr[39:32])) ++ ":") ++ hex(mac.addr[31:24])) ++ ":") ++ hex(mac.addr[23:16])) ++ ":") ++ hex(mac.addr[15:8])) ++ ":") ++ hex(mac.addr[7:0])) ++ "")
+    (((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0])) ++ "")
 function nethost_t2string (h: nethost_t): string =
     (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
 function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t =
@@ -104,9 +100,13 @@ function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
         EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
         _ -> None{}
     }
-extern function split (s: string, sep: string): Vec<string>
-function split_ip_list (x: string): Vec<string> =
+extern function split (s: string, sep: string): std.Vec<string>
+function split_ip_list (x: string): std.Vec<string> =
     split(x, " ")
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
@@ -150,7 +150,7 @@ Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w
 Word1(.word="Hello,", .cat=CategoryOther{}).
 Word2(.word="World!", .cat=CategoryOther{}).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
-Pow2(.p=(((("The square of " ++ __builtin_2string(x)) ++ " is ") ++ __builtin_2string((x * x))) ++ "")) :- Number(.n=x).
+Pow2(.p=(((("The square of " ++ std.__builtin_2string(x)) ++ " is ") ++ std.__builtin_2string((x * x))) ++ "")) :- Number(.n=x).
 NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id, .h=h).
 Address(.addr=ip_from_bytes(b3, b2, b1, b0)) :- Bytes(.b3=b3, .b2=b2, .b1=b1, .b0=b0).
 MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
