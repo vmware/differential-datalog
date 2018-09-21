@@ -25,8 +25,15 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Name where
 
+import qualified Data.Map as M
+
 class WithName a where
     name :: a -> String
+    setName :: a -> String -> a
 
 instance WithName String where
     name = id
+    setName _ s = s
+
+namedListToMap :: (WithName a) => [a] -> M.Map String a
+namedListToMap xs = M.fromList $ map (\x -> (name x, x)) xs

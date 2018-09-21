@@ -1,7 +1,10 @@
+[![Build Status](https://travis-ci.com/ryzhyk/differential-datalog.svg?branch=master)](https://travis-ci.com/ryzhyk/differential-datalog)
+
 # Differential Datalog (DDlog)
 
 DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog engine for writing
-*application-integrated* deductive database engines.
+*application-integrated* deductive database engines.  DDlog is based on [Frank McSherry's](https://github.com/frankmcsherry/)
+excellent [differential dataflow](https://github.com/frankmcsherry/differential-dataflow) library.
 
 1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
 computes *all* possible derived facts by following Datalog rules, in a bottom-up fashion.  In
@@ -48,7 +51,7 @@ changes to the relational schema or rules require re-compilation.
 
 Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
 
-DDlog language can be found [here](doc/language_reference/language_reference.md).
+DDlog language reference can be found [here](doc/language_reference/language_reference.md).
 
 Instructions for writing and testing your own Datalog programs are [here](doc/testing/testing.md).
 

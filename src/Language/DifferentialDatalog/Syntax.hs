@@ -60,8 +60,6 @@ module Language.DifferentialDatalog.Syntax (
         ExprNode(..),
         Expr(..),
         ENode,
-        Assignment(..),
-        Statement(..),
         enode,
         eVar,
         eApply,
@@ -88,6 +86,8 @@ module Language.DifferentialDatalog.Syntax (
         Function(..),
         funcShowProto,
         funcTypeVars,
+        ModuleName(..),
+        Import(..),
         DatalogProgram(..),
         emptyDatalogProgram,
         progStructs,
@@ -127,13 +127,13 @@ instance WithPos Field where
 
 instance WithName Field where
     name = fieldName
+    setName f n = f { fieldName = n }
 
 instance PP Field where
     pp (Field _ n t) = pp n <> ":" <+> pp t
 
 instance Show Field where
     show = render . pp
-
 
 data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
@@ -265,6 +265,7 @@ instance WithPos TypeDef where
 
 instance WithName TypeDef where
     name = tdefName
+    setName d n = d{tdefName = n}
 
 instance PP TypeDef where
     pp TypeDef{..} | isJust tdefType
@@ -297,6 +298,7 @@ instance Ord Constructor where
 
 instance WithName Constructor where
     name = consName
+    setName c n = c{consName = n}
 
 instance WithPos Constructor where
     pos = consPos
@@ -335,6 +337,7 @@ instance WithPos Relation where
 
 instance WithName Relation where
     name = relName
+    setName r n = r{relName = n}
 
 instance PP Relation where
     pp Relation{..} = (if relGround then "input" else empty) <+>
@@ -347,6 +350,10 @@ data Atom = Atom { atomPos      :: Pos
                  , atomRelation :: String
                  , atomVal      :: Expr
                  }
+
+instance WithName Atom where
+    name = atomRelation
+    setName a n = a {atomRelation = n}
 
 instance Eq Atom where
     (==) (Atom _ r1 v1) (Atom _ r2 v2) = r1 == r2 && v1 == v2
@@ -416,83 +423,6 @@ instance PP Rule where
 
 instance Show Rule where
     show = render . pp
-
-data Assignment = Assignment     { assignPos :: Pos
-                                 , leftAssign :: String
-                                 , typeAssign :: Maybe Type
-                                 , rightAssign :: Expr }
-
-instance Eq Assignment where
-    (==) (Assignment _ l1 t1 r1) (Assignment _ l2 t2 r2) =
-      l1 == l2 && t1 == t2 && r1 == r2
-
-instance WithPos Assignment where
-    pos = assignPos
-    atPos r p = r{assignPos = p}
-
-instance PP Assignment where
-    pp (Assignment _ l t r) = pp l <> (maybe empty (\t' -> ":" <+> pp t') t) <+> "=" <+> pp r
-
-instance Show Assignment where
-    show = render . pp
-
-data Statement = ForStatement    { statPos :: Pos
-                                 , forExpr :: Expr
-                                 , forRelName :: String
-                                 , forCondition :: Maybe Expr
-                                 , forStatement :: Statement }
-               | IfStatement     { statPos :: Pos
-                                 , ifCondition :: Expr
-                                 , ifStatement :: Statement
-                                 , elseStatement :: Maybe Statement}
-               | MatchStatement  { statPos :: Pos
-                                 , matchExpr :: Expr
-                                 , cases :: [(Expr, Statement)] }
-               | VarStatement    { statPos :: Pos
-                                 , varList :: [Assignment]
-                                 , varStatement :: Statement }
-               | InsertStatement { statPos :: Pos
-                                 , insertAtom :: Atom }
-               | BlockStatement  { statPos :: Pos
-                                 , seqList :: [Statement] }
-               | EmptyStatement  { statPos :: Pos }
-
-instance Eq Statement where
-    (==) (ForStatement _ e1 r1 c1 s1) (ForStatement _ e2 r2 c2 s2) =
-          e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
-    (==) (IfStatement _ c1 s1 e1) (IfStatement _ c2 s2 e2) =
-          c1 == c2 && s1 == s2 && e1 == e2
-    (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
-          e1 == e2 && l1 == l1
-    (==) (VarStatement _ l1 s1) (VarStatement _ l2 s2) =
-          l1 == l2 && s1 == s2
-    (==) (InsertStatement _ a1) (InsertStatement _ a2) =
-          a1 == a2
-    (==) (BlockStatement _ l1) (BlockStatement _ l2) =
-          l1 == l2
-    (==) (EmptyStatement _) (EmptyStatement _) = True
-
-instance PP Statement where
-    pp (ForStatement _ e r c s) = "for" <+> "(" <> (pp e) <+> "in" <+> pp r <+>
-                                     maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
-    pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
-                                     maybe empty (("else" $$) . (nest' . pp)) e
-    pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
-                                (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
-                                $$ "}"
-    pp (VarStatement _ l s) = "var" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
-    pp (InsertStatement _ a) =  pp a
-    pp (BlockStatement _ l) =  "{" $+$
-                                (nest' $ vcat $ (punctuate ";" $ map pp l))
-                                $$ "}"
-    pp (EmptyStatement _) = "skip"
-
-instance Show Statement where
-    show = render . pp
-
-instance WithPos Statement where
-    pos = statPos
-    atPos s p = s{statPos = p}
 
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
@@ -636,6 +566,7 @@ instance WithPos Function where
 
 instance WithName Function where
     name = funcName
+    setName f n = f{funcName = n}
 
 instance PP Function where
     pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
@@ -659,25 +590,54 @@ funcShowProto Function{..} = render $
 funcTypeVars :: Function -> [String]
 funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 
-data DatalogProgram = DatalogProgram { progTypedefs  :: M.Map String TypeDef
+data ModuleName = ModuleName {modulePath :: [String]}
+                  deriving (Eq, Ord)
+
+instance PP ModuleName where
+    pp (ModuleName p) = hcat $ punctuate "." $ map pp p
+
+instance Show ModuleName where
+    show = render . pp
+
+-- | Import statement
+data Import = Import { importPos    :: Pos
+                     , importModule :: ModuleName
+                     , importAlias  :: ModuleName 
+                     }
+
+instance WithPos Import where
+    pos = importPos
+    atPos i p = i { importPos = p }
+
+instance PP Import where
+    pp Import{..} = "import" <+> pp importModule <+>
+                    (if null (modulePath importAlias) then empty else "as" <+> pp importAlias)
+
+instance Show Import where
+    show = render . pp
+
+instance Eq Import where
+    (==) (Import _ p1 a1) (Import _ p2 a2) = p1 == p2 && a1 == a2
+
+data DatalogProgram = DatalogProgram { progImports   :: [Import]
+                                     , progTypedefs  :: M.Map String TypeDef
                                      , progFunctions :: M.Map String Function
                                      , progRelations :: M.Map String Relation
                                      , progRules     :: [Rule]
-                                     , progStatements:: [Statement]
                                      }
                       deriving (Eq)
 
 instance PP DatalogProgram where
     pp DatalogProgram{..} = vcat $ punctuate "" $
-                            ((map pp $ M.elems progTypedefs)
+                            ((map pp progImports)
+                             ++
+                             (map pp $ M.elems progTypedefs)
                              ++
                              (map pp $ M.elems progFunctions)
                              ++
                              (map pp $ M.elems progRelations)
                              ++
-                             (map pp $ progRules)
-                             ++
-                             (map pp $ progStatements))
+                             (map pp progRules))
 
 instance Show DatalogProgram where
     show = render . pp
@@ -693,11 +653,11 @@ progConstructors :: DatalogProgram -> [Constructor]
 progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs
 
 emptyDatalogProgram :: DatalogProgram
-emptyDatalogProgram = DatalogProgram { progTypedefs   = M.empty
+emptyDatalogProgram = DatalogProgram { progImports    = []
+                                     , progTypedefs   = M.empty
                                      , progFunctions  = M.empty
                                      , progRelations  = M.empty
-                                     , progRules      = []
-                                     , progStatements = [] }
+                                     , progRules      = [] }
 
 progAddTypedef :: TypeDef -> DatalogProgram -> DatalogProgram
 progAddTypedef tdef prog = prog{progTypedefs = M.insert (name tdef) tdef (progTypedefs prog)}

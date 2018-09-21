@@ -45,7 +45,8 @@ module Language.DifferentialDatalog.Expr (
     isLVar,
     exprIsPattern,
     exprIsDeconstruct,
-    exprIsVarOrFieldLVal
+    exprIsVarOrFieldLVal,
+    exprTypeMapM
     --isLRel
     --exprSplitLHS,
     --exprSplitVDecl,
@@ -76,7 +77,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
---import Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.Type
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
@@ -300,3 +301,11 @@ exprIsVarOrFieldLVal' d ctx (EVar _ v) = isLVar d ctx v
 exprIsVarOrFieldLVal' _ _   (EField _ e _)   = e
 exprIsVarOrFieldLVal' _ _   (ETyped _ e _)   = e
 exprIsVarOrFieldLVal' _ _   _                = False
+
+-- | Transform types referenced in the expression
+exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
+exprTypeMapM fun e = exprFoldM fun' e
+    where
+    fun' (ETyped p e t) = (E . ETyped p e) <$> typeMapM fun t
+    fun' e              = return $ E e
+

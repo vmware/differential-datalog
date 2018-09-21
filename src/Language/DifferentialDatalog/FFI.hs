@@ -139,15 +139,15 @@ mkCValue d = (rust, hdr)
 
     rels = M.elems $ progRelations d
     fields = map (\rel -> let t = typeNormalize d rel in
-                          pp (name rel) <> ":" <+> ffiScalarize t) rels
+                          rname (name rel) <> ":" <+> ffiScalarize t) rels
     c_fields = map (\rel -> let t = typeNormalize d rel in
-                            cScalarize t <+> pp (name rel) <> ";") rels
+                            cScalarize t <+> rname (name rel) <> ";") rels
     matches = map (\rel -> let t = typeNormalize d rel in
-                           "Relations::" <> pp (name rel) <+> "=> Value::" <> mkValConstructorName' d t
+                           "Relations::" <> rname (name rel) <+> "=> Value::" <> mkValConstructorName' d t
                              <> "(" <> tonative (name rel) t <> ")") rels
     free_matches = map (\rel ->
                          let t = typeNormalize d rel
-                             rn = pp $ name rel in
+                             rn = rname $ name rel in
                          "Relations::" <> rn <+> "=> unsafe {"                                               $$
                          (if isStruct d t || isTuple d t
                              then "    <" <> mkType t <> ">::free(&mut *val.val." <> rn <> ");" $$
@@ -156,7 +156,7 @@ mkCValue d = (rust, hdr)
                          "}") rels
     from_matches = mapIdx (\rel i ->
                            let t  = typeNormalize d rel
-                               rn = pp $ name rel
+                               rn = rname $ name rel
                                ptr = isStruct d t || isTuple d t
                                toffi = if ptr
                                           then "Box::into_raw(Box::new(v.to_ffi()))"
@@ -185,7 +185,7 @@ mkCValue d = (rust, hdr)
                          "    match val {"                                                                $$
                          "        Value::" <> mkValConstructorName' d t <> "(v) => Some("                 $$
                          "            format!(\"&(struct Value){{.tag= " <> cRelEnumerator rn <> ", .val= (union Value_union){{."
-                                              <> pp rn <> "=" <+> ref <> "{} }} }}\", v.c_code())"        $$
+                                              <> rname rn <> "=" <+> ref <> "{} }} }}\", v.c_code())"     $$
                          "        ),"                                                                     $$
                          "        v => {"                                                                 $$
                          "            eprintln!(\"val_to_ccode: Invalid value {}\", *v);"                 $$
@@ -225,7 +225,7 @@ mkCValue d = (rust, hdr)
              TOpaque{..}    -> borrown <> ".clone()"
              t              -> error $ "FFI.tonative " ++ show t
         where
-        n = "self.val." <> pp relname
+        n = "self.val." <> rname relname
         borrown = "unsafe{&*" <> n <> "}"
 
 -- Call once for each struct to generate a C-style for its tag enum.
@@ -235,12 +235,12 @@ ffiMkTagEnum :: DatalogProgram -> String -> Type -> Maybe (Doc, Doc)
 ffiMkTagEnum d tname t@TStruct{..} | isStructType t = Nothing
                                    | otherwise = Just (rust, hdr)
     where
-    rust = "#[repr(C)]"                                                                 $$
-           "pub enum" <+> ffiTagEnumName tname <+> "{"                                  $$
-           (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons) $$
+    rust = "#[repr(C)]"                                                                    $$
+           "pub enum" <+> ffiTagEnumName tname <+> "{"                                     $$
+           (nest' $ vcommaSep $ mapIdx (\c i -> rname (name c) <+> "=" <+> pp i) typeCons) $$
            "}"
-    hdr = "enum" <+> cTagEnumName tname <+> "{"                                         $$
-          (nest' $ vcommaSep $ mapIdx (\c i -> pp (name c) <+> "=" <+> pp i) typeCons)  $$
+    hdr = "enum" <+> cTagEnumName tname <+> "{"                                            $$
+          (nest' $ vcommaSep $ mapIdx (\c i -> rname (name c) <+> "=" <+> pp i) typeCons)  $$
           "};"
 
 -- Generates FFI interface to a normalized TStruct or TTuple type,
@@ -330,7 +330,7 @@ mkToFFIStruct d t@TUser{..} =
     t' = typ' d t
     cstruct = ffiStructName d t
     matches = map (\c ->
-                    let cname = pp $ name c in
+                    let cname = rname $ name c in
                     mkConstructorName typeName t' (name c) <>
                     "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "} =>" <+> cstruct <+> "{"                                   $$
                     "    tag:" <+> ffiTagEnumName typeName <> "::" <> cname <> ","                                                   $$
@@ -343,7 +343,7 @@ mkToFFIStruct d t@TUser{..} =
                   $ typeCons t'
     c_matches =
               map (\c ->
-                    let cname = pp $ name c
+                    let cname = rname $ name c
                         ccons = "struct" <+> cConsStructName (cStructName d t) c
                         nargs = length $ consArgs c in
                     mkConstructorName typeName t' (name c) <>
@@ -356,7 +356,7 @@ mkToFFIStruct d t@TUser{..} =
                     "}")
                   $ typeCons t'
     free_matches = map (\c ->
-                        let cname = pp $ name c in
+                        let cname = rname $ name c in
                         ffiTagEnumName typeName <> "::" <> cname <+> "=> {"         $$
                         (nest' $ vcat $ map (\a -> let at = mkType (typeNormalize d a) in
                                                    "<" <> at <> ">::free(unsafe{&mut (*x.x." <> cname <> ")." <> pp (name a) <> "});")
@@ -445,10 +445,10 @@ mkStruct d t c_struct_name ffi_struct_name cons  = (rust, hdr)
         map (\c -> mkStruct d t (cConsStructName c_struct_name c)
                                 (ffiConsStructName ffi_struct_name c) [c])
         cons
-    fields = map (\c -> pp (name c) <> ": *mut" <+> ffiConsStructName ffi_struct_name c) cons
-    c_fields = map (\c -> "struct" <+> cConsStructName c_struct_name c <> "*" <+> pp (name c) <> ";") cons
-    cases = map (\c -> ffiTagEnumName (typeName t) <> "::" <> pp (name c) <+> "=>" <+>
-                       "unsafe {&*self.x." <> pp (name c) <> "}.to_native()") cons
+    fields = map (\c -> rname (name c) <> ": *mut" <+> ffiConsStructName ffi_struct_name c) cons
+    c_fields = map (\c -> "struct" <+> cConsStructName c_struct_name c <> "*" <+> rname (name c) <> ";") cons
+    cases = map (\c -> ffiTagEnumName (typeName t) <> "::" <> rname (name c) <+> "=>" <+>
+                       "unsafe {&*self.x." <> rname (name c) <> "}.to_native()") cons
 
 ffiStructName :: DatalogProgram -> Type -> Doc
 ffiStructName d t = "__c_" <> cStructName d t
@@ -457,19 +457,19 @@ cStructName :: DatalogProgram -> Type -> Doc
 cStructName d t = mkValConstructorName' d t
 
 cConsStructName :: Doc -> Constructor -> Doc
-cConsStructName tname c = tname <> "_" <> (pp $ name c)
+cConsStructName tname c = tname <> "_" <> (rname $ name c)
 
 ffiConsStructName :: Doc -> Constructor -> Doc
 ffiConsStructName tname c = "__struct_" <> cConsStructName tname c
 
 ffiTagEnumName :: String -> Doc
-ffiTagEnumName tname = "__enum_" <> pp tname
+ffiTagEnumName tname = "__enum_" <> rname tname
 
 cTagEnumName :: String -> Doc
-cTagEnumName tname = pp tname <> "_enum"
+cTagEnumName tname = rname tname <> "_enum"
 
 cRelEnumerator :: String -> Doc
-cRelEnumerator rel = "Relation_" <> pp rel
+cRelEnumerator rel = "Relation_" <> rname rel
 
 -- type must be normalized
 mkFFIType :: DatalogProgram -> Type -> Doc

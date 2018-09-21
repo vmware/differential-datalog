@@ -1,3 +1,34 @@
+/* Test types */
+
+// This is a one-line comment
+
+/* This is a
+   multi-line comment */
+
+typedef t00 = bigint
+typedef t01 = bool
+typedef t02 = string
+typedef t03 = bit<32>
+typedef t04 = ( bigint )
+typedef t05 = ( bigint, bigint )
+typedef t06 = ( bigint, bigint, ( bigint ) )
+typedef t07 = ()
+typedef t08 = ( (), (), () )
+typedef t09 = ( (bigint), (), (bigint) )
+typedef t10 = ( bigint, bool, string, bit<32> )
+typedef t11 = ( bigint, (bool, (string, (bit<32>))))
+typedef t12 = t11
+typedef t13 = ( t00, t01, t02, t03 )
+typedef t14 = ( t04, t04 )
+typedef t15 = Const15 { f: bigint }
+typedef T16 = t15
+typedef T17 = bigint
+typedef t18 = Const18 { f0: bigint, f1: string, f2: t00 }
+typedef t19 = C000 { f0: bigint }
+            | C111 { f0: bigint }
+            | C222 { f0: bigint }
+
+
 typedef person = string
 
 input relation Human(h: person)
@@ -21,3 +52,544 @@ Sib("Ben", "Alice").
 Sib("Alice", "Ben").
 Sib("Ben", "Bob").
 */
+
+// Tests for datalog functions and expressions
+
+extern function f(): bigint
+extern function g(a: bigint): bigint
+extern function h(a: (bigint, bigint)): (bigint, bigint)
+
+function a0(): bigint
+    = 1
+
+function a1(): bigint
+    = 1 + 2
+
+function a2(): bit<32>
+    = 32'd0 + 32'd1
+
+function a3(): bit<32>
+    = 0: bit<32>
+
+function a4(): bit<32>
+    = (0: bit<64>)[40:9]
+
+function a5(a: bit<32>, b: bit<32>): bit<32>
+    = (a & b) | (a | b) | (~a) | (a << 32'd5) | (a >> 32'd5) | (a[15:0] ++ a[31:16])
+
+function a6(a: bit<16>, b: bit<16>): bit<16>
+    = (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+
+function a7(a: bit<16>, b: bit<16>): bool
+    = (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
+
+function a8(): bit<32>
+    = 32'd125 | 32'hFF | 32'o777 | 32'b1010101011
+
+function b0(): bool
+    = true and false
+
+function b1(a: bool): bool
+    = (a and true) or (a or false) or (a => false) or (not a)
+
+function v2(): bool
+    = b1(true)
+
+function c0(a: bit<32>, b: bit<16>): bit<16>
+    = a; b
+
+function s0(): string
+    = "Some string"
+
+function s1(): string
+    = "\t\r\n\"\\\a"
+
+function v(): string =
+    var v1: string = "hello";
+    var v2 = "there";
+    v2
+
+typedef Alt = C0{x: bit<32>}
+            | C1{x: bit<32>}
+
+function x(): Alt
+    = C0{32'd5}
+
+typedef C = C{f1: string, f2: string}
+
+function vars(): () = {
+    var x: bigint = 0;
+    x = 10;
+    var y = C{.f1 = "foo", .f2 = "bar"};
+    var z: C = C{.f1 = "bar", .f2 = "foo"};
+
+    (var a, var b) = (x+5, x-5);
+
+    C{.f1 = var e} = y;
+
+    C{var c, var d} = y
+}
+
+function patterns(): () = {
+    var a: Alt = C0{1};
+
+    var b = match (a) {
+        C0{} -> true,
+        C1{} -> false
+    };
+
+    var i: bit<32> = match (a) {
+        C0{.x = v} -> v,
+        C1{v} -> v
+    }
+}
+
+typedef option_t<'A> = None
+                     | Some {value : 'A}
+
+
+function shadow(): string = {
+    var b: option_t<string> = None;
+    var a = Some{"foo"};
+    match (a) {
+        Some{v} -> v,
+        None    -> ""
+    }
+}
+
+typedef nested_t = N{field: C}
+
+function fnested(x: nested_t): string = {
+    N{C{var res, _}} = x;
+    res
+}
+
+extern function parameterized(x: 'A, y: 'A): 'A
+
+function parameterized2(x: 'A, y: 'A): bool = x == y
+
+typedef string_syn = string
+
+function use_parameterized(x: string, y: string_syn): string =
+    parameterized(x, y)
+
+// metro: graph reachability
+
+typedef line = bigint
+typedef station = string
+
+input relation Links(l: line, s1: station, s2: station)
+
+relation Reach(s1: station, s2: station)
+
+
+Reach(x, y) :- Links(l, x, y).
+Reach(x, y) :- Links(l, y, x).
+Reach(x, y):- Links(l, x, z), Reach(z, y).
+
+relation Answer(x: station)
+
+Answer(x) :- Reach("Odeon", x).
+
+/* Tests for match pattern analysis logic.  Checks that:
+   patterns are exhaustive (cover all possible values of the given
+   type) and non-redundant. */
+
+typedef T1 = C11{f1: bigint, f2: (bigint, string)}
+           | C12{f3: bit<32>, f4: (bool, bool, bool)}
+
+typedef T2 = C21{f1: T1, f2: bigint}
+           | C22{f3: (bool, T1)}
+
+
+typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>}
+           | C32{f3: ((bool, (bool, bool, bool)), T1)}
+
+function f1(x: T1, y: T2, q: T3) : bool = {
+    match (x) {
+        C11 -> true,
+        _   -> false
+    };
+
+    match (x) {
+        C11 -> true,
+        C12 -> false
+    };
+
+    match (y) {
+        C21{_,_}        -> true,
+        C22{(_, C11{})} -> true,
+        _               -> false
+    };
+
+    match (y) {
+        C21{_,_}        -> true,
+        C22{(true, C11{})} -> true,
+        C22{(true, C12{})} -> true,
+        C22{(false, C11{})} -> true,
+        C22{(false, C12{})} -> true
+    };
+
+
+    var z: (bool, (bool, (bool,bool))) = (true, (false, (true, false)));
+
+    match (z) {
+        (true, _)                   -> true,
+        (false, (_,(true, true)))   -> true,
+        (false, (_,(true, false)))  -> true,
+        (false, (_,(false, true)))  -> true,
+        (false, (_,(false, false))) -> true
+    };
+
+    match (z) {
+        (_, (_,(true, true)))       -> true,
+        (_, (_,(true, false)))      -> true,
+        (_, (_,(false, true)))      -> true,
+        (false, (_,(false, false))) -> true,
+        (true, (_,(false, false)))  -> true
+    };
+
+    match (q) {
+        C31{}                                                      -> true,
+        C32{.f3=((true, (_, _, false)), _)}                        -> true,
+        C32{.f3=((false, (_, _, false)), _)}                       -> true,
+        C32{.f3=((false, (_, _, true)), _)}                        -> true,
+        C32{.f3=((_, (_, _, true)), C11{})}                        -> true,
+        C32{.f3=((_, (_, _, true)), C12{.f4=(true, true, true)})}  -> false,
+        C32{.f3=((_, (_, _, true)), C12{.f4=(_, _, false)})}       -> false,
+        C32{.f3=((_, (_, _, true)), C12{.f4=(_, _, true)})}        -> false
+    };
+
+    match (q) {
+        C31{_, 0, "foo", 15}                                       -> true,
+        C31{_, _, _, 15}                                           -> true,
+        C31{_, 0, _, _}                                            -> true,
+        C31{_, _, "foo", _}                                        -> true,
+        C32{}                                                      -> true,
+        C31{_, _, _, _}                                            -> true
+    };
+
+    var s: string = "bar";
+    match (s) {
+        "foo" -> true,
+        "bar" -> true,
+        _     -> false
+    }
+}
+
+
+/* Statements test */
+input relation X(field: bigint)
+relation Z(field: bigint)
+
+relation W(f1: bigint, f2: bigint, f3: bigint)
+
+for (a in X)
+   skip
+
+for (a in X)
+   Z(a.field)
+// equivalent to
+Z(a.field) :- X[a].
+
+for (a in X)
+   match (a.field) {
+      1 -> Z(a.field),
+      2 -> Z(a.field+1),
+      _ -> Z(a.field-1)
+   }
+
+for (X{a} in X)
+   match (a) {
+      1 -> Z(a),
+      2 -> Z(a+1),
+      _ -> Z(a-1)
+   }
+// both are equivalent to
+Z(a) :- X(a), match(a) { 1 -> true, _ -> false }.
+Z(a+1) :- X(a), match(a) { 1-> false, 2 -> true, _ -> false }.
+Z(a-1) :- X(a), match(a) { 1 -> false, 2 -> false, _ -> true }.
+
+for (a in X if true)
+   skip
+// equivalent to
+for (a in X)
+   if (true)
+       skip
+
+for (a in X) {
+   skip;
+   skip
+}
+
+for (a in X if (a.field % 2) == 0)
+    Z(a.field)
+// equivalent to
+for (a in X)
+    if (a.field % 2 == 0)
+         Z(a.field)
+// equivalent to
+Z(a) :- X(a), ((a % 2) == 0).
+
+for (a in X) {
+    if (a.field == 2)
+        skip
+}
+
+for (a in X) {
+    if (a.field == 2)
+        skip
+    else
+        skip
+}
+
+for (a in X) {
+    if (a.field == 2)
+        Z(a.field+1)
+    else
+        Z(a.field)
+}
+// equivalent to
+Z(a+1) :- X(a), a == 2.
+Z(a) :- X(a), a != 1.
+
+for (a in X)
+    if (a.field >= 2)
+        if (a.field > 2) {
+            Z(a.field);
+            Z(a.field+2)
+        }
+// equivalent to
+Z(a) :- X(a), a>=2, a > 2.
+Z(a+2) :- X(a), a>=2, a > 2.
+
+for (a in X) {
+    for (b in X)
+        Z(a.field+b.field);
+    for (c in X)
+        Z(a.field+c.field)
+}
+// equivalent to
+Z(a+b) :- X(a), X(b).
+Z(a+c) :- X(a), X(c).
+// Equivalent to
+Z(a+b), Z(a+c) :- X(a), X(b), X(c).
+
+for (a in X)
+   var b = a.field+2 in
+       skip
+
+for (a in X)
+   var b: bigint = a.field+2 in
+       Z(a.field+b)
+// equivalent to
+Z(a+b) :- X(a), var b = a+2.
+
+for (a in X)
+   var b = a.field+2, c = b+a.field in
+       W(a.field, b, c)
+// equivalent to
+W(a, b, c) :- X(a), var b = a+2, var c = b+a.
+
+/* simple rules */
+
+typedef R1 = bigint
+
+input relation R1[R1]
+input relation R2[(bigint, bigint)]
+
+R1[1].
+R2[(1,2)].
+
+input relation R3(f1: bigint, f2: bool)
+relation R4[R3]
+relation R5[bigint]
+relation R6(f: bigint)
+
+R4[x] :- R3[x].
+R5[x.f1] :- R3[x].
+R6(x.f1) :- R3[x].
+
+input relation XX(b: bigint, c: R3, d: R1)
+relation ZZ(x: bigint, y: R3)
+ZZ(a.b, a.c) :- XX[a].
+
+input relation Y(b: bigint, e: string)
+relation T(x: bigint, y: string)
+
+T(a.b, e) :- XX[a], Y(a.d, e).
+
+typedef R7 = R7{f1: bigint, f2: bit<16>}
+           | R7Other
+
+relation R7[R7]
+
+R7(1,2).
+R7[R7{1,3}].
+R7[R7Other].
+
+typedef S = S {
+    f1: (bool, bool),
+    f2: bit<32>
+}
+input relation Table1(id: bit<64>, name: string)
+input relation Table2(name: string, f2: bigint, f3: S)
+
+relation Table12(id: bit<128>, name: string, f3: S)
+
+Table12(hash128((id,name,f2,f3)), name, f3) :- Table1(id, name), Table2(name, f2, f3).
+
+
+/* strings test */
+input relation Strings(s: string)
+
+Strings("").
+Strings("foo").
+Strings("bar\n").
+Strings("\t\tbar").
+Strings("\"buzz").
+Strings("\r\n\abuzz").
+Strings("\\buzz").
+Strings("\\buzz").
+
+/* unicode */
+Strings("barΔ").
+
+/* raw strings */
+Strings([||]).
+Strings([|foo|]).
+Strings([|foo
+buzz
+bar|]).
+
+Strings([|
+    foo
+    buzz
+    bar|]).
+
+Strings([|barΔ
+Π|]).
+
+Strings([|barΔ
+Π|] " quoted string").
+
+// backslash does not work as an escape character in raw strings
+Strings([|
+    foo\r\n
+    buzz
+    bar|]).
+
+/* string literal concatenation */
+Strings("foo" "-" "bar").
+
+Strings("foo\n" "bar").
+Strings("foo\\""bar").
+
+Strings("foo\\" [|bar|]).
+
+function dummy(x: string): string = x ++ " dummy"
+
+function strings(): () = {
+    var str1 = "foo" ++ "bar";
+    var str2 = "foo" "bar" ++ "buzz" ++ [|
+raw string |]"quoted string";
+    var str3 = $"str1: ${ str1 }";
+    var str4 = $"str1: ${str1}, str2: ${str2}, str3: ${str3}.";
+    var str5 = $[|str1: ${str1},
+str2: ${str2},
+str3: ${str3}.|];
+    var str6 = $"${str1 ++ str2}";
+    var str7 = $"${{var x = str1 ++ str2; x}}";
+    var str8 = $"${{var x = str1 ++ str2; dummy(x)}}";
+    ()
+}
+
+Strings("word1\
+        \ word2").
+
+Strings("line1\n\
+        \line2").
+
+function tostring1(): () = {
+    var a: bigint  = 5;
+    var b: bit<32> = 5;
+    var c: bool    = true;
+    var d: string  = "foo";
+    var err = $"a=${a}, b=${b}, c=${c}, d=${d}";
+    ()
+}
+
+typedef serializable_t = ConsInt {x: bigint}
+                       | ConsBit {y: bit<32>}
+                       | ConsBool{z: bool}
+                       | Cons0{}
+
+function serializable_t2string(x: serializable_t): string = {
+    match (x) {
+        ConsInt{v}      -> "ConsInt(" ++ v ++ ")",
+        ConsBit{v}      -> $"ConsBool(${v})",
+        ConsBool{true}  -> $"ConsBool(true)",
+        ConsBool{false} -> $"ConsBool(false)",
+        Cons0{}         -> $"Cons0"
+    }
+}
+
+function tostring2(): () = {
+    var a: bigint     = 5;
+    var b: bit<32> = 5;
+    var c: bool    = true;
+    var d: string  = "foo";
+    var e: serializable_t = ConsInt{0};
+    var err = $"a=${a}, b=${b}, c=${c}, d=${d}, e:${e}";
+    ()
+}
+
+/* More random examples */
+typedef IP4Addr = bit<32>
+typedef IP6Addr = bit<128>
+
+typedef IP4Subnet = IP4Subnet {
+    addr: IP4Addr,
+    mask: bit<32>
+}
+
+typedef IPAddr = IP4{ip4: IP4Addr}
+               | IP6{ip6: IP6Addr}
+
+typedef FooStruct = Option1 {f1: bigint, f2: IPAddr, f3: (bool, string)}
+                  | Option2 {f4: bit<32>, f5: IPAddr}
+
+function foo(): bool = {
+    var v1: bigint             = 0;
+    var v2: bit<32>         = 1;
+    var v3: bit<129>        = 129'd0;
+    var v4: bool            = true;
+    var v5: (bigint, string)   = (0, "test_string");
+    var v6 = IP4{32'haabbccdd};
+    var v7 = Option1{.f1 = 0, .f2 = IP4{32'd0}, .f3 = (true, "bar")};
+
+    v3 = v3 + 129'habcde;
+
+    match (v6) {
+        IP4{_} -> true,
+        _      -> false
+    };
+
+    match (v7) {
+        Option1{.f2 = IP6{_}, .f3 = (_, "bar")} -> true,
+        _                                       -> false
+    }
+}
+
+input relation Rel1(x: bigint, y: IPAddr)
+input relation Rel2(x: bigint, z: FooStruct)
+
+relation Rel3(x:bigint, y: IPAddr, z: FooStruct)
+
+Rel3(x, y, z) :- Rel1(x, y), Rel2(x,z).
+
+
+relation Rel4(x:bigint, y: IPAddr, b: bool)
+
+Rel4(x,y,b) :- Rel1(x,y),
+               Rel2(x, Option1{.f2=IP4{}, .f3=(b, "buzz")}).

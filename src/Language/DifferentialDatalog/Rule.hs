@@ -27,7 +27,8 @@ module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
     ruleVars,
     ruleRHSTermVars,
-    ruleLHSVars
+    ruleLHSVars,
+    ruleTypeMapM
 ) where
 
 import qualified Data.Set as S
@@ -110,3 +111,15 @@ ruleLHSVarSet d rl = S.fromList
     $ concat 
     $ mapIdx (\a i -> exprVarTypes d (CtxRuleL rl i) $ atomVal a) 
     $ ruleLHS rl
+
+-- | Map function over all types in a rule
+ruleTypeMapM :: (Monad m) => (Type -> m Type) -> Rule -> m Rule
+ruleTypeMapM fun rule@Rule{..} = do
+    lhs <- mapM (\(Atom p r v) -> Atom p r <$> exprTypeMapM fun v) ruleLHS
+    rhs <- mapM (\rhs -> case rhs of
+                  RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
+                  RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
+                  RHSAggregate g v e          -> RHSAggregate g v <$> exprTypeMapM fun e
+                  RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e)
+                ruleRHS
+    return rule { ruleLHS = lhs, ruleRHS = rhs }
