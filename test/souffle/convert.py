@@ -12,6 +12,8 @@ current_namespace = None
 relations = dict()  # Maps relation to bool indicating whether the relation is an input
 path_rename = dict()
 
+total = 0
+
 class Files(object):
     """Represents the files that are used for input and output"""
 
@@ -107,7 +109,7 @@ def process_input(inputdecl, files, preprocess):
         raise Exception("Cannot find file " + filename)
 
     counter = 0
-    total = 0
+    global total
     for line in data:
         fields = line.rstrip('\n').split(separator)
         fields = map(lambda a: json.dumps(a), fields)
