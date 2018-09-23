@@ -59,6 +59,7 @@ import qualified Data.Graph.Inductive.Query.DFS as G
 import Debug.Trace
 import Text.RawString.QQ
 import Data.WideWord
+import Debug.Trace
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
@@ -118,6 +119,7 @@ rustLibFiles specname =
         [ (specname </> "differential_datalog/Cargo.toml"  , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
         , (specname </> "differential_datalog/int.rs"      , $(embedFile "rust/template/differential_datalog/int.rs"))
         , (specname </> "differential_datalog/uint.rs"     , $(embedFile "rust/template/differential_datalog/uint.rs"))
+        , (specname </> "differential_datalog/arcval.rs"   , $(embedFile "rust/template/differential_datalog/arcval.rs"))
         , (specname </> "differential_datalog/variable.rs" , $(embedFile "rust/template/differential_datalog/variable.rs"))
         , (specname </> "differential_datalog/profile.rs"  , $(embedFile "rust/template/differential_datalog/profile.rs"))
         , (specname </> "differential_datalog/program.rs"  , $(embedFile "rust/template/differential_datalog/program.rs"))
@@ -1033,7 +1035,7 @@ mkPatExpr' _ varprefix EString{..}               = do
     i <- get
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
-    return (varprefix <+> vname, "*" <> vname <+> "==" <+> "\"" <> pp exprString <> "\"" <> ".to_string()")
+    return (varprefix <+> vname, vname <+> ".str() ==" <+> "\"" <> pp exprString <> "\"")
 mkPatExpr' _ _         EBit{..} | exprWidth <= 128= return (pp exprIVal, empty)
 mkPatExpr' _ varprefix EBit{..}                  = do
     i <- get
@@ -1091,7 +1093,7 @@ mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
-mkExpr' _ _ EString{..} = ("r###\"" <> pp exprString <> "\"###.to_string()", EVal)
+mkExpr' _ _ EString{..} = ("arcval::DDString::from(String::from(r###\"" <> pp exprString <> "\"###))", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
@@ -1174,7 +1176,7 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
     v = case exprBOp of
              Concat | t == tString
-                    -> parens $ e1 <+> "+" <+> ref exprRight
+                    -> ref exprLeft <> ".concat(" <> ref exprRight <> ".str())"
              Concat -> mkConcat (e1, typeWidth t1) (e1, typeWidth t2)
              Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
              op     -> parens $ e1 <+> mkBinOp op <+> e2
@@ -1211,7 +1213,7 @@ mkType x = mkType' $ typ x
 mkType' :: Type -> Doc
 mkType' TBool{}                    = "bool"
 mkType' TInt{}                     = "Int"
-mkType' TString{}                  = "String"
+mkType' TString{}                  = "arcval::DDString"
 mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 16 = "u16"
                  | typeWidth <= 32 = "u32"
