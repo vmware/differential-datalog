@@ -41,7 +41,8 @@ module Language.DifferentialDatalog.Type(
     ConsTree(..),
     consTreeEmpty,
     typeConsTree,
-    consTreeAbduct
+    consTreeAbduct,
+    typeMapM
 --    typeSubtypes,
 --    typeSubtypesRec,
 --    typeGraph,
@@ -58,7 +59,7 @@ import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Ops
-import Language.DifferentialDatalog.Expr
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
@@ -68,16 +69,20 @@ import Language.DifferentialDatalog.ECtx
 
 -- | An object with type
 class WithType a where
-    typ  :: a -> Type
+    typ     :: a -> Type
+    setType :: a -> Type -> a
 
 instance WithType Type where
     typ = id
+    setType _ t = t
 
 instance WithType Field where
     typ = fieldType
+    setType f t = f { fieldType = t } 
 
 instance WithType Relation where
     typ = relType
+    setType r t = r { relType = t }
 
 -- | True iff t is a polymorphic type, i.e., contains any type variables.
 typeIsPolymorphic :: Type -> Bool
@@ -636,3 +641,26 @@ abductMany d (e:es) (ct:cts) =
                      map (\l' -> ct : l') leftover'
         abducted'' = concatMap (\a -> map ((CT t [a]) :) abducted') abducted
     in (leftover'', abducted'')
+
+
+-- | Visitor pattern for types
+typeMapM :: (Monad m) => (Type -> m Type) -> Type -> m Type
+typeMapM fun t@TBool{}     = fun t
+typeMapM fun t@TInt{}      = fun t
+typeMapM fun t@TString{}   = fun t
+typeMapM fun t@TBit{}      = fun t
+typeMapM fun t@TStruct{..} = do
+    cons <- mapM (\c -> do 
+                   cargs <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ consArgs c
+                   return c{consArgs = cargs}) typeCons
+    fun $ t { typeCons = cons }
+typeMapM fun t@TTuple{..} = do
+    args <- mapM (typeMapM fun) typeTupArgs
+    fun $ t { typeTupArgs = args }
+typeMapM fun t@TUser{..} = do
+    args <- mapM (typeMapM fun) typeArgs
+    fun $ t { typeArgs = args }
+typeMapM fun t@TVar{}      = fun t
+typeMapM fun t@TOpaque{..} = do
+    args <- mapM (typeMapM fun) typeArgs
+    fun $ t { typeArgs = args }

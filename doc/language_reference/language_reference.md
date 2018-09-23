@@ -1,28 +1,38 @@
-# Differential Datalog Language Reference
+# Differential Datalog (DDlog) Language Reference
 
 ## Identifiers
 
-Datalog is case-sensitive.  Relation, constructor, and type variable
+DDlog is case-sensitive.  Relation, constructor, and type variable
 names must start with upper-case ASCII letters; variable, function,
 and argument names must start with lower-case ASCII letters or
 underscore.  A type variable name must be prefixed with a tick (').
 A type name can start with either an upper-case or a lower-case letter
 or underscore.
 
+DDlog programs refer to types, functions, relations, and constructors using *scoped* names, consisting of
+identifier prefixed by path to the *module* that declares the identifier, which an be empty if the identifier
+is defined in the local scope).
+
 ```
     uc_identifier ::= [A..Z][a..zA..Z0..9_]*
     lc_identifier ::= [a..z_][a..zA..Z0..9_]*
+    identifier ::= uc_identifier | lc_identifier
 
-    rel_name     ::= uc_identifier
-    cons_name    ::= uc_identifier
     typevar_name ::= 'uc_identifier
 
     var_name     ::= lc_identifier
     field_name   ::= lc_identifier
     arg_name     ::= lc_identifier
-    func_name    ::= lc_identifier
 
-    type_name    ::= lc_identifier | uc_identifier
+    scope ::= [identifier "."]*
+    uc_scoped_identifier ::= scope uc_identifier
+    lc_scoped_identifier ::= scope lc_identifier
+    scoped_identifier ::= uc_scoped_identifier | lc_scoped_identifier
+
+    rel_name     ::= uc_scoped_identifier
+    cons_name    ::= uc_scoped_identifier
+    func_name    ::= lc_scoped_identifier
+    type_name    ::= scoped_identifier
 ```
 
 ## Top-level declarations
@@ -34,7 +44,8 @@ before being defined.
 ```EBNF
 datalog ::= decl*
 
-decl ::= typedef
+decl ::= import
+       | typedef
        | function
        | relation
        | rule
@@ -44,6 +55,28 @@ decl ::= typedef
 1. Type names must be globally unique
 1. Function names must be globally unique
 1. Relation names must be globally unique
+
+## Imports
+
+The `import` statement makes type, function, relation, and constructor declarations from the
+imported module available in the importing module.
+
+```EBNF
+module_path ::= identifier ["." identifier]*
+import ::= "import" module_path ["as" module_alias]
+module_alias ::- identifier
+```
+
+`import` statement without the `as` clause adds all imported declarations to the local namespaces of
+the importing module.  The `as` clause is used to prevent name clashes.  It creates a local alias
+for the imported module, making its declarations accessible via dot notation: `alias.name`.
+
+The DDlog compiler resolves imports by searching all known *library directories* for the imported
+module.  By default, the directory of the main module (specified via the `-i` command-line switch)
+is searched.  The user can specify additional library paths via the `-L` switch to the compiler.
+The compiler converts each import path to a file path by replacing `.` with `/` and adding the `.dl`
+extension and checks for a file with the given path under each library directory.  For example,
+`import lib_name.mod_name` is converted to `lib_name/mod_name.dl`.
 
 ## Types
 

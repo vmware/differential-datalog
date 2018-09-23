@@ -12,15 +12,15 @@ HostInSubnet{0,0}
 HostInSubnet{1,0}
 HostInSubnet{2,1}
 Flows:
-Flow{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
-Flow{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
-Flow{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
-Flow{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow{0,LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow{0,LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow{1,LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow{1,LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
 Flows generated using FTL:
-Flow1{0,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
-Flow1{0,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
-Flow1{1,stage::LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
-Flow1{1,stage::LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow1{0,LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
+Flow1{0,LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
+Flow1{1,LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.103","{ reg0[0] = 1; next; }"}
+Flow1{1,LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
 Pow2:
 Pow2{"The square of 1 is 1"}
 Pow2{"The square of 10 is 100"}
@@ -35,11 +35,11 @@ NetHostString:
 NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
 NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 Address:
-Address{ip_addr_t{168430090}}
-Address{ip_addr_t{2139062143}}
-Address{ip_addr_t{3772834016}}
+Address{IPAddr{168430090}}
+Address{IPAddr{2139062143}}
+Address{IPAddr{3772834016}}
 MCastAddress:
-MCastAddress{ip_addr_t{3772834016}}
+MCastAddress{IPAddr{3772834016}}
 EndpointString
 EndpointString{"170.187.204.221:20"}
 EndpointString{"170.187.204.221:443"}

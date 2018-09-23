@@ -30,7 +30,6 @@ cabal.config
 differential-datalog.iml
 **Cargo.lock
 **.swo
-test/datalog_tests/*/*
 **/target/*
 **cmd_parser_history.txt
 TAGS

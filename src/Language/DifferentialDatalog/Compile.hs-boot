@@ -9,3 +9,4 @@ isStructType :: Type -> Bool
 mkValConstructorName' :: DatalogProgram -> Type -> Doc
 mkConstructorName :: String -> Type -> String -> Doc
 mkType :: (WithType a) => a -> Doc
+rname :: String -> Doc

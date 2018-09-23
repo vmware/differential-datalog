@@ -1,0 +1,65 @@
+# This is the simple Travis configuration, which is intended for use
+# on applications which do not require cross-platform and
+# multiple-GHC-version support. For more information and other
+# options, see:
+#
+# https://docs.haskellstack.org/en/stable/travis_ci/
+#
+# Copy these contents into the root directory of your Github project in a file
+# named .travis.yml
+
+# Use new container infrastructure to enable caching
+sudo: false
+
+# Do not choose a language; we provide our own build tools.
+language: rust
+
+# Caching so the next build will be fast too.
+cache:
+    directories:
+        - $HOME/.ghc
+        - $HOME/.cabal
+        - $HOME/.stack
+        - $HOME/.cargo
+        - .stack-work
+
+#env:
+#   - TEST_SUITE='-j 1 -p tutorial'
+#   - TEST_SUITE='-j 1 -p path'
+#   # - TEST_SUITE='-p ovn'
+#   - TEST_SUITE='-j 1 -p ovn_ftl'
+
+addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
+
+os:
+  - osx
+  - linux
+
+matrix:
+  fast_finish: true
+
+# Ensure necessary system libraries are present
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+before_install:
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- ./.travis/install-stack.sh
+
+install:
+# Build dependencies
+- stack --no-terminal --install-ghc test --only-dependencies
+
+script: 
+# Build the package, its tests, and its docs and run the tests
+- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
+#- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
+
+after_success:
+ - |
+   # Build and ship binary
+   ./.travis/attach-binary.sh

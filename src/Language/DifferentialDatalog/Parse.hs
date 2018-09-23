@@ -21,10 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, LambdaCase #-}
 
 module Language.DifferentialDatalog.Parse (
-    parseDatalogFile,
     parseDatalogString,
     datalogGrammar,
     exprGrammar) where
@@ -39,34 +38,24 @@ import qualified Text.Parsec.Token as T
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Either
+import Data.List
+import Data.Char
 import Numeric
 import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Statement
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
-import Language.DifferentialDatalog.Preamble
-
--- | Parse a file containing a datalog program and produce the intermediate representation
--- if 'insert_preamble' is true, prepends the content of
--- 'datalotPreamble' to the file before parsing it.
-parseDatalogFile :: Bool -> FilePath -> IO DatalogProgram
-parseDatalogFile insert_preamble fname = do
-    fdata <- readFile fname
-    parseDatalogString insert_preamble fdata fname
 
 -- parse a string containing a datalog program and produce the intermediate representation
-parseDatalogString :: Bool -> String -> String -> IO DatalogProgram
-parseDatalogString insert_preamble program file = do
-  preamble <- if insert_preamble
-                 then parseDatalogString False datalogPreamble "Preamble"
-                 else return emptyDatalogProgram
-
-  case parse (datalogGrammar preamble) file program of
-         Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-         Right prog -> return prog
+parseDatalogString :: String -> String -> IO DatalogProgram
+parseDatalogString program file = do
+  case parse datalogGrammar file program of
+       Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
+       Right prog -> return prog
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
@@ -74,7 +63,8 @@ rustKeywords = ["type"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
-reservedNames = ["_",
+reservedNames = ["as",
+                 "_",
                  "Aggregate",
                  "FlatMap",
                  "and",
@@ -87,6 +77,7 @@ reservedNames = ["_",
                  "for",
                  "function",
                  "if",
+                 "import",
                  "in",
                  "input",
                  "insert",
@@ -147,83 +138,104 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-consIdent    = ucIdentifier
-relIdent     = ucIdentifier
-varIdent     = lcIdentifier
-typevarIdent = ucIdentifier
-funcIdent    = lcIdentifier
+varIdent     = lcIdentifier <?> "vairable name"
+typevarIdent = ucIdentifier <?> "type variable name"
+modIdent     = identifier   <?> "module name"
+
+consIdent    = ucScopedIdentifier <?> "constructor name"
+relIdent     = ucScopedIdentifier <?> "relation name"
+funcIdent    = lcScopedIdentifier <?> "function name"
+typeIdent    = scopedIdentifier   <?> "type name"
+
+scopedIdentifier = do
+    (intercalate ".") <$> identifier `sepBy1` char '.'
+
+ucScopedIdentifier = do
+    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    if isUpper $ head $ last path
+       then scopedIdentifier
+       else unexpected (last path)
+
+lcScopedIdentifier = do
+    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    if isLower (head $ last path) || head (last path) == '_'
+       then scopedIdentifier
+       else unexpected (last path)
 
 removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-data SpecItem = SpType      TypeDef
+data SpecItem = SpImport    Import
+              | SpType      TypeDef
               | SpRelation  Relation
               | SpRule      Rule
               | SpFunc      Function
-              | SpStatement Statement
 
 instance WithPos SpecItem where
     pos   (SpType         t)   = pos t
     pos   (SpRelation     r)   = pos r
     pos   (SpRule         r)   = pos r
     pos   (SpFunc         f)   = pos f
-    pos   (SpStatement    s)   = pos s
+    pos   (SpImport       i)   = pos i
     atPos (SpType         t) p = SpType      $ atPos t p
     atPos (SpRelation     r) p = SpRelation  $ atPos r p
     atPos (SpRule         r) p = SpRule      $ atPos r p
     atPos (SpFunc         f) p = SpFunc      $ atPos f p
-    atPos (SpStatement    s) p = SpStatement $ atPos s p
+    atPos (SpImport       i) p = SpImport    $ atPos i p
 
 
-datalogGrammar preamble = removeTabs *> ((optional whiteSpace) *> spec preamble <* eof)
+datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
 exprGrammar = removeTabs *> ((optional whiteSpace) *> expr <* eof)
 
-spec preamble = do
+spec = do
     items <- concat <$> many decl
-
-    let relations = (M.toList $ progRelations preamble) ++
-                    mapMaybe (\i -> case i of
-                                         SpRelation r -> Just (name r, r)
-                                         _            -> Nothing) items
-    let types = (M.toList $ progTypedefs preamble) ++
-                mapMaybe (\i -> case i of
-                                     SpType t         -> Just (name t, t)
-                                     _        -> Nothing) items
-    let funcs = (M.toList $ progFunctions preamble) ++
-                mapMaybe (\i -> case i of
-                                     SpFunc f -> Just (name f, f)
-                                     _        -> Nothing) items
-    let rules = mapMaybe (\i -> case i of
-                                     SpRule r -> Just r
-                                     _        -> Nothing) items
-    let statements = mapMaybe (\i -> case i of
-                                     SpStatement r -> Just r
-                                     _             -> Nothing) items
+    let imports = mapMaybe (\case
+                             SpImport i -> Just i
+                             _          -> Nothing) items
+    let relations = mapMaybe (\case
+                               SpRelation r -> Just (name r, r)
+                               _            -> Nothing) items
+    let types = mapMaybe (\case
+                           SpType t -> Just (name t, t)
+                           _        -> Nothing) items
+    let funcs = mapMaybe (\case
+                           SpFunc f -> Just (name f, f)
+                           _        -> Nothing) items
+    let rules = mapMaybe (\case
+                           SpRule r -> Just r
+                           _        -> Nothing) items
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
                  uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
-                 return $ DatalogProgram { progTypedefs   = M.fromList types
+                 --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
+                 uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
+                 return $ DatalogProgram { progImports    = imports
+                                         , progTypedefs   = M.fromList types
                                          , progFunctions  = M.fromList funcs
                                          , progRelations  = M.fromList relations
-                                         , progRules      = progRules preamble ++ rules
-                                         , progStatements = progStatements preamble ++ statements}
+                                         , progRules      = rules }
     case res of
          Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
 
-decl = withPosMany $
-        (return . SpType)      <$> typeDef
-    <|> relation
-    <|> (return . SpFunc)      <$> func
-    <|> (return . SpRule)      <$> rule
-    <|> (return . SpStatement) <$> parseForStatement
+decl = (withPosMany $
+             (return . SpImport)         <$> imprt
+         <|> (return . SpType)           <$> typeDef
+         <|> relation
+         <|> (return . SpFunc)           <$> func
+         <|> (return . SpRule)           <$> rule)
+   <|> (map SpRule . convertStatement) <$> parseForStatement
 
-typeDef = (TypeDef nopos) <$ reserved "typedef" <*> identifier <*>
+imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
+
+modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
+
+typeDef = (TypeDef nopos) <$ reserved "typedef" <*> typeIdent <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                              (Just <$ reservedOp "=" <*> typeSpec)
        <|>
-          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> identifier <*>
+          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> typeIdent <*>
                              (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                              (return Nothing)
 
@@ -257,7 +269,8 @@ relation = do
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
-parseForStatement = ForStatement nopos <$ reserved "for"
+parseForStatement = withPos $
+                    ForStatement nopos <$ reserved "for"
                                        <*> (symbol "(" *> expr)
                                        <*> (reserved "in" *> relIdent)
                                        <*> (optionMaybe (reserved "if" *> expr))
@@ -271,7 +284,7 @@ statement = parseForStatement
         <|> parseInsertStatement
         <|> parseBlockStatement
 
-parseAssignment = withPos $ (Assignment nopos) <$> identifier
+parseAssignment = withPos $ (Assignment nopos) <$> varIdent
                                                <*> (optionMaybe etype)
                                                <*> (reserved "=" *> expr)
 
@@ -340,7 +353,7 @@ bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decima
 intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
-userType   = TUser   nopos <$> identifier <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
+userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
 typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
     where isstruct = try $ lookAhead $ consIdent *> (symbol "{" <|> symbol "|")
