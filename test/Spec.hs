@@ -97,8 +97,8 @@ ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
         [ goldenVsFiles "ovn_ovsdb" 
-          ["test/ovn/ovn_nb.dl.expected", "test/ovn/ovn_sb.dl.expected", "test/ovn/ovn.dump.expected"] 
-          ["test/ovn/ovn_nb.dl", "test/ovn/ovn_sb.dl", "test/ovn/ovn.dump"]
+          ["./test/ovn/ovn_nb.dl.expected", "./test/ovn/ovn_sb.dl.expected", "./test/ovn/ovn.dump.expected"] 
+          ["./test/ovn/ovn_nb.dl", "./test/ovn/ovn_sb.dl", "./test/ovn/ovn.dump"]
           $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl"}]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
@@ -298,8 +298,8 @@ goldenVsFiles name ref new act =
              cmp upd
   where
   cmp [] [] = return Nothing
-  cmp xs ys = return $ liftM (intercalate "\n") $ sequence $
-              map (\((x,r),(y,n)) ->
+  cmp xs ys = return $ (\errs -> if null errs then Nothing else Just (intercalate "\n" errs)) $
+              mapMaybe (\((x,r),(y,n)) ->
                     if x == y
                        then Nothing
                        else Just $ printf "Files '%s' and '%s' differ" r n)
