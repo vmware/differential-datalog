@@ -795,6 +795,11 @@ mkVarsTupleValue d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
     return $ constructor <> (parens $ tuple $ map ((<> ".clone()") . pp . name) vs)
 
+mkVarsTuple :: DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTuple d vs = do
+    constructor <- mkValConstructorName d $ tTuple $ map typ vs
+    return $ constructor <> (parens $ tuple $ map (pp . name) vs)
+
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
@@ -980,8 +985,7 @@ mkNode (SCCNode rels)    =
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (Arrangement pattern) = do
-    let (pat, cond) = mkPatExpr d "ref" pattern
-        cond' = if cond == empty then empty else ("if" <+> cond)
+    let (pat, cond) = mkPatExpr d empty pattern
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
     let getvars :: Type -> Expr -> [Field]
@@ -995,13 +999,14 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars t (E ETyped{..})  = getvars t exprExpr
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
-    patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
+    patvars <- mkVarsTuple d $ getvars (relType rel) pattern
     constructor <- mkValConstructorName d $ relType rel
+    let res = "Some((" <> patvars <> ", __cloned))"
     let afun = braces' $
-               "match" <+> vALUE_VAR <+> "{"                                                                                  $$
-               (nest' $ constructor <> parens pat <+> cond' <+> "=> Some((" <> patvars <> "," <+> vALUE_VAR <> ".clone())),") $$
-               "    _ => None"                                                                                                $$
-               "}"
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                  $$
+               "if let" <+> constructor <> parens pat <+> "=" <+> vALUE_VAR <+> "{"                           $$
+               (nest' $ if cond == empty then res else ("if" <+> cond <+> "{" <+> res <+> "} else { None }")) $$
+               "} else { None }"
     return $
         "Arrangement{"                                                                                      $$
         "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
