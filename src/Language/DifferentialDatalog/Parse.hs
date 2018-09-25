@@ -469,6 +469,13 @@ eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
                                                    v <- sradval
                                                    mkLit w v)
 
+-- strip underscores
+stripUnder :: String -> String
+stripUnder = filter (/= '_')
+
+digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
+digitPrefix digit = (:) <$> digit <*> (many (digit <|> char '_'))
+
 eite    = eITE     <$ reserved "if" <*> term <*> term <*> (reserved "else" *> term)
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
@@ -480,16 +487,16 @@ sradval =  ((try $ string "'b") *> parseBin)
        <|> ((try $ string "'h") *> parseHex)
        <|> parseDec
 parseBin :: Stream s m Char => ParsecT s u m Integer
-parseBin = readBin <$> (many1 $ (char '0') <|> (char '1'))
+parseBin = readBin . stripUnder <$> (digitPrefix $ (char '0') <|> (char '1'))
 parseOct :: Stream s m Char => ParsecT s u m Integer
-parseOct = (fst . head . readOct) <$> many1 octDigit
+parseOct = (fst . head . readOct . stripUnder) <$> digitPrefix octDigit
 parseDec :: Stream s m Char => ParsecT s u m Integer
-parseDec = (fst . head . readDec) <$> many1 digit
+parseDec = (fst . head . readDec . stripUnder) <$> digitPrefix digit
 --parseSDec = (\m v -> m * v)
 --            <$> (option 1 ((-1) <$ reservedOp "-"))
 --            <*> ((fst . head . readDec) <$> many1 digit)
 parseHex :: Stream s m Char => ParsecT s u m Integer
-parseHex = (fst . head . readHex) <$> many1 hexDigit
+parseHex = (fst . head . readHex . stripUnder) <$> digitPrefix hexDigit
 
 mkLit :: Maybe Int -> Integer -> ParsecT s u m Expr
 mkLit Nothing  v                       = return $ eInt v
