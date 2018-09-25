@@ -77,8 +77,8 @@ outputs.
 | `echo <text>;`         | echo Hello world;                 | copies arbitrary text to stdout                      |
 | `insert <record>;`     | insert Rel1(1,true,"foo");        | inserts record to relation Rel1                      |
 | `delete <record>;`     | delete Rel1(1,true,"foo");        | deletes record to relation Rel1                      |
-| comma-separated updates| insert Foo(1), delete Bar("buzz");| a sequence of insert and delete commands can be applied on one update|
-| `exit`                 |                                   | terminates execution                                 |
+| comma-separated updates| insert Foo(1), delete Bar("buzz");| a sequence of insert and delete commands can be applied in one update|
+| `exit;`                |                                   | terminates execution                                 |
 
 ### Example workload `path.dat`
 
