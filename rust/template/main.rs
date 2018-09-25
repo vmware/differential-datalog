@@ -56,17 +56,19 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
 }
 
 fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
-    let resp = match cmd {
+    let resp = (
+        if !is_upd_cmd(&cmd) {
+            apply_updates(p, upds)
+        } else {
+            Ok(())
+        }).and(match cmd {
         Command::Start => {
-            upds.clear();
             p.transaction_start()
         },
         Command::Commit => {
-            upds.clear();
             p.transaction_commit()
         },
         Command::Rollback => {
-            upds.clear();
             p.transaction_rollback()
         },
         Command::Timestamp => {
@@ -110,16 +112,29 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
                 }
             };
             if last {
-                let copy = upds.drain(..).collect();
-                p.apply_updates(copy)
+                apply_updates(p, upds)
             } else {
                 Ok(())
             }
         }
-    };
+    });
     match resp {
         Ok(_)  => true,
         Err(e) => {eprintln!("Error: {}", e); false}
+    }
+}
+
+fn apply_updates(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>) -> Response<()> {
+    let copy: Vec<Update<Value>> = upds.drain(..).collect();
+    if copy.len() != 0 {
+        p.apply_updates(copy)
+    } else { Ok(()) }
+}
+
+fn is_upd_cmd(c: &Command) -> bool {
+    match c {
+        Command::Update(_,_) => true,
+        _                    => false
     }
 }
 
