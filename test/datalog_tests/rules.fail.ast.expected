@@ -6,6 +6,23 @@ expecting letter or digit, "_", ".", "(" or "["
   ./test/datalog_tests/rules.fail.dl:5:1-7:1
   ./test/datalog_tests/rules.fail.dl:7:1-9:1
 
-error: ./test/datalog_tests/rules.fail.dl:12:1-13:1: At most one relation in the right-hand side of a rule can be mutually recursive with its head. The following RHS literals are mutually recursive with R2: R3(.a3=x, .b3=y), R4(.a4=y, .b4=z)
+typedef R1 = R1{a1: string}
+typedef R2 = R2{a2: string}
+typedef R3 = R3{a3: string, b3: string}
+typedef R4 = R4{a4: string, b4: string}
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern function std.__builtin_2string (x: 'X): string
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
+input relation R1 [R1]
+relation R2 [R2]
+relation R3 [R3]
+relation R4 [R4]
+R2(.a2=x) :- R1(.a1=x).
+R2(.a2=x) :- R3(.a3=x, .b3=y), R4(.a4=y, .b4=z).
+R3(.a3=x, .b3=y),
+R4(.a4=x, .b4=y) :- R2(.a2=x), R2(.a2=y).
 
 error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule
