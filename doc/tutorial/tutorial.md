@@ -703,9 +703,11 @@ SanitizedEndpoint(endpoint) :-
 
 #### Sets and FlatMap
 
-DDlog supports teo built-in container data types: `Vec`, `Set`.
-`Vec` and `Set` are *generic* types that can be parameterized
-by any other DDlog type, e.g., `Vec<string>` is a vector of strings.
+DDlog supports two built-in container data types: `Vec`, `Set`.  `Vec`
+and `Set` are *generic* types that can be parameterized by any other
+DDlog type, e.g., `Vec<string>` is a vector of strings.  These types
+do not have constructors in DDlog, so objects with these types can
+only be created by external functions.
 
 Let us assume that we have an extern function that splits a string
 into a list of substrings according to a separator:
@@ -1267,4 +1269,3 @@ declarations to the program to pre-populate `Word1` and `Word2` relations:
 Word1("Hello,", CategoryOther).
 Word2("world!", CategoryOther).
 ```
-
