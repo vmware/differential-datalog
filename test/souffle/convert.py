@@ -29,7 +29,9 @@ class Files(object):
         self.output("typedef symbol = string")
         self.output("function cat(s: string, t: string): string = s ++ t")
         self.outputDataFile = open(outputDataName, 'w')
-        self.outputData("start")
+        self.outputData("echo Reading data", ";")
+        self.outputData("timestamp", ";")
+        self.outputData("start", ";")
         print "Reading from", inputName, "writing output to", outputName, "writing data to", outputDataName
 
     def log(self, text):
@@ -38,13 +40,17 @@ class Files(object):
     def output(self, text):
         self.outFile.write(text + "\n")
 
-    def outputData(self, text):
-        self.outputDataFile.write(text + ";\n")
+    def outputData(self, text, terminator):
+        self.outputDataFile.write(text + terminator + "\n")
 
     def done(self):
-        self.outputData("echo Finished adding data")
-        self.outputData("commit")
-        self.outputData("echo done")
+        self.outputData("echo Finished adding data, committing", ";")
+        self.outputData("timestamp", ";")
+        self.outputData("commit", ";")
+        self.outputData("timestamp", ";")
+        self.outputData("profile", ";")
+        self.outputData("echo done", ";")
+        self.outputData("exit", ";")
         self.logFile.close()
         self.inputFile.close()
         self.outFile.close()
@@ -108,20 +114,21 @@ def process_input(inputdecl, files, preprocess):
     else:
         raise Exception("Cannot find file " + filename)
 
-    counter = 0
-    global total
+    #counter = 0
+    #global total
     for line in data:
         fields = line.rstrip('\n').split(separator)
         fields = map(lambda a: json.dumps(a), fields)
-        files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")")
-        counter = counter + 1
-        total = total + 1
-        if counter == 1000:
-            files.outputData("commit")
-            files.outputData("profile")
-            files.outputData("echo total: " + str(total))
-            files.outputData("start")
-            counter = 0
+        files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")", ",")
+        #counter = counter + 1
+        #total = total + 1
+        #if counter == 1000:
+            #files.outputData("commit")
+            #files.outputData("profile")
+            #files.outputData("echo total: " + str(total))
+            #files.outputData("start")
+        #    counter = 0
+
     data.close()
 
 def process_namespace(namespace, files, preprocess):
