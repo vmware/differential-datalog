@@ -6,3 +6,5 @@ insert ovn_nb.NB_Global(0, 1, 2, 3, types.Some{0x2cde1d4c89df430a9694714eb059969
 commit;
 
 dump;
+
+exit;

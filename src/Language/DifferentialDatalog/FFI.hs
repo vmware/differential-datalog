@@ -213,7 +213,7 @@ mkCValue d = (rust, hdr)
         case t of
              TBool{}        -> n
              TInt{}         -> borrown <> ".clone()"
-             TString{}      -> "unsafe { CStr::from_ptr(" <> n <> ")}.to_str().unwrap().to_string()"
+             TString{}      -> "arcval::DDString::from(String::from(unsafe { CStr::from_ptr(" <> n <> ")}.to_str().unwrap()))"
              TBit{..}       | typeWidth <= 8  -> n <+> "as u8"
                             | typeWidth <= 16 -> n <+> "as u16"
                             | typeWidth <= 32 -> n <+> "as u32"
@@ -395,7 +395,7 @@ mkStruct d t c_struct_name ffi_struct_name [Constructor _ cname cfields] = (rust
         case typeNormalize d f of
              TBool{}        -> n
              TInt{}         -> borrown <> ".clone()"
-             TString{}      -> "unsafe { CStr::from_ptr(" <> n <> ")}.to_str().unwrap().to_string()"
+             TString{}      -> "arcval::DDString::from(String::from(unsafe { CStr::from_ptr(" <> n <> ")}.to_str().unwrap()))"
              TBit{..}       | typeWidth <= 8  -> n <+> "as u8"
                             | typeWidth <= 16 -> n <+> "as u16"
                             | typeWidth <= 32 -> n <+> "as u32"

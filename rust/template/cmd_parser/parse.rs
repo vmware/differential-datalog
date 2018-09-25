@@ -1,6 +1,7 @@
 //! nom-based parser for Datalog values.
 
 use num::bigint::*;
+use num::Num;
 use nom::*;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -230,15 +231,21 @@ named!(int_val<&[u8], Record>,
 
 named!(hex_val<&[u8], BigInt>,
     do_parse!(tag_no_case!("0x") >>
-              bs: take_while1!(is_hex_digit) >>
+              bs1: take_while1!(|x|is_hex_digit(x)) >>
+              bs2: take_while!(|x|is_hex_digit(x) || x == '_' as u8) >>
               spaces >>
-              (BigInt::parse_bytes(bs, 16).unwrap()))
+              ({let mut bs = bs1.to_vec();
+                bs.extend_from_slice(bs2);
+                BigInt::parse_bytes(bs.as_slice(), 16).unwrap()}))
 );
 
 named!(dec_val<&[u8], BigInt>,
-    do_parse!(bs: take_while1!(is_digit) >>
+    do_parse!(bs1: take_while1!(|x| is_digit(x)) >>
+              bs2: take_while!(|x| is_digit(x) || x == '_' as u8) >>
               spaces >>
-              (BigInt::parse_bytes(bs, 10).unwrap()))
+              ({let mut bs = bs1.to_vec();
+                bs.extend_from_slice(bs2);
+                BigInt::parse_bytes(bs.as_slice(), 10).unwrap()}))
 );
 
 #[test]
@@ -249,6 +256,10 @@ fn test_int() {
     assert_eq!(hex_val(br"0xabcd "), Ok((&br""[..], 0xabcd.to_bigint().unwrap())));
     assert_eq!(int_val(br"0xabcd "), Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
     assert_eq!(record(br"0xabcd ") , Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
+    assert_eq!(record(br"0xc3226515_018c_48e6_957d_afee358a8a10 ")
+                                   , Ok((&br""[..], Record::Int(BigInt::from_str_radix("c3226515018c48e6957dafee358a8a10",16).unwrap()))));
+    assert_eq!(record(br"1_000_000_ ")
+                                   , Ok((&br""[..], Record::Int( 1000000.to_bigint().unwrap() ))));
 }
 
 named_args!(constructor_args(constructor: String)<Record>,
