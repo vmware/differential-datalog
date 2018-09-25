@@ -1,3 +1,5 @@
+// Grammar for parsing Souffle Datalog written in the syntax of the Python Parglare parser generator.
+
 Program: DeclarationList EOF
        ;
 

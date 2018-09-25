@@ -99,26 +99,3 @@ impl<T: Val+FromRecord> FromRecord for ArcVal<T> {
         T::from_record(val).map(|x|Self::from(x))
     }
 }
-
-/*
-impl Uint {
-    pub fn from_biguint(v: BigUint) -> Uint {
-        Uint{x: v}
-    }
-    pub fn from_bigint(v: BigInt) -> Uint {
-        Uint{x: v.to_biguint().unwrap()}
-    }
-    pub fn from_u64(v: u64) -> Uint {
-        Uint{x: BigUint::from(v)}
-    }
-    pub fn from_u128(v: u128) -> Uint {
-        Uint{x: BigUint::from(v)}
-    }
-    pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
-        Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
-    }
-}
-*/
-
-
-

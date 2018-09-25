@@ -144,24 +144,6 @@ impl<T:Val+ToFFI> ToFFI for arcval::ArcVal<T> {
     }
 }
 
-/*
-impl ToFFI for ArcString {
-    type FFIType = *mut c_char;
-
-    fn to_ffi(&self) -> Self::FFIType {
-        CString::new(self.string().clone()).unwrap().into_raw()
-    }
-
-    fn free(x: &mut Self::FFIType) {
-        unsafe { CString::from_raw(*x); }
-    }
-
-    fn c_code(&self) -> String {
-        format!("{:?}", *self.string())
-    }
-}
-*/
-
 impl ToFFI for Uint {
     type FFIType = *mut Uint;
 
