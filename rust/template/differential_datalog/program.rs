@@ -376,8 +376,11 @@ impl<V:Val> Program<V>
                                     for rule in &r.rules {
                                         collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
                                     };
-                                    collection = with_prof_context(&r.name,
-                                                                   ||collection.distinct_total());
+                                    /* don't distinct input collections, as this is already done by the set_update logic */
+                                    if !r.input {
+                                        collection = with_prof_context(&r.name,
+                                                                       ||collection.distinct_total());
+                                    }
                                     /* create arrangements */
                                     for (i,arr) in r.arrangements.iter().enumerate() {
                                         with_prof_context(&arr.name,
