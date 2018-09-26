@@ -1,10 +1,5037 @@
 start;
-
-insert ovn_nb.NB_Global(0, 1, 2, 3, types.None);
-insert ovn_nb.NB_Global(0, 1, 2, 3, types.Some{0x2cde1d4c89df430a9694714eb059969a});
-
 commit;
 
-dump;
+start;
+insert OVN_Southbound.SB_Global(
+    ._uuid = 0xee4f7e10_1f31_4182_b7d5_0a3d797c0f6e,
+    .nb_cfg = 0,
+    .ssl = types.None);
+commit;
 
-exit;
+start;
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xc43aae7d_88b2_4c56_821e_3b6c324382b2,
+    .code = 58,
+    .name = "T1",
+    .type = "uint32");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x48e1d188_4bff_4aac_bcce_caefa7138b64,
+    .code = 19,
+    .name = "ip_forward_enable",
+    .type = "bool");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x4670f23d_7450_4eb8_9b91_e6c76d665709,
+    .code = 54,
+    .name = "server_id",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x9f718dbc_8a77_41da_880a_baf2976a8834,
+    .code = 6,
+    .name = "dns_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x097731f8_a251_4edf_90b7_459f74a1cf8c,
+    .code = 252,
+    .name = "wpad",
+    .type = "str");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x1f1f8339_4e59_4dd5_b214_676da51a17a8,
+    .code = 23,
+    .name = "default_ttl",
+    .type = "uint8");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x642939ce_4958_4e84_be8d_ad78550b7f30,
+    .code = 32,
+    .name = "router_solicitation",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x249cf56f_95e5_4ea6_a909_c827b4cda6a9,
+    .code = 249,
+    .name = "ms_classless_static_route",
+    .type = "static_routes");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x08e389c9_52a8_4c30_b941_6e71b02bb971,
+    .code = 31,
+    .name = "router_discovery",
+    .type = "bool");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x49ccf837_a47d_4d16_bfa4_070d41165dc7,
+    .code = 7,
+    .name = "log_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xb0f46be1_4c68_4ee2_b9ef_8596f878de0d,
+    .code = 42,
+    .name = "ntp_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xc3c2094c_c0cd_485e_b8c2_c033415c39e9,
+    .code = 21,
+    .name = "policy_filter",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x9bc18b03_d0e4_4d36_9f77_4cc5b0b987bf,
+    .code = 16,
+    .name = "swap_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x6e182db0_8060_4ecd_93b1_6f82dd1cdf46,
+    .code = 3,
+    .name = "router",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xd4ff97bf_0312_4f4b_97bf_c5db20b790dc,
+    .code = 1,
+    .name = "netmask",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x72532e2d_4a6e_4bed_a674_61512652b0ef,
+    .code = 0,
+    .name = "offerip",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xf7d715e9_a8d0_4915_8815_c8359cd7ea20,
+    .code = 66,
+    .name = "tftp_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x287a0b9b_43f1_4900_b4b8_9f3355466219,
+    .code = 59,
+    .name = "T2",
+    .type = "uint32");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x54a62d49_de90_43c1_ab4f_507b3cd875bc,
+    .code = 37,
+    .name = "tcp_ttl",
+    .type = "uint8");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x71147993_58e0_408d_a132_5f4fe17da241,
+    .code = 41,
+    .name = "nis_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x7de014e4_6c00_42aa_ab38_fcc74f137c30,
+    .code = 9,
+    .name = "lpr_server",
+    .type = "ipv4");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0xbb298924_1a1e_49a4_8d50_ac0ecdeafaa8,
+    .code = 51,
+    .name = "lease_time",
+    .type = "uint32");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x4f85a03d_a465_479a_ae56_02cc013bc655,
+    .code = 36,
+    .name = "ethernet_encap",
+    .type = "bool");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x1648d96a_b191_4d36_a1d1_5a4205aeb8b8,
+    .code = 26,
+    .name = "mtu",
+    .type = "uint16");
+insert OVN_Southbound.DHCP_Options(
+    ._uuid = 0x2fd386a7_b010_40db_a6cb_d7d97decf06a,
+    .code = 121,
+    .name = "classless_static_route",
+    .type = "static_routes");
+insert OVN_Southbound.DHCPv6_Options(
+    ._uuid = 0xb44ac662_41e4_49c1_bda6_d95f5fde26ec,
+    .code = 2,
+    .name = "server_id",
+    .type = "mac");
+insert OVN_Southbound.DHCPv6_Options(
+    ._uuid = 0x6ccb1afd_6538_41dd_aa7c_e9e9b5d63888,
+    .code = 23,
+    .name = "dns_server",
+    .type = "ipv6");
+insert OVN_Southbound.DHCPv6_Options(
+    ._uuid = 0xac8673fd_60d7_45f7_9aac_5d12d4ca0360,
+    .code = 24,
+    .name = "domain_search",
+    .type = "str");
+insert OVN_Southbound.DHCPv6_Options(
+    ._uuid = 0x0d7d92b3_5955_4a54_98bb_e8647b15ada1,
+    .code = 5,
+    .name = "ia_addr",
+    .type = "ipv6");
+insert OVN_Southbound.RBAC_Permission(
+    ._uuid = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0,
+    .insert_delete = true,
+    .table = "Encap");
+insert OVN_Southbound.RBAC_Permission_authorization(
+    ._uuid = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0,
+    .key = "chassis_name");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0,
+    .key = "ip");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0,
+    .key = "options");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0,
+    .key = "type");
+insert OVN_Southbound.RBAC_Permission(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .insert_delete = true,
+    .table = "Chassis");
+insert OVN_Southbound.RBAC_Permission_authorization(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .key = "name");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .key = "encaps");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .key = "external_ids");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .key = "nb_cfg");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7,
+    .key = "vtep_logical_switches");
+insert OVN_Southbound.RBAC_Permission(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .insert_delete = true,
+    .table = "MAC_Binding");
+insert OVN_Southbound.RBAC_Permission_authorization(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .key = "");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .key = "datapath");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .key = "ip");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .key = "logical_port");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x2d969cfc_820a_483d_acc5_fc5205744062,
+    .key = "mac");
+insert OVN_Southbound.RBAC_Permission(
+    ._uuid = 0x97a6d35f_af51_4ea6_82e6_aa105ccf0a00,
+    .insert_delete = false,
+    .table = "Port_Binding");
+insert OVN_Southbound.RBAC_Permission_authorization(
+    ._uuid = 0x97a6d35f_af51_4ea6_82e6_aa105ccf0a00,
+    .key = "");
+insert OVN_Southbound.RBAC_Permission_update(
+    ._uuid = 0x97a6d35f_af51_4ea6_82e6_aa105ccf0a00,
+    .key = "chassis");
+insert OVN_Southbound.RBAC_Role(
+    ._uuid = 0x4674ae90_93be_4943_8634_cde4a29c8887,
+    .name = "ovn-controller");
+insert OVN_Southbound.RBAC_Role_permissions(
+    ._uuid = 0x4674ae90_93be_4943_8634_cde4a29c8887,
+    .key = "Chassis",
+    .value = 0x9d2e9517_43fc_4264_a250_bc79a612d0c7);
+insert OVN_Southbound.RBAC_Role_permissions(
+    ._uuid = 0x4674ae90_93be_4943_8634_cde4a29c8887,
+    .key = "Encap",
+    .value = 0xa7be02c6_d5b1_42c7_840b_a1c60e5d05b0);
+insert OVN_Southbound.RBAC_Role_permissions(
+    ._uuid = 0x4674ae90_93be_4943_8634_cde4a29c8887,
+    .key = "MAC_Binding",
+    .value = 0x2d969cfc_820a_483d_acc5_fc5205744062);
+insert OVN_Southbound.RBAC_Role_permissions(
+    ._uuid = 0x4674ae90_93be_4943_8634_cde4a29c8887,
+    .key = "Port_Binding",
+    .value = 0x97a6d35f_af51_4ea6_82e6_aa105ccf0a00);
+commit;
+
+start;
+insert OVN_Southbound.Datapath_Binding(
+    ._uuid = 0x33805423_1aba_41fc_8013_948733e05994,
+    .tunnel_key = 1);
+insert OVN_Southbound.Datapath_Binding_external_ids(
+    ._uuid = 0x33805423_1aba_41fc_8013_948733e05994,
+    .key = "logical-switch",
+    .value = "06a2cf7c-7ea1-4ca2-a0a2-6176fd1c6d95");
+insert OVN_Southbound.Datapath_Binding_external_ids(
+    ._uuid = 0x33805423_1aba_41fc_8013_948733e05994,
+    .key = "name",
+    .value = "lsw0");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe35053b2_af6a_4583_be70_e3c56fe9c1f2,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe35053b2_af6a_4583_be70_e3c56fe9c1f2,
+    .key = "source",
+    .value = "ovn-northd.c:3255");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe35053b2_af6a_4583_be70_e3c56fe9c1f2,
+    .key = "stage-name",
+    .value = "ls_out_pre_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xfd578d8f_07d2_4a4b_a2cb_f287faa3adc5,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 6);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfd578d8f_07d2_4a4b_a2cb_f287faa3adc5,
+    .key = "source",
+    .value = "ovn-northd.c:3661");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfd578d8f_07d2_4a4b_a2cb_f287faa3adc5,
+    .key = "stage-name",
+    .value = "ls_in_acl");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x633f75b9_c01a_4ced_8f2a_8af023f5d85d,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 8);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x633f75b9_c01a_4ced_8f2a_8af023f5d85d,
+    .key = "source",
+    .value = "ovn-northd.c:3835");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x633f75b9_c01a_4ced_8f2a_8af023f5d85d,
+    .key = "stage-name",
+    .value = "ls_in_qos_meter");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x79b17da9_06e4_4d10_858a_5a6b0cd1209f,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 12);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x79b17da9_06e4_4d10_858a_5a6b0cd1209f,
+    .key = "source",
+    .value = "ovn-northd.c:4353");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x79b17da9_06e4_4d10_858a_5a6b0cd1209f,
+    .key = "stage-name",
+    .value = "ls_in_dhcp_options");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x4f32b3c7_0e15_467d_8335_228753857365,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 13);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4f32b3c7_0e15_467d_8335_228753857365,
+    .key = "source",
+    .value = "ovn-northd.c:4354");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4f32b3c7_0e15_467d_8335_228753857365,
+    .key = "stage-name",
+    .value = "ls_in_dhcp_response");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x14e6a3d6_e04d_4826_91b2_75c791b66bab,
+    .actions = "outport = \"_MC_flood\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.mcast",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x14e6a3d6_e04d_4826_91b2_75c791b66bab,
+    .key = "source",
+    .value = "ovn-northd.c:4376");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x14e6a3d6_e04d_4826_91b2_75c791b66bab,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x5888ff35_872b_4edc_b0ae_486826338fa6,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5888ff35_872b_4edc_b0ae_486826338fa6,
+    .key = "source",
+    .value = "ovn-northd.c:4206");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5888ff35_872b_4edc_b0ae_486826338fa6,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe27b4451_54f8_476c_91d2_c5a92a0e27f3,
+    .actions = "ct_next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[0] == 1",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 5);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe27b4451_54f8_476c_91d2_c5a92a0e27f3,
+    .key = "source",
+    .value = "ovn-northd.c:3325");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe27b4451_54f8_476c_91d2_c5a92a0e27f3,
+    .key = "stage-name",
+    .value = "ls_in_pre_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe372a83d_8f8b_40a2_8b6d_cdc52651aaee,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe372a83d_8f8b_40a2_8b6d_cdc52651aaee,
+    .key = "source",
+    .value = "ovn-northd.c:3254");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe372a83d_8f8b_40a2_8b6d_cdc52651aaee,
+    .key = "stage-name",
+    .value = "ls_in_pre_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x62fa2eb7_25b8_4e1c_ae69_665bacc3e1da,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd || nd_rs || nd_ra",
+    .pipeline = "egress",
+    .priority = 110,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x62fa2eb7_25b8_4e1c_ae69_665bacc3e1da,
+    .key = "source",
+    .value = "ovn-northd.c:3251");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x62fa2eb7_25b8_4e1c_ae69_665bacc3e1da,
+    .key = "stage-name",
+    .value = "ls_out_pre_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x65707757_fcac_4dd5_a7cc_442973f15cf5,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 1);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x65707757_fcac_4dd5_a7cc_442973f15cf5,
+    .key = "source",
+    .value = "ovn-northd.c:3126");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x65707757_fcac_4dd5_a7cc_442973f15cf5,
+    .key = "stage-name",
+    .value = "ls_out_pre_acl");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x23317e32_08f6_4d80_a350_e9810e720b7e,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd || nd_rs || nd_ra",
+    .pipeline = "ingress",
+    .priority = 110,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23317e32_08f6_4d80_a350_e9810e720b7e,
+    .key = "source",
+    .value = "ovn-northd.c:3249");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23317e32_08f6_4d80_a350_e9810e720b7e,
+    .key = "stage-name",
+    .value = "ls_in_pre_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x42ae3c59_88f8_45ef_a3d0_4ecd2568e881,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 3);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x42ae3c59_88f8_45ef_a3d0_4ecd2568e881,
+    .key = "source",
+    .value = "ovn-northd.c:3896");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x42ae3c59_88f8_45ef_a3d0_4ecd2568e881,
+    .key = "stage-name",
+    .value = "ls_out_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb19f2b9e_500e_445c_a39c_8dc5146a02f7,
+    .actions = "ct_commit(ct_label=0/1); next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[1] == 1",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 10);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb19f2b9e_500e_445c_a39c_8dc5146a02f7,
+    .key = "source",
+    .value = "ovn-northd.c:3924");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb19f2b9e_500e_445c_a39c_8dc5146a02f7,
+    .key = "stage-name",
+    .value = "ls_in_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x1dfe9ee0_f06d_462b_88ae_fe6d11972649,
+    .actions = "ct_lb;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[2] == 1",
+    .pipeline = "egress",
+    .priority = 100,
+    .table_id = 7);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1dfe9ee0_f06d_462b_88ae_fe6d11972649,
+    .key = "source",
+    .value = "ovn-northd.c:3938");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1dfe9ee0_f06d_462b_88ae_fe6d11972649,
+    .key = "stage-name",
+    .value = "ls_out_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2a073728_1ff3_4a1d_8f8c_744e61f69bd0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2a073728_1ff3_4a1d_8f8c_744e61f69bd0,
+    .key = "source",
+    .value = "ovn-northd.c:3895");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2a073728_1ff3_4a1d_8f8c_744e61f69bd0,
+    .key = "stage-name",
+    .value = "ls_in_lb");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x1c66f747_dc32_46eb_b8e9_b5616a90a17b,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "vlan.present",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1c66f747_dc32_46eb_b8e9_b5616a90a17b,
+    .key = "source",
+    .value = "ovn-northd.c:4027");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1c66f747_dc32_46eb_b8e9_b5616a90a17b,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xfa99ab08_9e2a_4576_8918_27d6a0394b75,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 1);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfa99ab08_9e2a_4576_8918_27d6a0394b75,
+    .key = "source",
+    .value = "ovn-northd.c:4082");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfa99ab08_9e2a_4576_8918_27d6a0394b75,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_ip");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xa2794efa_8417_45d0_b433_2a0f10947d8d,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 5);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa2794efa_8417_45d0_b433_2a0f10947d8d,
+    .key = "source",
+    .value = "ovn-northd.c:3319");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa2794efa_8417_45d0_b433_2a0f10947d8d,
+    .key = "stage-name",
+    .value = "ls_in_pre_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x06c72c8c_c658_4c4b_98c4_5eeab33c46d7,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 6);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x06c72c8c_c658_4c4b_98c4_5eeab33c46d7,
+    .key = "source",
+    .value = "ovn-northd.c:3836");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x06c72c8c_c658_4c4b_98c4_5eeab33c46d7,
+    .key = "stage-name",
+    .value = "ls_out_qos_meter");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd932bd4f_9d1b_4450_bd5b_c1d38db17b5b,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 5);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd932bd4f_9d1b_4450_bd5b_c1d38db17b5b,
+    .key = "source",
+    .value = "ovn-northd.c:3834");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd932bd4f_9d1b_4450_bd5b_c1d38db17b5b,
+    .key = "stage-name",
+    .value = "ls_out_qos_mark");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb37e8dc6_0efc_410b_a506_f5df0fd334c8,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb37e8dc6_0efc_410b_a506_f5df0fd334c8,
+    .key = "source",
+    .value = "ovn-northd.c:3320");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb37e8dc6_0efc_410b_a506_f5df0fd334c8,
+    .key = "stage-name",
+    .value = "ls_out_pre_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe0411921_8bdd_4e7d_ada1_4e55094d145b,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.mcast",
+    .pipeline = "egress",
+    .priority = 100,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe0411921_8bdd_4e7d_ada1_4e55094d145b,
+    .key = "source",
+    .value = "ovn-northd.c:4501");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe0411921_8bdd_4e7d_ada1_4e55094d145b,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x220e42fa_8bea_419a_88a6_9fb081a4b572,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 14);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x220e42fa_8bea_419a_88a6_9fb081a4b572,
+    .key = "source",
+    .value = "ovn-northd.c:4355");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x220e42fa_8bea_419a_88a6_9fb081a4b572,
+    .key = "stage-name",
+    .value = "ls_in_dns_lookup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x4507e41a_b8d8_4864_abf1_97ef6f31c774,
+    .actions = "ct_lb;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[2] == 1",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 10);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4507e41a_b8d8_4864_abf1_97ef6f31c774,
+    .key = "source",
+    .value = "ovn-northd.c:3936");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4507e41a_b8d8_4864_abf1_97ef6f31c774,
+    .key = "stage-name",
+    .value = "ls_in_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xecd26190_7ea8_454b_b672_2603131bf2e0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 3);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xecd26190_7ea8_454b_b672_2603131bf2e0,
+    .key = "source",
+    .value = "ovn-northd.c:3125");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xecd26190_7ea8_454b_b672_2603131bf2e0,
+    .key = "stage-name",
+    .value = "ls_in_pre_acl");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xc1754b10_892d_487c_a4be_7aeae39abcbb,
+    .actions = "ct_next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[0] == 1",
+    .pipeline = "egress",
+    .priority = 100,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xc1754b10_892d_487c_a4be_7aeae39abcbb,
+    .key = "source",
+    .value = "ovn-northd.c:3327");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xc1754b10_892d_487c_a4be_7aeae39abcbb,
+    .key = "stage-name",
+    .value = "ls_out_pre_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x9844fdd7_204e_4e8e_8f9d_4b78be3c18a0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 15);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9844fdd7_204e_4e8e_8f9d_4b78be3c18a0,
+    .key = "source",
+    .value = "ovn-northd.c:4356");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9844fdd7_204e_4e8e_8f9d_4b78be3c18a0,
+    .key = "stage-name",
+    .value = "ls_in_dns_response");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xed36e601_7126_4f31_b4fe_bc62356fa52a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 7);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xed36e601_7126_4f31_b4fe_bc62356fa52a,
+    .key = "source",
+    .value = "ovn-northd.c:3917");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xed36e601_7126_4f31_b4fe_bc62356fa52a,
+    .key = "stage-name",
+    .value = "ls_out_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xfcbf6d72_92dc_40df_80e1_970f1cdfefc2,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfcbf6d72_92dc_40df_80e1_970f1cdfefc2,
+    .key = "source",
+    .value = "ovn-northd.c:4081");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfcbf6d72_92dc_40df_80e1_970f1cdfefc2,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb77d0495_8bb3_4941_a6f3_a7d76b2f4f9a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 10);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb77d0495_8bb3_4941_a6f3_a7d76b2f4f9a,
+    .key = "source",
+    .value = "ovn-northd.c:3916");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb77d0495_8bb3_4941_a6f3_a7d76b2f4f9a,
+    .key = "stage-name",
+    .value = "ls_in_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x801e7e3a_dd44_4cf5_9fc0_805909bf070c,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 8);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x801e7e3a_dd44_4cf5_9fc0_805909bf070c,
+    .key = "source",
+    .value = "ovn-northd.c:4499");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x801e7e3a_dd44_4cf5_9fc0_805909bf070c,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_ip");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xa7e95254_55af_4566_b39d_b009e6f921c2,
+    .actions = "ct_commit(ct_label=0/1); next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "reg0[1] == 1",
+    .pipeline = "egress",
+    .priority = 100,
+    .table_id = 7);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa7e95254_55af_4566_b39d_b009e6f921c2,
+    .key = "source",
+    .value = "ovn-northd.c:3926");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa7e95254_55af_4566_b39d_b009e6f921c2,
+    .key = "stage-name",
+    .value = "ls_out_stateful");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x0490e1bd_4d51_4da5_b267_36d142119771,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.src[40]",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x0490e1bd_4d51_4da5_b267_36d142119771,
+    .key = "source",
+    .value = "ovn-northd.c:4031");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x0490e1bd_4d51_4da5_b267_36d142119771,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xa56ac5e3_70c7_4658_a0e1_7b20bb02bb4f,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 7);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa56ac5e3_70c7_4658_a0e1_7b20bb02bb4f,
+    .key = "source",
+    .value = "ovn-northd.c:3833");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa56ac5e3_70c7_4658_a0e1_7b20bb02bb4f,
+    .key = "stage-name",
+    .value = "ls_in_qos_mark");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x656cc4b7_1dc2_4096_afc6_7152643bbdc0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "egress",
+    .priority = 0,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x656cc4b7_1dc2_4096_afc6_7152643bbdc0,
+    .key = "source",
+    .value = "ovn-northd.c:3662");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x656cc4b7_1dc2_4096_afc6_7152643bbdc0,
+    .key = "stage-name",
+    .value = "ls_out_acl");
+commit;
+
+start;
+insert OVN_Southbound.Chassis(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .hostname = "cocoon",
+    .name = "hv1",
+    .nb_cfg = 0);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49);
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "datapath-type",
+    .value = "");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+insert OVN_Southbound.Encap(
+    ._uuid = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d,
+    .chassis_name = "hv1",
+    .ip = "192.168.0.1",
+    .type = "geneve");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d,
+    .key = "csum",
+    .value = "true");
+insert OVN_Southbound.Encap(
+    ._uuid = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49,
+    .chassis_name = "hv1",
+    .ip = "192.168.0.1",
+    .type = "vxlan");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49,
+    .key = "csum",
+    .value = "true");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x44274cc8_14b1_45dc_9698_f72b578dd648,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp11\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x44274cc8_14b1_45dc_9698_f72b578dd648,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x44274cc8_14b1_45dc_9698_f72b578dd648,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x062b4a6b_5ae9_4af5_92ab_9b41bb3ed9aa,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp11\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x062b4a6b_5ae9_4af5_92ab_9b41bb3ed9aa,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x062b4a6b_5ae9_4af5_92ab_9b41bb3ed9aa,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Multicast_Group(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .name = "_MC_flood",
+    .tunnel_key = 65535);
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp11",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 1,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp11",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 1,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp11",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 1,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.11 && arp.op == 1 && inport == \"lp11\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x239afbc5_14db_49d8_8db4_ad61f31e5280,
+    .actions = "outport = \"_MC_unknown\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "1",
+    .pipeline = "ingress",
+    .priority = 0,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x239afbc5_14db_49d8_8db4_ad61f31e5280,
+    .key = "source",
+    .value = "ovn-northd.c:4487");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x239afbc5_14db_49d8_8db4_ad61f31e5280,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x53b160d9_7069_4e1d_8797_5d389f2e150c,
+    .actions = "outport = \"lp11\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:11",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x53b160d9_7069_4e1d_8797_5d389f2e150c,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x53b160d9_7069_4e1d_8797_5d389f2e150c,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:11; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:11; arp.tpa = arp.spa; arp.spa = 192.168.0.11; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.11 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Multicast_Group(
+    ._uuid = 0x335da571_d1be_40cd_b1b9_7ba7e37a529c,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .name = "_MC_unknown",
+    .tunnel_key = 65534);
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x335da571_d1be_40cd_b1b9_7ba7e37a529c,
+    .key = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1);
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .key = "f0:00:00:00:00:11 192.168.0.11");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .key = "unknown");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp12\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp12",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 2,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp12",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 2,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp12",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 2,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:12; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:12; arp.tpa = arp.spa; arp.spa = 192.168.0.12; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.12 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.12 && arp.op == 1 && inport == \"lp12\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x267b827b_87fc_4f4a_a60b_f8fb2facc67a,
+    .actions = "outport = \"lp12\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:12",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x267b827b_87fc_4f4a_a60b_f8fb2facc67a,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x267b827b_87fc_4f4a_a60b_f8fb2facc67a,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .key = "f0:00:00:00:00:12 192.168.0.12");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x9c38766e_c374_4900_95c0_1edf98438c09,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\" && eth.src == f0:00:00:00:00:12 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:12) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:12)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9c38766e_c374_4900_95c0_1edf98438c09,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9c38766e_c374_4900_95c0_1edf98438c09,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xde205894_6da6_4560_ad46_af3db19611af,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xde205894_6da6_4560_ad46_af3db19611af,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xde205894_6da6_4560_ad46_af3db19611af,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf045875_4836_46b2_b88c_1ef07cad2f95,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8f6556e2_5487_4f34_a1d4_b303b2371c0c,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\" && eth.src == {f0:00:00:00:00:12}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f6556e2_5487_4f34_a1d4_b303b2371c0c,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f6556e2_5487_4f34_a1d4_b303b2371c0c,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaa799c6e_51fd_4295_adde_fa7a2840fb26,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp12\" && eth.dst == {f0:00:00:00:00:12}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaa799c6e_51fd_4295_adde_fa7a2840fb26,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaa799c6e_51fd_4295_adde_fa7a2840fb26,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb74c95e4_3257_43ad_87c4_5352ff6cd936,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp12\" && eth.src == f0:00:00:00:00:12 && arp.sha == f0:00:00:00:00:12",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb74c95e4_3257_43ad_87c4_5352ff6cd936,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb74c95e4_3257_43ad_87c4_5352ff6cd936,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp12\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x7081da6d_e11f_4ecc_84dd_6ba3cb1f7c03,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp13\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xdd375408_4437_4379_b715_70f20f9645ad);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp13",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 3,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp13",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 3,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp13",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 3,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:13; ip6.src = fe80::ea2a:eaff:fe28:13; nd.target = fe80::ea2a:eaff:fe28:13; nd.tll = f0:00:00:00:00:13; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:13, ff02::1:ff28:13} && nd.target == fe80::ea2a:eaff:fe28:13",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:13; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:13; arp.tpa = arp.spa; arp.spa = 192.168.0.13; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.13 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.13 && arp.op == 1 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.13 && arp.op == 1 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:13; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:13; arp.tpa = arp.spa; arp.spa = 192.169.0.13; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.13 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x57d801e2_d57f_490c_9a6d_5b668f677aed,
+    .actions = "outport = \"lp13\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:13",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x57d801e2_d57f_490c_9a6d_5b668f677aed,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x57d801e2_d57f_490c_9a6d_5b668f677aed,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:13, ff02::1:ff28:13} && nd.target == fe80::ea2a:eaff:fe28:13 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .key = "f0:00:00:00:00:13 192.168.0.13 fe80::ea2a:eaff:fe28:13/64 192.169.0.13");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x5fea60dc_ca0f_461e_8618_c9bed40be598,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\" && eth.src == f0:00:00:00:00:13 && arp.sha == f0:00:00:00:00:13",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5fea60dc_ca0f_461e_8618_c9bed40be598,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5fea60dc_ca0f_461e_8618_c9bed40be598,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp13\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8ae686d3_1ba8_49b6_a8c1_b2e9c284dda9,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x28161c44_3a3c_4b7b_8887_3f5c5aa88eb5,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp13\" && eth.dst == {f0:00:00:00:00:13}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28161c44_3a3c_4b7b_8887_3f5c5aa88eb5,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28161c44_3a3c_4b7b_8887_3f5c5aa88eb5,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8faf853a_5fc4_4791_976f_460f222e58bd,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x1e0fe97a_e19f_4ebb_83d2_bc6b654514c3,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1e0fe97a_e19f_4ebb_83d2_bc6b654514c3,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1e0fe97a_e19f_4ebb_83d2_bc6b654514c3,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb4b99346_8371_4587_8a03_bd6e98bf7651,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\" && eth.src == {f0:00:00:00:00:13}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb4b99346_8371_4587_8a03_bd6e98bf7651,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb4b99346_8371_4587_8a03_bd6e98bf7651,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe8ed2fbb_6ef2_457d_bb33_20902ea5bcc5,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp13\" && eth.src == f0:00:00:00:00:13 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:13) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:13)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe8ed2fbb_6ef2_457d_bb33_20902ea5bcc5,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe8ed2fbb_6ef2_457d_bb33_20902ea5bcc5,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+commit;
+
+start;
+insert OVN_Southbound.Chassis(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .hostname = "cocoon",
+    .name = "hv2",
+    .nb_cfg = 0);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = 0x9ba25192_0f48_4209_b8e6_4589287a5c01);
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "datapath-type",
+    .value = "");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+insert OVN_Southbound.Encap(
+    ._uuid = 0x9ba25192_0f48_4209_b8e6_4589287a5c01,
+    .chassis_name = "hv2",
+    .ip = "192.168.0.2",
+    .type = "geneve");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0x9ba25192_0f48_4209_b8e6_4589287a5c01,
+    .key = "csum",
+    .value = "true");
+insert OVN_Southbound.Encap(
+    ._uuid = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb,
+    .chassis_name = "hv2",
+    .ip = "192.168.0.2",
+    .type = "vxlan");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb,
+    .key = "csum",
+    .value = "true");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x45322639_d214_4a23_9f21_e0f7908522cb,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp21\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x45322639_d214_4a23_9f21_e0f7908522cb,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x45322639_d214_4a23_9f21_e0f7908522cb,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x612d0b32_79dc_4624_83ed_9615057a0082,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp21\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x612d0b32_79dc_4624_83ed_9615057a0082,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x612d0b32_79dc_4624_83ed_9615057a0082,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xfbfa106f_4893_40b7_a497_354f7a3d564a);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp21",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 4,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp21",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 4,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp21",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 4,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x788630dd_0f47_43ab_a4e9_c16bb2128668,
+    .actions = "outport = \"lp21\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:21",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x788630dd_0f47_43ab_a4e9_c16bb2128668,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x788630dd_0f47_43ab_a4e9_c16bb2128668,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x335da571_d1be_40cd_b1b9_7ba7e37a529c,
+    .key = 0xfbfa106f_4893_40b7_a497_354f7a3d564a);
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .key = "f0:00:00:00:00:21 192.168.0.21");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .key = "unknown");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:21; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:21; arp.tpa = arp.spa; arp.spa = 192.168.0.21; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.21 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.21 && arp.op == 1 && inport == \"lp21\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp22\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp22",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 5,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp22",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 5,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp22",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 5,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:22; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:22; arp.tpa = arp.spa; arp.spa = 192.168.0.22; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.22 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.22 && arp.op == 1 && inport == \"lp22\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xc3862462_f794_4f84_9e28_73335417779a,
+    .actions = "outport = \"lp22\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:22",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xc3862462_f794_4f84_9e28_73335417779a,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xc3862462_f794_4f84_9e28_73335417779a,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .key = "f0:00:00:00:00:22 192.168.0.22");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x20a33b9e_c185_44af_8d8f_de87ee4a3b25,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\" && eth.src == f0:00:00:00:00:22 && arp.sha == f0:00:00:00:00:22",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x20a33b9e_c185_44af_8d8f_de87ee4a3b25,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x20a33b9e_c185_44af_8d8f_de87ee4a3b25,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xfe5c2942_fa2a_4d62_8293_893828f0e91e,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp22\" && eth.dst == {f0:00:00:00:00:22}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfe5c2942_fa2a_4d62_8293_893828f0e91e,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfe5c2942_fa2a_4d62_8293_893828f0e91e,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp22\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x50f5636d_8c32_4ba0_85ed_6db90b23a5a9,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x903d146f_905d_4d16_869c_eed2dd7ecd4d,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\" && eth.src == {f0:00:00:00:00:22}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x903d146f_905d_4d16_869c_eed2dd7ecd4d,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x903d146f_905d_4d16_869c_eed2dd7ecd4d,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90e2188_8f54_40d2_a2b3_901d70d081dc,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x68c85f6a_f846_4a4c_996e_64fcfda83a19,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\" && eth.src == f0:00:00:00:00:22 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:22) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:22)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x68c85f6a_f846_4a4c_996e_64fcfda83a19,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x68c85f6a_f846_4a4c_996e_64fcfda83a19,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaade8bae_695a_4e9d_9223_9dfa467a1ced,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp22\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaade8bae_695a_4e9d_9223_9dfa467a1ced,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaade8bae_695a_4e9d_9223_9dfa467a1ced,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp23\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp23",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 6,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp23",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 6,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp23",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 6,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x57099c4a_6bd2_4fc8_84d9_d518b553433d,
+    .actions = "outport = \"lp23\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:23",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x57099c4a_6bd2_4fc8_84d9_d518b553433d,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x57099c4a_6bd2_4fc8_84d9_d518b553433d,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .key = "f0:00:00:00:00:23 192.168.0.23 fe80::ea2a:eaff:fe28:23/64 192.169.0.23");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:23; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:23; arp.tpa = arp.spa; arp.spa = 192.169.0.23; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.23 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:23; ip6.src = fe80::ea2a:eaff:fe28:23; nd.target = fe80::ea2a:eaff:fe28:23; nd.tll = f0:00:00:00:00:23; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:23, ff02::1:ff28:23} && nd.target == fe80::ea2a:eaff:fe28:23",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.23 && arp.op == 1 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:23; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:23; arp.tpa = arp.spa; arp.spa = 192.168.0.23; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.23 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:23, ff02::1:ff28:23} && nd.target == fe80::ea2a:eaff:fe28:23 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.23 && arp.op == 1 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf111ff3_26cf_44f1_879a_3a87bc7b4606,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x848d9a2c_22dc_4264_8d31_99a357306161,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\" && eth.src == f0:00:00:00:00:23 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:23) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:23)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x848d9a2c_22dc_4264_8d31_99a357306161,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x848d9a2c_22dc_4264_8d31_99a357306161,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xec5d08c7_5975_4880_8f23_3a2c010a56f1,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp23\" && eth.dst == {f0:00:00:00:00:23}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xec5d08c7_5975_4880_8f23_3a2c010a56f1,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xec5d08c7_5975_4880_8f23_3a2c010a56f1,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x86e48d9e_387b_4127_87f6_01340f582fe5,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\" && eth.src == f0:00:00:00:00:23 && arp.sha == f0:00:00:00:00:23",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x86e48d9e_387b_4127_87f6_01340f582fe5,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x86e48d9e_387b_4127_87f6_01340f582fe5,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x78778b22_f57e_4bf4_bd71_2ad7013351d9,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x78778b22_f57e_4bf4_bd71_2ad7013351d9,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x78778b22_f57e_4bf4_bd71_2ad7013351d9,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe079a836_1843_47ab_afe5_0806e1e73a8e,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp23\" && eth.src == {f0:00:00:00:00:23}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe079a836_1843_47ab_afe5_0806e1e73a8e,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe079a836_1843_47ab_afe5_0806e1e73a8e,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp23\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xac661407_4ad2_474a_a9c9_55f93dd16741,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+commit;
+
+start;
+insert OVN_Southbound.Chassis(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .hostname = "cocoon",
+    .name = "hv3",
+    .nb_cfg = 0);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932);
+insert OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = 0xc52536c4_4d90_475b_b52f_1698f068b5b6);
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "datapath-type",
+    .value = "");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+insert OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+insert OVN_Southbound.Encap(
+    ._uuid = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932,
+    .chassis_name = "hv3",
+    .ip = "192.168.0.3",
+    .type = "geneve");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932,
+    .key = "csum",
+    .value = "true");
+insert OVN_Southbound.Encap(
+    ._uuid = 0xc52536c4_4d90_475b_b52f_1698f068b5b6,
+    .chassis_name = "hv3",
+    .ip = "192.168.0.3",
+    .type = "vxlan");
+insert OVN_Southbound.Encap_options(
+    ._uuid = 0xc52536c4_4d90_475b_b52f_1698f068b5b6,
+    .key = "csum",
+    .value = "true");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x08a593d0_6146_4e02_97ca_2e973aec61b9,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp31\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x08a593d0_6146_4e02_97ca_2e973aec61b9,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x08a593d0_6146_4e02_97ca_2e973aec61b9,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x42798602_9b19_4c1b_860e_67944fab3539,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp31\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x42798602_9b19_4c1b_860e_67944fab3539,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x42798602_9b19_4c1b_860e_67944fab3539,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp31",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 7,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp31",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 7,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp31",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 7,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:31; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:31; arp.tpa = arp.spa; arp.spa = 192.168.0.31; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.31 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2da2038d_6697_4331_8b54_6c476de9d5f7,
+    .actions = "outport = \"lp31\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:31",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2da2038d_6697_4331_8b54_6c476de9d5f7,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2da2038d_6697_4331_8b54_6c476de9d5f7,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.31 && arp.op == 1 && inport == \"lp31\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x335da571_d1be_40cd_b1b9_7ba7e37a529c,
+    .key = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82);
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .key = "f0:00:00:00:00:31 192.168.0.31");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .key = "unknown");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp32\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp32",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 8,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x75f67acd_d484_4931_bc55_d7a1cfc774b1,
+    .actions = "outport = \"lp32\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:32",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x75f67acd_d484_4931_bc55_d7a1cfc774b1,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x75f67acd_d484_4931_bc55_d7a1cfc774b1,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .key = "f0:00:00:00:00:32 192.168.0.32");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp32",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 8,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp32",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 8,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xfd5e401f_9ecc_4a21_99dc_2055f8b14655,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp32\" && eth.dst == {f0:00:00:00:00:32}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfd5e401f_9ecc_4a21_99dc_2055f8b14655,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xfd5e401f_9ecc_4a21_99dc_2055f8b14655,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x39b9be28_072a_44a8_81b3_45a7330c63e7,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x39b9be28_072a_44a8_81b3_45a7330c63e7,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x39b9be28_072a_44a8_81b3_45a7330c63e7,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x787ef8c0_5ff9_4b52_8273_9994cceb7d76,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp32\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x34e1ff71_4316_4320_975e_6eb73a722eae,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x64fcb056_3e88_4788_84d7_5d041e054173,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\" && eth.src == {f0:00:00:00:00:32}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x64fcb056_3e88_4788_84d7_5d041e054173,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x64fcb056_3e88_4788_84d7_5d041e054173,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x5b3695b7_8f0b_495e_801f_dbefc3e4090e,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\" && eth.src == f0:00:00:00:00:32 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:32) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:32)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5b3695b7_8f0b_495e_801f_dbefc3e4090e,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5b3695b7_8f0b_495e_801f_dbefc3e4090e,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x98b42204_8274_4389_9227_5ae3009fdc8d,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp32\" && eth.src == f0:00:00:00:00:32 && arp.sha == f0:00:00:00:00:32",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98b42204_8274_4389_9227_5ae3009fdc8d,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98b42204_8274_4389_9227_5ae3009fdc8d,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.32 && arp.op == 1 && inport == \"lp32\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:32; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:32; arp.tpa = arp.spa; arp.spa = 192.168.0.32; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.32 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp33\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Multicast_Group_ports(
+    ._uuid = 0x4ecc541c_bbaf_453d_9b5e_ac2d532f887e,
+    .key = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a);
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp33",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 9,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd02acd3c_402a_4c00_b7c3_8da4bebbddb4,
+    .actions = "outport = \"lp33\"; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.dst == f0:00:00:00:00:33",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 16);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd02acd3c_402a_4c00_b7c3_8da4bebbddb4,
+    .key = "source",
+    .value = "ovn-northd.c:4399");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd02acd3c_402a_4c00_b7c3_8da4bebbddb4,
+    .key = "stage-name",
+    .value = "ls_in_l2_lkup");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .key = "f0:00:00:00:00:33 192.168.0.33 fe80::ea2a:eaff:fe28:33/64 192.169.0.33");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x29173083_fd6c_4574_beaa_a5b040916397,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\" && eth.src == {f0:00:00:00:00:33}",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x29173083_fd6c_4574_beaa_a5b040916397,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x29173083_fd6c_4574_beaa_a5b040916397,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x1dada58c_5542_4efd_9894_67e6848ee022,
+    .actions = "drop;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\" && (arp || nd)",
+    .pipeline = "ingress",
+    .priority = 80,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1dada58c_5542_4efd_9894_67e6848ee022,
+    .key = "source",
+    .value = "ovn-northd.c:2730");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x1dada58c_5542_4efd_9894_67e6848ee022,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x31469060_18e7_47e8_87e0_627da86ddbf7,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\" && eth.src == f0:00:00:00:00:33 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == f0:00:00:00:00:33) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == f0:00:00:00:00:33)))",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x31469060_18e7_47e8_87e0_627da86ddbf7,
+    .key = "source",
+    .value = "ovn-northd.c:2723");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x31469060_18e7_47e8_87e0_627da86ddbf7,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 0);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .key = "source",
+    .value = "ovn-northd.c:4066");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3308d39_f659_4786_b29e_883109d1c0be,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_l2");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp33\"",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2ce8322a_471e_4ad9_b14d_40c263d900eb,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8028e5b5_7162_464f_af49_a45d112f8fdc,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "inport == \"lp33\" && eth.src == f0:00:00:00:00:33 && arp.sha == f0:00:00:00:00:33",
+    .pipeline = "ingress",
+    .priority = 90,
+    .table_id = 2);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8028e5b5_7162_464f_af49_a45d112f8fdc,
+    .key = "source",
+    .value = "ovn-northd.c:2713");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8028e5b5_7162_464f_af49_a45d112f8fdc,
+    .key = "stage-name",
+    .value = "ls_in_port_sec_nd");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xf88bba75_6354_4e96_9bdc_b184b72f0820,
+    .actions = "output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "outport == \"lp33\" && eth.dst == {f0:00:00:00:00:33}",
+    .pipeline = "egress",
+    .priority = 50,
+    .table_id = 9);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf88bba75_6354_4e96_9bdc_b184b72f0820,
+    .key = "source",
+    .value = "ovn-northd.c:4524");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf88bba75_6354_4e96_9bdc_b184b72f0820,
+    .key = "stage-name",
+    .value = "ls_out_port_sec_l2");
+commit;
+
+start;
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp33",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 9,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp33",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 9,
+    .type = "");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.33 && arp.op == 1 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:33; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:33; arp.tpa = arp.spa; arp.spa = 192.168.0.33; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.33 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:33, ff02::1:ff28:33} && nd.target == fe80::ea2a:eaff:fe28:33 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:33; ip6.src = fe80::ea2a:eaff:fe28:33; nd.target = fe80::ea2a:eaff:fe28:33; nd.tll = f0:00:00:00:00:33; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:33, ff02::1:ff28:33} && nd.target == fe80::ea2a:eaff:fe28:33",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.33 && arp.op == 1 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:33; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:33; arp.tpa = arp.spa; arp.spa = 192.169.0.33; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.33 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x00d1cc26_0da2_4460_b2a9_afb3e04f045e,
+    .actions = "/* drop */",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.type == 0x1234",
+    .pipeline = "ingress",
+    .priority = 2000,
+    .table_id = 6);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x00d1cc26_0da2_4460_b2a9_afb3e04f045e,
+    .key = "source",
+    .value = "ovn-northd.c:3580");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x00d1cc26_0da2_4460_b2a9_afb3e04f045e,
+    .key = "stage-name",
+    .value = "ls_in_acl");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x4c360ef0_dda1_4814_827b_4142e2ff8805,
+    .actions = "/* drop */",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.type == 0x1235 && inport == \"lp11\"",
+    .pipeline = "ingress",
+    .priority = 2000,
+    .table_id = 6);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4c360ef0_dda1_4814_827b_4142e2ff8805,
+    .key = "source",
+    .value = "ovn-northd.c:3580");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4c360ef0_dda1_4814_827b_4142e2ff8805,
+    .key = "stage-name",
+    .value = "ls_in_acl");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x5d53192d_82da_4d97_9547_042d075bc99f,
+    .actions = "/* drop */",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.type == 0x1236 && outport == \"lp33\"",
+    .pipeline = "egress",
+    .priority = 2000,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5d53192d_82da_4d97_9547_042d075bc99f,
+    .key = "source",
+    .value = "ovn-northd.c:3580");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x5d53192d_82da_4d97_9547_042d075bc99f,
+    .key = "stage-name",
+    .value = "ls_out_acl");
+commit;
+
+start;
+insert OVN_Southbound.Address_Set(
+    ._uuid = 0x028a153d_59ad_49c4_b9f9_4d0b52d83030,
+    .name = "set1");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x028a153d_59ad_49c4_b9f9_4d0b52d83030,
+    .key = "f0:00:00:00:00:11");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x028a153d_59ad_49c4_b9f9_4d0b52d83030,
+    .key = "f0:00:00:00:00:21");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x028a153d_59ad_49c4_b9f9_4d0b52d83030,
+    .key = "f0:00:00:00:00:31");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x78049951_5b02_491e_992b_c8f89f6c98cc,
+    .actions = "/* drop */",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.type == 0x1237 && eth.src == $set1 && outport == \"lp33\"",
+    .pipeline = "egress",
+    .priority = 2000,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x78049951_5b02_491e_992b_c8f89f6c98cc,
+    .key = "source",
+    .value = "ovn-northd.c:3580");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x78049951_5b02_491e_992b_c8f89f6c98cc,
+    .key = "stage-name",
+    .value = "ls_out_acl");
+commit;
+
+start;
+insert OVN_Southbound.Address_Set(
+    ._uuid = 0xe62f7d13_a78c_43d4_924e_8d2b44f40a75,
+    .name = "pg1_ip6");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0xe62f7d13_a78c_43d4_924e_8d2b44f40a75,
+    .key = "fe80::ea2a:eaff:fe28:33");
+insert OVN_Southbound.Address_Set(
+    ._uuid = 0x6aec3813_7270_45fd_a647_3b51e4bf58a2,
+    .name = "pg1_ip4");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x6aec3813_7270_45fd_a647_3b51e4bf58a2,
+    .key = "192.168.0.22");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x6aec3813_7270_45fd_a647_3b51e4bf58a2,
+    .key = "192.168.0.33");
+insert OVN_Southbound.Address_Set_addresses(
+    ._uuid = 0x6aec3813_7270_45fd_a647_3b51e4bf58a2,
+    .key = "192.169.0.33");
+insert OVN_Southbound.Port_Group(
+    ._uuid = 0xa1ded534_ea28_4448_9684_01c2675e6335,
+    .name = "pg1");
+insert OVN_Southbound.Port_Group_ports(
+    ._uuid = 0xa1ded534_ea28_4448_9684_01c2675e6335,
+    .key = "lp22");
+insert OVN_Southbound.Port_Group_ports(
+    ._uuid = 0xa1ded534_ea28_4448_9684_01c2675e6335,
+    .key = "lp33");
+commit;
+
+start;
+insert OVN_Southbound.Logical_Flow(
+    ._uuid = 0x9ba79c69_a618_4f69_98b0_8b1da2184239,
+    .actions = "/* drop */",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "eth.type == 0x1238 && outport == @pg1",
+    .pipeline = "egress",
+    .priority = 2000,
+    .table_id = 4);
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9ba79c69_a618_4f69_98b0_8b1da2184239,
+    .key = "source",
+    .value = "ovn-northd.c:3580");
+insert OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x9ba79c69_a618_4f69_98b0_8b1da2184239,
+    .key = "stage-name",
+    .value = "ls_out_acl");
+commit;
+
+start;
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:13; ip6.src = fe80::ea2a:eaff:fe28:13; nd.target = fe80::ea2a:eaff:fe28:13; nd.tll = f0:00:00:00:00:13; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:13, ff02::1:ff28:13} && nd.target == fe80::ea2a:eaff:fe28:13",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91bc007b_2a76_42b5_b442_a2df9b298baf,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.13 && arp.op == 1 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xeba07dd1_f638_4b02_bbff_c30376f59af7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:13; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:13; arp.tpa = arp.spa; arp.spa = 192.169.0.13; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.13 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x59198f69_e35b_4876_956e_c169475651bf,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:13, ff02::1:ff28:13} && nd.target == fe80::ea2a:eaff:fe28:13 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8d9d2d43_cc1a_4044_8f9d_8ef0402c0030,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+insert OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .key = "f0:00:00:00:00:13 192.168.0.13 invalid 192.169.0.13");
+delete OVN_Southbound.Port_Binding_mac(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .key = "f0:00:00:00:00:13 192.168.0.13 fe80::ea2a:eaff:fe28:13/64 192.169.0.13");
+commit;
+
+start;
+delete OVN_Southbound.Chassis(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .hostname = "cocoon",
+    .name = "hv1",
+    .nb_cfg = 0);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49);
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "datapath-type",
+    .value = "");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x462c6674_abce_4128_a116_0c5fd33d2ef1,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+delete OVN_Southbound.Encap(
+    ._uuid = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d,
+    .chassis_name = "hv1",
+    .ip = "192.168.0.1",
+    .type = "geneve");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0x94b7e235_9f9f_40fd_a61c_c7661b6fc75d,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Encap(
+    ._uuid = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49,
+    .chassis_name = "hv1",
+    .ip = "192.168.0.1",
+    .type = "vxlan");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0xc037863a_ae6b_482a_bbf5_e7b2b0510a49,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp12",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 2,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xf7b2782c_e5d4_4e83_8111_d76154d63c1f,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp12",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 2,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp13",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 3,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xdd375408_4437_4379_b715_70f20f9645ad,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp13",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 3,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .chassis = types.Some{0x462c6674_abce_4128_a116_0c5fd33d2ef1},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp11",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 1,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xda8d1ee0_f238_4fd0_99f6_38d7b608bca1,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp11",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 1,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.11 && arp.op == 1 && inport == \"lp11\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x91165ebe_c257_4c64_8a38_aafb27938a4a,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:12; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:12; arp.tpa = arp.spa; arp.spa = 192.168.0.12; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.12 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xf90f90df_4a9e_4933_abfe_c7342fe8f867,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:13; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:13; arp.tpa = arp.spa; arp.spa = 192.168.0.13; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.13 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x2949ddeb_f41f_4df5_a0a7_788ac3c2dab1,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.13 && arp.op == 1 && inport == \"lp13\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x28a4ee31_74ec_4374_8468_ba06fe4bb143,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.12 && arp.op == 1 && inport == \"lp12\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xaf8af5c2_72c7_432d_8179_70ced58dd7bb,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:11; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:11; arp.tpa = arp.spa; arp.spa = 192.168.0.11; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.11 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x92727b7b_fbfa_4cc3_abb4_9e57c9ed2449,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+delete OVN_Southbound.Chassis(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .hostname = "cocoon",
+    .name = "hv2",
+    .nb_cfg = 0);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = 0x9ba25192_0f48_4209_b8e6_4589287a5c01);
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "datapath-type",
+    .value = "");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1bde49fc_fa25_4d8d_9a73_acf1056186b6,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+delete OVN_Southbound.Encap(
+    ._uuid = 0x9ba25192_0f48_4209_b8e6_4589287a5c01,
+    .chassis_name = "hv2",
+    .ip = "192.168.0.2",
+    .type = "geneve");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0x9ba25192_0f48_4209_b8e6_4589287a5c01,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Encap(
+    ._uuid = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb,
+    .chassis_name = "hv2",
+    .ip = "192.168.0.2",
+    .type = "vxlan");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0x503fbbd2_b606_43b3_ba1f_a38750e0f8cb,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp23",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 6,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xbd520af0_29c7_48fe_a3b2_0a8c108d96bb,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp23",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 6,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp22",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 5,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x2e7c9bea_3ad2_4acb_931e_14bffb3f2cd3,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp22",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 5,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .chassis = types.Some{0x1bde49fc_fa25_4d8d_9a73_acf1056186b6},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp21",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 4,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xfbfa106f_4893_40b7_a497_354f7a3d564a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp21",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 4,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.22 && arp.op == 1 && inport == \"lp22\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xd3eced5d_5e77_43c3_926e_293ee1742446,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:23, ff02::1:ff28:23} && nd.target == fe80::ea2a:eaff:fe28:23 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x6a4884f3_c603_4567_b80f_bb78a169b8e0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:21; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:21; arp.tpa = arp.spa; arp.spa = 192.168.0.21; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.21 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x8f04a3a4_9424_4295_b8a2_b3bb700284b3,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:23; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:23; arp.tpa = arp.spa; arp.spa = 192.169.0.23; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.23 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdfbb46a7_b37b_4878_a740_9a1ef4ee5ee7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:23; ip6.src = fe80::ea2a:eaff:fe28:23; nd.target = fe80::ea2a:eaff:fe28:23; nd.tll = f0:00:00:00:00:23; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:23, ff02::1:ff28:23} && nd.target == fe80::ea2a:eaff:fe28:23",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x70b6e888_bff2_4e38_aff0_e74f343642b0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:22; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:22; arp.tpa = arp.spa; arp.spa = 192.168.0.22; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.22 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xa51e9db0_c25f_45b9_ad46_bf9e3db36864,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.23 && arp.op == 1 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xea96dac2_3929_480b_b998_df3369af8400,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.21 && arp.op == 1 && inport == \"lp21\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe17c0355_2322_47d8_937d_b5bdb0ae8de3,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:23; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:23; arp.tpa = arp.spa; arp.spa = 192.168.0.23; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.23 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe6655691_1646_47d4_a129_f099e78e39c5,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.23 && arp.op == 1 && inport == \"lp23\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x23ebe2c0_1db6_4033_8cb2_b51195a80069,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+delete OVN_Southbound.Chassis(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .hostname = "cocoon",
+    .name = "hv3",
+    .nb_cfg = 0);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932);
+delete OVN_Southbound.Chassis_encaps(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = 0xc52536c4_4d90_475b_b52f_1698f068b5b6);
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "datapath-type",
+    .value = "");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "iface-types",
+    .value = "dummy,dummy-internal,dummy-pmd,erspan,geneve,gre,internal,ip6erspan,ip6gre,lisp,patch,stt,system,tap,vxlan");
+delete OVN_Southbound.Chassis_external_ids(
+    ._uuid = 0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065,
+    .key = "ovn-bridge-mappings",
+    .value = "");
+delete OVN_Southbound.Encap(
+    ._uuid = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932,
+    .chassis_name = "hv3",
+    .ip = "192.168.0.3",
+    .type = "geneve");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0x2808c3d4_dd33_40ba_b1ab_57a4fdc14932,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Encap(
+    ._uuid = 0xc52536c4_4d90_475b_b52f_1698f068b5b6,
+    .chassis_name = "hv3",
+    .ip = "192.168.0.3",
+    .type = "vxlan");
+delete OVN_Southbound.Encap_options(
+    ._uuid = 0xc52536c4_4d90_475b_b52f_1698f068b5b6,
+    .key = "csum",
+    .value = "true");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp31",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 7,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0x53dcb7ef_3d1c_48c7_8dfb_e6effd6b3d82,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp31",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 7,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp32",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 8,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb22f5556_fdb0_4325_93e1_ffa025a1a8b7,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp32",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 8,
+    .type = "");
+delete OVN_Southbound.Port_Binding(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .chassis = types.Some{0x1a1f8cd4_9746_40bf_976a_1fe8c4f71065},
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp33",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 9,
+    .type = "");
+insert OVN_Southbound.Port_Binding(
+    ._uuid = 0xb6a5c62a_7cfc_4c87_adec_7712e2d1758a,
+    .chassis = types.None,
+    .datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .logical_port = "lp33",
+    .parent_port = types.None,
+    .tag = types.None,
+    .tunnel_key = 9,
+    .type = "");
+commit;
+
+start;
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.32 && arp.op == 1 && inport == \"lp32\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xb14cc75e_7bec_4aa3_b114_cfbb136d67ea,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.33 && arp.op == 1 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xe4d09ffa_eaba_4879_a0dd_a84b3eeb33e0,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:31; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:31; arp.tpa = arp.spa; arp.spa = 192.168.0.31; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.31 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x98ddfd64_06de_4f5a_920b_c82719ce5bf9,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:33; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:33; arp.tpa = arp.spa; arp.spa = 192.169.0.33; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.33 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x422fd249_3aa7_464b_a2d5_2113fa2675b7,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:32; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:32; arp.tpa = arp.spa; arp.spa = 192.168.0.32; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.32 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x22b2eabb_2e63_48a4_8e8e_1825aa028482,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .actions = "eth.dst = eth.src; eth.src = f0:00:00:00:00:33; arp.op = 2; /* ARP reply */ arp.tha = arp.sha; arp.sha = f0:00:00:00:00:33; arp.tpa = arp.spa; arp.spa = 192.168.0.33; outport = inport; flags.loopback = 1; output;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.33 && arp.op == 1",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .key = "source",
+    .value = "ovn-northd.c:4140");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xdc16287a_0d14_4f52_b000_27b5321ee517,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:33, ff02::1:ff28:33} && nd.target == fe80::ea2a:eaff:fe28:33 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .key = "source",
+    .value = "ovn-northd.c:4194");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0xad924ede_6128_40ea_a716_29de784ae82c,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .actions = "nd_na { eth.src = f0:00:00:00:00:33; ip6.src = fe80::ea2a:eaff:fe28:33; nd.target = fe80::ea2a:eaff:fe28:33; nd.tll = f0:00:00:00:00:33; outport = inport; flags.loopback = 1; output; };",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "nd_ns && ip6.dst == {fe80::ea2a:eaff:fe28:33, ff02::1:ff28:33} && nd.target == fe80::ea2a:eaff:fe28:33",
+    .pipeline = "ingress",
+    .priority = 50,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .key = "source",
+    .value = "ovn-northd.c:4188");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x4bf25536_8b66_44c9_afa2_f0c2e1f719e4,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.169.0.33 && arp.op == 1 && inport == \"lp33\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3b642089_8f47_43c0_afb5_0d96dd0add67,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+delete OVN_Southbound.Logical_Flow(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .actions = "next;",
+    .logical_datapath = 0x33805423_1aba_41fc_8013_948733e05994,
+    .match = "arp.tpa == 192.168.0.31 && arp.op == 1 && inport == \"lp31\"",
+    .pipeline = "ingress",
+    .priority = 100,
+    .table_id = 11);
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .key = "source",
+    .value = "ovn-northd.c:4156");
+delete OVN_Southbound.Logical_Flow_external_ids(
+    ._uuid = 0x3abaed77_8837_4ef1_abcd_03193353558a,
+    .key = "stage-name",
+    .value = "ls_in_arp_rsp");
+commit;
+
+start;
+commit;
+
+start;
+insert OVN_Northbound.NB_Global(
+    ._uuid = 0x0c34ad63_0585_483e_83db_38a3d1d5203c,
+    .hv_cfg = 0,
+    .nb_cfg = 0,
+    .sb_cfg = 0,
+    .ssl = types.None);
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .name = "lsw0");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x5396e940_7d7b_4595_8599_a613be821712);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .key = "f0:00:00:00:00:11 192.168.0.11");
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .key = "unknown");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0xf2f2e57a_7fdb_4174_9048_75f787073d07);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .key = "f0:00:00:00:00:12 192.168.0.12");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .key = "f0:00:00:00:00:12");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .key = "f0:00:00:00:00:13 192.168.0.13 fe80::ea2a:eaff:fe28:13/64 192.169.0.13");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .key = "f0:00:00:00:00:13");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .key = "f0:00:00:00:00:21 192.168.0.21");
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .key = "unknown");
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .key = "f0:00:00:00:00:22 192.168.0.22");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .key = "f0:00:00:00:00:22");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x900353d3_7398_429b_ac0c_2b398a272006);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .key = "f0:00:00:00:00:23 192.168.0.23 fe80::ea2a:eaff:fe28:23/64 192.169.0.23");
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .key = "f0:00:00:00:00:23");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .key = "f0:00:00:00:00:31 192.168.0.31");
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .key = "unknown");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x001a5eb2_5265_4111_8018_896333f85710);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .key = "f0:00:00:00:00:32 192.168.0.32");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .key = "f0:00:00:00:00:32");
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_ports(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x162e80c9_3a89_4311_a171_9f36ca158ed5);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.None);
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .key = "f0:00:00:00:00:33 192.168.0.33 fe80::ea2a:eaff:fe28:33/64 192.169.0.33");
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_port_security(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .key = "f0:00:00:00:00:33");
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+commit;
+
+start;
+insert OVN_Northbound.ACL(
+    ._uuid = 0x3cf84342_8881_4a06_99c7_c50993284353,
+    .action = "drop",
+    .direction = "from-lport",
+    .log = false,
+    .match = "eth.type == 0x1234",
+    .meter = types.None,
+    .name = types.None,
+    .priority = 1000,
+    .severity = types.None);
+insert OVN_Northbound.Logical_Switch_acls(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x3cf84342_8881_4a06_99c7_c50993284353);
+commit;
+
+start;
+insert OVN_Northbound.ACL(
+    ._uuid = 0x81ef3623_5b79_4f6f_81a8_0f15532e6d51,
+    .action = "drop",
+    .direction = "from-lport",
+    .log = false,
+    .match = "eth.type == 0x1235 && inport == \"lp11\"",
+    .meter = types.None,
+    .name = types.None,
+    .priority = 1000,
+    .severity = types.None);
+insert OVN_Northbound.Logical_Switch_acls(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x81ef3623_5b79_4f6f_81a8_0f15532e6d51);
+commit;
+
+start;
+insert OVN_Northbound.ACL(
+    ._uuid = 0x92fc3df9_266b_428a_9269_b2dccfa76ccd,
+    .action = "drop",
+    .direction = "to-lport",
+    .log = false,
+    .match = "eth.type == 0x1236 && outport == \"lp33\"",
+    .meter = types.None,
+    .name = types.None,
+    .priority = 1000,
+    .severity = types.None);
+insert OVN_Northbound.Logical_Switch_acls(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0x92fc3df9_266b_428a_9269_b2dccfa76ccd);
+commit;
+
+start;
+insert OVN_Northbound.Address_Set(
+    ._uuid = 0xf09459f5_0694_4016_a587_483203c90ea1,
+    .name = "set1");
+insert OVN_Northbound.Address_Set_addresses(
+    ._uuid = 0xf09459f5_0694_4016_a587_483203c90ea1,
+    .key = "f0:00:00:00:00:11");
+insert OVN_Northbound.Address_Set_addresses(
+    ._uuid = 0xf09459f5_0694_4016_a587_483203c90ea1,
+    .key = "f0:00:00:00:00:21");
+insert OVN_Northbound.Address_Set_addresses(
+    ._uuid = 0xf09459f5_0694_4016_a587_483203c90ea1,
+    .key = "f0:00:00:00:00:31");
+commit;
+
+start;
+insert OVN_Northbound.ACL(
+    ._uuid = 0xd3bf7ae4_6012_4222_874d_4f4eab79e665,
+    .action = "drop",
+    .direction = "to-lport",
+    .log = false,
+    .match = "eth.type == 0x1237 && eth.src == $set1 && outport == \"lp33\"",
+    .meter = types.None,
+    .name = types.None,
+    .priority = 1000,
+    .severity = types.None);
+insert OVN_Northbound.Logical_Switch_acls(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0xd3bf7ae4_6012_4222_874d_4f4eab79e665);
+commit;
+
+start;
+insert OVN_Northbound.Port_Group(
+    ._uuid = 0xa9d911ed_ad9d_43cb_9667_4a7da9c48a1d,
+    .name = "pg1");
+insert OVN_Northbound.Port_Group_ports(
+    ._uuid = 0xa9d911ed_ad9d_43cb_9667_4a7da9c48a1d,
+    .key = 0x162e80c9_3a89_4311_a171_9f36ca158ed5);
+insert OVN_Northbound.Port_Group_ports(
+    ._uuid = 0xa9d911ed_ad9d_43cb_9667_4a7da9c48a1d,
+    .key = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6);
+commit;
+
+start;
+insert OVN_Northbound.ACL(
+    ._uuid = 0xc38b54c6_46b9_4612_9345_43eb82c0ce92,
+    .action = "drop",
+    .direction = "to-lport",
+    .log = false,
+    .match = "eth.type == 0x1238 && outport == @pg1",
+    .meter = types.None,
+    .name = types.None,
+    .priority = 1000,
+    .severity = types.None);
+insert OVN_Northbound.Logical_Switch_acls(
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
+    .key = 0xc38b54c6_46b9_4612_9345_43eb82c0ce92);
+commit;
+
+start;
+insert OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .key = "f0:00:00:00:00:13 192.168.0.13 invalid 192.169.0.13");
+delete OVN_Northbound.Logical_Switch_Port_addresses(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .key = "f0:00:00:00:00:13 192.168.0.13 fe80::ea2a:eaff:fe28:13/64 192.169.0.13");
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x5396e940_7d7b_4595_8599_a613be821712,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp11",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x7e27e715_c5f3_47cd_9d8b_d875d1762091,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp13",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xf2f2e57a_7fdb_4174_9048_75f787073d07,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp12",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x900353d3_7398_429b_ac0c_2b398a272006,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp23",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdc47c7b1_d66d_415a_be2a_7489d488ef52,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp21",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0xdfcd1abf_2874_4907_a22e_d37e176fe0c6,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp22",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+
+start;
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x162e80c9_3a89_4311_a171_9f36ca158ed5,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp33",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x0aaf351c_b99b_4385_9133_6f68fe06ffc2,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp31",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+delete OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{true});
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x001a5eb2_5265_4111_8018_896333f85710,
+    .dhcpv4_options = types.None,
+    .dhcpv6_options = types.None,
+    .dynamic_addresses = types.None,
+    .enabled = types.None,
+    .name = "lp32",
+    .parent_name = types.None,
+    .tag = types.None,
+    .tag_request = types.None,
+    .type = "",
+    .up = types.Some{false});
+commit;
+

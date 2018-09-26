@@ -90,7 +90,7 @@ nbTest = do
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" ["Logical_Flow", "Address_Set"]
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" [{-"Logical_Flow", "Address_Set"-}]
     writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree

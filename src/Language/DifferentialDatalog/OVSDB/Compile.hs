@@ -109,7 +109,7 @@ mkSubtable :: (MonadError String me) => Bool -> String -> String -> ComplexType 
 mkSubtable isinput tname cname t@ComplexType{..} = do
     keytype <- mkBaseType keyComplexType
     valtype <- maybe (return []) (\v -> (\vt -> ["value:" <+> vt]) <$> mkBaseType v) valueComplexType
-    let cols = [ mkColName tname <> ": uuid"
+    let cols = [ "_uuid: uuid"
                , "key:" <+> keytype] ++ valtype
     let prefix = if isinput then "input" else empty
     return $ prefix <+> "relation" <+> pp tname <> "_" <> pp cname <> "(" $$
