@@ -26,7 +26,8 @@ SOFTWARE.
 module Language.DifferentialDatalog.Parse (
     parseDatalogString,
     datalogGrammar,
-    exprGrammar) where
+    exprGrammar,
+    reservedNames) where
 
 import Control.Applicative hiding (many,optional,Const)
 import qualified Control.Exception as E
@@ -136,7 +137,7 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-varIdent     = lcIdentifier <?> "vairable name"
+varIdent     = lcIdentifier <?> "variable name"
 typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
 

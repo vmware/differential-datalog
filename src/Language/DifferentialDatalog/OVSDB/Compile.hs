@@ -13,6 +13,7 @@ import Data.List
 
 import Language.DifferentialDatalog.OVSDB.Parse
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
@@ -72,9 +73,11 @@ mkCol isinput tname c@TableColumn{..} = do
          ColumnTypeComplex ct -> mkComplexType isinput tname c ct
 
 mkColName :: String -> Doc
-mkColName "type" = "_type"
-mkColName "match" = "_match"
-mkColName n      = pp $ map toLower n
+mkColName x =
+    if elem x' reservedNames
+       then pp $ "__" ++ x'
+       else pp x'
+    where x' = map toLower x
 
 mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
 mkAtomicType IntegerType{} = return "integer"

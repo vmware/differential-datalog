@@ -67,6 +67,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
@@ -495,8 +496,13 @@ mkFromRecord t@TypeDef{..} =
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(arg_find(args, \"" <> (pp $ name f) <> "\")?)?") consArgs
+        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\")?)?") consArgs
 
+unddname :: (WithName a) => a -> String
+unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
+                then short
+                else name x
+    where short = drop 2 $ name x
 
 {-
  pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {
