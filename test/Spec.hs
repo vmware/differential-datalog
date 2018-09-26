@@ -87,18 +87,18 @@ goldenTests progress = do
 
 nbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
-    writeFile "test/ovn/ovn_nb.dl" (render prog)
+    writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" ["Logical_Flow", "Address_Set"]
-    writeFile "test/ovn/ovn_sb.dl" (render prog)
+    writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
         [ goldenVsFiles "ovn_ovsdb" 
-          ["./test/ovn/ovn_nb.dl.expected", "./test/ovn/ovn_sb.dl.expected", "./test/ovn/ovn.dump.expected"] 
-          ["./test/ovn/ovn_nb.dl", "./test/ovn/ovn_sb.dl", "./test/ovn/ovn.dump"]
+          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"] 
+          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
           $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl"}]
 
 parseValidate :: FilePath -> String -> IO DatalogProgram

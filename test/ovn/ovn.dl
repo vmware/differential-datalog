@@ -1,2 +1,2 @@
-import ovn_nb
-import ovn_sb
+import OVN_Northbound
+import OVN_Southbound
