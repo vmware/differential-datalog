@@ -66,19 +66,22 @@ outputs.
 ## Command reference
 
 
-| Command                | Example                           | Description                                          |
-| ---------------------- |-----------------------------------| -----------------------------------------------------|
-| `start;`               |                                   | start a transaction                                  |
-| `commit;`              |                                   | commit current transaction                           |
-| `rollback;`            |                                   | rollback current transaction; reverting all changes  |
-| `timestamp;`           |                                   | print current time in ns since some unspecified epoch|
-| `dump;`                |                                   | dump the content of all relations                    |
-| `dump <relation>;`     | dump Rel1;                        | dump the content of an individual relation           |
-| `echo <text>;`         | echo Hello world;                 | copies arbitrary text to stdout                      |
-| `insert <record>;`     | insert Rel1(1,true,"foo");        | inserts record to relation Rel1                      |
-| `delete <record>;`     | delete Rel1(1,true,"foo");        | deletes record to relation Rel1                      |
-| comma-separated updates| insert Foo(1), delete Bar("buzz");| a sequence of insert and delete commands can be applied in one update|
-| `exit;`                |                                   | terminates execution                                 |
+| Command                | Example                                          | Description                                          |
+| ---------------------- |--------------------------------------------------| -----------------------------------------------------|
+| `start;`               |                                                  | start a transaction                                  |
+| `commit;`              |                                                  | commit current transaction                           |
+| `rollback;`            |                                                  | rollback current transaction; reverting all changes  |
+| `timestamp;`           |                                                  | print current time in ns since some unspecified epoch|
+| `dump;`                |                                                  | dump the content of all relations                    |
+| `dump <relation>;`     | dump Rel1;                                       | dump the content of an individual relation           |
+| `echo <text>;`         | echo Hello world;                                | copies arbitrary text to stdout                      |
+| `insert <record>;`     | insert Rel1(1,true,"foo");                       | inserts record to relation Rel1                      |
+|                        | insert Rel1(.arg2=true,.arg1=1, .arg3="foo");    | as above, but uses named rather than positional arguments            |
+|                        | insert Rel2(.x=10, .y=Constructor{"foo", true}); | passing structured data by calling type constructor  |
+|                        | insert Rel2(.x=10, .y=Constructor{.f1="foo", .f2=true}); | type constructor arguments can also be passed by name        |
+| `delete <record>;`     | delete Rel1(1,true,"foo");                       | deletes record from relation Rel1                    |
+| comma-separated updates| insert Foo(1), delete Bar("buzz");               | a sequence of insert and delete commands can be applied in one update|
+| `exit;`                |                                                  | terminates execution                                 |
 
 ### Example workload `path.dat`
 
