@@ -10,7 +10,8 @@ pub enum Record {
     Int(BigInt),
     String(String),
     Tuple(Vec<Record>),
-    Struct(String, Vec<Record>)
+    PosStruct(String, Vec<Record>),
+    NamedStruct(String, Vec<(String, Record)>)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -93,7 +94,7 @@ fn test_command() {
     assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
     assert_eq!(parse_command(br"insert Rel1(true);"),
                Ok((&br""[..], Command::Update(
-                   UpdCmd::Insert("Rel1".to_string(), Record::Struct("Rel1".to_string(), vec![Record::Bool(true)])),
+                   UpdCmd::Insert("Rel1".to_string(), Record::PosStruct("Rel1".to_string(), vec![Record::Bool(true)])),
                    true
                ))));
     assert_eq!(parse_command(br" insert Rel1[true];"),
@@ -106,7 +107,7 @@ fn test_command() {
                ))));
     assert_eq!(parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
                Ok((&br""[..], Command::Update(
-                   UpdCmd::Delete("NB.Logical_Router".to_string(), Record::Struct("NB.Logical_Router".to_string(),
+                   UpdCmd::Delete("NB.Logical_Router".to_string(), Record::PosStruct("NB.Logical_Router".to_string(),
                                                                     vec![Record::String("foo".to_string()),
                                                                          Record::Int(0xabcdef1.to_bigint().unwrap()),
                                                                          Record::Bool(true)])),
@@ -128,6 +129,14 @@ named!(rel_record<&[u8], (String, Record)>,
 
 named!(record<&[u8], Record>,
     alt!(bool_val | string_val | tuple_val | struct_val | int_val )
+);
+
+named!(named_record<&[u8], (String, Record)>,
+    do_parse!(apply!(sym,".") >>
+              fname: identifier >>
+              apply!(sym,"=") >>
+              val: record >>
+              (fname, val))
 );
 
 named!(bool_val<&[u8], Record>,
@@ -197,7 +206,7 @@ named!(struct_val<&[u8], Record>,
         cons: identifier >>
         val: opt!(delimited!(apply!(sym,"{"), apply!(constructor_args, cons.clone()), apply!(sym,"}"))) >>
         (match val {
-            None    => Record::Struct(cons, vec![]),
+            None    => Record::PosStruct(cons, vec![]),
             Some(r) => r
          }))
 );
@@ -205,18 +214,31 @@ named!(struct_val<&[u8], Record>,
 #[test]
 fn test_struct() {
     assert_eq!(struct_val(br"Constructor { true, false }"),
-               Ok((&br""[..], Record::Struct("Constructor".to_string(),
+               Ok((&br""[..], Record::PosStruct("Constructor".to_string(),
                                             vec![Record::Bool(true), Record::Bool(false)]))));
+    assert_eq!(struct_val(br"Constructor { .f1 = true, .f2 = false }"),
+               Ok((&br""[..], Record::NamedStruct("Constructor".to_string(),
+                                            vec![("f1".to_string(), Record::Bool(true)), ("f2".to_string(), Record::Bool(false))]))));
     assert_eq!(struct_val(br"_Constructor{true, false}"),
-               Ok((&br""[..], Record::Struct("_Constructor".to_string(),
+               Ok((&br""[..], Record::PosStruct("_Constructor".to_string(),
                                             vec![Record::Bool(true), Record::Bool(false)]))));
+    assert_eq!(struct_val(br"_Constructor{.f1 = true, .f2=false}"),
+               Ok((&br""[..], Record::NamedStruct("_Constructor".to_string(),
+                                            vec![("f1".to_string(), Record::Bool(true)), ("f2".to_string(),Record::Bool(false))]))));
     assert_eq!(struct_val(br###"Constructor1 { true, C{Constructor3, 25, "foo\nbar"} }"###),
-               Ok((&br""[..], Record::Struct("Constructor1".to_string(),
+               Ok((&br""[..], Record::PosStruct("Constructor1".to_string(),
                                             vec![Record::Bool(true),
-                                                 Record::Struct("C".to_string(),
-                                                               vec![Record::Struct("Constructor3".to_string(), vec![]),
+                                                 Record::PosStruct("C".to_string(),
+                                                               vec![Record::PosStruct("Constructor3".to_string(), vec![]),
                                                                     Record::Int(25_i32.to_bigint().unwrap()),
                                                                     Record::String("foo\nbar".to_string())])]))));
+    assert_eq!(struct_val(br###"Constructor1 { .bfield = true, .cons = C{.cfield = Constructor3, .ifield = 25, .sfield="foo\nbar"} }"###),
+               Ok((&br""[..], Record::NamedStruct("Constructor1".to_string(),
+                                            vec![("bfield".to_string(),Record::Bool(true)),
+                                                 ("cons".to_string(), Record::NamedStruct("C".to_string(),
+                                                               vec![("cfield".to_string(), Record::PosStruct("Constructor3".to_string(), vec![])),
+                                                                    ("ifield".to_string(), Record::Int(25_i32.to_bigint().unwrap())),
+                                                                    ("sfield".to_string(), Record::String("foo\nbar".to_string()))]))]))));
 }
 
 named!(int_val<&[u8], Record>,
@@ -263,6 +285,10 @@ fn test_int() {
 }
 
 named_args!(constructor_args(constructor: String)<Record>,
-    do_parse!(args: separated_list!(apply!(sym,","), record) >>
-              (Record::Struct(constructor, args)))
+    alt!(do_parse!(args: separated_nonempty_list!(apply!(sym,","), named_record) >>
+                   (Record::NamedStruct(constructor.clone(), args)))
+         |
+        do_parse!(args: separated_list!(apply!(sym,","), record) >>
+                   (Record::PosStruct(constructor, args)))
+        )
 );

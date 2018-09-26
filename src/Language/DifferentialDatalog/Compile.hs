@@ -67,6 +67,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
@@ -457,9 +458,15 @@ mkFromRecord t@TypeDef{..} =
     "impl" <+> targs_bounds <+> "FromRecord for" <+> rname (name t) <> targs <+> "{"                                            $$
     "    fn from_record(val: &Record) -> Result<Self, String> {"                                                                $$
     "        match val {"                                                                                                       $$
-    "            Record::Struct(constr, args) => {"                                                                             $$
+    "            Record::PosStruct(constr, args) => {"                                                                          $$
     "                match constr.as_ref() {"                                                                                   $$
-    (nest' $ nest' $ nest' $ nest' $ nest' constructors)                                                                        $$
+    (nest' $ nest' $ nest' $ nest' $ nest' pos_constructors)                                                                    $$
+    "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
+    "                }"                                                                                                         $$
+    "            },"                                                                                                            $$
+    "            Record::NamedStruct(constr, args) => {"                                                                         $$
+    "                match constr.as_ref() {"                                                                                   $$
+    (nest' $ nest' $ nest' $ nest' $ nest' named_constructors)                                                                  $$
     "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
@@ -472,15 +479,30 @@ mkFromRecord t@TypeDef{..} =
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": FromRecord") . pp) tdefArgs) <> ">"
-    constructors = vcat $ map mkcons $ typeCons $ fromJust tdefType
-    mkcons :: Constructor -> Doc
-    mkcons c@Constructor{..} =
+    pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
+    mkposcons :: Constructor -> Doc
+    mkposcons c@Constructor{..} =
         "\"" <> pp (name c) <> "\"" <+> "if args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
         fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
+    named_constructors = vcat $ map mknamedcons $ typeCons $ fromJust tdefType
+    mknamedcons :: Constructor -> Doc
+    mknamedcons c@Constructor{..} =
+        "\"" <> pp (name c) <> "\"" <+> "if args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
+        "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
+        "},"
+        where
+        cname = mkConstructorName tdefName (fromJust tdefType) (name c)
+        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\")?)?") consArgs
+
+unddname :: (WithName a) => a -> String
+unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
+                then short
+                else name x
+    where short = drop 2 $ name x
 
 {-
  pub fn relValFromRecord(rel: Relations, rec: &Record) -> Result<Value, String> {

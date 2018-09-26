@@ -26,7 +26,8 @@ SOFTWARE.
 module Language.DifferentialDatalog.Parse (
     parseDatalogString,
     datalogGrammar,
-    exprGrammar) where
+    exprGrammar,
+    reservedNames) where
 
 import Control.Applicative hiding (many,optional,Const)
 import qualified Control.Exception as E
@@ -59,7 +60,7 @@ parseDatalogString program file = do
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
-rustKeywords = ["type"]
+rustKeywords = ["type", "match"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
@@ -82,14 +83,12 @@ reservedNames = ["as",
                  "input",
                  "insert",
                  "bigint",
-                 "match",
                  "not",
                  "or",
                  "relation",
                  "skip",
                  "string",
                  "true",
-                 "type",
                  "typedef",
                  "var"] ++ rustKeywords
 
@@ -138,7 +137,7 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-varIdent     = lcIdentifier <?> "vairable name"
+varIdent     = lcIdentifier <?> "variable name"
 typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
 

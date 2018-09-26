@@ -6,12 +6,12 @@ input relation SB_Global(
     ssl: option_t<uuid>
 )
 input relation SB_Global_external_ids(
-    sb_global: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation SB_Global_connections(
-    sb_global: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Chassis(
@@ -21,35 +21,35 @@ input relation Chassis(
     nb_cfg: integer
 )
 input relation Chassis_encaps(
-    chassis: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Chassis_vtep_logical_switches(
-    chassis: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Chassis_external_ids(
-    chassis: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Encap(
     _uuid: uuid,
-    _type: string,
+    __type: string,
     ip: string,
     chassis_name: string
 )
 input relation Encap_options(
-    encap: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
-relation Address_Set(
+input relation Address_Set(
     _uuid: uuid,
     name: string
 )
-relation Address_Set_addresses(
-    address_set: uuid,
+input relation Address_Set_addresses(
+    _uuid: uuid,
     key: string
 )
 input relation Port_Group(
@@ -57,20 +57,20 @@ input relation Port_Group(
     name: string
 )
 input relation Port_Group_ports(
-    port_group: uuid,
+    _uuid: uuid,
     key: string
 )
-relation Logical_Flow(
+input relation Logical_Flow(
     _uuid: uuid,
     logical_datapath: uuid,
     pipeline: string,
     table_id: integer,
     priority: integer,
-    _match: string,
+    __match: string,
     actions: string
 )
-relation Logical_Flow_external_ids(
-    logical_flow: uuid,
+input relation Logical_Flow_external_ids(
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -81,7 +81,7 @@ input relation Multicast_Group(
     tunnel_key: integer
 )
 input relation Multicast_Group_ports(
-    multicast_group: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Meter(
@@ -90,7 +90,7 @@ input relation Meter(
     unit: string
 )
 input relation Meter_bands(
-    meter: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Meter_Band(
@@ -104,14 +104,14 @@ input relation Datapath_Binding(
     tunnel_key: integer
 )
 input relation Datapath_Binding_external_ids(
-    datapath_binding: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Port_Binding(
     _uuid: uuid,
     logical_port: string,
-    _type: string,
+    __type: string,
     datapath: uuid,
     tunnel_key: integer,
     parent_port: option_t<string>,
@@ -119,24 +119,24 @@ input relation Port_Binding(
     chassis: option_t<uuid>
 )
 input relation Port_Binding_gateway_chassis(
-    port_binding: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Port_Binding_options(
-    port_binding: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Port_Binding_mac(
-    port_binding: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Port_Binding_nat_addresses(
-    port_binding: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Port_Binding_external_ids(
-    port_binding: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -151,13 +151,13 @@ input relation DHCP_Options(
     _uuid: uuid,
     name: string,
     code: integer,
-    _type: string
+    __type: string
 )
 input relation DHCPv6_Options(
     _uuid: uuid,
     name: string,
     code: integer,
-    _type: string
+    __type: string
 )
 input relation Connection(
     _uuid: uuid,
@@ -169,17 +169,17 @@ input relation Connection(
     is_connected: bool
 )
 input relation Connection_other_config(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Connection_external_ids(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Connection_status(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -193,7 +193,7 @@ input relation SSL(
     ssl_ciphers: string
 )
 input relation SSL_external_ids(
-    ssl: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -201,16 +201,16 @@ input relation DNS(
     _uuid: uuid
 )
 input relation DNS_records(
-    dns: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation DNS_datapaths(
-    dns: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation DNS_external_ids(
-    dns: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -219,7 +219,7 @@ input relation RBAC_Role(
     name: string
 )
 input relation RBAC_Role_permissions(
-    rbac_role: uuid,
+    _uuid: uuid,
     key: string,
     value: uuid
 )
@@ -229,11 +229,11 @@ input relation RBAC_Permission(
     insert_delete: bool
 )
 input relation RBAC_Permission_authorization(
-    rbac_permission: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation RBAC_Permission_update(
-    rbac_permission: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Gateway_Chassis(
@@ -243,12 +243,12 @@ input relation Gateway_Chassis(
     priority: integer
 )
 input relation Gateway_Chassis_external_ids(
-    gateway_chassis: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Gateway_Chassis_options(
-    gateway_chassis: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )

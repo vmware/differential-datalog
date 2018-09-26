@@ -13,6 +13,7 @@ import Data.List
 
 import Language.DifferentialDatalog.OVSDB.Parse
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
@@ -67,14 +68,19 @@ mkTable isinput t@Table{..} = do
 mkCol :: (MonadError String me) => Bool -> String -> TableColumn -> me (Either Doc Doc)
 mkCol isinput tname c@TableColumn{..} = do
     check (columnName /= "_uuid") (pos c) $ "Illegal column name _uuid in table " ++ tname
+    check (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     case columnType of
          ColumnTypeAtomic at  -> (Left . (mkColName columnName <>) . (":" <+>)) <$> mkAtomicType at
          ColumnTypeComplex ct -> mkComplexType isinput tname c ct
 
+__reservedNames = map (("__" ++) . map toLower) $ reservedNames
+
 mkColName :: String -> Doc
-mkColName "type" = "_type"
-mkColName "match" = "_match"
-mkColName n      = pp $ map toLower n
+mkColName x =
+    if elem x' reservedNames
+       then pp $ "__" ++ x'
+       else pp x'
+    where x' = map toLower x
 
 mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
 mkAtomicType IntegerType{} = return "integer"
@@ -106,7 +112,7 @@ mkSubtable :: (MonadError String me) => Bool -> String -> String -> ComplexType 
 mkSubtable isinput tname cname t@ComplexType{..} = do
     keytype <- mkBaseType keyComplexType
     valtype <- maybe (return []) (\v -> (\vt -> ["value:" <+> vt]) <$> mkBaseType v) valueComplexType
-    let cols = [ mkColName tname <> ": uuid"
+    let cols = [ "_uuid: uuid"
                , "key:" <+> keytype] ++ valtype
     let prefix = if isinput then "input" else empty
     return $ prefix <+> "relation" <+> pp tname <> "_" <> pp cname <> "(" $$
