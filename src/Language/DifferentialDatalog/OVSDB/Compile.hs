@@ -68,9 +68,12 @@ mkTable isinput t@Table{..} = do
 mkCol :: (MonadError String me) => Bool -> String -> TableColumn -> me (Either Doc Doc)
 mkCol isinput tname c@TableColumn{..} = do
     check (columnName /= "_uuid") (pos c) $ "Illegal column name _uuid in table " ++ tname
+    check (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     case columnType of
          ColumnTypeAtomic at  -> (Left . (mkColName columnName <>) . (":" <+>)) <$> mkAtomicType at
          ColumnTypeComplex ct -> mkComplexType isinput tname c ct
+
+__reservedNames = map (("__" ++) . map toLower) $ reservedNames
 
 mkColName :: String -> Doc
 mkColName x =
