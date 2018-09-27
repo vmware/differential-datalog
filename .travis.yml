@@ -23,11 +23,15 @@ cache:
         - $HOME/.cargo
         - .stack-work
 
-#env:
-#   - TEST_SUITE='-j 1 -p tutorial'
-#   - TEST_SUITE='-j 1 -p path'
-#   # - TEST_SUITE='-p ovn'
-#   - TEST_SUITE='-j 1 -p ovn_ftl'
+env:
+   - TEST_SUITE='-p tutorial'
+   - TEST_SUITE='-p souffle'
+   - TEST_SUITE='-p simple'
+   - TEST_SUITE='-p path'
+   - TEST_SUITE='-p ovn'
+   - TEST_SUITE='-p ovn_ftl'
+   - TEST_SUITE='-p modules'
+   - TEST_SUITE='-p ovn_ovsdb'
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -56,8 +60,8 @@ install:
 
 script: 
 # Build the package, its tests, and its docs and run the tests
-- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
-#- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
+#- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
+- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 
 after_success:
  - |
