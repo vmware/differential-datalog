@@ -50,7 +50,7 @@ addons:
 
 before_install:
 # Download and unpack the stack executable
-- pip install parglare
+- pip install --user parglare
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
