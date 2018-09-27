@@ -109,7 +109,7 @@ souffleTests progress =
         [ goldenVsFile "doop" 
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w 1"] False}]
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"] False}]
 
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
@@ -243,15 +243,10 @@ cliTest progress fname specname rust_dir extra_args = do
         hdat <- openFile datfile ReadMode
         code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag ++ extra_args')){
                                        cwd = Just $ rust_dir </> specname,
-                                       std_in=CreatePipe,
+                                       std_in=UseHandle hdat,
                                        std_out=UseHandle hout,
                                        std_err=UseHandle herr} $
-            \(Just hin) _ _ phandle -> do
-                dat <- hGetContents hdat
-                hPutStrLn hin dat
-                hPutStrLn hin "exit;"
-                hFlush hin
-                withProgress progress $ waitForProcess phandle
+            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
                                      "\nstdout written to:\n" ++ errfile ++
