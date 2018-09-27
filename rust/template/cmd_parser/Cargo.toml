@@ -9,7 +9,7 @@ rustyline = "1.0.0"
 libc = "0.2.42"
 
 [profile.release]
-opt-level = 1
+opt-level = 2
 debug = false
 rpath = false
 lto = false

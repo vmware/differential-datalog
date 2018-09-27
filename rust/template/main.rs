@@ -31,6 +31,10 @@ use differential_datalog::program::*;
 use cmd_parser::*;
 use time::precise_time_ns;
 
+// uncomment to enable profiling
+//extern crate cpuprofiler;
+//use cpuprofiler::PROFILER;
+
 fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
     if do_store {
         db.lock().unwrap().update(relid, v, pol);
@@ -66,7 +70,11 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             p.transaction_start()
         },
         Command::Commit => {
-            p.transaction_commit()
+            // uncomment to enable profiling
+            //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
+            let res = p.transaction_commit();
+            //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
+            res
         },
         Command::Rollback => {
             p.transaction_rollback()

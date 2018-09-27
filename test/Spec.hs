@@ -109,7 +109,7 @@ souffleTests progress =
         [ goldenVsFile "doop" 
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store"] False}]
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w 1"] False}]
 
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
