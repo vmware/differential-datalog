@@ -136,6 +136,8 @@ pub struct Relation<V: Val> {
     /// `true` is this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input:        bool,
+    /// apply distinct() to this relation
+    pub distinct:     bool,
     /// Unique relation id
     pub id:           RelId,
     /// Rules that define the content of the relation.
@@ -377,7 +379,7 @@ impl<V:Val> Program<V>
                                         collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements, &arrangements));
                                     };
                                     /* don't distinct input collections, as this is already done by the set_update logic */
-                                    if !r.input {
+                                    if !r.input && r.distinct {
                                         collection = with_prof_context(&r.name,
                                                                        ||collection.distinct_total());
                                     }

@@ -172,10 +172,11 @@ expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
     lhsvars = ruleLHSVars d rl
     -- generate relation
     relname = "Rule_" ++ show ruleidx
-    rel = Relation { relPos    = nopos
-                   , relGround = False
-                   , relName   = relname
-                   , relType   = tTuple $ map typ lhsvars
+    rel = Relation { relPos      = nopos
+                   , relGround   = False
+                   , relName     = relname
+                   , relType     = tTuple $ map typ lhsvars
+                   , relDistinct = False
                    }
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos

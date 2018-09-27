@@ -354,7 +354,7 @@ compileLib d specname imports =
 -- parts of the compiler.
 addDummyRel :: DatalogProgram -> DatalogProgram
 addDummyRel d | not $ M.null $ progRelations d = d
-              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos True "Null" $ tTuple []}
+              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos True "Null" (tTuple []) False}
 
 mkTypedef :: TypeDef -> Doc
 mkTypedef tdef@TypeDef{..} =
@@ -668,6 +668,7 @@ compileRelation d rn = do
             "Relation {"                                                                $$
             "    name:         \"" <> pp rn <> "\".to_string(),"                        $$
             "    input:        " <> (if relGround then "true" else "false") <> ","      $$
+            "    distinct:     " <> (if relDistinct then "true" else "false") <> ","    $$
             "    id:           Relations::" <> rname rn <+> "as RelId,"                 $$
             "    rules:        vec!["                                                   $$
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$

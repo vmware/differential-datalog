@@ -326,10 +326,11 @@ data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
                          , relName        :: String
                          , relType        :: Type
+                         , relDistinct    :: Bool
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 t1) (Relation _ g2 n2 t2) = g1 == g2 && n1 == n2 && t1 == t2
+    (==) (Relation _ g1 n1 t1 d1) (Relation _ g2 n2 t2 d2) = g1 == g2 && n1 == n2 && t1 == t2 && d1 == d2
 
 instance WithPos Relation where
     pos = relPos
