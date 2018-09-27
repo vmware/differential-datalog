@@ -365,7 +365,7 @@ impl<V:Val> Program<V>
                         let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, u64>,V,isize>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
-                        for node in &prog.nodes {
+                        for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
                                 ProgNode::RelNode{rel:r} => {
                                     let (session, mut collection) = outer.new_collection::<V,isize>();
@@ -415,10 +415,13 @@ impl<V:Val> Program<V>
                                         /* create arrangements */
                                         for rel in rs {
                                             for (i, arr) in rel.arrangements.iter().enumerate() {
-                                                with_prof_context(
-                                                    &arr.name,
-                                                    ||local_arrangements.insert((rel.id, i), vars.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
-                                            };
+                                                /* check if arrangement is actually used inside this node */
+                                                if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n == nodeid) {
+                                                    with_prof_context(
+                                                        &format!("local {}", arr.name),
+                                                        ||local_arrangements.insert((rel.id, i), vars.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                                }
+                                            }
                                         };
                                         for dep in Self::dependencies(&rs) {
                                             match dep {
@@ -462,9 +465,12 @@ impl<V:Val> Program<V>
                                     /* create arrangements */
                                     for rel in rs {
                                         for (i, arr) in rel.arrangements.iter().enumerate() {
-                                            with_prof_context(
-                                                &arr.name,
-                                                ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                            /* only if the arrangement is used outside of this node */
+                                            if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n != nodeid) {
+                                                with_prof_context(
+                                                    &format!("global {}", arr.name),
+                                                    ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                            }
                                         };
                                     };
                                 }
@@ -636,6 +642,40 @@ impl<V:Val> Program<V>
         panic!("get_relation({}): relation not found", relid)
     }
 
+    /* indices of program nodes that use arrangement */
+    fn arrangement_used_by_nodes(&self, arrid: ArrId) -> Vec<usize> {
+        self.nodes.iter().enumerate()
+            .filter_map(|(i,n)|
+                    if Self::node_uses_arrangement(n, arrid) {
+                        Some(i)
+                    } else {
+                        None
+                    }).collect()
+    }
+
+    fn node_uses_arrangement(n: &ProgNode<V>, arrid: ArrId) -> bool {
+        match n {
+            ProgNode::RelNode{rel} => {
+                Self::rel_uses_arrangement(rel, arrid)
+            },
+            ProgNode::SCCNode{rels} => {
+                rels.iter().any(|rel|Self::rel_uses_arrangement(rel, arrid))
+            }
+        }
+    }
+
+    fn rel_uses_arrangement(r: &Relation<V>, arrid: ArrId) -> bool {
+        r.rules.iter().any(|rule| Self::rule_uses_arrangement(rule, arrid))
+    }
+
+    // TODO: update this function if we change how rules use relations
+    fn rule_uses_arrangement(r: &Rule<V>, arrid: ArrId) -> bool {
+        r.xforms.iter().any(|xform|
+                            match xform {
+                                XForm::Join{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
+                                _ => false
+                            })
+    }
 
     /* Returns all input relations of the program */
     fn input_relations(&self) -> Vec<RelId> {
