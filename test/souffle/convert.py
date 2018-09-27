@@ -339,6 +339,8 @@ def process_decl(decl, files, preprocess):
         return
     rule = getOptField(decl, "Rule")
     if rule != None:
+        if preprocess:
+            return
         process_rule(rule, files, preprocess)
         return
     namespace = getOptField(decl, "Namespace")
