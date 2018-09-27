@@ -71,6 +71,7 @@ import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Optimize
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
@@ -324,7 +325,7 @@ compileLib d specname imports =
     -- * Rename program entities to Rust-friendly names
     -- * Transform away rules with multiple heads
     -- * Make sure the program has at least one relation
-    d' = addDummyRel $ progExpandMultiheadRules d
+    d' = addDummyRel $ optExpandMultiheadRules d
     (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.

@@ -35,8 +35,7 @@ module Language.DifferentialDatalog.DatalogProgram (
     progAtomMapM,
     progAtomMap,
     DepGraph,
-    progDependencyGraph,
-    progExpandMultiheadRules
+    progDependencyGraph
 ) 
 where
 
@@ -148,51 +147,3 @@ progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
                                              ruleRHS)
                                   ruleLHS)
                       progRules
-
--- | Replace multihead rules with several rules by introducing an
--- intermediate relation for the body of the rule.
-progExpandMultiheadRules :: DatalogProgram -> DatalogProgram
-progExpandMultiheadRules d = progExpandMultiheadRules' d 0
-
-progExpandMultiheadRules' :: DatalogProgram -> Int -> DatalogProgram
-progExpandMultiheadRules' d@DatalogProgram{progRules=[], ..} _ = d
-progExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
-    | length (ruleLHS r) == 1 = progAddRules [r] d'
-    | otherwise               = progAddRules rules $ maybe d' (\rel -> progAddRel rel d') $ mrel
-    where d' = progExpandMultiheadRules' d{progRules = rs} (i+1)
-          (mrel, rules) = expandMultiheadRule d r i
-
--- Only introduce intermediate relations if the rule has joins or antijoins.
--- Other rules are heuristically considered cheap to compute vs the cost of maintaining
--- an extra arrangement.
-expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Maybe Relation, [Rule])
-expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
-    where
-    -- variables used in the LHS of the rule
-    lhsvars = ruleLHSVars d rl
-    -- generate relation
-    relname = "Rule_" ++ show ruleidx
-    rel = Relation { relPos      = nopos
-                   , relGround   = False
-                   , relName     = relname
-                   , relType     = tTuple $ map typ lhsvars
-                   , relDistinct = False
-                   }
-    -- rule to compute the new relation
-    rule1 = Rule { rulePos = nopos
-                 , ruleLHS = [Atom nopos relname $ eTuple $ map (eVar . name) lhsvars]
-                 , ruleRHS = ruleRHS rl
-                 }
-    -- rule per head of the original rule
-    rules = map (\atom -> Rule { rulePos = pos rl
-                               , ruleLHS = [atom]
-                               , ruleRHS = [RHSLiteral True 
-                                           $ Atom nopos relname 
-                                           $ eTuple $ map (eVar . name) lhsvars]})
-                $ ruleLHS rl
-expandMultiheadRule d rl ruleidx = (Nothing, rules)
-    where
-    rules = map (\atom -> Rule { rulePos = pos rl
-                               , ruleLHS = [atom]
-                               , ruleRHS = ruleRHS rl})
-                $ ruleLHS rl
