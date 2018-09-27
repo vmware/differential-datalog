@@ -21,14 +21,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, LambdaCase #-}
 
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
     ruleVars,
     ruleRHSTermVars,
     ruleLHSVars,
-    ruleTypeMapM
+    ruleTypeMapM,
+    ruleHasJoins
 ) where
 
 import qualified Data.Set as S
@@ -123,3 +124,11 @@ ruleTypeMapM fun rule@Rule{..} = do
                   RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }
+
+-- | true iff the rule contains at least one join or antijoin operation
+ruleHasJoins :: Rule -> Bool
+ruleHasJoins rule =
+    any (\case
+          RHSLiteral{} -> True
+          _            -> False)
+    $ tail $ ruleRHS rule

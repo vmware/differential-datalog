@@ -158,12 +158,15 @@ progExpandMultiheadRules' :: DatalogProgram -> Int -> DatalogProgram
 progExpandMultiheadRules' d@DatalogProgram{progRules=[], ..} _ = d
 progExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
     | length (ruleLHS r) == 1 = progAddRules [r] d'
-    | otherwise               = progAddRules rules $ progAddRel rel d'
+    | otherwise               = progAddRules rules $ maybe d' (\rel -> progAddRel rel d') $ mrel
     where d' = progExpandMultiheadRules' d{progRules = rs} (i+1)
-          (rel, rules) = expandMultiheadRule d r i
+          (mrel, rules) = expandMultiheadRule d r i
 
-expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Relation, [Rule])
-expandMultiheadRule d rl ruleidx = (rel, rule1 : rules)
+-- Only introduce intermediate relations if the rule has joins or antijoins.
+-- Other rules are heuristically considered cheap to compute vs the cost of maintaining
+-- an extra arrangement.
+expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Maybe Relation, [Rule])
+expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
     where
     -- variables used in the LHS of the rule
     lhsvars = ruleLHSVars d rl
@@ -180,9 +183,15 @@ expandMultiheadRule d rl ruleidx = (rel, rule1 : rules)
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
-    rules = map (\atom -> Rule { rulePos = nopos
+    rules = map (\atom -> Rule { rulePos = pos rl
                                , ruleLHS = [atom]
                                , ruleRHS = [RHSLiteral True 
                                            $ Atom nopos relname 
                                            $ eTuple $ map (eVar . name) lhsvars]})
+                $ ruleLHS rl
+expandMultiheadRule d rl ruleidx = (Nothing, rules)
+    where
+    rules = map (\atom -> Rule { rulePos = pos rl
+                               , ruleLHS = [atom]
+                               , ruleRHS = ruleRHS rl})
                 $ ruleLHS rl
