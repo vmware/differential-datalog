@@ -28,15 +28,28 @@ Module     : Optimize
 Description: Compiler optimization passes
 -}
 module Language.DifferentialDatalog.Optimize (
-    optExpandMultiheadRules
+    optimize
 ) 
 where
+
+import Data.List
+import Control.Monad.State
+import qualified Data.Map as M
+import Debug.Trace
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.Validate
+
+optimize :: DatalogProgram -> DatalogProgram
+optimize d = 
+    let d' = optEliminateCommonPrefixes $ optExpandMultiheadRules d
+    in case validate d' of
+            Left err -> error $ "could not validate optimized spec: " ++ err
+            Right _  -> d'
 
 -- | Replace multihead rules with several rules by introducing an
 -- intermediate relation for the body of the rule.
@@ -60,7 +73,7 @@ expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
     -- variables used in the LHS of the rule
     lhsvars = ruleLHSVars d rl
     -- generate relation
-    relname = "Rule_" ++ show ruleidx
+    relname = "__MultiHead_" ++ show ruleidx
     rel = Relation { relPos      = nopos
                    , relGround   = False
                    , relName     = relname
@@ -85,3 +98,92 @@ expandMultiheadRule d rl ruleidx = (Nothing, rules)
                                , ruleLHS = [atom]
                                , ruleRHS = ruleRHS rl})
                 $ ruleLHS rl
+
+-- | Common prefix elimination.
+-- Implements the following greedy algorithm:
+--  collect all prefixes, order by length
+--  find the longest prefix that occurs in multiple rules
+--     if found:
+--        factor it into a separate relation
+--        repeat
+--     else:
+--        done
+--
+-- TODO: this optimization must be preceeded by rule normalization to detect different, but
+-- equivalent prefixes.
+--
+optEliminateCommonPrefixes :: DatalogProgram -> DatalogProgram
+optEliminateCommonPrefixes d = evalState (optEliminateCommonPrefixes' d) 0
+
+type RulePrefix = [RuleRHS]
+
+optEliminateCommonPrefixes' :: DatalogProgram -> State Int DatalogProgram
+optEliminateCommonPrefixes' d = do
+    let ordered_prefixes = map fst
+                           $ reverse -- longest prefix first
+                           $ sortOn (length . fst)
+                           $ filter ((>1) . snd)
+                           $ collectPrefixes d
+    --trace ("ordered_prefixes:\n" ++ show ordered_prefixes) $
+    if null ordered_prefixes
+       then return d
+       else do d' <- replacePrefix d $ head ordered_prefixes
+               optEliminateCommonPrefixes' d'
+
+-- Collect all prefixes in the program, only including prefixes of length >1 
+-- (to avoid infinite recursion replacing prefix of length 1)
+-- counting the number of occurrences of each prefix
+collectPrefixes :: DatalogProgram -> [(RulePrefix, Int)]
+collectPrefixes d =
+    foldl' (\prefs rule -> foldl' (\prefs' pref -> addPrefix pref prefs') 
+                                  prefs $ rulePrefixes rule)
+           [] $ progRules d
+
+addPrefix :: RulePrefix -> [(RulePrefix, Int)] -> [(RulePrefix, Int)]
+addPrefix p [] = [(p, 1)]
+addPrefix p ((p',i):ps) | p' == p   = (p, i+1) : ps
+                        | otherwise = (p', i) : addPrefix p ps
+
+-- A prefix must contain >1 components, must be followed by at least one component.
+-- The component following the prefix must be a join or an antijoin (we don't want to
+-- break a sequence of flatmaps/filters/assignments/aggregations).
+rulePrefixes :: Rule -> [RulePrefix]
+rulePrefixes Rule{..} =
+    filter (\pref -> rhsIsLiteral $ head $ drop (length pref) ruleRHS)
+    $ filter (\pref -> length pref > 1 && length pref < length ruleRHS)
+    $ inits ruleRHS
+
+-- Replace prefix with a fresh relation
+replacePrefix :: DatalogProgram -> RulePrefix -> State Int DatalogProgram
+replacePrefix d pref = trace ("replacePrefix " ++ show pref) $ do
+    let pref_len = length pref
+    -- allocate relation name
+    idx <- get
+    put $ idx + 1
+    let relname = "__Prefix_" ++ show idx
+    -- variables visible in the rest of the rule 
+    -- (manufacture a bogus rule consisting only of the prefix to call ruleRHSVars on it)
+    let vars = ruleRHSVars d (Rule nopos [] pref) pref_len
+    -- relation
+    let rel = Relation { relPos      = nopos
+                       , relGround   = False
+                       , relName     = relname
+                       , relType     = tTuple $ map typ vars
+                       , relDistinct = False
+                       }
+    -- rule
+    let atom = Atom { atomPos      = nopos
+                    , atomRelation = relname
+                    , atomVal      = eTuple $ map (eVar . name) vars
+                    }
+    let rule = Rule { rulePos       = nopos
+                    , ruleLHS      = [atom]
+                    , ruleRHS      = pref
+                    }
+    -- replace prefix in all rules
+    let rules' = map (\rule -> if isPrefixOf pref $ ruleRHS rule
+                                  then rule {ruleRHS = RHSLiteral True atom : (drop pref_len $ ruleRHS rule)}
+                                  else rule)
+                 $ progRules d
+    return d{ progRules = rule:rules'
+            , progRelations = M.insert relname rel $ progRelations d}

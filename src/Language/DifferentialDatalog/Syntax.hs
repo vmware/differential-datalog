@@ -380,12 +380,7 @@ data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
              | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
-
-instance Eq RuleRHS where
-    (==) (RHSLiteral p1 a1)      (RHSLiteral p2 a2)      = p1 == p2 && a1 == a2
-    (==) (RHSCondition c1)       (RHSCondition c2)       = c1 == c2
-    (==) (RHSAggregate g1 v1 a1) (RHSAggregate g2 v2 a2) = v1 == v2 && g1 == g2 && a1 == a2
-    (==) (RHSFlatMap v1 e1)      (RHSFlatMap v2 e2)      = v1 == v2 && e1 == e2
+             deriving (Eq)
 
 instance PP RuleRHS where
     pp (RHSLiteral True a)  = pp a

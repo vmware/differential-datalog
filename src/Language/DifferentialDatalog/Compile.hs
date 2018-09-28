@@ -325,7 +325,7 @@ compileLib d specname imports =
     -- * Rename program entities to Rust-friendly names
     -- * Transform away rules with multiple heads
     -- * Make sure the program has at least one relation
-    d' = addDummyRel $ optExpandMultiheadRules d
+    d' = addDummyRel $ optimize d
     (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
