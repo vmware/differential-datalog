@@ -96,7 +96,7 @@ sbTest = do
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_ovsdb" 
+        [ goldenVsFiles "ovn_ovsdb"
           ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"] 
           ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
           $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" [] False}]
@@ -106,7 +106,7 @@ sOUFFLE_DIR = "./test/souffle"
 souffleTests :: Bool -> TestTree
 souffleTests progress =
   testGroup "souffle tests" $
-        [ goldenVsFile "doop" 
+        [ goldenVsFile "doop"
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
           $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"] False}]
@@ -114,7 +114,7 @@ souffleTests progress =
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
     dir <- makeAbsolute $ sOUFFLE_DIR
-    let convert_proc = (proc (dir </> "convert.py") []) { cwd = Just $ sOUFFLE_DIR }
+    let convert_proc = (proc (dir </> "convert.py") []) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "convert.py failed with exit code " ++ show code ++
@@ -189,7 +189,7 @@ compilerTest progress fname cli_args run_ffi_test = do
                   then readFile importsfile
                   else return ""
     -- generate Rust project
-    let rust_dir = takeDirectory fname
+    rust_dir <- makeAbsolute $ takeDirectory fname
     compile prog specname imports rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {

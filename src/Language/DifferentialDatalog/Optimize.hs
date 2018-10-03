@@ -155,7 +155,7 @@ rulePrefixes Rule{..} =
 
 -- Replace prefix with a fresh relation
 replacePrefix :: DatalogProgram -> RulePrefix -> State Int DatalogProgram
-replacePrefix d pref = trace ("replacePrefix " ++ show pref) $ do
+replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
     let pref_len = length pref
     -- allocate relation name
     idx <- get

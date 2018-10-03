@@ -24,8 +24,8 @@ cache:
         - .stack-work
 
 env:
-   - TEST_SUITE='-p tutorial'
    - TEST_SUITE='-p souffle'
+   - TEST_SUITE='-p tutorial'
    - TEST_SUITE='-p simple'
    - TEST_SUITE='-p path'
    - TEST_SUITE='-p ovn'
