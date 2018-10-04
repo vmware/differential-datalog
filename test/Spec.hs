@@ -97,7 +97,7 @@ ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
         [ goldenVsFiles "ovn_ovsdb"
-          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"] 
+          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"]
           ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
           $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" [] False}]
 
@@ -179,6 +179,7 @@ parserTest fname = do
 -- compiled datalog program, producing .dump and .err files
 compilerTest :: Bool -> FilePath -> [String] -> Bool -> IO ()
 compilerTest progress fname cli_args run_ffi_test = do
+    fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
     prog <- parseValidate fname body
@@ -189,7 +190,7 @@ compilerTest progress fname cli_args run_ffi_test = do
                   then readFile importsfile
                   else return ""
     -- generate Rust project
-    rust_dir <- makeAbsolute $ takeDirectory fname
+    let rust_dir = takeDirectory fname
     compile prog specname imports rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
