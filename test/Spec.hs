@@ -255,9 +255,10 @@ cliTest progress fname specname rust_dir extra_args = do
         hClose hdat
         when (code /= ExitSuccess) $ do
             err <- readFile errfile
+            out <- readFile dumpfile
             errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
                                      "\nstderr:\n" ++ err ++
-                                     "\n\nstdout written to:\n" ++ dumpfile
+                                     "\n\nstdout:\n" ++ out
 
 -- Convert .dat file into C to test the FFI interface
 ffiTest :: Bool -> FilePath -> String -> FilePath -> IO ()
