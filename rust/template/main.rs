@@ -31,6 +31,10 @@ use differential_datalog::program::*;
 use cmd_parser::*;
 use time::precise_time_ns;
 
+// uncomment to enable profiling
+//extern crate cpuprofiler;
+//use cpuprofiler::PROFILER;
+
 fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
     if do_store {
         db.lock().unwrap().update(relid, v, pol);
@@ -55,7 +59,7 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     }
 }
 
-fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
+fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32, bool) {
     let resp = (
         if !is_upd_cmd(&cmd) {
             apply_updates(p, upds)
@@ -66,7 +70,11 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             p.transaction_start()
         },
         Command::Commit => {
-            p.transaction_commit()
+            // uncomment to enable profiling
+            //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
+            let res = p.transaction_commit();
+            //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
+            res
         },
         Command::Rollback => {
             p.transaction_rollback()
@@ -88,7 +96,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             let relid = match relname2id(&rname) {
                 None      => {
                     eprintln!("Error: Unknown relation {}", rname);
-                    return false;
+                    return (-1, false);
                 },
                 Some(rid) => rid as RelId
             };
@@ -96,7 +104,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             Ok(())
         },
         Command::Exit => {
-            exit(0);
+            return (0, false);
         },
         Command::Echo(txt) => {
             println!("{}", txt);
@@ -108,7 +116,7 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
                 Err(e) => {
                     upds.clear();
                     eprintln!("Error: {}", e);
-                    return false;
+                    return (-1, false);
                 }
             };
             if last {
@@ -119,8 +127,8 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         }
     });
     match resp {
-        Ok(_)  => true,
-        Err(e) => {eprintln!("Error: {}", e); false}
+        Ok(_)  => (0, true),
+        Err(e) => {eprintln!("Error: {}", e); (-1, false)}
     }
 }
 
@@ -140,9 +148,15 @@ fn is_upd_cmd(c: &Command) -> bool {
 
 pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>, nworkers: usize) -> i32 {
     let p = prog(upd_cb);
-    let running = Arc::new(Mutex::new(p.run(nworkers)));
+    let mut running = Arc::new(Mutex::new(p.run(nworkers)));
     let upds = Arc::new(Mutex::new(Vec::new()));
-    interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd))
+    let ret = interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd));
+    Arc::try_unwrap(running).ok()
+        .expect("run_interactive: cannot unwrap Arc")
+        .into_inner()
+        .expect("run_interactive: program is still locked")
+        .stop();
+    ret
 }
 
 pub fn main() {

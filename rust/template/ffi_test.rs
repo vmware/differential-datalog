@@ -53,7 +53,7 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
     }
 }
 
-fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
+fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32,bool) {
     match cmd {
         Command::Start => {
             println!("ret = datalog_example_transaction_start(prog);");
@@ -73,7 +73,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             let relid = match relname2id(&rname) {
                 None      => {
                     eprintln!("Error: Unknown relation {}", rname);
-                    return false;
+                    return (-1, false);
                 },
                 Some(rid) => rid as RelId
             };
@@ -93,7 +93,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
                 Err(e) => {
                     upds.clear();
                     eprintln!("Error: {}", e);
-                    return false;
+                    return (-1, false);
                 }
             };
             if last {
@@ -107,7 +107,7 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> bool {
             };
         }
     };
-    true
+    (0, true)
 }
 
 fn printUpd(upd: &Update<Value>) {

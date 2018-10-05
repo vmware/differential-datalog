@@ -1,0 +1,277 @@
+typedef number = string
+typedef symbol = string
+function cat(s: string, t: string): string = s ++ t
+typedef Modifier = string
+typedef Type = string
+typedef PrimitiveType = string
+typedef ReferenceType = string
+typedef ArrayType = string
+typedef ClassType = string
+typedef InterfaceType = string
+relation RisType(_t: Type)
+relation RisReferenceType(_t: ReferenceType)
+relation RisArrayType(_t: ArrayType)
+relation RisClassType(_t: ClassType)
+relation RisInterfaceType(_t: InterfaceType)
+input relation RDirectSuperclass(_class: ClassType, _superclass: ClassType)
+input relation RDirectSuperinterface(_ref: ReferenceType, _interface: InterfaceType)
+relation RApplicationClass(_ref: ReferenceType)
+input relation RMainClass(_class: ClassType)
+typedef Field = string
+relation RField_DeclaringType(_field: Field, _declaringClass: ReferenceType)
+typedef MethodDescriptor = string
+typedef Method = string
+relation RMethod_DeclaringType(_method: Method, _declaringType: ReferenceType)
+relation RMethod_ReturnType(_method: Method, _returnType: Type)
+relation RMethod_SimpleName(_method: Method, _simpleName: symbol)
+relation RMethod_Params(_method: Method, _params: symbol)
+relation RMethod_Descriptor(_method: Method, _descriptor: MethodDescriptor)
+input relation RMethod_Modifier(_mod: Modifier, _method: Method)
+input relation RFormalParam(_index: number, _method: Method, _var: Var)
+relation RThisVar(_method: Method, _var: Var)
+typedef Var = string
+input relation RVar_Type(_var: Var, _type: Type)
+relation RVar_DeclaringMethod(_var: Var, _method: Method)
+typedef HeapAllocation = string
+relation RHeapAllocation_Type(_heap: HeapAllocation, _type: Type)
+input relation RHeapAllocation_Type_Prefill(_heap: HeapAllocation, _type: Type)
+input relation RMainMethodArgArray(_heap: HeapAllocation)
+input relation RMainMethodArgArrayContent(_heap: HeapAllocation)
+typedef Instruction = string
+relation RInstruction_Method(_insn: Instruction, _inMethod: Method)
+typedef FieldInstruction = string
+typedef LoadInstanceField_Insn = string
+typedef StoreInstanceField_Insn = string
+typedef LoadStaticField_Insn = string
+typedef StoreStaticField_Insn = string
+typedef ArrayInstruction = string
+typedef LoadArrayIndex_Insn = string
+typedef StoreArrayIndex_Insn = string
+typedef AssignInstruction = string
+typedef AssignLocal_Insn = string
+typedef AssignCast_Insn = string
+typedef AssignHeapAllocation_Insn = string
+typedef ReturnInstruction = string
+typedef ReturnNonvoid_Insn = string
+typedef MethodInvocation = string
+typedef VirtualMethodInvocation_Insn = string
+typedef StaticMethodInvocation_Insn = string
+relation RisVirtualMethodInvocation_Insn(_insn: VirtualMethodInvocation_Insn)
+relation RisStaticMethodInvocation_Insn(_insn: StaticMethodInvocation_Insn)
+relation RFieldInstruction_Signature(_insn: FieldInstruction, _sign: Field)
+relation RLoadInstanceField_Base(_insn: LoadInstanceField_Insn, _var: Var)
+relation RLoadInstanceField_To(_insn: LoadInstanceField_Insn, _var: Var)
+relation RStoreInstanceField_From(_insn: StoreInstanceField_Insn, _var: Var)
+relation RStoreInstanceField_Base(_insn: StoreInstanceField_Insn, _var: Var)
+relation RLoadStaticField_To(_insn: LoadStaticField_Insn, _var: Var)
+relation RStoreStaticField_From(_insn: StoreStaticField_Insn, _var: Var)
+input relation RComponentType(_arrayType: ArrayType, _componentType: Type)
+relation RLoadArrayIndex_Base(_insn: LoadArrayIndex_Insn, _var: Var)
+relation RLoadArrayIndex_To(_insn: LoadArrayIndex_Insn, _var: Var)
+relation RStoreArrayIndex_From(_insn: StoreArrayIndex_Insn, _var: Var)
+relation RStoreArrayIndex_Base(_insn: StoreArrayIndex_Insn, _var: Var)
+relation RAssignInstruction_To(_insn: AssignInstruction, _to: Var)
+relation RAssignCast_From(_insn: AssignCast_Insn, _from: Var)
+relation RAssignCast_Type(_insn: AssignCast_Insn, _type: Type)
+relation RAssignLocal_From(_insn: AssignLocal_Insn, _from: Var)
+relation RAssignHeapAllocation_Heap(_insn: AssignHeapAllocation_Insn, _heap: HeapAllocation)
+relation RReturnNonvoid_Var(_return: ReturnNonvoid_Insn, _var: Var)
+relation RMethodInvocation_Method(_invocation: MethodInvocation, _signature: Method)
+input relation RAssignReturnValue(_invocation: MethodInvocation, _to: Var)
+input relation RActualParam(_index: number, _invocation: MethodInvocation, _var: Var)
+relation RVirtualMethodInvocation_Base(_invocation: VirtualMethodInvocation_Insn, _base: Var)
+relation RVirtualMethodInvocation_SimpleName(_invocation: MethodInvocation, _simplename: symbol)
+relation RVirtualMethodInvocation_Descriptor(_invocation: MethodInvocation, _descriptor: MethodDescriptor)
+relation RSpecialMethodInvocation_Base(_invocation: MethodInvocation, _base: Var)
+relation RMethodInvocation_Base(_invocation: MethodInvocation, _base: Var)
+relation RLoadInstanceField(_base: Var, _sig: Field, _to: Var, _inmethod: Method)
+relation RStoreInstanceField(_from: Var, _base: Var, _signature: Field, _inmethod: Method)
+relation RLoadStaticField(_sig: Field, _to: Var, _inmethod: Method)
+relation RStoreStaticField(_from: Var, _signature: Field, _inmethod: Method)
+relation RLoadArrayIndex(_base: Var, _to: Var, _inmethod: Method)
+relation RStoreArrayIndex(_from: Var, _base: Var, _inmethod: Method)
+relation RAssignCast(_type: Type, _from: Var, _to: Var, _inmethod: Method)
+relation RAssignLocal(_from: Var, _to: Var, _inmethod: Method)
+relation RAssignHeapAllocation(_heap: HeapAllocation, _to: Var, _inmethod: Method)
+relation RReturnVar(_var: Var, _method: Method)
+relation RStaticMethodInvocation(_invocation: MethodInvocation, _signature: Method, _inmethod: Method)
+input relation R_ClassType(_class: symbol)
+RisClassType(_class),
+	RisReferenceType(_class),
+	RisType(_class) :- R_ClassType(_class).
+input relation R_ArrayType(_arrayType: symbol)
+RisArrayType(_arrayType),
+	RisReferenceType(_arrayType),
+	RisType(_arrayType) :- R_ArrayType(_arrayType).
+input relation R_InterfaceType(_interface: symbol)
+RisInterfaceType(_interface),
+	RisReferenceType(_interface),
+	RisType(_interface) :- R_InterfaceType(_interface).
+input relation R_Var_DeclaringMethod(_var: symbol, _method: symbol)
+RVar_DeclaringMethod(_var, _method) :- R_Var_DeclaringMethod(_var, _method).
+input relation R_ApplicationClass(_type: symbol)
+RApplicationClass(_type),
+	RisReferenceType(_type),
+	RisType(_type) :- R_ApplicationClass(_type).
+input relation R_ThisVar(_method: symbol, _var: symbol)
+RThisVar(_method, _var) :- R_ThisVar(_method, _var).
+input relation R_NormalHeap(_id: symbol, _type: symbol)
+RHeapAllocation_Type(_id, _type),
+	RisType(_type) :- R_NormalHeap(_id, _type).
+input relation R_StringConstant(_id: symbol)
+RHeapAllocation_Type(_id, "java.lang.String") :- R_StringConstant(_id).
+RHeapAllocation_Type(_id, _type) :- RHeapAllocation_Type_Prefill(_id, _type).
+input relation R_AssignHeapAllocation(_instruction: symbol, _index: number, _heap: symbol, _to: symbol, _inmethod: symbol, _linenumber: number)
+RAssignHeapAllocation_Heap(_instruction, _heap),
+	RAssignInstruction_To(_instruction, _to),
+	RInstruction_Method(_instruction, _method) :- R_AssignHeapAllocation(_instruction, _index, _heap, _to, _method, _linenumber).
+input relation R_AssignLocal(_instruction: symbol, _index: number, _from: symbol, _to: symbol, _inmethod: symbol)
+RAssignInstruction_To(_instruction, _to),
+	RAssignLocal_From(_instruction, _from),
+	RInstruction_Method(_instruction, _method) :- R_AssignLocal(_instruction, _index, _from, _to, _method).
+input relation R_AssignCast(_instruction: symbol, _index: number, _from: symbol, _to: symbol, _type: symbol, _inmethod: symbol)
+RAssignInstruction_To(_instruction, _to),
+	RAssignCast_From(_instruction, _from),
+	RAssignCast_Type(_instruction, _type),
+	RInstruction_Method(_instruction, _method) :- R_AssignCast(_instruction, _index, _from, _to, _type, _method).
+input relation R_Field(_signature: symbol, _declaringClass: symbol, _simplename: symbol, _type: symbol)
+RField_DeclaringType(_signature, _declaringType) :- R_Field(_signature, _declaringType, _, _).
+RMethodInvocation_Base(_invocation, _base) :- RVirtualMethodInvocation_Base(_invocation, _base).
+RMethodInvocation_Base(_invocation, _base) :- RSpecialMethodInvocation_Base(_invocation, _base).
+input relation R_StaticMethodInvocation(_instruction: symbol, _index: number, _signature: symbol, _method: symbol)
+RMethodInvocation_Method(_instruction, _signature),
+	RisStaticMethodInvocation_Insn(_instruction),
+	RInstruction_Method(_instruction, _method) :- R_StaticMethodInvocation(_instruction, _index, _signature, _method).
+input relation R_SpecialMethodInvocation(_instruction: symbol, _index: number, _signature: symbol, _base: symbol, _method: symbol)
+RMethodInvocation_Method(_instruction, _signature),
+	RSpecialMethodInvocation_Base(_instruction, _base),
+	RInstruction_Method(_instruction, _method) :- R_SpecialMethodInvocation(_instruction, _index, _signature, _base, _method).
+input relation R_VirtualMethodInvocation(_instruction: symbol, _index: number, _signature: symbol, _base: symbol, _method: symbol)
+RMethodInvocation_Method(_instruction, _signature),
+	RVirtualMethodInvocation_Base(_instruction, _base),
+	RisVirtualMethodInvocation_Insn(_instruction),
+	RInstruction_Method(_instruction, _method) :- R_VirtualMethodInvocation(_instruction, _index, _signature, _base, _method).
+input relation R_Method(_method: symbol, _simplename: symbol, _descriptor: symbol, _declaringType: symbol, _returnType: symbol, _jvmDescriptor: symbol, _arity: number)
+RMethod_ReturnType(_method, _returnType),
+	RMethod_DeclaringType(_method, _declaringType),
+	RMethod_Params(_method, _params),
+	RMethod_SimpleName(_method, _simplename) :- R_Method(_method, _simplename, _params, _declaringType, _returnType, _jvmDescriptor, _arity).
+RMethod_Descriptor(_method, _descriptor) :- RMethod_ReturnType(_method, _returnType), RMethod_Params(_method, _params), var _descriptor = cat(_returnType, _params).
+input relation R_StoreInstanceField(_instruction: symbol, _index: number, _from: symbol, _base: symbol, _signature: symbol, _method: symbol)
+RStoreInstanceField_From(_instruction, _from),
+	RStoreInstanceField_Base(_instruction, _base),
+	RFieldInstruction_Signature(_instruction, _signature),
+	RInstruction_Method(_instruction, _method) :- R_StoreInstanceField(_instruction, _index, _from, _base, _signature, _method).
+input relation R_LoadInstanceField(_instruction: symbol, _index: number, _to: symbol, _base: symbol, _signature: symbol, _method: symbol)
+RLoadInstanceField_To(_instruction, _to),
+	RLoadInstanceField_Base(_instruction, _base),
+	RFieldInstruction_Signature(_instruction, _signature),
+	RInstruction_Method(_instruction, _method) :- R_LoadInstanceField(_instruction, _index, _to, _base, _signature, _method).
+input relation R_StoreStaticField(_instruction: symbol, _index: number, _from: symbol, _signature: symbol, _method: symbol)
+RStoreStaticField_From(_instruction, _from),
+	RFieldInstruction_Signature(_instruction, _signature),
+	RInstruction_Method(_instruction, _method) :- R_StoreStaticField(_instruction, _index, _from, _signature, _method).
+input relation R_LoadStaticField(_instruction: symbol, _index: number, _to: symbol, _signature: symbol, _method: symbol)
+RLoadStaticField_To(_instruction, _to),
+	RFieldInstruction_Signature(_instruction, _signature),
+	RInstruction_Method(_instruction, _method) :- R_LoadStaticField(_instruction, _index, _to, _signature, _method).
+input relation R_StoreArrayIndex(_instruction: symbol, _index: number, _from: symbol, _base: symbol, _method: symbol)
+RStoreArrayIndex_From(_instruction, _from),
+	RStoreArrayIndex_Base(_instruction, _base),
+	RInstruction_Method(_instruction, _method) :- R_StoreArrayIndex(_instruction, _index, _from, _base, _method).
+input relation R_LoadArrayIndex(_instruction: symbol, _index: number, _to: symbol, _base: symbol, _method: symbol)
+RLoadArrayIndex_To(_instruction, _to),
+	RLoadArrayIndex_Base(_instruction, _base),
+	RInstruction_Method(_instruction, _method) :- R_LoadArrayIndex(_instruction, _index, _to, _base, _method).
+input relation R_Return(_instruction: symbol, _index: number, _var: symbol, _method: symbol)
+RReturnNonvoid_Var(_instruction, _var),
+	RInstruction_Method(_instruction, _method) :- R_Return(_instruction, _index, _var, _method).
+RLoadInstanceField(_base, _sig, _to, _inmethod) :- RInstruction_Method(_insn, _inmethod), RLoadInstanceField_Base(_insn, _base), RFieldInstruction_Signature(_insn, _sig), RLoadInstanceField_To(_insn, _to).
+RStoreInstanceField(_from, _base, _sig, _inmethod) :- RInstruction_Method(_insn, _inmethod), RStoreInstanceField_From(_insn, _from), RStoreInstanceField_Base(_insn, _base), RFieldInstruction_Signature(_insn, _sig).
+RLoadStaticField(_sig, _to, _inmethod) :- RInstruction_Method(_insn, _inmethod), RFieldInstruction_Signature(_insn, _sig), RLoadStaticField_To(_insn, _to).
+RStoreStaticField(_from, _sig, _inmethod) :- RInstruction_Method(_insn, _inmethod), RStoreStaticField_From(_insn, _from), RFieldInstruction_Signature(_insn, _sig).
+RLoadArrayIndex(_base, _to, _inmethod) :- RInstruction_Method(_insn, _inmethod), RLoadArrayIndex_Base(_insn, _base), RLoadArrayIndex_To(_insn, _to).
+RStoreArrayIndex(_from, _base, _inmethod) :- RInstruction_Method(_insn, _inmethod), RStoreArrayIndex_From(_insn, _from), RStoreArrayIndex_Base(_insn, _base).
+RAssignCast(_type, _from, _to, _inmethod) :- RInstruction_Method(_insn, _inmethod), RAssignCast_From(_insn, _from), RAssignInstruction_To(_insn, _to), RAssignCast_Type(_insn, _type).
+RAssignLocal(_from, _to, _inmethod) :- RAssignInstruction_To(_insn, _to), RInstruction_Method(_insn, _inmethod), RAssignLocal_From(_insn, _from).
+RAssignHeapAllocation(_heap, _to, _inmethod) :- RInstruction_Method(_insn, _inmethod), RAssignHeapAllocation_Heap(_insn, _heap), RAssignInstruction_To(_insn, _to).
+RReturnVar(_var, _method) :- RInstruction_Method(_insn, _method), RReturnNonvoid_Var(_insn, _var).
+RStaticMethodInvocation(_invocation, _signature, _inmethod) :- RisStaticMethodInvocation_Insn(_invocation), RInstruction_Method(_invocation, _inmethod), RMethodInvocation_Method(_invocation, _signature).
+RVirtualMethodInvocation_Descriptor(_invocation, _descriptor),
+	RVirtualMethodInvocation_SimpleName(_invocation, _simplename) :- RisVirtualMethodInvocation_Insn(_invocation), RMethodInvocation_Method(_invocation, _signature), RMethod_SimpleName(_signature, _simplename), RMethod_Descriptor(_signature, _descriptor).
+relation RBasic_MethodLookup(_simplename: symbol, _descriptor: MethodDescriptor, _type: Type, _method: Method)
+relation RBasic_MethodImplemented(_simplename: symbol, _descriptor: MethodDescriptor, _type: Type, _method: Method)
+relation RBasic_DirectSubclass(_a: Type, _c: Type)
+relation RBasic_Subclass(_c: Type, _a: Type)
+relation RBasic_Superclass(_c: Type, _a: Type)
+relation RBasic_Superinterface(_k: Type, _c: Type)
+relation RBasic_SubtypeOf(_subtype: Type, _type: Type)
+relation RBasic_SupertypeOf(_supertype: Type, _type: Type)
+relation RBasic_SubtypeOfDifferent(_subtype: Type, _type: Type)
+relation RBasic_MainMethodDeclaration(_method: Method)
+RBasic_MethodLookup(_simplename, _descriptor, _type, _method) :- RBasic_MethodImplemented(_simplename, _descriptor, _type, _method).
+relation RBasic_MethodImplementedProj(_simplename: symbol, _descriptor: MethodDescriptor, _type: Type)
+RBasic_MethodImplementedProj(_simplename, _descriptor, _type) :- RBasic_MethodImplemented(_simplename, _descriptor, _type, _).
+RBasic_MethodLookup(_simplename, _descriptor, _type, _method) :- RDirectSuperclass(_type, _supertype), RBasic_MethodLookup(_simplename, _descriptor, _supertype, _method), not RBasic_MethodImplementedProj(_simplename, _descriptor, _type).
+RBasic_MethodLookup(_simplename, _descriptor, _type, _method) :- RDirectSuperinterface(_type, _supertype), RBasic_MethodLookup(_simplename, _descriptor, _supertype, _method), not RBasic_MethodImplementedProj(_simplename, _descriptor, _type).
+RBasic_MethodImplemented(_simplename, _descriptor, _type, _method) :- RMethod_SimpleName(_method, _simplename), RMethod_Descriptor(_method, _descriptor), RMethod_DeclaringType(_method, _type), not RMethod_Modifier("abstract", _method).
+RBasic_DirectSubclass(_a, _c) :- RDirectSuperclass(_a, _c).
+RBasic_Subclass(_c, _a) :- RBasic_DirectSubclass(_a, _c).
+RBasic_Subclass(_c, _a) :- RBasic_Subclass(_b, _a), RBasic_DirectSubclass(_b, _c).
+RBasic_Superclass(_c, _a) :- RBasic_Subclass(_a, _c).
+RBasic_Superinterface(_k, _c) :- RDirectSuperinterface(_c, _k).
+RBasic_Superinterface(_k, _c) :- RDirectSuperinterface(_c, _j), RBasic_Superinterface(_k, _j).
+RBasic_Superinterface(_k, _c) :- RDirectSuperclass(_c, _super), RBasic_Superinterface(_k, _super).
+RBasic_SupertypeOf(_s, _t) :- RBasic_SubtypeOf(_t, _s).
+RBasic_SubtypeOf(_s, _s) :- RisClassType(_s).
+RBasic_SubtypeOf(_s, _t) :- RBasic_Subclass(_t, _s).
+RBasic_SubtypeOf(_s, _t) :- RisClassType(_s), RBasic_Superinterface(_t, _s).
+RBasic_SubtypeOf(_s, _t) :- RisInterfaceType(_s), var _t = "java.lang.Object", RisType(_t).
+RBasic_SubtypeOf(_s, _s) :- RisInterfaceType(_s).
+RBasic_SubtypeOf(_s, _t) :- RisInterfaceType(_s), RBasic_Superinterface(_t, _s).
+RBasic_SubtypeOf(_s, _t) :- RisArrayType(_s), var _t = "java.lang.Object", RisType(_t).
+RBasic_SubtypeOf(_s, _t) :- RComponentType(_s, _sc), RComponentType(_t, _tc), RisReferenceType(_sc), RisReferenceType(_tc), RBasic_SubtypeOf(_sc, _tc).
+RBasic_SubtypeOf(_s, _t) :- RisArrayType(_s), var _t = "java.lang.Cloneable", RisInterfaceType(_t), RisType(_t).
+RBasic_SubtypeOf(_s, _t) :- RisArrayType(_s), var _t = "java.io.Serializable", RisInterfaceType(_t), RisType(_t).
+RBasic_SubtypeOf(_t, _t) :- RisType(_t).
+RBasic_SubtypeOfDifferent(_s, _t) :- RBasic_SubtypeOf(_s, _t), not (_s == _t).
+RBasic_MainMethodDeclaration(_method) :- RMainClass(_type), RMethod_DeclaringType(_method, _type), not (_method == "<java.util.prefs.Base64: void main(java.lang.String[])>"), not (_method == "<sun.java2d.loops.GraphicsPrimitiveMgr: void main(java.lang.String[])>"), not (_method == "<sun.security.provider.PolicyParser: void main(java.lang.String[])>"), RMethod_SimpleName(_method, "main"), RMethod_Descriptor(_method, "void(java.lang.String[])"), RMethod_Modifier("public", _method), RMethod_Modifier("static", _method).
+relation RClassInitializer(_type: Type, _method: Method)
+relation RInitializedClass(_classOrInterface: Type)
+RClassInitializer(_type, _method) :- RBasic_MethodImplemented("<clinit>", "void()", _type, _method).
+RInitializedClass(_superclass) :- RInitializedClass(_class), RDirectSuperclass(_class, _superclass).
+RInitializedClass(_superinterface) :- RInitializedClass(_classOrInterface), RDirectSuperinterface(_classOrInterface, _superinterface).
+RInitializedClass(_class) :- RBasic_MainMethodDeclaration(_method), RMethod_DeclaringType(_method, _class).
+RInitializedClass(_class) :- RReachable(_inmethod), RAssignHeapAllocation(_heap, _, _inmethod), RHeapAllocation_Type(_heap, _class).
+RInitializedClass(_class) :- RReachable(_inmethod), RInstruction_Method(_invocation, _inmethod), RisStaticMethodInvocation_Insn(_invocation), RMethodInvocation_Method(_invocation, _signature), RMethod_DeclaringType(_signature, _class).
+RInitializedClass(_classOrInterface) :- RReachable(_inmethod), RStoreStaticField(_, _signature, _inmethod), RField_DeclaringType(_signature, _classOrInterface).
+RInitializedClass(_classOrInterface) :- RReachable(_inmethod), RLoadStaticField(_signature, _, _inmethod), RField_DeclaringType(_signature, _classOrInterface).
+RReachable(_clinit) :- RInitializedClass(_class), RClassInitializer(_class, _clinit).
+relation RAssign(_to: Var, _from: Var)
+relation RVarPointsTo(_heap: HeapAllocation, _var: Var)
+relation RInstanceFieldPointsTo(_heap: HeapAllocation, _fld: Field, _baseheap: HeapAllocation)
+relation RStaticFieldPointsTo(_heap: HeapAllocation, _fld: Field)
+relation RCallGraphEdge(_invocation: MethodInvocation, _meth: Method)
+relation RArrayIndexPointsTo(_baseheap: HeapAllocation, _heap: HeapAllocation)
+relation RReachable(_method: Method)
+RAssign(_actual, _formal) :- RCallGraphEdge(_invocation, _method), RFormalParam(_index, _method, _formal), RActualParam(_index, _invocation, _actual).
+RAssign(_return, _local) :- RCallGraphEdge(_invocation, _method), RReturnVar(_return, _method), RAssignReturnValue(_invocation, _local).
+RVarPointsTo(_heap, _var) :- RAssignHeapAllocation(_heap, _var, _inMethod), RReachable(_inMethod).
+RVarPointsTo(_heap, _to) :- RAssign(_from, _to), RVarPointsTo(_heap, _from).
+RVarPointsTo(_heap, _to) :- RReachable(_inmethod), RAssignLocal(_from, _to, _inmethod), RVarPointsTo(_heap, _from).
+RVarPointsTo(_heap, _to) :- RReachable(_method), RAssignCast(_type, _from, _to, _method), RBasic_SupertypeOf(_type, _heaptype), RHeapAllocation_Type(_heap, _heaptype), RVarPointsTo(_heap, _from).
+RArrayIndexPointsTo(_baseheap, _heap) :- RReachable(_inmethod), RStoreArrayIndex(_from, _base, _inmethod), RVarPointsTo(_baseheap, _base), RVarPointsTo(_heap, _from), RHeapAllocation_Type(_heap, _heaptype), RHeapAllocation_Type(_baseheap, _baseheaptype), RComponentType(_baseheaptype, _componenttype), RBasic_SupertypeOf(_componenttype, _heaptype).
+RVarPointsTo(_heap, _to) :- RReachable(_inmethod), RLoadArrayIndex(_base, _to, _inmethod), RVarPointsTo(_baseheap, _base), RArrayIndexPointsTo(_baseheap, _heap), RVar_Type(_to, _type), RHeapAllocation_Type(_baseheap, _baseheaptype), RComponentType(_baseheaptype, _basecomponenttype), RBasic_SupertypeOf(_type, _basecomponenttype).
+RVarPointsTo(_heap, _to) :- RReachable(_inmethod), RLoadInstanceField(_base, _signature, _to, _inmethod), RVarPointsTo(_baseheap, _base), RInstanceFieldPointsTo(_heap, _signature, _baseheap).
+RInstanceFieldPointsTo(_heap, _fld, _baseheap) :- RReachable(_inmethod), RStoreInstanceField(_from, _base, _fld, _inmethod), RVarPointsTo(_heap, _from), RVarPointsTo(_baseheap, _base).
+RVarPointsTo(_heap, _to) :- RReachable(_inmethod), RLoadStaticField(_fld, _to, _inmethod), RStaticFieldPointsTo(_heap, _fld).
+RStaticFieldPointsTo(_heap, _fld) :- RReachable(_inmethod), RStoreStaticField(_from, _fld, _inmethod), RVarPointsTo(_heap, _from).
+RVarPointsTo(_heap, _this) :- RReachable(_inMethod), RInstruction_Method(_invocation, _inMethod), RVirtualMethodInvocation_Base(_invocation, _base), RVarPointsTo(_heap, _base), RHeapAllocation_Type(_heap, _heaptype), RVirtualMethodInvocation_SimpleName(_invocation, _simplename), RVirtualMethodInvocation_Descriptor(_invocation, _descriptor), RBasic_MethodLookup(_simplename, _descriptor, _heaptype, _toMethod), RThisVar(_toMethod, _this).
+RCallGraphEdge(_invocation, _toMethod),
+	RReachable(_toMethod) :- RReachable(_inMethod), RInstruction_Method(_invocation, _inMethod), RVirtualMethodInvocation_Base(_invocation, _base), RVarPointsTo(_heap, _base), RHeapAllocation_Type(_heap, _heaptype), RVirtualMethodInvocation_SimpleName(_invocation, _simplename), RVirtualMethodInvocation_Descriptor(_invocation, _descriptor), RBasic_MethodLookup(_simplename, _descriptor, _heaptype, _toMethod).
+RCallGraphEdge(_invocation, _tomethod),
+	RReachable(_tomethod) :- RReachable(_inmethod), RStaticMethodInvocation(_invocation, _tomethod, _inmethod).
+RVarPointsTo(_heap, _this),
+	RCallGraphEdge(_invocation, _tomethod),
+	RReachable(_tomethod) :- RReachable(_inmethod), RInstruction_Method(_invocation, _inmethod), RSpecialMethodInvocation_Base(_invocation, _base), RVarPointsTo(_heap, _base), RMethodInvocation_Method(_invocation, _tomethod), RThisVar(_tomethod, _this).
+RReachable(_method) :- RBasic_MainMethodDeclaration(_method).

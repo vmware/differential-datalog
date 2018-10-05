@@ -260,10 +260,10 @@ relation = do
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
          let tdef = TypeDef nopos relName [] $ Just tspec
-         let rel = Relation nopos ground relName $ TUser p relName []
+         let rel = Relation nopos ground relName (TUser p relName []) True
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
+       (do rel <- brackets $ (\tspec -> Relation nopos ground relName tspec True) <$> typeSpecSimple
            return [SpRelation rel]))
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)

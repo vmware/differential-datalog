@@ -5034,4 +5034,3 @@ insert OVN_Northbound.Logical_Switch_Port(
     .type = "",
     .up = types.Some{false});
 commit;
-
