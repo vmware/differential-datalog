@@ -8,12 +8,12 @@ input relation NB_Global(
     ssl: option_t<uuid>
 )
 input relation NB_Global_external_ids(
-    nb_global: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation NB_Global_connections(
-    nb_global: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch(
@@ -21,39 +21,39 @@ input relation Logical_Switch(
     name: string
 )
 input relation Logical_Switch_ports(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch_acls(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch_qos_rules(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch_load_balancer(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch_dns_records(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Switch_other_config(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Switch_external_ids(
-    logical_switch: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Switch_Port(
     _uuid: uuid,
     name: string,
-    _type: string,
+    __type: string,
     parent_name: option_t<string>,
     tag_request: option_t<integer>,
     tag: option_t<integer>,
@@ -64,20 +64,20 @@ input relation Logical_Switch_Port(
     dhcpv6_options: option_t<uuid>
 )
 input relation Logical_Switch_Port_options(
-    logical_switch_port: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Switch_Port_addresses(
-    logical_switch_port: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Logical_Switch_Port_port_security(
-    logical_switch_port: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Logical_Switch_Port_external_ids(
-    logical_switch_port: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -86,11 +86,11 @@ input relation Address_Set(
     name: string
 )
 input relation Address_Set_addresses(
-    address_set: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Address_Set_external_ids(
-    address_set: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -99,15 +99,15 @@ input relation Port_Group(
     name: string
 )
 input relation Port_Group_ports(
-    port_group: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Port_Group_acls(
-    port_group: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Port_Group_external_ids(
-    port_group: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -117,12 +117,12 @@ input relation Load_Balancer(
     protocol: option_t<string>
 )
 input relation Load_Balancer_vips(
-    load_balancer: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Load_Balancer_external_ids(
-    load_balancer: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -131,14 +131,14 @@ input relation ACL(
     name: option_t<string>,
     priority: integer,
     direction: string,
-    _match: string,
+    __match: string,
     action: string,
     log: bool,
     severity: option_t<string>,
     meter: option_t<string>
 )
 input relation ACL_external_ids(
-    acl: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -146,20 +146,20 @@ input relation QoS(
     _uuid: uuid,
     priority: integer,
     direction: string,
-    _match: string
+    __match: string
 )
 input relation QoS_action(
-    qos: uuid,
+    _uuid: uuid,
     key: string,
     value: integer
 )
 input relation QoS_bandwidth(
-    qos: uuid,
+    _uuid: uuid,
     key: string,
     value: integer
 )
 input relation QoS_external_ids(
-    qos: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -169,11 +169,11 @@ input relation Meter(
     unit: string
 )
 input relation Meter_bands(
-    meter: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Meter_external_ids(
-    meter: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -184,7 +184,7 @@ input relation Meter_Band(
     burst_size: integer
 )
 input relation Meter_Band_external_ids(
-    meter_band: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -194,28 +194,28 @@ input relation Logical_Router(
     enabled: option_t<bool>
 )
 input relation Logical_Router_ports(
-    logical_router: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Router_static_routes(
-    logical_router: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Router_nat(
-    logical_router: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Router_load_balancer(
-    logical_router: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Router_options(
-    logical_router: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Router_external_ids(
-    logical_router: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -227,25 +227,25 @@ input relation Logical_Router_Port(
     enabled: option_t<bool>
 )
 input relation Logical_Router_Port_gateway_chassis(
-    logical_router_port: uuid,
+    _uuid: uuid,
     key: uuid
 )
 input relation Logical_Router_Port_options(
-    logical_router_port: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Router_Port_networks(
-    logical_router_port: uuid,
+    _uuid: uuid,
     key: string
 )
 input relation Logical_Router_Port_ipv6_ra_configs(
-    logical_router_port: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Logical_Router_Port_external_ids(
-    logical_router_port: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -257,7 +257,7 @@ input relation Logical_Router_Static_Route(
     output_port: option_t<string>
 )
 input relation Logical_Router_Static_Route_external_ids(
-    logical_router_static_route: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -267,10 +267,10 @@ input relation NAT(
     external_mac: option_t<string>,
     logical_ip: string,
     logical_port: option_t<string>,
-    _type: string
+    __type: string
 )
 input relation NAT_external_ids(
-    nat: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -279,12 +279,12 @@ input relation DHCP_Options(
     cidr: string
 )
 input relation DHCP_Options_options(
-    dhcp_options: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation DHCP_Options_external_ids(
-    dhcp_options: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -296,17 +296,17 @@ input relation Connection(
     is_connected: bool
 )
 input relation Connection_other_config(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Connection_external_ids(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Connection_status(
-    connection: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -314,12 +314,12 @@ input relation DNS(
     _uuid: uuid
 )
 input relation DNS_records(
-    dns: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation DNS_external_ids(
-    dns: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -333,7 +333,7 @@ input relation SSL(
     ssl_ciphers: string
 )
 input relation SSL_external_ids(
-    ssl: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
@@ -344,12 +344,12 @@ input relation Gateway_Chassis(
     priority: integer
 )
 input relation Gateway_Chassis_external_ids(
-    gateway_chassis: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )
 input relation Gateway_Chassis_options(
-    gateway_chassis: uuid,
+    _uuid: uuid,
     key: string,
     value: string
 )

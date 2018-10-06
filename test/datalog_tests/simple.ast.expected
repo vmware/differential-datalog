@@ -81,6 +81,8 @@ function a7 (a: bit<16>, b: bit<16>): bool =
     (((((((a < b) or (a > b)) or (a <= b)) or (a >= b)) or (a == b)) or (a != b)) or (a < b))
 function a8 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
+function a9 (): bit<32> =
+    (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =

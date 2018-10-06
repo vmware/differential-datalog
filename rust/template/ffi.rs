@@ -2,8 +2,10 @@
 
 use std::sync::{Arc,Mutex};
 use std::slice;
+use std::ops::Deref;
 use libc::*;
 use super::*;
+use differential_datalog::arcval;
 
 use std::ffi::{CStr,CString};
 use std::os::raw::c_char;
@@ -123,6 +125,22 @@ impl ToFFI for String {
 
     fn c_code(&self) -> String {
         format!("{:?}", *self)
+    }
+}
+
+impl<T:Val+ToFFI> ToFFI for arcval::ArcVal<T> {
+    type FFIType = T::FFIType;
+
+    fn to_ffi(&self) -> Self::FFIType {
+        self.deref().to_ffi()
+    }
+
+    fn free(x: &mut Self::FFIType) {
+        T::free(x)
+    }
+
+    fn c_code(&self) -> String {
+        self.deref().c_code()
     }
 }
 

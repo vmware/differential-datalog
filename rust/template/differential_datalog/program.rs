@@ -136,6 +136,8 @@ pub struct Relation<V: Val> {
     /// `true` is this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input:        bool,
+    /// apply distinct() to this relation
+    pub distinct:     bool,
     /// Unique relation id
     pub id:           RelId,
     /// Rules that define the content of the relation.
@@ -365,7 +367,7 @@ impl<V:Val> Program<V>
                         let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, u64>,V,isize>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
-                        for node in &prog.nodes {
+                        for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
                                 ProgNode::RelNode{rel:r} => {
                                     let (session, mut collection) = outer.new_collection::<V,isize>();
@@ -374,10 +376,13 @@ impl<V:Val> Program<V>
                                     };
                                     /* apply rules */
                                     for rule in &r.rules {
-                                        collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements));
+                                        collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements, &arrangements));
                                     };
-                                    collection = with_prof_context(&r.name,
-                                                                   ||collection.distinct_total());
+                                    /* don't distinct input collections, as this is already done by the set_update logic */
+                                    if !r.input && r.distinct {
+                                        collection = with_prof_context(&r.name,
+                                                                       ||collection.distinct_total());
+                                    }
                                     /* create arrangements */
                                     for (i,arr) in r.arrangements.iter().enumerate() {
                                         with_prof_context(&arr.name,
@@ -389,40 +394,52 @@ impl<V:Val> Program<V>
                                     /* create collections; add them to map; we will overwrite them with
                                      * updated collections returned from the inner scope. */
                                     for r in rs.iter() {
-                                        let (session, collection) = outer.new_collection::<V,isize>();
+                                        let (_session, collection) = outer.new_collection::<V,isize>();
                                         if r.input {
-                                            sessions.insert(r.id, session);
+                                            panic!("input relation in nested scope: {}", r.name)
+                                            //sessions.insert(r.id, session);
                                         }
                                         collections.insert(r.id, collection);
                                     };
                                     /* create a nested scope for mutually recursive relations */
                                     let new_collections = outer.scoped(|inner| {
-                                        /* create variables for relations defined in the SCC, as well as all
-                                         * relations they depend on. */
+                                        /* create variables for relations defined in the SCC. */
                                         let mut vars = FnvHashMap::default();
+                                        /* arrangements created inside the nested scope */
+                                        let mut local_arrangements = FnvHashMap::default();
+                                        /* arrangement entered from global scope */
                                         let mut inner_arrangements = FnvHashMap::default();
+                                        /* collections entered from global scope */
                                         let mut inner_collections = FnvHashMap::default();
                                         for r in rs.iter() {
                                             vars.insert(&r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
                                         };
+                                        /* create arrangements */
+                                        for rel in rs {
+                                            for (i, arr) in rel.arrangements.iter().enumerate() {
+                                                /* check if arrangement is actually used inside this node */
+                                                if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n == nodeid) {
+                                                    with_prof_context(
+                                                        &format!("local {}", arr.name),
+                                                        ||local_arrangements.insert((rel.id, i), vars.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                                }
+                                            }
+                                        };
                                         for dep in Self::dependencies(&rs) {
                                             match dep {
                                                 Dep::DepRel(relid) => {
-                                                    if !vars.contains_key(&relid) {
-                                                        inner_collections.insert(relid, collections.get(&relid).unwrap().enter(inner));
-                                                    }
+                                                    assert!(!vars.contains_key(&relid));
+                                                    inner_collections.insert(relid,
+                                                                             collections
+                                                                             .get(&relid)
+                                                                             .unwrap()
+                                                                             .enter(inner));
                                                 },
                                                 Dep::DepArr(arrid) => {
-                                                    match arrangements.get(&arrid) {
-                                                        Some(arr)   => {
-                                                            inner_arrangements.insert(arrid, arr.enter(inner));
-                                                        },
-                                                        None        => {
-                                                            if !vars.contains_key(&arrid.0) {
-                                                                inner_collections.insert(arrid.0, collections.get(&arrid.0).unwrap().enter(inner));
-                                                            };
-                                                        } // TODO: figure out if there is a safe way to create arrangements inside recursive fragment
-                                                    };
+                                                    inner_arrangements.insert(arrid,
+                                                                              arrangements.get(&arrid)
+                                                                              .expect(&format!("DepArr: unknown arrangement {:?}", arrid))
+                                                                              .enter(inner));
                                                 }
                                             }
                                         };
@@ -432,6 +449,7 @@ impl<V:Val> Program<V>
                                                 let c = prog.mk_rule(
                                                     rule,
                                                     |rid| vars.get(&rid).map(|v|&(**v)).or(inner_collections.get(&rid)),
+                                                    &local_arrangements,
                                                     &inner_arrangements);
                                                 vars.get_mut(&rel.id).unwrap().add(&c);
                                             };
@@ -449,9 +467,12 @@ impl<V:Val> Program<V>
                                     /* create arrangements */
                                     for rel in rs {
                                         for (i, arr) in rel.arrangements.iter().enumerate() {
-                                            with_prof_context(
-                                                &arr.name,
-                                                ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                            /* only if the arrangement is used outside of this node */
+                                            if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n != nodeid) {
+                                                with_prof_context(
+                                                    &format!("global {}", arr.name),
+                                                    ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                            }
                                         };
                                     };
                                 }
@@ -623,6 +644,40 @@ impl<V:Val> Program<V>
         panic!("get_relation({}): relation not found", relid)
     }
 
+    /* indices of program nodes that use arrangement */
+    fn arrangement_used_by_nodes(&self, arrid: ArrId) -> Vec<usize> {
+        self.nodes.iter().enumerate()
+            .filter_map(|(i,n)|
+                    if Self::node_uses_arrangement(n, arrid) {
+                        Some(i)
+                    } else {
+                        None
+                    }).collect()
+    }
+
+    fn node_uses_arrangement(n: &ProgNode<V>, arrid: ArrId) -> bool {
+        match n {
+            ProgNode::RelNode{rel} => {
+                Self::rel_uses_arrangement(rel, arrid)
+            },
+            ProgNode::SCCNode{rels} => {
+                rels.iter().any(|rel|Self::rel_uses_arrangement(rel, arrid))
+            }
+        }
+    }
+
+    fn rel_uses_arrangement(r: &Relation<V>, arrid: ArrId) -> bool {
+        r.rules.iter().any(|rule| Self::rule_uses_arrangement(rule, arrid))
+    }
+
+    // TODO: update this function if we change how rules use relations
+    fn rule_uses_arrangement(r: &Rule<V>, arrid: ArrId) -> bool {
+        r.xforms.iter().any(|xform|
+                            match xform {
+                                XForm::Join{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
+                                _ => false
+                            })
+    }
 
     /* Returns all input relations of the program */
     fn input_relations(&self) -> Vec<RelId> {
@@ -641,24 +696,25 @@ impl<V:Val> Program<V>
         }).collect()
     }
 
-    /* Lookup arrangement by id */
-    fn get_arrangement(&self, arrid: ArrId) -> &Arrangement<V> {
-        &self.get_relation(arrid.0).arrangements[arrid.1]
-    }
-
-    /* Return all relations required to compute rels */
+    /* Return all relations required to compute rels, excluding recursive dependencies on rels */
     fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
             for rule in &rel.rules {
-                result.insert(Dep::DepRel(rule.rel));
+                if rels.iter().all(|r|r.id != rule.rel) {
+                    result.insert(Dep::DepRel(rule.rel));
+                };
                 for xform in &rule.xforms {
                     match xform {
                         XForm::Join{afun: _, arrangement: arrid, jfun: _} => {
-                            result.insert(Dep::DepArr(*arrid));
+                            if rels.iter().all(|r|r.id != arrid.0) {
+                                result.insert(Dep::DepArr(*arrid));
+                            }
                         },
                         XForm::Antijoin {afun: _, rel: relid} => {
-                            result.insert(Dep::DepRel(*relid));
+                            if rels.iter().all(|r|r.id != *relid) {
+                                result.insert(Dep::DepRel(*relid));
+                            }
                         },
                         _ => {}
                     };
@@ -670,18 +726,17 @@ impl<V:Val> Program<V>
     }
 
     /* Compile right-hand-side of a rule to a collection */
-    fn mk_rule<'a,S:Scope,T,F>(&'a self,
-                               rule: &Rule<V>,
-                               lookup_collection: F,
-                               arrangements: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T>>) -> Collection<S,V>
-        where T : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
+    fn mk_rule<'a,S:Scope,T1,T2,F>(&'a self,
+                                  rule: &Rule<V>,
+                                  lookup_collection: F,
+                                  arrangements1: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T1>>,
+                                  arrangements2: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T2>>) -> Collection<S,V>
+        where T1 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
+              T2 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
               S::Timestamp : Lattice,
               F: Fn(RelId) -> Option<&'a Collection<S,V>>
     {
-        let first = match lookup_collection(rule.rel) {
-            None    => panic!("mk_rule: unknown relation id {}", rule.rel),
-            Some(c) => c
-        };
+        let first = lookup_collection(rule.rel).expect(&format!("mk_rule: unknown relation id {:?}", rule.rel));
         let mut rhs = None;
         for xform in &rule.xforms {
             rhs = match xform {
@@ -702,25 +757,29 @@ impl<V:Val> Program<V>
                     Some(rhs.as_ref().unwrap_or(first).flat_map(f))
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
-                    let arrname = &self.get_arrangement(*arrid).name;
-                    match arrangements.get(&arrid) {
+                    match arrangements1.get(&arrid) {
                         Some(arranged) => {
                             with_prof_context(
-                                arrname,
+                                "rule (local)"
+                                /*rule.name + jname*/,
                                 ||Some(rhs.as_ref().unwrap_or(first).
                                   flat_map(af).arrange_by_key().
                                   join_core(arranged, jf)))
                         },
                         None      => {
-                            let arrangement = self.get_arrangement(*arrid);
-                            let arranged = with_prof_context(
-                                &arrangement.name,
-                                ||lookup_collection(arrid.0).unwrap().flat_map(arrangement.afun).arrange_by_key());
-                            with_prof_context(
-                                arrname,
-                                ||Some(rhs.as_ref().unwrap_or(first).
-                                       flat_map(af).arrange_by_key().
-                                       join_core(&arranged, jf)))
+                            match arrangements2.get(&arrid) {
+                                Some(arranged) => {
+                                    with_prof_context(
+                                        "rule (global)"
+                                        /*rule.name + jname*/,
+                                        ||Some(rhs.as_ref().unwrap_or(first).
+                                               flat_map(af).arrange_by_key().
+                                               join_core(arranged, jf)))
+                                },
+                                None => {
+                                    panic!("XForm::Join: unknown arrangement {:?}", arrid)
+                                }
+                            }
                         }
                     }
                 },

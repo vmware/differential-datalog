@@ -30,7 +30,7 @@ serde_derive = "1.0.14"
 default = []
 
 [profile.release]
-opt-level = 1
+opt-level = 2
 debug = false
 rpath = false
 lto = false

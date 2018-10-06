@@ -79,27 +79,47 @@ goldenTests progress = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file)
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] True)
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
 
 nbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
-    writeFile "test/ovn/ovn_nb.dl" (render prog)
+    writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" ["Logical_Flow", "Address_Set"]
-    writeFile "test/ovn/ovn_sb.dl" (render prog)
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" [{-"Logical_Flow", "Address_Set"-}]
+    writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_ovsdb" 
-          ["test/ovn/ovn_nb.dl.expected", "test/ovn/ovn_sb.dl.expected", "test/ovn/ovn.dump.expected"] 
-          ["test/ovn/ovn_nb.dl", "test/ovn/ovn_sb.dl", "test/ovn/ovn.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl"}]
+        [ goldenVsFiles "ovn_ovsdb"
+          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"]
+          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" [] False}]
+
+sOUFFLE_DIR = "./test/souffle"
+
+souffleTests :: Bool -> TestTree
+souffleTests progress =
+  testGroup "souffle tests" $
+        [ goldenVsFile "doop"
+          (sOUFFLE_DIR </> "souffle.dl.expected")
+          (sOUFFLE_DIR </> "souffle.dl")
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"] False}]
+
+convertSouffle :: Bool -> IO ()
+convertSouffle progress = do
+    dir <- makeAbsolute $ sOUFFLE_DIR
+    let convert_proc = (proc (dir </> "convert.py") []) { cwd = Just dir }
+    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "convert.py failed with exit code " ++ show code ++
+                                 "\nstderr:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
 
 parseValidate :: FilePath -> String -> IO DatalogProgram
 parseValidate file program = do
@@ -157,8 +177,9 @@ parserTest fname = do
 --
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: Bool -> FilePath -> IO ()
-compilerTest progress fname = do
+compilerTest :: Bool -> FilePath -> [String] -> Bool -> IO ()
+compilerTest progress fname cli_args run_ffi_test = do
+    fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
     prog <- parseValidate fname body
@@ -187,10 +208,11 @@ compilerTest progress fname = do
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
+                                 "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo -}
-    cliTest progress fname specname rust_dir
-    ffiTest progress fname specname rust_dir
+    cliTest progress fname specname rust_dir cli_args
+    when run_ffi_test $
+        ffiTest progress fname specname rust_dir
 
 progressThread :: IO ()
 progressThread = do
@@ -209,8 +231,9 @@ withProgress True action = do
     return res
 
 -- Feed test data via pipe if a .dat file exists
-cliTest :: Bool -> FilePath -> String -> FilePath -> IO ()
-cliTest progress fname specname rust_dir = do
+cliTest :: Bool -> FilePath -> String -> FilePath -> [String] -> IO ()
+cliTest progress fname specname rust_dir extra_args = do
+    let extra_args' = if null extra_args then [] else ("--" : extra_args)
     let dumpfile = replaceExtension fname "dump"
     let errfile  = replaceExtension fname "err"
     let datfile  = replaceExtension fname "dat"
@@ -219,24 +242,22 @@ cliTest progress fname specname rust_dir = do
         hout <- openFile dumpfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag)){
-                                       cwd = Just $ rust_dir </> specname,
-                                       std_in=CreatePipe,
-                                       std_out=UseHandle hout,
-                                       std_err=UseHandle herr} $
-            \(Just hin) _ _ phandle -> do
-                dat <- hGetContents hdat
-                hPutStrLn hin dat
-                hPutStrLn hin "exit;"
-                hFlush hin
-                withProgress progress $ waitForProcess phandle
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
-                                     "\nstdout written to:\n" ++ errfile ++
-                                     "\n\nstdout written to:\n" ++ dumpfile
+        let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag ++ extra_args')) {
+                cwd = Just $ rust_dir </> specname,
+                std_in=UseHandle hdat,
+                std_out=UseHandle hout,
+                std_err=UseHandle herr
+            }
+        code <- withCreateProcess cli_proc $
+            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
         hClose hout
         hClose herr
         hClose hdat
+        when (code /= ExitSuccess) $ do
+            err <- readFile errfile
+            errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
+                                     "\nstderr:\n" ++ err ++
+                                     "\n\nstdout written to:\n" ++ dumpfile
 
 -- Convert .dat file into C to test the FFI interface
 ffiTest :: Bool -> FilePath -> String -> FilePath -> IO ()
@@ -262,13 +283,14 @@ ffiTest progress fname specname rust_dir = do
                 hPutStrLn hin "exit;"
                 hFlush hin
                 withProgress progress $ waitForProcess phandle
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
-                                     "\nstdout written to:\n" ++ errfile ++
-                                     "\n\nstdout written to:\n" ++ cfile
         hClose hout
         hClose herr
         hClose hdat
+        when (code /= ExitSuccess) $ do
+            err <- readFile errfile
+            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
+                                     "\nstderr:\n" ++ err ++
+                                     "\n\nstdout written to:\n" ++ cfile
         -- Compile C program
         let exefile = specname ++ "_test"
         code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
@@ -298,8 +320,8 @@ goldenVsFiles name ref new act =
              cmp upd
   where
   cmp [] [] = return Nothing
-  cmp xs ys = return $ liftM (intercalate "\n") $ sequence $
-              map (\((x,r),(y,n)) ->
+  cmp xs ys = return $ (\errs -> if null errs then Nothing else Just (intercalate "\n" errs)) $
+              mapMaybe (\((x,r),(y,n)) ->
                     if x == y
                        then Nothing
                        else Just $ printf "Files '%s' and '%s' differ" r n)

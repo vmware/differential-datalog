@@ -302,7 +302,7 @@ depGraphValidate d@DatalogProgram{..} = do
                  $ mapIdx (\scc i -> map (, i) $ S.toList scc)
                    sccs
     -- Linearity
-    mapM_ (\rl@Rule{..} ->
+    {-mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->
                     do let lscc = sccmap M.! (atomRelation a)
                        let rlits = filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
@@ -313,7 +313,7 @@ depGraphValidate d@DatalogProgram{..} = do
                               "The following RHS literals are mutually recursive with " ++ atomRelation a ++ ": " ++
                               intercalate ", " (map show rlits))
                   ruleLHS)
-          progRules
+          progRules -}
     -- Stratified negation
     mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->

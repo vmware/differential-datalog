@@ -26,7 +26,8 @@ SOFTWARE.
 module Language.DifferentialDatalog.Parse (
     parseDatalogString,
     datalogGrammar,
-    exprGrammar) where
+    exprGrammar,
+    reservedNames) where
 
 import Control.Applicative hiding (many,optional,Const)
 import qualified Control.Exception as E
@@ -59,7 +60,7 @@ parseDatalogString program file = do
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
-rustKeywords = ["type"]
+rustKeywords = ["type", "match"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
@@ -82,14 +83,12 @@ reservedNames = ["as",
                  "input",
                  "insert",
                  "bigint",
-                 "match",
                  "not",
                  "or",
                  "relation",
                  "skip",
                  "string",
                  "true",
-                 "type",
                  "typedef",
                  "var"] ++ rustKeywords
 
@@ -138,7 +137,7 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
-varIdent     = lcIdentifier <?> "vairable name"
+varIdent     = lcIdentifier <?> "variable name"
 typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
 
@@ -261,10 +260,10 @@ relation = do
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
          let tdef = TypeDef nopos relName [] $ Just tspec
-         let rel = Relation nopos ground relName $ TUser p relName []
+         let rel = Relation nopos ground relName (TUser p relName []) True
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- brackets $ Relation nopos ground relName <$> typeSpecSimple
+       (do rel <- brackets $ (\tspec -> Relation nopos ground relName tspec True) <$> typeSpecSimple
            return [SpRelation rel]))
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
@@ -469,6 +468,13 @@ eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
                                                    v <- sradval
                                                    mkLit w v)
 
+-- strip underscores
+stripUnder :: String -> String
+stripUnder = filter (/= '_')
+
+digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
+digitPrefix digit = (:) <$> digit <*> (many (digit <|> char '_'))
+
 eite    = eITE     <$ reserved "if" <*> term <*> term <*> (reserved "else" *> term)
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
@@ -480,16 +486,16 @@ sradval =  ((try $ string "'b") *> parseBin)
        <|> ((try $ string "'h") *> parseHex)
        <|> parseDec
 parseBin :: Stream s m Char => ParsecT s u m Integer
-parseBin = readBin <$> (many1 $ (char '0') <|> (char '1'))
+parseBin = readBin . stripUnder <$> (digitPrefix $ (char '0') <|> (char '1'))
 parseOct :: Stream s m Char => ParsecT s u m Integer
-parseOct = (fst . head . readOct) <$> many1 octDigit
+parseOct = (fst . head . readOct . stripUnder) <$> digitPrefix octDigit
 parseDec :: Stream s m Char => ParsecT s u m Integer
-parseDec = (fst . head . readDec) <$> many1 digit
+parseDec = (fst . head . readDec . stripUnder) <$> digitPrefix digit
 --parseSDec = (\m v -> m * v)
 --            <$> (option 1 ((-1) <$ reservedOp "-"))
 --            <*> ((fst . head . readDec) <$> many1 digit)
 parseHex :: Stream s m Char => ParsecT s u m Integer
-parseHex = (fst . head . readHex) <$> many1 hexDigit
+parseHex = (fst . head . readHex . stripUnder) <$> digitPrefix hexDigit
 
 mkLit :: Maybe Int -> Integer -> ParsecT s u m Expr
 mkLit Nothing  v                       = return $ eInt v

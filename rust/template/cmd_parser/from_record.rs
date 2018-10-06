@@ -442,14 +442,26 @@ struct Foo<T> {
     f1: T
 }
 
+pub fn arg_find<'a>(args: &'a Vec<(String, Record)>, argname: &str) -> Result<&'a Record, String> {
+    args.iter().find(|(n,_)|*n==argname).ok_or(format!("missing field {}", argname)).map(|(_,v)| v)
+}
+
 #[cfg(test)]
 impl <T: FromRecord> FromRecord for Foo<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Struct(constr, args) => {
+            Record::PosStruct(constr, args) => {
                 match constr.as_ref() {
                     "Foo" if args.len() == 1 => {
                         Ok(Foo{f1: T::from_record(&args[0])?})
+                    },
+                    c => Result::Err(format!("unknown constructor {} of type Foo in {:?}", c, *val))
+                }
+            },
+            Record::NamedStruct(constr, args) => {
+                match constr.as_ref() {
+                    "Foo" if args.len() == 1 => {
+                        Ok(Foo{f1: T::from_record(arg_find(args, "f1")?)?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type Foo in {:?}", c, *val))
                 }
@@ -476,7 +488,7 @@ enum DummyEnum<T> {
 impl <T: FromRecord> FromRecord for DummyEnum<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Struct(constr, args) => {
+            Record::PosStruct(constr, args) => {
                 match constr.as_ref() {
                     "Constr1" if args.len() == 2 => {
                         Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(&args[0])?,
@@ -493,6 +505,23 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
                     c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
                 }
             },
+            Record::NamedStruct(constr, args) => {
+                match constr.as_ref() {
+                    "Constr1" if args.len() == 2 => {
+                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(arg_find(args, "f1")?)?,
+                                              f2: String::from_record(arg_find(args, "f2")?)?})
+                    },
+                    "Constr2" if args.len() == 3 => {
+                        Ok(DummyEnum::Constr2{f1: <T>::from_record(arg_find(args, "f1")?)?,
+                                              f2: <BigInt>::from_record(arg_find(args, "f2")?)?,
+                                              f3: <Foo<T>>::from_record(arg_find(args, "f3")?)?})
+                    },
+                    "Constr3" if args.len() == 1 => {
+                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_record(arg_find(args, "f1")?)?})
+                    },
+                    c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
+                }
+            },
             v => {
                 Result::Err(format!("not a struct {:?}", *v))
             }
@@ -503,14 +532,26 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
 
 #[test]
 fn test_enum() {
-    assert_eq!(DummyEnum::from_record(&Record::Struct("Constr1".to_string(),
+    assert_eq!(DummyEnum::from_record(&Record::PosStruct("Constr1".to_string(),
                                                     vec![Record::Bool(true), Record::String("foo".to_string())])),
                Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
-    assert_eq!(DummyEnum::from_record(&Record::Struct("Constr2".to_string(),
+    assert_eq!(DummyEnum::from_record(&Record::NamedStruct("Constr1".to_string(),
+                                                    vec![("f1".to_string(), Record::Bool(true)), ("f2".to_string(), Record::String("foo".to_string()))])),
+               Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
+    assert_eq!(DummyEnum::from_record(&Record::PosStruct("Constr2".to_string(),
                                                     vec![Record::Int((5_i64).to_bigint().unwrap()), 
                                                          Record::Int((25_i64).to_bigint().unwrap()), 
-                                                         Record::Struct("Foo".to_string(), vec![Record::Int((0_i64).to_bigint().unwrap())])])),
+                                                         Record::PosStruct("Foo".to_string(), vec![Record::Int((0_i64).to_bigint().unwrap())])])),
                Ok(DummyEnum::Constr2::<u16>{f1: 5, 
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));
+    assert_eq!(DummyEnum::from_record(&Record::NamedStruct("Constr2".to_string(),
+                                                    vec![("f1".to_string(), Record::Int((5_i64).to_bigint().unwrap())), 
+                                                         ("f2".to_string(), Record::Int((25_i64).to_bigint().unwrap())), 
+                                                         ("f3".to_string(), Record::NamedStruct("Foo".to_string(), 
+                                                                                                vec![("f1".to_string(), Record::Int((0_i64).to_bigint().unwrap()))]))])),
+               Ok(DummyEnum::Constr2::<u16>{f1: 5, 
+                                            f2: (25_i64).to_bigint().unwrap(),
+                                            f3: Foo{f1: 0}}));
+
 }
