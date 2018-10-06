@@ -45,6 +45,7 @@ import Text.PrettyPrint
 import qualified Data.ByteString as BS
 import GHC.Conc.Sync
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
@@ -86,11 +87,11 @@ goldenTests progress = do
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
 
 nbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" []
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] M.empty
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" [{-"Logical_Flow", "Address_Set"-}]
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" [{-"Logical_Flow", "Address_Set"-}] M.empty
     writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree

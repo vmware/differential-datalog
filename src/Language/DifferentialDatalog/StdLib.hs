@@ -47,6 +47,7 @@ tOSTRING_FUNC_SUFFIX = "2string"
 stdlibModule :: String
 stdlibModule = [r| 
 extern type Set<'A>
+extern type Map<'K,'V>
 extern type Vec<'A>
 
 extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string

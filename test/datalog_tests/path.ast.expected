@@ -1,6 +1,7 @@
 typedef Edge = Edge{s: node, t: node}
 typedef Path = Path{s1: node, s2: node}
 typedef node = string
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 extern function std.__builtin_2string (x: 'X): string

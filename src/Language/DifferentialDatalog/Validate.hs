@@ -272,7 +272,8 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     exprValidate d [] ctx e
     case exprType' d ctx e of
          TOpaque _ tname [_] | elem tname sET_TYPES -> return ()
-         t  -> err (pos e) $ "FlatMap expression must be of these types: " ++ intercalate ", " sET_TYPES ++ ", but its type is " ++ show t
+         TOpaque _ "std.Map" [_,_]                  -> return ()
+         t  -> err (pos e) $ "FlatMap expression must be of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show t
 
 ruleRHSValidate _ _ RHSAggregate{..} _ =
     err (pos rhsAggExpr) "Aggregates not implemented"

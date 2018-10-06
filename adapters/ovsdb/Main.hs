@@ -29,6 +29,7 @@ import System.Console.GetOpt
 import Control.Exception
 import Data.List
 import Control.Monad
+import qualified Data.Map as M
 
 import Language.DifferentialDatalog.OVSDB.Compile
 
@@ -71,6 +72,6 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    dlschema <- compileSchemaFile confOVSFile confOutputTables
+    dlschema <- compileSchemaFile confOVSFile confOutputTables M.empty
     putStrLn $ render dlschema
     return ()

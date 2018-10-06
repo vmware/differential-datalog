@@ -10,6 +10,7 @@ typedef R1 = R1{a1: string}
 typedef R2 = R2{a2: string}
 typedef R3 = R3{a3: string, b3: string}
 typedef R4 = R4{a4: string, b4: string}
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 extern function std.__builtin_2string (x: 'X): string

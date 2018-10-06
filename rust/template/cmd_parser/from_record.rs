@@ -2,6 +2,9 @@
 
 use parse::Record;
 use num::{ToPrimitive, BigInt, BigUint};
+use std::vec;
+use std::collections::{BTreeMap, BTreeSet};
+use std::iter::FromIterator;
 
 #[cfg(test)]
 use num::bigint::{ToBigInt, ToBigUint};
@@ -434,6 +437,36 @@ fn test_tuple() {
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true)));
     assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true), Record::Bool(true), Record::Bool(false)])), 
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true, false)));
+}
+
+
+impl<T: FromRecord> FromRecord for vec::Vec<T> {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Array(args) => {
+                Result::from_iter(args.iter().map(|x| T::from_record(x)))
+            },
+            v => { Result::Err(format!("not an array {:?}", *v)) }
+        }
+    }
+}
+
+impl<K: FromRecord+Ord, V: FromRecord> FromRecord for BTreeMap<K,V> {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        vec::Vec::from_record(val).map(|v|BTreeMap::from_iter(v))
+    }
+}
+
+impl<T: FromRecord+Ord> FromRecord for BTreeSet<T> {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        vec::Vec::from_record(val).map(|v|BTreeSet::from_iter(v))
+    }
+}
+
+#[test]
+fn test_vec() {
+    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(vec![Record::Bool(true), Record::Bool(false)])), 
+               Ok(vec![true, false]));
 }
 
 #[cfg(test)]

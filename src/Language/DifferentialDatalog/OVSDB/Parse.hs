@@ -23,9 +23,11 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts #-}
 
-{- Parses a JSON schema for an OVS database.
-   Schema specification is part of RFC 7047:
-   https://tools.ietf.org/html/rfc7047
+{- |
+Module     : OVSDB.Parse
+Description: Parses a JSON schema for an OVS database.
+             Schema specification is part of RFC 7047:
+             https://tools.ietf.org/html/rfc7047
 -}
 
 module Language.DifferentialDatalog.OVSDB.Parse(

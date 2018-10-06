@@ -484,7 +484,7 @@ mkFFIType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                            | otherwise       = "*mut Uint"
 mkFFIType d t@TTuple{..}   = ffiStructName d t
 mkFFIType d t@TUser{..}    = ffiStructName d t
-mkFFIType d t@TOpaque{..}  = "*mut" <+> mkValConstructorName' d t
+mkFFIType d t@TOpaque{..}  = "*mut" <+> mkType t
 mkFFIType _ t              = error $ "FFI.mkFFIType " ++ show t
 
 -- type must be normalized
@@ -500,5 +500,5 @@ mkCType _ TBit{..}       | typeWidth <= 8  = "uint8_t"
                          | otherwise       = "struct Uint*"
 mkCType d t@TTuple{..}   = "struct" <+> cStructName d t
 mkCType d t@TUser{..}    = "struct" <+> cStructName d t
-mkCType d t@TOpaque{..}  = mkValConstructorName' d t <> "*"
+mkCType d t@TOpaque{..}  = "void *"
 mkCType _ t              = error $ "FFI.mkCType " ++ show t

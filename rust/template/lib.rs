@@ -22,42 +22,16 @@ use cmd_parser::*;
 use abomonation::Abomonation;
 
 use fnv::FnvHashSet;
+use fnv::FnvHashMap;
 use std::fmt::Display;
 use std::fmt;
 use std::sync;
 use std::hash::Hash;
 use std::hash::Hasher;
-use twox_hash::XxHash;
 
+pub mod to_ffi;
 pub mod ffi;
 pub mod valmap;
+mod stdlib;
 
-const XX_SEED1: u64 = 0x23b691a751d0e108;
-const XX_SEED2: u64 = 0x20b09801dce5ff84;
-
-pub type std_Vec<T> = std::vec::Vec<T>;
-pub type std_Set<T> = std::collections::HashSet<T>;
-
-fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
-    arcval::DDString::from(format!("{}", *x).to_string())
-}
-
-fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
-    arcval::DDString::from(format!("{:x}", *x).to_string())
-}
-
-fn std_hash64<T: Hash>(x: &T) -> u64 {
-    let mut hasher = XxHash::with_seed(XX_SEED1);
-    x.hash(&mut hasher);
-    hasher.finish()
-}
-
-fn std_hash128<T: Hash>(x: &T) -> u128 {
-    let mut hasher = XxHash::with_seed(XX_SEED1);
-    x.hash(&mut hasher);
-    let w1 = hasher.finish();
-    let mut hasher = XxHash::with_seed(XX_SEED2);
-    x.hash(&mut hasher);
-    let w2 = hasher.finish();
-    ((w1 as u128) << 64) | (w2 as u128)
-}
+use self::stdlib::*;

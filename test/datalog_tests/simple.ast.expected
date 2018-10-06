@@ -42,6 +42,7 @@ typedef option_t<'A> = None{} | Some{value: 'A}
 typedef person = string
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef station = string
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef string_syn = string

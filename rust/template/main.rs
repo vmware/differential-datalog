@@ -40,7 +40,7 @@ fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId,
         db.lock().unwrap().update(relid, v, pol);
     };
     if do_print {
-        eprintln!("{} {:?} {:?}", if pol { "insert" } else { "delete" }, relid, *v);
+        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, relid, *v);
     };
 }
 

@@ -10,6 +10,7 @@ pub enum Record {
     Int(BigInt),
     String(String),
     Tuple(Vec<Record>),
+    Array(Vec<Record>),
     PosStruct(String, Vec<Record>),
     NamedStruct(String, Vec<(String, Record)>)
 }
@@ -128,7 +129,7 @@ named!(rel_record<&[u8], (String, Record)>,
 );
 
 named!(record<&[u8], Record>,
-    alt!(bool_val | string_val | tuple_val | struct_val | int_val )
+    alt!(bool_val | string_val | tuple_val | array_val | struct_val | int_val )
 );
 
 named!(named_record<&[u8], (String, Record)>,
@@ -199,6 +200,18 @@ named!(tuple_val<&[u8], Record>,
 #[test]
 fn test_tuple() {
     assert_eq!(tuple_val(br"( true, false)"), Ok((&br""[..], Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]))));
+}
+
+named!(array_val<&[u8], Record>,
+    delimited!(apply!(sym,"["),
+               map!(separated_list!(apply!(sym,","), record), |v|Record::Array(v)),
+               apply!(sym,"]"))
+);
+
+#[test]
+fn test_array() {
+    assert_eq!(array_val(br"[ (true, false), (false, false)]"), Ok((&br""[..], Record::Array(vec![Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]),
+                                                                                                  Record::Tuple(vec![Record::Bool(false), Record::Bool(false)])]))));
 }
 
 named!(struct_val<&[u8], Record>,

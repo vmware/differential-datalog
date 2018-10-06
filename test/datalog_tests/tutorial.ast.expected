@@ -49,6 +49,7 @@ typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}

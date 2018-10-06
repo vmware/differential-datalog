@@ -111,6 +111,8 @@ templateFiles specname =
         [ (specname </> "Cargo.toml"  , $(embedFile "rust/template/Cargo.toml"))
         , (specname </> "main.rs"     , $(embedFile "rust/template/main.rs"))
         , (specname </> "ffi_test.rs" , $(embedFile "rust/template/ffi_test.rs"))
+        , (specname </> "stdlib.rs"   , $(embedFile "rust/template/stdlib.rs"))
+        , (specname </> "to_ffi.rs"   , $(embedFile "rust/template/to_ffi.rs"))
         , (specname </> "valmap.rs"   , $(embedFile "rust/template/valmap.rs"))
         ]
 
