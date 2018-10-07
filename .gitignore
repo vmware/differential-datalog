@@ -34,3 +34,4 @@ differential-datalog.iml
 **cmd_parser_history.txt
 TAGS
 tags
+*.facts
