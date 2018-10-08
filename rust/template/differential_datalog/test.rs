@@ -651,6 +651,20 @@ fn test_map(nthreads: usize) {
         }
     }
 
+    fn gfun3(_v: Value) -> Value {
+        Value::empty()
+    }
+
+    fn agfun3(src: &[(&Value, isize)]) -> Value {
+        Value::u64(src.len() as u64)
+    }
+
+    fn gfun4(v: Value) -> Value { v }
+
+    fn agfun4(src: &[(&Value, isize)]) -> Value {
+        src[0].0.clone()
+    }
+
     fn ffun(v: &Value) -> bool {
         match &v {
             Value::u64(uv) => *uv > 10, 
@@ -709,22 +723,70 @@ fn test_map(nthreads: usize) {
             change_cb:    Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol))
         }
     };
+    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel3 = {
+        let relset3 = relset3.clone();
+        Relation {
+            name:         "T3".to_string(),
+            input:        false,
+            distinct:     true,
+            id:           3,
+            rules:        vec![Rule{
+                rel: 2,
+                xforms: vec![
+                    XForm::Aggregate{
+                        grpfun: &(gfun3 as MapFunc<Value>),
+                        aggfun: &(agfun3 as AggFunc<Value>)
+                    }
+                ]
+            }],
+            arrangements: Vec::new(),
+            change_cb:    Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol))
+        }
+    };
+
+    let relset4: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel4 = {
+        let relset4 = relset4.clone();
+        Relation {
+            name:         "T4".to_string(),
+            input:        false,
+            distinct:     true,
+            id:           4,
+            rules:        vec![Rule{
+                rel: 2,
+                xforms: vec![
+                    XForm::Aggregate{
+                        grpfun: &(gfun4 as MapFunc<Value>),
+                        aggfun: &(agfun4 as AggFunc<Value>)
+                    }
+                ]
+            }],
+            arrangements: Vec::new(),
+            change_cb:    Arc::new(move |_,v,pol| set_update("T4", &relset4, v, pol))
+        }
+    };
+
 
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: rel1},
-                    ProgNode::RelNode{rel: rel2}]
+                    ProgNode::RelNode{rel: rel2},
+                    ProgNode::RelNode{rel: rel3},
+                    ProgNode::RelNode{rel: rel4}]
     };
 
     let mut running = prog.run(nthreads);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
-    let expected = FnvHashSet::from_iter(vals.iter().
-                                         map(|x| Value::u64(*x)).
-                                         map(|x| mfun(x)).
-                                         filter(|x| ffun(&x)).
-                                         filter_map(|x| fmfun(x)).
-                                         flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ));
+    let expected2 = FnvHashSet::from_iter(vals.iter().
+                                          map(|x| Value::u64(*x)).
+                                          map(|x| mfun(x)).
+                                          filter(|x| ffun(&x)).
+                                          filter_map(|x| fmfun(x)).
+                                          flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ));
+    let mut expected3 = FnvHashSet::default();
+    expected3.insert(Value::u64(expected2.len() as u64));
 
     running.transaction_start().unwrap();
     for x in &set {
@@ -733,7 +795,9 @@ fn test_map(nthreads: usize) {
     running.transaction_commit().unwrap();
 
     assert_eq!(*relset1.lock().unwrap(), set);
-    assert_eq!(*relset2.lock().unwrap(), expected);
+    assert_eq!(*relset2.lock().unwrap(), expected2);
+    assert_eq!(*relset3.lock().unwrap(), expected3);
+    assert_eq!(*relset4.lock().unwrap(), expected2);
     running.stop().unwrap();
 }
 

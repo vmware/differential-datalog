@@ -176,6 +176,9 @@ pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 /// (see `XForm::Join`).
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
+/// Aggregation function: aggregates multiple values into a single value.
+pub type AggFunc<V> = fn(&[(&V, isize)]) -> V;
+
 /// Datalog rule (more precisely, the body of a rule).
 #[derive(Clone)]
 pub struct Rule<V: Val> {
@@ -196,6 +199,13 @@ pub enum XForm<V: Val> {
     /// FlatMap
     FlatMap {
         fmfun: &'static FlatMapFunc<V>
+    },
+    /// Aggregate
+    Aggregate {
+        /// group function computes the key to group records by
+        grpfun: &'static MapFunc<V>,
+        /// aggregation to apply to each group
+        aggfun: &'static AggFunc<V>
     },
     /// Filter a relation
     Filter {
@@ -742,6 +752,12 @@ impl<V:Val> Program<V>
             rhs = match xform {
                 XForm::Map{mfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).map(f))
+                },
+                XForm::Aggregate{grpfun: &g, aggfun: &a} => {
+                    Some(rhs.as_ref().unwrap_or(first).
+                         map(move |x|(g(x.clone()), x)).
+                         group(move |_, src, dst| dst.push((a(src),1))).
+                         map(|(_,v)|v))
                 },
                 XForm::FlatMap{fmfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).
