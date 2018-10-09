@@ -49,6 +49,7 @@ typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+extern type std.Group<'A>
 extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
@@ -105,6 +106,9 @@ extern function split (s: string, sep: string): std.Vec<string>
 function split_ip_list (x: string): std.Vec<string> =
     split(x, " ")
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string

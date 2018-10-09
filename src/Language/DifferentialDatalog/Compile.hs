@@ -784,9 +784,9 @@ mkAggregate d prefix rl idx vs v fname e = do
                $ prefix $$
                  "Some((" <> key <> "," <+> val <> "))"
     -- Aggregate function:
-    -- * open-up key tuple
-    -- * compute aggregate
-    -- * return variables still in scope after this term
+    -- - open-up key tuple
+    -- - compute aggregate
+    -- - return variables still in scope after this term
     open <- openTuple d kEY_VAR key_vars
     let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "(" <> gROUP_VAR <> ");"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx

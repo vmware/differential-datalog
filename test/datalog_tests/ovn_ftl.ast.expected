@@ -7,10 +7,14 @@ typedef Logical_Switch_Port = Logical_Switch_Port{lsp: bigint, ls: bigint, paren
 typedef Logical_Switch_Port_IP = Logical_Switch_Port_IP{lspip: bigint, ip_version: bigint, lsp: bigint, lsp_name: string, lsp_enabled: bool, lsp_type: string, ls: bigint, mac: string, ip: string, sn_ip: string, up: bool}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_ACL{} | LS_OUT_ACL{} | LR_IN_ADMISSION{} | LR_IN_IP_INPUT{} | LR_IN_UNSNAT{} | LR_OUT_SNAT{} | LR_IN_DNAT{} | LR_IN_ARP_RESOLVE{} | LR_IN_ARP_REQUEST{} | LR_IN_DEFRAG{} | LR_OUT_DELIVERY{} | LS_IN_LB{} | LS_OUT_LB{} | LS_IN_PRE_ACL{} | LS_OUT_PRE_ACL{} | LS_IN_PRE_LB{} | LS_OUT_PRE_LB{} | LS_IN_PRE_STATEFUL{} | LS_OUT_PRE_STATEFUL{} | LS_IN_STATEFUL{} | LS_OUT_STATEFUL{} | LS_IN_PORT_SEC_L2{} | LS_IN_PORT_SEC_IP{} | LS_IN_PORT_SEC_ND{} | LS_IN_ARP_RSP{} | LS_IN_DHCP_OPTIONS{} | LS_IN_DHCP_RESPONSE{} | LS_IN_L2_LKUP{} | LS_OUT_PORT_SEC_IP{} | LS_OUT_PORT_SEC_L2{}
+extern type std.Group<'A>
 extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
