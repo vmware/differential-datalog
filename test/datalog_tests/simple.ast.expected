@@ -1,6 +1,11 @@
+typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
+typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
+typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
+typedef AggregateMe1 = AggregateMe1{x: string, y: string}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
 typedef C = C{f1: string, f2: string}
+typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
 typedef Human = Human{h: person}
 typedef IP4Addr = bit<32>
@@ -42,6 +47,7 @@ typedef option_t<'A> = None{} | Some{value: 'A}
 typedef person = string
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef station = string
+extern type std.Group<'A>
 extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
@@ -209,6 +215,9 @@ function shadow (): string =
           None{} -> ""
       }))
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
@@ -257,7 +266,12 @@ function vars (): () =
           C{.f1=var c, .f2=var d} = y))))))
 function x (): Alt =
     C0{.x=32'd5}
+relation Aggregate1 [Aggregate1]
+relation Aggregate2 [Aggregate2]
+relation Aggregate3 [Aggregate3]
+input relation AggregateMe1 [AggregateMe1]
 relation Answer [Answer]
+relation Disaggregate [Disaggregate]
 input relation Human [Human]
 input relation Links [Links]
 input relation Parent [Parent]
@@ -395,3 +409,7 @@ Strings(.s="word1 word2").
 Strings(.s="line1\nline2").
 Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).
 Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}).
+Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), Aggregate((x), cnt = std.count(y)).
+Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)).
+Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
+Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), FlatMap(y = set).

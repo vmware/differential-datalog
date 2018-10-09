@@ -49,10 +49,17 @@ stdlibModule = [r|
 extern type Set<'A>
 extern type Map<'K,'V>
 extern type Vec<'A>
+extern type Group<'A>
 
 extern function |] ++ bUILTIN_2STRING_FUNC ++ [r|(x: 'X): string
 extern function |] ++ bUILTIN_2HEX_STRING_FUNC ++ [r|(x: 'X): string
 
 extern function hash64(x: 'X): bit<64>
 extern function hash128(x: 'X): bit<128>
+
+/* Standard aggregates */
+extern function count(g: Group<'A>): bit<64>
+extern function group2set(g: Group<'A>): Set<'A>
+extern function group2vec(g: Group<'A>): Vec<'A>
+
 |]

@@ -37,12 +37,14 @@ module Language.DifferentialDatalog.Type(
     checkTypesMatch,
     typesMatch,
     typeNormalize,
+    typeSubstTypeArgs,
     ctxExpectType,
     ConsTree(..),
     consTreeEmpty,
     typeConsTree,
     consTreeAbduct,
-    typeMapM
+    typeMapM,
+    funcTypeArgSubsts
 --    typeSubtypes,
 --    typeSubtypesRec,
 --    typeGraph,

@@ -26,7 +26,7 @@ Module     : Module
 Description: DDlog's module system implemented as syntactic sugar over core syntax.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase #-}
 
 module Language.DifferentialDatalog.Module(
     parseDatalogProgram) where
@@ -171,7 +171,12 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     prog3 <- progTypeMapM prog2 (typeFlatten mmap mod)
     -- rename constructors and functions
     prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
-    return prog4
+    prog5 <- progRHSMapM prog4 (\case
+                                 rhs@RHSAggregate{..} -> do 
+                                     f' <- flattenFuncName mmap mod (pos rhsAggExpr) rhsAggFunc
+                                     return $ rhs{rhsAggFunc = f'}
+                                 rhs -> return rhs)
+    return prog5
 
 nameScope :: String -> ModuleName
 nameScope n = ModuleName $ init $ split "." n

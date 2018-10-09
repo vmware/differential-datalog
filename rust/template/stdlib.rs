@@ -27,6 +27,15 @@ pub struct std_Vec<T> {
     pub x: Vec<T>
 }
 
+impl <T: Ord> std_Vec<T> {
+    pub fn new() -> Self {
+        std_Vec{x: Vec::new()}
+    }
+    pub fn push(&mut self, v: T) {
+        self.x.push(v);
+    }
+}
+
 impl<T: FromRecord> FromRecord for std_Vec<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         Vec::from_record(val).map(|x|std_Vec{x})
@@ -61,6 +70,15 @@ impl<T> IntoIterator for std_Vec<T> {
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct std_Set<T: Ord> {
     pub x: BTreeSet<T>
+}
+
+impl <T: Ord> std_Set<T> {
+    pub fn new() -> Self {
+        std_Set{x: BTreeSet::new()}
+    }
+    pub fn insert(&mut self, v: T) {
+        self.x.insert(v);
+    }
 }
 
 impl<T: FromRecord + Ord> FromRecord for std_Set<T> {
@@ -155,4 +173,35 @@ pub fn std_hash128<T: Hash>(x: &T) -> u128 {
     x.hash(&mut hasher);
     let w2 = hasher.finish();
     ((w1 as u128) << 64) | (w2 as u128)
+}
+
+/*
+ * Group trait (used in aggregation operators)
+ */
+pub trait Group<X> {
+    fn size(&self) -> u64;
+    fn ith(&self, i: u64) -> X;
+}
+
+/*
+ * Standard aggregation function
+ */
+pub fn std_count<A, G:Group<A>+?Sized>(g: &G) -> u64 {
+    g.size()
+}
+
+pub fn std_group2set<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Set<A> {
+    let mut res = std_Set::new();
+    for i in 0..g.size() {
+        res.insert(g.ith(i));
+    };
+    res
+}
+
+pub fn std_group2vec<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Vec<A> {
+    let mut res = std_Vec::new();
+    for i in 0..g.size() {
+        res.push(g.ith(i));
+    };
+    res
 }

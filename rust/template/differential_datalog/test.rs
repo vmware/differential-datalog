@@ -651,18 +651,18 @@ fn test_map(nthreads: usize) {
         }
     }
 
-    fn gfun3(_v: Value) -> Value {
-        Value::empty()
+    fn gfun3(v: Value) -> Option<(Value, Value)> {
+        Some((Value::empty(), v))
     }
 
-    fn agfun3(src: &[(&Value, isize)]) -> Value {
+    fn agfun3(_key: &Value, src: &[(&Value, isize)]) -> Value {
         Value::u64(src.len() as u64)
     }
 
-    fn gfun4(v: Value) -> Value { v }
+    fn gfun4(v: Value) -> Option<(Value, Value)> { Some((v.clone(), v)) }
 
-    fn agfun4(src: &[(&Value, isize)]) -> Value {
-        src[0].0.clone()
+    fn agfun4(key: &Value, _src: &[(&Value, isize)]) -> Value {
+        key.clone()
     }
 
     fn ffun(v: &Value) -> bool {
@@ -735,7 +735,7 @@ fn test_map(nthreads: usize) {
                 rel: 2,
                 xforms: vec![
                     XForm::Aggregate{
-                        grpfun: &(gfun3 as MapFunc<Value>),
+                        grpfun: &(gfun3 as ArrangeFunc<Value>),
                         aggfun: &(agfun3 as AggFunc<Value>)
                     }
                 ]
@@ -757,7 +757,7 @@ fn test_map(nthreads: usize) {
                 rel: 2,
                 xforms: vec![
                     XForm::Aggregate{
-                        grpfun: &(gfun4 as MapFunc<Value>),
+                        grpfun: &(gfun4 as ArrangeFunc<Value>),
                         aggfun: &(agfun4 as AggFunc<Value>)
                     }
                 ]

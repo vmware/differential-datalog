@@ -314,8 +314,9 @@ rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *>
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
                             (comma *> varIdent) <*>
-                            (reservedOp "=" *> expr)) <*
-                            symbol ")"
+                            (reservedOp "=" *> funcIdent) <*>
+                            parens expr <*
+                            symbol ")")
        <|> (RHSFlatMap <$ reserved "FlatMap" <*> (symbol "(" *> varIdent) <*>
                           (reservedOp "=" *> expr <* symbol ")"))
 

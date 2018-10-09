@@ -54,3 +54,26 @@ dump Rel2;
 
 echo Rel3:;
 dump Rel3;
+
+start;
+
+insert AggregateMe1("a", "1"),
+insert AggregateMe1("a", "2"),
+insert AggregateMe1("a", "3"),
+insert AggregateMe1("b", "1"),
+insert AggregateMe1("b", "2"),
+insert AggregateMe1("b", "3");
+
+commit;
+
+echo Aggregate1;
+dump Aggregate1;
+
+echo Aggregate2;
+dump Aggregate2;
+
+echo Aggregate3;
+dump Aggregate3;
+
+echo Disaggregate;
+dump Disaggregate;

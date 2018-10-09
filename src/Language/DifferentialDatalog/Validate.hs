@@ -24,7 +24,8 @@ SOFTWARE.
 {-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections #-}
 
 module Language.DifferentialDatalog.Validate (
-    validate) where
+    validate,
+    ruleCheckAggregate) where
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -45,11 +46,12 @@ import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
-import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.StdLib
+import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
 sET_TYPES = ["std.Set", "std.Vec"]
+gROUP_TYPE = "std.Group"
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -273,18 +275,33 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     case exprType' d ctx e of
          TOpaque _ tname [_] | elem tname sET_TYPES -> return ()
          TOpaque _ "std.Map" [_,_]                  -> return ()
-         t  -> err (pos e) $ "FlatMap expression must be of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show t
+         t  -> err (pos e) $ "FlatMap expression must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show t
 
-ruleRHSValidate _ _ RHSAggregate{..} _ =
-    err (pos rhsAggExpr) "Aggregates not implemented"
+ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
+    _ <- ruleCheckAggregate d rl idx
+    return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
 ruleLHSValidate d rl Atom{..} idx = do
     checkRelation atomPos d atomRelation
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
---    validate aggregate function used
---    aggregate, flatmap, assigned vars are not previously declared
+-- Validate aggregation term, return the type of the aggregate variable 
+ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me Type
+ruleCheckAggregate d rl idx = do
+    let RHSAggregate vs v fname e = ruleRHS rl !! idx
+    let ctx = CtxRuleRAggregate rl idx
+    exprValidate d [] ctx e
+    -- group-by variables are visible in this scope
+    mapM (checkVar (pos e) d ctx) vs
+    check (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
+    -- aggregation function exists and takes a group as its sole argument
+    f <- checkFunc (pos e) d fname
+    check (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
+                                               fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
+    -- figure out type of the aggregate
+    tmap <- funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
+    return $ typeSubstTypeArgs tmap (funcType f)
 
 
 -- | Check the following properties of a Datalog dependency graph:

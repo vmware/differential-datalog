@@ -32,6 +32,8 @@ module Language.DifferentialDatalog.DatalogProgram (
     progExprMapCtx,
     progTypeMapM,
     progTypeMap,
+    progRHSMapM,
+    progRHSMap,
     progAtomMapM,
     progAtomMap,
     DepGraph,
@@ -49,7 +51,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
-import Language.DifferentialDatalog.Rule
+import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Type
 
 -- | Map function 'fun' over all expressions in a program
@@ -108,6 +110,18 @@ progTypeMapM d@DatalogProgram{..} fun = do
 
 progTypeMap :: DatalogProgram -> (Type -> Type) -> DatalogProgram
 progTypeMap d fun = runIdentity $ progTypeMapM d (return . fun)
+
+-- | Apply function to all rule RHS terms in the program
+progRHSMapM :: (Monad m) => DatalogProgram -> (RuleRHS -> m RuleRHS) -> m DatalogProgram
+progRHSMapM d fun = do
+    rs <- mapM (\r -> do
+                 rhs <- mapM fun $ ruleRHS r
+                 return r { ruleRHS = rhs })
+               $ progRules d
+    return d { progRules = rs }
+
+progRHSMap :: DatalogProgram -> (RuleRHS -> RuleRHS) -> DatalogProgram
+progRHSMap d fun = runIdentity $ progRHSMapM d (return . fun)
 
 -- | Apply function to all atoms in the program
 progAtomMapM :: (Monad m) => DatalogProgram -> (Atom -> m Atom) -> m DatalogProgram

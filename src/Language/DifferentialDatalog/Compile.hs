@@ -93,6 +93,10 @@ vALUE_VAR1 = "__v1"
 vALUE_VAR2 :: Doc
 vALUE_VAR2 = "__v2"
 
+-- Input argument to aggregation function
+gROUP_VAR :: Doc
+gROUP_VAR = "group"
+
 -- Rust imports
 header :: String -> Doc
 header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
@@ -201,12 +205,14 @@ type ArrId = Int
 
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
+    cGroupTypes   :: S.Set Type,
     cArrangements :: M.Map String [Arrangement]
 }
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
     cTypes        = S.empty,
+    cGroupTypes   = S.empty,
     cArrangements = M.empty
 }
 
@@ -227,6 +233,10 @@ relId rel = "Relations::" <> rname rel <+> "as RelId"
 -- t must be normalized
 addType :: Type -> CompilerMonad ()
 addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
+
+-- t must be normalized
+addGroupType :: Type -> CompilerMonad ()
+addGroupType t = modify $ \s -> s{cGroupTypes = S.insert t $ cGroupTypes s}
 
 -- Create a new arrangement or return existing arrangement id
 addArrangement :: String -> Arrangement -> CompilerMonad ArrId
@@ -350,7 +360,7 @@ compileLib d specname imports =
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
     -- 'Value' enum type
-    valtype = mkValType d' $ cTypes cstate
+    valtype = mkValType d' (cTypes cstate) (cGroupTypes cstate)
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -580,8 +590,8 @@ mkFunc d f@Function{..} | isJust funcDef =
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
 
 -- Generate Value type as an enum with one entry per type in types
-mkValType :: DatalogProgram -> S.Set Type -> Doc
-mkValType d types = 
+mkValType :: DatalogProgram -> S.Set Type -> S.Set Type -> Doc
+mkValType d types grp_types = 
     "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
     "pub enum Value {"                                                                      $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
@@ -596,7 +606,8 @@ mkValType d types =
     (nest' $ nest' $ nest' $ vcat $ punctuate comma $ map mkdisplay $ S.toList types)       $$
     "        }"                                                                             $$
     "    }"                                                                                 $$
-    "}"
+    "}"                                                                                     $$
+    (vcat $ map mkgrptype $ S.toList grp_types)
     where
     consname t = mkValConstructorName' d t
     mkValCons :: Type -> Doc
@@ -604,6 +615,18 @@ mkValType d types =
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> "(())"
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
+    mkgrptype t =
+        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, isize)] {"                     $$
+        "    fn size(&self) -> u64 {"                                                       $$
+        "        self.len() as u64"                                                         $$
+        "    }"                                                                             $$
+        "    fn ith(&self, i:u64) ->" <+> mkType t <+> "{"                                  $$
+        "        match self[i as usize].0 {"                                                $$
+        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => x.clone(),")            $$
+        "            _ => panic!(\"unexpected constructor\")"                               $$
+        "        }"                                                                         $$
+        "    }"                                                                             $$
+        "}"
 
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
@@ -724,9 +747,10 @@ compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++
        else do
            (xform, last_idx') <-
                case ruleRHS !! join_idx of
-                    RHSLiteral True a  -> mkJoin d prefix a rl join_idx
-                    RHSLiteral False a -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
-                    RHSFlatMap v e     -> (, join_idx) <$> mkFlatMap d prefix rl join_idx v e
+                    RHSLiteral True a     -> mkJoin d prefix a rl join_idx
+                    RHSLiteral False a    -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
+                    RHSFlatMap v e        -> (, join_idx) <$> mkFlatMap d prefix rl join_idx v e
+                    RHSAggregate vs v f e -> (, join_idx) <$> mkAggregate d prefix rl join_idx vs v f e
            if {-trace ("last_idx' = " ++ show last_idx') $-} last_idx' < length ruleRHS
               then do rest <- compileRule' d rl last_idx'
                       return $ xform:rest
@@ -746,6 +770,34 @@ mkFlatMap d prefix rl idx v e = do
     return $
         "XForm::FlatMap{"                                                                                                $$
         (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},") $$
+        "}"
+
+mkAggregate :: DatalogProgram -> Doc -> Rule -> Int -> [String] -> String -> String -> Expr -> CompilerMonad Doc
+mkAggregate d prefix rl idx vs v fname e = do
+    -- Group function: extract vs from input tuple
+    let ctx = CtxRuleRAggregate rl idx
+    let key_vars = map (getVar d (CtxRuleRAggregate rl idx)) vs
+    key <- mkVarsTupleValue d key_vars
+    val <- mkValue d ctx e
+    addGroupType $ typeNormalize d $ exprType d ctx e
+    let gfun = braces'
+               $ prefix $$
+                 "Some((" <> key <> "," <+> val <> "))"
+    -- Aggregate function:
+    -- * open-up key tuple
+    -- * compute aggregate
+    -- * return variables still in scope after this term
+    open <- openTuple d kEY_VAR key_vars
+    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "(" <> gROUP_VAR <> ");"
+    result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    let agfun = braces'
+                $ open $$
+                  aggregate $$
+                  result  
+    return $
+        "XForm::Aggregate{"                                                                                                         $$
+        (nest' $ "grpfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                       $$
+        (nest' $ "aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, isize)]) -> Value" $$ agfun $$ "__f},") $$
         "}"
 
 -- Generate Rust code to filter records and bring variables into scope.
@@ -774,6 +826,7 @@ openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vs = do
     (tup, cons) <- mkVarsTupleValuePat d vs
     let vars = tuple $ map (pp . name) vs
+    -- TODO: use unreachable() instead of panic!()
     return $
         "let" <+> vars <+> "= match" <+> var <+> "{"                                              $$
         "    " <> tup <> "=>" <+> vars <> ","                                                     $$

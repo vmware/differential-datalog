@@ -44,7 +44,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Rule
+import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 --import {-# SOURCE #-} Relation
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Type

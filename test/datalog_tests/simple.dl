@@ -596,3 +596,20 @@ relation Rel4(x:bigint, y: IPAddr, b: bool)
 
 Rel4(x,y,b) :- Rel1(x,y),
                Rel2(x, Option1{.f2=IP4{}, .f3=(b, "buzz")}).
+
+/* Aggregation */
+
+input relation AggregateMe1(x: string, y: string)
+
+relation Aggregate1(x: string, cnt: bit<64>)
+
+Aggregate1(x, cnt) :- AggregateMe1(x,y), Aggregate((x), cnt = count(y)).
+
+relation Aggregate2(x: string, set: Set<string>)
+Aggregate2(x, set) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)).
+
+relation Aggregate3(x: string, vec: Vec<string>)
+Aggregate3(x, vec) :- AggregateMe1(x,y), Aggregate((x), vec = group2vec(y)).
+
+relation Disaggregate(x: string, y: string)
+Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), FlatMap(y = set).

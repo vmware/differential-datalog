@@ -155,3 +155,19 @@ Rel2:
 Rel2{0,Option1{0,IP4{300},(true, "foo")}}
 Rel3:
 Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
+Aggregate1
+Aggregate1{"a",3}
+Aggregate1{"b",3}
+Aggregate2
+Aggregate2{"a",std_Set { x: {"1", "2", "3"} }}
+Aggregate2{"b",std_Set { x: {"1", "2", "3"} }}
+Aggregate3
+Aggregate3{"a",std_Vec { x: ["1", "2", "3"] }}
+Aggregate3{"b",std_Vec { x: ["1", "2", "3"] }}
+Disaggregate
+Disaggregate{"a","1"}
+Disaggregate{"a","2"}
+Disaggregate{"a","3"}
+Disaggregate{"b","1"}
+Disaggregate{"b","2"}
+Disaggregate{"b","3"}
