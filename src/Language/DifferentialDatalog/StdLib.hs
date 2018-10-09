@@ -61,5 +61,6 @@ extern function hash128(x: 'X): bit<128>
 extern function count(g: Group<'A>): bit<64>
 extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
+extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 
 |]

@@ -1,6 +1,7 @@
 typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
 typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
+typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
@@ -216,6 +217,7 @@ function shadow (): string =
       }))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
@@ -269,6 +271,7 @@ function x (): Alt =
 relation Aggregate1 [Aggregate1]
 relation Aggregate2 [Aggregate2]
 relation Aggregate3 [Aggregate3]
+relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
 relation Answer [Answer]
 relation Disaggregate [Disaggregate]
@@ -412,4 +415,5 @@ Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4
 Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), Aggregate((x), cnt = std.count(y)).
 Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)).
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
+Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), Aggregate((x), map = std.group2map((x, y))).
 Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), FlatMap(y = set).

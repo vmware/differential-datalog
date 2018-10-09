@@ -240,7 +240,7 @@ instance Show Type where
     show = render . pp
 
 
--- | Type variables used in type declaration
+-- | Type variables used in type declaration in the order they appear in the declaration
 typeTypeVars :: Type -> [String]
 typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
@@ -582,7 +582,7 @@ funcShowProto Function{..} = render $
     <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
     <> colon <+> pp funcType
 
--- | Type variables used in function declaration
+-- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
 funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 

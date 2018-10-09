@@ -584,7 +584,6 @@ mkFunc d f@Function{..} | isJust funcDef =
     where
     mkArg :: Field -> Doc
     mkArg a = pp (name a) <> ":" <+> "&" <> mkType a
-
     tvars = case funcTypeVars f of
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
@@ -788,7 +787,9 @@ mkAggregate d prefix rl idx vs v fname e = do
     -- - compute aggregate
     -- - return variables still in scope after this term
     open <- openTuple d kEY_VAR key_vars
-    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "(" <> gROUP_VAR <> ");"
+    let tmap = ruleAggregateTypeParams d rl idx
+    let tparams = hcat $ map (\tvar -> mkType (tmap M.! tvar) <> ",") $ funcTypeVars $ getFunc d fname
+    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "::<" <> tparams <> "_>(" <> gROUP_VAR <> ");"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
     let agfun = braces'
                 $ open $$

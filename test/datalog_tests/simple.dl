@@ -611,5 +611,9 @@ Aggregate2(x, set) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)).
 relation Aggregate3(x: string, vec: Vec<string>)
 Aggregate3(x, vec) :- AggregateMe1(x,y), Aggregate((x), vec = group2vec(y)).
 
+
+relation Aggregate4(x: string, map: Map<string,string>)
+Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y))).
+
 relation Disaggregate(x: string, y: string)
 Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), FlatMap(y = set).

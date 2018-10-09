@@ -29,10 +29,12 @@ module Language.DifferentialDatalog.Rule (
     ruleRHSTermVars,
     ruleLHSVars,
     ruleTypeMapM,
-    ruleHasJoins
+    ruleHasJoins,
+    ruleAggregateTypeParams
 ) where
 
 import qualified Data.Set as S
+import qualified Data.Map as M
 import Data.List
 import Control.Monad.Except
 import Debug.Trace
@@ -75,11 +77,19 @@ ruleRHSVarSet' d rl i =
          -- and the aggregate variable
          RHSAggregate gvars avar fname e -> let ctx = CtxRuleRAggregate rl i
                                                 gvars' = map (getVar d ctx) gvars
-                                                Right atype = ruleCheckAggregate d rl i
+                                                f = getFunc d fname
+                                                tmap = ruleAggregateTypeParams d rl i
+                                                atype = typeSubstTypeArgs tmap $ funcType f
                                                 avar' = Field nopos avar atype
                                             in S.fromList $ avar':gvars'
     where
     vs = ruleRHSVarSet d rl i
+
+ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
+ruleAggregateTypeParams d rl idx = 
+    case ruleCheckAggregate d rl idx of
+         Left e -> error $ "ruleAggregateTypeParams: " ++ e
+         Right tmap -> tmap
 
 exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
 exprDecls d ctx e = 

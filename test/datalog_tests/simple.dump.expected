@@ -164,6 +164,9 @@ Aggregate2{"b",std_Set { x: {"1", "2", "3"} }}
 Aggregate3
 Aggregate3{"a",std_Vec { x: ["1", "2", "3"] }}
 Aggregate3{"b",std_Vec { x: ["1", "2", "3"] }}
+Aggregate4
+Aggregate4{"a",std_Map { x: {"a": "3"} }}
+Aggregate4{"b",std_Map { x: {"b": "3"} }}
 Disaggregate
 Disaggregate{"a","1"}
 Disaggregate{"a","2"}

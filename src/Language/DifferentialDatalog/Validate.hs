@@ -286,8 +286,15 @@ ruleLHSValidate d rl Atom{..} idx = do
     checkRelation atomPos d atomRelation
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
--- Validate aggregation term, return the type of the aggregate variable 
-ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me Type
+-- Validate Aggregate term, compute type argument map for the aggregate function used in the term.
+-- e.g., given an aggregate function:
+-- extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
+--
+-- and its invocation:
+-- Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y)))
+--
+-- compute concrete types for 'K and 'V
+ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me (M.Map String Type)
 ruleCheckAggregate d rl idx = do
     let RHSAggregate vs v fname e = ruleRHS rl !! idx
     let ctx = CtxRuleRAggregate rl idx
@@ -300,8 +307,8 @@ ruleCheckAggregate d rl idx = do
     check (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
                                                fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
     -- figure out type of the aggregate
-    tmap <- funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
-    return $ typeSubstTypeArgs tmap (funcType f)
+    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
+
 
 
 -- | Check the following properties of a Datalog dependency graph:

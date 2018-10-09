@@ -75,5 +75,8 @@ dump Aggregate2;
 echo Aggregate3;
 dump Aggregate3;
 
+echo Aggregate4;
+dump Aggregate4;
+
 echo Disaggregate;
 dump Disaggregate;

@@ -117,6 +117,15 @@ pub struct std_Map<K: Ord,V> {
     pub x: BTreeMap<K,V>
 }
 
+impl <K: Ord, V> std_Map<K,V> {
+    pub fn new() -> Self {
+        std_Map{x: BTreeMap::new()}
+    }
+    pub fn insert(&mut self, k: K, v: V) {
+        self.x.insert(k,v);
+    }
+}
+
 impl<K: FromRecord+Ord, V: FromRecord> FromRecord for std_Map<K,V> {
     fn from_record(val: &Record) -> Result<Self, String> {
         BTreeMap::from_record(val).map(|x|std_Map{x})
@@ -202,6 +211,15 @@ pub fn std_group2vec<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Vec<A> {
     let mut res = std_Vec::new();
     for i in 0..g.size() {
         res.push(g.ith(i));
+    };
+    res
+}
+
+pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
+    let mut res = std_Map::new();
+    for i in 0..g.size() {
+        let (k,v) = g.ith(i);
+        res.insert(k, v);
     };
     res
 }
