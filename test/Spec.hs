@@ -91,7 +91,21 @@ nbTest = do
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" [{-"Logical_Flow", "Address_Set"-}] M.empty
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" 
+                                  [ "SB_Global"
+                                  , "Logical_Flow"
+                                  , "Multicast_Group"
+                                  , "Datapath_Binding"
+                                  , "Port_Binding"
+                                  , "MAC_Binding"
+                                  , "DHCP_Options"
+                                  , "DHCPv6_Options"
+                                  , "Address_Set"
+                                  , "DNS"
+                                  , "RBAC_Role"
+                                  , "RBAC_Permission"
+                                  , "Chassis"]
+                                  M.empty
     writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree
