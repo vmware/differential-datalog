@@ -100,7 +100,7 @@ mkTable schema isinput t@Table{..} keys = do
 mkTable' :: (MonadError String me) => OVSDBSchema -> TableKind -> Table -> Maybe [String] -> me Doc
 mkTable' schema tkind t@Table{..} keys = do
     ovscols <- tableGetCols t
-    -- uuid-name is only needed if the table is referenced by another table in the schema
+    -- uuid-name is only needed in an output if the table is referenced by another table in the schema
     referenced <- tableIsReferenced schema $ name t
     let uuidcol = case tkind of
                        TableInput       -> ["_uuid: uuid"]
@@ -125,6 +125,7 @@ mkTable' schema tkind t@Table{..} keys = do
                                      -> filter (\col -> notElem (name col) $ fromJust keys) ovscols
                                      | otherwise
                                      -> []
+                    TableDeltaMinus  -> []
                     _                -> ovscols
     columns <- mapM (mkCol schema tkind tableName) cols
     return $ prefix <+> "relation" <+> pp tname <+> "("            $$

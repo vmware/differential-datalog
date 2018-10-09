@@ -86,7 +86,7 @@ ruleRHSVarSet' d rl i =
     vs = ruleRHSVarSet d rl i
 
 ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
-ruleAggregateTypeParams d rl idx = 
+ruleAggregateTypeParams d rl idx =
     case ruleCheckAggregate d rl idx of
          Left e -> error $ "ruleAggregateTypeParams: " ++ e
          Right tmap -> tmap
