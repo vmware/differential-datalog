@@ -133,7 +133,7 @@ pub type UpdateCallback<V> = Arc<Fn(RelId, &V, bool) + Send + Sync>;
 pub struct Relation<V: Val> {
     /// Relation name; does not have to be unique
     pub name:         String,
-    /// `true` is this is an input relation. Input relations are populated by the client
+    /// `true` if this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input:        bool,
     /// apply distinct() to this relation
@@ -268,7 +268,6 @@ pub struct RunningProgram<V: Val> {
 
 /* Runtime representation of relation */
 struct RelationInstance<V: Val> {
-    input: bool,
     /* Set of all elements in the relation. Only maintained for input relations and is used
      * to enforce set semantics (repeated inserts and deletes are enforced). */
     elements: ValSet<V>,
@@ -565,12 +564,13 @@ impl<V:Val> Program<V>
 
         let mut rels = FnvHashMap::default();
         for relid in self.input_relations() {
-            rels.insert(relid,
-                        RelationInstance{
-                            input:    self.get_relation(relid).input,
-                            elements: FnvHashSet::default(),
-                            delta:    FnvHashMap::default()
-                        });
+            if self.get_relation(relid).input {
+                rels.insert(relid,
+                            RelationInstance{
+                                elements: FnvHashSet::default(),
+                                delta:    FnvHashMap::default()
+                            });
+            }
         };
 
         RunningProgram{
@@ -903,13 +903,8 @@ impl<V:Val> RunningProgram<V> {
         let mut filtered_updates = Vec::new();
         for upd in updates.drain(..) {
             let mut rel = match self.relations.get_mut(&upd.relid()) {
-                None => return resp_from_error!("unknown relation {}", upd.relid()),
-                Some(rel) => {
-                    if !rel.input {
-                        return resp_from_error!("relation {} is not an input relation", upd.relid())
-                    };
-                    rel
-                }
+                None => return resp_from_error!("unknown input relation {}", upd.relid()),
+                Some(rel) => { rel }
             };
             let pass = match &upd {
                 Update::Insert{relid: _, v} => {
@@ -1008,7 +1003,6 @@ impl<V:Val> RunningProgram<V> {
     /* Clear delta sets of all input relations on transaction commit. */
     fn delta_cleanup(&mut self) -> Response<()> {
         for (_, rel) in &mut self.relations {
-            if !rel.input {continue};
             rel.delta.clear();
         };
         Ok(())
@@ -1018,7 +1012,6 @@ impl<V:Val> RunningProgram<V> {
     fn delta_undo(&mut self) -> Response<()> {
         let mut updates = vec![];
         for (relid, rel) in &self.relations {
-            if !rel.input {continue};
             for (k, w) in &rel.delta {
                 if *w {
                     updates.push(
