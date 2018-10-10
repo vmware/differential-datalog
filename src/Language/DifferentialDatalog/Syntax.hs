@@ -52,6 +52,7 @@ module Language.DifferentialDatalog.Syntax (
         Constructor(..),
         consType,
         consIsUnique,
+        KeyExpr(..),
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
@@ -322,15 +323,35 @@ consType d c =
 consIsUnique :: DatalogProgram -> String -> Bool
 consIsUnique d c = (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
 
+data KeyExpr = KeyExpr { keyPos  :: Pos
+                       , keyVar  :: String
+                       , keyExpr :: Expr
+                       }
+
+instance Eq KeyExpr where
+    (==) (KeyExpr _ v1 e1) (KeyExpr _ v2 e2) = v1 == v2 && e1 == e2
+
+instance WithPos KeyExpr where
+    pos = keyPos
+    atPos k p = k{keyPos = p}
+
+instance PP KeyExpr where
+    pp KeyExpr{..} = "(" <> pp keyVar <> ")" <+> pp keyExpr
+
+instance Show KeyExpr where
+    show = render . pp
+
+
 data Relation = Relation { relPos         :: Pos
                          , relGround      :: Bool
                          , relName        :: String
                          , relType        :: Type
                          , relDistinct    :: Bool
+                         , relPrimaryKey  :: Maybe KeyExpr
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 t1 d1) (Relation _ g2 n2 t2 d2) = g1 == g2 && n1 == n2 && t1 == t2 && d1 == d2
+    (==) (Relation _ g1 n1 t1 d1 k1) (Relation _ g2 n2 t2 d2 k2) = g1 == g2 && n1 == n2 && t1 == t2 && d1 == d2 && k1 == k2
 
 instance WithPos Relation where
     pos = relPos
@@ -342,7 +363,8 @@ instance WithName Relation where
 
 instance PP Relation where
     pp Relation{..} = (if relGround then "input" else empty) <+>
-                      "relation" <+> pp relName <+> "[" <> pp relType <> "]"
+                      "relation" <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
+        where pkey = maybe empty (("primary key" <+>) . pp) relPrimaryKey
 
 instance Show Relation where
     show = render . pp

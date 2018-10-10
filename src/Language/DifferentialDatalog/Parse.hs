@@ -256,15 +256,20 @@ relation = do
     relName <- relIdent
     ((do start <- getPosition
          fields <- parens $ commaSep arg
+         pkey <- optionMaybe $ symbol "primary" *> symbol "key" *> key_expr
          end <- getPosition
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
          let tdef = TypeDef nopos relName [] $ Just tspec
-         let rel = Relation nopos ground relName (TUser p relName []) True
+         let rel = Relation nopos ground relName (TUser p relName []) True pkey
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- brackets $ (\tspec -> Relation nopos ground relName tspec True) <$> typeSpecSimple
+       (do rel <- (\tspec -> Relation nopos ground relName tspec True) <$>
+                     (brackets typeSpecSimple) <*>
+                     (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))
+
+key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr
 
 arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 

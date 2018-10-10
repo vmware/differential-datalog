@@ -74,11 +74,12 @@ expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
     lhsvars = ruleLHSVars d rl
     -- generate relation
     relname = "__MultiHead_" ++ show ruleidx
-    rel = Relation { relPos      = nopos
-                   , relGround   = False
-                   , relName     = relname
-                   , relType     = tTuple $ map typ lhsvars
-                   , relDistinct = False
+    rel = Relation { relPos        = nopos
+                   , relGround     = False
+                   , relName       = relname
+                   , relType       = tTuple $ map typ lhsvars
+                   , relDistinct   = False
+                   , relPrimaryKey = Nothing
                    }
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
@@ -165,11 +166,12 @@ replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
     -- (manufacture a bogus rule consisting only of the prefix to call ruleRHSVars on it)
     let vars = ruleRHSVars d (Rule nopos [] pref) pref_len
     -- relation
-    let rel = Relation { relPos      = nopos
-                       , relGround   = False
-                       , relName     = relname
-                       , relType     = tTuple $ map typ vars
-                       , relDistinct = False
+    let rel = Relation { relPos        = nopos
+                       , relGround     = False
+                       , relName       = relname
+                       , relType       = tTuple $ map typ vars
+                       , relDistinct   = False
+                       , relPrimaryKey = Nothing
                        }
     -- rule
     let atom = Atom { atomPos      = nopos
