@@ -217,7 +217,11 @@ funcValidateDefinition d f@Function{..} = do
          Just def -> exprValidate d (funcTypeVars f) (CtxFunc f) def
 
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
-relValidate d Relation{..} = typeValidate d [] relType
+relValidate d rel@Relation{..} = do
+    typeValidate d [] relType
+    check (isNothing relPrimaryKey || relGround) (pos rel) 
+        $ "Only input relations can be declared with a primary key"
+    maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
 
 --relValidate2 :: (MonadError String me) => Refine -> Relation -> me ()
 --relValidate2 r rel@Relation{..} = do

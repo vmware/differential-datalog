@@ -128,9 +128,13 @@ mkTable' schema tkind t@Table{..} keys = do
                     TableDeltaMinus  -> []
                     _                -> ovscols
     columns <- mapM (mkCol schema tkind tableName) cols
+    let key = if elem tkind [TableInput, TableRealized]
+                 then "primary key (x) x._uuid"
+                 else empty
     return $ prefix <+> "relation" <+> pp tname <+> "("            $$
              (nest' $ vcat $ punctuate comma $ uuidcol ++ columns) $$
-             ")"
+             ")"                                                   $$
+             key
 
 mkCol :: (MonadError String me) => OVSDBSchema -> TableKind -> String -> TableColumn -> me Doc
 mkCol schema tkind tname c@TableColumn{..} = do

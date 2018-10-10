@@ -1,0 +1,391 @@
+import types
+
+relation SB_Global (
+    nb_cfg: integer,
+    external_ids: Map<string,string>,
+    connections: Set<string>,
+    ssl: option_t<string>
+)
+relation DeltaPlus_SB_Global (
+    uuid_name: string,
+    nb_cfg: integer,
+    external_ids: Map<string,string>,
+    connections: Set<uuid_or_string_t>,
+    ssl: option_t<uuid_or_string_t>
+)
+relation DeltaMinus_SB_Global (
+    _uuid: uuid
+)
+input relation Realized_SB_Global (
+    _uuid: uuid,
+    nb_cfg: integer,
+    external_ids: Map<string,string>,
+    connections: Set<uuid>,
+    ssl: option_t<uuid>
+)
+primary key (x) x._uuid
+relation Chassis (
+    uuid_name: string,
+    name: string,
+    hostname: string,
+    encaps: Set<string>,
+    vtep_logical_switches: Set<string>,
+    nb_cfg: integer,
+    external_ids: Map<string,string>
+)
+relation DeltaPlus_Chassis (
+    uuid_name: string,
+    name: string,
+    hostname: string,
+    encaps: Set<uuid_or_string_t>,
+    vtep_logical_switches: Set<string>,
+    nb_cfg: integer,
+    external_ids: Map<string,string>
+)
+relation DeltaMinus_Chassis (
+    _uuid: uuid
+)
+input relation Realized_Chassis (
+    _uuid: uuid,
+    name: string,
+    hostname: string,
+    encaps: Set<uuid>,
+    vtep_logical_switches: Set<string>,
+    nb_cfg: integer,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+input relation Encap (
+    _uuid: uuid,
+    __type: string,
+    options: Map<string,string>,
+    ip: string,
+    chassis_name: string
+)
+primary key (x) x._uuid
+relation Address_Set (
+    name: string,
+    addresses: Set<string>
+)
+relation DeltaPlus_Address_Set (
+    uuid_name: string,
+    name: string,
+    addresses: Set<string>
+)
+relation DeltaMinus_Address_Set (
+    _uuid: uuid
+)
+input relation Realized_Address_Set (
+    _uuid: uuid,
+    name: string,
+    addresses: Set<string>
+)
+primary key (x) x._uuid
+input relation Port_Group (
+    _uuid: uuid,
+    name: string,
+    ports: Set<string>
+)
+primary key (x) x._uuid
+relation Logical_Flow (
+    logical_datapath: string,
+    pipeline: string,
+    table_id: integer,
+    priority: integer,
+    __match: string,
+    actions: string,
+    external_ids: Map<string,string>
+)
+relation DeltaPlus_Logical_Flow (
+    uuid_name: string,
+    logical_datapath: uuid_or_string_t,
+    pipeline: string,
+    table_id: integer,
+    priority: integer,
+    __match: string,
+    actions: string,
+    external_ids: Map<string,string>
+)
+relation DeltaMinus_Logical_Flow (
+    _uuid: uuid
+)
+input relation Realized_Logical_Flow (
+    _uuid: uuid,
+    logical_datapath: uuid,
+    pipeline: string,
+    table_id: integer,
+    priority: integer,
+    __match: string,
+    actions: string,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+relation Multicast_Group (
+    datapath: string,
+    name: string,
+    tunnel_key: integer,
+    ports: Set<string>
+)
+relation DeltaPlus_Multicast_Group (
+    uuid_name: string,
+    datapath: uuid_or_string_t,
+    name: string,
+    tunnel_key: integer,
+    ports: Set<uuid_or_string_t>
+)
+relation DeltaMinus_Multicast_Group (
+    _uuid: uuid
+)
+input relation Realized_Multicast_Group (
+    _uuid: uuid,
+    datapath: uuid,
+    name: string,
+    tunnel_key: integer,
+    ports: Set<uuid>
+)
+primary key (x) x._uuid
+input relation Meter (
+    _uuid: uuid,
+    name: string,
+    unit: string,
+    bands: Set<uuid>
+)
+primary key (x) x._uuid
+input relation Meter_Band (
+    _uuid: uuid,
+    action: string,
+    rate: integer,
+    burst_size: integer
+)
+primary key (x) x._uuid
+relation Datapath_Binding (
+    uuid_name: string,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
+relation DeltaPlus_Datapath_Binding (
+    uuid_name: string,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
+relation DeltaMinus_Datapath_Binding (
+    _uuid: uuid
+)
+input relation Realized_Datapath_Binding (
+    _uuid: uuid,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+relation Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<string>,
+    options: Map<string,string>,
+    datapath: string,
+    tunnel_key: integer,
+    parent_port: option_t<string>,
+    tag: option_t<integer>,
+    chassis: option_t<string>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+relation DeltaPlus_Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<uuid_or_string_t>,
+    options: Map<string,string>,
+    datapath: uuid_or_string_t,
+    tunnel_key: integer,
+    parent_port: option_t<string>,
+    tag: option_t<integer>,
+    chassis: option_t<uuid_or_string_t>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+relation DeltaMinus_Port_Binding (
+    _uuid: uuid
+)
+input relation Realized_Port_Binding (
+    _uuid: uuid,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<uuid>,
+    options: Map<string,string>,
+    datapath: uuid,
+    tunnel_key: integer,
+    parent_port: option_t<string>,
+    tag: option_t<integer>,
+    chassis: option_t<uuid>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+relation MAC_Binding (
+    logical_port: string,
+    ip: string,
+    mac: string,
+    datapath: string
+)
+relation DeltaPlus_MAC_Binding (
+    uuid_name: string,
+    logical_port: string,
+    ip: string,
+    mac: string,
+    datapath: uuid_or_string_t
+)
+relation DeltaMinus_MAC_Binding (
+    _uuid: uuid
+)
+input relation Realized_MAC_Binding (
+    _uuid: uuid,
+    logical_port: string,
+    ip: string,
+    mac: string,
+    datapath: uuid
+)
+primary key (x) x._uuid
+relation DHCP_Options (
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DeltaPlus_DHCP_Options (
+    uuid_name: string,
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DeltaMinus_DHCP_Options (
+    _uuid: uuid
+)
+input relation Realized_DHCP_Options (
+    _uuid: uuid,
+    name: string,
+    code: integer,
+    __type: string
+)
+primary key (x) x._uuid
+relation DHCPv6_Options (
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DeltaPlus_DHCPv6_Options (
+    uuid_name: string,
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DeltaMinus_DHCPv6_Options (
+    _uuid: uuid
+)
+input relation Realized_DHCPv6_Options (
+    _uuid: uuid,
+    name: string,
+    code: integer,
+    __type: string
+)
+primary key (x) x._uuid
+input relation Connection (
+    _uuid: uuid,
+    target: string,
+    max_backoff: option_t<integer>,
+    inactivity_probe: option_t<integer>,
+    read_only: bool,
+    role: string,
+    other_config: Map<string,string>,
+    external_ids: Map<string,string>,
+    is_connected: bool,
+    status: Map<string,string>
+)
+primary key (x) x._uuid
+input relation SSL (
+    _uuid: uuid,
+    private_key: string,
+    certificate: string,
+    ca_cert: string,
+    bootstrap_ca_cert: bool,
+    ssl_protocols: string,
+    ssl_ciphers: string,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+relation DNS (
+    records: Map<string,string>,
+    datapaths: Set<string>,
+    external_ids: Map<string,string>
+)
+relation DeltaPlus_DNS (
+    uuid_name: string,
+    records: Map<string,string>,
+    datapaths: Set<uuid_or_string_t>,
+    external_ids: Map<string,string>
+)
+relation DeltaMinus_DNS (
+    _uuid: uuid
+)
+input relation Realized_DNS (
+    _uuid: uuid,
+    records: Map<string,string>,
+    datapaths: Set<uuid>,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+relation RBAC_Role (
+    name: string,
+    permissions: Map<string,string>
+)
+relation DeltaPlus_RBAC_Role (
+    uuid_name: string,
+    name: string,
+    permissions: Map<string,uuid_or_string_t>
+)
+relation DeltaMinus_RBAC_Role (
+    _uuid: uuid
+)
+input relation Realized_RBAC_Role (
+    _uuid: uuid,
+    name: string,
+    permissions: Map<string,uuid>
+)
+primary key (x) x._uuid
+relation RBAC_Permission (
+    uuid_name: string,
+    table: string,
+    authorization: Set<string>,
+    insert_delete: bool,
+    update: Set<string>
+)
+relation DeltaPlus_RBAC_Permission (
+    uuid_name: string,
+    table: string,
+    authorization: Set<string>,
+    insert_delete: bool,
+    update: Set<string>
+)
+relation DeltaMinus_RBAC_Permission (
+    _uuid: uuid
+)
+input relation Realized_RBAC_Permission (
+    _uuid: uuid,
+    table: string,
+    authorization: Set<string>,
+    insert_delete: bool,
+    update: Set<string>
+)
+primary key (x) x._uuid
+input relation Gateway_Chassis (
+    _uuid: uuid,
+    name: string,
+    chassis: option_t<uuid>,
+    priority: integer,
+    external_ids: Map<string,string>,
+    options: Map<string,string>
+)
+primary key (x) x._uuid

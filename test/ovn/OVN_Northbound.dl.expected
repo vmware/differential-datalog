@@ -9,6 +9,7 @@ input relation NB_Global (
     connections: Set<uuid>,
     ssl: option_t<uuid>
 )
+primary key (x) x._uuid
 input relation Logical_Switch (
     _uuid: uuid,
     name: string,
@@ -20,6 +21,7 @@ input relation Logical_Switch (
     other_config: Map<string,string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Logical_Switch_Port (
     _uuid: uuid,
     name: string,
@@ -37,12 +39,14 @@ input relation Logical_Switch_Port (
     dhcpv6_options: option_t<uuid>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Address_Set (
     _uuid: uuid,
     name: string,
     addresses: Set<string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Port_Group (
     _uuid: uuid,
     name: string,
@@ -50,6 +54,7 @@ input relation Port_Group (
     acls: Set<uuid>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Load_Balancer (
     _uuid: uuid,
     name: string,
@@ -57,6 +62,7 @@ input relation Load_Balancer (
     protocol: option_t<string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation ACL (
     _uuid: uuid,
     name: option_t<string>,
@@ -69,6 +75,7 @@ input relation ACL (
     meter: option_t<string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation QoS (
     _uuid: uuid,
     priority: integer,
@@ -78,6 +85,7 @@ input relation QoS (
     bandwidth: Map<string,integer>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Meter (
     _uuid: uuid,
     name: string,
@@ -85,6 +93,7 @@ input relation Meter (
     bands: Set<uuid>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Meter_Band (
     _uuid: uuid,
     action: string,
@@ -92,6 +101,7 @@ input relation Meter_Band (
     burst_size: integer,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Logical_Router (
     _uuid: uuid,
     name: string,
@@ -103,6 +113,7 @@ input relation Logical_Router (
     options: Map<string,string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Logical_Router_Port (
     _uuid: uuid,
     name: string,
@@ -115,6 +126,7 @@ input relation Logical_Router_Port (
     ipv6_ra_configs: Map<string,string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Logical_Router_Static_Route (
     _uuid: uuid,
     ip_prefix: string,
@@ -123,6 +135,7 @@ input relation Logical_Router_Static_Route (
     output_port: option_t<string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation NAT (
     _uuid: uuid,
     external_ip: string,
@@ -132,12 +145,14 @@ input relation NAT (
     __type: string,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation DHCP_Options (
     _uuid: uuid,
     cidr: string,
     options: Map<string,string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Connection (
     _uuid: uuid,
     target: string,
@@ -148,11 +163,13 @@ input relation Connection (
     is_connected: bool,
     status: Map<string,string>
 )
+primary key (x) x._uuid
 input relation DNS (
     _uuid: uuid,
     records: Map<string,string>,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation SSL (
     _uuid: uuid,
     private_key: string,
@@ -163,6 +180,7 @@ input relation SSL (
     ssl_ciphers: string,
     external_ids: Map<string,string>
 )
+primary key (x) x._uuid
 input relation Gateway_Chassis (
     _uuid: uuid,
     name: string,
@@ -171,3 +189,4 @@ input relation Gateway_Chassis (
     external_ids: Map<string,string>,
     options: Map<string,string>
 )
+primary key (x) x._uuid

@@ -449,6 +449,7 @@ ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
          _        -> Just tBool
 ctxExpectType _ CtxRuleRFlatMap{}                    = Nothing
 ctxExpectType _ CtxRuleRAggregate{}                  = Nothing
+ctxExpectType _ CtxKey{}                             = Nothing
 ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
     let args = funcArgs $ getFunc d f
         t = fieldType $ args !! i in

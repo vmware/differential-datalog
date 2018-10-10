@@ -720,6 +720,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
             -- | Aggregate clause in the RHS of a rule
           | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
+            -- | Key expression
+          | CtxKey            {ctxRelation::Relation}
             -- | Argument passed to a function
           | CtxApply          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
             -- | Field expression: 'X.f'
@@ -765,6 +767,7 @@ instance PP ECtx where
         where
         epar = short $ ctxParExpr ctx
         rule = short $ pp $ ctxRule ctx
+        rel  = short $ pp $ ctxRelation ctx
         mlen = 100
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
@@ -774,6 +777,7 @@ instance PP ECtx where
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
+                    CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
                     CtxApply{..}          -> "CtxApply          " <+> epar <+> pp ctxIdx
                     CtxField{..}          -> "CtxField          " <+> epar
@@ -805,5 +809,6 @@ ctxParent CtxRuleRAtom{}      = CtxTop
 ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent CtxKey{}            = CtxTop
 ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx

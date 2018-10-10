@@ -683,18 +683,22 @@ let ancestor = {
 -}
 compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rn = do
-    let Relation{..} = getRelation d rn
+    let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
     let rules = filter (not . null . ruleRHS)
                 $ filter ((== rn) . atomRelation . head . ruleLHS)
                 $ progRules d
     rules' <- mapM (compileRule d) rules
+    key_func <- maybe (return "None")
+                      (\k -> do lambda <- compileKey d rel k
+                                return $ "Some(" <> lambda <> ")")
+                relPrimaryKey
     let f arrangements =
             "Relation {"                                                                $$
             "    name:         \"" <> pp rn <> "\".to_string(),"                        $$
             "    input:        " <> (if relGround then "true" else "false") <> ","      $$
             "    distinct:     " <> (if relDistinct then "true" else "false") <> ","    $$
-            "    key_func:     None,"                                                   $$
+            "    key_func:     " <> key_func <> ","                                     $$
             "    id:           Relations::" <> rname rn <+> "as RelId,"                 $$
             "    rules:        vec!["                                                   $$
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$
@@ -703,6 +707,16 @@ compileRelation d rn = do
             "    change_cb:    __update_cb.clone()"                                     $$
             "}"
     return (rn, f)
+
+compileKey :: DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
+compileKey d rel@Relation{..} KeyExpr{..} = do
+    val <- mkValue d (CtxKey rel) keyExpr
+    return $ 
+        "(|" <> kEY_VAR <> ": &Value|"                                                                $$
+        "match" <+> kEY_VAR <+> "{"                                                                   $$
+        "    Value::" <> mkValConstructorName' d relType <> "(" <> pp keyVar <> ") =>" <+> val <> "," $$
+        "    _ => panic!(\"unexpected constructor in key_func\")"                                     $$
+        "})"
 
 {- Generate Rust representation of a Datalog rule
 
