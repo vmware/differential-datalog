@@ -10,7 +10,6 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
 use super::*;
-use super::ffi::*;
 
 pub struct ValMap{map: BTreeMap<RelId, BTreeSet<Value>>}
 
@@ -29,13 +28,6 @@ pub fn val_map_print(map: *mut ValMap) {
 pub fn val_map_print_rel(map: *mut ValMap, relid: RelId) {
     let map = unsafe{&mut *map};
     map.format_rel(relid, &mut io::stdout());
-}
-
-#[no_mangle]
-pub fn val_map_update(map: *mut ValMap, relid: RelId, x : *const __c_Value, insert: bool) {
-    let map = unsafe{&mut *map};
-    let val = unsafe{&*x};
-    map.update(relid, &val.to_native(), insert);
 }
 
 #[no_mangle]

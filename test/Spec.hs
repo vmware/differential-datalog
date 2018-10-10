@@ -80,10 +80,10 @@ goldenTests progress = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] True)
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
             | file:files <- inFiles
-            , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected", ".dump.expected"]
-            , let output = map (uncurry replaceExtension) $ zip files [".dump", ".c.dump"]]
+            , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
+            , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
 
 nbTest = do
@@ -114,7 +114,7 @@ ovnTests progress =
         [ goldenVsFiles "ovn_ovsdb"
           ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"]
           ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" [] False}]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" []}]
 
 sOUFFLE_DIR = "./test/souffle"
 
@@ -124,7 +124,7 @@ souffleTests progress =
         [ goldenVsFile "doop"
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"] False}]
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"]}]
 
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
@@ -192,8 +192,8 @@ parserTest fname = do
 --
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: Bool -> FilePath -> [String] -> Bool -> IO ()
-compilerTest progress fname cli_args run_ffi_test = do
+compilerTest :: Bool -> FilePath -> [String] -> IO ()
+compilerTest progress fname cli_args = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
@@ -226,8 +226,6 @@ compilerTest progress fname cli_args run_ffi_test = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo -}
     cliTest progress fname specname rust_dir cli_args
-    when run_ffi_test $
-        ffiTest progress fname specname rust_dir
 
 progressThread :: IO ()
 progressThread = do
@@ -273,56 +271,6 @@ cliTest progress fname specname rust_dir extra_args = do
             errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
                                      "\nstderr:\n" ++ err ++
                                      "\n\nstdout written to:\n" ++ dumpfile
-
--- Convert .dat file into C to test the FFI interface
-ffiTest :: Bool -> FilePath -> String -> FilePath -> IO ()
-ffiTest progress fname specname rust_dir = do
-    let cfile    = rust_dir </> specname </> specname <.> ".c"
-    let errfile  = replaceExtension fname "err"
-    let datfile  = replaceExtension fname "dat"
-    let dumpfile = replaceExtension fname ".c.dump"
-    hasdata <- doesFileExist datfile
-    when hasdata $ do
-        -- Generate C program
-        hout <- openFile cfile WriteMode
-        herr <- openFile errfile  WriteMode
-        hdat <- openFile datfile ReadMode
-        code <- withCreateProcess (proc "cargo" (["run", "--bin", specname ++ "_ffi_test"] ++ cargo_build_flag)){
-                                       cwd = Just $ rust_dir </> specname,
-                                       std_in=CreatePipe,
-                                       std_out=UseHandle hout,
-                                       std_err=UseHandle herr} $
-            \(Just hin) _ _ phandle -> do
-                dat <- hGetContents hdat
-                hPutStrLn hin dat
-                hPutStrLn hin "exit;"
-                hFlush hin
-                withProgress progress $ waitForProcess phandle
-        hClose hout
-        hClose herr
-        hClose hdat
-        when (code /= ExitSuccess) $ do
-            err <- readFile errfile
-            errorWithoutStackTrace $ "cargo run ffi_test failed with exit code " ++ show code ++
-                                     "\nstderr:\n" ++ err ++
-                                     "\n\nstdout written to:\n" ++ cfile
-        -- Compile C program
-        let exefile = specname ++ "_test"
-        code <- withCreateProcess (proc "gcc" [addExtension specname ".c", "-Ltarget/" ++ bUILD_TYPE, "-l" ++ specname, "-o", exefile]){
-                                       cwd = Just $ rust_dir </> specname} $
-            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ "gcc failed with exit code " ++ show code
-        -- Run C program
-        hout <- openFile dumpfile WriteMode
-        cwd <- makeAbsolute $ rust_dir </> specname
-        code <- withCreateProcess (proc (cwd </> exefile) []){
-                            std_out = UseHandle hout,
-                            env = Just [("LD_LIBRARY_PATH", cwd </> "target" </> bUILD_TYPE)]} $
-            \_ _ _ phandle -> withProgress progress $ waitForProcess phandle
-        hClose hout
-        when (code /= ExitSuccess) $ do
-            errorWithoutStackTrace $ exefile ++ " failed with exit code " ++ show code
 
 -- A version of golden test that supports multiple output files.
 -- Uses strict evluation to avoid errors lazily reading and then writing the

@@ -29,8 +29,6 @@ use std::sync;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-pub mod to_ffi;
-pub mod ffi;
 pub mod valmap;
 mod stdlib;
 

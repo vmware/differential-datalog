@@ -76,7 +76,6 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
-import qualified Language.DifferentialDatalog.FFI as FFI
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -101,12 +100,6 @@ gROUP_VAR = "group"
 header :: String -> Doc
 header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
 
-ffiheader :: String -> Doc
-ffiheader specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/ffi.rs")
-
-cheader :: String -> Doc
-cheader specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/ffi.h")
-
 --cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
 
 templateFiles :: String -> [(String, String)]
@@ -114,9 +107,7 @@ templateFiles specname =
     map (mapSnd (BS.unpack)) $
         [ (specname </> "Cargo.toml"  , $(embedFile "rust/template/Cargo.toml"))
         , (specname </> "main.rs"     , $(embedFile "rust/template/main.rs"))
-        , (specname </> "ffi_test.rs" , $(embedFile "rust/template/ffi_test.rs"))
         , (specname </> "stdlib.rs"   , $(embedFile "rust/template/stdlib.rs"))
-        , (specname </> "to_ffi.rs"   , $(embedFile "rust/template/to_ffi.rs"))
         , (specname </> "valmap.rs"   , $(embedFile "rust/template/valmap.rs"))
         ]
 
@@ -278,7 +269,7 @@ mkConstructorName tname t c =
 -- exists
 compile :: DatalogProgram -> String -> String -> FilePath -> IO ()
 compile d specname imports dir = do
-    let (lib, rust_ffi, c_ffi) = compileLib d specname imports
+    let lib = compileLib d specname imports
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
     -- Substitute specname template files; write files if changed.
@@ -294,10 +285,6 @@ compile d specname imports dir = do
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
     updateFile (dir </> specname </> "lib.rs") (render lib)
-    -- Generate ffi.rs file if changed.
-    updateFile (dir </> specname </> "ffi.rs") (render rust_ffi)
-    -- Update matching C header file.
-    updateFile (dir </> specname </> specname <.> "h") (render c_ffi)
     return ()
 
 -- Replace file content if changed
@@ -316,29 +303,22 @@ updateFile path content = do
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing
 -- the program for the Rust Datalog library
-compileLib :: DatalogProgram -> String -> String -> (Doc, Doc, Doc)
+compileLib :: DatalogProgram -> String -> String -> Doc
 compileLib d specname imports =
-    (header specname      $+$
-     pp imports           $+$
-     typedefs             $+$
-     mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
-     mkRelEnum d'         $+$ -- Relations enum
-     valtype              $+$
-     funcs                $+$
-     prog
-    ,
-     ffiheader specname   $+$
-     rust_ffi
-    ,
-     cheader specname     $+$
-     c_ffi)
+    header specname      $+$
+    pp imports           $+$
+    typedefs             $+$
+    mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
+    mkRelEnum d'         $+$ -- Relations enum
+    valtype              $+$
+    funcs                $+$
+    prog
     where
     -- Massage program to Rust-friendly form:
     -- * Rename program entities to Rust-friendly names
     -- * Transform away rules with multiple heads
     -- * Make sure the program has at least one relation
     d' = addDummyRel $ optimize d
-    (rust_ffi, c_ffi) = FFI.mkFFIInterface d'
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
     depgraph = progDependencyGraph d'
@@ -555,8 +535,8 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))," $$
-        "}"
+        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))" $$
+        "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
 

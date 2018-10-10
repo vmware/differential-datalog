@@ -174,3 +174,7 @@ Disaggregate{"a","3"}
 Disaggregate{"b","1"}
 Disaggregate{"b","2"}
 Disaggregate{"b","3"}
+WithKey
+WithKey{0,"foo"}
+WithKey{1,"bar"}
+WithKey{2,"buzz"}
