@@ -48,8 +48,14 @@ fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
         UpdCmd::Delete(rname, rec) => {
             let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
-            Ok(Update::Delete{relid: relid as RelId, v: val})
+            Ok(Update::DeleteValue{relid: relid as RelId, v: val})
+        },
+        UpdCmd::DeleteKey(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let val = relkey_from_record(relid, rec)?;
+            Ok(Update::DeleteKey{relid: relid as RelId, v: val})
         }
+
     }
 }
 
@@ -111,15 +117,17 @@ fn handle_cmd(upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32,bool) {
 }
 
 fn printUpd(upd: &Update<Value>) {
-    let pol = match upd {
-        Update::Insert{..} => "true",
-        Update::Delete{..} => "false"
+    let op = match upd {
+        Update::Insert{..}      => "UpdateInsert",
+        Update::DeleteValue{..} => "UpdateDelete",
+        Update::DeleteKey{..}   => "UpdateDeleteKey"
     };
     let v = match upd {
-        Update::Insert{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap(),
-        Update::Delete{relid: _, v} => val_to_ccode(upd.relid(), v).unwrap()
+        Update::Insert{relid: _, v}    => val_to_ccode(upd.relid(), v).unwrap(),
+        Update::Delete{relid: _, v}    => val_to_ccode(upd.relid(), v).unwrap(),
+        Update::DeleteKey{relid: _, k} => key_to_ccode(upd.relid(), k).unwrap(),
     };
-    println!("        (struct Update){{ .pol={}, .v={} }},", pol, v);
+    println!("        (struct Update){{ .op={}, .v={} }},", op, v);
 }
 
 pub fn run_interactive() -> i32 {

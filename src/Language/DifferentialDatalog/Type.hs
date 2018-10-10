@@ -32,6 +32,7 @@ module Language.DifferentialDatalog.Type(
     exprType',
     exprType'',
     exprNodeType,
+    relKeyType,
     typ', typ'',
     isBool, isBit, isInt, isString, isStruct, isTuple,
     checkTypesMatch,
@@ -166,6 +167,11 @@ exprTypeMaybe d ctx e =
                        Left _  -> Nothing
                        Right t -> Just $ atPos t (pos e')) 
                 ctx e
+
+-- | Type of relation's primary key, if it has one
+relKeyType :: DatalogProgram -> Relation -> Maybe Type
+relKeyType d rel =
+    fmap (\KeyExpr{..} -> exprType d (CtxKey rel) keyExpr) $ relPrimaryKey rel
 
 -- | Compute expression node type; fail if type is undefined or there
 -- is a conflict.

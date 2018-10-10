@@ -87,7 +87,7 @@ pub extern "C" fn datalog_example_insert(prog: *mut RunningProgram<Value>, relid
 pub extern "C" fn datalog_example_delete(prog: *mut RunningProgram<Value>, relid: size_t, v: *const __c_Value) -> c_int {
     let prog = unsafe { &mut *prog };
     let v = unsafe { &*v };
-    match prog.delete(relid as RelId, v.to_native()) {
+    match prog.delete_value(relid as RelId, v.to_native()) {
         Ok(_) => 0,
         Err(e) => {
             eprintln!("Datalog runtime error: {}", e.err);
@@ -96,10 +96,16 @@ pub extern "C" fn datalog_example_delete(prog: *mut RunningProgram<Value>, relid
     }
 }
 
+#[repr(C)]
+pub enum __c_UpdateOp {
+    UpdateInsert,
+    UpdateDelete,
+    UpdateDeleteKey
+}
 
 #[repr(C)]
 pub struct __c_Update {
-    pol: bool,
+    op: __c_UpdateOp,
     v: *const __c_Value
 }
 
@@ -109,13 +115,13 @@ pub extern "C" fn datalog_example_apply_updates(prog: *mut RunningProgram<Value>
                                                 nupdates: size_t) -> c_int {
     let prog = unsafe { &mut *prog };
     let updates = unsafe {slice::from_raw_parts(updates, nupdates as usize)};
-    let updates = updates.iter().map(|&__c_Update{pol,v}|
+    let updates = updates.iter().map(|&__c_Update{op,v}|
                                      {
                                          let v = unsafe{&*v};
-                                         if pol {
-                                             Update::Insert{relid: (*v).tag as usize, v: v.to_native()}
-                                         } else {
-                                             Update::Delete{relid: (*v).tag as usize, v: v.to_native()}
+                                         match op {
+                                             __c_UpdateOp::UpdateInsert     => Update::Insert{relid: (*v).tag as usize, v: v.to_native()},
+                                             __c_UpdateOp::UpdateDelete     => Update::DeleteValue{relid: (*v).tag as usize, v: v.to_native()},
+                                             __c_UpdateOp::UpdateDeleteKey  => Update::DeleteKey{relid: (*v).tag as usize, v: v.to_native()}
                                          }
                                      }).collect();
     match prog.apply_updates(updates) {

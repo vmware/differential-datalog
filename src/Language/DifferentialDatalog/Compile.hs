@@ -536,15 +536,29 @@ mkValueFromRecord d@DatalogProgram{..} =
     "    match rel {"                                                                       $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                        $$
     "    }"                                                                                 $$
+    "}"                                                                                     $$
+    "pub fn relkey_from_record(rel: Relations, rec: &Record) -> Result<Value, String> {"    $$
+    "    match rel {"                                                                       $$
+    (nest' $ nest' $ vcat $ key_entries)                                                    $$
+    "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"         $$
+    "    }"                                                                                 $$
     "}"
     where
-    entries = map mkrel $ M.elems progRelations
-    mkrel :: Relation ->  Doc
-    mkrel rel@Relation{..} =
+    entries = map mkrelval $ M.elems progRelations
+    mkrelval :: Relation ->  Doc
+    mkrelval rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
         "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
         "}"
         where t = typeNormalize d relType
+    key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
+    mkrelkey :: Relation ->  Doc
+    mkrelkey rel@Relation{..} =
+        "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))," $$
+        "}"
+        where t = typeNormalize d $ fromJust $ relKeyType d rel
+
 
 -- Convert string to RelId
 mkRelname2Id :: DatalogProgram -> Doc

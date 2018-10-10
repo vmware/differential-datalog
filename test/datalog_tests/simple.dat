@@ -80,3 +80,14 @@ dump Aggregate4;
 
 echo Disaggregate;
 dump Disaggregate;
+
+start;
+
+insert WithKey(0, "foo"),
+insert WithKey(1, "bar"),
+insert WithKey(2, "buzz");
+
+commit;
+
+echo WithKey;
+dump WithKey;

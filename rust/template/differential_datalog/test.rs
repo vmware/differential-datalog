@@ -250,7 +250,7 @@ fn test_one_relation(nthreads: usize) {
     running.transaction_start().unwrap();
     for x in &set {
         set2.remove(x);
-        running.delete(1, x.clone()).unwrap();
+        running.delete_value(1, x.clone()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(), set2);
     };
     running.transaction_commit().unwrap();
@@ -260,14 +260,14 @@ fn test_one_relation(nthreads: usize) {
     running.transaction_start().unwrap();
     running.insert(1, Value::u64(1)).unwrap();
     running.insert(1, Value::u64(1)).unwrap();
-    running.delete(1, Value::u64(1)).unwrap();
+    running.delete_value(1, Value::u64(1)).unwrap();
     running.transaction_commit().unwrap();
  
     assert_eq!(relset.lock().unwrap().len(), 0);
 
     /* 4. Set semantics: delete before insert */
     running.transaction_start().unwrap();
-    running.delete(1, Value::u64(1)).unwrap();
+    running.delete_value(1, Value::u64(1)).unwrap();
     running.insert(1, Value::u64(1)).unwrap();
     running.transaction_commit().unwrap();
  
@@ -358,7 +358,7 @@ fn test_two_relations(nthreads: usize) {
     /* 2. Clear T1 */
     running.transaction_start().unwrap();
     for x in &set {
-        running.delete(1, x.clone()).unwrap();
+        running.delete_value(1, x.clone()).unwrap();
 //        assert_eq!(running.relation_clone_content(1).unwrap(), 
 //                   running.relation_clone_content(2).unwrap());
     };
@@ -618,7 +618,7 @@ fn test_antijoin(nthreads: usize) {
     /* 1. T2 is empty; antijoin is identical to T1 */
     running.transaction_start().unwrap();
     for x in &set {
-        running.delete(2, x.clone()).unwrap();
+        running.delete_value(2, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
     assert_eq!(*relset3.lock().unwrap(), set);
@@ -1014,7 +1014,7 @@ fn test_recursion(nthreads: usize) {
 
     /* 2. Remove record from "parent" relation */
     running.transaction_start().unwrap();
-    running.delete(1, vals[0].clone()).unwrap();
+    running.delete_value(1, vals[0].clone()).unwrap();
     running.transaction_commit().unwrap();
 
     let expect_vals3 = vec![Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),

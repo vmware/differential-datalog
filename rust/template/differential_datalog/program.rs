@@ -247,10 +247,10 @@ pub struct Arrangement<V: Val> {
 }
 
 /* Relation content. */
-type ValSet<V> = FnvHashSet<V>;
+pub type ValSet<V> = FnvHashSet<V>;
 
 /* Indexed relation content. */
-type ValMap<V> = FnvHashMap<V,V>;
+pub type IndexedValSet<V> = FnvHashMap<V,V>;
 
 /* Relation delta */
 pub type DeltaSet<V> = FnvHashMap<V, bool>;
@@ -285,7 +285,7 @@ enum RelationInstance<V: Val> {
         key_func: fn(&V) -> V,
         /* Set of all elements in the relation indexed by key. Used to enforce set semantics, 
          * uniqueness of keys, and to query input relations by key. */
-        elements: ValMap<V>,
+        elements: IndexedValSet<V>,
         /* Changes since start of transaction.  Only maintained for input relations and is used to
          * enforce set semantics. */
         delta:    DeltaSet<V>
@@ -305,21 +305,45 @@ impl<V: Val> RelationInstance<V> {
             RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
         }
     }
+    pub fn get_val_by_key(&self, k: &V) -> Option<&V> {
+        match self {
+            RelationInstance::Indexed{key_func: _, elements, delta: _} => {
+                elements.get(k)
+            },
+            _ => panic!("RelationInstance::get_val_by_key: not an indexed relation")
+        }
+    }
 }
 
-/// A data type to represent and insert and delete commands.  A unified type lets us
+/// A data type to represent insert and delete commands.  A unified type lets us
 /// combine many updates in one message.
+/// 'DeleteValue' takes a complete value to be deleted;
+/// 'DeleteKey' takes key only and is only defined for relations with 'key_func'
 #[derive(Debug)]
 pub enum Update<V: Val> {
     Insert{relid: RelId, v: V},
-    Delete{relid: RelId, v: V}
+    DeleteValue{relid: RelId, v: V},
+    DeleteKey{relid: RelId, k: V}
 }
 
 impl<V:Val> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
-            Update::Insert{relid, v: _} => *relid,
-            Update::Delete{relid, v: _} => *relid
+            Update::Insert{relid, v: _}      => *relid,
+            Update::DeleteValue{relid, v: _} => *relid,
+            Update::DeleteKey{relid, k: _}   => *relid
+        }
+    }
+    pub fn is_delete_key(&self) -> bool {
+        match self {
+            Update::DeleteKey{relid: _, k: _} => true,
+            _ => false
+        }
+    }
+    pub fn key(&self) -> &V {
+        match self {
+            Update::DeleteKey{relid: _, k}   => k,
+            _ => panic!("Update::key: not a DeleteKey command")
         }
     }
 }
@@ -549,8 +573,12 @@ impl<V:Val> Program<V>
                                             Update::Insert{relid, v} => {
                                                 sessions.get_mut(&relid).unwrap().insert(v);
                                             },
-                                            Update::Delete{relid, v} => {
+                                            Update::DeleteValue{relid, v} => {
                                                 sessions.get_mut(&relid).unwrap().remove(v);
+                                            },
+                                            Update::DeleteKey{relid: _,k: _} => {
+                                                // workers don't know about keys
+                                                panic!("DeleteKey command received by worker thread")
                                             }
                                         }
                                     };
@@ -929,10 +957,18 @@ impl<V:Val> RunningProgram<V> {
     }
 
     /// Remove a record if it exists in the relation.
-    pub fn delete(&mut self, relid: RelId, v: V) -> Response<()> {
-        self.apply_updates(vec![Update::Delete {
+    pub fn delete_value(&mut self, relid: RelId, v: V) -> Response<()> {
+        self.apply_updates(vec![Update::DeleteValue {
             relid: relid,
             v:     v
+        }])
+    }
+
+    /// Remove a key if it exists in the relation.
+    pub fn delete_key(&mut self, relid: RelId, k: V) -> Response<()> {
+        self.apply_updates(vec![Update::DeleteKey {
+            relid: relid,
+            k:     k
         }])
     }
 
@@ -951,28 +987,22 @@ impl<V:Val> RunningProgram<V> {
                 Some(rel) => { rel }
             };
             let pass = {
-                let (polarity,val) = match &upd {
-                    Update::Insert{relid: _, v} => (true, v),
-                    Update::Delete{relid: _, v} => (false, v)
-                };
-
                 match rel {
                     RelationInstance::Flat{elements, delta} => {
-                        Self::set_update(elements, delta, val, polarity)
+                        Self::set_update(elements, delta, &upd)?
                     },
                     RelationInstance::Indexed{key_func, elements, delta} => {
-                        if Self::indexed_set_update(*key_func, elements, delta, val, polarity) {
-                            true
-                        } else if polarity {
-                            return resp_from_error!("Insert: duplicate key {:?} in value {:?}", key_func(&val), val);
-                        } else {
-                            return resp_from_error!("Delete: key not found {:?}", val);
-                        }
+                        Self::indexed_set_update(*key_func, elements, delta, &upd)?
                     }
                 }
             };
             if pass {
-                filtered_updates.push(upd);
+                // replace DeleteKey command with DeleteValue before forwarding it to worker
+                if upd.is_delete_key() {
+                    filtered_updates.push(Update::DeleteValue{relid: upd.relid(), v: rel.get_val_by_key(upd.key()).unwrap().clone()});
+                } else {
+                    filtered_updates.push(upd);
+                }
             }
         }
 
@@ -1017,17 +1047,22 @@ impl<V:Val> RunningProgram<V> {
      * `x` is the value being inserted or deleted.
      * `insert` indicates type of update (`true` for insert, `false` for delete).
      * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
-    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, x : &V, insert: bool) -> bool
+    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, upd: &Update<V>) -> Response<bool>
     {
-        //println!("xupd {:?} {}", *x, w);
-        if insert {
-            let new = s.insert(x.clone());
-            if new { Self::delta_inc(ds, x); };
-            new
-        } else {
-            let present = s.remove(x);
-            if present { Self::delta_dec(ds, x); };
-            present
+        match &upd {
+            Update::Insert{relid: _, v}      => {
+                let new = s.insert(v.clone());
+                if new { Self::delta_inc(ds, v); };
+                Ok(new)
+            },
+            Update::DeleteValue{relid: _, v} => {
+                let present = s.remove(v);
+                if present { Self::delta_dec(ds, v); };
+                Ok(present)
+            },
+            Update::DeleteKey{relid, k: _}   => {
+                resp_from_error!("Cannot delete by key from relation {} that does not have a primary key", relid)
+            }
         }
     }
 
@@ -1044,26 +1079,48 @@ impl<V:Val> RunningProgram<V> {
      *          - s.delete(key)
      *          - ds(v)--
      */
-    fn indexed_set_update(key_func: fn(&V)->V , s: &mut ValMap<V>, ds: &mut DeltaSet<V>, x : &V, insert: bool) -> bool
+    fn indexed_set_update(key_func: fn(&V)->V , s: &mut IndexedValSet<V>, ds: &mut DeltaSet<V>, upd: &Update<V>) -> Response<bool>
     {
-        //println!("xupd {:?} {}", *x, w);
-        if insert {
-            match s.entry(key_func(x)) {
-                hash_map::Entry::Occupied(_) => { false },
-                hash_map::Entry::Vacant(ve) => {
-                    ve.insert(x.clone());
-                    Self::delta_inc(ds, x);
-                    true
+        match &upd {
+            Update::Insert{relid: _, v}      => {
+                match s.entry(key_func(v)) {
+                    hash_map::Entry::Occupied(_) => {
+                        resp_from_error!("Insert: duplicate key {:?} in value {:?}", key_func(v), v)
+                    },
+                    hash_map::Entry::Vacant(ve) => {
+                        ve.insert(v.clone());
+                        Self::delta_inc(ds, v);
+                        Ok(true)
+                    }
                 }
-            }
-        } else {
-            match s.entry(x.clone()) {
-                hash_map::Entry::Occupied(oe) => {
-                    Self::delta_dec(ds, oe.get());
-                    oe.remove_entry();
-                    true
-                },
-                hash_map::Entry::Vacant(_) => { false }
+            },
+            Update::DeleteValue{relid: _, v} => {
+                match s.entry(key_func(v).clone()) {
+                    hash_map::Entry::Occupied(oe) => {
+                        if oe.get() != v {
+                            resp_from_error!("DeleteValue: key exists with a different value. Value specified: {:?}; existing value: {:?}", v, oe.get())
+                        } else {
+                            Self::delta_dec(ds, oe.get());
+                            oe.remove_entry();
+                            Ok(true)
+                        }
+                    },
+                    hash_map::Entry::Vacant(_) => {
+                        resp_from_error!("DeleteValue: key not found {:?}", key_func(v))
+                    }
+                }
+            },
+            Update::DeleteKey{relid: _, k}   => {
+                match s.entry(k.clone()) {
+                    hash_map::Entry::Occupied(oe) => {
+                        Self::delta_dec(ds, oe.get());
+                        oe.remove_entry();
+                        Ok(true)
+                    },
+                    hash_map::Entry::Vacant(_) => {
+                        return resp_from_error!("DeleteKey: key not found {:?}", k)
+                    }
+                }
             }
         }
     }
@@ -1119,7 +1176,7 @@ impl<V:Val> RunningProgram<V> {
             for (k, w) in rel.delta() {
                 if *w {
                     updates.push(
-                        Update::Delete{
+                        Update::DeleteValue{
                             relid: *relid,
                             v:     k.clone()
                         })

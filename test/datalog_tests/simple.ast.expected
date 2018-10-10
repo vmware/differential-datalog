@@ -37,6 +37,7 @@ typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
+typedef WithKey = WithKey{key: bit<128>, val: string}
 typedef X = X{field: bigint}
 typedef XX = XX{b: bigint, c: R3, d: R1}
 typedef Y = Y{b: bigint, e: string}
@@ -297,6 +298,7 @@ input relation Table1 [Table1]
 relation Table12 [Table12]
 input relation Table2 [Table2]
 relation W [W]
+input relation WithKey [WithKey] primary key (x) x.key
 input relation X [X]
 input relation XX [XX]
 input relation Y [Y]

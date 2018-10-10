@@ -1,7 +1,6 @@
 //! nom-based parser for Datalog values.
 
 use num::bigint::*;
-use num::Num;
 use nom::*;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -18,7 +17,8 @@ pub enum Record {
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum UpdCmd {
     Insert (String, Record),
-    Delete (String, Record)
+    Delete (String, Record),
+    DeleteKey(String, Record)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -106,6 +106,10 @@ fn test_command() {
                Ok((&br""[..], Command::Update(
                    UpdCmd::Delete("Rel1".to_string(), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
                ))));
+    assert_eq!(parse_command(br"delete_key Rel1 true;"),
+               Ok((&br""[..], Command::Update(
+                   UpdCmd::DeleteKey("Rel1".to_string(), Record::Bool(true)), true
+               ))));
     assert_eq!(parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Delete("NB.Logical_Router".to_string(), Record::PosStruct("NB.Logical_Router".to_string(),
@@ -117,8 +121,9 @@ fn test_command() {
 }
 
 named!(update<&[u8], UpdCmd>,
-    alt!(do_parse!(apply!(sym,"insert") >> rec: rel_record >> (UpdCmd::Insert(rec.0, rec.1))) |
-         do_parse!(apply!(sym,"delete") >> rec: rel_record >> (UpdCmd::Delete(rec.0, rec.1))))
+    alt!(do_parse!(apply!(sym,"insert")     >> rec: rel_record >> (UpdCmd::Insert(rec.0, rec.1)))  |
+         do_parse!(apply!(sym,"delete")     >> rec: rel_record >> (UpdCmd::Delete(rec.0, rec.1)))  |
+         do_parse!(apply!(sym,"delete_key") >> rec: rel_key    >> (UpdCmd::DeleteKey(rec.0, rec.1))))
 );
 
 named!(rel_record<&[u8], (String, Record)>,
@@ -126,6 +131,12 @@ named!(rel_record<&[u8], (String, Record)>,
               val: alt!(delimited!(apply!(sym,"["), record, apply!(sym,"]")) |
                         delimited!(apply!(sym,"("), apply!(constructor_args, cons.clone()), apply!(sym,")"))) >>
               (cons, val))
+);
+
+named!(rel_key<&[u8], (String, Record)>,
+    do_parse!(rel: identifier >>
+              val: record     >>
+              (rel, val))
 );
 
 named!(record<&[u8], Record>,

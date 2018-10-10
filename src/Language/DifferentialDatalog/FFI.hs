@@ -125,6 +125,12 @@ mkCValue d = (rust, hdr)
         (nest' $ nest' $ nest' $ vcat $ map (<> ",") c_matches)                $$
         "            _ => None"                                                $$
         "   }"                                                                 $$
+        "}"                                                                    $$
+        "pub fn key_to_ccode(relid: RelId, val: &Value) -> Option<String> {"   $$
+        "   match relid {"                                                     $$
+        (nest' $ nest' $ nest' $ vcat $ map (<> ",") c_key_matches)            $$
+        "            _ => None"                                                $$
+        "   }"                                                                 $$
         "}"
     hdr =
         mkCRelEnum d                                                           $$

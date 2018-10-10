@@ -40,8 +40,14 @@ int datalog_example_insert(RunningProgram *prog,
 int datalog_example_delete(RunningProgram *prog,
 			   RelId relid,
 			   const struct Value *v);
+enum UpdateOp {
+    UpdateInsert,
+    UpdateDelete,
+    UpdateDeleteKey
+}
+
 struct Update {
-    bool pol;
+    enum UpdateOp op;
     struct Value *v;
 };
 
