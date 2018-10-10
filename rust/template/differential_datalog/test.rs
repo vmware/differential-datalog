@@ -219,6 +219,7 @@ fn test_one_relation(nthreads: usize) {
             name:         "T1".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
@@ -310,6 +311,7 @@ fn test_two_relations(nthreads: usize) {
             name:         "T1".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
@@ -323,6 +325,7 @@ fn test_two_relations(nthreads: usize) {
             name:         "T2".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           2,      
             rules:        vec![Rule{rel: 1, xforms: Vec::new()}],
             arrangements: Vec::new(),
@@ -401,6 +404,7 @@ fn test_join(nthreads: usize) {
             name:         "T1".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
@@ -420,6 +424,7 @@ fn test_join(nthreads: usize) {
             name:         "T2".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           2,      
             rules:        Vec::new(),
             arrangements: vec![Arrangement{
@@ -440,6 +445,7 @@ fn test_join(nthreads: usize) {
             name:         "T3".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           3,
             rules:        vec![Rule{
                 rel: 1, 
@@ -499,6 +505,7 @@ fn test_antijoin(nthreads: usize) {
             name:         "T1".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,      
             rules:        Vec::new(),
             arrangements: Vec::new(),
@@ -528,6 +535,7 @@ fn test_antijoin(nthreads: usize) {
             name:         "T2".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           2,      
             rules:        Vec::new(),
             arrangements: vec![],
@@ -549,6 +557,7 @@ fn test_antijoin(nthreads: usize) {
             name:         "T21".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           21,      
             rules:        vec![
                 Rule{
@@ -570,6 +579,7 @@ fn test_antijoin(nthreads: usize) {
             name:         "T3".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           3,
             rules:        vec![Rule{
                 rel: 1, 
@@ -637,6 +647,7 @@ fn test_map(nthreads: usize) {
             name:         "T1".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
@@ -701,6 +712,7 @@ fn test_map(nthreads: usize) {
             name:         "T2".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           2,      
             rules:        vec![Rule{
                 rel: 1,
@@ -730,6 +742,7 @@ fn test_map(nthreads: usize) {
             name:         "T3".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           3,
             rules:        vec![Rule{
                 rel: 2,
@@ -752,6 +765,7 @@ fn test_map(nthreads: usize) {
             name:         "T4".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           4,
             rules:        vec![Rule{
                 rel: 2,
@@ -859,6 +873,7 @@ fn test_recursion(nthreads: usize) {
             name:         "parent".to_string(),
             input:        true,
             distinct:     true,
+            key_func:     None,
             id:           1,      
             rules:        Vec::new(),
             arrangements: vec![Arrangement{
@@ -876,6 +891,7 @@ fn test_recursion(nthreads: usize) {
             name:         "ancestor".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           2,      
             rules:        vec![
                 Rule{
@@ -917,6 +933,7 @@ fn test_recursion(nthreads: usize) {
             name:         "common_ancestor".to_string(),
             input:        false,
             distinct:     true,
+            key_func:     None,
             id:           3,      
             rules:        vec![
                 Rule{

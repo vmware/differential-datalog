@@ -138,6 +138,9 @@ pub struct Relation<V: Val> {
     pub input:        bool,
     /// apply distinct() to this relation
     pub distinct:     bool,
+    /// if this `key_func` is present, this indicates that the relation is indexed with a unique
+    /// key computed by key_func
+    pub key_func:     Option<fn(&V) -> V>,
     /// Unique relation id
     pub id:           RelId,
     /// Rules that define the content of the relation.
@@ -244,7 +247,10 @@ pub struct Arrangement<V: Val> {
 }
 
 /* Relation content. */
-pub type ValSet<V> = FnvHashSet<V>;
+type ValSet<V> = FnvHashSet<V>;
+
+/* Indexed relation content. */
+type ValMap<V> = FnvHashMap<V,V>;
 
 /* Relation delta */
 pub type DeltaSet<V> = FnvHashMap<V, bool>;
@@ -267,13 +273,38 @@ pub struct RunningProgram<V: Val> {
 }
 
 /* Runtime representation of relation */
-struct RelationInstance<V: Val> {
-    /* Set of all elements in the relation. Only maintained for input relations and is used
-     * to enforce set semantics (repeated inserts and deletes are enforced). */
-    elements: ValSet<V>,
-    /* Changes since start of transaction.  Only maintained for input relations and is used to
-    * enforce set semantics. */
-    delta:    DeltaSet<V>
+enum RelationInstance<V: Val> {
+    Flat {
+        /* Set of all elements in the relation. Used to enforce set semantics for input relations
+         * (repeated inserts and deletes are ignored). */
+        elements: ValSet<V>,
+        /* Changes since start of transaction. */
+        delta:    DeltaSet<V>
+    },
+    Indexed {
+        key_func: fn(&V) -> V,
+        /* Set of all elements in the relation indexed by key. Used to enforce set semantics, 
+         * uniqueness of keys, and to query input relations by key. */
+        elements: ValMap<V>,
+        /* Changes since start of transaction.  Only maintained for input relations and is used to
+         * enforce set semantics. */
+        delta:    DeltaSet<V>
+    }
+}
+
+impl<V: Val> RelationInstance<V> {
+    pub fn delta(&self) -> &DeltaSet<V>{
+        match self {
+            RelationInstance::Flat{elements: _, delta} => delta,
+            RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
+        }
+    }
+    pub fn delta_mut(&mut self) -> &mut DeltaSet<V>{
+        match self {
+            RelationInstance::Flat{elements: _, delta} => delta,
+            RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
+        }
+    }
 }
 
 /// A data type to represent and insert and delete commands.  A unified type lets us
@@ -564,12 +595,25 @@ impl<V:Val> Program<V>
 
         let mut rels = FnvHashMap::default();
         for relid in self.input_relations() {
-            if self.get_relation(relid).input {
-                rels.insert(relid,
-                            RelationInstance{
-                                elements: FnvHashSet::default(),
-                                delta:    FnvHashMap::default()
-                            });
+            let rel = self.get_relation(relid);
+            if rel.input {
+                match rel.key_func {
+                    None => {
+                        rels.insert(relid,
+                                    RelationInstance::Flat{
+                                        elements: FnvHashSet::default(),
+                                        delta:    FnvHashMap::default()
+                                    });
+                    },
+                    Some(f) => {
+                        rels.insert(relid,
+                                    RelationInstance::Indexed{
+                                        key_func: f,
+                                        elements: FnvHashMap::default(),
+                                        delta:    FnvHashMap::default()
+                                    });
+                    }
+                };
             }
         };
 
@@ -906,12 +950,25 @@ impl<V:Val> RunningProgram<V> {
                 None => return resp_from_error!("unknown input relation {}", upd.relid()),
                 Some(rel) => { rel }
             };
-            let pass = match &upd {
-                Update::Insert{relid: _, v} => {
-                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, true)
-                },
-                Update::Delete{relid: _, v} => {
-                    Self::set_update(&mut rel.elements, &mut rel.delta, &v, false)
+            let pass = {
+                let (polarity,val) = match &upd {
+                    Update::Insert{relid: _, v} => (true, v),
+                    Update::Delete{relid: _, v} => (false, v)
+                };
+
+                match rel {
+                    RelationInstance::Flat{elements, delta} => {
+                        Self::set_update(elements, delta, val, polarity)
+                    },
+                    RelationInstance::Indexed{key_func, elements, delta} => {
+                        if Self::indexed_set_update(*key_func, elements, delta, val, polarity) {
+                            true
+                        } else if polarity {
+                            return resp_from_error!("Insert: duplicate key {:?} in value {:?}", key_func(&val), val);
+                        } else {
+                            return resp_from_error!("Delete: key not found {:?}", val);
+                        }
+                    }
                 }
             };
             if pass {
@@ -926,6 +983,34 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
+    /* increment the counter associated with value `x` in the delta-set
+     * delta(x) == false => remove entry (equivalen to delta(x):=0)
+     * x not in delta => delta(x) := true
+     * delta(x) == true => error
+     */
+    fn delta_inc(ds: &mut DeltaSet<V>, x: &V) {
+        let e = ds.entry(x.clone());
+        match e {
+            hash_map::Entry::Occupied(mut oe) => {
+                debug_assert!(*oe.get_mut() == false);
+                oe.remove_entry();
+            },
+            hash_map::Entry::Vacant(ve) => {ve.insert(true);}
+        }
+    }
+
+    /* reverse of delta_inc */
+    fn delta_dec(ds: &mut DeltaSet<V>, key: &V) {
+        let e = ds.entry(key.clone());
+        match e {
+            hash_map::Entry::Occupied(mut oe) => {
+                debug_assert!(*oe.get_mut() == true);
+                oe.remove_entry();
+            },
+            hash_map::Entry::Vacant(ve) => {ve.insert(false);}
+        }
+    }
+
     /* Update value set and delta set of an input relation before performin an update.
      * `s` is the current content of the relation.
      * `ds` is delta since start of transaction.
@@ -937,35 +1022,54 @@ impl<V:Val> RunningProgram<V> {
         //println!("xupd {:?} {}", *x, w);
         if insert {
             let new = s.insert(x.clone());
-            if new {
-                let e = ds.entry(x.clone());
-                match e {
-                    hash_map::Entry::Occupied(mut oe) => {
-                        debug_assert!(*oe.get_mut() == false);
-                        oe.remove_entry();
-                    },
-                    hash_map::Entry::Vacant(ve) => {ve.insert(true);}
-                }
-            };
+            if new { Self::delta_inc(ds, x); };
             new
         } else {
             let present = s.remove(x);
-            if present {
-                let e = ds.entry(x.clone());
-                match e {
-                    hash_map::Entry::Occupied(mut oe) => {
-                        debug_assert!(*oe.get_mut() == true);
-                        oe.remove_entry();
-                    },
-                    hash_map::Entry::Vacant(ve) => {ve.insert(false);}
-                }
-            };
+            if present { Self::delta_dec(ds, x); };
             present
         }
     }
 
+    /* insert:
+     *      key exists in `s`:
+     *          - error
+     *      key not in `s`:
+     *          - s.insert(x)
+     *          - ds(x)++;
+     * delete:
+     *      key not in `s`
+     *          - return error
+     *      key in `s` with value `v`:
+     *          - s.delete(key)
+     *          - ds(v)--
+     */
+    fn indexed_set_update(key_func: fn(&V)->V , s: &mut ValMap<V>, ds: &mut DeltaSet<V>, x : &V, insert: bool) -> bool
+    {
+        //println!("xupd {:?} {}", *x, w);
+        if insert {
+            match s.entry(key_func(x)) {
+                hash_map::Entry::Occupied(_) => { false },
+                hash_map::Entry::Vacant(ve) => {
+                    ve.insert(x.clone());
+                    Self::delta_inc(ds, x);
+                    true
+                }
+            }
+        } else {
+            match s.entry(x.clone()) {
+                hash_map::Entry::Occupied(oe) => {
+                    Self::delta_dec(ds, oe.get());
+                    oe.remove_entry();
+                    true
+                },
+                hash_map::Entry::Vacant(_) => { false }
+            }
+        }
+    }
+
     /* Returns a reference to relation content.
-     * If called in the middle of a transaction, returns state snapshot including changed
+     * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
     /*pub fn relation_content(&mut self, relid: RelId) -> Response<&ValSet<V>> {
@@ -1003,7 +1107,7 @@ impl<V:Val> RunningProgram<V> {
     /* Clear delta sets of all input relations on transaction commit. */
     fn delta_cleanup(&mut self) -> Response<()> {
         for (_, rel) in &mut self.relations {
-            rel.delta.clear();
+            rel.delta_mut().clear();
         };
         Ok(())
     }
@@ -1012,7 +1116,7 @@ impl<V:Val> RunningProgram<V> {
     fn delta_undo(&mut self) -> Response<()> {
         let mut updates = vec![];
         for (relid, rel) in &self.relations {
-            for (k, w) in &rel.delta {
+            for (k, w) in rel.delta() {
                 if *w {
                     updates.push(
                         Update::Delete{
@@ -1035,7 +1139,7 @@ impl<V:Val> RunningProgram<V> {
                 /* validation: all deltas must be empty */
                 for (_, rel) in &self.relations {
                     //println!("delta: {:?}", *d);
-                    debug_assert!(rel.delta.is_empty());
+                    debug_assert!(rel.delta().is_empty());
                 };
                 Ok(())
             })
