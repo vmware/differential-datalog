@@ -1,10 +1,28 @@
-//! `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
+//! An untyped representation of DDlog values and database update commands.
 
-use parse::Record;
 use num::{ToPrimitive, BigInt, BigUint};
 use std::vec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+
+#[derive(Debug,PartialEq,Eq,Clone)]
+pub enum Record {
+    Bool(bool),
+    Int(BigInt),
+    String(String),
+    Tuple(Vec<Record>),
+    Array(Vec<Record>),
+    PosStruct(String, Vec<Record>),
+    NamedStruct(String, Vec<(String, Record)>)
+}
+
+#[derive(Debug,PartialEq,Eq,Clone)]
+pub enum UpdCmd {
+    Insert (String, Record),
+    Delete (String, Record),
+    DeleteKey(String, Record)
+}
+
 
 #[cfg(test)]
 use num::bigint::{ToBigInt, ToBigUint};
@@ -13,6 +31,7 @@ pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
 }
 
+/// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
 impl FromRecord for u8 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
@@ -28,7 +47,6 @@ impl FromRecord for u8 {
         }
     }
 }
-
 
 #[test]
 fn test_u8() {

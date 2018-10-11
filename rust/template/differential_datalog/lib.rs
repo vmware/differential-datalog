@@ -12,8 +12,6 @@ extern crate timely;
 extern crate differential_dataflow;
 extern crate fnv;
 
-extern crate cmd_parser;
-
 mod profile;
 mod variable;
 #[cfg(test)]
@@ -23,3 +21,4 @@ pub mod program;
 pub mod uint;
 pub mod int;
 pub mod arcval;
+pub mod record;

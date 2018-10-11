@@ -29,6 +29,7 @@ use datalog_example::*;
 use datalog_example::valmap::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
+use differential_datalog::record::*;
 use time::precise_time_ns;
 
 // uncomment to enable profiling

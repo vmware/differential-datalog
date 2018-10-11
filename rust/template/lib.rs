@@ -18,7 +18,7 @@ use differential_datalog::program::*;
 use differential_datalog::uint::*;
 use differential_datalog::int::*;
 use differential_datalog::arcval;
-use cmd_parser::*;
+use differential_datalog::record::*;
 use abomonation::Abomonation;
 
 use fnv::FnvHashSet;

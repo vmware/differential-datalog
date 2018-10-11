@@ -10,7 +10,7 @@ use serde::de::Error;
 use std::fmt;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use cmd_parser::{FromRecord, Record};
+use super::record::{FromRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}

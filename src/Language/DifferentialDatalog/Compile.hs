@@ -115,19 +115,19 @@ templateFiles specname =
 rustLibFiles :: String -> [(String, String)]
 rustLibFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (specname </> "differential_datalog/Cargo.toml"  , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
-        , (specname </> "differential_datalog/int.rs"      , $(embedFile "rust/template/differential_datalog/int.rs"))
-        , (specname </> "differential_datalog/uint.rs"     , $(embedFile "rust/template/differential_datalog/uint.rs"))
-        , (specname </> "differential_datalog/arcval.rs"   , $(embedFile "rust/template/differential_datalog/arcval.rs"))
-        , (specname </> "differential_datalog/variable.rs" , $(embedFile "rust/template/differential_datalog/variable.rs"))
-        , (specname </> "differential_datalog/profile.rs"  , $(embedFile "rust/template/differential_datalog/profile.rs"))
-        , (specname </> "differential_datalog/program.rs"  , $(embedFile "rust/template/differential_datalog/program.rs"))
-        , (specname </> "differential_datalog/lib.rs"      , $(embedFile "rust/template/differential_datalog/lib.rs"))
-        , (specname </> "differential_datalog/test.rs"     , $(embedFile "rust/template/differential_datalog/test.rs"))
-        , (specname </> "cmd_parser/Cargo.toml"            , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
-        , (specname </> "cmd_parser/lib.rs"                , $(embedFile "rust/template/cmd_parser/lib.rs"))
-        , (specname </> "cmd_parser/parse.rs"              , $(embedFile "rust/template/cmd_parser/parse.rs"))
-        , (specname </> "cmd_parser/from_record.rs"        , $(embedFile "rust/template/cmd_parser/from_record.rs"))
+        [ (specname </> "differential_datalog/Cargo.toml"    , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
+        , (specname </> "differential_datalog/int.rs"        , $(embedFile "rust/template/differential_datalog/int.rs"))
+        , (specname </> "differential_datalog/uint.rs"       , $(embedFile "rust/template/differential_datalog/uint.rs"))
+        , (specname </> "differential_datalog/arcval.rs"     , $(embedFile "rust/template/differential_datalog/arcval.rs"))
+        , (specname </> "differential_datalog/variable.rs"   , $(embedFile "rust/template/differential_datalog/variable.rs"))
+        , (specname </> "differential_datalog/profile.rs"    , $(embedFile "rust/template/differential_datalog/profile.rs"))
+        , (specname </> "differential_datalog/program.rs"    , $(embedFile "rust/template/differential_datalog/program.rs"))
+        , (specname </> "differential_datalog/record.rs"     , $(embedFile "rust/template/differential_datalog/record.rs"))
+        , (specname </> "differential_datalog/lib.rs"        , $(embedFile "rust/template/differential_datalog/lib.rs"))
+        , (specname </> "differential_datalog/test.rs"       , $(embedFile "rust/template/differential_datalog/test.rs"))
+        , (specname </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
+        , (specname </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
+        , (specname </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
         ]
 
 

@@ -8,9 +8,9 @@ use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
 use std::fmt;
-use cmd_parser::{FromRecord, Record};
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use super::record::{FromRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}

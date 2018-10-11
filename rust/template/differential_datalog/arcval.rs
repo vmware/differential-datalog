@@ -6,7 +6,7 @@ use std::io;
 use abomonation::Abomonation;
 use program::Val;
 use std::ops::Deref;
-use cmd_parser::{FromRecord, Record};
+use super::record::{FromRecord, Record};
 
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]

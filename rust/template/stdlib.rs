@@ -3,7 +3,7 @@
 #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
 
 use differential_datalog::arcval;
-use cmd_parser::*;
+use differential_datalog::record::*;
 use abomonation::Abomonation;
 
 use std::fmt::Display;

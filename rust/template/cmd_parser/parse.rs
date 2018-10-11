@@ -1,25 +1,10 @@
 //! nom-based parser for Datalog values.
 
 use num::bigint::*;
+#[cfg(test)]
+use num::Num;
 use nom::*;
-
-#[derive(Debug,PartialEq,Eq,Clone)]
-pub enum Record {
-    Bool(bool),
-    Int(BigInt),
-    String(String),
-    Tuple(Vec<Record>),
-    Array(Vec<Record>),
-    PosStruct(String, Vec<Record>),
-    NamedStruct(String, Vec<(String, Record)>)
-}
-
-#[derive(Debug,PartialEq,Eq,Clone)]
-pub enum UpdCmd {
-    Insert (String, Record),
-    Delete (String, Record),
-    DeleteKey(String, Record)
-}
+use differential_datalog::record::*;
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Command {
