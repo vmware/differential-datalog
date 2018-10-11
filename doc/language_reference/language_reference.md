@@ -225,8 +225,9 @@ arg ::= arg_name ":" simple_type_spec
 ## Relations
 
 ```EBNF
-relation ::= ["input"] "relation" rel_name "(" [arg ","] arg ")"
-           | ["input"] "relation" rel_name "[" simple_type_spec "]"
+relation ::= ["input"] "relation" rel_name "(" [arg ","] arg ")" [primary_key]
+           | ["input"] "relation" rel_name "[" simple_type_spec "]" [primary_key]
+primary_key ::= "primary" "key" "(" var_name ")" expr
 ```
 
 The first form declares relation by listing its arguments.  The second
@@ -242,9 +243,18 @@ typedef R = R{f1: bigint, f2:bool}
 relation R[R]
 ```
 
+The optional primary key clause is only allowed in `input` relations and defines a mapping from a record to
+its unique key. For example, the following declares a relation with primary key `f1`:
+
+```
+relation R(f1: bigint, f2: bool) 
+primary key (r) r.f1
+```
+
 ### Constraints of relations
 1. Column names must be unique within a relation
 1. Column types cannot use type variables
+1. Only `input` relations can have primary keys
 
 ## Expressions
 
@@ -526,7 +536,7 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
              | "Aggregate" "("                           (* 6.aggregation *)
                 "(" [var_name ("," var_name)*] ")" ","
-                var_name "=" expr ")"
+                var_name "=" func_name "(" expr ")" ")"
 ```
 
 An atom is a predicate that holds when a given value belongs to a relation.
@@ -595,13 +605,25 @@ extern function extract_ips(addrs: string): Set<ip_addr_t>
 ```
 
 The sixth form groups records computed so far by a subset of fields,
-computes an aggreagate for each group using specified aggregate function
-(*requirements on aggregate function signature to be specified*), and
-binds the result to a new variable:
+computes an aggreagate for each group using specified aggregate function,
+and binds the result to a new variable:
 
 ```
 ShortestPath(x,y, c) :- Path(x,y,cost), Aggregate((x,y), c = min(cost))
 ```
+
+The aggregate function (e.g., `min` in this example) must have the following
+signature:
+
+```
+function min(Group<'A>): 'B
+```
+
+where `'A` is the type of expression passed as argument to the function and
+`'B` is the aggregate value computed by the function.  `Group` is a DDlog
+built-in type.  It can only currently be manipulated from Rust, meaning that
+aggregate functions can only be defined in Rust and imported to a DDlog
+program as `extern function`.
 
 ### Variables and patterns
 
