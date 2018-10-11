@@ -139,7 +139,7 @@ mkTable' schema tkind t@Table{..} keys = do
 mkCol :: (MonadError String me) => OVSDBSchema -> TableKind -> String -> TableColumn -> me Doc
 mkCol schema tkind tname c@TableColumn{..} = do
     check (columnName /= "_uuid") (pos c) $ "Reserved column name _uuid in table " ++ tname
-    check (columnName /= "uuid-name") (pos c) $ "Reserved column name uuid-name in table " ++ tname
+    check (notElem columnName ["uuid-name", "uuid_name"]) (pos c) $ "Reserved column name " ++ columnName ++ " in table " ++ tname
     check (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     t <- case columnType of
               ColumnTypeAtomic at  -> mkAtomicType at
