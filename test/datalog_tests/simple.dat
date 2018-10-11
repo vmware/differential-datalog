@@ -91,3 +91,35 @@ commit;
 
 echo WithKey;
 dump WithKey;
+
+start;
+
+delete WithKey(0, "foo");
+
+commit;
+
+echo WithKey after deletion by value;
+dump WithKey;
+
+start;
+
+delete_key WithKey 1;
+
+commit;
+
+echo WithKey after deletion by key;
+dump WithKey;
+
+
+start;
+
+insert WithKey(1, "bar2"),
+insert WithKey(3, "xxx"),
+insert WithKey(4, "hello"),
+delete_key WithKey 2,
+delete_key WithKey 3;
+
+commit;
+
+echo WithKey: +3, -2;
+dump WithKey;

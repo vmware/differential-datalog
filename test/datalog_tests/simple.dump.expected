@@ -178,3 +178,11 @@ WithKey
 WithKey{0,"foo"}
 WithKey{1,"bar"}
 WithKey{2,"buzz"}
+WithKey after deletion by value
+WithKey{1,"bar"}
+WithKey{2,"buzz"}
+WithKey after deletion by key
+WithKey{2,"buzz"}
+WithKey: +3, -2
+WithKey{1,"bar2"}
+WithKey{4,"hello"}

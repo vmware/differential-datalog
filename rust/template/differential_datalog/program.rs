@@ -19,12 +19,12 @@ use std::sync::{Arc, Mutex, RwLock, Barrier};
 use std::error;
 use std::result::Result;
 use std::collections::hash_map;
-// use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
-// creating relations
 use std::fmt;
 use std::thread;
 use std::time::Duration;
 use std::sync::mpsc;
+// use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
+// creating relations
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 
@@ -986,6 +986,9 @@ impl<V:Val> RunningProgram<V> {
                 None => return resp_from_error!("unknown input relation {}", upd.relid()),
                 Some(rel) => { rel }
             };
+            let deleted = if upd.is_delete_key() {
+                rel.get_val_by_key(upd.key()).map(|v|v.clone())
+            } else { None };
             let pass = {
                 match rel {
                     RelationInstance::Flat{elements, delta} => {
@@ -999,7 +1002,7 @@ impl<V:Val> RunningProgram<V> {
             if pass {
                 // replace DeleteKey command with DeleteValue before forwarding it to worker
                 if upd.is_delete_key() {
-                    filtered_updates.push(Update::DeleteValue{relid: upd.relid(), v: rel.get_val_by_key(upd.key()).unwrap().clone()});
+                    filtered_updates.push(Update::DeleteValue{relid: upd.relid(), v: deleted.unwrap()});
                 } else {
                     filtered_updates.push(upd);
                 }
