@@ -16,10 +16,8 @@ use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex, RwLock, Barrier};
-use std::error;
 use std::result::Result;
 use std::collections::hash_map;
-use std::fmt;
 use std::thread;
 use std::time::Duration;
 use std::sync::mpsc;
@@ -54,36 +52,8 @@ const MSG_BUF_SIZE: usize = 500;
 /* Message buffer for profiling messages */
 const PROF_MSD_BUF_SIZE: usize = 1000;
 
-/// Error type returned by this library
-#[derive(Debug)]
-pub struct Error {
-    pub err: String
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.err)
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        self.err.as_str()
-    }
-
-    fn cause(&self) -> Option<&error::Error> {
-        None
-    }
-}
-
-macro_rules! resp_from_error {
-    ($($arg:tt)*) => (Result::Err(Error{err: format_args!($($arg)*).to_string()}));
-}
-
-
-
 /// Result type returned by this library
-pub type Response<X> = Result<X, Error>;
+pub type Response<X> = Result<X, String>;
 
 /// Value trait describes types that can be stored in a collection
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
@@ -303,14 +273,6 @@ impl<V: Val> RelationInstance<V> {
         match self {
             RelationInstance::Flat{elements: _, delta} => delta,
             RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
-        }
-    }
-    pub fn get_val_by_key(&self, k: &V) -> Option<&V> {
-        match self {
-            RelationInstance::Indexed{key_func: _, elements, delta: _} => {
-                elements.get(k)
-            },
-            _ => panic!("RelationInstance::get_val_by_key: not an indexed relation")
         }
     }
 }
@@ -895,11 +857,11 @@ impl<V:Val> RunningProgram<V> {
         .and_then(|_| self.send(Msg::Stop))
         .and_then(|_| {
             match self.thread_handle.join() {
-                Err(_) => resp_from_error!("timely thread terminated with an error"),
-                Ok(Err(errstr)) => resp_from_error!("timely dataflow error: {}", errstr),
+                Err(_) => Err(format!("timely thread terminated with an error")),
+                Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
                 Ok(Ok(())) => {
                     match self.prof_thread_handle.join() {
-                        Err(_) => resp_from_error!("profiling thread terminated with an error"),
+                        Err(_) => Err(format!("profiling thread terminated with an error")),
                         Ok(_)  => Ok(())
                     }
                 }
@@ -912,7 +874,7 @@ impl<V:Val> RunningProgram<V> {
     /// if there is already a transaction in progress.
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
-            return resp_from_error!("transaction already in progress");
+            return Err(format!("transaction already in progress"));
         };
 
         self.transaction_in_progress = true;
@@ -922,7 +884,7 @@ impl<V:Val> RunningProgram<V> {
     /// Commit a transaction.
     pub fn transaction_commit(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress")
+            return Err(format!("no transaction in progress"))
         };
 
         self.flush()
@@ -936,7 +898,7 @@ impl<V:Val> RunningProgram<V> {
     /// Rollback the transaction, undoing all changes.
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress");
+            return Err(format!("no transaction in progress"));
         }
 
         self.flush()
@@ -976,37 +938,21 @@ impl<V:Val> RunningProgram<V> {
     /// Updates can only be applied to input relations (see `struct Relation`).
     pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
         if !self.transaction_in_progress {
-            return resp_from_error!("no transaction in progress");
+            return Err(format!("no transaction in progress"));
         };
 
         /* Remove no-op updates to maintain set semantics */
         let mut filtered_updates = Vec::new();
         for upd in updates.drain(..) {
-            let mut rel = match self.relations.get_mut(&upd.relid()) {
-                None => return resp_from_error!("unknown input relation {}", upd.relid()),
-                Some(rel) => { rel }
-            };
-            let deleted = if upd.is_delete_key() {
-                rel.get_val_by_key(upd.key()).map(|v|v.clone())
-            } else { None };
-            let pass = {
-                match rel {
-                    RelationInstance::Flat{elements, delta} => {
-                        Self::set_update(elements, delta, &upd)?
-                    },
-                    RelationInstance::Indexed{key_func, elements, delta} => {
-                        Self::indexed_set_update(*key_func, elements, delta, &upd)?
-                    }
+            let mut rel = self.relations.get_mut(&upd.relid()).ok_or(format!("unknown input relation {}", upd.relid()))?;
+            match rel {
+                RelationInstance::Flat{elements, delta} => {
+                    Self::set_update(elements, delta, upd, &mut filtered_updates)?
+                },
+                RelationInstance::Indexed{key_func, elements, delta} => {
+                    Self::indexed_set_update(*key_func, elements, delta, upd, &mut filtered_updates)?
                 }
             };
-            if pass {
-                // replace DeleteKey command with DeleteValue before forwarding it to worker
-                if upd.is_delete_key() {
-                    filtered_updates.push(Update::DeleteValue{relid: upd.relid(), v: deleted.unwrap()});
-                } else {
-                    filtered_updates.push(upd);
-                }
-            }
         }
 
         self.send(Msg::Update(filtered_updates))
@@ -1050,23 +996,27 @@ impl<V:Val> RunningProgram<V> {
      * `x` is the value being inserted or deleted.
      * `insert` indicates type of update (`true` for insert, `false` for delete).
      * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
-    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, upd: &Update<V>) -> Response<bool>
+    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, upd: Update<V>, updates: &mut Vec<Update<V>>) -> Response<()>
     {
-        match &upd {
+        let ok = match &upd {
             Update::Insert{relid: _, v}      => {
                 let new = s.insert(v.clone());
                 if new { Self::delta_inc(ds, v); };
-                Ok(new)
+                new
             },
             Update::DeleteValue{relid: _, v} => {
-                let present = s.remove(v);
+                let present = s.remove(&v);
                 if present { Self::delta_dec(ds, v); };
-                Ok(present)
+                present
             },
             Update::DeleteKey{relid, k: _}   => {
-                resp_from_error!("Cannot delete by key from relation {} that does not have a primary key", relid)
+                return Err(format!("Cannot delete by key from relation {} that does not have a primary key", relid));
             }
-        }
+        };
+        if ok {
+            updates.push(upd)
+        };
+        Ok(())
     }
 
     /* insert:
@@ -1082,46 +1032,50 @@ impl<V:Val> RunningProgram<V> {
      *          - s.delete(key)
      *          - ds(v)--
      */
-    fn indexed_set_update(key_func: fn(&V)->V , s: &mut IndexedValSet<V>, ds: &mut DeltaSet<V>, upd: &Update<V>) -> Response<bool>
+    fn indexed_set_update(key_func: fn(&V)->V , s: &mut IndexedValSet<V>, ds: &mut DeltaSet<V>, upd: Update<V>, updates: &mut Vec<Update<V>>) -> Response<()>
     {
-        match &upd {
-            Update::Insert{relid: _, v}      => {
-                match s.entry(key_func(v)) {
+        match upd {
+            Update::Insert{relid, v}      => {
+                match s.entry(key_func(&v)) {
                     hash_map::Entry::Occupied(_) => {
-                        resp_from_error!("Insert: duplicate key {:?} in value {:?}", key_func(v), v)
+                        Err(format!("Insert: duplicate key {:?} in value {:?}", key_func(&v), v))
                     },
                     hash_map::Entry::Vacant(ve) => {
                         ve.insert(v.clone());
-                        Self::delta_inc(ds, v);
-                        Ok(true)
+                        Self::delta_inc(ds, &v);
+                        updates.push(Update::Insert{relid, v});
+                        Ok(())
                     }
                 }
             },
-            Update::DeleteValue{relid: _, v} => {
-                match s.entry(key_func(v).clone()) {
+            Update::DeleteValue{relid, v} => {
+                match s.entry(key_func(&v).clone()) {
                     hash_map::Entry::Occupied(oe) => {
-                        if oe.get() != v {
-                            resp_from_error!("DeleteValue: key exists with a different value. Value specified: {:?}; existing value: {:?}", v, oe.get())
+                        if *oe.get() != v {
+                            Err(format!("DeleteValue: key exists with a different value. Value specified: {:?}; existing value: {:?}", v, oe.get()))
                         } else {
                             Self::delta_dec(ds, oe.get());
                             oe.remove_entry();
-                            Ok(true)
+                            updates.push(Update::DeleteValue{relid, v});
+                            Ok(())
                         }
                     },
                     hash_map::Entry::Vacant(_) => {
-                        resp_from_error!("DeleteValue: key not found {:?}", key_func(v))
+                        Err(format!("DeleteValue: key not found {:?}", key_func(&v)))
                     }
                 }
             },
-            Update::DeleteKey{relid: _, k}   => {
+            Update::DeleteKey{relid, k}   => {
                 match s.entry(k.clone()) {
                     hash_map::Entry::Occupied(oe) => {
+                        let old = oe.get().clone();
                         Self::delta_dec(ds, oe.get());
                         oe.remove_entry();
-                        Ok(true)
+                        updates.push(Update::DeleteValue{relid, v: old});
+                        Ok(())
                     },
                     hash_map::Entry::Vacant(_) => {
-                        return resp_from_error!("DeleteKey: key not found {:?}", k)
+                        return Err(format!("DeleteKey: key not found {:?}", k))
                     }
                 }
             }
@@ -1159,7 +1113,7 @@ impl<V:Val> RunningProgram<V> {
     /* Send message to worker thread */
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
-            Err(_) => resp_from_error!("failed to communicate with timely dataflow thread"),
+            Err(_) => Err(format!("failed to communicate with timely dataflow thread")),
             Ok(()) => Ok(())
         }
     }
@@ -1212,7 +1166,7 @@ impl<V:Val> RunningProgram<V> {
         self.send(Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
             match self.flush_ack.recv() {
-                Err(_) => resp_from_error!("failed to receive flush ack message from timely dataflow thread"),
+                Err(_) => Err(format!("failed to receive flush ack message from timely dataflow thread")),
                 Ok(()) => Ok(())
             }
         })

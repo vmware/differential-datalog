@@ -9,7 +9,6 @@ extern crate libc;
 extern crate twox_hash;
 
 extern crate differential_datalog;
-extern crate cmd_parser;
 
 #[macro_use]
 extern crate abomonation;
@@ -33,3 +32,23 @@ pub mod valmap;
 mod stdlib;
 
 use self::stdlib::*;
+
+pub fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
+    match c {
+        UpdCmd::Insert(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let val = relval_from_record(relid, rec)?;
+            Ok(Update::Insert{relid: relid as RelId, v: val})
+        },
+        UpdCmd::Delete(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let val = relval_from_record(relid, rec)?;
+            Ok(Update::DeleteValue{relid: relid as RelId, v: val})
+        },
+        UpdCmd::DeleteKey(rname, rec) => {
+            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let key = relkey_from_record(relid, rec)?;
+            Ok(Update::DeleteKey{relid: relid as RelId, k: key})
+        }
+    }
+}
