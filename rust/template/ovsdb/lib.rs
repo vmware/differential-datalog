@@ -9,94 +9,70 @@ use serde_json::Value;
 use serde_json::map::Map;
 use num::BigInt;
 
-/*
-pub enum UpdCmd {
-    Insert (String, Record),
-    Delete (String, Record),
-    DeleteKey(String, Record)
-}
-*/
+#[cfg(test)]
+mod test;
 
-fn val_into_vec(v: Value) -> Vec<Value> {
-    match v {
-        Value::Array(a) => a,
-        _ => panic!("not an array value")
-    }
-}
-
-fn complain<X>(src: &Value, category: &str) -> Result<X, String>{
-    Err(format!("JSON value {} is not a valid {}", src, category))
+fn parse_uuid(s: &str) -> Result<BigInt, String> {
+    let digits: Vec<u8> = s.as_bytes().iter().map(|x|*x).filter(|x|*x != b'-').collect();
+    BigInt::parse_bytes(digits.as_slice(), 16)
+        .ok_or(format!("invalid uuid string \"{}\"", s))
 }
 
 fn lookup<'a>(m: &'a mut Map<String, Value>, field: &str) -> Result<Value, String> {
     m.remove(field).ok_or(format!("JSON map does not contain \"{}\" field: {:?}", field, m))
 }
 
-/*
- {
-    "op": "update",
-    "row": {
-      "bridges": [
-        "named-uuid",
-        "row9b73f7bc_2a67_48df_88b0_fabc19686920"]},
-    "table": "Open_vSwitch",
-    "where": [
-      [
-        "_uuid",
-        "==",
-        [
-          "uuid",
-          "cf9dca71-2495-4e61-9fe2-8ea4fb2859cd"]]]
- }
-*/
-pub fn cmd_from_val(src: Value) -> Result<UpdCmd, String> {
-    match src {
-        Value::Object(mut m) => {
-            let op: String = serde_json::from_value(lookup(&mut m, "op")?.clone()).map_err(|e|e.to_string())?;
-            let table: String = serde_json::from_value(lookup(&mut m,"table")?.clone()).map_err(|e|e.to_string())?;
-            match op.as_ref() {
-                "update" => { 
-                    let rec = row_from_val(m, &table)?;
-                    Ok(UpdCmd::Insert(table, rec))
-                },
-                _ => Err(format!("unsupported operation {} in {:?}", op, m))
-            }
+/* <table-updates> is an object that maps from a table name to a <table-update>.
+ *
+ * `prefix` is the DB name prepended to all table names
+ */
+pub fn cmds_from_table_updates(prefix: &str, upds: Map<String,Value>) -> Result<Vec<UpdCmd>, String> {
+    let mut commands = Vec::new();
+    let oks: Result<Vec<()>, String> = upds.into_iter().map(|(table, updates)|cmds_from_table_update(prefix.to_string() + table.as_str(), updates, &mut commands)).collect();
+    oks?;
+    Ok(commands)
+}
+
+/* A <table-update> is an object that maps from the row's UUID to a <row-update> object.
+ */
+fn cmds_from_table_update(table: String, updates: Value, cmds: &mut Vec<UpdCmd>) -> Result<(), String> {
+    match updates {
+        Value::Object(upds) => {
+            upds.into_iter().map(|(uuid, u)| cmd_from_row_update(table.as_str(), uuid, u, cmds)).collect()
         },
-        _ => complain(&src, "command")
+        _ => Err(format!("table update is not an object: {}", updates))
     }
 }
 
-fn row_from_val(mut m: Map<String, Value>, table: &str) -> Result<Record, String> {
-    // extract _uuid from "where"-condition of the form
-    // "where": [[ "_uuid", "==", ["uuid", "cf9dca71-2495-4e61-9fe2-8ea4fb2859cd"]]]
-    let uuid = match lookup(&mut m, "where")? {
-        Value::Array(mut v) => {
-            let valid_pattern = match v.as_slice() {
-                [Value::String(field),Value::String(op), Value::Array(_)] => {
-                    field == "_uuid" && op == "=="
-                },
-                _ => false
+/* A <row-update> is an object
+ *  with the following members:
+ *
+ * "old": <row>   present for "delete" and "modify" updates
+ * "new": <row>   present for "initial", "insert", and "modify" updates
+ */
+fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<UpdCmd>) -> Result<(), String> {
+    let uuid = Record::Int(parse_uuid(uuid.as_ref())?);
+    match update {
+        Value::Object(mut m) => {
+            let old = lookup(&mut m, "old").ok().map(|v|row_from_obj(v));
+            let new = lookup(&mut m, "new").ok().map(|v|row_from_obj(v));
+            if old.is_some() {
+                // delete_key
+                cmds.push(UpdCmd::DeleteKey(table.to_string(), uuid.clone()))
             };
-            if valid_pattern {
-                record_from_array(val_into_vec(v.remove(2)))
-            } else {
-                Err(format!("unsupported \"where\" condition: {:?}", v))
-            }
+            if new.is_some() {
+                let mut fields = new.unwrap()?;
+                fields.push(("_uuid".to_owned(), uuid));
+                // insert
+                cmds.push(UpdCmd::Insert(table.to_string(), Record::NamedStruct(table.to_string(), fields)))
+            };
+            Ok(())
         },
-        _ => Err(format!("\"where\" condition is not an array in {:?}", m))
-    }?;
-
-    // parse row
-    let mut fields = match lookup(&mut m, "row")? {
-        Value::Object(obj) => row_from_obj(obj),
-        _ => Err(format!("\"row\" is not an object in {:?}", m))
-    }?;
-    fields.push(("_uuid".to_owned(), uuid));
-    Ok(Record::NamedStruct(table.to_string(), fields))
+        _ => Err(format!("row update is not an object: {}", update))
+    }
 }
 
-/*
-    ["uuid", "cf9dca71-2495-4e61-9fe2-8ea4fb2859cd"]
+/* ["uuid", "cf9dca71-2495-4e61-9fe2-8ea4fb2859cd"]
  */
 fn record_from_array(mut src: Vec<Value>) -> Result<Record,String> {
     if src.len() != 2 {
@@ -108,8 +84,7 @@ fn record_from_array(mut src: Vec<Value>) -> Result<Record,String> {
         Value::String(field) => {
             match (field.as_str(), val) {
                 ("uuid", Value::String(uuid)) => {
-                    Ok(Record::Int(BigInt::parse_bytes(uuid.as_bytes(), 16)
-                                   .ok_or(format!("invalid uuid string \"{}\"", uuid))?))
+                    Ok(Record::Int(parse_uuid(uuid.as_ref())?))
                 },
                 ("named-uuid", Value::String(uuid_name)) => {
                     Ok(Record::String(uuid_name))
@@ -134,7 +109,7 @@ fn pair_from_val(pair: Value) -> Result<(Record, Record), String> {
     match pair {
         Value::Array(mut v) => {
             if v.len() != 2 {
-                return Err(format!("key-value pair must be of length 2: {:?}",v))
+                return Err(format!("key-value pair must be of length 2: {:?}", v))
             };
             let val = v.remove(1);
             let key = v.remove(0);
@@ -150,8 +125,13 @@ fn pair_from_val(pair: Value) -> Result<(Record, Record), String> {
     "name": "br0"
   }
 */
-fn row_from_obj(m: Map<String, Value>) -> Result<Vec<(String, Record)>, String> {
-    m.into_iter().map(|(field, val)|Ok((field, record_from_val(val)?))).collect()
+fn row_from_obj(val: Value) -> Result<Vec<(String, Record)>, String> {
+    match val{
+        Value::Object(m) => {
+            m.into_iter().map(|(field, val)|Ok((field, record_from_val(val)?))).collect()
+        },
+        _ => Err(format!("\"row\" is not an object in {}", val))
+    }
 }
 
 fn record_from_val(v: Value) -> Result<Record, String> {
