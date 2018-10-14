@@ -4,7 +4,6 @@
 
 use differential_datalog::arcval;
 use differential_datalog::record::*;
-use abomonation::Abomonation;
 
 use std::fmt::Display;
 use std::fmt;

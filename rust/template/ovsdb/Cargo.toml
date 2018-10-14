@@ -12,3 +12,4 @@ num = "0.2"
 [lib]
 name = "ddlog_ovsdb_adapter"
 path = "./lib.rs"
+crate-type = ["staticlib", "rlib"]

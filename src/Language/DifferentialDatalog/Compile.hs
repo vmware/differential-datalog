@@ -107,8 +107,10 @@ templateFiles specname =
     map (mapSnd (BS.unpack)) $
         [ (specname </> "Cargo.toml"  , $(embedFile "rust/template/Cargo.toml"))
         , (specname </> "main.rs"     , $(embedFile "rust/template/main.rs"))
+        , (specname </> "ovsdb.rs"    , $(embedFile "rust/template/ovsdb.rs"))
         , (specname </> "stdlib.rs"   , $(embedFile "rust/template/stdlib.rs"))
         , (specname </> "valmap.rs"   , $(embedFile "rust/template/valmap.rs"))
+        , (specname </> "ddlog.h"     , $(embedFile "rust/template/ddlog.h"))
         ]
 
 -- Rust differential_datalog library
@@ -128,6 +130,9 @@ rustLibFiles specname =
         , (specname </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (specname </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (specname </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
+        , (specname </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
+        , (specname </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
+        , (specname </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))
         ]
 
 

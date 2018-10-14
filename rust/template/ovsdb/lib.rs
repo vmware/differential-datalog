@@ -12,6 +12,14 @@ use num::BigInt;
 #[cfg(test)]
 mod test;
 
+pub fn cmds_from_table_updates_str(prefix: &str, s: &str) -> Result<Vec<UpdCmd>, String> {
+    if let Value::Object(json_val) = serde_json::from_str(s).map_err(|e|e.to_string())? {
+        cmds_from_table_updates(prefix, json_val)
+    } else {
+        Err(format!("JSON value is not an object: {}", s))
+    }
+}
+
 fn parse_uuid(s: &str) -> Result<BigInt, String> {
     let digits: Vec<u8> = s.as_bytes().iter().map(|x|*x).filter(|x|*x != b'-').collect();
     BigInt::parse_bytes(digits.as_slice(), 16)
@@ -99,7 +107,6 @@ fn record_from_array(mut src: Vec<Value>) -> Result<Record,String> {
                 },
                 _ => Err(format!("unexpected array value type \"{}\"", field))
             }
-            
         },
         _ => Err(format!("invalid array value: {:?}", src))
     }
@@ -145,5 +152,5 @@ fn record_from_val(v: Value) -> Result<Record, String> {
         // <uuid>, <named-uuid>, <set>, <map>
         Value::Array(v) => record_from_array(v),
         _ => Err(format!("unexpected value {}", v))
-    } 
+    }
 }

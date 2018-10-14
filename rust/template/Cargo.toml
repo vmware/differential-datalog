@@ -8,6 +8,9 @@ path = "./differential_datalog"
 [dependencies.cmd_parser]
 path = "./cmd_parser"
 
+[dependencies.ddlog_ovsdb_adapter]
+path = "./ovsdb"
+
 [dependencies]
 abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
 serde = "1.0.14"
@@ -32,7 +35,7 @@ debug-assertions = false
 [lib]
 name = "datalog_example"
 path = "./lib.rs"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["staticlib", "rlib"]
 
 [[bin]]
 

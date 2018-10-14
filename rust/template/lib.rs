@@ -12,6 +12,7 @@ extern crate differential_datalog;
 
 #[macro_use]
 extern crate abomonation;
+extern crate ddlog_ovsdb_adapter;
 
 use differential_datalog::program::*;
 use differential_datalog::uint::*;
@@ -27,8 +28,10 @@ use std::fmt;
 use std::sync;
 use std::hash::Hash;
 use std::hash::Hasher;
+use std::os::raw;
 
 pub mod valmap;
+pub mod ovsdb;
 mod stdlib;
 
 use self::stdlib::*;
@@ -52,3 +55,33 @@ pub fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
         }
     }
 }
+
+
+fn dummy_cb(_relid: RelId, _v: &Value, _pol: bool) {}
+
+#[no_mangle]
+pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const sync::Mutex<RunningProgram<Value>> {
+    let program = prog(sync::Arc::new(dummy_cb));
+    sync::Arc::into_raw(sync::Arc::new(sync::Mutex::new(program.run(workers as usize))))
+}
+
+#[no_mangle]
+pub extern "C" fn datalog_example_stop(prog: *const sync::Mutex<RunningProgram<Value>>) -> raw::c_int {
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    match sync::Arc::try_unwrap(prog) {
+        Ok(prog) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
+            eprintln!("error acquiring lock in datalog_example_stop: {}", e);
+            -1
+        }),
+        Err(e) => {
+            eprintln!("cannot extract value from Arc in datalog_example_stop()");
+            -1
+        }
+    }
+}
+
+/*extern int datalog_example_transaction_start(datalog_example_ddlog_prog *prog);
+extern int datalog_example_transaction_commit(datalog_example_ddlog_prog *prog);
+extern int datalog_example_transaction_rollback(datalog_example_ddlog_prog *prog);
+*/
+

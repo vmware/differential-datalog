@@ -5,6 +5,11 @@ use std::io::BufRead;
 use std::fs::{self, DirEntry};
 use std::path::Path;
 
+
+/* test_data was copied from OVN test directory using:
+ * `find ~/Downloads/ovs-reviews/tests/testsuite.dir/ -name '*.rawsync' | cpio -pdm ./test_data/`
+ */
+
 #[test]
 fn test_parser() {
     let mut test_data_dir = env::current_dir().unwrap();
@@ -32,11 +37,6 @@ fn parse_json_file(entry: &DirEntry) {
     //println!("parsing file {}", path);
     let f = io::BufReader::new(fs::File::open(path).unwrap());
     for line in f.lines() {
-        if let Value::Object(json_val) = serde_json::from_str(&line.unwrap()).unwrap() {
-            let cmds = cmds_from_table_updates("", json_val).unwrap();
-            //println!("parsed commands:\n{:?}", cmds);
-        } else {
-            panic!("parse_json_file: JSON value is not an object")
-        }
+        cmds_from_table_updates_str("", line.unwrap().as_ref()).unwrap();
     }
 }

@@ -36,7 +36,7 @@ pub enum ProfMsg {
     DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>)
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Profile {
     names: FnvHashMap<usize, String>,
     sizes: FnvHashMap<usize, isize>,
