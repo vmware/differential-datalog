@@ -70,18 +70,45 @@ pub extern "C" fn datalog_example_stop(prog: *const sync::Mutex<RunningProgram<V
     let prog = unsafe {sync::Arc::from_raw(prog)};
     match sync::Arc::try_unwrap(prog) {
         Ok(prog) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
-            eprintln!("error acquiring lock in datalog_example_stop: {}", e);
+            eprintln!("datalog_example_stop(): error acquiring lock: {}", e);
             -1
         }),
         Err(e) => {
-            eprintln!("cannot extract value from Arc in datalog_example_stop()");
+            eprintln!("datalog_example_stop(): cannot extract value from Arc");
             -1
         }
     }
 }
 
-/*extern int datalog_example_transaction_start(datalog_example_ddlog_prog *prog);
-extern int datalog_example_transaction_commit(datalog_example_ddlog_prog *prog);
-extern int datalog_example_transaction_rollback(datalog_example_ddlog_prog *prog);
-*/
+#[no_mangle]
+pub extern "C" fn datalog_example_transaction_start(prog: *const sync::Mutex<RunningProgram<Value>>) -> raw::c_int {
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res = prog.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
+        eprintln!("datalog_example_transaction_start(): error: {}", e);
+        -1
+    });
+    sync::Arc::into_raw(prog);
+    res
+}
 
+#[no_mangle]
+pub extern "C" fn datalog_example_transaction_commit(prog: *const sync::Mutex<RunningProgram<Value>>) -> raw::c_int {
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res = prog.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
+        eprintln!("datalog_example_transaction_commit(): error: {}", e);
+        -1
+    });
+    sync::Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+pub extern "C" fn datalog_example_transaction_rollback(prog: *const sync::Mutex<RunningProgram<Value>>) -> raw::c_int {
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res = prog.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
+        eprintln!("datalog_example_transaction_rollback(): error: {}", e);
+        -1
+    });
+    sync::Arc::into_raw(prog);
+    res
+}
