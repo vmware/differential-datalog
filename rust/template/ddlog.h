@@ -90,7 +90,7 @@ extern int datalog_example_transaction_rollback(datalog_example_ddlog_prog hprog
  * ```
  */
 extern int datalog_example_apply_ovsdb_updates(
-	ddlog_program hprog,
+	datalog_example_ddlog_prog hprog,
 	const char *prefix,
 	const char *updates);
 

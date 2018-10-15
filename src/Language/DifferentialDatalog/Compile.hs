@@ -105,12 +105,13 @@ header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedF
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (specname </> "Cargo.toml"  , $(embedFile "rust/template/Cargo.toml"))
-        , (specname </> "main.rs"     , $(embedFile "rust/template/main.rs"))
-        , (specname </> "ovsdb.rs"    , $(embedFile "rust/template/ovsdb.rs"))
-        , (specname </> "stdlib.rs"   , $(embedFile "rust/template/stdlib.rs"))
-        , (specname </> "valmap.rs"   , $(embedFile "rust/template/valmap.rs"))
-        , (specname </> "ddlog.h"     , $(embedFile "rust/template/ddlog.h"))
+        [ (specname </> "Cargo.toml"            , $(embedFile "rust/template/Cargo.toml"))
+        , (specname </> "main.rs"               , $(embedFile "rust/template/main.rs"))
+        , (specname </> "ovsdb.rs"              , $(embedFile "rust/template/ovsdb.rs"))
+        , (specname </> "stdlib.rs"             , $(embedFile "rust/template/stdlib.rs"))
+        , (specname </> "valmap.rs"             , $(embedFile "rust/template/valmap.rs"))
+        , (specname </> "ddlog.h"               , $(embedFile "rust/template/ddlog.h"))
+        , (specname </> "ddlog_ovsdb_test.c"    , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
 
 -- Rust differential_datalog library
@@ -494,7 +495,7 @@ mkFromRecord t@TypeDef{..} =
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\")?)?") consArgs
+        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\", \"" <> cname <> "\")?)?") consArgs
 
 unddname :: (WithName a) => a -> String
 unddname x = if isPrefixOf "__" (name x) && elem short reservedNames

@@ -179,7 +179,7 @@ mkComplexType schema tkind t@ComplexType{..} = do
     key <- mkBaseType tkind keyComplexType
     case (min, max) of
          (1,1) -> return key
-         (0,1) -> return $ "option_t<" <> key <> ">"
+         --(0,1) -> return $ "option_t<" <> key <> ">"
          _     -> do
              case valueComplexType of
                   Nothing -> return $ "Set<" <> key <> ">"

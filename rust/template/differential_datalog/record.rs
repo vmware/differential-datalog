@@ -248,7 +248,7 @@ impl <T1: FromRecord, T2: FromRecord> FromRecord for (T1,T2) {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 2 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?))
             },
             v => { Result::Err(format!("not a 2-tuple {:?}", *v)) }
@@ -260,7 +260,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord> FromRecord for (T1,T2,T3) 
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 3 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?))
             },
@@ -273,7 +273,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord> FromRecord
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 4 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?))
@@ -287,7 +287,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 5 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -302,7 +302,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 6 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -318,7 +318,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 7 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -335,7 +335,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 8 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -353,7 +353,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 9 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -372,7 +372,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 10 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -392,7 +392,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 11 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -413,7 +413,7 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.len() == 12 => {
-                Ok((T1::from_record(&args[0])?, 
+                Ok((T1::from_record(&args[0])?,
                     T2::from_record(&args[1])?,
                     T3::from_record(&args[2])?,
                     T4::from_record(&args[3])?,
@@ -433,27 +433,27 @@ impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRe
 
 #[test]
 fn test_tuple() {
-    assert_eq!(<(bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])),
                Ok((true, false)));
-    assert_eq!(<(bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false)])),
                Ok((true, false, false)));
-    assert_eq!(<(bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true)])), 
+    assert_eq!(<(bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true)])),
                Ok((true, false, false, true)));
-    assert_eq!(<(bool, bool, bool, bool, String)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string())])), 
+    assert_eq!(<(bool, bool, bool, bool, String)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string())])),
                Ok((true, false, false, true, "foo".to_string())));
-    assert_eq!(<(bool, bool, bool, bool, String, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false)])),
                Ok((true, false, false, true, "foo".to_string(), false)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false)])),
                Ok((true, false, false, true, "foo".to_string(), false, false)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false)])),
                Ok((true, false, false, true, "foo".to_string(), false, false, false)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true)])),
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true)])),
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true), Record::Bool(true)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true), Record::Bool(true)])),
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true)));
-    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true), Record::Bool(true), Record::Bool(false)])), 
+    assert_eq!(<(bool, bool, bool, bool, String, bool, bool, bool, bool, bool, bool, bool)>::from_record(&Record::Tuple(vec![Record::Bool(true), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::String("foo".to_string()), Record::Bool(false), Record::Bool(false), Record::Bool(false), Record::Bool(true), Record::Bool(true), Record::Bool(true), Record::Bool(false)])),
                Ok((true, false, false, true, "foo".to_string(), false, false, false, true, true, true, false)));
 }
 
@@ -464,7 +464,10 @@ impl<T: FromRecord> FromRecord for vec::Vec<T> {
             Record::Array(args) => {
                 Result::from_iter(args.iter().map(|x| T::from_record(x)))
             },
-            v => { Result::Err(format!("not an array {:?}", *v)) }
+            v => {
+                T::from_record(v).map(|x|vec![x])
+                //Result::Err(format!("not an array {:?}", *v))
+            }
         }
     }
 }
@@ -483,7 +486,7 @@ impl<T: FromRecord+Ord> FromRecord for BTreeSet<T> {
 
 #[test]
 fn test_vec() {
-    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(vec![Record::Bool(true), Record::Bool(false)])), 
+    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(vec![Record::Bool(true), Record::Bool(false)])),
                Ok(vec![true, false]));
 }
 
@@ -493,8 +496,8 @@ struct Foo<T> {
     f1: T
 }
 
-pub fn arg_find<'a>(args: &'a Vec<(String, Record)>, argname: &str) -> Result<&'a Record, String> {
-    args.iter().find(|(n,_)|*n==argname).ok_or(format!("missing field {}", argname)).map(|(_,v)| v)
+pub fn arg_find<'a>(args: &'a Vec<(String, Record)>, argname: &str, constructor: &str) -> Result<&'a Record, String> {
+    args.iter().find(|(n,_)|*n==argname).ok_or(format!("missing field {} in {}", argname, constructor)).map(|(_,v)| v)
 }
 
 #[cfg(test)]
@@ -512,7 +515,7 @@ impl <T: FromRecord> FromRecord for Foo<T> {
             Record::NamedStruct(constr, args) => {
                 match constr.as_ref() {
                     "Foo" if args.len() == 1 => {
-                        Ok(Foo{f1: T::from_record(arg_find(args, "f1")?)?})
+                        Ok(Foo{f1: T::from_record(arg_find(args, "f1", "Foo")?)?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type Foo in {:?}", c, *val))
                 }
@@ -559,16 +562,16 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
             Record::NamedStruct(constr, args) => {
                 match constr.as_ref() {
                     "Constr1" if args.len() == 2 => {
-                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(arg_find(args, "f1")?)?,
-                                              f2: String::from_record(arg_find(args, "f2")?)?})
+                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(arg_find(args, "f1", "Constr1")?)?,
+                                              f2: String::from_record(arg_find(args, "f2", "Constr1")?)?})
                     },
                     "Constr2" if args.len() == 3 => {
-                        Ok(DummyEnum::Constr2{f1: <T>::from_record(arg_find(args, "f1")?)?,
-                                              f2: <BigInt>::from_record(arg_find(args, "f2")?)?,
-                                              f3: <Foo<T>>::from_record(arg_find(args, "f3")?)?})
+                        Ok(DummyEnum::Constr2{f1: <T>::from_record(arg_find(args, "f1", "Constr2")?)?,
+                                              f2: <BigInt>::from_record(arg_find(args, "f2", "Constr2")?)?,
+                                              f3: <Foo<T>>::from_record(arg_find(args, "f3", "Constr2")?)?})
                     },
                     "Constr3" if args.len() == 1 => {
-                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_record(arg_find(args, "f1")?)?})
+                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_record(arg_find(args, "f1", "Constr3")?)?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
                 }
@@ -590,18 +593,18 @@ fn test_enum() {
                                                     vec![("f1".to_string(), Record::Bool(true)), ("f2".to_string(), Record::String("foo".to_string()))])),
                Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
     assert_eq!(DummyEnum::from_record(&Record::PosStruct("Constr2".to_string(),
-                                                    vec![Record::Int((5_i64).to_bigint().unwrap()), 
-                                                         Record::Int((25_i64).to_bigint().unwrap()), 
+                                                    vec![Record::Int((5_i64).to_bigint().unwrap()),
+                                                         Record::Int((25_i64).to_bigint().unwrap()),
                                                          Record::PosStruct("Foo".to_string(), vec![Record::Int((0_i64).to_bigint().unwrap())])])),
-               Ok(DummyEnum::Constr2::<u16>{f1: 5, 
+               Ok(DummyEnum::Constr2::<u16>{f1: 5,
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));
     assert_eq!(DummyEnum::from_record(&Record::NamedStruct("Constr2".to_string(),
-                                                    vec![("f1".to_string(), Record::Int((5_i64).to_bigint().unwrap())), 
-                                                         ("f2".to_string(), Record::Int((25_i64).to_bigint().unwrap())), 
-                                                         ("f3".to_string(), Record::NamedStruct("Foo".to_string(), 
+                                                    vec![("f1".to_string(), Record::Int((5_i64).to_bigint().unwrap())),
+                                                         ("f2".to_string(), Record::Int((25_i64).to_bigint().unwrap())),
+                                                         ("f3".to_string(), Record::NamedStruct("Foo".to_string(),
                                                                                                 vec![("f1".to_string(), Record::Int((0_i64).to_bigint().unwrap()))]))])),
-               Ok(DummyEnum::Constr2::<u16>{f1: 5, 
+               Ok(DummyEnum::Constr2::<u16>{f1: 5,
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));
 

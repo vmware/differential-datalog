@@ -4,14 +4,14 @@ relation SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<string>,
-    ssl: option_t<string>
+    ssl: Set<string>
 )
 relation DeltaPlus_SB_Global (
     uuid_name: string,
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid_or_string_t>,
-    ssl: option_t<uuid_or_string_t>
+    ssl: Set<uuid_or_string_t>
 )
 relation DeltaMinus_SB_Global (
     _uuid: uuid
@@ -21,7 +21,7 @@ input relation Realized_SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: option_t<uuid>
+    ssl: Set<uuid>
 )
 primary key (x) x._uuid
 relation Chassis (
@@ -185,9 +185,9 @@ relation Port_Binding (
     options: Map<string,string>,
     datapath: string,
     tunnel_key: integer,
-    parent_port: option_t<string>,
-    tag: option_t<integer>,
-    chassis: option_t<string>,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<string>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
@@ -200,9 +200,9 @@ relation DeltaPlus_Port_Binding (
     options: Map<string,string>,
     datapath: uuid_or_string_t,
     tunnel_key: integer,
-    parent_port: option_t<string>,
-    tag: option_t<integer>,
-    chassis: option_t<uuid_or_string_t>,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<uuid_or_string_t>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
@@ -218,9 +218,9 @@ input relation Realized_Port_Binding (
     options: Map<string,string>,
     datapath: uuid,
     tunnel_key: integer,
-    parent_port: option_t<string>,
-    tag: option_t<integer>,
-    chassis: option_t<uuid>,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<uuid>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
@@ -295,8 +295,8 @@ primary key (x) x._uuid
 input relation Connection (
     _uuid: uuid,
     target: string,
-    max_backoff: option_t<integer>,
-    inactivity_probe: option_t<integer>,
+    max_backoff: Set<integer>,
+    inactivity_probe: Set<integer>,
     read_only: bool,
     role: string,
     other_config: Map<string,string>,
@@ -383,7 +383,7 @@ primary key (x) x._uuid
 input relation Gateway_Chassis (
     _uuid: uuid,
     name: string,
-    chassis: option_t<uuid>,
+    chassis: Set<uuid>,
     priority: integer,
     external_ids: Map<string,string>,
     options: Map<string,string>

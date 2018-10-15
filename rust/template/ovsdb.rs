@@ -5,6 +5,7 @@ use std::ffi::{CStr};
 use std::os::raw::{c_char, c_int};
 use super::{Value, updcmd2upd};
 use ddlog_ovsdb_adapter::*;
+use std::sync;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -19,24 +20,26 @@ use ddlog_ovsdb_adapter::*;
 /// ```
 ///
 #[no_mangle]
-pub extern "C" fn datalog_example_apply_ovsdb_updates(prog: *mut RunningProgram<Value>,
+pub extern "C" fn datalog_example_apply_ovsdb_updates(prog: *const sync::Mutex<RunningProgram<Value>>,
                                                       prefix: *const c_char,
-                                                      updates: *const c_char) -> c_int {
-    match apply_updates(prog, prefix, updates) {
-        Ok(()) => 0,
-        Err(e) => {
-            eprintln!("{}", e.as_str());
-            -1
-        }
-    }
+                                                      updates: *const c_char) -> c_int
+{
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res = apply_updates(&mut prog.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
+        eprintln!("datalog_example_apply_ovsdb_updates(): error: {}", e);
+        -1
+    });
+    sync::Arc::into_raw(prog);
+    res
 }
 
-fn apply_updates(prog: *mut RunningProgram<Value>, prefix: *const c_char, updates_str: *const c_char) -> Result<(), String> {
+fn apply_updates(prog: &mut RunningProgram<Value>, prefix: *const c_char, updates_str: *const c_char) -> Result<(), String>
+{
     let prefix: &str = unsafe{ CStr::from_ptr(prefix) }.to_str()
         .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
     let updates_str: &str = unsafe{ CStr::from_ptr(updates_str) }.to_str()
         .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
     let commands = cmds_from_table_updates_str(prefix, updates_str)?;
     let updates: Result<Vec<Update<Value>>, String> = commands.iter().map(|c|updcmd2upd(c)).collect();
-    (unsafe{&mut *prog}).apply_updates(updates?)
+    prog.apply_updates(updates?)
 }
