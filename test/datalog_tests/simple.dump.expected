@@ -189,3 +189,9 @@ WithKey{4,"hello"}
 Innocent
 Innocent{"Bill Smith"}
 Innocent{"John Doe"}
+ValidDestination
+ValidDestination{IPAddr{10,10,10,101}}
+ValidDestination{IPAddr{10,10,10,102}}
+ValidDestination{IPAddr{10,10,10,103}}
+ValidDestination{IPAddr{10,10,10,104}}
+ValidDestination{IPAddr{10,10,10,105}}

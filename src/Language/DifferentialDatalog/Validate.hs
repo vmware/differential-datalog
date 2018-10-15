@@ -402,7 +402,7 @@ exprValidate1 _ _ _   EUnOp{}             = return ()
 
 exprValidate1 _ _ ctx (EPHolder p)        = do
     let msg = case ctx of
-                   CtxStruct _ _ f -> "Argument " ++ f ++ " must be specified in this context"
+                   CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
