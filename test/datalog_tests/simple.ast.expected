@@ -418,4 +418,4 @@ Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), Aggregate((x), cnt = std
 Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)).
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
 Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), Aggregate((x), map = std.group2map((x, y))).
-Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), FlatMap(y = set).
+Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), var y = FlatMap(set).

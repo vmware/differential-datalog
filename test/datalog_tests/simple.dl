@@ -616,7 +616,7 @@ relation Aggregate4(x: string, map: Map<string,string>)
 Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y))).
 
 relation Disaggregate(x: string, y: string)
-Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), FlatMap(y = set).
+Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), var y = FlatMap(set).
 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)

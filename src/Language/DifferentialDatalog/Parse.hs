@@ -315,15 +315,16 @@ rule = Rule nopos <$>
 
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
-       <|> (RHSCondition <$> expr)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
                             (comma *> varIdent) <*>
                             (reservedOp "=" *> funcIdent) <*>
                             parens expr <*
                             symbol ")")
-       <|> (RHSFlatMap <$ reserved "FlatMap" <*> (symbol "(" *> varIdent) <*>
-                          (reservedOp "=" *> expr <* symbol ")"))
+       <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
+              RHSFlatMap <$> (reserved "var" *> varIdent) <*>
+                             (reservedOp "=" *> reserved "FlatMap" *> parens expr)
+       <|> (RHSCondition <$> expr)
 
 atom = withPos $ do
        rname <- relIdent

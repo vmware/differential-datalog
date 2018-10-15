@@ -411,7 +411,7 @@ instance PP RuleRHS where
     pp (RHSAggregate g v f e) = "Aggregate" <> "(" <>
                                 (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
                                 pp v <+> "=" <+> pp f <> (parens $ pp e) <> ")"
-    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <> pp v <+> "=" <+> pp e <> ")"
+    pp (RHSFlatMap v e)     = "var" <+> pp v <+> "=" <+> "FlatMap" <> "(" <> pp e <> ")"
 
 instance Show RuleRHS where
     show = render . pp

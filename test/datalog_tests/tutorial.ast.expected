@@ -163,7 +163,7 @@ MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 EndpointString(.s=addr_port(ip, proto, preferred_port)) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port).
 First5(.str=string_slice(p, 64'd0, 64'd5)) :- Phrases(.phrase=p).
 SanitizedEndpoint(.ep=endpoint) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
-HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), FlatMap(addr = split_ip_list(addrs)).
+HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), var addr = FlatMap(split_ip_list(addrs)).
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).

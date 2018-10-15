@@ -182,7 +182,7 @@ input relation HostAddress(host: bit<64>, addrs: string)
 relation HostIP(host: bit<64>, addr: string)
 
 HostIP(host, addr) :- HostAddress(host, addrs),
-                      FlatMap(addr=split_ip_list(addrs)).
+                      var addr = FlatMap(split_ip_list(addrs)).
 
 /*
  * Example: Multiple heads
