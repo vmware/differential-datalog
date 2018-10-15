@@ -621,3 +621,22 @@ Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), var 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)
 primary key (x) x.key
+
+/* More advanced antijoins */
+
+input relation Gangster(nickname: string, name: string)
+input relation Suspect(name: string)
+relation Innocent(name: string)
+
+Innocent(name) :- Suspect(name), not Gangster(_, name).
+
+typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
+
+input relation Blacklist(addr: ip_addr_t)
+input relation Address(addr: ip_addr_t)
+
+relation ValidDestination(addr: ip_addr_t)
+ValidDestination(addr) :-
+    Address(addr),
+    IPAddr{var b3, var b2, _, _} = addr,
+    not Blacklist(IPAddr{b3, b2, _, _}).

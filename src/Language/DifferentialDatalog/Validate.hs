@@ -260,7 +260,7 @@ ruleValidate d rl@Rule{..} = do
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
+ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
     checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] (CtxRuleRAtom rl idx) $ atomVal atom
     let vars = ruleRHSVars d rl idx
@@ -413,8 +413,7 @@ ctxPHolderAllowed ctx =
     case ctx of
          CtxSetL{}        -> True
          CtxTyped{}       -> pres
-         CtxRuleRAtom{..} -> -- only positive literals
-                             rhsPolarity $ (ruleRHS ctxRule) !! ctxAtomIdx
+         CtxRuleRAtom{..} -> True
          CtxStruct{}      -> pres
          CtxTuple{}       -> pres
          CtxMatchPat{}    -> True

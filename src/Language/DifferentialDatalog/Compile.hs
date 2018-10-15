@@ -590,7 +590,7 @@ mkFunc d f@Function{..} | isJust funcDef =
 
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: DatalogProgram -> S.Set Type -> S.Set Type -> Doc
-mkValType d types grp_types = 
+mkValType d types grp_types =
     "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
     "pub enum Value {"                                                                      $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
@@ -809,7 +809,7 @@ mkAggregate d prefix rl idx vs v fname e = do
     let agfun = braces'
                 $ open $$
                   aggregate $$
-                  result  
+                  result
     return $
         "XForm::Aggregate{"                                                                                                         $$
         (nest' $ "grpfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                       $$
@@ -981,13 +981,20 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
-    akey <- mkValue d (CtxRuleRAtom rl ajoin_idx) atomVal
+    -- filter-map collection to anti-join with
+    let ctx = CtxRuleRAtom rl ajoin_idx
+    let rel = getRelation d atomRelation
+    let (arr, vmap) = normalizeArrangement d rel ctx atomVal
+    fmfun <- mkArrangementKey d rel arr
+    -- Arrange variables from previous terms
+    akey <- mkTupleValue d ctx $ map snd vmap
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
     let afun = braces' $ prefix $$
                          "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                                                 $$
              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-             "    rel:  Relations::" <> rname atomRelation <+> "as RelId"                                        $$
+             "    rel:  Relations::" <> rname atomRelation <+> "as RelId,"                                      $$
+             (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f}")        $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
@@ -1080,6 +1087,20 @@ mkNode (SCCNode rels)    =
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (Arrangement pattern) = do
+    filter_key <- mkArrangementKey d rel (Arrangement pattern)
+    let afun = braces' $
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                  $$
+               filter_key <> ".map(|x|(x,__cloned))"
+    return $
+        "Arrangement{"                                                                                      $$
+        "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
+        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
+        "}"
+
+-- Generate part of the arrangement computation that filters inputs and computes the key part of the
+-- arrangement.
+mkArrangementKey :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
+mkArrangementKey d rel (Arrangement pattern) = do
     let (pat, cond) = mkPatExpr d empty pattern
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
@@ -1096,17 +1117,11 @@ mkArrangement d rel (Arrangement pattern) = do
         getvars _ _               = []
     patvars <- mkVarsTuple d $ getvars (relType rel) pattern
     constructor <- mkValConstructorName d $ relType rel
-    let res = "Some((" <> patvars <> ", __cloned))"
-    let afun = braces' $
-               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                  $$
-               "if let" <+> constructor <> parens pat <+> "=" <+> vALUE_VAR <+> "{"                           $$
-               (nest' $ if cond == empty then res else ("if" <+> cond <+> "{" <+> res <+> "} else { None }")) $$
-               "} else { None }"
-    return $
-        "Arrangement{"                                                                                      $$
-        "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
-        "}"
+    let res = "Some(" <> patvars <> ")"
+    return $ braces' $
+             "if let" <+> constructor <> parens pat <+> "=" <+> vALUE_VAR <+> "{"                           $$
+             (nest' $ if cond == empty then res else ("if" <+> cond <+> "{" <+> res <+> "} else { None }")) $$
+             "} else { None }"
 
 -- Compile Datalog pattern expression to Rust.
 -- The first element in the return tuple is a Rust match pattern, the second

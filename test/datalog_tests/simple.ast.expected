@@ -8,11 +8,13 @@ typedef Answer = Answer{x: station}
 typedef C = C{f1: string, f2: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
+typedef Gangster = Gangster{nickname: string, name: string}
 typedef Human = Human{h: person}
 typedef IP4Addr = bit<32>
 typedef IP4Subnet = IP4Subnet{addr: IP4Addr, mask: bit<32>}
 typedef IP6Addr = bit<128>
 typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
+typedef Innocent = Innocent{name: string}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Parent = Parent{child: person, parent: person}
 typedef R1 = bigint
@@ -27,6 +29,7 @@ typedef Rel4 = Rel4{x: bigint, y: IPAddr, b: bool}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef Strings = Strings{s: string}
+typedef Suspect = Suspect{name: string}
 typedef T = T{x: bigint, y: string}
 typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T16 = t15
@@ -276,7 +279,9 @@ relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
 relation Answer [Answer]
 relation Disaggregate [Disaggregate]
+input relation Gangster [Gangster]
 input relation Human [Human]
+relation Innocent [Innocent]
 input relation Links [Links]
 input relation Parent [Parent]
 input relation R1 [R1]
@@ -293,6 +298,7 @@ relation Rel3 [Rel3]
 relation Rel4 [Rel4]
 relation Sib [Sib]
 input relation Strings [Strings]
+input relation Suspect [Suspect]
 relation T [T]
 input relation Table1 [Table1]
 relation Table12 [Table12]
@@ -419,3 +425,4 @@ Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
 Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), Aggregate((x), map = std.group2map((x, y))).
 Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), var y = FlatMap(set).
+Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).

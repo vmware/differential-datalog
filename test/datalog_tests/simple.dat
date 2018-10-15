@@ -123,3 +123,54 @@ commit;
 
 echo WithKey: +3, -2;
 dump WithKey;
+
+start;
+
+insert Gangster("Billy Jack", "Vito Giacalone"),
+insert Gangster("Black Leo", "Leonardo Cellura"),
+insert Gangster("Black Sam", "Sam Todaro"),
+insert Gangster("Blackie", "James T. Licavoli"),
+insert Gangster("Bobby Doyle", "Girolamo Santucci"),
+insert Gangster("Bobby Ha Ha", "Robert Attanasio"),
+insert Gangster("Bobby Phones", "Robert Sanseverino"),
+insert Gangster("Bomp", "Frank Bompensiero"),
+insert Gangster("Boo Boo", "Max Hoff"),
+insert Gangster("Boobie", "John Cerasini"),
+insert Gangster("Bozey", "Arnold Squitieri"),
+insert Gangster("The Brain", "Arnold Rothstein"),
+insert Gangster("The Bug", "Charles Workman"),
+insert Gangster("Bugs", "George Moran"),
+insert Gangster("Bugsy", "Benjamin Siegel"),
+insert Gangster("The Builder", "Joe Andriacchi"),
+insert Gangster("Butsey", "Frank Morelli"),
+
+insert Suspect("John Doe"),
+insert Suspect("Bill Smith"),
+insert Suspect("Arnold Squitieri"),
+insert Suspect("Frank Morelli");
+
+commit;
+
+echo Innocent;
+dump Innocent;
+
+start;
+
+insert Address(IPAddr{10,10,10,101}),
+insert Address(IPAddr{10,10,10,102}),
+insert Address(IPAddr{10,10,10,103}),
+insert Address(IPAddr{10,10,10,104}),
+insert Address(IPAddr{10,10,10,105}),
+insert Address(IPAddr{192,168,0,1}),
+insert Address(IPAddr{192,168,0,2}),
+insert Address(IPAddr{192,168,0,3}),
+insert Address(IPAddr{192,168,0,4}),
+insert Address(IPAddr{192,168,0,5}),
+
+insert Blacklist(IPAddr{192,168,0,0}),
+insert Blacklist(IPAddr{172,16,0,0});
+
+commit;
+
+echo ValidDestination;
+dump ValidDestination;

@@ -186,3 +186,6 @@ WithKey{2,"buzz"}
 WithKey: +3, -2
 WithKey{1,"bar2"}
 WithKey{4,"hello"}
+Innocent
+Innocent{"Bill Smith"}
+Innocent{"John Doe"}

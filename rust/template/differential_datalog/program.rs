@@ -203,7 +203,9 @@ pub enum XForm<V: Val> {
         /// Arrange the relation before performing antijoin.
         afun: &'static ArrangeFunc<V>,
         /// Relation to antijoin with
-        rel: RelId
+        rel: RelId,
+        /// Filter-map relation to antijoin with before performing the antijoin
+        fmfun: &'static FilterMapFunc<V>
     }
 }
 
@@ -755,7 +757,7 @@ impl<V:Val> Program<V>
                                 result.insert(Dep::DepArr(*arrid));
                             }
                         },
-                        XForm::Antijoin {afun: _, rel: relid} => {
+                        XForm::Antijoin {afun: _, rel: relid, fmfun: _} => {
                             if rels.iter().all(|r|r.id != *relid) {
                                 result.insert(Dep::DepRel(*relid));
                             }
@@ -833,11 +835,11 @@ impl<V:Val> Program<V>
                         }
                     }
                 },
-                XForm::Antijoin {afun: &af, rel: relid} => {
+                XForm::Antijoin {afun: &af, rel: relid, fmfun: &fmf} => {
                     let collection = lookup_collection(*relid).unwrap();
                     Some(rhs.as_ref().unwrap_or(first).
                          flat_map(af).
-                         antijoin(&collection).
+                         antijoin(&collection.flat_map(fmf)).
                          map(|(_,v)|v))
                 }
             };
