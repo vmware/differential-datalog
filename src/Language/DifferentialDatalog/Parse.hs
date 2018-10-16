@@ -402,23 +402,23 @@ ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
 pattern = withPos $
           eTuple   <$> (parens $ commaSep pattern)
+      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
       <|> eVarDecl <$> varIdent
       <|> eVarDecl <$ reserved "var" <*> varIdent
       <|> epholder
       <|> ebool
       <|> estring
       <|> eint
-      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
 
 anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = withPos $
           eTuple <$> (parens $ commaSep lhs)
+      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
       <|> fexpr
       <|> evardcl
       <|> epholder
-      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 

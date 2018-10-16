@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes, ImplicitParams #-}
 
 {- |
 Module     : OVSDB.Compile
@@ -52,14 +52,90 @@ import Control.Monad.Except
 data TableKind = TableInput
                | TableRealized
                | TableOutput
+               | TableOutputSwizzled
                | TableDeltaPlus
                | TableDeltaMinus
                | TableDeltaUpdate
+               | TableUUIDMap
                deriving(Eq)
 
 builtins :: String
 builtins = [r|import types
 |]
+
+mkTableName :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> TableKind -> Doc
+mkTableName t tkind =
+    case tkind of
+         TableInput       -> pp $ name t
+         TableRealized    -> "Realized_" <> (pp $ name t)
+         TableOutput      -> pp $ name t
+         TableOutputSwizzled | tableNeedsSwizzle t
+                          -> "Swizzled_" <> (pp $ name t)
+                             | otherwise
+                          -> pp $ name t
+         TableDeltaPlus   -> "DeltaPlus_" <> (pp $ name t)
+         TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
+         TableDeltaUpdate -> "Update_" <> (pp $ name t)
+         TableUUIDMap     -> "UUIDMap_" <> (pp $ name t)
+
+tableNeedsSwizzle :: (?outputs::[String]) => Table -> Bool
+tableNeedsSwizzle t = any colIsRef $ tableGetCols t
+
+colIsRef :: (?outputs::[String]) => TableColumn -> Bool
+colIsRef c =
+    case columnType c of
+         ColumnTypeAtomic{}   -> False
+         ColumnTypeComplex ct -> isref (keyComplexType ct) ||
+                                 maybe False isref (valueComplexType ct)
+    where
+    isref (BaseTypeComplex cbt) =
+        (isJust $ refTableBaseType cbt) &&
+        elem (fromJust $ refTableBaseType cbt) ?outputs
+    isref _ = False
+
+-- column is of type set
+colIsSet :: TableColumn -> Bool
+colIsSet col =
+    case columnType col of
+         ColumnTypeAtomic{}   -> False
+         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
+                                 in max > min && isNothing (valueComplexType ct)
+
+-- column is of type map
+colIsMap :: TableColumn -> Bool
+colIsMap col =
+    case columnType col of
+         ColumnTypeAtomic{}   -> False
+         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
+                                 in max > min && isJust (valueComplexType ct)
+
+-- scalar column
+colIsScalar :: TableColumn -> Bool
+colIsScalar col =
+    case columnType col of
+         ColumnTypeAtomic{}   -> True
+         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
+                                 in max == min
+
+-- table referenced by the column (or the key component of a set of map column)
+colRefTable :: (?schema::OVSDBSchema, ?outputs::[String]) => TableColumn -> Maybe String
+colRefTable col =
+    case columnType col of
+         ColumnTypeAtomic{}   -> Nothing
+         ColumnTypeComplex ct ->
+             case keyComplexType ct of
+                  BaseTypeComplex bt -> refTableBaseType bt
+                  _ -> Nothing
+
+-- table referenced by the value component of a map column
+colRefTableVal :: (?schema::OVSDBSchema, ?outputs::[String]) => TableColumn -> Maybe String
+colRefTableVal col =
+    case columnType col of
+         ColumnTypeAtomic{}   -> Nothing
+         ColumnTypeComplex ct ->
+             case valueComplexType ct of
+                  Just (BaseTypeComplex bt) -> refTableBaseType bt
+                  _ -> Nothing
 
 compileSchemaFile :: FilePath -> [String] -> M.Map String [String] -> IO Doc
 compileSchemaFile fname outputs keys = do
@@ -77,84 +153,206 @@ compileSchema schema outputs keys = do
     mapM_ (\o -> do let t = find ((==o) . name) tables
                     when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
     uniqNames ("Multiple declarations of table " ++ ) tables
-    rels <- vcat <$> mapM (\t -> mkTable schema (notElem (name t) outputs) t (M.lookup (name t) keys)) tables
+    let ?schema = schema
+    let ?outputs = outputs
+    rels <- vcat <$> mapM (\t -> mkTable (notElem (name t) outputs) t (M.lookup (name t) keys)) tables
     return $ pp builtins $+$ rels
 
-mkTable :: (MonadError String me) => OVSDBSchema -> Bool -> Table -> Maybe [String] -> me Doc
-mkTable schema isinput t@Table{..} keys = do
-    ovscols <- tableGetCols t
+mkTable :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me Doc
+mkTable isinput t@Table{..} keys = do
+    ovscols <- tableCheckCols t
     uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     if isinput
-       then mkTable' schema TableInput t keys
-       else do realized     <- mkTable' schema TableRealized    t keys
-               delta_plus   <- mkTable' schema TableDeltaPlus   t keys
-               delta_minus  <- mkTable' schema TableDeltaMinus  t keys
-               delta_update <- mkTable' schema TableDeltaUpdate t keys
-               output       <- mkTable' schema TableOutput      t keys
-               return $ output       $+$
-                        delta_plus   $+$
-                        delta_minus  $+$
+       then mkTable' TableInput t keys
+       else do output           <- mkTable' TableOutput         t keys
+               realized         <- mkTable' TableRealized       t keys
+               uuid_map         <- mkTable' TableUUIDMap        t keys
+               let uuid_map_rules   = mkUUIDMapRules            t keys
+               delta_plus       <- mkTable' TableDeltaPlus      t keys
+               let delta_plus_rules = mkDeltaPlusRules          t keys
+               delta_minus      <- mkTable' TableDeltaMinus     t keys
+               delta_update     <- mkTable' TableDeltaUpdate    t keys
+               swizzled         <- mkTable' TableOutputSwizzled t keys
+               swizzle_rules    <- mkSwizzleRules               t
+               return $ output              $+$
+                        uuid_map            $+$
+                        uuid_map_rules      $+$
+                        swizzled            $+$
+                        swizzle_rules       $+$
+                        delta_plus          $+$
+                        delta_plus_rules    $+$
+                        delta_minus         $+$
                         (if isJust keys then delta_update else empty) $+$
                         realized
 
-mkTable' :: (MonadError String me) => OVSDBSchema -> TableKind -> Table -> Maybe [String] -> me Doc
-mkTable' schema tkind t@Table{..} keys = do
-    ovscols <- tableGetCols t
+mkTable' :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => TableKind -> Table -> Maybe [String] -> me Doc
+mkTable' tkind t@Table{..} keys = do
+    let ovscols = tableGetCols t
     -- uuid-name is only needed in an output if the table is referenced by another table in the schema
-    referenced <- tableIsReferenced schema $ name t
+    let referenced = tableIsReferenced $ name t
     let uuidcol = case tkind of
-                       TableInput       -> ["_uuid: uuid"]
-                       TableRealized    -> ["_uuid: uuid"]
-                       TableOutput      -> if referenced then ["uuid_name: string"] else []
-                       TableDeltaPlus   -> ["uuid_name: string"]
-                       TableDeltaMinus  -> ["_uuid: uuid"]
-                       TableDeltaUpdate -> ["_uuid: uuid"]
+                       TableInput          -> ["_uuid: uuid"]
+                       TableRealized       -> ["_uuid: uuid"]
+                       TableOutput         -> if referenced then ["uuid_name: string"] else []
+                       TableOutputSwizzled -> if referenced then ["uuid_name: string"] else []
+                       TableDeltaPlus      -> if referenced then ["uuid_name: string"] else []
+                       TableDeltaMinus     -> ["_uuid: uuid"]
+                       TableDeltaUpdate    -> ["_uuid: uuid"]
+                       TableUUIDMap        -> ["uuid_name: string", "id: uuid_or_string_t"]
     let prefix = case tkind of
                       TableInput    -> "input"
                       TableRealized -> "input"
                       _             -> empty
-    let tname = case tkind of
-                     TableInput       -> pp $ name t
-                     TableRealized    -> "Realized_" <> (pp $ name t)
-                     TableOutput      -> pp $ name t
-                     TableDeltaPlus   -> "DeltaPlus_" <> (pp $ name t)
-                     TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
-                     TableDeltaUpdate -> "Update_" <> (pp $ name t)
+    let tname = mkTableName t tkind
     let cols = case tkind of
                     TableDeltaUpdate | isJust keys
                                      -> filter (\col -> notElem (name col) $ fromJust keys) ovscols
                                      | otherwise
                                      -> []
                     TableDeltaMinus  -> []
+                    TableUUIDMap     -> []
                     _                -> ovscols
-    columns <- mapM (mkCol schema tkind tableName) cols
+    columns <- mapM (mkCol tkind tableName) cols
     let key = if elem tkind [TableInput, TableRealized]
                  then "primary key (x) x._uuid"
                  else empty
-    return $ prefix <+> "relation" <+> pp tname <+> "("            $$
-             (nest' $ vcat $ punctuate comma $ uuidcol ++ columns) $$
-             ")"                                                   $$
-             key
+    return $ case tkind of
+                  TableUUIDMap        | not referenced -> empty
+                  TableOutputSwizzled | not (tableNeedsSwizzle t) -> empty
+                  _ -> prefix <+> "relation" <+> pp tname <+> "("            $$
+                       (nest' $ vcat $ punctuate comma $ uuidcol ++ columns) $$
+                       ")"                                                   $$
+                       key
 
-mkCol :: (MonadError String me) => OVSDBSchema -> TableKind -> String -> TableColumn -> me Doc
-mkCol schema tkind tname c@TableColumn{..} = do
+mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaPlusRules t@Table{..} mkeys =
+    (mkTableName t TableDeltaPlus) <> "(" <> (hsep $ punctuate comma headcols) <> ") :-"     $$
+    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")           $$
+    (nest' $ "not" <+> (mkTableName t TableRealized) <> "(" <> commaSep realcols <> ").")
+    where
+    referenced = tableIsReferenced $ name t
+    ovscols = tableGetCols t
+    -- replace columns that don't belong to primary key with "_"
+    keycols = map (\c -> let col = if colIsRef c
+                                      then "extract_uuid(" <> mkColName c <> ")"
+                                      else mkColName c
+                         in maybe col
+                                  (\ks -> if elem (name c) ks then col else "_") mkeys)
+                  ovscols
+    headcols = (if referenced then ["uuid_name"] else []) ++ map mkColName ovscols
+    outcols  = (if referenced then ["uuid_name"] else []) ++ map mkColName ovscols
+    realcols = ["_"] ++ keycols
+
+-- Generate rule to replace named-uuid table references with real uuid's when they are known
+-- from the Realized table.
+--
+-- For a scalar column:
+-- Swizzled(x,ref') :- Output(x,ref), UUIDMap(ref,ref').
+--
+-- For a set:
+-- Swizzled(x,refs') :- Output(x,refs),
+--                      var ref = FlatMap(refs),
+--                      UUIDMap(ref, ref'),
+--                      Aggregate((x),refs'=group2set(ref')).
+--
+-- For a map:
+-- Swizzled(x,refs') :- Output(x,refs),
+--                      var key_val = FlatMap(refs),
+--                      (var key, var ref) = key_val,
+--                      UUIDMap(ref, ref'),
+--                      Aggregate((x),refs'=group2map((key, ref'))).
+--
+mkSwizzleRules :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Table -> me Doc
+mkSwizzleRules t | not (tableNeedsSwizzle t) = return empty
+mkSwizzleRules t@Table{..} = do
+    let ovscols = tableGetCols t
+    let referenced = tableIsReferenced $ name t
+    let swColName col | colIsRef col = "__id_" <> mkColName col
+                      | otherwise = mkColName col
+    let swizcols = (if referenced then ["uuid_name"] else []) ++ map swColName ovscols
+    let outcols  = (if referenced then ["uuid_name"] else []) ++ map mkColName ovscols
+
+    let colSwizzle :: (MonadError String me) => TableColumn -> me Doc
+        colSwizzle col | colIsScalar col = do
+            reftable <- getTable (columnPos col) $ fromJust $ colRefTable col
+            return $ mkTableName reftable TableUUIDMap <> "(" <> mkColName col <> "," <+> swColName col <> ")"
+        colSwizzle col | colIsSet col = do
+            -- when computing the aggregate, use swizzled names for all columns before col and original
+            -- names for remaining columns.
+            let (cols_before, _: cols_after) = span ((/= name col) . name) ovscols
+            reftable <- getTable (columnPos col) $ fromJust $ colRefTable col
+            let group_by = (if referenced then ["uuid_name"] else []) ++
+                           map swColName cols_before                  ++
+                           map mkColName cols_after
+            return $ "var __one =" <+> "FlatMap(" <> mkColName col <> "),"                                                         $$
+                     mkTableName reftable TableUUIDMap <> "(__one, __one_swizzled),"                                               $$
+                     "Aggregate((" <> commaSep group_by <> ")," <+> swColName col <+> "= group2set(__one_swizzled))"
+        colSwizzle col | colIsMap col && isJust (colRefTableVal col) && isNothing (colRefTable col) = do
+            let (cols_before, _: cols_after) = span ((/= name col) . name) ovscols
+            reftable <- getTable (columnPos col) $ fromJust $ colRefTableVal col
+            let group_by = (if referenced then ["uuid_name"] else []) ++
+                           map swColName cols_before                  ++
+                           map mkColName cols_after
+            return $ "var __one =" <+> "FlatMap(" <> mkColName col <> "),"                                                        $$
+                     "(var __one_key, var __one_ref) = __one,"                                                                    $$
+                     mkTableName reftable TableUUIDMap <> "(__one_ref, __one_swizzled),"                                          $$
+                     "Aggregate((" <> commaSep group_by <> ")," <+> swColName col <+> "= group2map((__one_key, __one_swizzled)))"
+        colSwizzle col = err (pos col) $ "mkSwizzleRules: reference swizzling not implemented for map keys"
+    swizzles <- mapM colSwizzle $ filter colIsRef ovscols
+    return $
+        mkTableName t TableOutputSwizzled <> "(" <> commaSep swizcols <> ") :-"     $$
+        (nest' $ mkTableName t TableOutput <> "(" <> commaSep outcols <> "),")      $$
+        (nest' $ vcommaSep swizzles) <> "."
+
+-- UUIDMap(name, Left(uuid)) :- Output(name, key), Realized(uuid, key).
+-- UUIDMap(name, Right(name)) :- Output(name, key), not Realized(_, key).
+mkUUIDMapRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkUUIDMapRules t@Table{..} mkeys =
+    if referenced
+       then mkTableName t TableUUIDMap <> "(__name, Left{__uuid}) :-"                      $$
+            (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),") $$
+            (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols1 <> ").")     $$
+            mkTableName t TableUUIDMap <> "(__name, Right{__name}) :-"                     $$
+            (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),") $$
+            (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols2 <> ").")
+       else empty
+    where
+    referenced = tableIsReferenced $ name t
+    ovscols = tableGetCols t
+    -- replace columns that don't belong to primary key with "_"
+    keycols = map (\c -> maybe (mkColName c)
+                               (\ks -> if elem (name c) ks then mkColName c else "_") mkeys)
+                  ovscols
+    -- additionally convert uuid_or_string_t to uuid in realized tables
+    keycols' = map (\c -> let col = if colIsRef c
+                                       then "extract_uuid(" <> mkColName c <> ")"
+                                       else mkColName c
+                          in maybe col
+                                   (\ks -> if elem (name c) ks then col else "_") mkeys)
+                   ovscols
+    outcols   = ["__name"] ++ keycols
+    realcols1 = ["__uuid"] ++ keycols'
+    realcols2 = ["_"]      ++ keycols'
+
+mkCol :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => TableKind -> String -> TableColumn -> me Doc
+mkCol tkind tname c@TableColumn{..} = do
     check (columnName /= "_uuid") (pos c) $ "Reserved column name _uuid in table " ++ tname
     check (notElem columnName ["uuid-name", "uuid_name"]) (pos c) $ "Reserved column name " ++ columnName ++ " in table " ++ tname
     check (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     t <- case columnType of
               ColumnTypeAtomic at  -> mkAtomicType at
-              ColumnTypeComplex ct -> mkComplexType schema tkind ct
-    return $ mkColName columnName <> ":" <+>
+              ColumnTypeComplex ct -> mkComplexType tkind ct
+    return $ mkColName c <> ":" <+>
              (if tkind == TableDeltaUpdate then ("option_t<" <> t <> ">") else t)
 
 __reservedNames = map (("__" ++) . map toLower) $ reservedNames
 
-mkColName :: String -> Doc
-mkColName x =
-    if elem x' reservedNames
-       then pp $ "__" ++ x'
-       else pp x'
-    where x' = map toLower x
+mkColName :: TableColumn -> Doc
+mkColName c =
+    if elem x reservedNames
+       then pp $ "__" ++ x
+       else pp x
+    where x = map toLower $ name c
 
 mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
 mkAtomicType IntegerType{} = return "integer"
@@ -163,14 +361,19 @@ mkAtomicType BooleanType{} = return "bool"
 mkAtomicType StringType{}  = return "string"
 mkAtomicType UUIDType{}    = return "uuid"
 
-mkComplexType :: (MonadError String me) => OVSDBSchema -> TableKind -> ComplexType -> me Doc
-mkComplexType schema tkind t@ComplexType{..} = do
-    let min = maybe 1 id minComplexType
-        max = maybe 1
-                    (\case
-                      Some x    -> x
-                      Unlimited -> fromIntegral (maxBound::Word64))
-                    maxComplexType
+complexTypeBounds :: ComplexType -> (Integer, Integer)
+complexTypeBounds ComplexType{..} = (min, max)
+    where
+    min = maybe 1 id minComplexType
+    max = maybe 1
+                (\case
+                  Some x    -> x
+                  Unlimited -> fromIntegral (maxBound::Word64))
+                maxComplexType
+
+mkComplexType :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => TableKind -> ComplexType -> me Doc
+mkComplexType tkind t@ComplexType{..} = do
+    let (min, max) = complexTypeBounds t
     check (max >= min) (pos t) $ "min bound exceeds max bound"
     check (min == 0 || min == 1) (pos t) $ "min bound must be 0 or 1"
     check (max > 0) (pos t) $ "max bound must be greater than 0"
@@ -186,16 +389,18 @@ mkComplexType schema tkind t@ComplexType{..} = do
                   Just v  -> do vt <- mkBaseType tkind v
                                 return $ "Map<" <> key <> "," <> vt <> ">"
 
-mkBaseType :: (MonadError String me) => TableKind -> BaseType -> me Doc
+mkBaseType :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) =>  TableKind -> BaseType -> me Doc
 mkBaseType _     (BaseTypeSimple at)   = mkAtomicType at
+mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && notElem (fromJust $ refTableBaseType cbt) ?outputs
+                                       = return "uuid"
 mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && tkind == TableOutput
                                        = return "string"
-mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && elem tkind [TableDeltaPlus, TableDeltaUpdate]
+mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && elem tkind [TableDeltaPlus, TableDeltaUpdate, TableOutputSwizzled]
                                        = return "uuid_or_string_t"
 mkBaseType _     (BaseTypeComplex cbt) = mkAtomicType $ typeBaseType cbt
 
-tableGetCols :: (MonadError String me) => Table -> me [TableColumn]
-tableGetCols t@Table{..} = do
+tableCheckCols :: (MonadError String me) => Table -> me [TableColumn]
+tableCheckCols t@Table{..} = do
     let tprops = filter (\case
                           ColumnsProperty{} -> True
                           _                 -> False) tableProperties
@@ -204,16 +409,29 @@ tableGetCols t@Table{..} = do
     let (ColumnsProperty ovscols) : _ = tprops
     return ovscols
 
+
+tableGetCols :: Table -> [TableColumn]
+tableGetCols t@Table{..} = ovscols
+    where
+    (ColumnsProperty ovscols) : _ = filter (\case
+                                             ColumnsProperty{} -> True
+                                             _                 -> False) tableProperties
+
+getTable :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Pos -> String -> me Table
+getTable p tname =
+    case find ((== tname) . name) $ schemaTables ?schema of
+         Nothing -> err p $ "Unknown table " ++ tname
+         Just t  -> return t
+
 -- Is table referenced by at least one other table in the schema?
-tableIsReferenced :: (MonadError String me) => OVSDBSchema -> String -> me Bool
-tableIsReferenced schema tname =
-    or <$> (mapM (\t' -> do cols <- tableGetCols t'
-                            any ((\case
-                                   ColumnTypeComplex ct -> isref (keyComplexType ct) ||
-                                                           maybe False isref (valueComplexType ct)
-                                   _ -> False) . columnType)
-                                <$> tableGetCols t')
-            $ schemaTables schema)
+tableIsReferenced :: (?schema::OVSDBSchema) => String -> Bool
+tableIsReferenced tname =
+    or $ (map (\t' -> any ((\case
+                             ColumnTypeComplex ct -> isref (keyComplexType ct) ||
+                                                     maybe False isref (valueComplexType ct)
+                             _ -> False) . columnType)
+                          $ tableGetCols t')
+         $ schemaTables ?schema)
     where
     isref (BaseTypeComplex cbt) = refTableBaseType cbt == Just tname
     isref _ = False
