@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes, ImplicitParams #-}
+{-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts, OverloadedStrings, QuasiQuotes, ImplicitParams, TupleSections #-}
 
 {- |
 Module     : OVSDB.Compile
@@ -48,15 +48,70 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Control.Monad.Except
 
+{-
+The compiler generates 8 kinds of DDlog tables: Input, Output, Realized, Swizzled,
+Delta+, Delta-, DeltaUpdate, and UUIDMap:
+
+Input: input tables that precisely replicate corresponding OVSDB tables
+
+Output: output tables computed by the DDlog program.  They have the same
+    structure as their OVSDB counterparts, except
+    - all refTable columns have type 'string' instead of 'UUID'
+    - tables that are not referenced by any other table do not have an id field
+    - tables that are referenced by at least one other table have column
+      'uuid_name' of type string
+
+Realized: realized tables represent current state of output tables in OVSDB and
+    precisely replicate the OVSDB table schema, including '_uuid' field
+
+UUIDMap: these tables maintain mappings between 'uuid_name's in Output tables and
+    actuall UUID's assigned by OVSDB. It is computed based on Output and Realized
+    tables.
+
+Swizzled: an output table with 'uuid_name's replaced with UUID's wherever the UUID
+    is known (from the Realized table).  Uses 'uuid_or_string_t' types for all UUID
+    fields. This table is computed based on Output and UUIDMap tables
+
+Delta+: new records to be inserted to OVSDB.  Specifically, these are records
+    from Swizzled such that a records with the same key does not exist in Realized.
+
+Delta-: records to be deleted from OVSDB, i.e., records in Realized such that
+    a record with the same key does not exist in Swizzled.  A row in the Delta- table
+    only contains the '_uuid' field.
+
+DeltaUpdate: records whose key exists in both Swizzled and Realized tables, but with
+    different values.  The DeltaUpdate relation contans the '_uuid' field along with all
+    fields that do not belong to the key.
+
+
+Note that the user must only provide rules to compute Output relations based on Input
+relations; the compiler generates rules to compute all other relations.
+
+The following diagram illustrates dependencies among the various kinds of relations.
+
+
+      (user-defined rules)
+Input--------------------> Output---------------->Swizzled------------> Delta+ <---------|
+                             |                      ^    |                               |
+                             |                      |    |                               |
+                             v                      |    |                               |
+Realized----------------> UUIDMap--------------------    |------------> Delta- <---------|
+  |                                                      |                               |
+  |                                                      |                               |
+  |                                                      |------------> DeltaUpdate <-----
+  |                                                                                      |
+  |---------------------------------------------------------------------------------------
+
+-}
 
 data TableKind = TableInput
-               | TableRealized
                | TableOutput
+               | TableRealized
+               | TableUUIDMap
                | TableOutputSwizzled
                | TableDeltaPlus
                | TableDeltaMinus
                | TableDeltaUpdate
-               | TableUUIDMap
                deriving(Eq)
 
 builtins :: String
@@ -81,6 +136,8 @@ mkTableName t tkind =
 tableNeedsSwizzle :: (?outputs::[String]) => Table -> Bool
 tableNeedsSwizzle t = any colIsRef $ tableGetCols t
 
+-- Column is a reference to an output table
+-- (references to input tables are just regular values from DDlog perspective)
 colIsRef :: (?outputs::[String]) => TableColumn -> Bool
 colIsRef c =
     case columnType c of
@@ -137,6 +194,13 @@ colRefTableVal col =
                   Just (BaseTypeComplex bt) -> refTableBaseType bt
                   _ -> Nothing
 
+-- Convert uuid_or_string_t, Set<uuid_or_string_t> or Map<_, uuid_or_string_t>
+-- to, respectively, uuid, Set<uuid>, Map<_,uuid>.
+refCol2UUID :: TableColumn -> Doc -> Doc
+refCol2UUID c n | colIsSet c  = "set_extract_uuids(" <> n <> ")"
+                | colIsMap c  = "map_extract_val_uuids(" <> n <> ")"
+                | otherwise   = "extract_uuid(" <> n <> ")"
+
 compileSchemaFile :: FilePath -> [String] -> M.Map String [String] -> IO Doc
 compileSchemaFile fname outputs keys = do
     content <- readFile fname
@@ -155,15 +219,19 @@ compileSchema schema outputs keys = do
     uniqNames ("Multiple declarations of table " ++ ) tables
     let ?schema = schema
     let ?outputs = outputs
-    rels <- vcat <$> mapM (\t -> mkTable (notElem (name t) outputs) t (M.lookup (name t) keys)) tables
-    return $ pp builtins $+$ rels
+    rels <- ((\(inp, outp, priv) -> vcat
+                                    $ ["/* Input relations */\n"] ++ inp ++
+                                      ["\n/* Output relations */\n"] ++ outp ++
+                                      ["\n/* Delta tables definitions */\n"] ++ priv) . unzip3) <$>
+            mapM (\t -> mkTable (notElem (name t) outputs) t (M.lookup (name t) keys)) tables
+    return $ pp builtins $+$ "" $+$ rels
 
-mkTable :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me Doc
+mkTable :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me (Doc, Doc, Doc)
 mkTable isinput t@Table{..} keys = do
     ovscols <- tableCheckCols t
     uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     if isinput
-       then mkTable' TableInput t keys
+       then (, empty, empty) <$> mkTable' TableInput t keys
        else do output           <- mkTable' TableOutput         t keys
                realized         <- mkTable' TableRealized       t keys
                uuid_map         <- mkTable' TableUUIDMap        t keys
@@ -171,19 +239,23 @@ mkTable isinput t@Table{..} keys = do
                delta_plus       <- mkTable' TableDeltaPlus      t keys
                let delta_plus_rules = mkDeltaPlusRules          t keys
                delta_minus      <- mkTable' TableDeltaMinus     t keys
+               let delta_minus_rules = mkDeltaMinusRules        t keys
                delta_update     <- mkTable' TableDeltaUpdate    t keys
+               let delta_update_rules = mkDeltaUpdateRules      t keys
                swizzled         <- mkTable' TableOutputSwizzled t keys
                swizzle_rules    <- mkSwizzleRules               t
-               return $ output              $+$
-                        uuid_map            $+$
-                        uuid_map_rules      $+$
-                        swizzled            $+$
-                        swizzle_rules       $+$
-                        delta_plus          $+$
-                        delta_plus_rules    $+$
-                        delta_minus         $+$
-                        (if isJust keys then delta_update else empty) $+$
-                        realized
+               return $ (empty,
+                         output,
+                         uuid_map            $+$
+                         uuid_map_rules      $+$
+                         swizzled            $+$
+                         swizzle_rules       $+$
+                         delta_plus          $+$
+                         delta_plus_rules    $+$
+                         delta_minus         $+$
+                         delta_minus_rules   $+$
+                         (if isJust keys then delta_update $$ delta_update_rules else empty) $+$
+                         realized)
 
 mkTable' :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => TableKind -> Table -> Maybe [String] -> me Doc
 mkTable' tkind t@Table{..} keys = do
@@ -219,29 +291,80 @@ mkTable' tkind t@Table{..} keys = do
     return $ case tkind of
                   TableUUIDMap        | not referenced -> empty
                   TableOutputSwizzled | not (tableNeedsSwizzle t) -> empty
-                  _ -> prefix <+> "relation" <+> pp tname <+> "("            $$
-                       (nest' $ vcat $ punctuate comma $ uuidcol ++ columns) $$
-                       ")"                                                   $$
+                  _ -> prefix <+> "relation" <+> pp tname <+> "("    $$
+                       (nest' $ vcommaSep $ uuidcol ++ columns)      $$
+                       ")"                                           $$
                        key
 
 mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
 mkDeltaPlusRules t@Table{..} mkeys =
-    (mkTableName t TableDeltaPlus) <> "(" <> (hsep $ punctuate comma headcols) <> ") :-"     $$
-    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")           $$
-    (nest' $ "not" <+> (mkTableName t TableRealized) <> "(" <> commaSep realcols <> ").")
+    (mkTableName t TableDeltaPlus) <> "(" <> commaSep headcols <> ") :-"                $$
+    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")      $$
+    (nest' $ "not" <+> mkTableName t TableRealized <> "(" <> commaSep realcols <> ").")
     where
     referenced = tableIsReferenced $ name t
     ovscols = tableGetCols t
     -- replace columns that don't belong to primary key with "_"
     keycols = map (\c -> let col = if colIsRef c
-                                      then "extract_uuid(" <> mkColName c <> ")"
+                                      then refCol2UUID c (mkColName c)
                                       else mkColName c
-                         in maybe col
-                                  (\ks -> if elem (name c) ks then col else "_") mkeys)
+                         in maybe col (\ks -> if elem (name c) ks then col else "_") mkeys)
                   ovscols
     headcols = (if referenced then ["uuid_name"] else []) ++ map mkColName ovscols
     outcols  = (if referenced then ["uuid_name"] else []) ++ map mkColName ovscols
     realcols = ["_"] ++ keycols
+
+-- DeltaMinus(uuid) :- Realized(uuid, key, _), not Swizzled(_, key, _).
+mkDeltaMinusRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaMinusRules t@Table{..} mkeys =
+    (mkTableName t TableDeltaMinus) <> "(_uuid) :-"                                          $$
+    (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols <> "),")                $$
+    (nest' $ "not" <+> mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> ").")
+    where
+    referenced = tableIsReferenced $ name t
+    ovscols = tableGetCols t
+    -- replace columns that don't belong to primary key with "_"
+    outcols  = (if referenced then ["_"] else []) ++
+               map (\c -> let col = if colIsRef c
+                                      then "Left{" <> mkColName c <> "}"
+                                      else mkColName c
+                          in maybe col (\ks -> if elem (name c) ks then col else "_") mkeys)
+                    ovscols
+    realcols = "_uuid":
+               map (\c -> maybe (mkColName c)
+                                (\ks -> if elem (name c) ks then mkColName c else "_") mkeys) ovscols
+
+-- DeltaUpdate(uuid, key, new) :- Swizzled(_, key, new), Realized(uuid, key, old), old != new.
+mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaUpdateRules t@Table{..} (Just keys) =
+    (mkTableName t TableDeltaUpdate) <> "(" <> commaSep headcols <> ") :-"                   $$
+    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")           $$
+    (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols <> "),")                $$
+    (nest' $ (parens $ commaSep old_vars) <+> "!=" <+> (parens $ commaSep new_vars) <> ".")
+    where
+    referenced = tableIsReferenced $ name t
+    ovscols = tableGetCols t
+    headcols = "_uuid" :
+               (map (\c -> "__new_" <> mkColName c)
+                $ filter (\c -> notElem (name c) keys) ovscols)
+    outcols  = (if referenced then ["_"] else []) ++
+               map (\c -> if elem (name c) keys
+                             then if colIsRef c
+                                     then "Left{" <> mkColName c <> "}"
+                                     else mkColName c
+                             else "__new_" <> mkColName c)
+               ovscols
+    realcols = "_uuid" :
+               map (\c -> if elem (name c) keys
+                             then mkColName c
+                             else "__old_" <> mkColName c)
+               ovscols
+    new_vars = map (\c -> if colIsRef c
+                             then refCol2UUID c ("__new_" <> mkColName c)
+                             else "__new_" <> mkColName c)
+               $ filter (\c -> notElem (name c) keys) ovscols
+    old_vars = map (\c -> "__old_" <> mkColName c)
+               $ filter (\c -> notElem (name c) keys) ovscols
 
 -- Generate rule to replace named-uuid table references with real uuid's when they are known
 -- from the Realized table.
@@ -342,8 +465,7 @@ mkCol tkind tname c@TableColumn{..} = do
     t <- case columnType of
               ColumnTypeAtomic at  -> mkAtomicType at
               ColumnTypeComplex ct -> mkComplexType tkind ct
-    return $ mkColName c <> ":" <+>
-             (if tkind == TableDeltaUpdate then ("option_t<" <> t <> ">") else t)
+    return $ mkColName c <> ":" <+> t
 
 __reservedNames = map (("__" ++) . map toLower) $ reservedNames
 

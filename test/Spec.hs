@@ -95,20 +95,27 @@ sbTest = do
                                   [ "SB_Global"
                                   , "Logical_Flow"
                                   , "Multicast_Group"
+                                  , "Meter"
+                                  , "Meter_Band"
                                   , "Datapath_Binding"
                                   , "Port_Binding"
+                                  , "Gateway_Chassis"
+                                  , "Port_Group"
                                   , "MAC_Binding"
                                   , "DHCP_Options"
                                   , "DHCPv6_Options"
                                   , "Address_Set"
                                   , "DNS"
                                   , "RBAC_Role"
-                                  , "RBAC_Permission"
-                                  , "Chassis"]
-                                  (M.fromList [ ("Multicast_Group"  , ["datapath", "name"])
+                                  , "RBAC_Permission"]
+                                  (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
                                               , ("Port_Binding"     , ["logical_port"])
-                                              , ("DNS"              , ["records"])
-                                              , ("RBAC_Role"        , ["name"])])
+                                              , ("DNS"              , ["external_ids"])
+                                              , ("Datapath_Binding" , ["external_ids"])
+                                              , ("RBAC_Role"        , ["name"])
+                                              , ("Address_Set"      , ["name"])
+                                              , ("Port_Group"       , ["name"])
+                                              , ("Meter"            , ["name"]) ])
     writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree

@@ -1,5 +1,8 @@
 import types
 
+
+/* Input relations */
+
 input relation NB_Global (
     _uuid: uuid,
     nb_cfg: integer,
@@ -190,3 +193,8 @@ input relation Gateway_Chassis (
     options: Map<string,string>
 )
 primary key (x) x._uuid
+
+/* Output relations */
+
+
+/* Delta tables definitions */

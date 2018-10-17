@@ -15,6 +15,7 @@ use std::collections::btree_set;
 use std::collections::btree_map;
 use std::vec::{Vec};
 use std::collections::{BTreeMap, BTreeSet};
+use std::iter::FromIterator;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -94,6 +95,15 @@ impl<T: Ord> IntoIterator for std_Set<T> {
     }
 }
 
+impl<T: Ord> FromIterator<T> for std_Set<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where I: IntoIterator<Item = T>
+    {
+        std_Set{x: BTreeSet::from_iter(iter)}
+    }
+}
+
+
 impl<T: Display + Ord> Display for std_Set<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let len = self.x.len();
@@ -139,6 +149,13 @@ impl<K: Ord,V> IntoIterator for std_Map<K,V> {
     }
 }
 
+impl<K: Ord, V> FromIterator<(K,V)> for std_Map<K,V> {
+    fn from_iter<I>(iter: I) -> Self
+    where I: IntoIterator<Item = (K,V)>
+    {
+        std_Map{x: BTreeMap::from_iter(iter)}
+    }
+}
 
 impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
