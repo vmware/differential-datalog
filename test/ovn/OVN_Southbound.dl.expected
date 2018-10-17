@@ -3,16 +3,18 @@ import types
 relation SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
-    connections: Set<string>,
-    ssl: Set<string>
+    connections: Set<uuid>,
+    ssl: Set<uuid>
 )
 relation DeltaPlus_SB_Global (
-    uuid_name: string,
     nb_cfg: integer,
     external_ids: Map<string,string>,
-    connections: Set<uuid_or_string_t>,
-    ssl: Set<uuid_or_string_t>
+    connections: Set<uuid>,
+    ssl: Set<uuid>
 )
+DeltaPlus_SB_Global(nb_cfg, external_ids, connections, ssl) :-
+    SB_Global(nb_cfg, external_ids, connections, ssl),
+    not Realized_SB_Global(_, nb_cfg, external_ids, connections, ssl).
 relation DeltaMinus_SB_Global (
     _uuid: uuid
 )
@@ -28,20 +30,33 @@ relation Chassis (
     uuid_name: string,
     name: string,
     hostname: string,
-    encaps: Set<string>,
+    encaps: Set<uuid>,
     vtep_logical_switches: Set<string>,
     nb_cfg: integer,
     external_ids: Map<string,string>
 )
+relation UUIDMap_Chassis (
+    uuid_name: string,
+    id: uuid_or_string_t
+)
+UUIDMap_Chassis(__name, Left{__uuid}) :-
+    Chassis(__name, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids),
+    Realized_Chassis(__uuid, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids).
+UUIDMap_Chassis(__name, Right{__name}) :-
+    Chassis(__name, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids),
+    Realized_Chassis(_, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids).
 relation DeltaPlus_Chassis (
     uuid_name: string,
     name: string,
     hostname: string,
-    encaps: Set<uuid_or_string_t>,
+    encaps: Set<uuid>,
     vtep_logical_switches: Set<string>,
     nb_cfg: integer,
     external_ids: Map<string,string>
 )
+DeltaPlus_Chassis(uuid_name, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids) :-
+    Chassis(uuid_name, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids),
+    not Realized_Chassis(_, name, hostname, encaps, vtep_logical_switches, nb_cfg, external_ids).
 relation DeltaMinus_Chassis (
     _uuid: uuid
 )
@@ -68,10 +83,12 @@ relation Address_Set (
     addresses: Set<string>
 )
 relation DeltaPlus_Address_Set (
-    uuid_name: string,
     name: string,
     addresses: Set<string>
 )
+DeltaPlus_Address_Set(name, addresses) :-
+    Address_Set(name, addresses),
+    not Realized_Address_Set(_, name, addresses).
 relation DeltaMinus_Address_Set (
     _uuid: uuid
 )
@@ -96,8 +113,7 @@ relation Logical_Flow (
     actions: string,
     external_ids: Map<string,string>
 )
-relation DeltaPlus_Logical_Flow (
-    uuid_name: string,
+relation Swizzled_Logical_Flow (
     logical_datapath: uuid_or_string_t,
     pipeline: string,
     table_id: integer,
@@ -106,6 +122,21 @@ relation DeltaPlus_Logical_Flow (
     actions: string,
     external_ids: Map<string,string>
 )
+Swizzled_Logical_Flow(__id_logical_datapath, pipeline, table_id, priority, __match, actions, external_ids) :-
+    Logical_Flow(logical_datapath, pipeline, table_id, priority, __match, actions, external_ids),
+    UUIDMap_Datapath_Binding(logical_datapath, __id_logical_datapath).
+relation DeltaPlus_Logical_Flow (
+    logical_datapath: uuid_or_string_t,
+    pipeline: string,
+    table_id: integer,
+    priority: integer,
+    __match: string,
+    actions: string,
+    external_ids: Map<string,string>
+)
+DeltaPlus_Logical_Flow(logical_datapath, pipeline, table_id, priority, __match, actions, external_ids) :-
+    Swizzled_Logical_Flow(logical_datapath, pipeline, table_id, priority, __match, actions, external_ids),
+    not Realized_Logical_Flow(_, extract_uuid(logical_datapath), pipeline, table_id, priority, __match, actions, external_ids).
 relation DeltaMinus_Logical_Flow (
     _uuid: uuid
 )
@@ -126,15 +157,34 @@ relation Multicast_Group (
     tunnel_key: integer,
     ports: Set<string>
 )
-relation DeltaPlus_Multicast_Group (
-    uuid_name: string,
+relation Swizzled_Multicast_Group (
     datapath: uuid_or_string_t,
     name: string,
     tunnel_key: integer,
     ports: Set<uuid_or_string_t>
 )
+Swizzled_Multicast_Group(__id_datapath, name, tunnel_key, __id_ports) :-
+    Multicast_Group(datapath, name, tunnel_key, ports),
+    UUIDMap_Datapath_Binding(datapath, __id_datapath),
+    var __one = FlatMap(ports),
+    UUIDMap_Port_Binding(__one, __one_swizzled),
+    Aggregate((__id_datapath, name, tunnel_key), __id_ports = group2set(__one_swizzled)).
+relation DeltaPlus_Multicast_Group (
+    datapath: uuid_or_string_t,
+    name: string,
+    tunnel_key: integer,
+    ports: Set<uuid_or_string_t>
+)
+DeltaPlus_Multicast_Group(datapath, name, tunnel_key, ports) :-
+    Swizzled_Multicast_Group(datapath, name, tunnel_key, ports),
+    not Realized_Multicast_Group(_, extract_uuid(datapath), name, _, _).
 relation DeltaMinus_Multicast_Group (
     _uuid: uuid
+)
+relation Update_Multicast_Group (
+    _uuid: uuid,
+    tunnel_key: option_t<integer>,
+    ports: option_t<Set<uuid_or_string_t>>
 )
 input relation Realized_Multicast_Group (
     _uuid: uuid,
@@ -163,11 +213,24 @@ relation Datapath_Binding (
     tunnel_key: integer,
     external_ids: Map<string,string>
 )
+relation UUIDMap_Datapath_Binding (
+    uuid_name: string,
+    id: uuid_or_string_t
+)
+UUIDMap_Datapath_Binding(__name, Left{__uuid}) :-
+    Datapath_Binding(__name, tunnel_key, external_ids),
+    Realized_Datapath_Binding(__uuid, tunnel_key, external_ids).
+UUIDMap_Datapath_Binding(__name, Right{__name}) :-
+    Datapath_Binding(__name, tunnel_key, external_ids),
+    Realized_Datapath_Binding(_, tunnel_key, external_ids).
 relation DeltaPlus_Datapath_Binding (
     uuid_name: string,
     tunnel_key: integer,
     external_ids: Map<string,string>
 )
+DeltaPlus_Datapath_Binding(uuid_name, tunnel_key, external_ids) :-
+    Datapath_Binding(uuid_name, tunnel_key, external_ids),
+    not Realized_Datapath_Binding(_, tunnel_key, external_ids).
 relation DeltaMinus_Datapath_Binding (
     _uuid: uuid
 )
@@ -181,7 +244,7 @@ relation Port_Binding (
     uuid_name: string,
     logical_port: string,
     __type: string,
-    gateway_chassis: Set<string>,
+    gateway_chassis: Set<uuid>,
     options: Map<string,string>,
     datapath: string,
     tunnel_key: integer,
@@ -192,11 +255,21 @@ relation Port_Binding (
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
 )
-relation DeltaPlus_Port_Binding (
+relation UUIDMap_Port_Binding (
+    uuid_name: string,
+    id: uuid_or_string_t
+)
+UUIDMap_Port_Binding(__name, Left{__uuid}) :-
+    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
+    Realized_Port_Binding(__uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _).
+UUIDMap_Port_Binding(__name, Right{__name}) :-
+    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
+    Realized_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
+relation Swizzled_Port_Binding (
     uuid_name: string,
     logical_port: string,
     __type: string,
-    gateway_chassis: Set<uuid_or_string_t>,
+    gateway_chassis: Set<uuid>,
     options: Map<string,string>,
     datapath: uuid_or_string_t,
     tunnel_key: integer,
@@ -207,8 +280,46 @@ relation DeltaPlus_Port_Binding (
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
 )
+Swizzled_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, __id_datapath, tunnel_key, parent_port, tag, __id_chassis, mac, nat_addresses, external_ids) :-
+    Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids),
+    UUIDMap_Datapath_Binding(datapath, __id_datapath),
+    var __one = FlatMap(chassis),
+    UUIDMap_Chassis(__one, __one_swizzled),
+    Aggregate((uuid_name, logical_port, __type, gateway_chassis, options, __id_datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids), __id_chassis = group2set(__one_swizzled)).
+relation DeltaPlus_Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<uuid>,
+    options: Map<string,string>,
+    datapath: uuid_or_string_t,
+    tunnel_key: integer,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<uuid_or_string_t>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+DeltaPlus_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids) :-
+    Swizzled_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids),
+    not Realized_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 relation DeltaMinus_Port_Binding (
     _uuid: uuid
+)
+relation Update_Port_Binding (
+    _uuid: uuid,
+    __type: option_t<string>,
+    gateway_chassis: option_t<Set<uuid>>,
+    options: option_t<Map<string,string>>,
+    datapath: option_t<uuid_or_string_t>,
+    tunnel_key: option_t<integer>,
+    parent_port: option_t<Set<string>>,
+    tag: option_t<Set<integer>>,
+    chassis: option_t<Set<uuid_or_string_t>>,
+    mac: option_t<Set<string>>,
+    nat_addresses: option_t<Set<string>>,
+    external_ids: option_t<Map<string,string>>
 )
 input relation Realized_Port_Binding (
     _uuid: uuid,
@@ -232,13 +343,24 @@ relation MAC_Binding (
     mac: string,
     datapath: string
 )
-relation DeltaPlus_MAC_Binding (
-    uuid_name: string,
+relation Swizzled_MAC_Binding (
     logical_port: string,
     ip: string,
     mac: string,
     datapath: uuid_or_string_t
 )
+Swizzled_MAC_Binding(logical_port, ip, mac, __id_datapath) :-
+    MAC_Binding(logical_port, ip, mac, datapath),
+    UUIDMap_Datapath_Binding(datapath, __id_datapath).
+relation DeltaPlus_MAC_Binding (
+    logical_port: string,
+    ip: string,
+    mac: string,
+    datapath: uuid_or_string_t
+)
+DeltaPlus_MAC_Binding(logical_port, ip, mac, datapath) :-
+    Swizzled_MAC_Binding(logical_port, ip, mac, datapath),
+    not Realized_MAC_Binding(_, logical_port, ip, mac, extract_uuid(datapath)).
 relation DeltaMinus_MAC_Binding (
     _uuid: uuid
 )
@@ -256,11 +378,13 @@ relation DHCP_Options (
     __type: string
 )
 relation DeltaPlus_DHCP_Options (
-    uuid_name: string,
     name: string,
     code: integer,
     __type: string
 )
+DeltaPlus_DHCP_Options(name, code, __type) :-
+    DHCP_Options(name, code, __type),
+    not Realized_DHCP_Options(_, name, code, __type).
 relation DeltaMinus_DHCP_Options (
     _uuid: uuid
 )
@@ -277,11 +401,13 @@ relation DHCPv6_Options (
     __type: string
 )
 relation DeltaPlus_DHCPv6_Options (
-    uuid_name: string,
     name: string,
     code: integer,
     __type: string
 )
+DeltaPlus_DHCPv6_Options(name, code, __type) :-
+    DHCPv6_Options(name, code, __type),
+    not Realized_DHCPv6_Options(_, name, code, __type).
 relation DeltaMinus_DHCPv6_Options (
     _uuid: uuid
 )
@@ -321,14 +447,31 @@ relation DNS (
     datapaths: Set<string>,
     external_ids: Map<string,string>
 )
-relation DeltaPlus_DNS (
-    uuid_name: string,
+relation Swizzled_DNS (
     records: Map<string,string>,
     datapaths: Set<uuid_or_string_t>,
     external_ids: Map<string,string>
 )
+Swizzled_DNS(records, __id_datapaths, external_ids) :-
+    DNS(records, datapaths, external_ids),
+    var __one = FlatMap(datapaths),
+    UUIDMap_Datapath_Binding(__one, __one_swizzled),
+    Aggregate((records, external_ids), __id_datapaths = group2set(__one_swizzled)).
+relation DeltaPlus_DNS (
+    records: Map<string,string>,
+    datapaths: Set<uuid_or_string_t>,
+    external_ids: Map<string,string>
+)
+DeltaPlus_DNS(records, datapaths, external_ids) :-
+    Swizzled_DNS(records, datapaths, external_ids),
+    not Realized_DNS(_, records, _, _).
 relation DeltaMinus_DNS (
     _uuid: uuid
+)
+relation Update_DNS (
+    _uuid: uuid,
+    datapaths: option_t<Set<uuid_or_string_t>>,
+    external_ids: option_t<Map<string,string>>
 )
 input relation Realized_DNS (
     _uuid: uuid,
@@ -341,13 +484,29 @@ relation RBAC_Role (
     name: string,
     permissions: Map<string,string>
 )
-relation DeltaPlus_RBAC_Role (
-    uuid_name: string,
+relation Swizzled_RBAC_Role (
     name: string,
     permissions: Map<string,uuid_or_string_t>
 )
+Swizzled_RBAC_Role(name, __id_permissions) :-
+    RBAC_Role(name, permissions),
+    var __one = FlatMap(permissions),
+    (var __one_key, var __one_ref) = __one,
+    UUIDMap_RBAC_Permission(__one_ref, __one_swizzled),
+    Aggregate((name), __id_permissions = group2map((__one_key, __one_swizzled))).
+relation DeltaPlus_RBAC_Role (
+    name: string,
+    permissions: Map<string,uuid_or_string_t>
+)
+DeltaPlus_RBAC_Role(name, permissions) :-
+    Swizzled_RBAC_Role(name, permissions),
+    not Realized_RBAC_Role(_, name, _).
 relation DeltaMinus_RBAC_Role (
     _uuid: uuid
+)
+relation Update_RBAC_Role (
+    _uuid: uuid,
+    permissions: option_t<Map<string,uuid_or_string_t>>
 )
 input relation Realized_RBAC_Role (
     _uuid: uuid,
@@ -362,6 +521,16 @@ relation RBAC_Permission (
     insert_delete: bool,
     update: Set<string>
 )
+relation UUIDMap_RBAC_Permission (
+    uuid_name: string,
+    id: uuid_or_string_t
+)
+UUIDMap_RBAC_Permission(__name, Left{__uuid}) :-
+    RBAC_Permission(__name, table, authorization, insert_delete, update),
+    Realized_RBAC_Permission(__uuid, table, authorization, insert_delete, update).
+UUIDMap_RBAC_Permission(__name, Right{__name}) :-
+    RBAC_Permission(__name, table, authorization, insert_delete, update),
+    Realized_RBAC_Permission(_, table, authorization, insert_delete, update).
 relation DeltaPlus_RBAC_Permission (
     uuid_name: string,
     table: string,
@@ -369,6 +538,9 @@ relation DeltaPlus_RBAC_Permission (
     insert_delete: bool,
     update: Set<string>
 )
+DeltaPlus_RBAC_Permission(uuid_name, table, authorization, insert_delete, update) :-
+    RBAC_Permission(uuid_name, table, authorization, insert_delete, update),
+    not Realized_RBAC_Permission(_, table, authorization, insert_delete, update).
 relation DeltaMinus_RBAC_Permission (
     _uuid: uuid
 )

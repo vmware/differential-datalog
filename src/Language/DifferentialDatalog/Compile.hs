@@ -250,6 +250,16 @@ tuple :: [Doc] -> Doc
 tuple [x] = x
 tuple xs = parens $ hsep $ punctuate comma xs
 
+tupleTypeName :: [a] -> Doc
+tupleTypeName xs = "tuple" <> pp (length xs)
+
+-- Rust does not implement Eq and other traits for tuples with >12 elements.
+-- Use structs with n fields for longer tuples.
+tupleStruct :: [Doc] -> Doc
+tupleStruct [x]                  = x
+tupleStruct xs | length xs <= 12 = tuple xs
+               | otherwise       = tupleTypeName xs <> tuple xs
+
 -- Structs with a single constructor are compiled into Rust structs;
 -- structs with multiple constructor are compiled into Rust enums.
 isStructType :: Type -> Bool
@@ -883,22 +893,22 @@ mkValue d ctx e = do
 mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> CompilerMonad Doc
 mkTupleValue d ctx es = do
     constructor <- mkValConstructorName d $ tTuple $ map (exprType'' d ctx) es
-    return $ constructor <> (parens $ tuple $ map (\e -> mkExpr d ctx e EVal) es)
+    return $ constructor <> (parens $ tupleStruct $ map (\e -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ tuple $ map ((<> ".clone()") . pp . name) vs)
+    return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
 mkVarsTuple :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTuple d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ tuple $ map (pp . name) vs)
+    return $ constructor <> (parens $ tupleStruct $ map (pp . name) vs)
 
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ (constructor <> (parens $ tuple $ map (("ref" <+>) . pp . name) vs), constructor)
+    return $ (constructor <> (parens $ tupleStruct $ map (("ref" <+>) . pp . name) vs), constructor)
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
@@ -1168,7 +1178,7 @@ mkPatExpr' d _         EStruct{..}               = return (e, cond)
                                    $ map (\(_,(_,c)) -> c) exprStructFields
 mkPatExpr' d _         ETuple{..}                = return (e, cond)
     where
-    e = "(" <> (hsep $ punctuate comma $ map (pp . fst) exprTupleFields) <> ")"
+    e = tupleStruct $ map (pp . fst) exprTupleFields
     cond = hsep $ intersperse "&&" $ filter (/= empty)
                                    $ map (pp . snd) exprTupleFields
 mkPatExpr' _ _         EPHolder{}                = return ("_", empty)
@@ -1227,9 +1237,9 @@ mkExpr' d ctx EStruct{..} | ctxInSetL ctx
 
 -- Tuple fields must be values
 mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
-                         = (tuple $ map lval exprTupleFields, ELVal)
+                         = (tupleStruct $ map lval exprTupleFields, ELVal)
                          | otherwise
-                         = (tuple $ map val exprTupleFields, EVal)
+                         = (tupleStruct $ map val exprTupleFields, EVal)
 
 mkExpr' d ctx e@ESlice{..} = (mkSlice (val exprOp, w) exprH exprL, EVal)
     where
@@ -1335,15 +1345,20 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 64 = "u64"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
-mkType' TTuple{..}                 = parens $ commaSep $ map mkType' typeTupArgs
+mkType' TTuple{..} | length typeTupArgs <= 12
+                                   = parens $ commaSep $ map mkType' typeTupArgs
+mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
+                                     if null typeTupArgs
+                                        then empty
+                                        else "<" <> (commaSep $ map mkType' typeTupArgs) <> ">"
 mkType' TUser{..}                  = rname typeName <>
-                                    if null typeArgs
-                                       then empty
-                                       else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
+                                     if null typeArgs
+                                        then empty
+                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
 mkType' TOpaque{..}                = rname typeName <>
-                                    if null typeArgs
-                                       then empty
-                                       else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
+                                     if null typeArgs
+                                        then empty
+                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
 mkType' TVar{..}                   = pp tvarName
 mkType' t                          = error $ "Compile.mkType' " ++ show t
 

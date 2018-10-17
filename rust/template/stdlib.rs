@@ -222,3 +222,45 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
     };
     res
 }
+
+/* Tuples */
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct tuple0;
+
+impl FromRecord for tuple0 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        <()>::from_record(val).map(|_|tuple0)
+    }
+}
+
+macro_rules! decl_tuple {
+    ( $name:ident, $( $t:tt ),+ ) => {
+        #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+        pub struct $name< $($t),* >($(pub $t),*);
+        impl <$($t: FromRecord),*> FromRecord for $name<$($t),*> {
+            fn from_record(val: &Record) -> Result<Self, String> {
+                <($($t),*)>::from_record(val).map(|($($t),*)|$name($($t),*))
+            }
+        }
+    };
+}
+
+decl_tuple!(tuple2,  T1, T2);
+decl_tuple!(tuple3,  T1, T2, T3);
+decl_tuple!(tuple4,  T1, T2, T3, T4);
+decl_tuple!(tuple5,  T1, T2, T3, T4, T5);
+decl_tuple!(tuple6,  T1, T2, T3, T4, T5, T6);
+decl_tuple!(tuple7,  T1, T2, T3, T4, T5, T6, T7);
+decl_tuple!(tuple8,  T1, T2, T3, T4, T5, T6, T7, T8);
+decl_tuple!(tuple9,  T1, T2, T3, T4, T5, T6, T7, T8, T9);
+decl_tuple!(tuple10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+decl_tuple!(tuple11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+decl_tuple!(tuple12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+decl_tuple!(tuple13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+decl_tuple!(tuple14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+decl_tuple!(tuple15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+decl_tuple!(tuple16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+decl_tuple!(tuple17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17);
+decl_tuple!(tuple18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18);
+decl_tuple!(tuple19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19);
+decl_tuple!(tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20);

@@ -244,192 +244,40 @@ impl FromRecord for () {
     }
 }
 
-impl <T1: FromRecord, T2: FromRecord> FromRecord for (T1,T2) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 2 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?))
-            },
-            v => { Result::Err(format!("not a 2-tuple {:?}", *v)) }
+macro_rules! decl_tuple_from_record {
+    ( $n:tt, $( $t:tt , $i:tt),+ ) => {
+        impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
+            fn from_record(val: &Record) -> Result<Self, String> {
+                match val {
+                    Record::Tuple(args) if args.len() == $n => {
+                        Ok(( $($t::from_record(&args[$i])?),*))
+                    },
+                    v => { Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
+                }
+            }
         }
-    }
+    };
 }
 
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord> FromRecord for (T1,T2,T3) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 3 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?))
-            },
-            v => { Result::Err(format!("not a 3-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord> FromRecord for (T1,T2,T3,T4) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 4 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?))
-            },
-            v => { Result::Err(format!("not a 4-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord> FromRecord for (T1,T2,T3,T4,T5) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 5 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?))
-            },
-            v => { Result::Err(format!("not a 5-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 6 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?))
-            },
-            v => { Result::Err(format!("not a 6-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 7 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?))
-            },
-            v => { Result::Err(format!("not a 7-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord, T8: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7,T8) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 8 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?,
-                    T8::from_record(&args[7])?))
-            },
-            v => { Result::Err(format!("not a 8-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord, T8: FromRecord, T9: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7,T8,T9) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 9 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?,
-                    T8::from_record(&args[7])?,
-                    T9::from_record(&args[8])?))
-            },
-            v => { Result::Err(format!("not a 9-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord, T8: FromRecord, T9: FromRecord, T10: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 10 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?,
-                    T8::from_record(&args[7])?,
-                    T9::from_record(&args[8])?,
-                    T10::from_record(&args[9])?))
-            },
-            v => { Result::Err(format!("not a 10-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord, T8: FromRecord, T9: FromRecord, T10: FromRecord, T11: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 11 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?,
-                    T8::from_record(&args[7])?,
-                    T9::from_record(&args[8])?,
-                    T10::from_record(&args[9])?,
-                    T11::from_record(&args[10])?))
-            },
-            v => { Result::Err(format!("not a 11-tuple {:?}", *v)) }
-        }
-    }
-}
-
-impl <T1: FromRecord, T2: FromRecord, T3: FromRecord, T4: FromRecord, T5: FromRecord, T6: FromRecord, T7: FromRecord, T8: FromRecord, T9: FromRecord, T10: FromRecord, T11: FromRecord, T12: FromRecord> FromRecord for (T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12) {
-    fn from_record(val: &Record) -> Result<Self, String> {
-        match val {
-            Record::Tuple(args) if args.len() == 12 => {
-                Ok((T1::from_record(&args[0])?,
-                    T2::from_record(&args[1])?,
-                    T3::from_record(&args[2])?,
-                    T4::from_record(&args[3])?,
-                    T5::from_record(&args[4])?,
-                    T6::from_record(&args[5])?,
-                    T7::from_record(&args[6])?,
-                    T8::from_record(&args[7])?,
-                    T9::from_record(&args[8])?,
-                    T10::from_record(&args[9])?,
-                    T11::from_record(&args[10])?,
-                    T12::from_record(&args[11])?))
-            },
-            v => { Result::Err(format!("not a 12-tuple {:?}", *v)) }
-        }
-    }
-}
+decl_tuple_from_record!(2, T0, 0, T1, 1);
+decl_tuple_from_record!(3, T0, 0, T1, 1, T2, 2);
+decl_tuple_from_record!(4, T0, 0, T1, 1, T2, 2, T3, 3);
+decl_tuple_from_record!(5, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4);
+decl_tuple_from_record!(6, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5);
+decl_tuple_from_record!(7, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6);
+decl_tuple_from_record!(8, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7);
+decl_tuple_from_record!(9, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8);
+decl_tuple_from_record!(10, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9);
+decl_tuple_from_record!(11, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10);
+decl_tuple_from_record!(12, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11);
+decl_tuple_from_record!(13, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12);
+decl_tuple_from_record!(14, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13);
+decl_tuple_from_record!(15, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14);
+decl_tuple_from_record!(16, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14, T15, 15);
+decl_tuple_from_record!(17, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14, T15, 15, T16, 16);
+decl_tuple_from_record!(18, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14, T15, 15, T16, 16, T17, 17);
+decl_tuple_from_record!(19, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14, T15, 15, T16, 16, T17, 17, T18, 18);
+decl_tuple_from_record!(20, T0, 0, T1, 1, T2, 2, T3, 3, T4, 4, T5, 5, T6, 6, T7, 7, T8, 8, T9, 9, T10, 10, T11, 11, T12, 12, T13, 13, T14, 14, T15, 15, T16, 16, T17, 17, T18, 18, T19, 19);
 
 #[test]
 fn test_tuple() {
