@@ -1,11 +1,156 @@
 import types
 
+
+/* Input relations */
+
+input relation Chassis (
+    _uuid: uuid,
+    name: string,
+    hostname: string,
+    encaps: Set<uuid>,
+    vtep_logical_switches: Set<string>,
+    nb_cfg: integer,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+input relation Encap (
+    _uuid: uuid,
+    __type: string,
+    options: Map<string,string>,
+    ip: string,
+    chassis_name: string
+)
+primary key (x) x._uuid
+input relation Connection (
+    _uuid: uuid,
+    target: string,
+    max_backoff: Set<integer>,
+    inactivity_probe: Set<integer>,
+    read_only: bool,
+    role: string,
+    other_config: Map<string,string>,
+    external_ids: Map<string,string>,
+    is_connected: bool,
+    status: Map<string,string>
+)
+primary key (x) x._uuid
+input relation SSL (
+    _uuid: uuid,
+    private_key: string,
+    certificate: string,
+    ca_cert: string,
+    bootstrap_ca_cert: bool,
+    ssl_protocols: string,
+    ssl_ciphers: string,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+
+/* Output relations */
+
 relation SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
     ssl: Set<uuid>
 )
+relation Address_Set (
+    name: string,
+    addresses: Set<string>
+)
+relation Port_Group (
+    name: string,
+    ports: Set<string>
+)
+relation Logical_Flow (
+    logical_datapath: string,
+    pipeline: string,
+    table_id: integer,
+    priority: integer,
+    __match: string,
+    actions: string,
+    external_ids: Map<string,string>
+)
+relation Multicast_Group (
+    datapath: string,
+    name: string,
+    tunnel_key: integer,
+    ports: Set<string>
+)
+relation Meter (
+    name: string,
+    unit: string,
+    bands: Set<string>
+)
+relation Meter_Band (
+    uuid_name: string,
+    action: string,
+    rate: integer,
+    burst_size: integer
+)
+relation Datapath_Binding (
+    uuid_name: string,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
+relation Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<string>,
+    options: Map<string,string>,
+    datapath: string,
+    tunnel_key: integer,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<uuid>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+relation MAC_Binding (
+    logical_port: string,
+    ip: string,
+    mac: string,
+    datapath: string
+)
+relation DHCP_Options (
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DHCPv6_Options (
+    name: string,
+    code: integer,
+    __type: string
+)
+relation DNS (
+    records: Map<string,string>,
+    datapaths: Set<string>,
+    external_ids: Map<string,string>
+)
+relation RBAC_Role (
+    name: string,
+    permissions: Map<string,string>
+)
+relation RBAC_Permission (
+    uuid_name: string,
+    table: string,
+    authorization: Set<string>,
+    insert_delete: bool,
+    update: Set<string>
+)
+relation Gateway_Chassis (
+    uuid_name: string,
+    name: string,
+    chassis: Set<uuid>,
+    priority: integer,
+    external_ids: Map<string,string>,
+    options: Map<string,string>
+)
+
+/* Delta tables definitions */
+
 relation DeltaPlus_SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
@@ -29,28 +174,6 @@ input relation Realized_SB_Global (
     ssl: Set<uuid>
 )
 primary key (x) x._uuid
-input relation Chassis (
-    _uuid: uuid,
-    name: string,
-    hostname: string,
-    encaps: Set<uuid>,
-    vtep_logical_switches: Set<string>,
-    nb_cfg: integer,
-    external_ids: Map<string,string>
-)
-primary key (x) x._uuid
-input relation Encap (
-    _uuid: uuid,
-    __type: string,
-    options: Map<string,string>,
-    ip: string,
-    chassis_name: string
-)
-primary key (x) x._uuid
-relation Address_Set (
-    name: string,
-    addresses: Set<string>
-)
 relation DeltaPlus_Address_Set (
     name: string,
     addresses: Set<string>
@@ -78,10 +201,6 @@ input relation Realized_Address_Set (
     addresses: Set<string>
 )
 primary key (x) x._uuid
-relation Port_Group (
-    name: string,
-    ports: Set<string>
-)
 relation DeltaPlus_Port_Group (
     name: string,
     ports: Set<string>
@@ -109,15 +228,6 @@ input relation Realized_Port_Group (
     ports: Set<string>
 )
 primary key (x) x._uuid
-relation Logical_Flow (
-    logical_datapath: string,
-    pipeline: string,
-    table_id: integer,
-    priority: integer,
-    __match: string,
-    actions: string,
-    external_ids: Map<string,string>
-)
 relation Swizzled_Logical_Flow (
     logical_datapath: uuid_or_string_t,
     pipeline: string,
@@ -159,12 +269,6 @@ input relation Realized_Logical_Flow (
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
-relation Multicast_Group (
-    datapath: string,
-    name: string,
-    tunnel_key: integer,
-    ports: Set<string>
-)
 relation Swizzled_Multicast_Group (
     datapath: uuid_or_string_t,
     name: string,
@@ -208,34 +312,39 @@ input relation Realized_Multicast_Group (
     ports: Set<uuid>
 )
 primary key (x) x._uuid
-relation Meter (
+relation Swizzled_Meter (
     name: string,
     unit: string,
-    bands: Set<uuid>
+    bands: Set<uuid_or_string_t>
 )
+Swizzled_Meter(name, unit, __id_bands) :-
+    Meter(name, unit, bands),
+    var __one = FlatMap(bands),
+    UUIDMap_Meter_Band(__one, __one_swizzled),
+    Aggregate((name, unit), __id_bands = group2set(__one_swizzled)).
 relation DeltaPlus_Meter (
     name: string,
     unit: string,
-    bands: Set<uuid>
+    bands: Set<uuid_or_string_t>
 )
 DeltaPlus_Meter(name, unit, bands) :-
-    Meter(name, unit, bands),
+    Swizzled_Meter(name, unit, bands),
     not Realized_Meter(_, name, _, _).
 relation DeltaMinus_Meter (
     _uuid: uuid
 )
 DeltaMinus_Meter(_uuid) :-
     Realized_Meter(_uuid, name, _, _),
-    not Meter(name, _, _).
+    not Swizzled_Meter(name, _, _).
 relation Update_Meter (
     _uuid: uuid,
     unit: string,
-    bands: Set<uuid>
+    bands: Set<uuid_or_string_t>
 )
 Update_Meter(_uuid, __new_unit, __new_bands) :-
-    Meter(name, __new_unit, __new_bands),
+    Swizzled_Meter(name, __new_unit, __new_bands),
     Realized_Meter(_uuid, name, __old_unit, __old_bands),
-    (__old_unit, __old_bands) != (__new_unit, __new_bands).
+    (__old_unit, __old_bands) != (__new_unit, set_extract_uuids(__new_bands)).
 input relation Realized_Meter (
     _uuid: uuid,
     name: string,
@@ -243,18 +352,38 @@ input relation Realized_Meter (
     bands: Set<uuid>
 )
 primary key (x) x._uuid
-input relation Meter_Band (
+relation UUIDMap_Meter_Band (
+    uuid_name: string,
+    id: uuid_or_string_t
+)
+UUIDMap_Meter_Band(__name, Left{__uuid}) :-
+    Meter_Band(__name, action, rate, burst_size),
+    Realized_Meter_Band(__uuid, action, rate, burst_size).
+UUIDMap_Meter_Band(__name, Right{__name}) :-
+    Meter_Band(__name, action, rate, burst_size),
+    Realized_Meter_Band(_, action, rate, burst_size).
+relation DeltaPlus_Meter_Band (
+    uuid_name: string,
+    action: string,
+    rate: integer,
+    burst_size: integer
+)
+DeltaPlus_Meter_Band(uuid_name, action, rate, burst_size) :-
+    Meter_Band(uuid_name, action, rate, burst_size),
+    not Realized_Meter_Band(_, action, rate, burst_size).
+relation DeltaMinus_Meter_Band (
+    _uuid: uuid
+)
+DeltaMinus_Meter_Band(_uuid) :-
+    Realized_Meter_Band(_uuid, action, rate, burst_size),
+    not Meter_Band(_, action, rate, burst_size).
+input relation Realized_Meter_Band (
     _uuid: uuid,
     action: string,
     rate: integer,
     burst_size: integer
 )
 primary key (x) x._uuid
-relation Datapath_Binding (
-    uuid_name: string,
-    tunnel_key: integer,
-    external_ids: Map<string,string>
-)
 relation UUIDMap_Datapath_Binding (
     uuid_name: string,
     id: uuid_or_string_t
@@ -293,21 +422,6 @@ input relation Realized_Datapath_Binding (
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
-relation Port_Binding (
-    uuid_name: string,
-    logical_port: string,
-    __type: string,
-    gateway_chassis: Set<string>,
-    options: Map<string,string>,
-    datapath: string,
-    tunnel_key: integer,
-    parent_port: Set<string>,
-    tag: Set<integer>,
-    chassis: Set<uuid>,
-    mac: Set<string>,
-    nat_addresses: Set<string>,
-    external_ids: Map<string,string>
-)
 relation UUIDMap_Port_Binding (
     uuid_name: string,
     id: uuid_or_string_t
@@ -397,12 +511,6 @@ input relation Realized_Port_Binding (
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
-relation MAC_Binding (
-    logical_port: string,
-    ip: string,
-    mac: string,
-    datapath: string
-)
 relation Swizzled_MAC_Binding (
     logical_port: string,
     ip: string,
@@ -435,11 +543,6 @@ input relation Realized_MAC_Binding (
     datapath: uuid
 )
 primary key (x) x._uuid
-relation DHCP_Options (
-    name: string,
-    code: integer,
-    __type: string
-)
 relation DeltaPlus_DHCP_Options (
     name: string,
     code: integer,
@@ -461,11 +564,6 @@ input relation Realized_DHCP_Options (
     __type: string
 )
 primary key (x) x._uuid
-relation DHCPv6_Options (
-    name: string,
-    code: integer,
-    __type: string
-)
 relation DeltaPlus_DHCPv6_Options (
     name: string,
     code: integer,
@@ -487,35 +585,6 @@ input relation Realized_DHCPv6_Options (
     __type: string
 )
 primary key (x) x._uuid
-input relation Connection (
-    _uuid: uuid,
-    target: string,
-    max_backoff: Set<integer>,
-    inactivity_probe: Set<integer>,
-    read_only: bool,
-    role: string,
-    other_config: Map<string,string>,
-    external_ids: Map<string,string>,
-    is_connected: bool,
-    status: Map<string,string>
-)
-primary key (x) x._uuid
-input relation SSL (
-    _uuid: uuid,
-    private_key: string,
-    certificate: string,
-    ca_cert: string,
-    bootstrap_ca_cert: bool,
-    ssl_protocols: string,
-    ssl_ciphers: string,
-    external_ids: Map<string,string>
-)
-primary key (x) x._uuid
-relation DNS (
-    records: Map<string,string>,
-    datapaths: Set<string>,
-    external_ids: Map<string,string>
-)
 relation Swizzled_DNS (
     records: Map<string,string>,
     datapaths: Set<uuid_or_string_t>,
@@ -556,10 +625,6 @@ input relation Realized_DNS (
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
-relation RBAC_Role (
-    name: string,
-    permissions: Map<string,string>
-)
 relation Swizzled_RBAC_Role (
     name: string,
     permissions: Map<string,uuid_or_string_t>
@@ -597,13 +662,6 @@ input relation Realized_RBAC_Role (
     permissions: Map<string,uuid>
 )
 primary key (x) x._uuid
-relation RBAC_Permission (
-    uuid_name: string,
-    table: string,
-    authorization: Set<string>,
-    insert_delete: bool,
-    update: Set<string>
-)
 relation UUIDMap_RBAC_Permission (
     uuid_name: string,
     id: uuid_or_string_t
@@ -638,14 +696,6 @@ input relation Realized_RBAC_Permission (
     update: Set<string>
 )
 primary key (x) x._uuid
-relation Gateway_Chassis (
-    uuid_name: string,
-    name: string,
-    chassis: Set<uuid>,
-    priority: integer,
-    external_ids: Map<string,string>,
-    options: Map<string,string>
-)
 relation UUIDMap_Gateway_Chassis (
     uuid_name: string,
     id: uuid_or_string_t
