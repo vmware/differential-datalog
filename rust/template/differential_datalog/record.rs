@@ -5,6 +5,9 @@ use std::vec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 
+#[cfg(test)]
+use num::bigint::{ToBigInt, ToBigUint};
+
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Record {
     Bool(bool),
@@ -24,11 +27,12 @@ pub enum UpdCmd {
 }
 
 
-#[cfg(test)]
-use num::bigint::{ToBigInt, ToBigUint};
-
 pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
+}
+
+pub trait IntoRecord {
+    fn into_record(self) -> Record;
 }
 
 /// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
@@ -48,11 +52,18 @@ impl FromRecord for u8 {
     }
 }
 
+impl IntoRecord for u8 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
 #[test]
 fn test_u8() {
     assert_eq!(u8::from_record(&Record::Int(25_u8.to_bigint().unwrap())), Ok(25));
     assert_eq!(u8::from_record(&Record::Int(0xab.to_bigint().unwrap())), Ok(0xab));
     assert_eq!(u8::from_record(&Record::Int(0xabcd.to_bigint().unwrap())), Err("cannot convert 43981 to u8".to_string()));
+    assert_eq!(u8::into_record(0x25), Record::Int(BigInt::from(0x25)));
 }
 
 
@@ -72,11 +83,18 @@ impl FromRecord for u16 {
     }
 }
 
+impl IntoRecord for u16 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
 #[test]
 fn test_u16() {
     assert_eq!(u16::from_record(&Record::Int(25_u16.to_bigint().unwrap())), Ok(25));
     assert_eq!(u16::from_record(&Record::Int(0xab.to_bigint().unwrap())), Ok(0xab));
     assert_eq!(u16::from_record(&Record::Int(0xabcdef.to_bigint().unwrap())), Err("cannot convert 11259375 to u16".to_string()));
+    assert_eq!(u16::into_record(32000), Record::Int(BigInt::from(32000)));
 }
 
 
@@ -93,6 +111,12 @@ impl FromRecord for u32 {
                 Result::Err(format!("not an int {:?}", *v))
             }
         }
+    }
+}
+
+impl IntoRecord for u32 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
     }
 }
 
@@ -121,6 +145,12 @@ impl FromRecord for u64 {
     }
 }
 
+impl IntoRecord for u64 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
 #[test]
 fn test_u64() {
     assert_eq!(u64::from_record(&Record::Int(25_u64.to_bigint().unwrap())), Ok(25));
@@ -145,6 +175,12 @@ impl FromRecord for u128 {
     }
 }
 
+impl IntoRecord for u128 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
 #[test]
 fn test_u128() {
     assert_eq!(u128::from_record(&Record::Int(25_u128.to_bigint().unwrap())), Ok(25));
@@ -163,6 +199,12 @@ impl FromRecord for BigInt {
                 Result::Err(format!("not an int {:?}", *v))
             }
         }
+    }
+}
+
+impl IntoRecord for BigInt {
+    fn into_record(self) -> Record {
+        Record::Int(self)
     }
 }
 
@@ -188,6 +230,12 @@ impl FromRecord for BigUint {
     }
 }
 
+impl IntoRecord for BigUint {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
 #[test]
 fn test_biguint() {
     let vi = (25_i64).to_bigint().unwrap();
@@ -210,6 +258,12 @@ impl FromRecord for bool {
     }
 }
 
+impl IntoRecord for bool {
+    fn into_record(self) -> Record {
+        Record::Bool(self)
+    }
+}
+
 #[test]
 fn test_bool() {
     assert_eq!(bool::from_record(&Record::Bool(true)), Ok(true));
@@ -224,6 +278,12 @@ impl FromRecord for String {
                 Result::Err(format!("not a string {:?}", *v))
             }
         }
+    }
+}
+
+impl IntoRecord for String {
+    fn into_record(self) -> Record {
+        Record::String(self)
     }
 }
 
@@ -244,6 +304,12 @@ impl FromRecord for () {
     }
 }
 
+impl IntoRecord for () {
+    fn into_record(self) -> Record {
+        Record::Tuple(vec![])
+    }
+}
+
 macro_rules! decl_tuple_from_record {
     ( $n:tt, $( $t:tt , $i:tt),+ ) => {
         impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
@@ -254,6 +320,12 @@ macro_rules! decl_tuple_from_record {
                     },
                     v => { Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
                 }
+            }
+        }
+
+        impl <$($t: IntoRecord),*> IntoRecord for ($($t),*) {
+            fn into_record(self) -> Record {
+                Record::Tuple(vec![$(self.$i.into_record()),*])
             }
         }
     };
@@ -320,17 +392,37 @@ impl<T: FromRecord> FromRecord for vec::Vec<T> {
     }
 }
 
+impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
+    fn into_record(self) -> Record {
+        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+    }
+}
+
 impl<K: FromRecord+Ord, V: FromRecord> FromRecord for BTreeMap<K,V> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v|BTreeMap::from_iter(v))
     }
 }
 
+impl<K: IntoRecord+Ord, V:IntoRecord> IntoRecord for BTreeMap<K,V> {
+    fn into_record(self) -> Record {
+        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+    }
+}
+
+
 impl<T: FromRecord+Ord> FromRecord for BTreeSet<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v|BTreeSet::from_iter(v))
     }
 }
+
+impl<T: IntoRecord+Ord> IntoRecord for BTreeSet<T> {
+    fn into_record(self) -> Record {
+        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+    }
+}
+
 
 #[test]
 fn test_vec() {
@@ -339,7 +431,7 @@ fn test_vec() {
 }
 
 #[cfg(test)]
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 struct Foo<T> {
     f1: T
 }
@@ -375,11 +467,38 @@ impl <T: FromRecord> FromRecord for Foo<T> {
     }
 }
 
+#[macro_export]
+macro_rules! decl_struct_into_record {
+    ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
+        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> Record {
+                Record::NamedStruct(stringify!($n).to_owned(),vec![$((stringify!($arg).to_owned(), self.$arg.into_record())),*])
+            }
+        }
+    };
+}
+
+#[cfg(test)]
+pub struct NestedStruct<T>{x:bool, y: Foo<T>}
+
+#[cfg(test)]
+pub struct StructWithNoFields;
+
+#[cfg(test)]
+decl_struct_into_record!(Foo, <T>, f1);
+
+#[cfg(test)]
+decl_struct_into_record!(NestedStruct, <T>, x,y);
+
+#[cfg(test)]
+decl_struct_into_record!(StructWithNoFields, <>,);
+
+
 #[cfg(test)]
 type Bbool = bool;
 
 #[cfg(test)]
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 enum DummyEnum<T> {
     Constr1{f1: Bbool, f2: String},
     Constr2{f1: T, f2: BigInt, f3: Foo<T>},
@@ -431,6 +550,30 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
     }
 }
 
+#[macro_export]
+macro_rules! decl_enum_into_record {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$($arg:ident),*} ),* ) => {
+        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> Record {
+                match self {
+                    $($n::$cons{$($arg),*} => Record::NamedStruct(stringify!($cons).to_owned(), vec![$((stringify!($arg).to_owned(), $arg.into_record())),*])),*
+                }
+            }
+        }
+    };
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($($arg:ident),*) ),* ) => {
+        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> Record {
+                match self {
+                    $($n::$cons($($arg),*) => Record::NamedStruct(stringify!($cons).to_owned(), vec![$((stringify!($arg).to_owned(), $arg.into_record())),*])),*
+                }
+            }
+        }
+    };
+}
+
+#[cfg(test)]
+decl_enum_into_record!(DummyEnum,<T>,Constr1{f1,f2},Constr2{f1,f2,f3},Constr3{f1});
 
 #[test]
 fn test_enum() {
@@ -456,4 +599,8 @@ fn test_enum() {
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));
 
+    let enm = DummyEnum::Constr2::<u16>{f1: 5,
+                                        f2: (25_i64).to_bigint().unwrap(),
+                                        f3: Foo{f1: 0}};
+    assert_eq!(DummyEnum::from_record(&enm.clone().into_record()), Ok(enm));
 }

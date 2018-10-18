@@ -8,6 +8,7 @@ extern crate serde;
 extern crate libc;
 extern crate twox_hash;
 
+#[macro_use]
 extern crate differential_datalog;
 
 #[macro_use]

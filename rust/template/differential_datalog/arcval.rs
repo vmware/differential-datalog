@@ -6,7 +6,7 @@ use std::io;
 use abomonation::Abomonation;
 use program::Val;
 use std::ops::Deref;
-use super::record::{FromRecord, Record};
+use super::record::{FromRecord, IntoRecord, Record};
 
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
@@ -97,5 +97,11 @@ impl<'de, T: Val> Deserialize<'de> for ArcVal<T> {
 impl<T: Val+FromRecord> FromRecord for ArcVal<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         T::from_record(val).map(|x|Self::from(x))
+    }
+}
+
+impl<T: Val+IntoRecord> IntoRecord for ArcVal<T> {
+    fn into_record(self) -> Record {
+        (*self.x).clone().into_record()
     }
 }

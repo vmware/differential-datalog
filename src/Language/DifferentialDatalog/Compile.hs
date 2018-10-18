@@ -375,6 +375,7 @@ mkTypedef tdef@TypeDef{..} =
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
+                             mkStructIntoRecord tdef                                                   $$
                              display
                           | otherwise
                           -> derive                                                                    $$
@@ -383,6 +384,7 @@ mkTypedef tdef@TypeDef{..} =
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
+                             mkEnumIntoRecord tdef                                                     $$
                              display
          Just t           -> "type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
@@ -507,6 +509,22 @@ mkFromRecord t@TypeDef{..} =
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
         fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\", \"" <> cname <> "\")?)?") consArgs
 
+
+mkStructIntoRecord :: TypeDef -> Doc
+mkStructIntoRecord t@TypeDef{..} =
+    "decl_struct_into_record!(" <> rname (name t) <> ", " <> targs <> "," <+> args <> ");"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
+
+mkEnumIntoRecord :: TypeDef -> Doc
+mkEnumIntoRecord t@TypeDef{..} =
+    "decl_enum_into_record!(" <> rname (name t) <> ", " <> targs <> "," <+> cons <> ");"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    cons = commaSep $ map (\c -> (rname $ name c) <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
+                    $ typeCons $ fromJust tdefType
+
 unddname :: (WithName a) => a -> String
 unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
                 then short
@@ -554,7 +572,6 @@ mkValueFromRecord d@DatalogProgram{..} =
         "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))" $$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
-
 
 -- Convert string to RelId
 mkRelname2Id :: DatalogProgram -> Doc
@@ -616,9 +633,11 @@ mkValType d types grp_types =
     "        }"                                                                             $$
     "    }"                                                                                 $$
     "}"                                                                                     $$
+    "decl_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                       $$
     (vcat $ map mkgrptype $ S.toList grp_types)
     where
     consname t = mkValConstructorName' d t
+    decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
     mkValCons :: Type -> Doc
     mkValCons t = consname t <> (parens $ mkType t)
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> "(())"

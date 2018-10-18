@@ -42,6 +42,12 @@ impl<T: FromRecord> FromRecord for std_Vec<T> {
     }
 }
 
+impl<T: IntoRecord> IntoRecord for std_Vec<T> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
+    }
+}
+
 impl<T: Display> Display for std_Vec<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let len = self.x.len();
@@ -86,6 +92,13 @@ impl<T: FromRecord + Ord> FromRecord for std_Set<T> {
         BTreeSet::from_record(val).map(|x|std_Set{x})
     }
 }
+
+impl<T: IntoRecord + Ord> IntoRecord for std_Set<T> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
+    }
+}
+
 
 impl<T: Ord> IntoIterator for std_Set<T> {
     type Item = T;
@@ -138,6 +151,12 @@ impl <K: Ord, V> std_Map<K,V> {
 impl<K: FromRecord+Ord, V: FromRecord> FromRecord for std_Map<K,V> {
     fn from_record(val: &Record) -> Result<Self, String> {
         BTreeMap::from_record(val).map(|x|std_Map{x})
+    }
+}
+
+impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for std_Map<K,V> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
     }
 }
 
@@ -250,6 +269,13 @@ impl FromRecord for tuple0 {
     }
 }
 
+impl IntoRecord for tuple0 {
+    fn into_record(self) -> Record {
+        ().into_record()
+    }
+}
+
+
 macro_rules! decl_tuple {
     ( $name:ident, $( $t:tt ),+ ) => {
         #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -257,6 +283,13 @@ macro_rules! decl_tuple {
         impl <$($t: FromRecord),*> FromRecord for $name<$($t),*> {
             fn from_record(val: &Record) -> Result<Self, String> {
                 <($($t),*)>::from_record(val).map(|($($t),*)|$name($($t),*))
+            }
+        }
+
+        impl <$($t: IntoRecord),*> IntoRecord for $name<$($t),*> {
+            fn into_record(self) -> Record {
+                let $name($($t),*) = self;
+                Record::Tuple(vec![$($t.into_record()),*])
             }
         }
     };
