@@ -4,10 +4,20 @@ use num::{ToPrimitive, BigInt, BigUint};
 use std::vec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+use std::borrow::Cow;
 
 #[cfg(test)]
 use num::bigint::{ToBigInt, ToBigUint};
 
+pub type Name = Cow<'static, str>;
+
+/// `enum Record` represents an arbitrary DDlog value.
+///
+/// It relies on string to store constructor and field names.  When manufacturing an instance of
+/// `Record` from a typed DDlog, strings can be cheap `&'static str`'s.  When manufacturing an
+/// instance from some external representation, e.g., JSON, one needs to use `String`'s instead.  To
+/// accommodate both options, `Record` uses `Cow` to store names.
+///
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Record {
     Bool(bool),
@@ -15,17 +25,16 @@ pub enum Record {
     String(String),
     Tuple(Vec<Record>),
     Array(Vec<Record>),
-    PosStruct(String, Vec<Record>),
-    NamedStruct(String, Vec<(String, Record)>)
+    PosStruct(Name, Vec<Record>),
+    NamedStruct(Name, Vec<(Name, Record)>)
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum UpdCmd {
-    Insert (String, Record),
-    Delete (String, Record),
-    DeleteKey(String, Record)
+    Insert (Name, Record),
+    Delete (Name, Record),
+    DeleteKey(Name, Record)
 }
-
 
 pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
@@ -315,7 +324,7 @@ macro_rules! decl_tuple_from_record {
         impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
             fn from_record(val: &Record) -> Result<Self, String> {
                 match val {
-                    Record::Tuple(args) if args.len() == $n => {
+                    $crate::record::Record::Tuple(args) if args.len() == $n => {
                         Ok(( $($t::from_record(&args[$i])?),*))
                     },
                     v => { Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
@@ -324,7 +333,7 @@ macro_rules! decl_tuple_from_record {
         }
 
         impl <$($t: IntoRecord),*> IntoRecord for ($($t),*) {
-            fn into_record(self) -> Record {
+            fn into_record(self) -> $crate::record::Record {
                 Record::Tuple(vec![$(self.$i.into_record()),*])
             }
         }
@@ -436,7 +445,7 @@ struct Foo<T> {
     f1: T
 }
 
-pub fn arg_find<'a>(args: &'a Vec<(String, Record)>, argname: &str, constructor: &str) -> Result<&'a Record, String> {
+pub fn arg_find<'a>(args: &'a Vec<(Name, Record)>, argname: &str, constructor: &str) -> Result<&'a Record, String> {
     args.iter().find(|(n,_)|*n==argname).ok_or(format!("missing field {} in {}", argname, constructor)).map(|(_,v)| v)
 }
 
@@ -470,9 +479,9 @@ impl <T: FromRecord> FromRecord for Foo<T> {
 #[macro_export]
 macro_rules! decl_struct_into_record {
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
-        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
-            fn into_record(self) -> Record {
-                Record::NamedStruct(stringify!($n).to_owned(),vec![$((stringify!($arg).to_owned(), self.$arg.into_record())),*])
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
+                $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($n)),vec![$((std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
             }
         }
     };
@@ -553,19 +562,19 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
 #[macro_export]
 macro_rules! decl_enum_into_record {
     ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$($arg:ident),*} ),* ) => {
-        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
-            fn into_record(self) -> Record {
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons{$($arg),*} => Record::NamedStruct(stringify!($cons).to_owned(), vec![$((stringify!($arg).to_owned(), $arg.into_record())),*])),*
+                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($cons)), vec![$((std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }
     };
     ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($($arg:ident),*) ),* ) => {
-        impl <$($targ: IntoRecord),*> IntoRecord for $n<$($targ),*> {
-            fn into_record(self) -> Record {
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons($($arg),*) => Record::NamedStruct(stringify!($cons).to_owned(), vec![$((stringify!($arg).to_owned(), $arg.into_record())),*])),*
+                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($cons)), vec![$((std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }
@@ -577,24 +586,24 @@ decl_enum_into_record!(DummyEnum,<T>,Constr1{f1,f2},Constr2{f1,f2,f3},Constr3{f1
 
 #[test]
 fn test_enum() {
-    assert_eq!(DummyEnum::from_record(&Record::PosStruct("Constr1".to_string(),
+    assert_eq!(DummyEnum::from_record(&Record::PosStruct(Cow::from("Constr1"),
                                                     vec![Record::Bool(true), Record::String("foo".to_string())])),
                Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
-    assert_eq!(DummyEnum::from_record(&Record::NamedStruct("Constr1".to_string(),
-                                                    vec![("f1".to_string(), Record::Bool(true)), ("f2".to_string(), Record::String("foo".to_string()))])),
+    assert_eq!(DummyEnum::from_record(&Record::NamedStruct(Cow::from("Constr1"),
+                                                    vec![(Cow::from("f1"), Record::Bool(true)), (Cow::from("f2"), Record::String("foo".to_string()))])),
                Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
-    assert_eq!(DummyEnum::from_record(&Record::PosStruct("Constr2".to_string(),
+    assert_eq!(DummyEnum::from_record(&Record::PosStruct(Cow::from("Constr2"),
                                                     vec![Record::Int((5_i64).to_bigint().unwrap()),
                                                          Record::Int((25_i64).to_bigint().unwrap()),
-                                                         Record::PosStruct("Foo".to_string(), vec![Record::Int((0_i64).to_bigint().unwrap())])])),
+                                                         Record::PosStruct(Cow::from("Foo"), vec![Record::Int((0_i64).to_bigint().unwrap())])])),
                Ok(DummyEnum::Constr2::<u16>{f1: 5,
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));
-    assert_eq!(DummyEnum::from_record(&Record::NamedStruct("Constr2".to_string(),
-                                                    vec![("f1".to_string(), Record::Int((5_i64).to_bigint().unwrap())),
-                                                         ("f2".to_string(), Record::Int((25_i64).to_bigint().unwrap())),
-                                                         ("f3".to_string(), Record::NamedStruct("Foo".to_string(),
-                                                                                                vec![("f1".to_string(), Record::Int((0_i64).to_bigint().unwrap()))]))])),
+    assert_eq!(DummyEnum::from_record(&Record::NamedStruct(Cow::from("Constr2"),
+                                                    vec![(Cow::from("f1"), Record::Int((5_i64).to_bigint().unwrap())),
+                                                         (Cow::from("f2"), Record::Int((25_i64).to_bigint().unwrap())),
+                                                         (Cow::from("f3"), Record::NamedStruct(Cow::from("Foo"),
+                                                                                                vec![(Cow::from("f1"), Record::Int((0_i64).to_bigint().unwrap()))]))])),
                Ok(DummyEnum::Constr2::<u16>{f1: 5,
                                             f2: (25_i64).to_bigint().unwrap(),
                                             f3: Foo{f1: 0}}));

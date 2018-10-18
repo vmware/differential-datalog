@@ -466,16 +466,16 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
 -}
 mkFromRecord :: TypeDef -> Doc
 mkFromRecord t@TypeDef{..} =
-    "impl" <+> targs_bounds <+> "FromRecord for" <+> rname (name t) <> targs <+> "{"                                            $$
-    "    fn from_record(val: &Record) -> Result<Self, String> {"                                                                $$
+    "impl" <+> targs_bounds <+> "record::FromRecord for" <+> rname (name t) <> targs <+> "{"                                    $$
+    "    fn from_record(val: &record::Record) -> Result<Self, String> {"                                                        $$
     "        match val {"                                                                                                       $$
-    "            Record::PosStruct(constr, args) => {"                                                                          $$
+    "            record::Record::PosStruct(constr, args) => {"                                                                  $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' pos_constructors)                                                                    $$
     "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
-    "            Record::NamedStruct(constr, args) => {"                                                                         $$
+    "            record::Record::NamedStruct(constr, args) => {"                                                                $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' named_constructors)                                                                  $$
     "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
@@ -489,7 +489,7 @@ mkFromRecord t@TypeDef{..} =
     "}"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": FromRecord") . pp) tdefArgs) <> ">"
+    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord") . pp) tdefArgs) <> ">"
     pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
     mkposcons :: Constructor -> Doc
     mkposcons c@Constructor{..} =
@@ -507,7 +507,7 @@ mkFromRecord t@TypeDef{..} =
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(arg_find(args, \"" <> (pp $ unddname f) <> "\", \"" <> cname <> "\")?)?") consArgs
+        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(record::arg_find(args, \"" <> (pp $ unddname f) <> "\", \"" <> cname <> "\")?)?") consArgs
 
 
 mkStructIntoRecord :: TypeDef -> Doc
@@ -544,18 +544,18 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
 -}
 mkValueFromRecord :: DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
-    mkRelname2Id d                                                                          $$
-    mkRelId2Relations d                                                                     $$
-    "pub fn relval_from_record(rel: Relations, rec: &Record) -> Result<Value, String> {"    $$
-    "    match rel {"                                                                       $$
-    (nest' $ nest' $ vcat $ punctuate comma entries)                                        $$
-    "    }"                                                                                 $$
-    "}"                                                                                     $$
-    "pub fn relkey_from_record(rel: Relations, rec: &Record) -> Result<Value, String> {"    $$
-    "    match rel {"                                                                       $$
-    (nest' $ nest' $ vcat $ key_entries)                                                    $$
-    "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"         $$
-    "    }"                                                                                 $$
+    mkRelname2Id d                                                                                  $$
+    mkRelId2Relations d                                                                             $$
+    "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
+    "    match rel {"                                                                               $$
+    (nest' $ nest' $ vcat $ punctuate comma entries)                                                $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "pub fn relkey_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
+    "    match rel {"                                                                               $$
+    (nest' $ nest' $ vcat $ key_entries)                                                            $$
+    "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"                 $$
+    "    }"                                                                                         $$
     "}"
     where
     entries = map mkrelval $ M.elems progRelations

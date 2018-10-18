@@ -3,14 +3,21 @@
 extern crate differential_datalog;
 extern crate serde_json;
 extern crate num;
+extern crate uuid;
 
 use differential_datalog::record::*;
 use serde_json::Value;
 use serde_json::map::Map;
-use num::BigInt;
+use serde_json::Number;
+use num::{BigInt, Signed, ToPrimitive};
+use std::borrow::Cow;
 
 #[cfg(test)]
 mod test;
+
+/*
+ * Functions to parse JSON into DDlog commands
+ */
 
 pub fn cmds_from_table_updates_str(prefix: &str, s: &str) -> Result<Vec<UpdCmd>, String> {
     if let Value::Object(json_val) = serde_json::from_str(s).map_err(|e|e.to_string())? {
@@ -23,11 +30,11 @@ pub fn cmds_from_table_updates_str(prefix: &str, s: &str) -> Result<Vec<UpdCmd>,
 fn parse_uuid(s: &str) -> Result<BigInt, String> {
     let digits: Vec<u8> = s.as_bytes().iter().map(|x|*x).filter(|x|*x != b'-').collect();
     BigInt::parse_bytes(digits.as_slice(), 16)
-        .ok_or(format!("invalid uuid string \"{}\"", s))
+        .ok_or_else(||format!("invalid uuid string \"{}\"", s))
 }
 
 fn lookup<'a>(m: &'a mut Map<String, Value>, field: &str) -> Result<Value, String> {
-    m.remove(field).ok_or(format!("JSON map does not contain \"{}\" field: {:?}", field, m))
+    m.remove(field).ok_or_else(||format!("JSON map does not contain \"{}\" field: {:?}", field, m))
 }
 
 /* <table-updates> is an object that maps from a table name to a <table-update>.
@@ -66,13 +73,13 @@ fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<
             let new = lookup(&mut m, "new").ok().map(|v|row_from_obj(v));
             if old.is_some() {
                 // delete_key
-                cmds.push(UpdCmd::DeleteKey(table.to_string(), uuid.clone()))
+                cmds.push(UpdCmd::DeleteKey(Cow::from(table.to_owned()), uuid.clone()))
             };
             if new.is_some() {
                 let mut fields = new.unwrap()?;
-                fields.push(("_uuid".to_owned(), uuid));
+                fields.push((Cow::from("_uuid"), uuid));
                 // insert
-                cmds.push(UpdCmd::Insert(table.to_string(), Record::NamedStruct(table.to_string(), fields)))
+                cmds.push(UpdCmd::Insert(Cow::from(table.to_owned()), Record::NamedStruct(Cow::from(table.to_owned()), fields)))
             };
             Ok(())
         },
@@ -132,10 +139,10 @@ fn pair_from_val(pair: Value) -> Result<(Record, Record), String> {
     "name": "br0"
   }
 */
-fn row_from_obj(val: Value) -> Result<Vec<(String, Record)>, String> {
+fn row_from_obj(val: Value) -> Result<Vec<(Name, Record)>, String> {
     match val{
         Value::Object(m) => {
-            m.into_iter().map(|(field, val)|Ok((field, record_from_val(val)?))).collect()
+            m.into_iter().map(|(field, val)|Ok((Cow::from(field), record_from_val(val)?))).collect()
         },
         _ => Err(format!("\"row\" is not an object in {}", val))
     }
@@ -154,3 +161,82 @@ fn record_from_val(v: Value) -> Result<Record, String> {
         _ => Err(format!("unexpected value {}", v))
     }
 }
+
+/*
+ * Functions to convert DDlog Records to JSON
+ */
+
+pub fn record_into_row(rec: Record) -> Result<Value, String> {
+    match rec {
+        Record::NamedStruct(_, fields) => struct_into_obj(fields),
+        _ => Err(format!("Cannot convert record to <row>: {:?}", rec)),
+    }
+}
+
+fn struct_into_obj(fields: Vec<(Name, Record)>) -> Result<Value, String> {
+    let fields: Result<Map<String, Value>, String> = fields.into_iter().map(|(f,v)| record_into_field(f,v)).collect();
+    Ok(Value::Object(fields?))
+}
+
+fn record_into_field(name: Name, rec: Record) -> Result<(String, Value), String> {
+    let fname =
+        if name.as_ref().starts_with("__") {
+            name.as_ref()[2..].to_owned()
+        } else if name.as_ref() == "uuid_name" {
+            "uuid-name".to_owned()
+        } else {
+            name.into_owned()
+        };
+    let val =
+        match rec {
+            Record::Bool(b) => Value::Bool(b),
+            Record::String(s) => Value::String(s),
+            Record::Int(i) => {
+                if i.is_positive() {
+                    i.to_u64().ok_or_else(||format!("Cannot convert BigInt {} to u64", i)).map(|x|Value::Number(Number::from(x)))?
+                } else {
+                    i.to_i64().ok_or_else(||format!("Cannot convert BigInt {} to i64", i)).map(|x|Value::Number(Number::from(x)))?
+                }
+            },
+            Record::NamedStruct(n, mut v) => {
+                if n.as_ref() == "Left" {
+                    match v.remove(0) {
+                        (_, Record::Int(i)) => {
+                            let uuid = uuid_from_u128(i.to_u128().ok_or_else(||format!("Cannot convert BigInt {} to UUID", i))?);
+                            Value::Array(vec![Value::String("uuid".to_owned()), Value::String(uuid)])
+                        },
+                        _ => Err(format!("Unexpected uuid value: {:?}", v))?
+                    }
+                } else if n.as_ref() == "Right" {
+                    match v.remove(0) {
+                        (_, Record::String(s)) => {
+                            Value::Array(vec![Value::String("named-uuid".to_owned()), Value::String(s)])
+                        },
+                        _ => Err(format!("Unexpected named-uuid value: {:?}", v))?
+                    }
+                } else {
+                    Err(format!("Cannot convert complex field {} = {:?} to JSON value", n, v))?
+                }
+            },
+            Record::Array(v) => {
+                Err(format!("Not implemented"))?
+            },
+            _ => Err(format!("Cannot convert record field {:?} to JSON value", rec))?
+        };
+    Ok((fname, val))
+}
+
+fn uuid_from_u128(i: u128) -> String {
+    uuid::Uuid::from_u128(i).to_hyphenated().to_string()
+}
+
+/*
+pub enum Record {
+    Bool(bool),
+    Int(BigInt),
+    String(String),
+    Tuple(Vec<Record>),
+    Array(Vec<Record>),
+    PosStruct(Name, Vec<Record>),
+    NamedStruct(Name, Vec<(Name, Record)>)
+}*/

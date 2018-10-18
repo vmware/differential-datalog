@@ -19,7 +19,8 @@ use differential_datalog::program::*;
 use differential_datalog::uint::*;
 use differential_datalog::int::*;
 use differential_datalog::arcval;
-use differential_datalog::record::*;
+use differential_datalog::record;
+use differential_datalog::record::{FromRecord, IntoRecord};
 use abomonation::Abomonation;
 
 use fnv::FnvHashSet;
@@ -37,19 +38,19 @@ mod stdlib;
 
 use self::stdlib::*;
 
-pub fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
+pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
     match c {
-        UpdCmd::Insert(rname, rec) => {
+        record::UpdCmd::Insert(rname, rec) => {
             let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert{relid: relid as RelId, v: val})
         },
-        UpdCmd::Delete(rname, rec) => {
+        record::UpdCmd::Delete(rname, rec) => {
             let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue{relid: relid as RelId, v: val})
         },
-        UpdCmd::DeleteKey(rname, rec) => {
+        record::UpdCmd::DeleteKey(rname, rec) => {
             let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey{relid: relid as RelId, k: key})
