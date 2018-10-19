@@ -201,13 +201,14 @@ fn test_tuple() {
 
 named!(array_val<&[u8], Record>,
     delimited!(apply!(sym,"["),
-               map!(separated_list!(apply!(sym,","), record), |v|Record::Array(v)),
+               map!(separated_list!(apply!(sym,","), record), |v|Record::Array(CollectionKind::Unknown, v)),
                apply!(sym,"]"))
 );
 
 #[test]
 fn test_array() {
-    assert_eq!(array_val(br"[ (true, false), (false, false)]"), Ok((&br""[..], Record::Array(vec![Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]),
+    assert_eq!(array_val(br"[ (true, false), (false, false)]"), Ok((&br""[..], Record::Array(CollectionKind::Unknown,
+                                                                                             vec![Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]),
                                                                                                   Record::Tuple(vec![Record::Bool(false), Record::Bool(false)])]))));
 }
 

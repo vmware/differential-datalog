@@ -5,6 +5,7 @@ use std::vec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::borrow::Cow;
+use std::borrow;
 
 #[cfg(test)]
 use num::bigint::{ToBigInt, ToBigUint};
@@ -24,9 +25,17 @@ pub enum Record {
     Int(BigInt),
     String(String),
     Tuple(Vec<Record>),
-    Array(Vec<Record>),
+    Array(CollectionKind, Vec<Record>),
     PosStruct(Name, Vec<Record>),
     NamedStruct(Name, Vec<(Name, Record)>)
+}
+
+#[derive(Debug,PartialEq,Eq,Clone)]
+pub enum CollectionKind {
+    Unknown,
+    Vector,
+    Set,
+    Map
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -390,7 +399,7 @@ fn test_tuple() {
 impl<T: FromRecord> FromRecord for vec::Vec<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Array(args) => {
+            Record::Array(_,args) => {
                 Result::from_iter(args.iter().map(|x| T::from_record(x)))
             },
             v => {
@@ -403,7 +412,7 @@ impl<T: FromRecord> FromRecord for vec::Vec<T> {
 
 impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
     fn into_record(self) -> Record {
-        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+        Record::Array(CollectionKind::Vector, self.into_iter().map(|x|x.into_record()).collect())
     }
 }
 
@@ -415,7 +424,7 @@ impl<K: FromRecord+Ord, V: FromRecord> FromRecord for BTreeMap<K,V> {
 
 impl<K: IntoRecord+Ord, V:IntoRecord> IntoRecord for BTreeMap<K,V> {
     fn into_record(self) -> Record {
-        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+        Record::Array(CollectionKind::Map, self.into_iter().map(|x|x.into_record()).collect())
     }
 }
 
@@ -428,14 +437,14 @@ impl<T: FromRecord+Ord> FromRecord for BTreeSet<T> {
 
 impl<T: IntoRecord+Ord> IntoRecord for BTreeSet<T> {
     fn into_record(self) -> Record {
-        Record::Array(self.into_iter().map(|x|x.into_record()).collect())
+        Record::Array(CollectionKind::Set, self.into_iter().map(|x|x.into_record()).collect())
     }
 }
 
 
 #[test]
 fn test_vec() {
-    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(vec![Record::Bool(true), Record::Bool(false)])),
+    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(CollectionKind::Unknown, vec![Record::Bool(true), Record::Bool(false)])),
                Ok(vec![true, false]));
 }
 
@@ -481,7 +490,7 @@ macro_rules! decl_struct_into_record {
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
-                $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($n)),vec![$((std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
+                $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($n)),vec![$((borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
             }
         }
     };
@@ -565,7 +574,7 @@ macro_rules! decl_enum_into_record {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($cons)), vec![$((std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($cons)), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }
@@ -574,7 +583,7 @@ macro_rules! decl_enum_into_record {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(std::borrow::Cow::from(stringify!($cons)), vec![$((std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($cons)), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }

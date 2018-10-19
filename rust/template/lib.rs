@@ -31,6 +31,7 @@ use std::sync;
 use std::hash::Hash;
 use std::hash::Hasher;
 use std::os::raw;
+use std::borrow;
 
 pub mod valmap;
 pub mod ovsdb;

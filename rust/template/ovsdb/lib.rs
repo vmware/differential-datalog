@@ -106,11 +106,11 @@ fn record_from_array(mut src: Vec<Value>) -> Result<Record,String> {
                 },
                 ("set", Value::Array(atoms)) => {
                     let elems: Result<Vec<Record>, String> = atoms.into_iter().map(|a|record_from_val(a)).collect();
-                    Ok(Record::Array(elems?))
+                    Ok(Record::Array(CollectionKind::Set, elems?))
                 },
                 ("map", Value::Array(pairs)) => {
                     let elems: Result<Vec<(Record, Record)>, String> = pairs.into_iter().map(|p|pair_from_val(p)).collect();
-                    Ok(Record::Array(elems?.into_iter().map(|(k,v)|Record::Tuple(vec![k,v])).collect()))
+                    Ok(Record::Array(CollectionKind::Map, elems?.into_iter().map(|(k,v)|Record::Tuple(vec![k,v])).collect()))
                 },
                 _ => Err(format!("unexpected array value type \"{}\"", field))
             }
@@ -218,7 +218,7 @@ fn record_into_field(name: Name, rec: Record) -> Result<(String, Value), String>
                     Err(format!("Cannot convert complex field {} = {:?} to JSON value", n, v))?
                 }
             },
-            Record::Array(v) => {
+            Record::Array(_, v) => {
                 Err(format!("Not implemented"))?
             },
             _ => Err(format!("Cannot convert record field {:?} to JSON value", rec))?
