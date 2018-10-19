@@ -42,17 +42,17 @@ use self::stdlib::*;
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
     match c {
         record::UpdCmd::Insert(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert{relid: relid as RelId, v: val})
         },
         record::UpdCmd::Delete(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue{relid: relid as RelId, v: val})
         },
         record::UpdCmd::DeleteKey(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
+            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey{relid: relid as RelId, k: key})
         }

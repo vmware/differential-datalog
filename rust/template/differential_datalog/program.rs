@@ -946,7 +946,7 @@ impl<V:Val> RunningProgram<V> {
         /* Remove no-op updates to maintain set semantics */
         let mut filtered_updates = Vec::new();
         for upd in updates.drain(..) {
-            let mut rel = self.relations.get_mut(&upd.relid()).ok_or(format!("unknown input relation {}", upd.relid()))?;
+            let mut rel = self.relations.get_mut(&upd.relid()).ok_or_else(||format!("unknown input relation {}", upd.relid()))?;
             match rel {
                 RelationInstance::Flat{elements, delta} => {
                     Self::set_update(elements, delta, upd, &mut filtered_updates)?

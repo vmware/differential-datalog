@@ -456,7 +456,7 @@ struct Foo<T> {
 }
 
 pub fn arg_find<'a>(args: &'a Vec<(Name, Record)>, argname: &str, constructor: &str) -> Result<&'a Record, String> {
-    args.iter().find(|(n,_)|*n==argname).ok_or(format!("missing field {} in {}", argname, constructor)).map(|(_,v)| v)
+    args.iter().find(|(n,_)|*n==argname).ok_or_else(||format!("missing field {} in {}", argname, constructor)).map(|(_,v)| v)
 }
 
 #[cfg(test)]
