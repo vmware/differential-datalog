@@ -5,6 +5,7 @@ use std::vec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::borrow::Cow;
+#[cfg(test)]
 use std::borrow;
 
 #[cfg(test)]

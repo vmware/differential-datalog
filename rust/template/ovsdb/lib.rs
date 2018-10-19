@@ -174,69 +174,76 @@ pub fn record_into_row(rec: Record) -> Result<Value, String> {
 }
 
 fn struct_into_obj(fields: Vec<(Name, Record)>) -> Result<Value, String> {
-    let fields: Result<Map<String, Value>, String> = fields.into_iter().map(|(f,v)| record_into_field(f,v)).collect();
+    let fields: Result<Map<String, Value>, String> =
+        fields.into_iter().map(|(f,v)| record_into_field(v).map(|fld|(field_name(f), fld))).collect();
     Ok(Value::Object(fields?))
 }
 
-fn record_into_field(name: Name, rec: Record) -> Result<(String, Value), String> {
-    let fname =
-        if name.as_ref().starts_with("__") {
-            name.as_ref()[2..].to_owned()
-        } else if name.as_ref() == "uuid_name" {
-            "uuid-name".to_owned()
-        } else {
-            name.into_owned()
-        };
-    let val =
-        match rec {
-            Record::Bool(b) => Value::Bool(b),
-            Record::String(s) => Value::String(s),
-            Record::Int(i) => {
-                if i.is_positive() {
-                    i.to_u64().ok_or_else(||format!("Cannot convert BigInt {} to u64", i)).map(|x|Value::Number(Number::from(x)))?
-                } else {
-                    i.to_i64().ok_or_else(||format!("Cannot convert BigInt {} to i64", i)).map(|x|Value::Number(Number::from(x)))?
+fn field_name(name: Name) -> String {
+    if name.as_ref().starts_with("__") {
+        name.as_ref()[2..].to_owned()
+    } else if name.as_ref() == "uuid_name" {
+        "uuid-name".to_owned()
+    } else {
+        name.into_owned()
+    }
+}
+
+fn record_into_field(rec: Record) -> Result<Value, String> {
+    match rec {
+        Record::Bool(b) => Ok(Value::Bool(b)),
+        Record::String(s) => Ok(Value::String(s)),
+        Record::Int(i) => {
+            if i.is_positive() {
+                i.to_u64().ok_or_else(||format!("Cannot convert BigInt {} to u64", i)).map(|x|Value::Number(Number::from(x)))
+            } else {
+                i.to_i64().ok_or_else(||format!("Cannot convert BigInt {} to i64", i)).map(|x|Value::Number(Number::from(x)))
+            }
+        },
+        Record::NamedStruct(n, mut v) => {
+            if n.as_ref() == "Left" {
+                match v.remove(0) {
+                    (_, Record::Int(i)) => {
+                        let uuid = uuid_from_u128(i.to_u128().ok_or_else(||format!("Cannot convert BigInt {} to UUID", i))?);
+                        Ok(Value::Array(vec![Value::String("uuid".to_owned()), Value::String(uuid)]))
+                    },
+                    _ => Err(format!("Unexpected uuid value: {:?}", v))
                 }
-            },
-            Record::NamedStruct(n, mut v) => {
-                if n.as_ref() == "Left" {
-                    match v.remove(0) {
-                        (_, Record::Int(i)) => {
-                            let uuid = uuid_from_u128(i.to_u128().ok_or_else(||format!("Cannot convert BigInt {} to UUID", i))?);
-                            Value::Array(vec![Value::String("uuid".to_owned()), Value::String(uuid)])
-                        },
-                        _ => Err(format!("Unexpected uuid value: {:?}", v))?
-                    }
-                } else if n.as_ref() == "Right" {
-                    match v.remove(0) {
-                        (_, Record::String(s)) => {
-                            Value::Array(vec![Value::String("named-uuid".to_owned()), Value::String(s)])
-                        },
-                        _ => Err(format!("Unexpected named-uuid value: {:?}", v))?
-                    }
-                } else {
-                    Err(format!("Cannot convert complex field {} = {:?} to JSON value", n, v))?
+            } else if n.as_ref() == "Right" {
+                match v.remove(0) {
+                    (_, Record::String(s)) => {
+                        Ok(Value::Array(vec![Value::String("named-uuid".to_owned()), Value::String(s)]))
+                    },
+                    _ => Err(format!("Unexpected named-uuid value: {:?}", v))
                 }
-            },
-            Record::Array(_, v) => {
-                Err(format!("Not implemented"))?
-            },
-            _ => Err(format!("Cannot convert record field {:?} to JSON value", rec))?
-        };
-    Ok((fname, val))
+            } else {
+                Err(format!("Cannot convert complex field {} = {:?} to JSON value", n, v))
+            }
+        },
+        Record::Array(CollectionKind::Set, v) => {
+            let elems: Result<Vec<Value>, String> = v.into_iter().map(|x| record_into_field(x)).collect();
+            Ok(Value::Array(vec![Value::String("set".to_owned()), Value::Array(elems?)]))
+        },
+        Record::Array(CollectionKind::Map, v) => {
+            let elems: Result<Vec<Value>, String> = v.into_iter().map(|x| {
+                match x {
+                    Record::Tuple(mut keyval) => {
+                        if keyval.len() != 2 {
+                            Err(format!("Map entry {:?} is not a 2-tuple",keyval))?
+                        };
+                        let v = record_into_field(keyval.remove(1))?;
+                        let k = record_into_field(keyval.remove(0))?;
+                        Ok(Value::Array(vec![k,v]))
+                    },
+                    _ => Err(format!("Map entry {:?} is not a tuple", x))
+                }
+            }).collect();
+            Ok(Value::Array(vec![Value::String("map".to_owned()), Value::Array(elems?)]))
+        },
+        _ => Err(format!("Cannot convert record field {:?} to JSON value", rec))
+    }
 }
 
 fn uuid_from_u128(i: u128) -> String {
     uuid::Uuid::from_u128(i).to_hyphenated().to_string()
 }
-
-/*
-pub enum Record {
-    Bool(bool),
-    Int(BigInt),
-    String(String),
-    Tuple(Vec<Record>),
-    Array(Vec<Record>),
-    PosStruct(Name, Vec<Record>),
-    NamedStruct(Name, Vec<(Name, Record)>)
-}*/
