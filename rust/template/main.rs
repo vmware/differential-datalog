@@ -79,9 +79,9 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             Ok(())
         },
         Command::Dump(Some(rname)) => {
-            let relid = match relname2id(&rname) {
+            let relid = match output_relname_to_id(&rname) {
                 None      => {
-                    eprintln!("Error: Unknown relation {}", rname);
+                    eprintln!("Error: Unknown output relation {}", rname);
                     return (-1, false);
                 },
                 Some(rid) => rid as RelId
@@ -165,6 +165,9 @@ pub fn main() {
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
-    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(print,store,&db,relid,v,pol)), workers);
+    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,w| {
+        debug_assert!(w == 1 || w == -1); 
+        upd_cb(print, store, &db, relid, v, w == 1)
+    }), workers);
     exit(ret);
 }

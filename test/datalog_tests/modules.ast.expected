@@ -24,7 +24,7 @@ extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 input relation Rmain [Rmain]
-relation Rout [Rout]
+output relation Rout [Rout]
 input relation foolib.lib.Rlib [foolib.lib.Rlib]
 input relation foolib.ns1.m1.R1 [foolib.ns1.m1.R1]
 input relation foolib.ns1.m2.R2 [foolib.ns1.m2.R2]

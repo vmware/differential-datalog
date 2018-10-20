@@ -13,20 +13,3 @@ insert OVN_Northbound.Logical_Switch (
 );
 commit;
 dump;
-
-start;
-insert HostAddresses(0, ["10.10.10.101", "10.10.10.102", "10.10.10.103"]),
-insert HostAddresses(0, ["10.10.10.103", "10.10.10.104", "10.10.10.105"]),
-insert HostAddresses(1, ["192.168.0.1", "192.168.0.2", "192.168.0.3"]);
-commit;
-
-dump HostAddress;
-
-
-start;
-
-insert ExternalIds(0, [("a", "1"),("b", "2"),("c", "3")]),
-insert ExternalIds(0, [("c", "4"),("d", "5"),("e", "6")]);
-commit;
-
-dump ExternalId;

@@ -92,7 +92,7 @@ pub enum ProgNode<V: Val> {
     SCCNode{rels: Vec<Relation<V>>}
 }
 
-pub type UpdateCallback<V> = Arc<Fn(RelId, &V, bool) + Send + Sync>;
+pub type UpdateCallback<V> = Arc<Fn(RelId, &V, isize) + Send + Sync>;
 
 /// Datalog relation.
 ///
@@ -122,7 +122,7 @@ pub struct Relation<V: Val> {
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement<V>>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb:    UpdateCallback<V>
+    pub change_cb:    Option<UpdateCallback<V>>
 }
 
 /// Function type used to map the content of a relation
@@ -509,9 +509,16 @@ impl<V:Val> Program<V>
 
                         for (relid, collection) in collections {
                             /* notify client about changes */
-                            let cb = prog.get_relation(relid).change_cb.clone();
-                            collection.inspect(move |x| {debug_assert!(x.2 == 1 || x.2 == -1); cb(relid, &x.0, x.2 == 1)})
-                                .probe_with(&mut probe1);
+                            match &prog.get_relation(relid).change_cb {
+                                None => {
+                                    collection.probe_with(&mut probe1);
+                                },
+                                Some(cb) => {
+                                    let cb = cb.clone();
+                                    collection.inspect(move |x| {cb(relid, &x.0, x.2)})
+                                                      .probe_with(&mut probe1);
+                                }
+                            }
                         };
 
                         sessions

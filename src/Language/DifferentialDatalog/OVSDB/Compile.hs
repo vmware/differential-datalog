@@ -272,9 +272,12 @@ mkTable' tkind t@Table{..} keys = do
                        TableDeltaUpdate    -> ["_uuid: uuid"]
                        TableUUIDMap        -> ["uuid_name: string", "id: uuid_or_string_t"]
     let prefix = case tkind of
-                      TableInput    -> "input"
-                      TableRealized -> "input"
-                      _             -> empty
+                      TableInput       -> "input"
+                      TableRealized    -> "input"
+                      TableDeltaPlus   -> "output"
+                      TableDeltaMinus  -> "output"
+                      TableDeltaUpdate -> "output"
+                      _                -> empty
     let tname = mkTableName t tkind
     let cols = case tkind of
                     TableDeltaUpdate | isJust keys

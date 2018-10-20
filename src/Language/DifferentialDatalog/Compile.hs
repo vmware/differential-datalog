@@ -363,7 +363,7 @@ compileLib d specname imports =
 -- parts of the compiler.
 addDummyRel :: DatalogProgram -> DatalogProgram
 addDummyRel d | not $ M.null $ progRelations d = d
-              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos True "Null" (tTuple []) False Nothing}
+              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos RelInternal "Null" (tTuple []) Nothing}
 
 mkTypedef :: TypeDef -> Doc
 mkTypedef tdef@TypeDef{..} =
@@ -545,6 +545,7 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
 mkValueFromRecord :: DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
     mkRelname2Id d                                                                                  $$
+    mkOutputRelname2Id d                                                                            $$
     mkRelId2Relations d                                                                             $$
     "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                               $$
@@ -586,6 +587,21 @@ mkRelname2Id d =
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
     mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+
+mkOutputRelname2Id :: DatalogProgram -> Doc
+mkOutputRelname2Id d =
+    "pub fn output_relname_to_id(rname: &str) -> Option<Relations> {" $$
+    "   match rname {"                                      $$
+    (nest' $ nest' $ vcat $ entries)                        $$
+    "       _  => None"                                     $$
+    "   }"                                                  $$
+    "}"
+    where
+    entries = map mkrel $ filter ((== RelOutput) .relRole) $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+
+
 
 -- Convert string to RelId
 mkRelId2Relations :: DatalogProgram -> Doc
@@ -722,18 +738,22 @@ compileRelation d rn = do
                       (\k -> do lambda <- compileKey d rel k
                                 return $ "Some(" <> lambda <> ")")
                 relPrimaryKey
+
+    let cb = if relRole == RelOutput
+                then "change_cb:    Some(__update_cb.clone())"
+                else "change_cb:    None"
     let f arrangements =
-            "Relation {"                                                                $$
-            "    name:         \"" <> pp rn <> "\".to_string(),"                        $$
-            "    input:        " <> (if relGround then "true" else "false") <> ","      $$
-            "    distinct:     " <> (if relDistinct then "true" else "false") <> ","    $$
-            "    key_func:     " <> key_func <> ","                                     $$
-            "    id:           Relations::" <> rname rn <+> "as RelId,"                 $$
-            "    rules:        vec!["                                                   $$
-            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                     $$
-            "    arrangements: vec!["                                                   $$
-            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")               $$
-            "    change_cb:    __update_cb.clone()"                                     $$
+            "Relation {"                                                                          $$
+            "    name:         \"" <> pp rn <> "\".to_string(),"                                  $$
+            "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","      $$
+            "    distinct:     " <> (if relRole == RelOutput then "true" else "false") <> ","     $$
+            "    key_func:     " <> key_func <> ","                                               $$
+            "    id:           Relations::" <> rname rn <+> "as RelId,"                           $$
+            "    rules:        vec!["                                                             $$
+            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                               $$
+            "    arrangements: vec!["                                                             $$
+            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")                         $$
+            (nest' cb)                                                                            $$
             "}"
     return (rn, f)
 

@@ -60,11 +60,11 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
 }
 
 
-fn dummy_cb(_relid: RelId, _v: &Value, _pol: bool) {}
+fn __null_cb(_relid: RelId, _v: &Value, _w: isize) {}
 
 #[no_mangle]
 pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const sync::Mutex<RunningProgram<Value>> {
-    let program = prog(sync::Arc::new(dummy_cb));
+    let program = prog(sync::Arc::new(__null_cb));
     sync::Arc::into_raw(sync::Arc::new(sync::Mutex::new(program.run(workers as usize))))
 }
 

@@ -225,8 +225,8 @@ arg ::= arg_name ":" simple_type_spec
 ## Relations
 
 ```EBNF
-relation ::= ["input"] "relation" rel_name "(" [arg ","] arg ")" [primary_key]
-           | ["input"] "relation" rel_name "[" simple_type_spec "]" [primary_key]
+relation ::= ["input" | "output"] "relation" rel_name "(" [arg ","] arg ")" [primary_key]
+           | ["input" | "output"] "relation" rel_name "[" simple_type_spec "]" [primary_key]
 primary_key ::= "primary" "key" "(" var_name ")" expr
 ```
 

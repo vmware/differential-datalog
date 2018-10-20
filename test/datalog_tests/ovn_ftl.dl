@@ -39,7 +39,7 @@ typedef stage = LS_IN_ACL
               | LS_OUT_PORT_SEC_IP
               | LS_OUT_PORT_SEC_L2
 
-relation Flow(lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string)
+output relation Flow(lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string)
 input relation Logical_Router(lr: bigint)
 input relation Logical_Router_Port(name: string, lr: bigint, mac: string, enabled: bool)
 
@@ -438,7 +438,7 @@ for (ls in Logical_Switch)
     Flow(ls.ls, LS_IN_ARP_RSP, 0, "1", "{ next; }")
 
 
-relation Logical_Switch_Port_IP (
+input relation Logical_Switch_Port_IP (
     lspip:               bigint,
     ip_version:          bigint,
     lsp:                 bigint,

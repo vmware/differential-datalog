@@ -317,8 +317,11 @@ def process_relation_decl(relationdecl, files, preprocess):
         return
     relname = relation_name(id.value)
     paramdecls = map(convert_decl_param, params)
-    is_input = "input " if relations[relname] else ""
-    files.output(is_input + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
+    role = "input " if relations[relname] else ""
+    print(relationdecl.tree_str())
+    if getOptField(getField(relationdecl, "OUTPUT_opt"), "OUTPUT") != None:
+        role = "output "
+    files.output(role + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
 
 def process_decl(decl, files, preprocess):
     files.log(decl.tree_str())

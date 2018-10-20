@@ -14,6 +14,6 @@ extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 input relation Edge [Edge]
-relation Path [Path]
+output relation Path [Path]
 Path(.s1=x, .s2=y) :- Edge(.s=x, .t=y).
 Path(.s1=x, .s2=z) :- Path(.s1=x, .s2=w), Edge(.s=w, .t=z).
