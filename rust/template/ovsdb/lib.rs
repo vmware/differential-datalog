@@ -166,6 +166,25 @@ fn record_from_val(v: Value) -> Result<Record, String> {
  * Functions to convert DDlog Records to JSON
  */
 
+pub fn record_into_insert_str(rec: Record) -> Result<String, String> {
+    let (table, opt_uuid_name) = match rec {
+        Record::NamedStruct(ref table, ref fields) => {
+            (table.to_string(), fields.iter().find(|(f,_)| f == "uuid_name").map(|(_,val)|val.clone()))
+        },
+        _ => Err(format!("Cannot convert record to insert command: {:?}", rec))?
+    };
+    let mut m = Map::new();
+    m.insert("op".to_owned(), Value::String("insert".to_owned()));
+    m.insert("table".to_owned(), Value::String(table));
+    match opt_uuid_name {
+        None => {},
+        Some(Record::String(n)) => { m.insert("uuid-name".to_owned(), Value::String(n)); },
+        Some(x) => Err(format!("uuid-name is not a string {:?}", x))?
+    };
+    m.insert("row".to_owned(), record_into_row(rec)?);
+    Ok(Value::Object(m).to_string())
+}
+
 pub fn record_into_row(rec: Record) -> Result<Value, String> {
     match rec {
         Record::NamedStruct(_, fields) => struct_into_obj(fields),
@@ -175,7 +194,9 @@ pub fn record_into_row(rec: Record) -> Result<Value, String> {
 
 fn struct_into_obj(fields: Vec<(Name, Record)>) -> Result<Value, String> {
     let fields: Result<Map<String, Value>, String> =
-        fields.into_iter().map(|(f,v)| record_into_field(v).map(|fld|(field_name(f), fld))).collect();
+        fields.into_iter()
+        .filter(|(f,_)| f != "uuid_name")
+        .map(|(f,v)| record_into_field(v).map(|fld|(field_name(f), fld))).collect();
     Ok(Value::Object(fields?))
 }
 
