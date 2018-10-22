@@ -35,7 +35,7 @@ debug-assertions = false
 [lib]
 name = "datalog_example"
 path = "./lib.rs"
-crate-type = ["staticlib", "rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 
