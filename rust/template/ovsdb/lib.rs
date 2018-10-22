@@ -185,17 +185,61 @@ pub fn record_into_insert_str(rec: Record) -> Result<String, String> {
     Ok(Value::Object(m).to_string())
 }
 
-pub fn record_into_row(rec: Record) -> Result<Value, String> {
+pub fn record_into_delete_str(rec: Record) -> Result<String, String> {
+    let (table, uuid) = match rec {
+        Record::NamedStruct(table, fields) => {
+            (table, fields.into_iter().find(|(f,_)| f == "_uuid")
+                          .ok_or_else(||format!("Record does not have _uuid field"))?.1)
+        },
+        _ => Err(format!("Cannot convert record to delete command: {:?}", rec))?
+    };
+    let mut m = Map::new();
+    m.insert("op".to_owned(), Value::String("delete".to_owned()));
+    m.insert("table".to_owned(), Value::String(table.into_owned()));
+    m.insert("where".to_owned(), uuid_condition(&uuid)?);
+    Ok(Value::Object(m).to_string())
+}
+
+pub fn record_into_update_str(rec: Record) -> Result<String, String> {
+    let (table, uuid) = match rec {
+        Record::NamedStruct(ref table, ref fields) => {
+            (table.to_string(), fields.iter().find(|(f,_)| f == "_uuid")
+                                      .ok_or_else(||format!("Record does not have _uuid field"))?.1.clone())
+        },
+        _ => Err(format!("Cannot convert record to insert command: {:?}", rec))?
+    };
+    let mut m = Map::new();
+    m.insert("op".to_owned(), Value::String("update".to_owned()));
+    m.insert("table".to_owned(), Value::String(table));
+    m.insert("where".to_owned(), uuid_condition(&uuid)?);
+    m.insert("row".to_owned(), record_into_row(rec)?);
+    Ok(Value::Object(m).to_string())
+}
+
+fn record_into_row(rec: Record) -> Result<Value, String> {
     match rec {
         Record::NamedStruct(_, fields) => struct_into_obj(fields),
         _ => Err(format!("Cannot convert record to <row>: {:?}", rec)),
     }
 }
 
+fn uuid_condition(uuid: &Record) -> Result<Value, String> {
+    match uuid {
+        Record::Int(uuid) => {
+            Ok(Value::Array(vec![
+                         Value::Array(vec![Value::String("_uuid".to_owned()),
+                                           Value::String("==".to_owned()),
+                                           Value::Array(vec![Value::String("uuid".to_owned()),
+                                                             Value::String(uuid_from_int(uuid)?)])])]))
+        },
+        x => Err(format!("invalid uuid value {:?}", x))
+    }
+}
+
 fn struct_into_obj(fields: Vec<(Name, Record)>) -> Result<Value, String> {
     let fields: Result<Map<String, Value>, String> =
         fields.into_iter()
-        .filter(|(f,_)| f != "uuid_name")
+        .filter(|(f,_)| f != "uuid_name" && f != "_uuid")
         .map(|(f,v)| record_into_field(v).map(|fld|(field_name(f), fld))).collect();
     Ok(Value::Object(fields?))
 }
@@ -225,7 +269,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             if n.as_ref() == "Left" {
                 match v.remove(0) {
                     (_, Record::Int(i)) => {
-                        let uuid = uuid_from_u128(i.to_u128().ok_or_else(||format!("Cannot convert BigInt {} to UUID", i))?);
+                        let uuid = uuid_from_int(&i)?;
                         Ok(Value::Array(vec![Value::String("uuid".to_owned()), Value::String(uuid)]))
                     },
                     _ => Err(format!("Unexpected uuid value: {:?}", v))
@@ -267,4 +311,8 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
 
 fn uuid_from_u128(i: u128) -> String {
     uuid::Uuid::from_u128(i).to_hyphenated().to_string()
+}
+
+fn uuid_from_int(i: &BigInt) -> Result<String, String> {
+    Ok(uuid_from_u128(i.to_u128().ok_or_else(||format!("uuid {} is not a u128", i))?))
 }

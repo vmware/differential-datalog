@@ -94,4 +94,49 @@ extern int datalog_example_apply_ovsdb_updates(
 	const char *prefix,
 	const char *updates);
 
+
+/*
+ * Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in JSON format.
+ *
+ * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
+ * later deallocated by calling `datalog_example_free_json()`
+ *
+ * On error, returns a negative number and write error message to stderr.
+ */
+extern int datalog_example_dump_ovsdb_deltaplus_table(
+	datalog_example_ddlog_prog hprog,
+	const char *table,
+	char **json);
+
+/*
+ * Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands in JSON format.
+ *
+ * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
+ * later deallocated by calling `datalog_example_free_json()`
+ *
+ * On error, returns a negative number and write error message to stderr.
+ */
+extern int datalog_example_dump_ovsdb_deltaminus_table(
+	datalog_example_ddlog_prog hprog,
+	const char *table,
+	char **json);
+
+/*
+ * Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands in JSON format.
+ *
+ * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
+ * later deallocated by calling `datalog_example_free_json()`
+ *
+ * On error, returns a negative number and write error message to stderr.
+ */
+extern int datalog_example_dump_ovsdb_deltaupdate_table(
+	datalog_example_ddlog_prog hprog,
+	const char *table,
+	char **json);
+
+/*
+ * Deallocates strings returned by other functions in this API.
+ */
+extern void datalog_example_free_json(char *str);
+
 #endif

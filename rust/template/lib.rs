@@ -23,6 +23,7 @@ use differential_datalog::record;
 use differential_datalog::record::{FromRecord, IntoRecord};
 use abomonation::Abomonation;
 
+use fnv::{FnvHashSet, FnvHashMap};
 use std::fmt::Display;
 use std::fmt;
 use std::sync;
@@ -30,6 +31,7 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::os::raw;
 use std::borrow;
+use std::ptr;
 
 pub mod valmap;
 pub mod ovsdb;
@@ -80,6 +82,9 @@ pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog {
 
 #[no_mangle]
 pub extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
     let prog = unsafe {sync::Arc::from_raw(prog)};
     match sync::Arc::try_unwrap(prog) {
         Ok((prog,_)) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
@@ -95,6 +100,9 @@ pub extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int {
 
 #[no_mangle]
 pub extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
     let prog = unsafe {sync::Arc::from_raw(prog)};
     let res = prog.0.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_start(): error: {}", e);
@@ -106,6 +114,9 @@ pub extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw:
 
 #[no_mangle]
 pub extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
     let prog = unsafe {sync::Arc::from_raw(prog)};
     let res = prog.0.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_commit(): error: {}", e);
@@ -117,6 +128,9 @@ pub extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw
 
 #[no_mangle]
 pub extern "C" fn datalog_example_transaction_rollback(prog: *const HDDlog) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
     let prog = unsafe {sync::Arc::from_raw(prog)};
     let res = prog.0.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_rollback(): error: {}", e);
