@@ -177,3 +177,12 @@ ExternalId{0,("c", "3")}
 ExternalId{0,("c", "4")}
 ExternalId{0,("d", "5")}
 ExternalId{0,("e", "6")}
+Allocation{"a","1",30}
+Allocation{"a","2",31}
+Allocation{"a","3",50}
+Allocation{"a","4",51}
+Allocation{"a","5",52}
+Allocation{"b","1",10000}
+Allocation{"b","3",16777215}
+Allocation{"b","4",1}
+Allocation{"b","5",2}

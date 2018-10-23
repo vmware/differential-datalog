@@ -185,3 +185,30 @@ insert ExternalIds(0, [("c", "4"),("d", "5"),("e", "6")]);
 commit;
 
 dump ExternalId;
+
+start;
+
+insert Realized("a", "1", 30),
+insert Realized("a", "2", 31),
+insert Realized("a", "3", 50),
+
+insert Realized("b", "1", 10000),
+insert Realized("b", "2", 100),
+insert Realized("b", "3", 16777215),
+
+insert Request("a", "1"),
+insert Request("a", "2"),
+insert Request("a", "3"),
+insert Request("a", "4"),
+insert Request("a", "5"),
+
+insert Request("b", "1"),
+insert Request("b", "3"),
+insert Request("b", "4"),
+insert Request("b", "5");
+
+
+
+commit;
+
+dump Allocation;

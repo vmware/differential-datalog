@@ -4,6 +4,8 @@ typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
 typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
+typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
+typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
@@ -28,10 +30,12 @@ typedef R3 = R3{f1: bigint, f2: bool}
 typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef Reach = Reach{s1: station, s2: station}
+typedef Realized = Realized{name: string, id: string, x: bit<32>}
 typedef Rel1 = Rel1{x: bigint, y: IPAddr}
 typedef Rel2 = Rel2{x: bigint, z: FooStruct}
 typedef Rel3 = Rel3{x: bigint, y: IPAddr, z: FooStruct}
 typedef Rel4 = Rel4{x: bigint, y: IPAddr, b: bool}
+typedef Request = Request{name: string, id: string}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef Strings = Strings{s: string}
@@ -45,6 +49,7 @@ typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} | C32{f3: ((bool, (b
 typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
+typedef ToAllocate = ToAllocate{name: string, ids: std.Vec<string>}
 typedef ValidDestination = ValidDestination{addr: ip_addr_t}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef WithKey = WithKey{key: bit<128>, val: string}
@@ -104,6 +109,7 @@ function a8 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 function a9 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
+extern function allocate_u32 (allocated: std.Set<bit<32>>, toallocate: std.Vec<'B>, max_val: bit<32>): std.Vec<('B, bit<32>)>
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =
@@ -287,6 +293,8 @@ output relation Aggregate2 [Aggregate2]
 output relation Aggregate3 [Aggregate3]
 output relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
+relation Allocated [Allocated]
+output relation Allocation [Allocation]
 output relation Answer [Answer]
 input relation Blacklist [Blacklist]
 output relation Disaggregate [Disaggregate]
@@ -307,10 +315,12 @@ output relation R5 [bigint]
 output relation R6 [R6]
 output relation R7 [R7]
 output relation Reach [Reach]
+input relation Realized [Realized]
 input relation Rel1 [Rel1]
 input relation Rel2 [Rel2]
 output relation Rel3 [Rel3]
 output relation Rel4 [Rel4]
+input relation Request [Request]
 output relation Sib [Sib]
 input relation Strings [Strings]
 input relation Suspect [Suspect]
@@ -318,6 +328,7 @@ output relation T [T]
 input relation Table1 [Table1]
 output relation Table12 [Table12]
 input relation Table2 [Table2]
+relation ToAllocate [ToAllocate]
 output relation ValidDestination [ValidDestination]
 output relation W [W]
 input relation WithKey [WithKey] primary key (x) x.key
@@ -447,3 +458,7 @@ Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=nam
 ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).
 HostAddress(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), var addr = FlatMap(addrs).
 ExternalId(.host=host, .id=id) :- ExternalIds(.host=host, .ids=ids), var id = FlatMap(ids).
+Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.name=name, .id=id, .x=x).
+ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), Aggregate((name), ids = std.group2vec(id)).
+Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), Aggregate((name), xs = std.group2set(x)).
+Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.

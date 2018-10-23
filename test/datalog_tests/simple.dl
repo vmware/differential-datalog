@@ -657,3 +657,30 @@ output relation ExternalId(host: bit<64>, id: (string, string))
 
 ExternalId(host, id) :- ExternalIds(host, ids),
                         var id = FlatMap(ids).
+
+/* Allocator test */
+
+extern function allocate_u32(allocated: Set<bit<32>>, toallocate: Vec<'B>, max_val: bit<32>): Vec<('B, bit<32>)>
+
+// allocate a unique x per name
+input relation Realized(name: string, id: string, x: bit<32>)
+input relation Request(name: string, id: string)
+
+output relation Allocation(name: string, id: string, x: bit<32>)
+
+Allocation(name, id, x) :-
+    Request(name, id), Realized(name, id, x).
+
+relation ToAllocate(name: string, ids: Vec<string>)
+ToAllocate(name, ids) :-
+    Request(name, id), not Realized(name, id, _), Aggregate((name), ids = group2vec(id)).
+
+relation Allocated(name: string, xs: Set<bit<32>>)
+Allocated(name, xs) :-
+    Realized(name, _, x), Aggregate((name), xs = group2set(x)).
+
+Allocation(name, id, x) :-
+    ToAllocate(name, ids),
+    Allocated(name, xs),
+    var allocation = FlatMap(allocate_u32(xs, ids, (32'd1 << 32'd24) - 32'd1)),
+    (var id, var x) = allocation.
