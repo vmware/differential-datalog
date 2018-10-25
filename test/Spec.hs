@@ -60,7 +60,7 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
-bUILD_TYPE = "release"
+bUILD_TYPE = "debug"
 
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 
@@ -121,10 +121,10 @@ sbTest = do
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_ovsdb"
-          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"]
-          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" []}]
+        [ goldenVsFiles "ovn_northd"
+          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn_northd.dump.expected"]
+          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn_northd.dump"]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" []}]
 
 sOUFFLE_DIR = "./test/souffle"
 
