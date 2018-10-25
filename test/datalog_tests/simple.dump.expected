@@ -7,15 +7,6 @@ Answer{"Palais Royal"}
 Answer{"St.Germain"}
 Answer{"St.Michel"}
 
-Links:
-Links{1,"Chatelet","Louvres"}
-Links{1,"Louvres","Palais Royal"}
-Links{1,"Palais-Royal","Tuileries"}
-Links{1,"Tuileries","Concorde"}
-Links{4,"Odeon","St.Michel"}
-Links{4,"St.Germain","Odeon"}
-Links{4,"St.Michel","Chatelet"}
-
 Reach:
 Reach{"Chatelet","Chatelet"}
 Reach{"Chatelet","Louvres"}
@@ -58,24 +49,6 @@ Answer{"Odeon"}
 Answer{"Palais Royal"}
 Answer{"St.Germain"}
 Answer{"St.Michel"}
-
-Links:
-Links{1,"Chatelet","Louvres"}
-Links{1,"Louvres","Palais Royal"}
-Links{1,"Palais-Royal","Tuileries"}
-Links{1,"Tuileries","Concorde"}
-Links{4,"Odeon","St.Michel"}
-Links{4,"St.Germain","Odeon"}
-Links{4,"St.Michel","Chatelet"}
-
-R3:
-R3{0,true}
-R3{1,true}
-R3{2,true}
-R3{3,true}
-R3{4,true}
-R3{5,true}
-R3{6,true}
 
 R4:
 R3{0,true}
@@ -148,11 +121,6 @@ Table12{218334107078988268330177571792522447425,"foo",S{(true, true),5}}
 Table12{258101594679877739861006822360175003366,"buzzzzzzzz",S{(true, true),5}}
 Table12{312560568469280405643575197132576203606,"foo",S{(false, true),10000}}
 Table12{324905179504175058909924909437678210347,"foo",S{(true, false),43981}}
-Rel1:
-Rel1{0,IP4{100}}
-Rel1{1,IP6{200}}
-Rel2:
-Rel2{0,Option1{0,IP4{300},(true, "foo")}}
 Rel3:
 Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
 Aggregate1
@@ -174,15 +142,47 @@ Disaggregate{"a","3"}
 Disaggregate{"b","1"}
 Disaggregate{"b","2"}
 Disaggregate{"b","3"}
-WithKey
-WithKey{0,"foo"}
-WithKey{1,"bar"}
-WithKey{2,"buzz"}
-WithKey after deletion by value
-WithKey{1,"bar"}
-WithKey{2,"buzz"}
-WithKey after deletion by key
-WithKey{2,"buzz"}
-WithKey: +3, -2
-WithKey{1,"bar2"}
-WithKey{4,"hello"}
+WithKeyDbg
+WithKeyDbg{0,"foo"}
+WithKeyDbg{1,"bar"}
+WithKeyDbg{2,"buzz"}
+WithKeyDbg after deletion by value
+WithKeyDbg{1,"bar"}
+WithKeyDbg{2,"buzz"}
+WithKeyDbg after deletion by key
+WithKeyDbg{2,"buzz"}
+WithKeyDbg: +3, -2
+WithKeyDbg{1,"bar2"}
+WithKeyDbg{4,"hello"}
+Innocent
+Innocent{"Bill Smith"}
+Innocent{"John Doe"}
+ValidDestination
+ValidDestination{IPAddr{10,10,10,101}}
+ValidDestination{IPAddr{10,10,10,102}}
+ValidDestination{IPAddr{10,10,10,103}}
+ValidDestination{IPAddr{10,10,10,104}}
+ValidDestination{IPAddr{10,10,10,105}}
+HostAddress{0,"10.10.10.101"}
+HostAddress{0,"10.10.10.102"}
+HostAddress{0,"10.10.10.103"}
+HostAddress{0,"10.10.10.104"}
+HostAddress{0,"10.10.10.105"}
+HostAddress{1,"192.168.0.1"}
+HostAddress{1,"192.168.0.2"}
+HostAddress{1,"192.168.0.3"}
+ExternalId{0,("a", "1")}
+ExternalId{0,("b", "2")}
+ExternalId{0,("c", "3")}
+ExternalId{0,("c", "4")}
+ExternalId{0,("d", "5")}
+ExternalId{0,("e", "6")}
+Allocation{"a","1",30}
+Allocation{"a","2",31}
+Allocation{"a","3",50}
+Allocation{"a","4",51}
+Allocation{"a","5",52}
+Allocation{"b","1",10000}
+Allocation{"b","3",16777215}
+Allocation{"b","4",1}
+Allocation{"b","5",2}

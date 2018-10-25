@@ -45,27 +45,6 @@ fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId,
     };
 }
 
-fn updcmd2upd(c: &UpdCmd) -> Result<Update<Value>, String> {
-    match c {
-        UpdCmd::Insert(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
-            let val = relval_from_record(relid, rec)?;
-            Ok(Update::Insert{relid: relid as RelId, v: val})
-        },
-        UpdCmd::Delete(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
-            let val = relval_from_record(relid, rec)?;
-            Ok(Update::DeleteValue{relid: relid as RelId, v: val})
-        },
-        UpdCmd::DeleteKey(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or(format!("Unknown relation {}", rname))?;
-            let key = relkey_from_record(relid, rec)?;
-            Ok(Update::DeleteKey{relid: relid as RelId, k: key})
-        }
-
-    }
-}
-
 fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32, bool) {
     let resp = (
         if !is_upd_cmd(&cmd) {
@@ -100,9 +79,9 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             Ok(())
         },
         Command::Dump(Some(rname)) => {
-            let relid = match relname2id(&rname) {
+            let relid = match output_relname_to_id(&rname) {
                 None      => {
-                    eprintln!("Error: Unknown relation {}", rname);
+                    eprintln!("Error: Unknown output relation {}", rname);
                     return (-1, false);
                 },
                 Some(rid) => rid as RelId
@@ -186,6 +165,9 @@ pub fn main() {
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
-    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,pol| upd_cb(print,store,&db,relid,v,pol)), workers);
+    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,w| {
+        debug_assert!(w == 1 || w == -1); 
+        upd_cb(print, store, &db, relid, v, w == 1)
+    }), workers);
     exit(ret);
 }

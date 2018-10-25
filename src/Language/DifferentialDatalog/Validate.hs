@@ -219,7 +219,7 @@ funcValidateDefinition d f@Function{..} = do
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
 relValidate d rel@Relation{..} = do
     typeValidate d [] relType
-    check (isNothing relPrimaryKey || relGround) (pos rel) 
+    check (isNothing relPrimaryKey || relRole == RelInput) (pos rel) 
         $ "Only input relations can be declared with a primary key"
     maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
 
@@ -260,7 +260,7 @@ ruleValidate d rl@Rule{..} = do
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
+ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
     checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] (CtxRuleRAtom rl idx) $ atomVal atom
     let vars = ruleRHSVars d rl idx
@@ -402,7 +402,7 @@ exprValidate1 _ _ _   EUnOp{}             = return ()
 
 exprValidate1 _ _ ctx (EPHolder p)        = do
     let msg = case ctx of
-                   CtxStruct _ _ f -> "Argument " ++ f ++ " must be specified in this context"
+                   CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
@@ -413,8 +413,7 @@ ctxPHolderAllowed ctx =
     case ctx of
          CtxSetL{}        -> True
          CtxTyped{}       -> pres
-         CtxRuleRAtom{..} -> -- only positive literals
-                             rhsPolarity $ (ruleRHS ctxRule) !! ctxAtomIdx
+         CtxRuleRAtom{..} -> True
          CtxStruct{}      -> pres
          CtxTuple{}       -> pres
          CtxMatchPat{}    -> True

@@ -1,18 +1,28 @@
+typedef Address = Address{addr: ip_addr_t}
 typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
 typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
 typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
+typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
+typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
+typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
+typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
+typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
+typedef Gangster = Gangster{nickname: string, name: string}
+typedef HostAddress = HostAddress{host: bit<64>, addr: string}
+typedef HostAddresses = HostAddresses{host: bit<64>, addrs: std.Set<string>}
 typedef Human = Human{h: person}
 typedef IP4Addr = bit<32>
 typedef IP4Subnet = IP4Subnet{addr: IP4Addr, mask: bit<32>}
 typedef IP6Addr = bit<128>
 typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
+typedef Innocent = Innocent{name: string}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef Parent = Parent{child: person, parent: person}
 typedef R1 = bigint
@@ -20,13 +30,16 @@ typedef R3 = R3{f1: bigint, f2: bool}
 typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef Reach = Reach{s1: station, s2: station}
+typedef Realized = Realized{name: string, id: string, x: bit<32>}
 typedef Rel1 = Rel1{x: bigint, y: IPAddr}
 typedef Rel2 = Rel2{x: bigint, z: FooStruct}
 typedef Rel3 = Rel3{x: bigint, y: IPAddr, z: FooStruct}
 typedef Rel4 = Rel4{x: bigint, y: IPAddr, b: bool}
+typedef Request = Request{name: string, id: string}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef Strings = Strings{s: string}
+typedef Suspect = Suspect{name: string}
 typedef T = T{x: bigint, y: string}
 typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T16 = t15
@@ -36,13 +49,17 @@ typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} | C32{f3: ((bool, (b
 typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
+typedef ToAllocate = ToAllocate{name: string, ids: std.Vec<string>}
+typedef ValidDestination = ValidDestination{addr: ip_addr_t}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef WithKey = WithKey{key: bit<128>, val: string}
+typedef WithKeyDbg = WithKeyDbg{key: bit<128>, val: string}
 typedef X = X{field: bigint}
 typedef XX = XX{b: bigint, c: R3, d: R1}
 typedef Y = Y{b: bigint, e: string}
 typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
+typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef line = bigint
 typedef nested_t = N{field: C}
 typedef option_t<'A> = None{} | Some{value: 'A}
@@ -92,6 +109,7 @@ function a8 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 function a9 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
+extern function allocate_u32 (allocated: std.Set<bit<32>>, toallocate: std.Vec<'B>, max_val: bit<32>): std.Vec<('B, bit<32>)>
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =
@@ -269,41 +287,57 @@ function vars (): () =
           C{.f1=var c, .f2=var d} = y))))))
 function x (): Alt =
     C0{.x=32'd5}
-relation Aggregate1 [Aggregate1]
-relation Aggregate2 [Aggregate2]
-relation Aggregate3 [Aggregate3]
-relation Aggregate4 [Aggregate4]
+input relation Address [Address]
+output relation Aggregate1 [Aggregate1]
+output relation Aggregate2 [Aggregate2]
+output relation Aggregate3 [Aggregate3]
+output relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
-relation Answer [Answer]
-relation Disaggregate [Disaggregate]
+relation Allocated [Allocated]
+output relation Allocation [Allocation]
+output relation Answer [Answer]
+input relation Blacklist [Blacklist]
+output relation Disaggregate [Disaggregate]
+output relation ExternalId [ExternalId]
+input relation ExternalIds [ExternalIds]
+input relation Gangster [Gangster]
+output relation HostAddress [HostAddress]
+input relation HostAddresses [HostAddresses]
 input relation Human [Human]
+output relation Innocent [Innocent]
 input relation Links [Links]
 input relation Parent [Parent]
 input relation R1 [R1]
 input relation R2 [(bigint, bigint)]
 input relation R3 [R3]
-relation R4 [R3]
-relation R5 [bigint]
-relation R6 [R6]
-relation R7 [R7]
-relation Reach [Reach]
+output relation R4 [R3]
+output relation R5 [bigint]
+output relation R6 [R6]
+output relation R7 [R7]
+output relation Reach [Reach]
+input relation Realized [Realized]
 input relation Rel1 [Rel1]
 input relation Rel2 [Rel2]
-relation Rel3 [Rel3]
-relation Rel4 [Rel4]
-relation Sib [Sib]
+output relation Rel3 [Rel3]
+output relation Rel4 [Rel4]
+input relation Request [Request]
+output relation Sib [Sib]
 input relation Strings [Strings]
-relation T [T]
+input relation Suspect [Suspect]
+output relation T [T]
 input relation Table1 [Table1]
-relation Table12 [Table12]
+output relation Table12 [Table12]
 input relation Table2 [Table2]
-relation W [W]
+relation ToAllocate [ToAllocate]
+output relation ValidDestination [ValidDestination]
+output relation W [W]
 input relation WithKey [WithKey] primary key (x) x.key
+output relation WithKeyDbg [WithKeyDbg]
 input relation X [X]
 input relation XX [XX]
 input relation Y [Y]
-relation Z [Z]
-relation ZZ [ZZ]
+output relation Z [Z]
+output relation ZZ [ZZ]
 Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (x != y).
 Parent(.child="Alice", .parent="Bob").
 Parent(.child="Ben", .parent="Bob").
@@ -418,4 +452,13 @@ Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), Aggregate((x), cnt = std
 Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)).
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
 Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), Aggregate((x), map = std.group2map((x, y))).
-Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), FlatMap(y = set).
+Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), var y = FlatMap(set).
+WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
+Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
+ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).
+HostAddress(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), var addr = FlatMap(addrs).
+ExternalId(.host=host, .id=id) :- ExternalIds(.host=host, .ids=ids), var id = FlatMap(ids).
+Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.name=name, .id=id, .x=x).
+ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), Aggregate((name), ids = std.group2vec(id)).
+Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), Aggregate((name), xs = std.group2set(x)).
+Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.

@@ -81,6 +81,7 @@ reservedNames = ["as",
                  "import",
                  "in",
                  "input",
+                 "output",
                  "insert",
                  "bigint",
                  "not",
@@ -251,8 +252,9 @@ func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> (Just <$ reservedOp "=" <*> expr))
 
 relation = do
-    ground <-  True <$ reserved "input" <* reserved "relation"
-           <|> False <$ reserved "relation"
+    role <-  RelInput    <$ reserved "input" <* reserved "relation"
+         <|> RelOutput   <$ reserved "output" <* reserved "relation"
+         <|> RelInternal <$ reserved "relation"
     relName <- relIdent
     ((do start <- getPosition
          fields <- parens $ commaSep arg
@@ -261,10 +263,10 @@ relation = do
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
          let tdef = TypeDef nopos relName [] $ Just tspec
-         let rel = Relation nopos ground relName (TUser p relName []) True pkey
+         let rel = Relation nopos role relName (TUser p relName []) pkey
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- (\tspec -> Relation nopos ground relName tspec True) <$>
+       (do rel <- (\tspec -> Relation nopos role relName tspec) <$>
                      (brackets typeSpecSimple) <*>
                      (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))
@@ -315,15 +317,16 @@ rule = Rule nopos <$>
 
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
-       <|> (RHSCondition <$> expr)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
                             (comma *> varIdent) <*>
                             (reservedOp "=" *> funcIdent) <*>
                             parens expr <*
                             symbol ")")
-       <|> (RHSFlatMap <$ reserved "FlatMap" <*> (symbol "(" *> varIdent) <*>
-                          (reservedOp "=" *> expr <* symbol ")"))
+       <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
+              RHSFlatMap <$> (reserved "var" *> varIdent) <*>
+                             (reservedOp "=" *> reserved "FlatMap" *> parens expr)
+       <|> (RHSCondition <$> expr)
 
 atom = withPos $ do
        rname <- relIdent
@@ -401,23 +404,23 @@ ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
 pattern = withPos $
           eTuple   <$> (parens $ commaSep pattern)
+      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
       <|> eVarDecl <$> varIdent
       <|> eVarDecl <$ reserved "var" <*> varIdent
       <|> epholder
       <|> ebool
       <|> estring
       <|> eint
-      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
 
 anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = withPos $
           eTuple <$> (parens $ commaSep lhs)
+      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
       <|> fexpr
       <|> evardcl
       <|> epholder
-      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 

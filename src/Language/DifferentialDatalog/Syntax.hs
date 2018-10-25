@@ -53,6 +53,7 @@ module Language.DifferentialDatalog.Syntax (
         consType,
         consIsUnique,
         KeyExpr(..),
+        RelationRole(..),
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
@@ -341,17 +342,29 @@ instance PP KeyExpr where
 instance Show KeyExpr where
     show = render . pp
 
+data RelationRole = RelInput 
+                  | RelOutput
+                  | RelInternal
+                  deriving(Eq, Ord)
+
+
+instance PP RelationRole where
+    pp RelInput    = "input"
+    pp RelOutput   = "output"
+    pp RelInternal = empty
+
+instance Show RelationRole where
+    show = render . pp
 
 data Relation = Relation { relPos         :: Pos
-                         , relGround      :: Bool
+                         , relRole        :: RelationRole
                          , relName        :: String
                          , relType        :: Type
-                         , relDistinct    :: Bool
                          , relPrimaryKey  :: Maybe KeyExpr
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 t1 d1 k1) (Relation _ g2 n2 t2 d2 k2) = g1 == g2 && n1 == n2 && t1 == t2 && d1 == d2 && k1 == k2
+    (==) (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) = r1 == r2 && n1 == n2 && t1 == t2 && k1 == k2
 
 instance WithPos Relation where
     pos = relPos
@@ -362,7 +375,7 @@ instance WithName Relation where
     setName r n = r{relName = n}
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "input" else empty) <+>
+    pp Relation{..} = pp relRole <+>
                       "relation" <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
         where pkey = maybe empty (("primary key" <+>) . pp) relPrimaryKey
 
@@ -411,7 +424,7 @@ instance PP RuleRHS where
     pp (RHSAggregate g v f e) = "Aggregate" <> "(" <>
                                 (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
                                 pp v <+> "=" <+> pp f <> (parens $ pp e) <> ")"
-    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <> pp v <+> "=" <+> pp e <> ")"
+    pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
 
 instance Show RuleRHS where
     show = render . pp

@@ -4,7 +4,6 @@
 
 use differential_datalog::arcval;
 use differential_datalog::record::*;
-use abomonation::Abomonation;
 
 use std::fmt::Display;
 use std::fmt;
@@ -16,6 +15,7 @@ use std::collections::btree_set;
 use std::collections::btree_map;
 use std::vec::{Vec};
 use std::collections::{BTreeMap, BTreeSet};
+use std::iter::FromIterator;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -39,6 +39,12 @@ impl <T: Ord> std_Vec<T> {
 impl<T: FromRecord> FromRecord for std_Vec<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         Vec::from_record(val).map(|x|std_Vec{x})
+    }
+}
+
+impl<T: IntoRecord> IntoRecord for std_Vec<T> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
     }
 }
 
@@ -87,6 +93,13 @@ impl<T: FromRecord + Ord> FromRecord for std_Set<T> {
     }
 }
 
+impl<T: IntoRecord + Ord> IntoRecord for std_Set<T> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
+    }
+}
+
+
 impl<T: Ord> IntoIterator for std_Set<T> {
     type Item = T;
     type IntoIter = btree_set::IntoIter<T>;
@@ -94,6 +107,15 @@ impl<T: Ord> IntoIterator for std_Set<T> {
         self.x.into_iter()
     }
 }
+
+impl<T: Ord> FromIterator<T> for std_Set<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where I: IntoIterator<Item = T>
+    {
+        std_Set{x: BTreeSet::from_iter(iter)}
+    }
+}
+
 
 impl<T: Display + Ord> Display for std_Set<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -132,6 +154,12 @@ impl<K: FromRecord+Ord, V: FromRecord> FromRecord for std_Map<K,V> {
     }
 }
 
+impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for std_Map<K,V> {
+    fn into_record(self) -> Record {
+        self.x.into_record()
+    }
+}
+
 impl<K: Ord,V> IntoIterator for std_Map<K,V> {
     type Item = (K,V);
     type IntoIter = btree_map::IntoIter<K,V>;
@@ -140,6 +168,13 @@ impl<K: Ord,V> IntoIterator for std_Map<K,V> {
     }
 }
 
+impl<K: Ord, V> FromIterator<(K,V)> for std_Map<K,V> {
+    fn from_iter<I>(iter: I) -> Self
+    where I: IntoIterator<Item = (K,V)>
+    {
+        std_Map{x: BTreeMap::from_iter(iter)}
+    }
+}
 
 impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -223,3 +258,59 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
     };
     res
 }
+
+/* Tuples */
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct tuple0;
+
+impl FromRecord for tuple0 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        <()>::from_record(val).map(|_|tuple0)
+    }
+}
+
+impl IntoRecord for tuple0 {
+    fn into_record(self) -> Record {
+        ().into_record()
+    }
+}
+
+
+macro_rules! decl_tuple {
+    ( $name:ident, $( $t:tt ),+ ) => {
+        #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+        pub struct $name< $($t),* >($(pub $t),*);
+        impl <$($t: FromRecord),*> FromRecord for $name<$($t),*> {
+            fn from_record(val: &Record) -> Result<Self, String> {
+                <($($t),*)>::from_record(val).map(|($($t),*)|$name($($t),*))
+            }
+        }
+
+        impl <$($t: IntoRecord),*> IntoRecord for $name<$($t),*> {
+            fn into_record(self) -> Record {
+                let $name($($t),*) = self;
+                Record::Tuple(vec![$($t.into_record()),*])
+            }
+        }
+    };
+}
+
+decl_tuple!(tuple2,  T1, T2);
+decl_tuple!(tuple3,  T1, T2, T3);
+decl_tuple!(tuple4,  T1, T2, T3, T4);
+decl_tuple!(tuple5,  T1, T2, T3, T4, T5);
+decl_tuple!(tuple6,  T1, T2, T3, T4, T5, T6);
+decl_tuple!(tuple7,  T1, T2, T3, T4, T5, T6, T7);
+decl_tuple!(tuple8,  T1, T2, T3, T4, T5, T6, T7, T8);
+decl_tuple!(tuple9,  T1, T2, T3, T4, T5, T6, T7, T8, T9);
+decl_tuple!(tuple10, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+decl_tuple!(tuple11, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11);
+decl_tuple!(tuple12, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12);
+decl_tuple!(tuple13, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
+decl_tuple!(tuple14, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14);
+decl_tuple!(tuple15, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15);
+decl_tuple!(tuple16, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
+decl_tuple!(tuple17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17);
+decl_tuple!(tuple18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18);
+decl_tuple!(tuple19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19);
+decl_tuple!(tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20);

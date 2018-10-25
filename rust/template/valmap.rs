@@ -1,4 +1,4 @@
-//! Tracks the state of Datalog DB in memory.  Provides update callback to be invoked when the DB
+//! Tracks the state of DDlog output relations in memory.  Provides update callback to be invoked when the DB
 //! changes; implements methods to dump the entire database or individual relations.
 //! Used for testing.
 

@@ -1,5 +1,8 @@
 import types
 
+
+/* Input relations */
+
 input relation NB_Global (
     _uuid: uuid,
     nb_cfg: integer,
@@ -7,7 +10,7 @@ input relation NB_Global (
     hv_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: option_t<uuid>
+    ssl: Set<uuid>
 )
 primary key (x) x._uuid
 input relation Logical_Switch (
@@ -27,16 +30,16 @@ input relation Logical_Switch_Port (
     name: string,
     __type: string,
     options: Map<string,string>,
-    parent_name: option_t<string>,
-    tag_request: option_t<integer>,
-    tag: option_t<integer>,
+    parent_name: Set<string>,
+    tag_request: Set<integer>,
+    tag: Set<integer>,
     addresses: Set<string>,
-    dynamic_addresses: option_t<string>,
+    dynamic_addresses: Set<string>,
     port_security: Set<string>,
-    up: option_t<bool>,
-    enabled: option_t<bool>,
-    dhcpv4_options: option_t<uuid>,
-    dhcpv6_options: option_t<uuid>,
+    up: Set<bool>,
+    enabled: Set<bool>,
+    dhcpv4_options: Set<uuid>,
+    dhcpv6_options: Set<uuid>,
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
@@ -59,20 +62,20 @@ input relation Load_Balancer (
     _uuid: uuid,
     name: string,
     vips: Map<string,string>,
-    protocol: option_t<string>,
+    protocol: Set<string>,
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
 input relation ACL (
     _uuid: uuid,
-    name: option_t<string>,
+    name: Set<string>,
     priority: integer,
     direction: string,
     __match: string,
     action: string,
     log: bool,
-    severity: option_t<string>,
-    meter: option_t<string>,
+    severity: Set<string>,
+    meter: Set<string>,
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
@@ -107,7 +110,7 @@ input relation Logical_Router (
     name: string,
     ports: Set<uuid>,
     static_routes: Set<uuid>,
-    enabled: option_t<bool>,
+    enabled: Set<bool>,
     nat: Set<uuid>,
     load_balancer: Set<uuid>,
     options: Map<string,string>,
@@ -121,8 +124,8 @@ input relation Logical_Router_Port (
     options: Map<string,string>,
     networks: Set<string>,
     mac: string,
-    peer: option_t<string>,
-    enabled: option_t<bool>,
+    peer: Set<string>,
+    enabled: Set<bool>,
     ipv6_ra_configs: Map<string,string>,
     external_ids: Map<string,string>
 )
@@ -130,18 +133,18 @@ primary key (x) x._uuid
 input relation Logical_Router_Static_Route (
     _uuid: uuid,
     ip_prefix: string,
-    policy: option_t<string>,
+    policy: Set<string>,
     nexthop: string,
-    output_port: option_t<string>,
+    output_port: Set<string>,
     external_ids: Map<string,string>
 )
 primary key (x) x._uuid
 input relation NAT (
     _uuid: uuid,
     external_ip: string,
-    external_mac: option_t<string>,
+    external_mac: Set<string>,
     logical_ip: string,
-    logical_port: option_t<string>,
+    logical_port: Set<string>,
     __type: string,
     external_ids: Map<string,string>
 )
@@ -156,8 +159,8 @@ primary key (x) x._uuid
 input relation Connection (
     _uuid: uuid,
     target: string,
-    max_backoff: option_t<integer>,
-    inactivity_probe: option_t<integer>,
+    max_backoff: Set<integer>,
+    inactivity_probe: Set<integer>,
     other_config: Map<string,string>,
     external_ids: Map<string,string>,
     is_connected: bool,
@@ -190,3 +193,8 @@ input relation Gateway_Chassis (
     options: Map<string,string>
 )
 primary key (x) x._uuid
+
+/* Output relations */
+
+
+/* Delta tables definitions */

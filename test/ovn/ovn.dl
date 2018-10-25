@@ -1,17 +1,2 @@
 import OVN_Northbound
 import OVN_Southbound
-
-
-// FlatMap test
-input relation HostAddresses(host: bit<64>, addrs: Set<string>)
-relation HostAddress(host: bit<64>, addr: string)
-
-HostAddress(host, addr) :- HostAddresses(host, addrs),
-                           FlatMap(addr=addrs).
-
-
-input relation ExternalIds(host: bit<64>, ids: Map<string, string>)
-relation ExternalId(host: bit<64>, id: (string, string))
-
-ExternalId(host, id) :- ExternalIds(host, ids),
-                        FlatMap(id=ids).

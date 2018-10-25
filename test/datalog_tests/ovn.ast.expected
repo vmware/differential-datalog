@@ -163,11 +163,11 @@ input relation QoS_external_ids [QoS_external_ids]
 input relation SSL [SSL]
 input relation SSL_external_ids [SSL_external_ids]
 Load_Balancer_ip_addresses(.load_balancer=lb, .ip_address=ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips(.load_balancer=lb, .key=key, .value=_).
-Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
-Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), var ip = FlatMap(extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), var ip = FlatMap(extract_ips(ips)).
 Logical_Switch_Port_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
 Logical_Switch_has_stateful_acl_action(.logical_switch=ls) :- ACL(.id=_, .name=_, .logical_switch=ls, .priority=_, .direction=_, ._match=_, .action="allow-related", .log=_, .severity=_).
-Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(subnet = extract_subnets(ips)).
+Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), var subnet = FlatMap(extract_subnets(ips)).
 Logical_Switch_Port_ps_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
 DHCP_Options_option_args(.dhcp_options=opts, .option=((key ++ "=") ++ value)) :- DHCP_Options_options(.dhcp_options=opts, .key=key, .value=value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
 DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), Some{.value=var mac} = eth_addr_from_string(val).

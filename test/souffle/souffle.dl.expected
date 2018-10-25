@@ -247,13 +247,13 @@ RInitializedClass(_class) :- RReachable(_inmethod), RInstruction_Method(_invocat
 RInitializedClass(_classOrInterface) :- RReachable(_inmethod), RStoreStaticField(_, _signature, _inmethod), RField_DeclaringType(_signature, _classOrInterface).
 RInitializedClass(_classOrInterface) :- RReachable(_inmethod), RLoadStaticField(_signature, _, _inmethod), RField_DeclaringType(_signature, _classOrInterface).
 RReachable(_clinit) :- RInitializedClass(_class), RClassInitializer(_class, _clinit).
-relation RAssign(_to: Var, _from: Var)
-relation RVarPointsTo(_heap: HeapAllocation, _var: Var)
-relation RInstanceFieldPointsTo(_heap: HeapAllocation, _fld: Field, _baseheap: HeapAllocation)
-relation RStaticFieldPointsTo(_heap: HeapAllocation, _fld: Field)
-relation RCallGraphEdge(_invocation: MethodInvocation, _meth: Method)
-relation RArrayIndexPointsTo(_baseheap: HeapAllocation, _heap: HeapAllocation)
-relation RReachable(_method: Method)
+output relation RAssign(_to: Var, _from: Var)
+output relation RVarPointsTo(_heap: HeapAllocation, _var: Var)
+output relation RInstanceFieldPointsTo(_heap: HeapAllocation, _fld: Field, _baseheap: HeapAllocation)
+output relation RStaticFieldPointsTo(_heap: HeapAllocation, _fld: Field)
+output relation RCallGraphEdge(_invocation: MethodInvocation, _meth: Method)
+output relation RArrayIndexPointsTo(_baseheap: HeapAllocation, _heap: HeapAllocation)
+output relation RReachable(_method: Method)
 RAssign(_actual, _formal) :- RCallGraphEdge(_invocation, _method), RFormalParam(_index, _method, _formal), RActualParam(_index, _invocation, _actual).
 RAssign(_return, _local) :- RCallGraphEdge(_invocation, _method), RReturnVar(_return, _method), RAssignReturnValue(_invocation, _local).
 RVarPointsTo(_heap, _var) :- RAssignHeapAllocation(_heap, _var, _inMethod), RReachable(_inMethod).

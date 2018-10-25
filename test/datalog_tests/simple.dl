@@ -34,7 +34,7 @@ typedef person = string
 input relation Human(h: person)
 input relation Parent(child: person, parent: person)
 
-relation Sib(s1: person, s2: person)
+output relation Sib(s1: person, s2: person)
 
 
 Sib(x, y) :- Parent(x, z), Parent(y, z), x != y.
@@ -183,14 +183,14 @@ typedef station = string
 
 input relation Links(l: line, s1: station, s2: station)
 
-relation Reach(s1: station, s2: station)
+output relation Reach(s1: station, s2: station)
 
 
 Reach(x, y) :- Links(l, x, y).
 Reach(x, y) :- Links(l, y, x).
 Reach(x, y):- Links(l, x, z), Reach(z, y).
 
-relation Answer(x: station)
+output relation Answer(x: station)
 
 Answer(x) :- Reach("Odeon", x).
 
@@ -283,9 +283,9 @@ function f1(x: T1, y: T2, q: T3) : bool = {
 
 /* Statements test */
 input relation X(field: bigint)
-relation Z(field: bigint)
+output relation Z(field: bigint)
 
-relation W(f1: bigint, f2: bigint, f3: bigint)
+output relation W(f1: bigint, f2: bigint, f3: bigint)
 
 for (a in X)
    skip
@@ -405,27 +405,27 @@ R1[1].
 R2[(1,2)].
 
 input relation R3(f1: bigint, f2: bool)
-relation R4[R3]
-relation R5[bigint]
-relation R6(f: bigint)
+output relation R4[R3]
+output relation R5[bigint]
+output relation R6(f: bigint)
 
 R4[x] :- R3[x].
 R5[x.f1] :- R3[x].
 R6(x.f1) :- R3[x].
 
 input relation XX(b: bigint, c: R3, d: R1)
-relation ZZ(x: bigint, y: R3)
+output relation ZZ(x: bigint, y: R3)
 ZZ(a.b, a.c) :- XX[a].
 
 input relation Y(b: bigint, e: string)
-relation T(x: bigint, y: string)
+output relation T(x: bigint, y: string)
 
 T(a.b, e) :- XX[a], Y(a.d, e).
 
 typedef R7 = R7{f1: bigint, f2: bit<16>}
            | R7Other
 
-relation R7[R7]
+output relation R7[R7]
 
 R7(1,2).
 R7[R7{1,3}].
@@ -438,7 +438,7 @@ typedef S = S {
 input relation Table1(id: bit<64>, name: string)
 input relation Table2(name: string, f2: bigint, f3: S)
 
-relation Table12(id: bit<128>, name: string, f3: S)
+output relation Table12(id: bit<128>, name: string, f3: S)
 
 Table12(hash128((id,name,f2,f3)), name, f3) :- Table1(id, name), Table2(name, f2, f3).
 
@@ -587,12 +587,12 @@ function foo(): bool = {
 input relation Rel1(x: bigint, y: IPAddr)
 input relation Rel2(x: bigint, z: FooStruct)
 
-relation Rel3(x:bigint, y: IPAddr, z: FooStruct)
+output relation Rel3(x:bigint, y: IPAddr, z: FooStruct)
 
 Rel3(x, y, z) :- Rel1(x, y), Rel2(x,z).
 
 
-relation Rel4(x:bigint, y: IPAddr, b: bool)
+output relation Rel4(x:bigint, y: IPAddr, b: bool)
 
 Rel4(x,y,b) :- Rel1(x,y),
                Rel2(x, Option1{.f2=IP4{}, .f3=(b, "buzz")}).
@@ -601,23 +601,86 @@ Rel4(x,y,b) :- Rel1(x,y),
 
 input relation AggregateMe1(x: string, y: string)
 
-relation Aggregate1(x: string, cnt: bit<64>)
+output relation Aggregate1(x: string, cnt: bit<64>)
 
 Aggregate1(x, cnt) :- AggregateMe1(x,y), Aggregate((x), cnt = count(y)).
 
-relation Aggregate2(x: string, set: Set<string>)
+output relation Aggregate2(x: string, set: Set<string>)
 Aggregate2(x, set) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)).
 
-relation Aggregate3(x: string, vec: Vec<string>)
+output relation Aggregate3(x: string, vec: Vec<string>)
 Aggregate3(x, vec) :- AggregateMe1(x,y), Aggregate((x), vec = group2vec(y)).
 
 
-relation Aggregate4(x: string, map: Map<string,string>)
+output relation Aggregate4(x: string, map: Map<string,string>)
 Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y))).
 
-relation Disaggregate(x: string, y: string)
-Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), FlatMap(y = set).
+output relation Disaggregate(x: string, y: string)
+Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), var y = FlatMap(set).
 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)
 primary key (x) x.key
+
+output relation WithKeyDbg(key: bit<128>, val: string)
+WithKeyDbg(k,v) :- WithKey(k, v).
+
+/* More advanced antijoins */
+
+input relation Gangster(nickname: string, name: string)
+input relation Suspect(name: string)
+output relation Innocent(name: string)
+
+Innocent(name) :- Suspect(name), not Gangster(_, name).
+
+typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
+
+input relation Blacklist(addr: ip_addr_t)
+input relation Address(addr: ip_addr_t)
+
+output relation ValidDestination(addr: ip_addr_t)
+ValidDestination(addr) :-
+    Address(addr),
+    IPAddr{var b3, var b2, _, _} = addr,
+    not Blacklist(IPAddr{b3, b2, _, _}).
+
+// FlatMap test
+input relation HostAddresses(host: bit<64>, addrs: Set<string>)
+output relation HostAddress(host: bit<64>, addr: string)
+
+HostAddress(host, addr) :- HostAddresses(host, addrs),
+                           var addr = FlatMap(addrs).
+
+
+input relation ExternalIds(host: bit<64>, ids: Map<string, string>)
+output relation ExternalId(host: bit<64>, id: (string, string))
+
+ExternalId(host, id) :- ExternalIds(host, ids),
+                        var id = FlatMap(ids).
+
+/* Allocator test */
+
+extern function allocate_u32(allocated: Set<bit<32>>, toallocate: Vec<'B>, max_val: bit<32>): Vec<('B, bit<32>)>
+
+// allocate a unique x per name
+input relation Realized(name: string, id: string, x: bit<32>)
+input relation Request(name: string, id: string)
+
+output relation Allocation(name: string, id: string, x: bit<32>)
+
+Allocation(name, id, x) :-
+    Request(name, id), Realized(name, id, x).
+
+relation ToAllocate(name: string, ids: Vec<string>)
+ToAllocate(name, ids) :-
+    Request(name, id), not Realized(name, id, _), Aggregate((name), ids = group2vec(id)).
+
+relation Allocated(name: string, xs: Set<bit<32>>)
+Allocated(name, xs) :-
+    Realized(name, _, x), Aggregate((name), xs = group2set(x)).
+
+Allocation(name, id, x) :-
+    ToAllocate(name, ids),
+    Allocated(name, xs),
+    var allocation = FlatMap(allocate_u32(xs, ids, (32'd1 << 32'd24) - 32'd1)),
+    (var id, var x) = allocation.

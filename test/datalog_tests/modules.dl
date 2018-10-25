@@ -3,7 +3,7 @@ import foolib.ns1.m1 as m1
 import foolib.ns1.m2 as m2
 
 input relation Rmain(f1: Tlib, f2: m1.T1)
-relation Rout(f1: bool, f2: bigint)
+output relation Rout(f1: bool, f2: bigint)
 
 Rout(q, x) :- Rmain(Tlib{x}, m1.T1{y}), Rlib(m2.T2{z}), m1.R1(m2.T2{p}), m2.R2(q).
 

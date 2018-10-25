@@ -91,21 +91,31 @@ nbTest = do
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema" 
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema"
                                   [ "SB_Global"
                                   , "Logical_Flow"
                                   , "Multicast_Group"
+                                  , "Meter"
+                                  , "Meter_Band"
                                   , "Datapath_Binding"
                                   , "Port_Binding"
+                                  , "Gateway_Chassis"
+                                  , "Port_Group"
                                   , "MAC_Binding"
                                   , "DHCP_Options"
                                   , "DHCPv6_Options"
                                   , "Address_Set"
                                   , "DNS"
                                   , "RBAC_Role"
-                                  , "RBAC_Permission"
-                                  , "Chassis"]
-                                  M.empty
+                                  , "RBAC_Permission"]
+                                  (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
+                                              , ("Port_Binding"     , ["logical_port"])
+                                              , ("DNS"              , ["external_ids"])
+                                              , ("Datapath_Binding" , ["external_ids"])
+                                              , ("RBAC_Role"        , ["name"])
+                                              , ("Address_Set"      , ["name"])
+                                              , ("Port_Group"       , ["name"])
+                                              , ("Meter"            , ["name"]) ])
     writeFile "test/ovn/OVN_Southbound.dl" (render prog)
 
 ovnTests :: Bool -> TestTree
@@ -124,7 +134,7 @@ souffleTests progress =
         [ goldenVsFile "doop"
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "--no-store", "-w", "1"]}]
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "-w", "1"]}]
 
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
