@@ -1,2 +1,93 @@
 import OVN_Northbound as nb
 import OVN_Southbound as sb
+import types
+
+for (mb in nb.Meter_Band) {
+    sb.Meter_Band(.uuid_name = $"${uuid2str(mb._uuid)}",
+                  .action = mb.action,
+                  .rate = mb.rate,
+                  .burst_size = mb.burst_size)
+}
+
+sb.Meter(name, unit, str_bands) :-
+    nb.Meter(_, name, unit, bands, _),
+    var uuid_band = FlatMap(bands),
+    var str_band = $"${uuid2str(uuid_band)}",
+    Aggregate((name, unit), str_bands = group2set(str_band)).
+
+/*
+
+NB:
+input relation Logical_Switch (
+    _uuid: uuid,
+    name: string,
+    ports: Set<uuid>,
+    acls: Set<uuid>,
+    qos_rules: Set<uuid>,
+    load_balancer: Set<uuid>,
+    dns_records: Set<uuid>,
+    other_config: Map<string,string>,
+    external_ids: Map<string,string>
+)
+
+input relation Logical_Router (
+    _uuid: uuid,
+    name: string,
+    ports: Set<uuid>,
+    static_routes: Set<uuid>,
+    enabled: Set<bool>,
+    nat: Set<uuid>,
+    load_balancer: Set<uuid>,
+    options: Map<string,string>,
+    external_ids: Map<string,string>
+)
+primary key (x) x._uuid
+
+SB:
+output relation Datapath_Binding (
+    uuid_name: string,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
+
+*/
+/*
+extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
+extern function map_insert(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K, 'V>
+extern function map_get(m: Map<'K,'V>, k:'K): option_t<'V>
+
+sb.Datapath_Binding($"${uuid2str(uuid)}", tunid, external_ids2) :-
+    nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
+    TunIdsAllocation(uuid, tunid),
+    var external_ids0 = map_singleton("logical-switch", $"${uuid2str(uuid)}"),
+    var external_ids1 = map_insert(external_ids0, "name", name),
+    var external_ids2 = match (map_get(ids, "neutron:network-name")) {
+                              None -> external_ids1,
+                              Some{nnn} -> map_insert(external_ids1, "name2", "nnn")
+                        }.
+
+relation AllocatedTunIds(datapath_binding: string, tunid: integer)
+
+AllocatedTunIds(datapath_binding, tunid) :-
+    sb.Realized_Datapath_Binding(uuid, tunid, _),
+    sb.UUIDMap_Datapath_Binding(datapath_binding, Left{uuid}),
+    nb.Logical_Switch(.uuid = uuid),
+    $"${uuid2str(uuid)}" == datapath_binding.
+
+relation ToAllocateTunIds(datapath_binding: string)
+
+ToAllocateTunIds(datapath_bindings: Set<string>) :-
+    nb.Logical_Switch(._uuid = uuid),
+    var datapath_binding = $"${uuid2str(uuid)}",
+    not AllocatedTunIds(datapath_binding, _),
+    Aggregate((), datapath_bindings = group2set(datapath_binding)).
+
+relation TunIdsAllocation(datapath_binding: string, tunid: integer)
+
+TunIdsAllocation(datapath_binding, tunid) :-
+    AllocatedTunIds(allocated),
+    ToAllocateTunIds(to_allocate),
+    var allocations = allocate_u64(allocated, to_allocate, 64'hffff),
+    var allocation = FlatMap(allocations),
+    (var datapath_binding, var tunid) = allocation.
+*/

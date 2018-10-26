@@ -6,6 +6,7 @@ extern crate num;
 extern crate uuid;
 
 use differential_datalog::record::*;
+use differential_datalog::arcval::*;
 use serde_json::Value;
 use serde_json::map::Map;
 use serde_json::Number;
@@ -315,4 +316,9 @@ fn uuid_from_u128(i: u128) -> String {
 
 fn uuid_from_int(i: &BigInt) -> Result<String, String> {
     Ok(uuid_from_u128(i.to_u128().ok_or_else(||format!("uuid {} is not a u128", i))?))
+}
+
+// exported to DDlog; hence the funny name
+pub fn types_uuid2str(i: &u128) -> DDString {
+    ArcVal::from(uuid::Uuid::from_u128(*i).to_hyphenated().to_string())
 }

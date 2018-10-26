@@ -1,15 +1,19 @@
 start;
 
-insert OVN_Northbound.Logical_Switch (
+insert OVN_Northbound.Meter_Band (
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
-    .name = "lsw0",
-    .ports = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d96, 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d97],
-    .acls = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d98, 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d99],
-    .qos_rules = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9a, 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9b],
-    .load_balancer = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9c, 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9d],
-    .dns_records = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9e, 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d9f],
-    .other_config = [("c1", "v1"), ("c2", "v2")],
-    .external_ids= []
+    .action = "drop",
+    .rate = 1000,
+    .burst_size = 0,
+    .external_ids = []
+),
+
+insert OVN_Northbound.Meter (
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d92,
+    .name = "meter1",
+    .unit = "kbps",
+    .bands = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95],
+    .external_ids = []
 );
 commit;
 dump;
