@@ -1,0 +1,6 @@
+OVN_Southbound_DeltaPlus_Meter:
+OVN_Southbound.DeltaPlus_Meter{"meter1","kbps",std_Set { x: {std.Right{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206"}} }}
+
+OVN_Southbound_DeltaPlus_Meter_Band:
+OVN_Southbound.DeltaPlus_Meter_Band{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206","drop",1000,0}
+

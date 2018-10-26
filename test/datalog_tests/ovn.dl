@@ -1,20 +1,3 @@
-typedef option_t<'A> = None
-                    | Some {value : 'A}
-
-function is_none(x: option_t<'A>): bool = {
-    match (x) {
-        None -> true,
-        _    -> false
-    }
-}
-
-function is_some(x: option_t<'A>): bool = {
-    match (x) {
-        Some{} -> true,
-        _      -> false
-    }
-}
-
 typedef uuid = bit<128>
 
 typedef mac_addr_t = bit<48>
@@ -97,8 +80,8 @@ input relation Connection (
     id:                 uuid,
     target:             string,
     is_connected:       bool,
-    max_backoff:        option_t<bigint>,
-    inactivity_probe:   option_t<bigint>
+    max_backoff:        Option<bigint>,
+    inactivity_probe:   Option<bigint>
 )
 
 input relation Connection_other_config (
@@ -225,14 +208,14 @@ input relation Logical_Switch_external_ids (
 input relation Logical_Switch_Port (
     id:                     uuid,
     logical_switch:         uuid,
-    parent:                 option_t<string>,
-    tag_request:            option_t<bigint>,
-    tag:                    option_t<bigint>,
+    parent:                 Option<string>,
+    tag_request:            Option<bigint>,
+    tag:                    Option<bigint>,
     /* can up and enabled fields really be missing? */
-    up:                     option_t<bool>,
-    enabled:                option_t<bool>,
-    dhcpv4_options:         option_t<uuid>,
-    dhcpv6_options:         option_t<uuid>,
+    up:                     Option<bool>,
+    enabled:                Option<bool>,
+    dhcpv4_options:         Option<uuid>,
+    dhcpv6_options:         Option<uuid>,
     name:                   string,
     _type:                  string
 )
@@ -314,7 +297,7 @@ input relation Address_Set_external_ids (
 input relation Load_Balancer (
     id:             uuid,
     logical_switch: uuid,
-    protocol:       option_t<string>,
+    protocol:       Option<string>,
     name:           string
 )
 
@@ -359,14 +342,14 @@ input relation Load_Balancer_external_ids (
 
 input relation ACL (
     id:                 uuid,
-    name:               option_t<string>,
+    name:               Option<string>,
     logical_switch:     uuid,
     priority:           bigint,
     direction:          string,
     _match:             string,
     action:             string,
     log:                bool,
-    severity:           option_t<string>
+    severity:           Option<string>
 )
 
 input relation ACL_external_ids (
@@ -465,7 +448,7 @@ input relation QoS_external_ids (
 */
 input relation Logical_Router (
     id:             uuid,
-    enabled:        option_t<bool>,
+    enabled:        Option<bool>,
     name:           string
 )
 
@@ -517,8 +500,8 @@ input relation Logical_Router_Port (
     logical_router:         uuid,
     name:                   string,
     mac:                    string,
-    peer:                   option_t<string>,
-    enabled:                option_t<bool>
+    peer:                   Option<string>,
+    enabled:                Option<bool>
 )
 
 input relation Logical_Router_Port_options (
@@ -563,9 +546,9 @@ input relation Logical_Router_Static_Route (
     id:                             uuid,
     logical_router:                 uuid,
     ip_prefix:                      string,
-    policy:                         option_t<string>,
+    policy:                         Option<string>,
     nexthop:                        string,
-    output_port:                    option_t<string>
+    output_port:                    Option<string>
 )
 
 input relation Logical_Router_Static_Route_external_ids (
@@ -597,10 +580,10 @@ input relation NAT (
     id:             uuid,
     logical_router: uuid,
     external_ip:    string,
-    external_mac:   option_t<string>,
+    external_mac:   Option<string>,
     logical_ip:     string,
-    logical_port:   option_t<string>,
-    _type:          option_t<string>
+    logical_port:   Option<string>,
+    _type:          Option<string>
 )
 
 input relation NAT_external_ids (
@@ -740,7 +723,7 @@ input relation Gateway_Chassis_options (
 
 typedef port_t = bit<16>
 
-typedef ip_port_t = IPPort {ip: string, port: option_t<port_t>}
+typedef ip_port_t = IPPort {ip: string, port: Option<port_t>}
 
 
 /* Load_Balancer.ip_addresses
@@ -839,7 +822,7 @@ relation DHCP_Options_server_mac (
     server_mac:         mac_addr_t
 )
 
-extern function eth_addr_from_string(str: string): option_t<mac_addr_t>
+extern function eth_addr_from_string(str: string): Option<mac_addr_t>
 
 DHCP_Options_server_mac(opts, mac) :-
     DHCP_Options_options(opts, "server_mac", val),
@@ -856,7 +839,7 @@ relation DHCP_Options_server_ip (
     server_ip:          string
 )
 
-extern function ip_parse(str: string): option_t<ip_addr_t>
+extern function ip_parse(str: string): Option<ip_addr_t>
 
 DHCP_Options_server_ip(opts, val) :-
     DHCP_Options_options(opts, "server_id", val),

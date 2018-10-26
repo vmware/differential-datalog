@@ -319,6 +319,6 @@ fn uuid_from_int(i: &BigInt) -> Result<String, String> {
 }
 
 // exported to DDlog; hence the funny name
-pub fn types_uuid2str(i: &u128) -> DDString {
+pub fn ovsdb_uuid2str(i: &u128) -> DDString {
     ArcVal::from(uuid::Uuid::from_u128(*i).to_hyphenated().to_string())
 }

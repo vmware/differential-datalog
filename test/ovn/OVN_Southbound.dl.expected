@@ -1,4 +1,4 @@
-import types
+import ovsdb
 
 
 /* Input relations */
@@ -361,7 +361,7 @@ UUIDMap_Meter_Band(__name, Left{__uuid}) :-
     Realized_Meter_Band(__uuid, action, rate, burst_size).
 UUIDMap_Meter_Band(__name, Right{__name}) :-
     Meter_Band(__name, action, rate, burst_size),
-    Realized_Meter_Band(_, action, rate, burst_size).
+not Realized_Meter_Band(_, action, rate, burst_size).
 output relation DeltaPlus_Meter_Band (
     uuid_name: string,
     action: string,
@@ -393,7 +393,7 @@ UUIDMap_Datapath_Binding(__name, Left{__uuid}) :-
     Realized_Datapath_Binding(__uuid, _, external_ids).
 UUIDMap_Datapath_Binding(__name, Right{__name}) :-
     Datapath_Binding(__name, _, external_ids),
-    Realized_Datapath_Binding(_, _, external_ids).
+not Realized_Datapath_Binding(_, _, external_ids).
 output relation DeltaPlus_Datapath_Binding (
     uuid_name: string,
     tunnel_key: integer,
@@ -431,7 +431,7 @@ UUIDMap_Port_Binding(__name, Left{__uuid}) :-
     Realized_Port_Binding(__uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 UUIDMap_Port_Binding(__name, Right{__name}) :-
     Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
-    Realized_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
+not Realized_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 relation Swizzled_Port_Binding (
     uuid_name: string,
     logical_port: string,
@@ -671,7 +671,7 @@ UUIDMap_RBAC_Permission(__name, Left{__uuid}) :-
     Realized_RBAC_Permission(__uuid, table, authorization, insert_delete, update).
 UUIDMap_RBAC_Permission(__name, Right{__name}) :-
     RBAC_Permission(__name, table, authorization, insert_delete, update),
-    Realized_RBAC_Permission(_, table, authorization, insert_delete, update).
+not Realized_RBAC_Permission(_, table, authorization, insert_delete, update).
 output relation DeltaPlus_RBAC_Permission (
     uuid_name: string,
     table: string,
@@ -705,7 +705,7 @@ UUIDMap_Gateway_Chassis(__name, Left{__uuid}) :-
     Realized_Gateway_Chassis(__uuid, name, chassis, priority, external_ids, options).
 UUIDMap_Gateway_Chassis(__name, Right{__name}) :-
     Gateway_Chassis(__name, name, chassis, priority, external_ids, options),
-    Realized_Gateway_Chassis(_, name, chassis, priority, external_ids, options).
+not Realized_Gateway_Chassis(_, name, chassis, priority, external_ids, options).
 output relation DeltaPlus_Gateway_Chassis (
     uuid_name: string,
     name: string,

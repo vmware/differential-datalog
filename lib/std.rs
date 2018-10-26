@@ -1,6 +1,4 @@
-//! Rust implementation of DDlog standard library functions and types.
-
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
+/// Rust implementation of DDlog standard library functions and types.
 
 use differential_datalog::arcval;
 use differential_datalog::record::*;
@@ -188,6 +186,21 @@ impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
         }
         formatter.write_str("]")?;
         Ok(())
+    }
+}
+
+pub fn std_map_empty<K: Ord,V>(k: &K, v: &V) -> std_Map<K, V> {
+    std_Map::new()
+}
+
+pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {
+    m.x.insert((*k).clone(), (*v).clone());
+}
+
+pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
+    match m.x.get(k) {
+        None => std_Option::std_None,
+        Some(v) => std_Option::std_Some{x: (*v).clone()}
     }
 }
 

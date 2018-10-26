@@ -5,9 +5,6 @@
 // -Flow: the output table
 // -Logical_Switch
 
-typedef option_t<'A> = None
-                    | Some {value : 'A}
-
 typedef stage = LS_IN_ACL
               | LS_OUT_ACL
               | LR_IN_ADMISSION
@@ -284,7 +281,7 @@ input relation Load_Balancer (
     lb:           bigint,
     ls:           bigint,
     ip_addresses: string,
-    protocol:     option_t<string>,
+    protocol:     Option<string>,
     name:         string
 )
 
@@ -368,11 +365,11 @@ for (ls in Logical_Switch) {
 input relation Logical_Switch_Port (
     lsp:                     bigint,
     ls:                      bigint,
-    parent:                  option_t<string>,
-    tag_request:             option_t<bigint>,
-    tag:                     option_t<bigint>,
+    parent:                  Option<string>,
+    tag_request:             Option<bigint>,
+    tag:                     Option<bigint>,
     /* can up and enabled fields really be missing? */
-    up:                      option_t<bool>,
+    up:                      Option<bool>,
     enabled:                 bool,
     port_security_not_empty: bool,
     port_security_l2:        string,

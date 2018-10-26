@@ -146,12 +146,12 @@ convertSouffle progress = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
 
-parseValidate :: FilePath -> String -> IO DatalogProgram
+parseValidate :: FilePath -> String -> IO (DatalogProgram, Doc)
 parseValidate file program = do
-    d <- parseDatalogProgram [takeDirectory file] True program file
+    (d, rs_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return d'
+         Right d' -> return (d', rs_code)
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
@@ -183,7 +183,7 @@ parserTest fname = do
         writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
-        prog <- parseValidate fname body
+        (prog, _) <- parseValidate fname body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -196,10 +196,6 @@ parserTest fname = do
 -- * Creates Cargo project in a directory obtained by removing file
 -- extension from 'fname'.
 --
--- * Checks if a file with the same name as 'fname' and '.rs' extension
--- (instead of '.dl') exists and passes its content as the 'imports' argument to
--- compiler.
---
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
 compilerTest :: Bool -> FilePath -> [String] -> IO ()
@@ -207,16 +203,10 @@ compilerTest progress fname cli_args = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
-    prog <- parseValidate fname body
-    -- include any user-provided Rust code
-    let importsfile = addExtension (dropExtension fname) "rs"
-    hasimports <- doesFileExist importsfile
-    imports <- if hasimports
-                  then readFile importsfile
-                  else return ""
+    (prog, rs_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-    compile prog specname imports rust_dir
+    compile prog specname rs_code rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ rust_dir </> specname

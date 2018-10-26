@@ -1,0 +1,43 @@
+/* Description: DDlog "standard library" automatically imported into every module */
+
+extern type Set<'A>
+extern type Map<'K,'V>
+extern type Vec<'A>
+extern type Group<'A>
+
+typedef Option<'A> = Some{x: 'A}
+                   | None
+
+function is_none(x: Option<'A>): bool = {
+    match (x) {
+        None -> true,
+        _    -> false
+    }
+}
+
+function is_some(x: Option<'A>): bool = {
+    match (x) {
+        Some{} -> true,
+        _      -> false
+    }
+}
+
+
+typedef Either<'A,'B> = Left{l: 'A}
+                      | Right{r: 'B}
+
+extern function __builtin_2string(x: 'X): string
+extern function hex(x: 'X): string
+
+extern function hash64(x: 'X): bit<64>
+extern function hash128(x: 'X): bit<128>
+
+/* Standard aggregates */
+extern function count(g: Group<'A>): bit<64>
+extern function group2set(g: Group<'A>): Set<'A>
+extern function group2vec(g: Group<'A>): Vec<'A>
+extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
+
+extern function map_empty(k: 'K, v: 'V): Map<'K, 'V>
+extern function map_insert(m: Map<'K,'V>, k: 'K, v: 'V): ()
+extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>

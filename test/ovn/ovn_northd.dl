@@ -1,6 +1,6 @@
 import OVN_Northbound as nb
 import OVN_Southbound as sb
-import types
+import ovsdb
 
 for (mb in nb.Meter_Band) {
     sb.Meter_Band(.uuid_name = $"${uuid2str(mb._uuid)}",
@@ -52,9 +52,7 @@ output relation Datapath_Binding (
 
 */
 /*
-extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
-extern function map_insert(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K, 'V>
-extern function map_get(m: Map<'K,'V>, k:'K): option_t<'V>
+
 
 sb.Datapath_Binding($"${uuid2str(uuid)}", tunid, external_ids2) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),

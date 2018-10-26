@@ -659,7 +659,7 @@ in `playpen/lib.rs`.  Do not modify this file; instead, create a new
 file called `playpen.rs` in the same directory:
 
 ```
-fn string_slice(x: &String, from: &u64, to: &u64) -> String {
+pub fn string_slice(x: &String, from: &u64, to: &u64) -> String {
     x.as_str()[(*from as usize)..(*to as usize)].to_string()
 }
 ```
@@ -721,7 +721,7 @@ extern function split(s: string, sep: string): Vec<string>
 The Rust implementation can be as follows:
 
 ```
-fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
+pub fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
     s.as_str().split(sep).map(|x| x.to_string()).collect()
 }
 ```
@@ -1026,18 +1026,18 @@ typedef option_ip4_pkt_t = IP4Some{ p: ip4_pkt_t }
 
 However, defining an extra variant type for each type in the program quickly becomes a burden on
 the programmer.  Fortunately, DDlog allows us to define a generic option type that can be
-instantiated for any concrete type:
+instantiated for any concrete type.  This types is defined in the DDlog standard library as follows:
 
 ```
-typedef option_t<'A> = None
-                     | Some {value : 'A}
+typedef Option<'A> = None
+                   | Some {value : 'A}
 ```
 
 Here `'A` is a *type argument* that must be replaced with a concrete type to create a concrete
-instantiation of `option_t`.  We can now rewrite the `pkt_ip4()` function using `option_t`:
+instantiation of `Option`.  We can now rewrite the `pkt_ip4()` function using `Option`:
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
+function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> = {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
         _                                 -> None

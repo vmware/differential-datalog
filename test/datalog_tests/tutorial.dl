@@ -266,7 +266,7 @@ function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
     }
 }
 
-function pkt_ip4_(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
+function pkt_ip4_(pkt: eth_pkt_t): Option<ip4_pkt_t> = {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
         _                                 -> None
@@ -293,7 +293,7 @@ output relation UDPDstPort(port: bit<16>)
 
 UDPDstPort(port) :- Packet(pkt), var port = pkt_udp_port(pkt), port != 0.
 
-function pkt_udp_port2(pkt: eth_pkt_t): option_t<bit<16>> = {
+function pkt_udp_port2(pkt: eth_pkt_t): Option<bit<16>> = {
     match (pkt) {
         EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
         EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
@@ -345,18 +345,13 @@ TargetAudience[person] :- Person[person], is_target_audience(person).
  * Example: Advanced features
  */
 
-// option_t is a generic type that can be use to represent optional values of any other type.
-// It is parameterized by type argument 'A.
-typedef option_t<'A> = None
-                     | Some {value : 'A}
-
-// The Load_Balancer relation instantiates option_t type for strings.
+// The Load_Balancer relation instantiates Option type for strings.
 input relation Load_Balancer (
     lb:           bigint, // bigint is a primitive ddlog type that models
                        // unbounded mathematical integers.
     ls:           bigint,
     ip_addresses: string,
-    protocol:     option_t<string>,
+    protocol:     Option<string>,
     name:         string
 )
 

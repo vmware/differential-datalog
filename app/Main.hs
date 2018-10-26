@@ -29,6 +29,7 @@ import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
 import Data.List
+import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
@@ -37,7 +38,6 @@ import Language.DifferentialDatalog.Compile
 
 data TOption = Datalog String
              | Action String
-             | RustFile String
              | LibDir String
 
 data DLAction = ActionCompile
@@ -47,19 +47,16 @@ data DLAction = ActionCompile
 options :: [OptDescr TOption]
 options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "DDlog program"
           , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
-          , Option ['r'] ["inline-rust-file"] (ReqArg RustFile "FILE")        "extra Rust source to be inlined in the generated library"
           , Option ['L'] []                   (ReqArg LibDir   "PATH")        "extra DDlog library directory"
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
-                     , confRustFiles     :: [FilePath]
                      , confLibDirs       :: [FilePath]
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionCompile
-                       , confRustFiles     = []
                        , confLibDirs       = []
                        }
 
@@ -71,7 +68,6 @@ addOption config (Action a)     = do a' <- case a of
                                                 "compile"    -> return ActionCompile
                                                 _            -> error "invalid action"
                                      return config{confAction = a'}
-addOption config (RustFile f)   = return config { confRustFiles = nub (f:confRustFiles config)}
 addOption config (LibDir d)     = return config { confLibDirs = nub (d:confLibDirs config)}
 
 validateConfig :: Config -> IO ()
@@ -95,20 +91,18 @@ main = do
          ActionCompile -> compileProg config
 
 
-parseValidate :: Config -> IO DatalogProgram
+parseValidate :: Config -> IO (DatalogProgram, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
-    d <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
+    (d, rs_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return d'
+         Right d' -> return (d', rs_code)
 
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
-    prog <- parseValidate conf
-    -- include any user-provided Rust code
-    imports <- mapM readFile confRustFiles
+    (prog, rs_code) <- parseValidate conf
     -- generate Rust project
     let rust_dir = takeDirectory confDatalogFile
-    compile prog specname (concat imports) rust_dir
+    compile prog specname rs_code rust_dir

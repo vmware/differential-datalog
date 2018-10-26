@@ -62,12 +62,13 @@ typedef ZZ = ZZ{x: bigint, y: R3}
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef line = bigint
 typedef nested_t = N{field: C}
-typedef option_t<'A> = None{} | Some{value: 'A}
 typedef person = string
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef station = string
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
+typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef string_syn = string
@@ -228,11 +229,11 @@ function serializable_t2string (x: serializable_t): string =
         Cons0{} -> "Cons0"
     }
 function shadow (): string =
-    ((var b: option_t<string>) = None{};
-     (var a = Some{.value="foo"};
+    ((var b: std.Option<string>) = std.None{};
+     (var a = std.Some{.x="foo"};
       match (a) {
-          Some{.value=var v} -> v,
-          None{} -> ""
+          std.Some{.x=var v} -> v,
+          std.None{} -> ""
       }))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.count (g: std.Group<'A>): bit<64>
@@ -242,6 +243,19 @@ extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
+function std.is_none (x: std.Option<'A>): bool =
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+function std.is_some (x: std.Option<'A>): bool =
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+extern function std.map_empty (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: std.Map<'K,'V>, k: 'K, v: 'V): ()
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");

@@ -115,7 +115,7 @@ data TableKind = TableInput
                deriving(Eq)
 
 builtins :: String
-builtins = [r|import types
+builtins = [r|import ovsdb
 |]
 
 mkTableName :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> TableKind -> Doc

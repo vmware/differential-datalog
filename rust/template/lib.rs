@@ -35,9 +35,6 @@ use std::ptr;
 
 pub mod valmap;
 pub mod ovsdb;
-mod stdlib;
-
-use self::stdlib::*;
 
 pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, sync::Arc<sync::Mutex<valmap::ValMap>>);
 

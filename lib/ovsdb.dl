@@ -1,10 +1,7 @@
 typedef integer      = bit<64>
 typedef uuid         = bit<128>
-typedef option_t<'A> = Some{x: 'A}
-                     | None
-typedef either_t<'A,'B> = Left{l: 'A}
-                        | Right{r: 'B}
-typedef uuid_or_string_t = either_t<uuid, string>
+
+typedef uuid_or_string_t = Either<uuid, string>
 
 function extract_uuid (id: uuid_or_string_t): uuid = {
     match (id) {
