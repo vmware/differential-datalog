@@ -51,19 +51,23 @@ output relation Datapath_Binding (
 )
 
 */
-/*
 
 
-sb.Datapath_Binding($"${uuid2str(uuid)}", tunid, external_ids2) :-
+
+sb.Datapath_Binding($"${uuid2str(uuid)}", 0, external_ids) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
-    TunIdsAllocation(uuid, tunid),
-    var external_ids0 = map_singleton("logical-switch", $"${uuid2str(uuid)}"),
-    var external_ids1 = map_insert(external_ids0, "name", name),
-    var external_ids2 = match (map_get(ids, "neutron:network-name")) {
-                              None -> external_ids1,
-                              Some{nnn} -> map_insert(external_ids1, "name2", "nnn")
-                        }.
+    //TunIdsAllocation(uuid, tunid),
+    var external_ids = {
+        var eids: Map<string, string> = map_singleton("logical-switch", $"${uuid2str(uuid)}");
+        map_insert(eids, "name", name);
+        match (map_get(ids, "neutron:network-name")) {
+            None -> (),
+            Some{nnn} -> map_insert(eids, "name2", nnn)
+        };
+        eids
+    }.
 
+/*
 relation AllocatedTunIds(datapath_binding: string, tunid: integer)
 
 AllocatedTunIds(datapath_binding, tunid) :-

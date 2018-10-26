@@ -14,6 +14,19 @@ insert OVN_Northbound.Meter (
     .unit = "kbps",
     .bands = [0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95],
     .external_ids = []
+),
+
+insert OVN_Northbound.Logical_Switch (
+    ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d90,
+    .name = "ls1",
+    .ports = [],
+    .acls = [],
+    .qos_rules = [],
+    .load_balancer = [],
+    .dns_records = [],
+    .other_config = [],
+    .external_ids = [("neutron:network-name","neutron_network_1")]
 );
+
 commit;
 dump;

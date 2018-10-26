@@ -83,6 +83,10 @@ instance WithType Field where
     typ = fieldType
     setType f t = f { fieldType = t } 
 
+instance WithType FuncArg where
+    typ = argType
+    setType a t = a { argType = t } 
+
 instance WithType Relation where
     typ = relType
     setType r t = r { relType = t }
@@ -458,7 +462,7 @@ ctxExpectType _ CtxRuleRAggregate{}                  = Nothing
 ctxExpectType _ CtxKey{}                             = Nothing
 ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
     let args = funcArgs $ getFunc d f
-        t = fieldType $ args !! i in
+        t = argType $ args !! i in
     if i < length args
        -- Don't attempt to concretize polymorphic types here.
        -- Worry about this is if there is a use case.

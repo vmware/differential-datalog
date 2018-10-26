@@ -80,6 +80,7 @@ reservedNames = ["as",
                  "if",
                  "import",
                  "in",
+                 "mut",
                  "input",
                  "output",
                  "insert",
@@ -241,15 +242,18 @@ typeDef = (TypeDef nopos) <$ reserved "typedef" <*> typeIdent <*>
 
 func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> funcIdent
-                       <*> (parens $ commaSep arg)
+                       <*> (parens $ commaSep farg)
                        <*> (colon *> typeSpecSimple)
                        <*> (return Nothing))
        <|>
        (Function nopos <$  reserved "function"
                        <*> funcIdent
-                       <*> (parens $ commaSep arg)
+                       <*> (parens $ commaSep farg)
                        <*> (colon *> typeSpecSimple)
                        <*> (Just <$ reservedOp "=" <*> expr))
+
+
+farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 
 relation = do
     role <-  RelInput    <$ reserved "input" <* reserved "relation"

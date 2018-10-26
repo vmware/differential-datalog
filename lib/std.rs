@@ -189,8 +189,10 @@ impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
     }
 }
 
-pub fn std_map_empty<K: Ord,V>(k: &K, v: &V) -> std_Map<K, V> {
-    std_Map::new()
+pub fn std_map_singleton<K: Ord + Clone,V: Clone>(k: &K, v: &V) -> std_Map<K, V> {
+    let mut m = std_Map::new();
+    m.insert((*k).clone(),(*v).clone());
+    m
 }
 
 pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {

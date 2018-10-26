@@ -85,7 +85,10 @@ module Language.DifferentialDatalog.Syntax (
         eNot,
         ePHolder,
         eTyped,
+        FuncArg(..),
         Function(..),
+        funcMutArgs,
+        funcImmutArgs,
         funcShowProto,
         funcTypeVars,
         ModuleName(..),
@@ -580,12 +583,38 @@ eNot e              = eUnOp Not e
 ePHolder            = E $ EPHolder  nopos
 eTyped e t          = E $ ETyped    nopos e t
 
+data FuncArg = FuncArg { argPos  :: Pos
+                       , argName :: String
+                       , argMut  :: Bool
+                       , argType :: Type
+                       }
+
+instance Eq FuncArg where
+    (==) (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = (m1, n1, t1) == (m2, n2, t2)
+
+instance WithPos FuncArg where
+    pos = argPos
+    atPos a p = a{argPos = p}
+
+instance WithName FuncArg where
+    name = argName
+    setName a n = a { argName = n }
+
+instance PP FuncArg where
+    pp FuncArg{..} = pp argName <> ":" <+> (if argMut then "mut" else empty) <+> pp argType
+
 data Function = Function { funcPos   :: Pos
                          , funcName  :: String
-                         , funcArgs  :: [Field]
+                         , funcArgs  :: [FuncArg]
                          , funcType  :: Type
                          , funcDef   :: Maybe Expr
                          }
+
+funcMutArgs :: Function -> [FuncArg]
+funcMutArgs f = filter argMut $ funcArgs f
+
+funcImmutArgs :: Function -> [FuncArg]
+funcImmutArgs f = filter (not . argMut) $ funcArgs f
 
 instance Eq Function where
     (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) =
@@ -619,7 +648,7 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
+funcTypeVars = nub . concatMap (typeTypeVars . argType) . funcArgs
 
 data ModuleName = ModuleName {modulePath :: [String]}
                   deriving (Eq, Ord)

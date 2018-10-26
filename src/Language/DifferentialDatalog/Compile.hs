@@ -623,8 +623,8 @@ mkFunc d f@Function{..} | isJust funcDef =
                         | -- generate commented out prototypes of extern functions for user convenvience.
                           otherwise = "/* fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
     where
-    mkArg :: Field -> Doc
-    mkArg a = pp (name a) <> ":" <+> "&" <> mkType a
+    mkArg :: FuncArg -> Doc
+    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType a
     tvars = case funcTypeVars f of
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
@@ -1245,8 +1245,12 @@ mkExpr' _ _ EVar{..}    = (pp exprVar, ERef)
 
 -- Function arguments are passed as read-only references
 -- Functions return real values.
-mkExpr' _ _ EApply{..}  =
-    (rname exprFunc <> (parens $ commaSep $ map ref exprArgs), EVal)
+mkExpr' d _ EApply{..}  =
+    (rname exprFunc <> (parens $ commaSep
+                        $ map (\(a, mut) -> if mut then mutref a else ref a)
+                        $ zip exprArgs (map argMut $ funcArgs f)), EVal)
+    where
+    f = getFunc d exprFunc
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)

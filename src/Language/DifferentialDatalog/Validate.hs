@@ -212,7 +212,7 @@ funcValidateProto :: (MonadError String me) => DatalogProgram -> Function -> me 
 funcValidateProto d f@Function{..} = do
     uniqNames ("Multiple definitions of argument " ++) funcArgs
     let tvars = funcTypeVars f
-    mapM_ (typeValidate d tvars . fieldType) funcArgs
+    mapM_ (typeValidate d tvars . argType) funcArgs
     typeValidate d tvars funcType
 
 funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me ()
@@ -374,9 +374,12 @@ exprValidate1 _ _ ctx EVar{} | ctxInRuleRHSPattern ctx
                                           = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
-exprValidate1 d _ ctx (EApply p f as)     = do fun <- checkFunc p d f
-                                               check (length as == length (funcArgs fun)) p
-                                                      "Number of arguments does not match function declaration"
+exprValidate1 d _ ctx (EApply p f as)     = do
+    fun <- checkFunc p d f
+    check (length as == length (funcArgs fun)) p
+          "Number of arguments does not match function declaration"
+    mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a) 
+          $ zip as (map argMut $ funcArgs fun)
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()

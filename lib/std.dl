@@ -38,6 +38,6 @@ extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 
-extern function map_empty(k: 'K, v: 'V): Map<'K, 'V>
-extern function map_insert(m: Map<'K,'V>, k: 'K, v: 'V): ()
+extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
+extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
