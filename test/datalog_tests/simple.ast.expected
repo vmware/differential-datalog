@@ -253,9 +253,9 @@ function std.is_some (x: std.Option<'A>): bool =
         std.Some{.x=_} -> true,
         _ -> false
     }
-extern function std.map_empty (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
-extern function std.map_insert (m: std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");
