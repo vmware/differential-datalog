@@ -440,7 +440,7 @@ mkUUIDMapRules t@Table{..} mkeys =
             (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols1 <> ").")     $$
             mkTableName t TableUUIDMap <> "(__name, Right{__name}) :-"                     $$
             (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),") $$
-            (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols2 <> ").")
+            ("not" <+> (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols2 <> ")."))
        else empty
     where
     referenced = tableIsReferenced $ name t
