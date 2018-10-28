@@ -46,10 +46,6 @@ module Language.DifferentialDatalog.Type(
     consTreeAbduct,
     typeMapM,
     funcTypeArgSubsts
---    typeSubtypes,
---    typeSubtypesRec,
---    typeGraph,
---    typeSort
 ) where
 
 import Data.Maybe
@@ -223,7 +219,15 @@ exprNodeType' d ctx (EApply p f mas)      = do
     let func = getFunc d f
     let t = funcType func
     as <- mapM (mtype2me p ctx) mas
+    -- Infer types of type variables in 'f'.  Use information about types of concrete arguments. 
+    -- In addition, if expected return type is know from context, use that as well.
     subst <- funcTypeArgSubsts d p func $ as ++ maybeToList (ctxExpectType d ctx)
+    -- 'funcTypeArgSubsts' may succeed without inferring all type variables if the return type 
+    -- uses type variables that do not occur among function arguments (e.g., `map_empty(): Map<'K,'V>`).
+    -- We therefore check that type inference has succeeded.
+    check (M.size subst == length (funcTypeVars func)) p
+          $ "Could not infer types of the following type variables (see the signature of function " ++ f ++ "): " ++ 
+            (intercalate ", " $ map ("'" ++) $ funcTypeVars func \\ M.keys subst)
     return $ typeSubstTypeArgs subst t
 
 exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx
@@ -414,36 +418,6 @@ typeUserTypes' TTuple{..}  = concatMap (typeUserTypes . typ) typeTupArgs
 typeUserTypes' TUser{..}   = typeName : concatMap typeUserTypes typeArgs
 typeUserTypes' TOpaque{..} = typeName : concatMap typeUserTypes typeArgs
 typeUserTypes' _           = []
-
--- sub-types that immediately appear in the type expression
---typeSubtypes :: Refine -> Type -> [Type]
---typeSubtypes r = nub . typeSubtypes' r
---
---typeSubtypes' :: Refine -> Type -> [Type]
---typeSubtypes' _ t@TArray{}  = [typeElemType t]
---typeSubtypes' _ t@TStruct{} = (map typ $ structFields $ typeCons t)
---typeSubtypes' _ t@TTuple{}  = (map typ $ typeArgs t)
---typeSubtypes' r t@TUser{}   = (maybeToList $ tdefType $ getType r $ typeName t)
---typeSubtypes' _ _           = []
---
---typeSubtypesRec :: Refine -> Type -> [Type]
---typeSubtypesRec r t = typeSubtypesRec' r [] t
---
---typeSubtypesRec' :: Refine -> [Type] -> Type -> [Type]
---typeSubtypesRec' r acc t = let new = nub (t: typeSubtypes r t) \\ acc in
---                           new ++ foldl' (\acc' t' -> acc'++ typeSubtypesRec' r (acc++new++acc') t') [] new
---
----- The list of types must be closed under the typeSubtypes operation
---typeGraph :: Refine -> [Type] -> G.Gr Type ()
---typeGraph r ts = foldl' (\g t -> foldl' (\g' t' -> G.insEdge (typIdx t, typIdx t', ()) g') g
---                                 $ typeSubtypes r t) g0 ts
---    where g0 = G.insNodes (mapIdx (\t i -> (i, t)) ts) G.empty
---          typIdx t = fromJust $ elemIndex t ts
---
----- Sort list of types in dependency order; list must be closed under the typeSubtypes operation
---typeSort :: Refine -> [Type] -> [Type]
---typeSort r types  = reverse $ G.topsort' $ typeGraph r types
-
 
 -- | Rudimentary type inference engine. Infers expected type from context. 
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type
