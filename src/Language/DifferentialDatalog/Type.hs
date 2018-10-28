@@ -183,8 +183,8 @@ exprNodeType :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Typ
 exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMap Just e)
 
 funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
-funcTypeArgSubsts d p f@Function{..} argtypes = 
-    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs) argtypes)
+funcTypeArgSubsts d p f@Function{..} argtypes =
+    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
 
 structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
 structTypeArgs d p ctx cname argtypes = do
@@ -223,7 +223,7 @@ exprNodeType' d ctx (EApply p f mas)      = do
     let func = getFunc d f
     let t = funcType func
     as <- mapM (mtype2me p ctx) mas
-    subst <- funcTypeArgSubsts d p func as
+    subst <- funcTypeArgSubsts d p func $ as ++ maybeToList (ctxExpectType d ctx)
     return $ typeSubstTypeArgs subst t
 
 exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx

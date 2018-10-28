@@ -130,6 +130,18 @@ impl<T: Display + Ord> Display for std_Set<T> {
     }
 }
 
+pub fn std_set_empty<X: Ord + Clone>() -> std_Set<X> {
+    std_Set::new()
+}
+
+pub fn std_set_insert<X: Ord+Clone>(s: &mut std_Set<X>, v: &X) {
+    s.x.insert((*v).clone());
+}
+
+pub fn std_set_contains<X: Ord>(s: &std_Set<X>, v: &X) -> bool {
+    s.x.contains(v)
+}
+
 // Map
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -189,10 +201,8 @@ impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
     }
 }
 
-pub fn std_map_singleton<K: Ord + Clone,V: Clone>(k: &K, v: &V) -> std_Map<K, V> {
-    let mut m = std_Map::new();
-    m.insert((*k).clone(),(*v).clone());
-    m
+pub fn std_map_empty<K: Ord + Clone,V: Clone>() -> std_Map<K, V> {
+    std_Map::new()
 }
 
 pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {

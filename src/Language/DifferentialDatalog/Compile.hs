@@ -926,10 +926,10 @@ mkValue d ctx e = do
     constructor <- mkValConstructorName d $ exprType d ctx e
     return $ constructor <> (parens $ mkExpr d ctx e EVal)
 
-mkTupleValue :: DatalogProgram -> ECtx -> [Expr] -> CompilerMonad Doc
-mkTupleValue d ctx es = do
-    constructor <- mkValConstructorName d $ tTuple $ map (exprType'' d ctx) es
-    return $ constructor <> (parens $ tupleStruct $ map (\e -> mkExpr d ctx e EVal) es)
+mkTupleValue :: DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
+mkTupleValue d es = do
+    constructor <- mkValConstructorName d $ tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
+    return $ constructor <> (parens $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
@@ -993,7 +993,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     let post_join_vars = (rhsVarsAfter d rl (join_idx - 1)) `intersect`
                          (rhsVarsAfter d rl join_idx)
     -- Arrange variables from previous terms
-    akey <- mkTupleValue d ctx $ map snd vmap
+    akey <- mkTupleValue d $ map (\(_, e, ctx') -> (e, ctx')) vmap
     aval <- mkVarsTupleValue d post_join_vars
     let afun = braces' $ prefix $$
                          "Some((" <> akey <> "," <+> aval <> "))"
@@ -1033,7 +1033,7 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
     let (arr, vmap) = normalizeArrangement d rel ctx atomVal
     fmfun <- mkArrangementKey d rel arr
     -- Arrange variables from previous terms
-    akey <- mkTupleValue d ctx $ map snd vmap
+    akey <- mkTupleValue d $ map (\(_, e, ctx') -> (e, ctx')) vmap
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
     let afun = braces' $ prefix $$
                          "Some((" <> akey <> "," <+> aval <> "))"
@@ -1044,19 +1044,19 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
              "}"
 
 -- Normalize pattern expression for use in arrangement
-normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr)])
+normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr, ECtx)])
 normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
     where
     pat' = exprFoldCtx (normalizePattern d) ctx pat
-    (renamed, (_, vmap)) = runState (rename pat') (0, [])
-    rename :: Expr -> State (Int, [(String, Expr)]) Expr
-    rename (E e) =
+    (renamed, (_, vmap)) = runState (rename ctx pat') (0, [])
+    rename :: ECtx -> Expr -> State (Int, [(String, Expr, ECtx)]) Expr
+    rename ctx (E e) =
         case e of
              EStruct{..}             -> do
-                fs' <- mapM (\(n,e) -> (n,) <$> rename e) exprStructFields
+                fs' <- mapM (\(n,e') -> (n,) <$> rename (CtxStruct e ctx n) e') exprStructFields
                 return $ E e{exprStructFields = fs'}
              ETuple{..}              -> do
-                fs' <- mapM rename exprTupleFields
+                fs' <- mapIdxM (\e' i -> rename (CtxTuple e ctx i) e') exprTupleFields
                 return $ E e{exprTupleFields = fs'}
              EBool{}                 -> return $ E e
              EInt{}                  -> return $ E e
@@ -1064,12 +1064,12 @@ normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
              EBit{}                  -> return $ E e
              EPHolder{}              -> return $ E e
              ETyped{..}              -> do
-                e' <- rename exprExpr
+                e' <- rename (CtxTyped e ctx) exprExpr
                 return $ E e{exprExpr = e'}
              _                       -> do
                 vid <- gets fst
                 let vname = "_" ++ show vid
-                modify $ \(_, vmap) -> (vid + 1, vmap ++ [(vname, E e)])
+                modify $ \(_, vmap) -> (vid + 1, vmap ++ [(vname, E e, ctx)])
                 return $ eVar vname
 
 -- Simplify away parts of the pattern that do not constrain its value.

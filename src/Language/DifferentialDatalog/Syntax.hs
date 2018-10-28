@@ -648,7 +648,8 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars = nub . concatMap (typeTypeVars . argType) . funcArgs
+funcTypeVars Function{..} = nub $ concatMap (typeTypeVars . argType) funcArgs ++
+                                  typeTypeVars funcType
 
 data ModuleName = ModuleName {modulePath :: [String]}
                   deriving (Eq, Ord)

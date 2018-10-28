@@ -1,64 +1,33 @@
 import OVN_Northbound as nb
 import OVN_Southbound as sb
 import ovsdb
+import allocate
 
+/* Meter_Band table */
 for (mb in nb.Meter_Band) {
-    sb.Meter_Band(.uuid_name = $"${uuid2str(mb._uuid)}",
+    sb.Meter_Band(.uuid_name = uuid2str(mb._uuid),
                   .action = mb.action,
                   .rate = mb.rate,
                   .burst_size = mb.burst_size)
 }
 
+
+/* Meter table */
 sb.Meter(name, unit, str_bands) :-
     nb.Meter(_, name, unit, bands, _),
     var uuid_band = FlatMap(bands),
-    var str_band = $"${uuid2str(uuid_band)}",
+    var str_band = uuid2str(uuid_band),
     Aggregate((name, unit), str_bands = group2set(str_band)).
 
-/*
 
-NB:
-input relation Logical_Switch (
-    _uuid: uuid,
-    name: string,
-    ports: Set<uuid>,
-    acls: Set<uuid>,
-    qos_rules: Set<uuid>,
-    load_balancer: Set<uuid>,
-    dns_records: Set<uuid>,
-    other_config: Map<string,string>,
-    external_ids: Map<string,string>
-)
-
-input relation Logical_Router (
-    _uuid: uuid,
-    name: string,
-    ports: Set<uuid>,
-    static_routes: Set<uuid>,
-    enabled: Set<bool>,
-    nat: Set<uuid>,
-    load_balancer: Set<uuid>,
-    options: Map<string,string>,
-    external_ids: Map<string,string>
-)
-primary key (x) x._uuid
-
-SB:
-output relation Datapath_Binding (
-    uuid_name: string,
-    tunnel_key: integer,
-    external_ids: Map<string,string>
-)
-
-*/
-
-
-
-sb.Datapath_Binding($"${uuid2str(uuid)}", 0, external_ids) :-
+/* Datapath_Binding table */
+sb.Datapath_Binding(uuid_str, tunkey, external_ids) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
-    //TunIdsAllocation(uuid, tunid),
+    var uuid_str = uuid2str(uuid),
+    TunKeyAllocation(uuid_str, tunkey),
     var external_ids = {
-        var eids: Map<string, string> = map_singleton("logical-switch", $"${uuid2str(uuid)}");
+        var eids: Map<string, string> = map_empty();
+        map_insert(eids, "logical-switch", uuid_str);
         map_insert(eids, "name", name);
         match (map_get(ids, "neutron:network-name")) {
             None -> (),
@@ -67,29 +36,64 @@ sb.Datapath_Binding($"${uuid2str(uuid)}", 0, external_ids) :-
         eids
     }.
 
-/*
-relation AllocatedTunIds(datapath_binding: string, tunid: integer)
+/* tunnel key allocation */
+output relation AllocatedTunKeys(logical_id: string, tunkey: integer)
 
-AllocatedTunIds(datapath_binding, tunid) :-
-    sb.Realized_Datapath_Binding(uuid, tunid, _),
-    sb.UUIDMap_Datapath_Binding(datapath_binding, Left{uuid}),
-    nb.Logical_Switch(.uuid = uuid),
-    $"${uuid2str(uuid)}" == datapath_binding.
+// compute a set of already allocated keys from the Realized_Datapath_Binding table.
+AllocatedTunKeys(ls_id, tunkey) :-
+    sb.Realized_Datapath_Binding(.tunnel_key = tunkey,
+                                 .external_ids = eids),
+    Some{var ls_id} = map_get(eids, "logical-switch").
 
-relation ToAllocateTunIds(datapath_binding: string)
+AllocatedTunKeys(lr_id, tunkey) :-
+    sb.Realized_Datapath_Binding(.tunnel_key = tunkey,
+                                 .external_ids = eids),
+    Some{var lr_id} = map_get(eids, "logical-router").
 
-ToAllocateTunIds(datapath_bindings: Set<string>) :-
+output relation AggAllocatedTunKeys(allkeys: Set<integer>)
+
+AggAllocatedTunKeys(allkeys) :-
+    AllocatedTunKeys(_, tunkey),
+    Aggregate((), allkeys = group2set(tunkey)).
+
+// compute a vector of logical switch and logical router ids that
+// have not been allocated keys yet
+
+output relation NotYetAllocatedTunKeys(logical_id: string)
+
+NotYetAllocatedTunKeys(ls_id) :-
     nb.Logical_Switch(._uuid = uuid),
-    var datapath_binding = $"${uuid2str(uuid)}",
-    not AllocatedTunIds(datapath_binding, _),
-    Aggregate((), datapath_bindings = group2set(datapath_binding)).
+    var ls_id = uuid2str(uuid),
+    not AllocatedTunKeys(ls_id, _).
 
-relation TunIdsAllocation(datapath_binding: string, tunid: integer)
+NotYetAllocatedTunKeys(lr_id) :-
+    nb.Logical_Router(._uuid = uuid),
+    var lr_id = uuid2str(uuid),
+    not AllocatedTunKeys(lr_id, _).
 
-TunIdsAllocation(datapath_binding, tunid) :-
-    AllocatedTunIds(allocated),
-    ToAllocateTunIds(to_allocate),
-    var allocations = allocate_u64(allocated, to_allocate, 64'hffff),
-    var allocation = FlatMap(allocations),
-    (var datapath_binding, var tunid) = allocation.
-*/
+output relation AggNotYetAllocatedTunKeys(all_logical_ids: Vec<string>)
+
+AggNotYetAllocatedTunKeys(all_logical_ids) :-
+    NotYetAllocatedTunKeys(lid),
+    Aggregate((), all_logical_ids = group2vec(lid)).
+
+// Perform the allocation
+output relation TunKeyAllocation(logical_id: string, tunkey: integer)
+
+// transfer existing allocations as is
+TunKeyAllocation(lid, tunkey) :- AllocatedTunKeys(lid, tunkey).
+
+// Case 1: AggAllocatedTunKeys relation is not empty (i.e., contains
+// a single record that stores a set of allocated keys)
+TunKeyAllocation(lid, tunkey) :-
+    AggAllocatedTunKeys(allocated),
+    AggNotYetAllocatedTunKeys(unallocated),
+    var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hffff)),
+    (var lid, var tunkey) = allocation.
+
+// Case 2: AggAllocatedTunKeys relation is empty 
+TunKeyAllocation(lid, tunkey) :-
+    AggNotYetAllocatedTunKeys(unallocated),
+    not AggAllocatedTunKeys(_),
+    var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hffff)),
+    (var lid, var tunkey) = allocation.
