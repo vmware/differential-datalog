@@ -37,7 +37,7 @@ sb.Datapath_Binding(uuid_str, tunkey, external_ids) :-
     }.
 
 /* tunnel key allocation */
-output relation AllocatedTunKeys(logical_id: string, tunkey: integer)
+relation AllocatedTunKeys(logical_id: string, tunkey: integer)
 
 // compute a set of already allocated keys from the Realized_Datapath_Binding table.
 AllocatedTunKeys(ls_id, tunkey) :-
@@ -50,7 +50,7 @@ AllocatedTunKeys(lr_id, tunkey) :-
                                  .external_ids = eids),
     Some{var lr_id} = map_get(eids, "logical-router").
 
-output relation AggAllocatedTunKeys(allkeys: Set<integer>)
+relation AggAllocatedTunKeys(allkeys: Set<integer>)
 
 AggAllocatedTunKeys(allkeys) :-
     AllocatedTunKeys(_, tunkey),
@@ -59,7 +59,7 @@ AggAllocatedTunKeys(allkeys) :-
 // compute a vector of logical switch and logical router ids that
 // have not been allocated keys yet
 
-output relation NotYetAllocatedTunKeys(logical_id: string)
+relation NotYetAllocatedTunKeys(logical_id: string)
 
 NotYetAllocatedTunKeys(ls_id) :-
     nb.Logical_Switch(._uuid = uuid),
@@ -71,14 +71,14 @@ NotYetAllocatedTunKeys(lr_id) :-
     var lr_id = uuid2str(uuid),
     not AllocatedTunKeys(lr_id, _).
 
-output relation AggNotYetAllocatedTunKeys(all_logical_ids: Vec<string>)
+relation AggNotYetAllocatedTunKeys(all_logical_ids: Vec<string>)
 
 AggNotYetAllocatedTunKeys(all_logical_ids) :-
     NotYetAllocatedTunKeys(lid),
     Aggregate((), all_logical_ids = group2vec(lid)).
 
 // Perform the allocation
-output relation TunKeyAllocation(logical_id: string, tunkey: integer)
+relation TunKeyAllocation(logical_id: string, tunkey: integer)
 
 // transfer existing allocations as is
 TunKeyAllocation(lid, tunkey) :- AllocatedTunKeys(lid, tunkey).
