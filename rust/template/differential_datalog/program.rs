@@ -971,6 +971,34 @@ impl<V:Val> RunningProgram<V> {
         })
     }
 
+    /// Deletes all values in an input table
+    pub fn clear_relation(&mut self, relid: RelId) -> Response<()> {
+        if !self.transaction_in_progress {
+            return Err(format!("no transaction in progress"));
+        };
+
+        let upds = {
+            let mut rel = self.relations.get_mut(&relid).ok_or_else(||format!("unknown input relation {}", relid))?;
+            match rel {
+                RelationInstance::Flat{elements, delta: _} => {
+                    let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
+                    for v in elements.iter() {
+                        upds.push(Update::DeleteValue{relid, v: v.clone()});
+                    };
+                    upds
+                },
+                RelationInstance::Indexed{key_func: _, elements, delta: _} => {
+                    let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
+                    for k in elements.keys() {
+                        upds.push(Update::DeleteKey{relid, k: k.clone()});
+                    };
+                    upds
+                }
+            }
+        };
+        self.apply_updates(upds)
+    }
+
     /* increment the counter associated with value `x` in the delta-set
      * delta(x) == false => remove entry (equivalen to delta(x):=0)
      * x not in delta => delta(x) := true

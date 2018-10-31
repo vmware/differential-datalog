@@ -1042,6 +1042,16 @@ fn test_recursion(nthreads: usize) {
 
     assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
 
+    /* 3. Test clear_relation() */
+    running.transaction_start().unwrap();
+    running.clear_relation(1).unwrap();
+    running.transaction_commit().unwrap();
+
+    assert_eq!(*parentset.lock().unwrap(), FnvHashSet::default());
+    assert_eq!(*ancestorset.lock().unwrap(), FnvHashSet::default());
+    assert_eq!(*common_ancestorset.lock().unwrap(), FnvHashSet::default());
+
+
     running.stop().unwrap();
 }
 
