@@ -5,15 +5,14 @@ import allocate
 
 /* Meter_Band table */
 for (mb in nb.Meter_Band) {
-    sb.Meter_Band(.uuid_name = uuid2str(mb._uuid),
-                  .action = mb.action,
-                  .rate = mb.rate,
-                  .burst_size = mb.burst_size)
+    sb.Out_Meter_Band(.uuid_name = uuid2str(mb._uuid),
+                      .action = mb.action,
+                      .rate = mb.rate,
+                      .burst_size = mb.burst_size)
 }
 
-
 /* Meter table */
-sb.Meter(name, unit, str_bands) :-
+sb.Out_Meter(name, unit, str_bands) :-
     nb.Meter(_, name, unit, bands, _),
     var uuid_band = FlatMap(bands),
     var str_band = uuid2str(uuid_band),
@@ -21,7 +20,7 @@ sb.Meter(name, unit, str_bands) :-
 
 
 /* Datapath_Binding table */
-sb.Datapath_Binding(uuid_str, tunkey, external_ids) :-
+sb.Out_Datapath_Binding(uuid_str, tunkey, external_ids) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
     var uuid_str = uuid2str(uuid),
     TunKeyAllocation(uuid_str, tunkey),
@@ -39,15 +38,15 @@ sb.Datapath_Binding(uuid_str, tunkey, external_ids) :-
 /* tunnel key allocation */
 relation AllocatedTunKeys(logical_id: string, tunkey: integer)
 
-// compute a set of already allocated keys from the Realized_Datapath_Binding table.
+// compute a set of already allocated keys from the Datapath_Binding table.
 AllocatedTunKeys(ls_id, tunkey) :-
-    sb.Realized_Datapath_Binding(.tunnel_key = tunkey,
-                                 .external_ids = eids),
+    sb.Datapath_Binding(.tunnel_key = tunkey,
+                        .external_ids = eids),
     Some{var ls_id} = map_get(eids, "logical-switch").
 
 AllocatedTunKeys(lr_id, tunkey) :-
-    sb.Realized_Datapath_Binding(.tunnel_key = tunkey,
-                                 .external_ids = eids),
+    sb.Datapath_Binding(.tunnel_key = tunkey,
+                        .external_ids = eids),
     Some{var lr_id} = map_get(eids, "logical-router").
 
 relation AggAllocatedTunKeys(allkeys: Set<integer>)

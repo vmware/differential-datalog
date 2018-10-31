@@ -122,12 +122,12 @@ mkTableName :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> TableKind 
 mkTableName t tkind =
     case tkind of
          TableInput       -> pp $ name t
-         TableRealized    -> "Realized_" <> (pp $ name t)
-         TableOutput      -> pp $ name t
+         TableRealized    -> pp $ name t
+         TableOutput      -> "Out_" <> (pp $ name t)
          TableOutputSwizzled | tableNeedsSwizzle t
                           -> "Swizzled_" <> (pp $ name t)
                              | otherwise
-                          -> pp $ name t
+                          -> "Out_" <> (pp $ name t)
          TableDeltaPlus   -> "DeltaPlus_" <> (pp $ name t)
          TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
          TableDeltaUpdate -> "Update_" <> (pp $ name t)

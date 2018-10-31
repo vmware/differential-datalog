@@ -28,7 +28,7 @@ insert OVN_Northbound.Logical_Switch (
     .external_ids = [("neutron:network-name","neutron_network_1")]
 ),
 
-insert OVN_Southbound.Realized_Datapath_Binding(
+insert OVN_Southbound.Datapath_Binding(
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d11,
     .tunnel_key = 1,
     .external_ids = [("logical-switch", "06a2cf7c-7ea1-4ca2-a0a2_6176fd1c6d12")]
