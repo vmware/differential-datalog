@@ -21,6 +21,7 @@
 typedef void * datalog_example_ddlog_prog;
 
 /*
+<<<<<<< HEAD
  * Insert or delete command to be passed to the `datalog_example_apply_updates()`
  */
 typedef void ddlog_cmd;

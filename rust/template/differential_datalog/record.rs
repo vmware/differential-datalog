@@ -444,8 +444,6 @@ pub unsafe extern "C" fn ddlog_delete_key_cmd(table: *const c_char, rec: *mut Re
     Box::into_raw(Box::new(UpdCmd::DeleteKey(Cow::from(table.to_owned()), *rec)))
 }
 
-
-
 pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
 }
