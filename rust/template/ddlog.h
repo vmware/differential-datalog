@@ -21,7 +21,6 @@
 typedef void * datalog_example_ddlog_prog;
 
 /*
-<<<<<<< HEAD
  * Insert or delete command to be passed to the `datalog_example_apply_updates()`
  */
 typedef void ddlog_cmd;
@@ -177,6 +176,17 @@ extern void datalog_example_free_json(char *str);
 extern int datalog_example_apply_updates(datalog_example_ddlog_prog prog,
 					 ddlog_cmd **upds,
 					 size_t n);
+
+/*
+ * Remove all records from an input relation.
+ *
+ * Fails if there is no transaction in progress.
+ *
+ * On success, returns `0`. On error, returns a negative value and writes error
+ * message to stderr.
+ */
+extern int datalog_example_clear_relation(datalog_example_ddlog_prog prog,
+					  const char *table);
 
 /*
  * Dump the content of an output table by invoking `cb` for each value in the table.

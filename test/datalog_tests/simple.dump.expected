@@ -186,3 +186,4 @@ Allocation{"b","1",10000}
 Allocation{"b","3",16777215}
 Allocation{"b","4",1}
 Allocation{"b","5",2}
+Allocation after clear

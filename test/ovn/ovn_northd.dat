@@ -36,3 +36,14 @@ insert OVN_Southbound.Datapath_Binding(
 
 commit;
 dump;
+
+echo Clearing Datapath_Binding;
+
+start;
+
+clear OVN_Southbound.Datapath_Binding;
+
+commit;
+
+dump OVN_Southbound.DeltaPlus_Datapath_Binding;
+dump OVN_Southbound.DeltaMinus_Datapath_Binding;

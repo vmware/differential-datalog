@@ -15,6 +15,7 @@ pub enum Command {
     Timestamp,
     Profile,
     Dump(Option<String>),
+    Clear(String),
     Exit,
     Echo(String),
     Update(UpdCmd, bool)
@@ -54,6 +55,10 @@ named!(pub parse_command<&[u8], Command>,
                             rel: opt!(identifier)   >>
                             apply!(sym,";")         >>
                             (Command::Dump(rel)))                                               |
+                  do_parse!(apply!(sym,"clear")     >>
+                            rel: identifier         >>
+                            apply!(sym,";")         >>
+                            (Command::Clear(rel)))                                              |
                   do_parse!(apply!(sym,"exit")      >> apply!(sym,";") >> (Command::Exit))      |
                   do_parse!(apply!(sym,"echo")      >>
                             txt: take_until!(";")   >>
@@ -75,6 +80,7 @@ fn test_command() {
     assert_eq!(parse_command(br"profile;")  , Ok((&br""[..], Command::Profile)));
     assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
     assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
+    assert_eq!(parse_command(br"clear Tab;"), Ok((&br""[..], Command::Clear("Tab".to_string()))));
     assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
     assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
     assert_eq!(parse_command(br"echo;")     , Ok((&br""[..], Command::Echo("".to_string()))));

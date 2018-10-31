@@ -89,6 +89,17 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             db.lock().unwrap().format_rel(relid, &mut stdout());
             Ok(())
         },
+        Command::Clear(rname) => {
+            let relid = match input_relname_to_id(&rname) {
+                None      => {
+                    eprintln!("Error: Unknown input relation {}", rname);
+                    return (-1, false);
+                },
+                Some(rid) => rid as RelId
+            };
+            p.clear_relation(relid);
+            Ok(())
+        },
         Command::Exit => {
             return (0, false);
         },

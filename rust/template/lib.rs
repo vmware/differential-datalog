@@ -171,6 +171,32 @@ pub unsafe extern "C" fn datalog_example_apply_updates(prog: *const HDDlog, upds
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn datalog_example_clear_relation(
+    prog: *const HDDlog,
+    table: *const raw::c_char) -> raw::c_int
+{
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match clear_relation(&prog, table) {
+        Ok(()) => { 0 },
+        Err(e) => {
+            eprintln!("datalog_example_clear_relation(): error: {}", e);
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+unsafe fn clear_relation(prog: &HDDlog, table: *const raw::c_char) -> Result<(), String> {
+    let table_str = ffi::CStr::from_ptr(table).to_str().map_err(|e| format!("{}", e))?;
+    let relid = input_relname_to_id(table_str).ok_or_else(||format!("unknown input relation {}", table_str))?;
+    prog.0.lock().unwrap().clear_relation(relid as RelId)
+}
+
+#[no_mangle]
 pub extern "C" fn datalog_example_dump_table(
     prog:    *const HDDlog,
     table:   *const raw::c_char,

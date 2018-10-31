@@ -544,6 +544,7 @@ mkValueFromRecord :: DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
     mkRelname2Id d                                                                                  $$
     mkOutputRelname2Id d                                                                            $$
+    mkInputRelname2Id d                                                                             $$
     mkRelId2Relations d                                                                             $$
     "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                               $$
@@ -596,6 +597,19 @@ mkOutputRelname2Id d =
     "}"
     where
     entries = map mkrel $ filter ((== RelOutput) .relRole) $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+
+mkInputRelname2Id :: DatalogProgram -> Doc
+mkInputRelname2Id d =
+    "pub fn input_relname_to_id(rname: &str) -> Option<Relations> {" $$
+    "   match rname {"                                      $$
+    (nest' $ nest' $ vcat $ entries)                        $$
+    "       _  => None"                                     $$
+    "   }"                                                  $$
+    "}"
+    where
+    entries = map mkrel $ filter ((== RelInput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
     mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
 

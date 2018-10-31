@@ -10,3 +10,5 @@ OVN_Southbound.DeltaPlus_Meter{"meter1","kbps",std_Set { x: {std.Right{"956d1cfd
 OVN_Southbound_DeltaPlus_Meter_Band:
 OVN_Southbound.DeltaPlus_Meter_Band{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206","drop",1000,0}
 
+Clearing Datapath_Binding
+OVN_Southbound.DeltaPlus_Datapath_Binding{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206",1,std_Map { x: {"logical-switch": "906d1cfd-7661-a2a0-a24c-a17e7ccfa206", "name": "ls1", "name2": "neutron_network_1"} }}
