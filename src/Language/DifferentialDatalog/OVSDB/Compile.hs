@@ -72,6 +72,10 @@ Swizzled: an output table with 'uuid_name's replaced with UUID's wherever the UU
     is known (from the Realized table).  Uses 'uuid_or_string_t' types for all UUID
     fields. This table is computed based on Output and UUIDMap tables
 
+OutputProxy: optional table used to perform additional computation on Swizzled and
+    UUIDMap tables, e.g., to perform stable id allocation.  Has the same schema as
+    Swizzled
+
 Delta+: new records to be inserted to OVSDB.  Specifically, these are records
     from Swizzled such that a records with the same key does not exist in Realized.
 
@@ -90,22 +94,23 @@ relations; the compiler generates rules to compute all other relations.
 The following diagram illustrates dependencies among the various kinds of relations.
 
 
-      (user-defined rules)
-Input--------------------> Output---------------->Swizzled------------> Delta+ <---------|
-                             |                      ^    |                               |
-                             |                      |    |                               |
-                             v                      |    |                               |
-Realized----------------> UUIDMap--------------------    |------------> Delta- <---------|
-  |                                                      |                               |
-  |                                                      |                               |
-  |                                                      |------------> DeltaUpdate <-----
-  |                                                                                      |
-  |---------------------------------------------------------------------------------------
+      (user-defined rules)                                  (user-defined rules)
+Input--------------------> Output---------------->Swizzled------------------------>OutputProxy-------> Delta+ <---------|
+                                                    ^                                   |                               |
+                                                    |                                   |                               |
+                                                    |                                   |                               |
+Realized----------------> UUIDMap <------------------                                   |------------> Delta- <---------|
+  |                                                                                     |                               |
+  |                                                                                     |                               |
+  |                                                                                     |------------> DeltaUpdate <-----
+  |                                                                                                                     |
+  |----------------------------------------------------------------------------------------------------------------------
 
 -}
 
 data TableKind = TableInput
                | TableOutput
+               | TableOutputProxy
                | TableRealized
                | TableUUIDMap
                | TableOutputSwizzled
@@ -118,16 +123,20 @@ builtins :: String
 builtins = [r|import ovsdb
 |]
 
-mkTableName :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> TableKind -> Doc
+mkTableName :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String]) => Table -> TableKind -> Doc
 mkTableName t tkind =
     case tkind of
          TableInput       -> pp $ name t
          TableRealized    -> pp $ name t
          TableOutput      -> "Out_" <> (pp $ name t)
+         TableOutputProxy    | tableNeedsOutputProxy t 
+                          -> "OutProxy_" <> (pp $ name t)
+                             | otherwise
+                          -> mkTableName t TableOutputSwizzled
          TableOutputSwizzled | tableNeedsSwizzle t
                           -> "Swizzled_" <> (pp $ name t)
                              | otherwise
-                          -> "Out_" <> (pp $ name t)
+                          -> mkTableName t TableOutput
          TableDeltaPlus   -> "DeltaPlus_" <> (pp $ name t)
          TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
          TableDeltaUpdate -> "Update_" <> (pp $ name t)
@@ -135,6 +144,9 @@ mkTableName t tkind =
 
 tableNeedsSwizzle :: (?outputs::[String]) => Table -> Bool
 tableNeedsSwizzle t = any colIsRef $ tableGetCols t
+
+tableNeedsOutputProxy :: (?with_oproxies::[String]) => Table -> Bool
+tableNeedsOutputProxy t = elem (name t) ?with_oproxies
 
 -- Column is a reference to an output table
 -- (references to input tables are just regular values from DDlog perspective)
@@ -201,24 +213,25 @@ refCol2UUID c n | colIsSet c  = "set_extract_uuids(" <> n <> ")"
                 | colIsMap c  = "map_extract_val_uuids(" <> n <> ")"
                 | otherwise   = "extract_uuid(" <> n <> ")"
 
-compileSchemaFile :: FilePath -> [String] -> M.Map String [String] -> IO Doc
-compileSchemaFile fname outputs keys = do
+compileSchemaFile :: FilePath -> [String] -> [String] -> M.Map String [String] -> IO Doc
+compileSchemaFile fname outputs with_oproxies keys = do
     content <- readFile fname
     schema <- case parseSchema content fname of
                    Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
                    Right prog -> return prog
-    case compileSchema schema outputs keys of
+    case compileSchema schema outputs with_oproxies keys of
          Left e    -> errorWithoutStackTrace e
          Right doc -> return doc
 
-compileSchema :: (MonadError String me) => OVSDBSchema -> [String] -> M.Map String [String] -> me Doc
-compileSchema schema outputs keys = do
+compileSchema :: (MonadError String me) => OVSDBSchema -> [String] -> [String] -> M.Map String [String] -> me Doc
+compileSchema schema outputs with_oproxies keys = do
     let tables = schemaTables schema
     mapM_ (\o -> do let t = find ((==o) . name) tables
                     when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
     uniqNames ("Multiple declarations of table " ++ ) tables
     let ?schema = schema
     let ?outputs = outputs
+    let ?with_oproxies = with_oproxies
     rels <- ((\(inp, outp, priv) -> vcat
                                     $ ["/* Input relations */\n"] ++ inp ++
                                       ["\n/* Output relations */\n"] ++ outp ++
@@ -226,13 +239,14 @@ compileSchema schema outputs keys = do
             mapM (\t -> mkTable (notElem (name t) outputs) t (M.lookup (name t) keys)) tables
     return $ pp builtins $+$ "" $+$ rels
 
-mkTable :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me (Doc, Doc, Doc)
+mkTable :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me (Doc, Doc, Doc)
 mkTable isinput t@Table{..} keys = do
     ovscols <- tableCheckCols t
     uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     if isinput
        then (, empty, empty) <$> mkTable' TableInput t keys
        else do output           <- mkTable' TableOutput         t keys
+               oproxy           <- mkTable' TableOutputProxy    t keys
                realized         <- mkTable' TableRealized       t keys
                uuid_map         <- mkTable' TableUUIDMap        t keys
                let uuid_map_rules   = mkUUIDMapRules            t keys
@@ -245,7 +259,7 @@ mkTable isinput t@Table{..} keys = do
                swizzled         <- mkTable' TableOutputSwizzled t keys
                swizzle_rules    <- mkSwizzleRules               t
                return $ (empty,
-                         output,
+                         output $+$ oproxy,
                          uuid_map            $+$
                          uuid_map_rules      $+$
                          swizzled            $+$
@@ -257,7 +271,7 @@ mkTable isinput t@Table{..} keys = do
                          (if isJust keys then delta_update $$ delta_update_rules else empty) $+$
                          realized)
 
-mkTable' :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => TableKind -> Table -> Maybe [String] -> me Doc
+mkTable' :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String], MonadError String me) => TableKind -> Table -> Maybe [String] -> me Doc
 mkTable' tkind t@Table{..} keys = do
     let ovscols = tableGetCols t
     -- uuid-name is only needed in an output if the table is referenced by another table in the schema
@@ -267,6 +281,7 @@ mkTable' tkind t@Table{..} keys = do
                        TableRealized       -> ["_uuid: uuid"]
                        TableOutput         -> if referenced then ["uuid_name: string"] else []
                        TableOutputSwizzled -> if referenced then ["uuid_name: string"] else []
+                       TableOutputProxy    -> if referenced then ["uuid_name: string"] else []
                        TableDeltaPlus      -> if referenced then ["uuid_name: string"] else []
                        TableDeltaMinus     -> ["_uuid: uuid"]
                        TableDeltaUpdate    -> ["_uuid: uuid"]
@@ -294,15 +309,16 @@ mkTable' tkind t@Table{..} keys = do
     return $ case tkind of
                   TableUUIDMap        | not referenced -> empty
                   TableOutputSwizzled | not (tableNeedsSwizzle t) -> empty
+                  TableOutputProxy    | not (tableNeedsOutputProxy t) -> empty
                   _ -> prefix <+> "relation" <+> pp tname <+> "("    $$
                        (nest' $ vcommaSep $ uuidcol ++ columns)      $$
                        ")"                                           $$
                        key
 
-mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
 mkDeltaPlusRules t@Table{..} mkeys =
     (mkTableName t TableDeltaPlus) <> "(" <> commaSep headcols <> ") :-"                $$
-    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")      $$
+    (nest' $ mkTableName t TableOutputProxy <> "(" <> commaSep outcols <> "),")      $$
     (nest' $ "not" <+> mkTableName t TableRealized <> "(" <> commaSep realcols <> ").")
     where
     referenced = tableIsReferenced $ name t
@@ -318,11 +334,11 @@ mkDeltaPlusRules t@Table{..} mkeys =
     realcols = ["_"] ++ keycols
 
 -- DeltaMinus(uuid) :- Realized(uuid, key, _), not Swizzled(_, key, _).
-mkDeltaMinusRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaMinusRules :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
 mkDeltaMinusRules t@Table{..} mkeys =
     (mkTableName t TableDeltaMinus) <> "(_uuid) :-"                                          $$
     (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols <> "),")                $$
-    (nest' $ "not" <+> mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> ").")
+    (nest' $ "not" <+> mkTableName t TableOutputProxy <> "(" <> commaSep outcols <> ").")
     where
     referenced = tableIsReferenced $ name t
     ovscols = tableGetCols t
@@ -338,10 +354,10 @@ mkDeltaMinusRules t@Table{..} mkeys =
                                 (\ks -> if elem (name c) ks then mkColName c else "_") mkeys) ovscols
 
 -- DeltaUpdate(uuid, key, new) :- Swizzled(_, key, new), Realized(uuid, key, old), old != new.
-mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
 mkDeltaUpdateRules t@Table{..} (Just keys) =
     (mkTableName t TableDeltaUpdate) <> "(" <> commaSep headcols <> ") :-"                   $$
-    (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),")           $$
+    (nest' $ mkTableName t TableOutputProxy <> "(" <> commaSep outcols <> "),")              $$
     (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols <> "),")                $$
     (nest' $ (parens $ commaSep old_vars) <+> "!=" <+> (parens $ commaSep new_vars) <> ".")
     where
@@ -388,7 +404,7 @@ mkDeltaUpdateRules t@Table{..} (Just keys) =
 --                      UUIDMap(ref, ref'),
 --                      Aggregate((x),refs'=group2map((key, ref'))).
 --
-mkSwizzleRules :: (?schema::OVSDBSchema, ?outputs::[String], MonadError String me) => Table -> me Doc
+mkSwizzleRules :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String], MonadError String me) => Table -> me Doc
 mkSwizzleRules t | not (tableNeedsSwizzle t) = return empty
 mkSwizzleRules t@Table{..} = do
     let ovscols = tableGetCols t
@@ -432,7 +448,7 @@ mkSwizzleRules t@Table{..} = do
 
 -- UUIDMap(name, Left(uuid)) :- Output(name, key), Realized(uuid, key).
 -- UUIDMap(name, Right(name)) :- Output(name, key), not Realized(_, key).
-mkUUIDMapRules :: (?schema::OVSDBSchema, ?outputs::[String]) => Table -> Maybe [String] -> Doc
+mkUUIDMapRules :: (?schema::OVSDBSchema, ?outputs::[String], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
 mkUUIDMapRules t@Table{..} mkeys =
     if referenced
        then mkTableName t TableUUIDMap <> "(__name, Left{__uuid}) :-"                      $$
@@ -440,7 +456,7 @@ mkUUIDMapRules t@Table{..} mkeys =
             (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols1 <> ").")     $$
             mkTableName t TableUUIDMap <> "(__name, Right{__name}) :-"                     $$
             (nest' $ mkTableName t TableOutputSwizzled <> "(" <> commaSep outcols <> "),") $$
-            ("not" <+> (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols2 <> ")."))
+            (nest' $ "not" <+> (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols2 <> ")."))
        else empty
     where
     referenced = tableIsReferenced $ name t
@@ -520,7 +536,7 @@ mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && notEle
                                        = return "uuid"
 mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && tkind == TableOutput
                                        = return "string"
-mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && elem tkind [TableDeltaPlus, TableDeltaUpdate, TableOutputSwizzled]
+mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && elem tkind [TableDeltaPlus, TableDeltaUpdate, TableOutputSwizzled, TableOutputProxy]
                                        = return "uuid_or_string_t"
 mkBaseType _     (BaseTypeComplex cbt) = mkAtomicType $ typeBaseType cbt
 

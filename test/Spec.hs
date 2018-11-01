@@ -87,7 +87,7 @@ goldenTests progress = do
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
 
 nbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] M.empty
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] [] M.empty
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
@@ -108,6 +108,7 @@ sbTest = do
                                   , "DNS"
                                   , "RBAC_Role"
                                   , "RBAC_Permission"]
+                                  [ "Datapath_Binding"]
                                   (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
                                               , ("Port_Binding"     , ["logical_port"])
                                               , ("DNS"              , ["external_ids"])

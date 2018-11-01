@@ -18,12 +18,14 @@ sb.Out_Meter(name, unit, str_bands) :-
     var str_band = uuid2str(uuid_band),
     Aggregate((name, unit), str_bands = group2set(str_band)).
 
-
 /* Datapath_Binding table */
-sb.Out_Datapath_Binding(uuid_str, tunkey, external_ids) :-
+sb.OutProxy_Datapath_Binding(uuid_str, tunkey, external_ids) :-
+    sb.Out_Datapath_Binding(uuid_str, _, external_ids),
+    TunKeyAllocation(uuid_str, tunkey).
+
+sb.Out_Datapath_Binding(uuid_str, 0, external_ids) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
     var uuid_str = uuid2str(uuid),
-    TunKeyAllocation(uuid_str, tunkey),
     var external_ids = {
         var eids: Map<string, string> = map_empty();
         map_insert(eids, "logical-switch", uuid_str);
@@ -35,64 +37,111 @@ sb.Out_Datapath_Binding(uuid_str, tunkey, external_ids) :-
         eids
     }.
 
-/* tunnel key allocation */
-relation AllocatedTunKeys(logical_id: string, tunkey: integer)
+/*
+ * Datatpath tunnel key allocation:
+ *
+ * Allocates a globally unique tunnel id in the range 1...2**24-1 for
+ * each Logical_Switch and Logical_Router.
+ */
 
-// compute a set of already allocated keys from the Datapath_Binding table.
-AllocatedTunKeys(ls_id, tunkey) :-
-    sb.Datapath_Binding(.tunnel_key = tunkey,
-                        .external_ids = eids),
-    Some{var ls_id} = map_get(eids, "logical-switch").
+// all tunnel keys already in use in the Realized table
+relation AllocatedTunKeys(keys: Set<integer>)
 
-AllocatedTunKeys(lr_id, tunkey) :-
-    sb.Datapath_Binding(.tunnel_key = tunkey,
-                        .external_ids = eids),
-    Some{var lr_id} = map_get(eids, "logical-router").
+AllocatedTunKeys(keys) :-
+    sb.Datapath_Binding(.tunnel_key = tunkey),
+    Aggregate((), keys = group2set(tunkey)).
 
-relation AggAllocatedTunKeys(allkeys: Set<integer>)
+// Datapath_Binding's not yet in the Realized table
+relation NotYetAllocatedTunKeys(datapaths: Vec<string>)
 
-AggAllocatedTunKeys(allkeys) :-
-    AllocatedTunKeys(_, tunkey),
-    Aggregate((), allkeys = group2set(tunkey)).
-
-// compute a vector of logical switch and logical router ids that
-// have not been allocated keys yet
-
-relation NotYetAllocatedTunKeys(logical_id: string)
-
-NotYetAllocatedTunKeys(ls_id) :-
-    nb.Logical_Switch(._uuid = uuid),
-    var ls_id = uuid2str(uuid),
-    not AllocatedTunKeys(ls_id, _).
-
-NotYetAllocatedTunKeys(lr_id) :-
-    nb.Logical_Router(._uuid = uuid),
-    var lr_id = uuid2str(uuid),
-    not AllocatedTunKeys(lr_id, _).
-
-relation AggNotYetAllocatedTunKeys(all_logical_ids: Vec<string>)
-
-AggNotYetAllocatedTunKeys(all_logical_ids) :-
-    NotYetAllocatedTunKeys(lid),
-    Aggregate((), all_logical_ids = group2vec(lid)).
+NotYetAllocatedTunKeys(datapaths) :-
+    sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
+                                .id = Right{_}),
+    Aggregate((), datapaths = group2vec(datapath)).
 
 // Perform the allocation
-relation TunKeyAllocation(logical_id: string, tunkey: integer)
+relation TunKeyAllocation(datapath: string, tunkey: integer)
 
-// transfer existing allocations as is
-TunKeyAllocation(lid, tunkey) :- AllocatedTunKeys(lid, tunkey).
+// transfer existing allocations from the realized table
+TunKeyAllocation(datapath, tunkey) :-
+     sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
+                                 .id = Left{uuid}),
+     sb.Datapath_Binding(._uuid = uuid,
+                         .tunnel_key = tunkey).
 
-// Case 1: AggAllocatedTunKeys relation is not empty (i.e., contains
+// Case 1: AllocatedTunKeys relation is not empty (i.e., contains
 // a single record that stores a set of allocated keys)
-TunKeyAllocation(lid, tunkey) :-
-    AggAllocatedTunKeys(allocated),
-    AggNotYetAllocatedTunKeys(unallocated),
-    var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hffff)),
-    (var lid, var tunkey) = allocation.
+TunKeyAllocation(datapath, tunkey) :-
+    AllocatedTunKeys(allocated),
+    NotYetAllocatedTunKeys(unallocated),
+    var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hfffffffff)),
+    (var datapath, var tunkey) = allocation.
 
-// Case 2: AggAllocatedTunKeys relation is empty 
-TunKeyAllocation(lid, tunkey) :-
-    AggNotYetAllocatedTunKeys(unallocated),
-    not AggAllocatedTunKeys(_),
+// Case 2: AllocatedTunKeys relation is empty
+TunKeyAllocation(datapath, tunkey) :-
+    NotYetAllocatedTunKeys(unallocated),
+    not AllocatedTunKeys(_),
+    var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hfffffffff)),
+    (var datapath, var tunkey) = allocation.
+
+/*
+ * Port id allocation:
+ *
+ * Port IDs in a per-datapath space in the range 1...2**15-1
+ */
+
+// all tunnel keys already in use in the Realized table
+relation AllocatedPortTunKeys(datapath: string, allkeys: Set<integer>)
+
+AllocatedPortTunKeys(datapath_name, allkeys) :-
+    sb.Port_Binding(.datapath = datapath_uuid, .tunnel_key = tunkey),
+    sb.UUIDMap_Datapath_Binding(datapath_name, Left{datapath_uuid}),
+    Aggregate((datapath_name), allkeys = group2set(tunkey)).
+
+// Port_Binding's not yet in the Realized table
+relation NotYetAllocatedPortTunKeys(datapath: string, all_logical_ids: Vec<string>)
+
+NotYetAllocatedPortTunKeys(datapath, all_names) :-
+    sb.Out_Port_Binding(.uuid_name = uuid_name, .datapath = datapath),
+    sb.UUIDMap_Port_Binding(.uuid_name = uuid_name,
+                            .id = Right{_}),
+    Aggregate((datapath), all_names = group2vec(uuid_name)).
+
+// Perform the allocation
+relation PortTunKeyAllocation(port: string, tunkey: integer)
+
+// transfer existing allocations from the realized table
+PortTunKeyAllocation(port, tunkey) :-
+     sb.UUIDMap_Port_Binding(.uuid_name = port,
+                             .id = Left{uuid}),
+     sb.Port_Binding(._uuid = uuid,
+                     .tunnel_key = tunkey).
+
+// Case 1: AllocatedPortTunKeys(datapath) is not empty (i.e., contains
+// a single record that stores a set of allocated keys)
+PortTunKeyAllocation(port, tunkey) :-
+    AllocatedPortTunKeys(datapath, allocated),
+    NotYetAllocatedPortTunKeys(datapath, unallocated),
+    var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hffff)),
+    (var port, var tunkey) = allocation.
+
+// Case 2: PortAllocatedTunKeys(datapath) relation is empty
+TunKeyAllocation(port, tunkey) :-
+    NotYetAllocatedPortTunKeys(datapath, unallocated),
+    not AllocatedPortTunKeys(datapath, _),
     var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hffff)),
-    (var lid, var tunkey) = allocation.
+    (var port, var tunkey) = allocation.
+
+
+/*
+            if (op->sb->chassis && has_qos && !queue_id) {
+                queue_id = allocate_chassis_queueid(chassis_qdisc_queues,
+                                                    op->sb->chassis);
+port_has_qos_params(const struct smap *opts)
+{
+    return (smap_get(opts, "qos_max_rate") ||
+            smap_get(opts, "qos_burst"));
+}
+
+
+*/

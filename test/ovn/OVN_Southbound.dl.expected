@@ -93,6 +93,11 @@ relation Out_Datapath_Binding (
     tunnel_key: integer,
     external_ids: Map<string,string>
 )
+relation OutProxy_Datapath_Binding (
+    uuid_name: string,
+    tunnel_key: integer,
+    external_ids: Map<string,string>
+)
 relation Out_Port_Binding (
     uuid_name: string,
     logical_port: string,
@@ -361,7 +366,7 @@ UUIDMap_Meter_Band(__name, Left{__uuid}) :-
     Meter_Band(__uuid, action, rate, burst_size).
 UUIDMap_Meter_Band(__name, Right{__name}) :-
     Out_Meter_Band(__name, action, rate, burst_size),
-not Meter_Band(_, action, rate, burst_size).
+    not Meter_Band(_, action, rate, burst_size).
 output relation DeltaPlus_Meter_Band (
     uuid_name: string,
     action: string,
@@ -393,27 +398,27 @@ UUIDMap_Datapath_Binding(__name, Left{__uuid}) :-
     Datapath_Binding(__uuid, _, external_ids).
 UUIDMap_Datapath_Binding(__name, Right{__name}) :-
     Out_Datapath_Binding(__name, _, external_ids),
-not Datapath_Binding(_, _, external_ids).
+    not Datapath_Binding(_, _, external_ids).
 output relation DeltaPlus_Datapath_Binding (
     uuid_name: string,
     tunnel_key: integer,
     external_ids: Map<string,string>
 )
 DeltaPlus_Datapath_Binding(uuid_name, tunnel_key, external_ids) :-
-    Out_Datapath_Binding(uuid_name, tunnel_key, external_ids),
+    OutProxy_Datapath_Binding(uuid_name, tunnel_key, external_ids),
     not Datapath_Binding(_, _, external_ids).
 output relation DeltaMinus_Datapath_Binding (
     _uuid: uuid
 )
 DeltaMinus_Datapath_Binding(_uuid) :-
     Datapath_Binding(_uuid, _, external_ids),
-    not Out_Datapath_Binding(_, _, external_ids).
+    not OutProxy_Datapath_Binding(_, _, external_ids).
 output relation Update_Datapath_Binding (
     _uuid: uuid,
     tunnel_key: integer
 )
 Update_Datapath_Binding(_uuid, __new_tunnel_key) :-
-    Out_Datapath_Binding(_, __new_tunnel_key, external_ids),
+    OutProxy_Datapath_Binding(_, __new_tunnel_key, external_ids),
     Datapath_Binding(_uuid, __old_tunnel_key, external_ids),
     (__old_tunnel_key) != (__new_tunnel_key).
 input relation Datapath_Binding (
@@ -431,7 +436,7 @@ UUIDMap_Port_Binding(__name, Left{__uuid}) :-
     Port_Binding(__uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 UUIDMap_Port_Binding(__name, Right{__name}) :-
     Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
-not Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
+    not Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 relation Swizzled_Port_Binding (
     uuid_name: string,
     logical_port: string,
@@ -671,7 +676,7 @@ UUIDMap_RBAC_Permission(__name, Left{__uuid}) :-
     RBAC_Permission(__uuid, table, authorization, insert_delete, update).
 UUIDMap_RBAC_Permission(__name, Right{__name}) :-
     Out_RBAC_Permission(__name, table, authorization, insert_delete, update),
-not RBAC_Permission(_, table, authorization, insert_delete, update).
+    not RBAC_Permission(_, table, authorization, insert_delete, update).
 output relation DeltaPlus_RBAC_Permission (
     uuid_name: string,
     table: string,
@@ -705,7 +710,7 @@ UUIDMap_Gateway_Chassis(__name, Left{__uuid}) :-
     Gateway_Chassis(__uuid, name, chassis, priority, external_ids, options).
 UUIDMap_Gateway_Chassis(__name, Right{__name}) :-
     Out_Gateway_Chassis(__name, name, chassis, priority, external_ids, options),
-not Gateway_Chassis(_, name, chassis, priority, external_ids, options).
+    not Gateway_Chassis(_, name, chassis, priority, external_ids, options).
 output relation DeltaPlus_Gateway_Chassis (
     uuid_name: string,
     name: string,
