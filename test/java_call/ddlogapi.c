@@ -31,9 +31,17 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1transaction_1rol
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1apply_1updates(
-    JNIEnv * env, jclass obj, jlong value, jobjectArray arr) {
-    // TODO
-    return 0;
+    JNIEnv *env, jclass obj, jlong progHandle, jlongArray commandHandles) {
+    jlong *a = (*env)->GetLongArrayElements(env, commandHandles, NULL);
+    size_t size = (*env)->GetArrayLength(env, commandHandles);
+    ddlog_cmd** updates = malloc(sizeof(ddlog_cmd*) * size);
+    for (size_t i = 0; i < size; i++)
+        updates[i] = (ddlog_cmd*)a[i];
+    int result = datalog_example_apply_updates(
+        (datalog_example_ddlog_prog)progHandle, updates, size);
+    (*env)->ReleaseLongArrayElements(env, commandHandles, a, 0);
+    free(updates);
+    return (jint)result;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1bool(
@@ -61,7 +69,7 @@ jlong create_from_vector(JNIEnv *env, jclass obj, jlongArray handles,
          return -1;
      jsize len = (*env)->GetArrayLength(env, handles);
      ddlog_record** fields = malloc(len * sizeof(ddlog_record*));
-     for (int i = 0; i < len; i++)
+     for (size_t i = 0; i < len; i++)
          fields[i] = (ddlog_record*)a[i];
      ddlog_record* result = creator(fields, (size_t)len);
      (*env)->ReleaseLongArrayElements(env, handles, a, 0);
