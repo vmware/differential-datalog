@@ -22,6 +22,8 @@ public class DDLogRecord {
      */
     public long getHandleAndInvalidate() {
         this.checkHandle();
+        if (this.shared)
+            throw new RuntimeException("Attempting to get shared handle");
         long result = this.handle;
         this.handle = 0;
         return result;
@@ -82,11 +84,13 @@ public class DDLogRecord {
      * Creates a pair with the specified fields.
      */
     public DDLogRecord(DDLogRecord first, DDLogRecord second) {
-        this.handle = DDLogAPI.ddlog_pair(first.handle, second.handle);
+        this.handle = DDLogAPI.ddlog_pair(
+                first.getHandleAndInvalidate(),
+                second.getHandleAndInvalidate());
         this.shared = false;
     }
 
-    private static long[] getHandles(DDLogRecord[] fields) {
+    private static long[] getHandlesAndInvalidate(DDLogRecord[] fields) {
         long[] handles = new long[fields.length];
         for (int i = 0; i < fields.length; i++) {
             handles[i] = fields[i].getHandleAndInvalidate();
@@ -95,22 +99,22 @@ public class DDLogRecord {
     }
 
     public static DDLogRecord makeTuple(DDLogRecord[] fields) {
-        long[] handles = getHandles(fields);
+        long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDLogAPI.ddlog_tuple(handles));
     }
 
     public static DDLogRecord makeVector(DDLogRecord[] fields) {
-        long[] handles = getHandles(fields);
+        long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDLogAPI.ddlog_vector(handles));
     }
 
     public static DDLogRecord makeSet(DDLogRecord[] fields) {
-        long[] handles = getHandles(fields);
+        long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDLogAPI.ddlog_set(handles));
     }
 
     public static DDLogRecord makeStruct(String name, DDLogRecord[] fields) {
-        long[] handles = getHandles(fields);
+        long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDLogAPI.ddlog_struct(name, handles));
     }
 
@@ -118,7 +122,7 @@ public class DDLogRecord {
      * Creates a map from a vector of pairs.
      */
     public static DDLogRecord makeMap(DDLogRecord[] fields) {
-        long[] handles = getHandles(fields);
+        long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDLogAPI.ddlog_map(handles));
     }
 
