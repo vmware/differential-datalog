@@ -553,6 +553,7 @@ slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (col
 field = isfield *> dot *> varIdent
     where isfield = try $ lookAhead $ do
                         _ <- dot
+                        _ <- notFollowedBy relIdent
                         varIdent
 dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
