@@ -146,6 +146,13 @@ pub fn std_set_contains<X: Ord>(s: &std_Set<X>, v: &X) -> bool {
     s.x.contains(v)
 }
 
+pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
+    match s.x.iter().nth(*n as usize) {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x: (*x).clone()}
+    }
+}
+
 // Map
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -242,6 +249,13 @@ pub fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
 
 pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
     arcval::DDString::from(format!("{:x}", *x).to_string())
+}
+
+pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
+    match (*s).parse::<u64>().ok() {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x}
+    }
 }
 
 // Hashing

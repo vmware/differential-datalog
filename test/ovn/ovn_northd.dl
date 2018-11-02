@@ -295,6 +295,9 @@ TunKeyAllocation(port, tunkey) :-
  * matters.
  *
  * Queue ID may also need to be deallocated if port loses QoS attributes
+ *
+ * This logic only applies to ports with chassis attribute, i.e., they must be
+ * in sb.Port_Binding.
  */
 
 function port_has_qos_params(opts: Map<string, string>): bool = {
@@ -302,18 +305,49 @@ function port_has_qos_params(opts: Map<string, string>): bool = {
     is_some(map_get(opts, "qos_burst"))
 }
 
-// all tunnel keys already in use in the Realized table
-relation AllocatedQueueIDs(chassis: string, ids: Set<integer>)
-/*
-AllocatedQueueIDs(chassis, ids) :-
+
+// ports in Out_Port_Binding that require queue ID on chassis
+relation PortRequiresQID(port: string, chassis: uuid)
+
+PortRequiresQID(pb.uuid_name, chassis) :-
+    sb.Out_Port_Binding[pb],
+    port_has_qos_params(pb.options),
+    sb.UUIDMap_Port_Binding(pb.uuid_name, Left{uuid}),
+    sb.Port_Binding(._uuid = uuid, .chassis = chassis_set),
+    Some{var chassis} = set_nth(chassis_set, 0).
+
+relation AggPortRequiresQID(chassis: uuid, ports: Vec<string>)
+
+AggPortRequiresQID(chassis, ports) :-
+    PortRequiresQID(port, chassis),
+    Aggregate((chassis), ports = group2vec(port)).
+
+relation AllocatedQIDs(chassis: uuid, allocated_ids: Map<string, integer>)
+
+AllocatedQIDs(chassis, allocated_ids) :-
     sb.Port_Binding[pb],
-    set_size(pb.chassis) > 0,
-    port_has_qos_params(pb.options)
-    sb.UUIDMap_Datapath_Binding(datapath_name, Left{datapath_uuid}),
-    Aggregate((datapath_name), allkeys = group2set(tunkey)).
-*/
-/*
-            if (op->sb->chassis && has_qos && !queue_id) {
-                queue_id = allocate_chassis_queueid(chassis_qdisc_queues,
-                                                    op->sb->chassis);
-*/
+    Some{var chassis} = set_nth(pb.chassis, 0),
+    Some{var qid_str} = map_get(pb.options, "qdisc_queue_id"),
+    Some{var qid: bit<64>} = parse_dec_u64(qid_str),
+    sb.UUIDMap_Port_Binding(port, Left{pb._uuid}),
+    Aggregate((chassis), allocated_ids = group2map((port, qid))).
+
+// allocate queueue IDs to ports
+relation QueueIDAllocation(port: string, qids: Option<integer>)
+
+// None for ports that do not require a queue
+QueueIDAllocation(port, None) :-
+    sb.Out_Port_Binding(.uuid_name = port),
+    not PortRequiresQID(port, _).
+
+QueueIDAllocation(port, Some{qid}) :-
+    AggPortRequiresQID(chassis, ports),
+    AllocatedQIDs(chassis, allocated_ids),
+    var allocations = FlatMap(adjust_allocation_u64(allocated_ids, ports, 64'hf000)),
+    (var port, var qid) = allocations.
+
+QueueIDAllocation(port, Some{qid}) :-
+    AggPortRequiresQID(chassis, ports),
+    not AllocatedQIDs(chassis, _),
+    var allocations = FlatMap(adjust_allocation_u64(map_empty(): Map<string, integer>, ports, 64'hf000)),
+    (var port, var qid) = allocations.

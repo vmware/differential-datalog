@@ -3,3 +3,8 @@ extern function allocate_u64(
     allocated: Set<bit<64>>,
     toallocate: Vec<'B>,
     max_val: bit<64>): Vec<('B, bit<64>)>
+
+extern function adjust_allocation_u64(
+    allocated: Map<'A, bit<64>>,
+    toallocate: Vec<'A>,
+    max_val: bit<64>): Vec<('A, bit<64>)>
