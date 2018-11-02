@@ -59,8 +59,10 @@ extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 extern type Map<'K,'V>
 
 extern function map_empty(): Map<'K, 'V>
+extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
+extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 
 /*
  * Set
@@ -68,6 +70,7 @@ extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 
 extern type Set<'A>
 
+extern function set_size(s: Set<'X>): bit<64>
 extern function set_empty(): Set<'X>
 extern function set_insert(s: mut Set<'X>, v: 'X): ()
 extern function set_contains(s: Set<'X>, v: 'X): bool

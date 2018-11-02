@@ -130,6 +130,10 @@ impl<T: Display + Ord> Display for std_Set<T> {
     }
 }
 
+pub fn std_set_size<X: Ord + Clone>(s: &std_Set<X>) -> u64 {
+    s.x.len() as u64
+}
+
 pub fn std_set_empty<X: Ord + Clone>() -> std_Set<X> {
     std_Set::new()
 }
@@ -205,6 +209,12 @@ pub fn std_map_empty<K: Ord + Clone,V: Clone>() -> std_Map<K, V> {
     std_Map::new()
 }
 
+pub fn std_map_singleton<K: Ord + Clone,V: Clone>(k: &K, v: &V) -> std_Map<K, V> {
+    let mut m = std_Map::new();
+    m.insert(k.clone(), v.clone());
+    m
+}
+
 pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {
     m.x.insert((*k).clone(), (*v).clone());
 }
@@ -215,6 +225,14 @@ pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
         Some(v) => std_Option::std_Some{x: (*v).clone()}
     }
 }
+
+pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,V>) -> std_Map<K, V> {
+    let mut m = m1.clone();
+    m.x.append(&mut m2.x.clone());
+    m
+}
+
+
 
 // string conversion
 

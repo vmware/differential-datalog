@@ -19,10 +19,6 @@ sb.Out_Meter(name, unit, str_bands) :-
     Aggregate((name, unit), str_bands = group2set(str_band)).
 
 /* Datapath_Binding table */
-sb.OutProxy_Datapath_Binding(uuid_str, tunkey, external_ids) :-
-    sb.Out_Datapath_Binding(uuid_str, _, external_ids),
-    TunKeyAllocation(uuid_str, tunkey).
-
 sb.Out_Datapath_Binding(uuid_str, 0, external_ids) :-
     nb.Logical_Switch(._uuid = uuid, .name = name, .external_ids = ids),
     var uuid_str = uuid2str(uuid),
@@ -30,15 +26,175 @@ sb.Out_Datapath_Binding(uuid_str, 0, external_ids) :-
         var eids: Map<string, string> = map_empty();
         map_insert(eids, "logical-switch", uuid_str);
         map_insert(eids, "name", name);
-        match (map_get(ids, "neutron:network-name")) {
+        match (map_get(ids, "neutron:network_name")) {
             None -> (),
             Some{nnn} -> map_insert(eids, "name2", nnn)
         };
         eids
     }.
 
+sb.Out_Datapath_Binding(uuid_str, 0, external_ids) :-
+    nb.Logical_Router(._uuid = uuid, .name = name, .external_ids = ids),
+    var uuid_str = uuid2str(uuid),
+    var external_ids = {
+        var eids: Map<string, string> = map_empty();
+        map_insert(eids, "logical-router", uuid_str);
+        map_insert(eids, "name", name);
+        match (map_get(ids, "neutron:router_name")) {
+            None -> (),
+            Some{nnn} -> map_insert(eids, "name2", nnn)
+        };
+        eids
+    }.
+
+sb.OutProxy_Datapath_Binding(uuid_str, tunkey, external_ids) :-
+    sb.Out_Datapath_Binding(uuid_str, _, external_ids),
+    TunKeyAllocation(uuid_str, tunkey).
+
+
+
+/* Port_Binding table
+
+relation Out_Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<string>,
+    options: Map<string,string>,
+    datapath: string,
+    tunnel_key: integer,
+    parent_port: Set<string>,
+    tag: Set<integer>,
+    chassis: Set<uuid>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+*/
+
+relation LogicalPortSwitch(lport: uuid, lswitch: uuid)
+
+LogicalPortSwitch(lport, lswitch) :-
+    nb.Logical_Switch(._uuid = lswitch, .ports = ports),
+    var lport = FlatMap(ports).
+
+relation LogicalPortRouter(lport: uuid, lrouter: uuid)
+
+LogicalPortRouter(lport, lrouter) :-
+    nb.Logical_Router(._uuid = lrouter, .ports = ports),
+    var lport = FlatMap(ports).
+
+
+/* Case 1: Create a Port_Binding per logical switch port that is not of type "router" */
+sb.Out_Port_Binding(.uuid_name          = uuid_name,
+                    .logical_port       = lsp.name,
+                    .__type             = lsp.__type,
+                    .gateway_chassis    = set_empty(),
+                    .options            = lsp.options,
+                    .datapath           = uuid2str(lswitch_uuid),
+                    .tunnel_key         = 0,
+                    .parent_port        = lsp.parent_name,
+                    .tag                = set_empty(),
+                    .chassis            = set_empty(),
+                    .mac                = lsp.addresses,
+                    .nat_addresses      = set_empty(),
+                    .external_ids       = eids) :-
+    nb.Logical_Switch_Port[lsp],
+    lsp.__type != "router",
+    var uuid_name = uuid2str(lsp._uuid),
+    LogicalPortSwitch(lsp._uuid, lswitch_uuid),
+    var eids = {
+        var eids = lsp.external_ids;
+        match (map_get(lsp.external_ids, "neutron:port_name")) {
+            None -> (),
+            Some{name} -> map_insert(eids, "name", name)
+        };
+        eids
+    }.
+
+
+sb.Out_Port_Binding(.uuid_name          = uuid_name,
+                    .logical_port       = lsp.name,
+                    .__type             = __type,
+                    .gateway_chassis    = set_empty(),
+                    .options            = options,
+                    .datapath           = uuid2str(lswitch_uuid),
+                    .tunnel_key         = 0,
+                    .parent_port        = lsp.parent_name,
+                    .tag                = set_empty(),
+                    .chassis            = set_empty(),
+                    .mac                = lsp.addresses,
+                    .nat_addresses      = nat_addresses,
+                    .external_ids       = eids) :-
+    nb.Logical_Switch_Port[lsp],
+    lsp.__type == "router",
+    var uuid_name = uuid2str(lsp._uuid),
+    LogicalPortSwitch(lsp._uuid, lswitch_uuid),
+    var eids = {
+        var eids = lsp.external_ids;
+        match (map_get(lsp.external_ids, "neutron:port_name")) {
+            None -> (),
+            Some{name} -> map_insert(eids, "name", name)
+        };
+        eids
+    },
+    Some{var router_port} = map_get(lsp.options, "router-port"),
+    nb.Logical_Router_Port(.name = router_port, ._uuid = lport_uuid),
+    LogicalPortRouter(lport_uuid, lrouter_uuid),
+    nb.Logical_Router(._uuid = lrouter_uuid, .options = lroptions),
+    (var __type, var options, var nat_addresses) = {
+        match (map_get(lroptions, "chassis")) {
+            None -> {
+                ("patch", map_empty(): Map<string, string>, set_empty(): Set<string>/*TODO*/)
+            },
+            Some{chassis} -> {
+                var options: Map<string, string> = map_empty();
+                map_insert(options, "peer", router_port);
+                map_insert(options, "l3gateway-chassis", chassis);
+                ("l3gateway", options, set_empty(): Set<string>/*TODO*/)
+            }
+        }
+    }.
+
 /*
- * Datatpath tunnel key allocation:
+sb.Out_Port_Binding(.uuid_name          = uuid_name,
+                    .logical_port       = lrp.name,
+                    .__type             = __type,
+                    .gateway_chassis    = set_empty(),
+                    .options            = map_union(options1, options2),
+                    .datapath           = uuid2str(lswitch_uuid),
+                    .tunnel_key         = 0,
+                    .parent_port        = set_empty(),
+                    .tag                = set_empty(), // always empty for router ports
+                    .chassis            = set_empty(),
+                    .mac                = punctuate(set_insert(lrp.networks, lrp.mac), " "),
+                    .nat_addresses      = set_empty(),
+                    .external_ids       = lrp.external_ids) :-
+    nb.Logical_Router_Port[lrp],
+    var uuid_name = uuid2str(lrp._uuid),
+    LogicalPortRouter(lrp._uuid, lrouter_uuid),
+    nb.Logical_Router(._uuid = lrouter_uuid, .options = lroptions),
+    (var __type, var options1) = match (map_get(lroptions, "chassis")) {
+        None -> ("patch", map_empty()),
+        Some{lrchassis} -> ("l3gateway", map_singleton("l3gateway-chassis", lrchassis))
+    },
+    var options2 = match (map_get(lrp.options, "peer")) {
+        None -> map_empty(),
+        Some{peer} -> map_singleton("peer", peer)
+    },
+
+    var eids = {
+        var eids = lsp.external_ids;
+        match map_get(lsp.external_ids, "neutron:port_name") {
+            None -> {},
+            Some(name) -> map_insert(eids, "name", name)
+        };
+        eids
+    }.
+*/
+
+/*
+ * Datapath tunnel key allocation:
  *
  * Allocates a globally unique tunnel id in the range 1...2**24-1 for
  * each Logical_Switch and Logical_Router.
@@ -91,12 +247,12 @@ TunKeyAllocation(datapath, tunkey) :-
  */
 
 // all tunnel keys already in use in the Realized table
-relation AllocatedPortTunKeys(datapath: string, allkeys: Set<integer>)
+relation AllocatedPortTunKeys(datapath: string, keys: Set<integer>)
 
-AllocatedPortTunKeys(datapath_name, allkeys) :-
+AllocatedPortTunKeys(datapath_name, keys) :-
     sb.Port_Binding(.datapath = datapath_uuid, .tunnel_key = tunkey),
     sb.UUIDMap_Datapath_Binding(datapath_name, Left{datapath_uuid}),
-    Aggregate((datapath_name), allkeys = group2set(tunkey)).
+    Aggregate((datapath_name), keys = group2set(tunkey)).
 
 // Port_Binding's not yet in the Realized table
 relation NotYetAllocatedPortTunKeys(datapath: string, all_logical_ids: Vec<string>)
@@ -132,16 +288,32 @@ TunKeyAllocation(port, tunkey) :-
     var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hffff)),
     (var port, var tunkey) = allocation.
 
+/*
+ * Queue IDs on a chassis, for routers that have QoS enabled, in a per-chassis
+ * space in the range 1...0xf000.  It looks to me like there'd only be a small
+ * number of these per chassis, and probably a small number overall, in case it
+ * matters.
+ *
+ * Queue ID may also need to be deallocated if port loses QoS attributes
+ */
 
+function port_has_qos_params(opts: Map<string, string>): bool = {
+    is_some(map_get(opts, "qos_max_rate")) or
+    is_some(map_get(opts, "qos_burst"))
+}
+
+// all tunnel keys already in use in the Realized table
+relation AllocatedQueueIDs(chassis: string, ids: Set<integer>)
+/*
+AllocatedQueueIDs(chassis, ids) :-
+    sb.Port_Binding[pb],
+    set_size(pb.chassis) > 0,
+    port_has_qos_params(pb.options)
+    sb.UUIDMap_Datapath_Binding(datapath_name, Left{datapath_uuid}),
+    Aggregate((datapath_name), allkeys = group2set(tunkey)).
+*/
 /*
             if (op->sb->chassis && has_qos && !queue_id) {
                 queue_id = allocate_chassis_queueid(chassis_qdisc_queues,
                                                     op->sb->chassis);
-port_has_qos_params(const struct smap *opts)
-{
-    return (smap_get(opts, "qos_max_rate") ||
-            smap_get(opts, "qos_burst"));
-}
-
-
 */

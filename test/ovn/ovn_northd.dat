@@ -25,7 +25,7 @@ insert OVN_Northbound.Logical_Switch (
     .load_balancer = [],
     .dns_records = [],
     .other_config = [],
-    .external_ids = [("neutron:network-name","neutron_network_1")]
+    .external_ids = [("neutron:network_name","neutron_network_1")]
 ),
 
 insert OVN_Southbound.Datapath_Binding(
