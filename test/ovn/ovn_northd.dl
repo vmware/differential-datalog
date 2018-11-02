@@ -228,8 +228,8 @@ TunKeyAllocation(datapath, tunkey) :-
 // Case 1: AllocatedTunKeys relation is not empty (i.e., contains
 // a single record that stores a set of allocated keys)
 TunKeyAllocation(datapath, tunkey) :-
-    AllocatedTunKeys(allocated),
     NotYetAllocatedTunKeys(unallocated),
+    AllocatedTunKeys(allocated),
     var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hfffffffff)),
     (var datapath, var tunkey) = allocation.
 
