@@ -138,6 +138,12 @@ pub fn std_set_empty<X: Ord + Clone>() -> std_Set<X> {
     std_Set::new()
 }
 
+pub fn std_set_singleton<X: Ord + Clone>(v: &X) -> std_Set<X> {
+    let mut s = std_Set::new();
+    s.insert(v.clone());
+    s
+}
+
 pub fn std_set_insert<X: Ord+Clone>(s: &mut std_Set<X>, v: &X) {
     s.x.insert((*v).clone());
 }
@@ -145,6 +151,12 @@ pub fn std_set_insert<X: Ord+Clone>(s: &mut std_Set<X>, v: &X) {
 pub fn std_set_contains<X: Ord>(s: &std_Set<X>, v: &X) -> bool {
     s.x.contains(v)
 }
+
+pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
+    s.x.is_empty()
+}
+
+
 
 pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
     match s.x.iter().nth(*n as usize) {
@@ -233,6 +245,12 @@ pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
     }
 }
 
+pub fn std_map_is_empty<K: Ord, V: Clone>(m: &std_Map<K,V>) -> bool {
+    m.x.is_empty()
+}
+
+
+
 pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,V>) -> std_Map<K, V> {
     let mut m = m1.clone();
     m.x.append(&mut m2.x.clone());
@@ -291,7 +309,7 @@ pub fn std_count<A, G:Group<A>+?Sized>(g: &G) -> u64 {
     g.size()
 }
 
-pub fn std_group2set<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Set<A> {
+pub fn std_group2set<A: Ord, G: Group<A>+?Sized>(g: &G) -> std_Set<A> {
     let mut res = std_Set::new();
     for i in 0..g.size() {
         res.insert(g.ith(i));
@@ -315,6 +333,8 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
     };
     res
 }
+
+
 
 /* Tuples */
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]

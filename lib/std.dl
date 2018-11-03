@@ -64,6 +64,7 @@ extern function map_empty(): Map<'K, 'V>
 extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
+extern function map_is_empty(m: Map<'K,'V>): bool
 extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 
 /*
@@ -73,9 +74,11 @@ extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 extern type Set<'A>
 
 extern function set_size(s: Set<'X>): bit<64>
+extern function set_singleton(x: 'X): Set<'X>
 extern function set_empty(): Set<'X>
 extern function set_insert(s: mut Set<'X>, v: 'X): ()
 extern function set_contains(s: Set<'X>, v: 'X): bool
+extern function set_is_empty(s: Set<'X>): bool
 extern function set_nth(s: Set<'X>, n: bit<64>): Option<'X>
 
 

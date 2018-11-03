@@ -14,3 +14,8 @@ extern function uuid2str(id: uuid): string
 
 extern function set_extract_uuids(ids: Set<uuid_or_string_t>): Set<uuid>
 extern function map_extract_val_uuids(ids: Map<'K, uuid_or_string_t>): Map<'K, uuid>
+
+extern function group2vec_remove_sentinel(g: Group<uuid_or_string_t>): Vec<uuid_or_string_t>
+extern function group2set_remove_sentinel(g: Group<uuid_or_string_t>): Set<uuid_or_string_t>
+extern function group2map_remove_sentinel(g: Group<('K, uuid_or_string_t)>): Map<'K, uuid_or_string_t>
+

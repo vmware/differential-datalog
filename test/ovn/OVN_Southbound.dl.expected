@@ -283,9 +283,9 @@ relation Swizzled_Multicast_Group (
 Swizzled_Multicast_Group(__id_datapath, name, tunnel_key, __id_ports) :-
     Out_Multicast_Group(datapath, name, tunnel_key, ports),
     UUIDMap_Datapath_Binding(datapath, __id_datapath),
-    var __one = FlatMap(ports),
+    var __one = FlatMap(if set_is_empty(ports) set_singleton("") else ports),
     UUIDMap_Port_Binding(__one, __one_swizzled),
-    Aggregate((__id_datapath, name, tunnel_key), __id_ports = group2set(__one_swizzled)).
+    Aggregate((__id_datapath, name, tunnel_key), __id_ports = group2set_remove_sentinel(__one_swizzled)).
 output relation DeltaPlus_Multicast_Group (
     datapath: uuid_or_string_t,
     name: string,
@@ -324,9 +324,9 @@ relation Swizzled_Meter (
 )
 Swizzled_Meter(name, unit, __id_bands) :-
     Out_Meter(name, unit, bands),
-    var __one = FlatMap(bands),
+    var __one = FlatMap(if set_is_empty(bands) set_singleton("") else bands),
     UUIDMap_Meter_Band(__one, __one_swizzled),
-    Aggregate((name, unit), __id_bands = group2set(__one_swizzled)).
+    Aggregate((name, unit), __id_bands = group2set_remove_sentinel(__one_swizzled)).
 output relation DeltaPlus_Meter (
     name: string,
     unit: string,
@@ -361,6 +361,7 @@ relation UUIDMap_Meter_Band (
     uuid_name: string,
     id: uuid_or_string_t
 )
+UUIDMap_Meter_Band("", Right{""}).
 UUIDMap_Meter_Band(__name, Left{__uuid}) :-
     Out_Meter_Band(__name, action, rate, burst_size),
     Meter_Band(__uuid, action, rate, burst_size).
@@ -393,6 +394,7 @@ relation UUIDMap_Datapath_Binding (
     uuid_name: string,
     id: uuid_or_string_t
 )
+UUIDMap_Datapath_Binding("", Right{""}).
 UUIDMap_Datapath_Binding(__name, Left{__uuid}) :-
     Out_Datapath_Binding(__name, _, external_ids),
     Datapath_Binding(__uuid, _, external_ids).
@@ -431,6 +433,7 @@ relation UUIDMap_Port_Binding (
     uuid_name: string,
     id: uuid_or_string_t
 )
+UUIDMap_Port_Binding("", Right{""}).
 UUIDMap_Port_Binding(__name, Left{__uuid}) :-
     Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
     Port_Binding(__uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _).
@@ -454,9 +457,9 @@ relation Swizzled_Port_Binding (
 )
 Swizzled_Port_Binding(uuid_name, logical_port, __type, __id_gateway_chassis, options, __id_datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids) :-
     Out_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids),
-    var __one = FlatMap(gateway_chassis),
+    var __one = FlatMap(if set_is_empty(gateway_chassis) set_singleton("") else gateway_chassis),
     UUIDMap_Gateway_Chassis(__one, __one_swizzled),
-    Aggregate((uuid_name, logical_port, __type, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids), __id_gateway_chassis = group2set(__one_swizzled)),
+    Aggregate((uuid_name, logical_port, __type, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids), __id_gateway_chassis = group2set_remove_sentinel(__one_swizzled)),
     UUIDMap_Datapath_Binding(datapath, __id_datapath).
 output relation DeltaPlus_Port_Binding (
     uuid_name: string,
@@ -597,9 +600,9 @@ relation Swizzled_DNS (
 )
 Swizzled_DNS(records, __id_datapaths, external_ids) :-
     Out_DNS(records, datapaths, external_ids),
-    var __one = FlatMap(datapaths),
+    var __one = FlatMap(if set_is_empty(datapaths) set_singleton("") else datapaths),
     UUIDMap_Datapath_Binding(__one, __one_swizzled),
-    Aggregate((records, external_ids), __id_datapaths = group2set(__one_swizzled)).
+    Aggregate((records, external_ids), __id_datapaths = group2set_remove_sentinel(__one_swizzled)).
 output relation DeltaPlus_DNS (
     records: Map<string,string>,
     datapaths: Set<uuid_or_string_t>,
@@ -636,10 +639,10 @@ relation Swizzled_RBAC_Role (
 )
 Swizzled_RBAC_Role(name, __id_permissions) :-
     Out_RBAC_Role(name, permissions),
-    var __one = FlatMap(permissions),
+    var __one = FlatMap(if map_is_empty(permissions) map_singleton("", "") else permissions),
     (var __one_key, var __one_ref) = __one,
     UUIDMap_RBAC_Permission(__one_ref, __one_swizzled),
-    Aggregate((name), __id_permissions = group2map((__one_key, __one_swizzled))).
+    Aggregate((name), __id_permissions = group2map_remove_sentinel((__one_key, __one_swizzled))).
 output relation DeltaPlus_RBAC_Role (
     name: string,
     permissions: Map<string,uuid_or_string_t>
@@ -671,6 +674,7 @@ relation UUIDMap_RBAC_Permission (
     uuid_name: string,
     id: uuid_or_string_t
 )
+UUIDMap_RBAC_Permission("", Right{""}).
 UUIDMap_RBAC_Permission(__name, Left{__uuid}) :-
     Out_RBAC_Permission(__name, table, authorization, insert_delete, update),
     RBAC_Permission(__uuid, table, authorization, insert_delete, update).
@@ -705,6 +709,7 @@ relation UUIDMap_Gateway_Chassis (
     uuid_name: string,
     id: uuid_or_string_t
 )
+UUIDMap_Gateway_Chassis("", Right{""}).
 UUIDMap_Gateway_Chassis(__name, Left{__uuid}) :-
     Out_Gateway_Chassis(__name, name, chassis, priority, external_ids, options),
     Gateway_Chassis(__uuid, name, chassis, priority, external_ids, options).

@@ -19,7 +19,7 @@ insert OVN_Northbound.Meter (
 insert OVN_Northbound.Logical_Switch (
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d90,
     .name = "ls1",
-    .ports = [],
+    .ports = [0x564bb317_7362_47d9_a328_8bd44600a370],
     .acls = [],
     .qos_rules = [],
     .load_balancer = [],

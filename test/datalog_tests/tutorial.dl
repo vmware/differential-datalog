@@ -21,8 +21,7 @@ output relation Phrases(phrase: string)
 // The `++` operator is string concatenation.
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 
-// Let's add some static facts (which have not effect in the current
-// implementation)
+// Let's add some static facts
 Word1("Hello,", CategoryOther).
 Word2("World!", CategoryOther).
 

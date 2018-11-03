@@ -213,6 +213,7 @@ relation NotYetAllocatedTunKeys(datapaths: Vec<string>)
 NotYetAllocatedTunKeys(datapaths) :-
     sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
                                 .id = Right{_}),
+    datapath != "",
     Aggregate((), datapaths = group2vec(datapath)).
 
 // Perform the allocation
