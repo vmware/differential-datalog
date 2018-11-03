@@ -56,8 +56,8 @@ const PROF_MSD_BUF_SIZE: usize = 1000;
 pub type Response<X> = Result<X, String>;
 
 /// Value trait describes types that can be stored in a collection
-pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
-impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + 'static {}
+pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + Sync + 'static {}
+impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + Sync + 'static {}
 
 //pub trait ValTraceReader<V: Val> : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 //impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
@@ -81,7 +81,8 @@ pub type ArrId = (RelId, usize);
 /// comprised of one or more mutually recursive relations.
 #[derive(Clone)]
 pub struct Program<V: Val> {
-    pub nodes: Vec<ProgNode<V>>
+    pub nodes: Vec<ProgNode<V>>,
+    pub init_data: Vec<(RelId, V)>
 }
 
 /// Program node is either an individual non-recursive relation or
@@ -391,7 +392,7 @@ impl<V:Val> Program<V>
                     });
 
                     let rx = rx.clone();
-                    let mut sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Worker<Allocator>, u64>| {
+                    let mut all_sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Worker<Allocator>, u64>| {
                         let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, u64>,V,isize>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
@@ -399,9 +400,7 @@ impl<V:Val> Program<V>
                             match node {
                                 ProgNode::RelNode{rel:r} => {
                                     let (session, mut collection) = outer.new_collection::<V,isize>();
-                                    if r.input {
-                                        sessions.insert(r.id, session);
-                                    };
+                                    sessions.insert(r.id, session);
                                     /* apply rules */
                                     for rule in &r.rules {
                                         collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid), &arrangements, &arrangements));
@@ -422,11 +421,11 @@ impl<V:Val> Program<V>
                                     /* create collections; add them to map; we will overwrite them with
                                      * updated collections returned from the inner scope. */
                                     for r in rs.iter() {
-                                        let (_session, collection) = outer.new_collection::<V,isize>();
+                                        let (session, collection) = outer.new_collection::<V,isize>();
                                         if r.input {
                                             panic!("input relation in nested scope: {}", r.name)
-                                            //sessions.insert(r.id, session);
                                         }
+                                        sessions.insert(r.id, session);
                                         collections.insert(r.id, collection);
                                     };
                                     /* create a nested scope for mutually recursive relations */
@@ -525,9 +524,24 @@ impl<V:Val> Program<V>
                     });
                     //println!("worker {} started", worker.index());
 
+                    let mut epoch: u64 = 0;
+
+                    // feed initial data to sessions
+                    if worker_index == 0 {
+                        for (relid, v) in prog.init_data.iter() {
+                            all_sessions.get_mut(relid).unwrap().insert(v.clone());
+                        }
+                        epoch = epoch + 1;
+                        Self::advance(&mut all_sessions, epoch);
+                        Self::flush(&mut all_sessions, &probe, worker, &progress_lock, &progress_barrier);
+                    }
+
+                    // close session handles for non-input sessions
+                    let mut sessions: FnvHashMap<RelId, InputSession<u64, V, isize>> =
+                        all_sessions.drain().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
+
                     /* Only worker 0 receives data */
                     if worker_index == 0 {
-                        let mut epoch: u64 = 0;
                         let rx = rx.lock().unwrap();
                         loop {
                             match rx.recv() {

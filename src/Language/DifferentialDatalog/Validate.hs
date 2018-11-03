@@ -291,8 +291,10 @@ ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
-ruleLHSValidate d rl Atom{..} idx = do
-    checkRelation atomPos d atomRelation
+ruleLHSValidate d rl a@Atom{..} idx = do
+    rel <- checkRelation atomPos d atomRelation
+    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a) 
+         $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
 -- Validate Aggregate term, compute type argument map for the aggregate function used in the term.

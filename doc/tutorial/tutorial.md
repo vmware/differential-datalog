@@ -1259,9 +1259,6 @@ In the following sections, we expand on each method.
 
 #### Specifying ground facts statically in the program source code
 
-**TODO: This does not currently work: DDlog will accept such ground facts, but they will not
-actually be added to the DB, see issue #55**
-
 This method is useful for specifying ground facts that are guaranteed to hold in every instantiation
 of the program.  Such facts can be specified statically to save the hassle of adding them manually
 on every program instantiation.  A ground fact is just a rule without a body.  Add the following

@@ -184,8 +184,8 @@ lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " +
 
 -- Relation is a function that takes a list of arrangements and produces a Doc containing Rust
 -- code for the relation (since we won't know all required arrangements till we finish scanning
--- the program)
-type ProgRel = (String, [Doc] -> Doc)
+-- the program) + a list of ground facts
+type ProgRel = (String, [Doc] -> Doc, [Doc])
 
 data ProgNode = SCCNode [ProgRel]
               | RelNode ProgRel
@@ -741,10 +741,12 @@ compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
-    let rules = filter (not . null . ruleRHS)
+    let (facts, rules) = 
+                partition (null . ruleRHS)
                 $ filter ((== rn) . atomRelation . head . ruleLHS)
                 $ progRules d
     rules' <- mapM (compileRule d) rules
+    facts' <- mapM (compileFact d) facts
     key_func <- maybe (return "None")
                       (\k -> do lambda <- compileKey d rel k
                                 return $ "Some(" <> lambda <> ")")
@@ -759,14 +761,14 @@ compileRelation d rn = do
             "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","      $$
             "    distinct:     " <> (if relRole == RelOutput then "true" else "false") <> ","     $$
             "    key_func:     " <> key_func <> ","                                               $$
-            "    id:           Relations::" <> rname rn <+> "as RelId,"                           $$
+            "    id:           " <> relId rn <> ","                                               $$
             "    rules:        vec!["                                                             $$
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                               $$
             "    arrangements: vec!["                                                             $$
             (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")                         $$
             (nest' cb)                                                                            $$
             "}"
-    return (rn, f)
+    return (rn, f, facts')
 
 compileKey :: DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
@@ -777,6 +779,14 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
         "    Value::" <> mkValConstructorName' d relType <> "(" <> pp keyVar <> ") =>" <+> val <> "," $$
         "    _ => panic!(\"unexpected constructor in key_func\")"                                     $$
         "})"
+
+{- Generate Rust representation of a ground fact -}
+compileFact :: DatalogProgram -> Rule -> CompilerMonad Doc
+compileFact d rl@Rule{..} = do
+    let rel = atomRelation $ head ruleLHS
+    val <- mkValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
+    return $ "(" <> relId rel <> "," <+> val <> ") /*" <> pp rl <> "*/"
+
 
 {- Generate Rust representation of a Datalog rule
 
@@ -794,9 +804,9 @@ compileRule :: DatalogProgram -> Rule -> CompilerMonad Doc
 compileRule d rl@Rule{..} = do
     let fstrel = atomRelation $ rhsAtom $ head ruleRHS
     xforms <- compileRule' d rl 0
-    return $ "/*" <+> pp rl <+> "*/"                             $$
+    return $ "/*" <+> pp rl <+> "*/"                                $$
              "Rule{"                                                $$
-             "    rel: Relations::" <> rname fstrel <+> "as RelId," $$
+             "    rel: " <> relId fstrel <> ","                     $$
              "    xforms: vec!["                                    $$
              (nest' $ nest' $ vcat $ punctuate comma xforms)        $$
              "    ]}"
@@ -1033,7 +1043,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
                          "Some" <> parens ret
     let doc = "XForm::Join{"                                                                                                                      $$
               (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")                                  $$
-              "    arrangement: (Relations::" <> rname (atomRelation atom) <+> "as RelId," <> pp aid <> "),"                                      $$
+              "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
               (nest' $ "jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>" $$ jfun $$ "__f}") $$
               "}"
     return (doc, last_idx')
@@ -1053,7 +1063,7 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
                          "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                                                 $$
              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-             "    rel:  Relations::" <> rname atomRelation <+> "as RelId,"                                      $$
+             "    rel:  " <> relId atomRelation <> ","                                                          $$
              (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f}")        $$
              "}"
 
@@ -1124,26 +1134,31 @@ rhsVarsAfter d rl i =
 mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
 mkProg d nodes = do
     rels <- vcat <$>
-            mapM (\(rn, rel) -> do
+            mapM (\(rn, rel, _) -> do
                   relarrs <- gets ((M.! rn) . cArrangements)
                   arrs <- mapM (mkArrangement d (getRelation d rn)) relarrs
                   return $ "let" <+> rname rn <+> "=" <+> rel arrs <> ";")
                  (concatMap nodeRels nodes)
+    let facts = concatMap sel3 $ concatMap nodeRels nodes
     let pnodes = map mkNode nodes
         prog = "Program {"                                      $$
                "    nodes: vec!["                               $$
                (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
-               "]}"
+               "    ],"                                         $$
+               "    init_data: vec!["                           $$
+               (nest' $ nest' $ vcat $ punctuate comma facts)   $$
+               "    ]"                                          $$
+               "}"
     return $
         "pub fn prog(__update_cb: UpdateCallback<Value>) -> Program<Value> {"  $$
         (nest' $ rels $$ prog)                                                 $$
         "}"
 
 mkNode :: ProgNode -> Doc
-mkNode (RelNode (rel,_)) =
+mkNode (RelNode (rel,_,_)) =
     "ProgNode::RelNode{rel:" <+> rname rel <> "}"
 mkNode (SCCNode rels)    =
-    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . fst) rels) <> "]}"
+    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . sel1) rels) <> "]}"
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (Arrangement pattern) = do
