@@ -6,6 +6,7 @@ import parglare # parser generator
 import json
 import gzip
 import os
+import argparse
 
 skip_files = False
 current_namespace = None
@@ -18,11 +19,11 @@ total = 0
 class Files(object):
     """Represents the files that are used for input and output"""
 
-    def __init__(self):
-        inputName = "self-contained.dl"
-        outputName = "souffle.dl"
-        outputDataName = "souffle.dat"
-        logName = "souffle.log"
+    def __init__(self, inputDl, outputDl, outputDat, log):
+        inputName = inputDl
+        outputName = outputDl
+        outputDataName = outputDat
+        logName = log
         self.logFile = open(logName, 'w')
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
@@ -383,7 +384,14 @@ def process(tree, files, preprocess):
         process_decl(decl, files, preprocess)
 
 def main():
-    files = Files()
+    parser = argparse.ArgumentParser("convert.py")
+    parser.add_argument("input", help="input Souffle program", type=str)
+    parser.add_argument("outdl", help="output DDlog program", type=str)
+    parser.add_argument("outdat", help="output DDlog data file", type=str)
+    parser.add_argument("log", help="output log file", type=str)
+    args = parser.parse_args()
+    inputName, outputName, outputDataName, logName = args.input, args.outdl, args.outdat, args.log
+    files = Files(inputName, outputName, outputDataName, logName)
     parser = getParser()
     input = ""
     tree = parser.parse(files.inputFile.read())
