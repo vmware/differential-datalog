@@ -238,6 +238,14 @@ pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V
     m.x.insert((*k).clone(), (*v).clone());
 }
 
+pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
+    let mut m2 = m.clone();
+    m2.insert((*k).clone(), (*v).clone());
+    m2
+}
+
+
+
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
     match m.x.get(k) {
         None => std_Option::std_None,

@@ -94,6 +94,22 @@ insert OVN_Northbound.Logical_Switch_Port(
     .dhcpv4_options = [],
     .dhcpv6_options = [],
     .external_ids = []
+),
+
+insert OVN_Southbound.Port_Binding (
+    ._uuid = 0xb6a11f30_073a_48f3_99ab_7646fb39eec1,
+    .logical_port = "lrp1",
+    .type = "",
+    .gateway_chassis = [0x690dc4b6_3a95_46ea_90f5_e46818f2f1a3],
+    .options = [("l3gateway-chassis", "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"), ("peer", "lsp2"), ("qos_max_rate", "1000")],
+    .datapath = 0x2f17c847_bd26_4a4b_895f_94ba833f9c87,
+    .tunnel_key = 1,
+    .parent_port = [],
+    .tag = [],
+    .chassis = [0x690dc4b6_3a95_46ea_90f5_e46818f2f1a3],
+    .mac = [],
+    .nat_addresses = [],
+    .external_ids = []
 );
 
 commit;

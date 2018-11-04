@@ -108,7 +108,7 @@ sbTest = do
                                   , "DNS"
                                   , "RBAC_Role"
                                   , "RBAC_Permission"]
-                                  [ "Datapath_Binding"]
+                                  [ "Datapath_Binding", "Port_Binding"]
                                   (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
                                               , ("Port_Binding"     , ["logical_port"])
                                               , ("DNS"              , ["external_ids"])

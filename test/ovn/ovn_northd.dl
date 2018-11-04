@@ -113,6 +113,7 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
     }.
 
 
+/* Case 2: Create a Port_Binding per logical switch port of type "router" */
 sb.Out_Port_Binding(.uuid_name          = uuid_name,
                     .logical_port       = lsp.name,
                     .__type             = __type,
@@ -155,6 +156,29 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
             }
         }
     }.
+
+
+sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
+                         .logical_port       = pbinding.logical_port,
+                         .__type             = pbinding.__type,
+                         .gateway_chassis    = pbinding.gateway_chassis,
+                         .options            = options,
+                         .datapath           = pbinding.datapath,
+                         .tunnel_key         = tunkey,
+                         .parent_port        = pbinding.parent_port,
+                         .tag                = pbinding.tag,
+                         .chassis            = pbinding.chassis,
+                         .mac                = pbinding.mac,
+                         .nat_addresses      = pbinding.nat_addresses,
+                         .external_ids       = pbinding.external_ids) :-
+    sb.Swizzled_Port_Binding[pbinding],
+    PortTunKeyAllocation(pbinding.uuid_name, tunkey),
+    QueueIDAllocation(pbinding.uuid_name, qid),
+    var options = match (qid) {
+        None -> pbinding.options,
+        Some{id} -> map_insert_imm(pbinding.options, "qdisc_queue_id", $"${id}")
+    }.
+
 
 /*
 sb.Out_Port_Binding(.uuid_name          = uuid_name,
@@ -283,7 +307,7 @@ PortTunKeyAllocation(port, tunkey) :-
     (var port, var tunkey) = allocation.
 
 // Case 2: PortAllocatedTunKeys(datapath) relation is empty
-TunKeyAllocation(port, tunkey) :-
+PortTunKeyAllocation(port, tunkey) :-
     NotYetAllocatedPortTunKeys(datapath, unallocated),
     not AllocatedPortTunKeys(datapath, _),
     var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hffff)),
