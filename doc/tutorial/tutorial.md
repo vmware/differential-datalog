@@ -62,7 +62,7 @@ typedef Category = CategoryStarWars
 input relation Word1(word: string, cat: Category)
 input relation Word2(word: string, cat: Category)
 
-relation Phrases(phrase: string)
+output relation Phrases(phrase: string)
 
 // Rule
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
@@ -88,15 +88,17 @@ also comes from databases): a relation is a set of records.  Records
 are like C `struct`s: objects with multiple named and fields.  Relation names must
 start with an uppercase letter.
 
-Output relations are also called *derived* relations, and their contents is computed based on rules.
-Relations without an `input` qualifier are always derived relations.
+Relations without an `input` qualifier are also called *derived* relations. They are
+computed from input relations using rules.
+Output relations (marked by the `output` qualifier) are derived relations whose content
+can be queried (see below).
 
 The declaration of `Word1`:
 `input relation Word1(word: string, cat: Category)` indicates the type of its records: each
 record has a `word` field of type `string`, and a `cat` field of type `Category`.
 The records of `Word2` happen to have the same type.
 
-From this declaration: `relation Phrases(phrase: string)`
+From this declaration: `output relation Phrases(phrase: string)`
 we know that he output relation `Phrases` has records with a single field named `phrase`,
 which is a `string`.
 
@@ -315,7 +317,7 @@ input relation Host(id: UUID, name: string, ip: IP4)
 input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
-relation HostInSubnet(host: UUID, subnet: UUID)
+output relation HostInSubnet(host: UUID, subnet: UUID)
 
 HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
                                     Subnet(subnet_id, subnet_prefix, subnet_mask),
@@ -397,7 +399,7 @@ are wrapped in `${}`.  The following program defines relation
 
 ```
 input relation Number(n: bigint)
-relation Pow2(p: string)
+output relation Pow2(p: string)
 Pow2($"The square of ${x} is ${x*x}") :- Number(x).
 ```
 
@@ -474,7 +476,7 @@ representation of hosts:
 
 ```
 input relation NetHost(id: bigint, h: nethost_t)
-relation NetHostString(id: bigint, s: string)
+output relation NetHostString(id: bigint, s: string)
 
 NetHostString(id, $"${h}") :- NetHost(id, h).
 ```
@@ -526,11 +528,11 @@ function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
 input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
 
 // convert bytes to IP addresses
-relation Address(addr: ip_addr_t)
+output relation Address(addr: ip_addr_t)
 Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
 
 // filter multicast IP addresses
-relation MCastAddress(addr: ip_addr_t)
+output relation MCastAddress(addr: ip_addr_t)
 MCastAddress(a) :- Address(a), is_multicast_addr(a).
 ```
 
@@ -615,7 +617,7 @@ input relation Endpoint(ip: ip_addr_t,
                         proto: string,
                         preferred_port: bit<16>)
 
-relation EndpointString(s: string)
+output relation EndpointString(s: string)
 
 EndpointString(addr_port(ip, proto, preferred_port)) :-
     Endpoint(ip, proto, preferred_port).
@@ -647,7 +649,7 @@ extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
 We can invoke `string_slice()` just like a normal DDlog function, e.g.,
 
 ```
-relation First5(str: string)
+output relation First5(str: string)
 First5(string_slice(p, 0, 5)) :- Phrases(p).
 ```
 
@@ -679,7 +681,7 @@ relation:
 
 ```
 input relation Blacklisted(ep: string)
-relation SanitizedEndpoint(ep: string)
+output relation SanitizedEndpoint(ep: string)
 
 SanitizedEndpoint(endpoint) :-
     EndpointString(endpoint),
@@ -737,7 +739,7 @@ compute a `HostIP` relation that consists of (host, ip) pairs:
 
 ```
 input relation HostAddress(host: bit<64>, addrs: string)
-relation HostIP(host: bit<64>, addr: string)
+output relation HostIP(host: bit<64>, addr: string)
 ```
 
 For this purpose we can use `FlatMap`: this operator applies a
@@ -766,8 +768,8 @@ The following program computes the sums and products of pairs of values from `X`
 ```
 input relation X(x: bit<16>)
 
-relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
-relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
+output relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
+output relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
 
 Sum(x,y,x*y) :- X(x), X(y).
 Product(x,y,x*y) :- X(x), X(y).
@@ -788,7 +790,7 @@ the set of edges:
 ```
 input relation Edge(s: node, t: node)
 
-relation Path(s1: node, s2: node)
+output relation Path(s1: node, s2: node)
 
 Path(x, y) :- Edge(x,y).
 Path(x, z) :- Path(x, w), Edge(w, z).
@@ -936,7 +938,7 @@ extracts all TCP destination port numbers from an input relation that stores a s
 
 ```
 input relation Packet(pkt: eth_pkt_t)
-relation TCPDstPort(port: bit<16>)
+output relation TCPDstPort(port: bit<16>)
 
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
@@ -978,7 +980,7 @@ We use this function to compute a subset of IP addresses on the `192.168.*.*` su
 
 ```
 input relation KnownHost(addr: ip4_addr_t)
-relation IntranetHost(addr: ip4_addr_t)
+output relation IntranetHost(addr: ip4_addr_t)
 
 IntranetHost(addr) :- KnownHost(addr),
                       (var b3, var b2, _, _) = addr_to_tuple(addr),
@@ -991,7 +993,7 @@ Note the assignment that binds variables `b2` and `b3` to individual fields of t
 combining assignment and pattern matching:
 
 ```
-relation IntranetHost(addr: ip4_addr_t)
+output relation IntranetHost(addr: ip4_addr_t)
 
 IntranetHost(addr) :- KnownHost(addr),
                       (192, 168, _, _) = addr_to_tuple(addr).
@@ -1080,7 +1082,7 @@ fields.  Using this syntax, we declare the `TargetAudience` relation that has th
 as `Person` and apply the `is_target_audience()` function to filter the `Person` relation.
 
 ```
-relation TargetAudience[Person]
+output relation TargetAudience[Person]
 
 TargetAudience[person] :- Person[person], is_target_audience(person).
 ```
@@ -1166,7 +1168,7 @@ import mod1
 // declarations from mod2 are available via the "m2." prefix
 import lib.mod2 as m2
 
-relation Main(f1: bool, f2: string)
+output relation Main(f1: bool, f2: string)
 
 Main(f1, f2) :- R1(f1), m2.R2(f2).
 ```

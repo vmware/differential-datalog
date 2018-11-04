@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, LambdaCase #-}
+{-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts #-}
 
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
@@ -29,10 +29,15 @@ module Language.DifferentialDatalog.Rule (
     ruleRHSTermVars,
     ruleLHSVars,
     ruleTypeMapM,
-    ruleHasJoins
+    ruleHasJoins,
+    ruleAggregateTypeParams
 ) where
 
 import qualified Data.Set as S
+import qualified Data.Map as M
+import Data.List
+import Control.Monad.Except
+import Debug.Trace
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
@@ -40,8 +45,8 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Util
-
-import Debug.Trace
+import Language.DifferentialDatalog.NS
+import Language.DifferentialDatalog.Validate
 
 ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
@@ -64,14 +69,27 @@ ruleRHSVarSet' d rl i =
          -- condition does not introduce new variables
          RHSCondition _                -> vs
          -- FlatMap introduces a variable
-         RHSFlatMap v e                -> let TOpaque _ _ [t] = exprType' d (CtxRuleRFlatMap rl i) e
+         RHSFlatMap v e                -> let t = case exprType' d (CtxRuleRFlatMap rl i) e of
+                                                       TOpaque _ _         [t]     -> t
+                                                       TOpaque _ "std.Map" [kt,vt] -> tTuple [kt,vt]
                                           in S.insert (Field nopos v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate{}                -> error "ruleRHSVarSet' RHSAggregate: not implemented"
+         RHSAggregate gvars avar fname e -> let ctx = CtxRuleRAggregate rl i
+                                                gvars' = map (getVar d ctx) gvars
+                                                f = getFunc d fname
+                                                tmap = ruleAggregateTypeParams d rl i
+                                                atype = typeSubstTypeArgs tmap $ funcType f
+                                                avar' = Field nopos avar atype
+                                            in S.fromList $ avar':gvars'
     where
     vs = ruleRHSVarSet d rl i
 
+ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
+ruleAggregateTypeParams d rl idx =
+    case ruleCheckAggregate d rl idx of
+         Left e -> error $ "ruleAggregateTypeParams: " ++ e
+         Right tmap -> tmap
 
 exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
 exprDecls d ctx e = 
@@ -97,9 +115,9 @@ ruleRHSTermVars rl i =
          RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
          RHSCondition{..} -> exprVars rhsExpr
          RHSFlatMap{..}   -> exprVars rhsMapExpr
-         RHSAggregate{}   -> error "ruleRHSTermVars RHSAggregate: not implemented"
+         RHSAggregate{..} -> nub $ rhsGroupBy ++ exprVars rhsAggExpr
  
--- | All variables defined in a rule
+-- | All variables visible after the last RHS clause of the rule
 ruleVars :: DatalogProgram -> Rule -> [Field]
 ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
 
@@ -120,7 +138,7 @@ ruleTypeMapM fun rule@Rule{..} = do
     rhs <- mapM (\rhs -> case rhs of
                   RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
                   RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
-                  RHSAggregate g v e          -> RHSAggregate g v <$> exprTypeMapM fun e
+                  RHSAggregate g v f e        -> RHSAggregate g v f <$> exprTypeMapM fun e
                   RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }

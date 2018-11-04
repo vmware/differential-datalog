@@ -1,14 +1,13 @@
-#[macro_use]
 extern crate nom;
 extern crate num;
 extern crate rustyline;
 extern crate libc;
 
+extern crate differential_datalog;
+
 mod parse;
-mod from_record;
 
 pub use parse::*;
-pub use from_record::*;
 
 use nom::*;
 use std::io;

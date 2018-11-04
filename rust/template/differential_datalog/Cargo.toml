@@ -9,9 +9,6 @@ git="https://github.com/frankmcsherry/graph-map.git"
 git="https://github.com/frankmcsherry/differential-dataflow.git"
 tag="v0.7.0"
 
-[dependencies.cmd_parser]
-path = "../cmd_parser"
-
 [dev-dependencies]
 getopts="0.2.14"
 rand="0.3.13"

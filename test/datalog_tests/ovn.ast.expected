@@ -69,6 +69,8 @@ typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet
 typedef mac_addr_t = bit<48>
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef uuid = bit<128>
@@ -92,6 +94,10 @@ function is_some (x: option_t<'A>): bool =
         _ -> false
     }
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
@@ -157,11 +163,11 @@ input relation QoS_external_ids [QoS_external_ids]
 input relation SSL [SSL]
 input relation SSL_external_ids [SSL_external_ids]
 Load_Balancer_ip_addresses(.load_balancer=lb, .ip_address=ip_address_and_port_from_lb_key(key).ip) :- Load_Balancer_vips(.load_balancer=lb, .key=key, .value=_).
-Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
-Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(ip = extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_addresses(.logical_switch_port=lsp, .address=addrs), (var mac, var ips) = extract_mac(addrs), var ip = FlatMap(extract_ips(ips)).
+Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=ip) :- Logical_Switch_Port_dynamic_addresses(.logical_switch_port=lsp, .dynamic_address=addrs), (var mac, var ips) = extract_mac(addrs), var ip = FlatMap(extract_ips(ips)).
 Logical_Switch_Port_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
 Logical_Switch_has_stateful_acl_action(.logical_switch=ls) :- ACL(.id=_, .name=_, .logical_switch=ls, .priority=_, .direction=_, ._match=_, .action="allow-related", .log=_, .severity=_).
-Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), FlatMap(subnet = extract_subnets(ips)).
+Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), var subnet = FlatMap(extract_subnets(ips)).
 Logical_Switch_Port_ps_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
 DHCP_Options_option_args(.dhcp_options=opts, .option=((key ++ "=") ++ value)) :- DHCP_Options_options(.dhcp_options=opts, .key=key, .value=value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
 DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), Some{.value=var mac} = eth_addr_from_string(val).

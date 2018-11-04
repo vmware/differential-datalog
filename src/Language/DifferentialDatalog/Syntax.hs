@@ -52,6 +52,8 @@ module Language.DifferentialDatalog.Syntax (
         Constructor(..),
         consType,
         consIsUnique,
+        KeyExpr(..),
+        RelationRole(..),
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
@@ -240,7 +242,7 @@ instance Show Type where
     show = render . pp
 
 
--- | Type variables used in type declaration
+-- | Type variables used in type declaration in the order they appear in the declaration
 typeTypeVars :: Type -> [String]
 typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
@@ -322,15 +324,47 @@ consType d c =
 consIsUnique :: DatalogProgram -> String -> Bool
 consIsUnique d c = (length $ typeCons $ fromJust $ tdefType $ consType d c) == 1
 
+data KeyExpr = KeyExpr { keyPos  :: Pos
+                       , keyVar  :: String
+                       , keyExpr :: Expr
+                       }
+
+instance Eq KeyExpr where
+    (==) (KeyExpr _ v1 e1) (KeyExpr _ v2 e2) = v1 == v2 && e1 == e2
+
+instance WithPos KeyExpr where
+    pos = keyPos
+    atPos k p = k{keyPos = p}
+
+instance PP KeyExpr where
+    pp KeyExpr{..} = "(" <> pp keyVar <> ")" <+> pp keyExpr
+
+instance Show KeyExpr where
+    show = render . pp
+
+data RelationRole = RelInput 
+                  | RelOutput
+                  | RelInternal
+                  deriving(Eq, Ord)
+
+
+instance PP RelationRole where
+    pp RelInput    = "input"
+    pp RelOutput   = "output"
+    pp RelInternal = empty
+
+instance Show RelationRole where
+    show = render . pp
+
 data Relation = Relation { relPos         :: Pos
-                         , relGround      :: Bool
+                         , relRole        :: RelationRole
                          , relName        :: String
                          , relType        :: Type
-                         , relDistinct    :: Bool
+                         , relPrimaryKey  :: Maybe KeyExpr
                          }
 
 instance Eq Relation where
-    (==) (Relation _ g1 n1 t1 d1) (Relation _ g2 n2 t2 d2) = g1 == g2 && n1 == n2 && t1 == t2 && d1 == d2
+    (==) (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) = r1 == r2 && n1 == n2 && t1 == t2 && k1 == k2
 
 instance WithPos Relation where
     pos = relPos
@@ -341,8 +375,9 @@ instance WithName Relation where
     setName r n = r{relName = n}
 
 instance PP Relation where
-    pp Relation{..} = (if relGround then "input" else empty) <+>
-                      "relation" <+> pp relName <+> "[" <> pp relType <> "]"
+    pp Relation{..} = pp relRole <+>
+                      "relation" <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
+        where pkey = maybe empty (("primary key" <+>) . pp) relPrimaryKey
 
 instance Show Relation where
     show = render . pp
@@ -378,18 +413,18 @@ instance Show Atom where
 -- all atoms.
 data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
-             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggExpr :: Expr}
+             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              deriving (Eq)
 
 instance PP RuleRHS where
-    pp (RHSLiteral True a)  = pp a
-    pp (RHSLiteral False a) = "not" <+> pp a
-    pp (RHSCondition c)     = pp c
-    pp (RHSAggregate g v e) = "Aggregate" <> "(" <>
-                              (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
-                              pp v <+> "=" <+> pp e <> ")"
-    pp (RHSFlatMap v e)     = "FlatMap" <> "(" <> pp v <+> "=" <+> pp e <> ")"
+    pp (RHSLiteral True a)    = pp a
+    pp (RHSLiteral False a)   = "not" <+> pp a
+    pp (RHSCondition c)       = pp c
+    pp (RHSAggregate g v f e) = "Aggregate" <> "(" <>
+                                (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
+                                pp v <+> "=" <+> pp f <> (parens $ pp e) <> ")"
+    pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
 
 instance Show RuleRHS where
     show = render . pp
@@ -582,7 +617,7 @@ funcShowProto Function{..} = render $
     <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
     <> colon <+> pp funcType
 
--- | Type variables used in function declaration
+-- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
 funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
 
@@ -698,6 +733,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
             -- | Aggregate clause in the RHS of a rule
           | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
+            -- | Key expression
+          | CtxKey            {ctxRelation::Relation}
             -- | Argument passed to a function
           | CtxApply          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
             -- | Field expression: 'X.f'
@@ -743,6 +780,7 @@ instance PP ECtx where
         where
         epar = short $ ctxParExpr ctx
         rule = short $ pp $ ctxRule ctx
+        rel  = short $ pp $ ctxRelation ctx
         mlen = 100
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
@@ -752,6 +790,7 @@ instance PP ECtx where
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
+                    CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
                     CtxApply{..}          -> "CtxApply          " <+> epar <+> pp ctxIdx
                     CtxField{..}          -> "CtxField          " <+> epar
@@ -783,5 +822,6 @@ ctxParent CtxRuleRAtom{}      = CtxTop
 ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent CtxKey{}            = CtxTop
 ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx

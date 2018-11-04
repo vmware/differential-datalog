@@ -24,7 +24,8 @@ SOFTWARE.
 {-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections #-}
 
 module Language.DifferentialDatalog.Validate (
-    validate) where
+    validate,
+    ruleCheckAggregate) where
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -45,11 +46,12 @@ import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
-import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.StdLib
+import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
 sET_TYPES = ["std.Set", "std.Vec"]
+gROUP_TYPE = "std.Group"
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -215,7 +217,11 @@ funcValidateDefinition d f@Function{..} = do
          Just def -> exprValidate d (funcTypeVars f) (CtxFunc f) def
 
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
-relValidate d Relation{..} = typeValidate d [] relType
+relValidate d rel@Relation{..} = do
+    typeValidate d [] relType
+    check (isNothing relPrimaryKey || relRole == RelInput) (pos rel) 
+        $ "Only input relations can be declared with a primary key"
+    maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
 
 --relValidate2 :: (MonadError String me) => Refine -> Relation -> me ()
 --relValidate2 r rel@Relation{..} = do
@@ -254,7 +260,7 @@ ruleValidate d rl@Rule{..} = do
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl@Rule{..} (RHSLiteral pol atom) idx = do
+ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
     checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] (CtxRuleRAtom rl idx) $ atomVal atom
     let vars = ruleRHSVars d rl idx
@@ -272,18 +278,41 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     exprValidate d [] ctx e
     case exprType' d ctx e of
          TOpaque _ tname [_] | elem tname sET_TYPES -> return ()
-         t  -> err (pos e) $ "FlatMap expression must be of these types: " ++ intercalate ", " sET_TYPES ++ ", but its type is " ++ show t
+         TOpaque _ "std.Map" [_,_]                  -> return ()
+         t  -> err (pos e) $ "FlatMap expression must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show t
 
-ruleRHSValidate _ _ RHSAggregate{..} _ =
-    err (pos rhsAggExpr) "Aggregates not implemented"
+ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
+    _ <- ruleCheckAggregate d rl idx
+    return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
 ruleLHSValidate d rl Atom{..} idx = do
     checkRelation atomPos d atomRelation
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
---    validate aggregate function used
---    aggregate, flatmap, assigned vars are not previously declared
+-- Validate Aggregate term, compute type argument map for the aggregate function used in the term.
+-- e.g., given an aggregate function:
+-- extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
+--
+-- and its invocation:
+-- Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y)))
+--
+-- compute concrete types for 'K and 'V
+ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me (M.Map String Type)
+ruleCheckAggregate d rl idx = do
+    let RHSAggregate vs v fname e = ruleRHS rl !! idx
+    let ctx = CtxRuleRAggregate rl idx
+    exprValidate d [] ctx e
+    -- group-by variables are visible in this scope
+    mapM (checkVar (pos e) d ctx) vs
+    check (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
+    -- aggregation function exists and takes a group as its sole argument
+    f <- checkFunc (pos e) d fname
+    check (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
+                                               fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
+    -- figure out type of the aggregate
+    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
+
 
 
 -- | Check the following properties of a Datalog dependency graph:
@@ -373,7 +402,7 @@ exprValidate1 _ _ _   EUnOp{}             = return ()
 
 exprValidate1 _ _ ctx (EPHolder p)        = do
     let msg = case ctx of
-                   CtxStruct _ _ f -> "Argument " ++ f ++ " must be specified in this context"
+                   CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
@@ -384,8 +413,7 @@ ctxPHolderAllowed ctx =
     case ctx of
          CtxSetL{}        -> True
          CtxTyped{}       -> pres
-         CtxRuleRAtom{..} -> -- only positive literals
-                             rhsPolarity $ (ruleRHS ctxRule) !! ctxAtomIdx
+         CtxRuleRAtom{..} -> True
          CtxStruct{}      -> pres
          CtxTuple{}       -> pres
          CtxMatchPat{}    -> True

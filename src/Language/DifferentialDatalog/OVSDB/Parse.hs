@@ -23,9 +23,11 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts #-}
 
-{- Parses a JSON schema for an OVS database.
-   Schema specification is part of RFC 7047:
-   https://tools.ietf.org/html/rfc7047
+{- |
+Module     : OVSDB.Parse
+Description: Parses a JSON schema for an OVS database.
+             Schema specification is part of RFC 7047:
+             https://tools.ietf.org/html/rfc7047
 -}
 
 module Language.DifferentialDatalog.OVSDB.Parse(
@@ -208,9 +210,9 @@ complexType = do
     let init = ComplexType nopos BaseTypeUndefined Nothing Nothing Nothing
     symbol "{"
     t <- withPos $ addComplexTypeProperties init
-    case keyComplexType t of 
+    case keyComplexType t of
          BaseTypeUndefined -> fail "Missing required field \"key\""
-         _                 -> return $ ColumnTypeComplex t 
+         _                 -> return $ ColumnTypeComplex t
 
 addComplexTypeProperties :: ComplexType -> Parsec String u ComplexType
 addComplexTypeProperties init = comma *> addComplexTypeProperties init
@@ -228,7 +230,7 @@ addComplexTypeProperty init =
 
 
 baseType :: Parsec String u BaseType
-baseType = 
+baseType =
     (BaseTypeSimple <$> atomicType) <|>
     do let init = ComplexBaseType (UndefinedAtomicType nopos) Nothing Nothing Nothing Nothing Nothing
        symbol "{"

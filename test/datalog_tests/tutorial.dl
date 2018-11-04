@@ -15,7 +15,7 @@ input relation Word1(word: string, cat: Category)
 input relation Word2(word: string, cat: Category)
 
 // Computed relation populated by facts derived from rules.
-relation Phrases(phrase: string)
+output relation Phrases(phrase: string)
 
 // Produce phrases by combining pairs of words from the same category.
 // The `++` operator is string concatenation.
@@ -43,7 +43,7 @@ input relation Host(id: UUID, name: string, ip: IP4)
 input relation Subnet(id: UUID, prefix: IP4, mask: NetMask)
 
 // HostInSubnet relation maps hosts to known subnets
-relation HostInSubnet(host: UUID, subnet: UUID)
+output relation HostInSubnet(host: UUID, subnet: UUID)
 
 // Compute `HostInSubnet` by filtering all host-subnet pairs where host address matches
 // subnet prefix and mask.
@@ -63,7 +63,7 @@ HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
  */
 
 input relation Number(n: bigint)
-relation Pow2(p: string)
+output relation Pow2(p: string)
 
 Pow2($"The square of ${x} is ${x*x}") :- Number(x).
 
@@ -89,7 +89,7 @@ function nethost_t2string(h: nethost_t): string = {
 }
 
 input relation NetHost(id: bigint, h: nethost_t)
-relation NetHostString(id: bigint, s: string)
+output relation NetHostString(id: bigint, s: string)
 
 NetHostString(id, $"${h}") :- NetHost(id, h).
 
@@ -108,8 +108,8 @@ function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
 function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
 
 input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-relation Address(addr: ip_addr_t)
-relation MCastAddress(addr: ip_addr_t)
+output relation Address(addr: ip_addr_t)
+output relation MCastAddress(addr: ip_addr_t)
 
 Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
 MCastAddress(a) :- Address(a), is_multicast_addr(a).
@@ -139,7 +139,7 @@ input relation Endpoint(ip: ip_addr_t,
                         proto: string,
                         preferred_port: bit<16>)
 
-relation EndpointString(s: string)
+output relation EndpointString(s: string)
 
 EndpointString(addr_port(ip, proto, preferred_port)) :-
     Endpoint(ip, proto, preferred_port).
@@ -149,7 +149,7 @@ EndpointString(addr_port(ip, proto, preferred_port)) :-
  */
 extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
 
-relation First5(str: string)
+output relation First5(str: string)
 
 First5(string_slice(p, 0,5)) :- Phrases(p).
 
@@ -158,7 +158,7 @@ First5(string_slice(p, 0,5)) :- Phrases(p).
  * Example: assignment clauses and antijoins
  */
 input relation Blacklisted(ep: string)
-relation SanitizedEndpoint(ep: string)
+output relation SanitizedEndpoint(ep: string)
 
 SanitizedEndpoint(endpoint) :-
     Endpoint(ip, proto, preferred_port),
@@ -179,18 +179,18 @@ function split_ip_list(x: string): Vec<string> =
    split(x, " ")
 
 input relation HostAddress(host: bit<64>, addrs: string)
-relation HostIP(host: bit<64>, addr: string)
+output relation HostIP(host: bit<64>, addr: string)
 
 HostIP(host, addr) :- HostAddress(host, addrs),
-                      FlatMap(addr=split_ip_list(addrs)).
+                      var addr = FlatMap(split_ip_list(addrs)).
 
 /*
  * Example: Multiple heads
  */
 input relation X(x: bit<16>)
 
-relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
-relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
+output relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
+output relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
 
 Sum(x,y,x+y),
 Product(x,y,x*y) :- X(x), X(y).
@@ -276,7 +276,7 @@ function pkt_ip4_(pkt: eth_pkt_t): option_t<ip4_pkt_t> = {
 
 input relation Packet(pkt: eth_pkt_t)
 
-relation TCPDstPort(port: bit<16>)
+output relation TCPDstPort(port: bit<16>)
 
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
@@ -289,7 +289,7 @@ function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
     }
 }
 
-relation UDPDstPort(port: bit<16>)
+output relation UDPDstPort(port: bit<16>)
 
 UDPDstPort(port) :- Packet(pkt), var port = pkt_udp_port(pkt), port != 0.
 
@@ -301,7 +301,7 @@ function pkt_udp_port2(pkt: eth_pkt_t): option_t<bit<16>> = {
     }
 }
 
-relation UDPDstPort2(port: bit<16>)
+output relation UDPDstPort2(port: bit<16>)
 
 UDPDstPort2(port) :- Packet(pkt), Some{var port} = pkt_udp_port2(pkt).
 
@@ -315,14 +315,14 @@ function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) = {
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
 }
 
-relation IntranetHost(addr: ip4_addr_t)
+output relation IntranetHost(addr: ip4_addr_t)
 
 IntranetHost(addr) :- KnownHost(addr),
                       (var b3, var b2, _, _) = addr_to_tuple(addr),
                       b3 == 192,
                       b2 == 168.
 
-relation IntranetHost2(addr: ip4_addr_t)
+output relation IntranetHost2(addr: ip4_addr_t)
 
 IntranetHost2(addr) :- KnownHost(addr), (192, 168, _, _) = addr_to_tuple(addr).
 
@@ -337,7 +337,7 @@ function is_target_audience(person: Person): bool = {
     (person.occupation == "student")
 }
 
-relation TargetAudience[Person]
+output relation TargetAudience[Person]
 
 TargetAudience[person] :- Person[person], is_target_audience(person).
 
@@ -368,11 +368,11 @@ input relation Logical_Switch (
 )
 
 // Relation that represents OVS flows.
-relation Flow(lr: bigint,
-              stage: stage,
-              prio: bigint,
-              matchStr: string,
-              actionStr: string)
+output relation Flow(lr: bigint,
+                     stage: stage,
+                     prio: bigint,
+                     matchStr: string,
+                     actionStr: string)
 
 // The following rule illustrates several new syntactic constructs.
 //
@@ -405,11 +405,11 @@ Flow(.lr=ls,
 // The above two rules can be equivalently written using FTL syntax.
 
 // Introduce another Flow relation, so that we can compare the results of the two encodings.
-relation Flow1(lr: bigint,
-               stage: stage,
-               prio: bigint,
-               matchStr: string,
-               actionStr: string)
+output relation Flow1(lr: bigint,
+                      stage: stage,
+                      prio: bigint,
+                      matchStr: string,
+                      actionStr: string)
 
 for (lb in Load_Balancer) {
     var a = lb.ip_addresses in

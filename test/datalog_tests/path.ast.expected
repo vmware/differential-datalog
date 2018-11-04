@@ -1,13 +1,19 @@
 typedef Edge = Edge{s: node, t: node}
 typedef Path = Path{s1: node, s2: node}
 typedef node = string
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 input relation Edge [Edge]
-relation Path [Path]
+output relation Path [Path]
 Path(.s1=x, .s2=y) :- Edge(.s=x, .t=y).
 Path(.s1=x, .s2=z) :- Path(.s1=x, .s2=w), Edge(.s=w, .t=z).

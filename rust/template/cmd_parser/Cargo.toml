@@ -2,6 +2,9 @@
 name = "cmd_parser"
 version = "0.1.0"
 
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
 [dependencies]
 nom = "4.0"
 num = "0.2"

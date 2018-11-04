@@ -49,6 +49,8 @@ typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
@@ -104,45 +106,49 @@ extern function split (s: string, sep: string): std.Vec<string>
 function split_ip_list (x: string): std.Vec<string> =
     split(x, " ")
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
-relation Address [Address]
+output relation Address [Address]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
 input relation Endpoint [Endpoint]
-relation EndpointString [EndpointString]
-relation First5 [First5]
-relation Flow [Flow]
-relation Flow1 [Flow1]
+output relation EndpointString [EndpointString]
+output relation First5 [First5]
+output relation Flow [Flow]
+output relation Flow1 [Flow1]
 input relation Host [Host]
 input relation HostAddress [HostAddress]
-relation HostIP [HostIP]
-relation HostInSubnet [HostInSubnet]
-relation IntranetHost [IntranetHost]
-relation IntranetHost2 [IntranetHost2]
+output relation HostIP [HostIP]
+output relation HostInSubnet [HostInSubnet]
+output relation IntranetHost [IntranetHost]
+output relation IntranetHost2 [IntranetHost2]
 input relation KnownHost [KnownHost]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
-relation MCastAddress [MCastAddress]
+output relation MCastAddress [MCastAddress]
 input relation NetHost [NetHost]
-relation NetHostString [NetHostString]
+output relation NetHostString [NetHostString]
 input relation Number [Number]
 input relation Packet [Packet]
 input relation Person [Person]
-relation Phrases [Phrases]
-relation Pow2 [Pow2]
-relation Product [Product]
-relation SanitizedEndpoint [SanitizedEndpoint]
+output relation Phrases [Phrases]
+output relation Pow2 [Pow2]
+output relation Product [Product]
+output relation SanitizedEndpoint [SanitizedEndpoint]
 input relation Subnet [Subnet]
-relation Sum [Sum]
-relation TCPDstPort [TCPDstPort]
-relation TargetAudience [Person]
-relation UDPDstPort [UDPDstPort]
-relation UDPDstPort2 [UDPDstPort2]
+output relation Sum [Sum]
+output relation TCPDstPort [TCPDstPort]
+output relation TargetAudience [Person]
+output relation UDPDstPort [UDPDstPort]
+output relation UDPDstPort2 [UDPDstPort2]
 input relation Word1 [Word1]
 input relation Word2 [Word2]
 input relation X [X]
@@ -157,7 +163,7 @@ MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 EndpointString(.s=addr_port(ip, proto, preferred_port)) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port).
 First5(.str=string_slice(p, 64'd0, 64'd5)) :- Phrases(.phrase=p).
 SanitizedEndpoint(.ep=endpoint) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
-HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), FlatMap(addr = split_ip_list(addrs)).
+HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), var addr = FlatMap(split_ip_list(addrs)).
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).

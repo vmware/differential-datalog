@@ -32,17 +32,20 @@ module Language.DifferentialDatalog.Type(
     exprType',
     exprType'',
     exprNodeType,
+    relKeyType,
     typ', typ'',
     isBool, isBit, isInt, isString, isStruct, isTuple,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
+    typeSubstTypeArgs,
     ctxExpectType,
     ConsTree(..),
     consTreeEmpty,
     typeConsTree,
     consTreeAbduct,
-    typeMapM
+    typeMapM,
+    funcTypeArgSubsts
 --    typeSubtypes,
 --    typeSubtypesRec,
 --    typeGraph,
@@ -164,6 +167,11 @@ exprTypeMaybe d ctx e =
                        Left _  -> Nothing
                        Right t -> Just $ atPos t (pos e')) 
                 ctx e
+
+-- | Type of relation's primary key, if it has one
+relKeyType :: DatalogProgram -> Relation -> Maybe Type
+relKeyType d rel =
+    fmap (\KeyExpr{..} -> exprType d (CtxKey rel) keyExpr) $ relPrimaryKey rel
 
 -- | Compute expression node type; fail if type is undefined or there
 -- is a conflict.
@@ -447,6 +455,7 @@ ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
          _        -> Just tBool
 ctxExpectType _ CtxRuleRFlatMap{}                    = Nothing
 ctxExpectType _ CtxRuleRAggregate{}                  = Nothing
+ctxExpectType _ CtxKey{}                             = Nothing
 ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
     let args = funcArgs $ getFunc d f
         t = fieldType $ args !! i in

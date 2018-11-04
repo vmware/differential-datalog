@@ -1,0 +1,19 @@
+[package]
+name = "ddlog_ovsdb_adapter"
+version = "0.1.0"
+
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
+[dependencies]
+serde_json="1.0"
+num = "0.2"
+
+[dependencies.uuid]
+version = "0.7"
+features = ["u128"]
+
+[lib]
+name = "ddlog_ovsdb_adapter"
+path = "./lib.rs"
+crate-type = ["staticlib", "rlib"]

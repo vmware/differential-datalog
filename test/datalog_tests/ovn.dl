@@ -776,12 +776,12 @@ extern function extract_mac(str: string): (mac_addr_t, string)
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
     (var mac, var ips) = extract_mac(addrs),
-    FlatMap(ip = extract_ips(ips)).
+    var ip = FlatMap(extract_ips(ips)).
 
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_dynamic_addresses(lsp, addrs),
     (var mac, var ips) = extract_mac(addrs),
-    FlatMap(ip = extract_ips(ips)).
+    var ip = FlatMap(extract_ips(ips)).
 
 Logical_Switch_Port_macs(lsp, mac) :-
     Logical_Switch_Port_ips(lsp, mac, _).
@@ -815,7 +815,7 @@ extern function extract_subnets(str: string): Set<ip_subnet_t>
 Logical_Switch_Port_ps_ips(lsp, mac, subnet) :-
     Logical_Switch_Port_port_security(lsp, addrs),
     (var mac, var ips) = extract_mac(addrs),
-    FlatMap(subnet = extract_subnets(ips)).
+    var subnet = FlatMap(extract_subnets(ips)).
 
 Logical_Switch_Port_ps_macs(lsp, mac) :-
     Logical_Switch_Port_ps_ips(lsp, mac, _).

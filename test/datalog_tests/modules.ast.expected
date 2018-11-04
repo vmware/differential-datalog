@@ -7,6 +7,8 @@ typedef foolib.ns1.m1.R1 = foolib.ns1.m1.R1{f1: foolib.ns1.m2.T2}
 typedef foolib.ns1.m1.T1 = foolib.ns1.m1.T1{f1: bigint}
 typedef foolib.ns1.m2.R2 = foolib.ns1.m2.R2{f1: bool}
 typedef foolib.ns1.m2.T2 = foolib.ns1.m2.T2{f1: bigint}
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 function fmain (a1: foolib.lib.Rlib): foolib.ns1.m1.R1 =
@@ -14,11 +16,15 @@ function fmain (a1: foolib.lib.Rlib): foolib.ns1.m1.R1 =
 function foolib.ns1.m1.fM1 (a1: foolib.ns1.m1.T1): foolib.ns1.m1.R1 =
     foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=a1.f1}}
 extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 input relation Rmain [Rmain]
-relation Rout [Rout]
+output relation Rout [Rout]
 input relation foolib.lib.Rlib [foolib.lib.Rlib]
 input relation foolib.ns1.m1.R1 [foolib.ns1.m1.R1]
 input relation foolib.ns1.m2.R2 [foolib.ns1.m2.R2]

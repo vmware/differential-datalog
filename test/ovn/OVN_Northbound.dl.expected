@@ -1,355 +1,200 @@
 import types
 
-input relation NB_Global(
+
+/* Input relations */
+
+input relation NB_Global (
     _uuid: uuid,
     nb_cfg: integer,
     sb_cfg: integer,
     hv_cfg: integer,
-    ssl: option_t<uuid>
+    external_ids: Map<string,string>,
+    connections: Set<uuid>,
+    ssl: Set<uuid>
 )
-input relation NB_Global_external_ids(
+primary key (x) x._uuid
+input relation Logical_Switch (
     _uuid: uuid,
-    key: string,
-    value: string
+    name: string,
+    ports: Set<uuid>,
+    acls: Set<uuid>,
+    qos_rules: Set<uuid>,
+    load_balancer: Set<uuid>,
+    dns_records: Set<uuid>,
+    other_config: Map<string,string>,
+    external_ids: Map<string,string>
 )
-input relation NB_Global_connections(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch(
-    _uuid: uuid,
-    name: string
-)
-input relation Logical_Switch_ports(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch_acls(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch_qos_rules(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch_load_balancer(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch_dns_records(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Switch_other_config(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Switch_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Switch_Port(
+primary key (x) x._uuid
+input relation Logical_Switch_Port (
     _uuid: uuid,
     name: string,
     __type: string,
-    parent_name: option_t<string>,
-    tag_request: option_t<integer>,
-    tag: option_t<integer>,
-    dynamic_addresses: option_t<string>,
-    up: option_t<bool>,
-    enabled: option_t<bool>,
-    dhcpv4_options: option_t<uuid>,
-    dhcpv6_options: option_t<uuid>
+    options: Map<string,string>,
+    parent_name: Set<string>,
+    tag_request: Set<integer>,
+    tag: Set<integer>,
+    addresses: Set<string>,
+    dynamic_addresses: Set<string>,
+    port_security: Set<string>,
+    up: Set<bool>,
+    enabled: Set<bool>,
+    dhcpv4_options: Set<uuid>,
+    dhcpv6_options: Set<uuid>,
+    external_ids: Map<string,string>
 )
-input relation Logical_Switch_Port_options(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Switch_Port_addresses(
-    _uuid: uuid,
-    key: string
-)
-input relation Logical_Switch_Port_port_security(
-    _uuid: uuid,
-    key: string
-)
-input relation Logical_Switch_Port_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Address_Set(
-    _uuid: uuid,
-    name: string
-)
-input relation Address_Set_addresses(
-    _uuid: uuid,
-    key: string
-)
-input relation Address_Set_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Port_Group(
-    _uuid: uuid,
-    name: string
-)
-input relation Port_Group_ports(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Port_Group_acls(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Port_Group_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Load_Balancer(
+primary key (x) x._uuid
+input relation Address_Set (
     _uuid: uuid,
     name: string,
-    protocol: option_t<string>
+    addresses: Set<string>,
+    external_ids: Map<string,string>
 )
-input relation Load_Balancer_vips(
+primary key (x) x._uuid
+input relation Port_Group (
     _uuid: uuid,
-    key: string,
-    value: string
+    name: string,
+    ports: Set<uuid>,
+    acls: Set<uuid>,
+    external_ids: Map<string,string>
 )
-input relation Load_Balancer_external_ids(
+primary key (x) x._uuid
+input relation Load_Balancer (
     _uuid: uuid,
-    key: string,
-    value: string
+    name: string,
+    vips: Map<string,string>,
+    protocol: Set<string>,
+    external_ids: Map<string,string>
 )
-input relation ACL(
+primary key (x) x._uuid
+input relation ACL (
     _uuid: uuid,
-    name: option_t<string>,
+    name: Set<string>,
     priority: integer,
     direction: string,
     __match: string,
     action: string,
     log: bool,
-    severity: option_t<string>,
-    meter: option_t<string>
+    severity: Set<string>,
+    meter: Set<string>,
+    external_ids: Map<string,string>
 )
-input relation ACL_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation QoS(
+primary key (x) x._uuid
+input relation QoS (
     _uuid: uuid,
     priority: integer,
     direction: string,
-    __match: string
+    __match: string,
+    action: Map<string,integer>,
+    bandwidth: Map<string,integer>,
+    external_ids: Map<string,string>
 )
-input relation QoS_action(
-    _uuid: uuid,
-    key: string,
-    value: integer
-)
-input relation QoS_bandwidth(
-    _uuid: uuid,
-    key: string,
-    value: integer
-)
-input relation QoS_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Meter(
+primary key (x) x._uuid
+input relation Meter (
     _uuid: uuid,
     name: string,
-    unit: string
+    unit: string,
+    bands: Set<uuid>,
+    external_ids: Map<string,string>
 )
-input relation Meter_bands(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Meter_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Meter_Band(
+primary key (x) x._uuid
+input relation Meter_Band (
     _uuid: uuid,
     action: string,
     rate: integer,
-    burst_size: integer
+    burst_size: integer,
+    external_ids: Map<string,string>
 )
-input relation Meter_Band_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router(
+primary key (x) x._uuid
+input relation Logical_Router (
     _uuid: uuid,
     name: string,
-    enabled: option_t<bool>
+    ports: Set<uuid>,
+    static_routes: Set<uuid>,
+    enabled: Set<bool>,
+    nat: Set<uuid>,
+    load_balancer: Set<uuid>,
+    options: Map<string,string>,
+    external_ids: Map<string,string>
 )
-input relation Logical_Router_ports(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Router_static_routes(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Router_nat(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Router_load_balancer(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Router_options(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router_Port(
+primary key (x) x._uuid
+input relation Logical_Router_Port (
     _uuid: uuid,
     name: string,
+    gateway_chassis: Set<uuid>,
+    options: Map<string,string>,
+    networks: Set<string>,
     mac: string,
-    peer: option_t<string>,
-    enabled: option_t<bool>
+    peer: Set<string>,
+    enabled: Set<bool>,
+    ipv6_ra_configs: Map<string,string>,
+    external_ids: Map<string,string>
 )
-input relation Logical_Router_Port_gateway_chassis(
-    _uuid: uuid,
-    key: uuid
-)
-input relation Logical_Router_Port_options(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router_Port_networks(
-    _uuid: uuid,
-    key: string
-)
-input relation Logical_Router_Port_ipv6_ra_configs(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router_Port_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Logical_Router_Static_Route(
+primary key (x) x._uuid
+input relation Logical_Router_Static_Route (
     _uuid: uuid,
     ip_prefix: string,
-    policy: option_t<string>,
+    policy: Set<string>,
     nexthop: string,
-    output_port: option_t<string>
+    output_port: Set<string>,
+    external_ids: Map<string,string>
 )
-input relation Logical_Router_Static_Route_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation NAT(
+primary key (x) x._uuid
+input relation NAT (
     _uuid: uuid,
     external_ip: string,
-    external_mac: option_t<string>,
+    external_mac: Set<string>,
     logical_ip: string,
-    logical_port: option_t<string>,
-    __type: string
+    logical_port: Set<string>,
+    __type: string,
+    external_ids: Map<string,string>
 )
-input relation NAT_external_ids(
+primary key (x) x._uuid
+input relation DHCP_Options (
     _uuid: uuid,
-    key: string,
-    value: string
+    cidr: string,
+    options: Map<string,string>,
+    external_ids: Map<string,string>
 )
-input relation DHCP_Options(
-    _uuid: uuid,
-    cidr: string
-)
-input relation DHCP_Options_options(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation DHCP_Options_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Connection(
+primary key (x) x._uuid
+input relation Connection (
     _uuid: uuid,
     target: string,
-    max_backoff: option_t<integer>,
-    inactivity_probe: option_t<integer>,
-    is_connected: bool
+    max_backoff: Set<integer>,
+    inactivity_probe: Set<integer>,
+    other_config: Map<string,string>,
+    external_ids: Map<string,string>,
+    is_connected: bool,
+    status: Map<string,string>
 )
-input relation Connection_other_config(
+primary key (x) x._uuid
+input relation DNS (
     _uuid: uuid,
-    key: string,
-    value: string
+    records: Map<string,string>,
+    external_ids: Map<string,string>
 )
-input relation Connection_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Connection_status(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation DNS(
-    _uuid: uuid
-)
-input relation DNS_records(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation DNS_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation SSL(
+primary key (x) x._uuid
+input relation SSL (
     _uuid: uuid,
     private_key: string,
     certificate: string,
     ca_cert: string,
     bootstrap_ca_cert: bool,
     ssl_protocols: string,
-    ssl_ciphers: string
+    ssl_ciphers: string,
+    external_ids: Map<string,string>
 )
-input relation SSL_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Gateway_Chassis(
+primary key (x) x._uuid
+input relation Gateway_Chassis (
     _uuid: uuid,
     name: string,
     chassis_name: string,
-    priority: integer
+    priority: integer,
+    external_ids: Map<string,string>,
+    options: Map<string,string>
 )
-input relation Gateway_Chassis_external_ids(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
-input relation Gateway_Chassis_options(
-    _uuid: uuid,
-    key: string,
-    value: string
-)
+primary key (x) x._uuid
+
+/* Output relations */
+
+
+/* Delta tables definitions */

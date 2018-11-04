@@ -8,9 +8,9 @@ use serde::ser::*;
 use serde::de::*;
 use serde::de::Error;
 use std::fmt;
-use cmd_parser::{FromRecord, Record};
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use super::record::{FromRecord, IntoRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}
@@ -106,6 +106,12 @@ impl<'de> Deserialize<'de> for Uint {
 impl FromRecord for Uint {
     fn from_record(val: &Record) -> Result<Self, String> {
         Ok(Uint::from_biguint(BigUint::from_record(val)?))
+    }
+}
+
+impl IntoRecord for Uint {
+    fn into_record(self) -> Record {
+        self.x.into_record()
     }
 }
 

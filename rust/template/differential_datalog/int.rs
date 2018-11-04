@@ -10,7 +10,7 @@ use serde::de::Error;
 use std::fmt;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use cmd_parser::{FromRecord, Record};
+use super::record::{FromRecord, IntoRecord, Record};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}
@@ -115,6 +115,12 @@ impl<'de> Deserialize<'de> for Int {
 impl FromRecord for Int {
     fn from_record(val: &Record) -> Result<Self, String> {
         Ok(Int::from_bigint(BigInt::from_record(val)?))
+    }
+}
+
+impl IntoRecord for Int {
+    fn into_record(self) -> Record {
+        self.x.into_record()
     }
 }
 
