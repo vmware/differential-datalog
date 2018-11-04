@@ -13,7 +13,7 @@ pub fn ovsdb_group2vec_remove_sentinel<G: Group<ovsdb_uuid_or_string_t>+?Sized>(
     for i in 0..g.size() {
         match g.ith(i) {
             std_Either::std_Right{r} => {
-                if r.str() != "" { res.push(std_Either::std_Right{r}); };    
+                if r.str() != "" { res.push(std_Either::std_Right{r}); };
             },
             v => { res.push(v); }
         }
@@ -26,7 +26,7 @@ pub fn ovsdb_group2set_remove_sentinel<G: Group<ovsdb_uuid_or_string_t>+?Sized>(
     for i in 0..g.size() {
         match g.ith(i) {
             std_Either::std_Right{r} => {
-                if r.str() != "" { res.insert(std_Either::std_Right{r}); };    
+                if r.str() != "" { res.insert(std_Either::std_Right{r}); };
             },
             v => { res.insert(v); }
         }

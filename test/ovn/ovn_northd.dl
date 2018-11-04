@@ -290,6 +290,8 @@ TunKeyAllocation(port, tunkey) :-
     (var port, var tunkey) = allocation.
 
 /*
+ * Queue ID allocation
+ *
  * Queue IDs on a chassis, for routers that have QoS enabled, in a per-chassis
  * space in the range 1...0xf000.  It looks to me like there'd only be a small
  * number of these per chassis, and probably a small number overall, in case it

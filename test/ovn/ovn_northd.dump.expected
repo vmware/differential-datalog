@@ -12,6 +12,7 @@ OVN_Southbound_DeltaPlus_Meter_Band:
 OVN_Southbound.DeltaPlus_Meter_Band{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206","drop",1000,0}
 
 OVN_Southbound_DeltaPlus_Port_Binding:
+OVN_Southbound.DeltaPlus_Port_Binding{"0a22195e-dd79-e5a4-574f-31b561b02144","lsp2","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3", "peer": "lrp1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},0,std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"70a30046-d48b-28a3-d947-627317b34b56","lsp1","",std_Set { x: {} },std_Map { x: {"option1": "val_option1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},0,std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {"name": "lsp1_neutron_port", "neutron:port_name": "lsp1_neutron_port"} }}
 
 Clearing Datapath_Binding

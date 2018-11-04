@@ -19,7 +19,8 @@ insert OVN_Northbound.Meter (
 insert OVN_Northbound.Logical_Switch (
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d90,
     .name = "ls1",
-    .ports = [0x564bb317_7362_47d9_a328_8bd44600a370],
+    .ports = [0x564bb317_7362_47d9_a328_8bd44600a370,
+              0x4421b061_b531_4f57_a4e5_79dd5e19220a],
     .acls = [],
     .qos_rules = [],
     .load_balancer = [],
@@ -31,7 +32,7 @@ insert OVN_Northbound.Logical_Switch (
 insert OVN_Northbound.Logical_Router (
     ._uuid = 0x9bc0b2b1_50f6_42e3_ae36_4fba9bb7a77c,
     .name = "lr1",
-    .ports = [],
+    .ports = [0x6d7ec8cb_48f1_4b77_8e9f_ea8980dd870b],
     .static_routes = [],
     .enabled = true,
     .nat = [],
@@ -44,6 +45,19 @@ insert OVN_Southbound.Datapath_Binding(
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d11,
     .tunnel_key = 1,
     .external_ids = [("logical-switch", "06a2cf7c-7ea1-4ca2-a0a2_6176fd1c6d12")]
+),
+
+insert OVN_Northbound.Logical_Router_Port(
+    ._uuid = 0x6d7ec8cb_48f1_4b77_8e9f_ea8980dd870b,
+    .name = "lrp1",
+    .gateway_chassis = [],
+    .options = [],
+    .networks = [],
+    .mac = "9c:b6:d0:11:ae:c1",
+    .peer = [],
+    .enabled = [true],
+    .ipv6_ra_configs = [],
+    .external_ids = []
 ),
 
 insert OVN_Northbound.Logical_Switch_Port(
@@ -62,6 +76,24 @@ insert OVN_Northbound.Logical_Switch_Port(
     .dhcpv4_options = [],
     .dhcpv6_options = [],
     .external_ids = [("neutron:port_name", "lsp1_neutron_port")]
+),
+
+insert OVN_Northbound.Logical_Switch_Port(
+    ._uuid = 0x4421b061_b531_4f57_a4e5_79dd5e19220a,
+    .name = "lsp2",
+    .type = "router",
+    .options = [("router-port", "lrp1")],
+    .parent_name = [],
+    .tag_request = [],
+    .tag = [],
+    .addresses = [],
+    .dynamic_addresses = [],
+    .port_security = [],
+    .up = [true],
+    .enabled = [true],
+    .dhcpv4_options = [],
+    .dhcpv6_options = [],
+    .external_ids = []
 );
 
 commit;
