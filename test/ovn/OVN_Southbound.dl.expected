@@ -108,7 +108,20 @@ relation Out_Port_Binding (
     tunnel_key: integer,
     parent_port: Set<string>,
     tag: Set<integer>,
-    chassis: Set<uuid>,
+    mac: Set<string>,
+    nat_addresses: Set<string>,
+    external_ids: Map<string,string>
+)
+relation OutProxy_Port_Binding (
+    uuid_name: string,
+    logical_port: string,
+    __type: string,
+    gateway_chassis: Set<uuid_or_string_t>,
+    options: Map<string,string>,
+    datapath: uuid_or_string_t,
+    tunnel_key: integer,
+    parent_port: Set<string>,
+    tag: Set<integer>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
@@ -435,10 +448,10 @@ relation UUIDMap_Port_Binding (
 )
 UUIDMap_Port_Binding("", Right{""}).
 UUIDMap_Port_Binding(__name, Left{__uuid}) :-
-    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
+    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _),
     Port_Binding(__uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 UUIDMap_Port_Binding(__name, Right{__name}) :-
-    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _, _),
+    Swizzled_Port_Binding(__name, logical_port, _, _, _, _, _, _, _, _, _, _),
     not Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 relation Swizzled_Port_Binding (
     uuid_name: string,
@@ -450,16 +463,15 @@ relation Swizzled_Port_Binding (
     tunnel_key: integer,
     parent_port: Set<string>,
     tag: Set<integer>,
-    chassis: Set<uuid>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
 )
-Swizzled_Port_Binding(uuid_name, logical_port, __type, __id_gateway_chassis, options, __id_datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids) :-
-    Out_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids),
+Swizzled_Port_Binding(uuid_name, logical_port, __type, __id_gateway_chassis, options, __id_datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids) :-
+    Out_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids),
     var __one = FlatMap(if set_is_empty(gateway_chassis) set_singleton("") else gateway_chassis),
     UUIDMap_Gateway_Chassis(__one, __one_swizzled),
-    Aggregate((uuid_name, logical_port, __type, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids), __id_gateway_chassis = group2set_remove_sentinel(__one_swizzled)),
+    Aggregate((uuid_name, logical_port, __type, options, datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids), __id_gateway_chassis = group2set_remove_sentinel(__one_swizzled)),
     UUIDMap_Datapath_Binding(datapath, __id_datapath).
 output relation DeltaPlus_Port_Binding (
     uuid_name: string,
@@ -471,20 +483,19 @@ output relation DeltaPlus_Port_Binding (
     tunnel_key: integer,
     parent_port: Set<string>,
     tag: Set<integer>,
-    chassis: Set<uuid>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
 )
-DeltaPlus_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids) :-
-    Swizzled_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, chassis, mac, nat_addresses, external_ids),
+DeltaPlus_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids) :-
+    OutProxy_Port_Binding(uuid_name, logical_port, __type, gateway_chassis, options, datapath, tunnel_key, parent_port, tag, mac, nat_addresses, external_ids),
     not Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
 output relation DeltaMinus_Port_Binding (
     _uuid: uuid
 )
 DeltaMinus_Port_Binding(_uuid) :-
     Port_Binding(_uuid, logical_port, _, _, _, _, _, _, _, _, _, _, _),
-    not Swizzled_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _, _).
+    not OutProxy_Port_Binding(_, logical_port, _, _, _, _, _, _, _, _, _, _).
 output relation Update_Port_Binding (
     _uuid: uuid,
     __type: string,
@@ -494,15 +505,14 @@ output relation Update_Port_Binding (
     tunnel_key: integer,
     parent_port: Set<string>,
     tag: Set<integer>,
-    chassis: Set<uuid>,
     mac: Set<string>,
     nat_addresses: Set<string>,
     external_ids: Map<string,string>
 )
-Update_Port_Binding(_uuid, __new___type, __new_gateway_chassis, __new_options, __new_datapath, __new_tunnel_key, __new_parent_port, __new_tag, __new_chassis, __new_mac, __new_nat_addresses, __new_external_ids) :-
-    Swizzled_Port_Binding(_, logical_port, __new___type, __new_gateway_chassis, __new_options, __new_datapath, __new_tunnel_key, __new_parent_port, __new_tag, __new_chassis, __new_mac, __new_nat_addresses, __new_external_ids),
+Update_Port_Binding(_uuid, __new___type, __new_gateway_chassis, __new_options, __new_datapath, __new_tunnel_key, __new_parent_port, __new_tag, __new_mac, __new_nat_addresses, __new_external_ids) :-
+    OutProxy_Port_Binding(_, logical_port, __new___type, __new_gateway_chassis, __new_options, __new_datapath, __new_tunnel_key, __new_parent_port, __new_tag, __new_mac, __new_nat_addresses, __new_external_ids),
     Port_Binding(_uuid, logical_port, __old___type, __old_gateway_chassis, __old_options, __old_datapath, __old_tunnel_key, __old_parent_port, __old_tag, __old_chassis, __old_mac, __old_nat_addresses, __old_external_ids),
-    (__old___type, __old_gateway_chassis, __old_options, __old_datapath, __old_tunnel_key, __old_parent_port, __old_tag, __old_chassis, __old_mac, __old_nat_addresses, __old_external_ids) != (__new___type, set_extract_uuids(__new_gateway_chassis), __new_options, extract_uuid(__new_datapath), __new_tunnel_key, __new_parent_port, __new_tag, __new_chassis, __new_mac, __new_nat_addresses, __new_external_ids).
+    (__old___type, __old_gateway_chassis, __old_options, __old_datapath, __old_tunnel_key, __old_parent_port, __old_tag, __old_mac, __old_nat_addresses, __old_external_ids) != (__new___type, set_extract_uuids(__new_gateway_chassis), __new_options, extract_uuid(__new_datapath), __new_tunnel_key, __new_parent_port, __new_tag, __new_mac, __new_nat_addresses, __new_external_ids).
 input relation Port_Binding (
     _uuid: uuid,
     logical_port: string,

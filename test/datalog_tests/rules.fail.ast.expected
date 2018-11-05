@@ -37,6 +37,7 @@ function std.is_some (x: std.Option<'A>): bool =
 extern function std.map_empty (): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
 extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_is_empty (m: std.Map<'K,'V>): bool
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
@@ -297,6 +298,14 @@ pub fn std_map_singleton<K: Ord + Clone,V: Clone>(k: &K, v: &V) -> std_Map<K, V>
 pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {
     m.x.insert((*k).clone(), (*v).clone());
 }
+
+pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
+    let mut m2 = m.clone();
+    m2.insert((*k).clone(), (*v).clone());
+    m2
+}
+
+
 
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
     match m.x.get(k) {

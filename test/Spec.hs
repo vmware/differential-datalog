@@ -92,22 +92,22 @@ nbTest = do
 
 sbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema"
-                                  [ "SB_Global"
-                                  , "Logical_Flow"
-                                  , "Multicast_Group"
-                                  , "Meter"
-                                  , "Meter_Band"
-                                  , "Datapath_Binding"
-                                  , "Port_Binding"
-                                  , "Gateway_Chassis"
-                                  , "Port_Group"
-                                  , "MAC_Binding"
-                                  , "DHCP_Options"
-                                  , "DHCPv6_Options"
-                                  , "Address_Set"
-                                  , "DNS"
-                                  , "RBAC_Role"
-                                  , "RBAC_Permission"]
+                                  [ ("SB_Global", [])
+                                  , ("Logical_Flow", [])
+                                  , ("Multicast_Group", [])
+                                  , ("Meter", [])
+                                  , ("Meter_Band", [])
+                                  , ("Datapath_Binding", [])
+                                  , ("Port_Binding", ["chassis"])
+                                  , ("Gateway_Chassis", [])
+                                  , ("Port_Group", [])
+                                  , ("MAC_Binding", [])
+                                  , ("DHCP_Options", [])
+                                  , ("DHCPv6_Options", [])
+                                  , ("Address_Set", [])
+                                  , ("DNS", [])
+                                  , ("RBAC_Role", [])
+                                  , ("RBAC_Permission", [])]
                                   [ "Datapath_Binding", "Port_Binding"]
                                   (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
                                               , ("Port_Binding"     , ["logical_port"])
