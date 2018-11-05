@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.7
 """This program converts Datalog programs written in the Souffle dialect to
    Datalog programs written in the Differential Datalog dialect"""
 
@@ -6,10 +6,12 @@ import parglare # parser generator
 import json
 import gzip
 import os
+import argparse
 
 skip_files = False
 current_namespace = None
 relations = dict()  # Maps relation to bool indicating whether the relation is an input
+outrelations = dict()  # Maps relation to bool indicating whether the relation is an output
 path_rename = dict()
 
 total = 0
@@ -17,11 +19,11 @@ total = 0
 class Files(object):
     """Represents the files that are used for input and output"""
 
-    def __init__(self):
-        inputName = "self-contained.dl"
-        outputName = "souffle.dl"
-        outputDataName = "souffle.dat"
-        logName = "souffle.log"
+    def __init__(self, inputDl, outputDl, outputDat, log):
+        inputName = inputDl
+        outputName = outputDl
+        outputDataName = outputDat
+        logName = log
         self.logFile = open(logName, 'w')
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
@@ -132,6 +134,15 @@ def process_input(inputdecl, files, preprocess):
 
     data.close()
 
+def process_output(outputdecl, files, preprocess):
+    rel = getField(outputdecl, "Identifier")
+
+    relationname = relation_name(rel.value)
+    outrelations[relationname] = True  # Output relation
+
+    if skip_files or preprocess:
+        return
+
 def process_namespace(namespace, files, preprocess):
     global current_namespace
     if current_namespace != None:
@@ -151,6 +162,7 @@ def register_relation(identifier):
     if name in relations:
         raise Exception("duplicate relation name " + name)
     relations[name] = False
+    outrelations[name] = False
     # print "Registered relation " + name
     return name
 
@@ -169,6 +181,10 @@ def relation_name(identifier):
 def is_input_relation(identifier):
     name = relation_name(identifier)
     return relations[name]
+
+def is_output_relation(identifier):
+    name = relation_name(identifier)
+    return outrelations[name]
 
 def get_qidentifier(node):
     q = getField(node, "QIdentifier")
@@ -320,7 +336,7 @@ def process_relation_decl(relationdecl, files, preprocess):
     paramdecls = map(convert_decl_param, params)
     role = "input " if relations[relname] else ""
     print(relationdecl.tree_str())
-    if getOptField(getField(relationdecl, "OUTPUT_opt"), "OUTPUT") != None:
+    if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED") != None or outrelations[relname]:
         role = "output "
     files.output(role + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
 
@@ -340,6 +356,10 @@ def process_decl(decl, files, preprocess):
     inputdecl = getOptField(decl, "InputDecl")
     if inputdecl != None:
         process_input(inputdecl, files, preprocess)
+        return
+    outputdecl = getOptField(decl, "OutputDecl")
+    if outputdecl != None:
+        process_output(outputdecl, files, preprocess)
         return
     rule = getOptField(decl, "Rule")
     if rule != None:
@@ -364,7 +384,14 @@ def process(tree, files, preprocess):
         process_decl(decl, files, preprocess)
 
 def main():
-    files = Files()
+    parser = argparse.ArgumentParser("convert.py")
+    parser.add_argument("input", help="input Souffle program", type=str)
+    parser.add_argument("outdl", help="output DDlog program", type=str)
+    parser.add_argument("outdat", help="output DDlog data file", type=str)
+    parser.add_argument("log", help="output log file", type=str)
+    args = parser.parse_args()
+    inputName, outputName, outputDataName, logName = args.input, args.outdl, args.outdat, args.log
+    files = Files(inputName, outputName, outputDataName, logName)
     parser = getParser()
     input = ""
     tree = parser.parse(files.inputFile.read())

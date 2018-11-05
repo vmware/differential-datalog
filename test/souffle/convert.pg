@@ -9,6 +9,7 @@ DeclarationList: EMPTY
 
 Declaration: TypeDecl
            | InputDecl
+           | OutputDecl
            | RelationDecl
            | Rule
            | Init
@@ -25,10 +26,13 @@ TypeDecl: TYPE Identifier
         | TYPE Identifier "=" Identifier
         ;
 
-RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT?
+RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT_DEPRECATED?
             ;
 
 InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITER "=" String ")"
+         ;
+
+OutputDecl: OUTPUT Identifier // TODO does not handle arguments
          ;
 
 ParameterList: Parameter "," ParameterList
@@ -134,7 +138,8 @@ INIT: ".init" ;
 COMP: ".comp" ;
 DECL: ".decl" ;
 INPUT: ".input" ;
-OUTPUT: "output" ;
+OUTPUT: ".output" ;
+OUTPUT_DEPRECATED: "output" ;
 OR: ";" ;
 KEYWORD: /[\w-]+/ ;
 WS: /\s+/ ;
