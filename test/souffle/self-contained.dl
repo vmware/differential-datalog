@@ -468,13 +468,20 @@ Reachable(?clinit) :-
    ClassInitializer(?class, ?clinit).
 
 // Main (value-based) analysis
-.decl Assign(?to:Var, ?from:Var) output
-.decl VarPointsTo(?heap:HeapAllocation, ?var:Var) output
-.decl InstanceFieldPointsTo(?heap:HeapAllocation , ?fld:Field, ?baseheap:HeapAllocation) output
-.decl StaticFieldPointsTo(?heap:HeapAllocation, ?fld:Field) output
-.decl CallGraphEdge(?invocation:MethodInvocation, ?meth:Method) output
-.decl ArrayIndexPointsTo(?baseheap:HeapAllocation, ?heap:HeapAllocation) output
-.decl Reachable(?method:Method) output
+.decl Assign(?to:Var, ?from:Var) 
+.output Assign
+.decl VarPointsTo(?heap:HeapAllocation, ?var:Var) 
+.output VarPointsTo
+.decl InstanceFieldPointsTo(?heap:HeapAllocation , ?fld:Field, ?baseheap:HeapAllocation) 
+.output InstanceFieldPointsTo
+.decl StaticFieldPointsTo(?heap:HeapAllocation, ?fld:Field) 
+.output StaticFieldPointsTo
+.decl CallGraphEdge(?invocation:MethodInvocation, ?meth:Method) 
+.output CallGraphEdge
+.decl ArrayIndexPointsTo(?baseheap:HeapAllocation, ?heap:HeapAllocation) 
+.output ArrayIndexPointsTo
+.decl Reachable(?method:Method) 
+.output Reachable
 Assign(?actual, ?formal) :-
   CallGraphEdge(?invocation, ?method),
   FormalParam(?index, ?method, ?formal),

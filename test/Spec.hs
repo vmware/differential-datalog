@@ -140,7 +140,11 @@ souffleTests progress =
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
     dir <- makeAbsolute $ sOUFFLE_DIR
-    let convert_proc = (proc (dir </> "convert.py") []) { cwd = Just dir }
+    let inputDl = dir </> "self-contained.dl" 
+        outputDl = dir </> "souffle.dl" 
+        outputDat = dir </> "souffle.dat" 
+        log = dir </> "souffle.log"
+        convert_proc = (proc (dir </> "convert.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "convert.py failed with exit code " ++ show code ++
