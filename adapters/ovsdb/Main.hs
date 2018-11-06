@@ -21,27 +21,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards #-} 
+{-# LANGUAGE RecordWildCards #-}
 
 import System.Environment
 import Text.PrettyPrint
 import System.Console.GetOpt
 import Control.Exception
 import Data.List
+import Data.Maybe
+import Data.List.Split
 import Control.Monad
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.OVSDB.Compile
 
 data TOption = OVSFile     String
-             | InputTable  String
              | OutputTable String
+             | ROColumn    String
              | ProxyTable  String
 
 options :: [OptDescr TOption]
-options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")  "OVSDB schema file"
-          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE") "mark TABLE as output"
-          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE") "generate output proxy table for TABLE"
+options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file"
+          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "mark TABLE as output"
+          , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "mark COLUMN as read-only"
+          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "generate output proxy table for TABLE"
           ]
 
 data Config = Config { confOVSFile      :: FilePath
@@ -61,6 +64,15 @@ addOption config (OVSFile f) = do
     return config {confOVSFile = f}
 addOption config (OutputTable t) = return config{ confOutputTables = nub ((t,[]) : confOutputTables config)}
 addOption config (ProxyTable t) = return config{ confProxyTables = nub (t : confProxyTables config)}
+addOption config (ROColumn c) = do
+    case splitOn "." c of
+         [table, col] -> do
+            when (isNothing $ lookup table $ confOutputTables config)
+                 $ errorWithoutStackTrace $ "Unknown output table name " ++ table
+            let outtabs = map (\(t,ro) -> if t == table then (t, nub $ c:ro) else (t,ro))
+                              $ confOutputTables config
+            return $ config{confOutputTables = outtabs}
+         _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
