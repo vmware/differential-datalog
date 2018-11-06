@@ -249,9 +249,9 @@ compileSchema schema outputs with_oproxies keys = do
 mkTable :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me (Doc, Doc, Doc)
 mkTable isinput t@Table{..} keys = do
     ovscols <- tableCheckCols t
-    maybe (return ()) 
-          (\rocols -> mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t)) 
-                                        $ throwError $ "Column " ++ c ++ "not found in table " ++ name t) rocols)
+    maybe (return ())
+          (\rocols -> mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t))
+                                        $ throwError $ "Column " ++ c ++ " not found in table " ++ name t) rocols)
           $ lookup (name t) ?outputs
     uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     if isinput
