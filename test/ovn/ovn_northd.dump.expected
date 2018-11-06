@@ -1,9 +1,6 @@
 OVN_Southbound_DeltaMinus_Datapath_Binding:
 OVN_Southbound.DeltaMinus_Datapath_Binding{8820728388062355172047994593891609873}
 
-OVN_Southbound_DeltaMinus_Port_Binding:
-OVN_Southbound.DeltaMinus_Port_Binding{242756087586965167273463356390064647873}
-
 OVN_Southbound_DeltaPlus_Datapath_Binding:
 OVN_Southbound.DeltaPlus_Datapath_Binding{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b",2,std_Map { x: {"logical-router": "7ca7b79b-ba4f-36ae-e342-f650b1b2c09b", "name": "lr1"} }}
 OVN_Southbound.DeltaPlus_Datapath_Binding{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206",3,std_Map { x: {"logical-switch": "906d1cfd-7661-a2a0-a24c-a17e7ccfa206", "name": "ls1", "name2": "neutron_network_1"} }}
@@ -17,6 +14,9 @@ OVN_Southbound.DeltaPlus_Meter_Band{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206","drop
 OVN_Southbound_DeltaPlus_Port_Binding:
 OVN_Southbound.DeltaPlus_Port_Binding{"0a22195e-dd79-e5a4-574f-31b561b02144","lsp2","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3", "peer": "lrp1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"70a30046-d48b-28a3-d947-627317b34b56","lsp1","",std_Set { x: {} },std_Map { x: {"option1": "val_option1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {"name": "lsp1_neutron_port", "neutron:port_name": "lsp1_neutron_port"} }}
+
+OVN_Southbound_Update_Port_Binding:
+OVN_Southbound.Update_Port_Binding{242756087586965167273463356390064647873,"l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"} },std.Right{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b"},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"9c:b6:d0:11:ae:c1"} },std_Set { x: {} },std_Map { x: {} }}
 
 Clearing Datapath_Binding
 OVN_Southbound.DeltaPlus_Datapath_Binding{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b",1,std_Map { x: {"logical-router": "7ca7b79b-ba4f-36ae-e342-f650b1b2c09b", "name": "lr1"} }}

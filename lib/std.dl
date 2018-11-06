@@ -37,6 +37,8 @@ extern function hex(x: 'X): string
 
 extern function parse_dec_u64(s: string): Option<bit<64>>
 
+extern function string_join(strings: Vec<string>, sep: string): string
+
 /*
  * hashing
  */
@@ -78,8 +80,8 @@ extern function set_size(s: Set<'X>): bit<64>
 extern function set_singleton(x: 'X): Set<'X>
 extern function set_empty(): Set<'X>
 extern function set_insert(s: mut Set<'X>, v: 'X): ()
+extern function set_insert_imm(s: Set<'X>, v: 'X): Set<'X>
 extern function set_contains(s: Set<'X>, v: 'X): bool
 extern function set_is_empty(s: Set<'X>): bool
 extern function set_nth(s: Set<'X>, n: bit<64>): Option<'X>
-
-
+extern function set2vec(s: Set<'A>): Vec<'A>

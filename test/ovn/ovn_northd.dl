@@ -155,6 +155,39 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
         }
     }.
 
+sb.Out_Port_Binding(.uuid_name          = uuid_name,
+                    .logical_port       = lrp.name,
+                    .__type             = __type,
+                    .gateway_chassis    = set_empty(),
+                    .options            = map_union(options1, options2),
+                    .datapath           = uuid2str(lrouter_uuid),
+                    .tunnel_key         = 0,
+                    .parent_port        = set_empty(),
+                    .tag                = set_empty(), // always empty for router ports
+                    .mac                = set_singleton(string_join(set2vec(set_insert_imm(lrp.networks, lrp.mac)), " ")),
+                    .nat_addresses      = set_empty(),
+                    .external_ids       = lrp.external_ids) :-
+    nb.Logical_Router_Port[lrp],
+    var uuid_name = uuid2str(lrp._uuid),
+    LogicalPortRouter(lrp._uuid, lrouter_uuid),
+    nb.Logical_Router(._uuid = lrouter_uuid, .options = lroptions),
+    (var __type, var options1) = match (map_get(lroptions, "chassis")) {
+        /* TODO: derived ports */
+        None -> ("patch", map_empty(): Map<string, string>),
+        Some{lrchassis} -> ("l3gateway", map_singleton("l3gateway-chassis", lrchassis))
+    },
+    var options2 = match (map_get(lrp.options, "peer")) {
+        None -> map_empty(): Map<string, string>,
+        Some{peer} -> map_singleton("peer", peer)
+    },
+    var eids = {
+        var eids = lrp.external_ids;
+        match (map_get(lrp.external_ids, "neutron:port_name")) {
+            None -> (),
+            Some{name} -> map_insert(eids, "name", name)
+        };
+        eids
+    }.
 
 sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
                          .logical_port       = pbinding.logical_port,
@@ -176,42 +209,182 @@ sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
         Some{id} -> map_insert_imm(pbinding.options, "qdisc_queue_id", $"${id}")
     }.
 
+/*
+ * SB_Global (pull latest OVS schema; copy nb_cfg and options from NB)
+ */
 
 /*
-sb.Out_Port_Binding(.uuid_name          = uuid_name,
-                    .logical_port       = lrp.name,
-                    .__type             = __type,
-                    .gateway_chassis    = set_empty(),
-                    .options            = map_union(options1, options2),
-                    .datapath           = uuid2str(lswitch_uuid),
-                    .tunnel_key         = 0,
-                    .parent_port        = set_empty(),
-                    .tag                = set_empty(), // always empty for router ports
-                    .mac                = punctuate(set_insert(lrp.networks, lrp.mac), " "),
-                    .nat_addresses      = set_empty(),
-                    .external_ids       = lrp.external_ids) :-
-    nb.Logical_Router_Port[lrp],
-    var uuid_name = uuid2str(lrp._uuid),
-    LogicalPortRouter(lrp._uuid, lrouter_uuid),
-    nb.Logical_Router(._uuid = lrouter_uuid, .options = lroptions),
-    (var __type, var options1) = match (map_get(lroptions, "chassis")) {
-        None -> ("patch", map_empty()),
-        Some{lrchassis} -> ("l3gateway", map_singleton("l3gateway-chassis", lrchassis))
-    },
-    var options2 = match (map_get(lrp.options, "peer")) {
-        None -> map_empty(),
-        Some{peer} -> map_singleton("peer", peer)
-    },
+ * Address_Set: copy from NB + additional records generated from NB Port_Group (two records for each
+ * Port_Group for IPv4 and IPv6 addresses)
+ */
 
-    var eids = {
-        var eids = lsp.external_ids;
-        match map_get(lsp.external_ids, "neutron:port_name") {
-            None -> {},
-            Some(name) -> map_insert(eids, "name", name)
-        };
-        eids
-    }.
-*/
+/*
+ * Port_Group: copy from NB, but replace UUIDs with logical port names
+ */
+
+/*
+ * Multicast_Group: two rows per logical switch, one for flooding and one for packets with unknown
+ * destinations.
+ */
+
+/*
+ * MAC binding: records inserted by hypervisors; northd removes records for deleted logical ports
+ */
+
+/*
+ * DHCP options: fixed table
+ */
+
+/*
+ * DHCPv6 options: fixed table
+ */
+
+/*
+ * DNS: copied from NB + datapaths column pointer to LS datapaths that use the record
+ */
+
+/*
+ * RBAC_Role: fixed
+ */
+
+/*
+ * RBAC_Permission: fixed
+ */
+
+/*
+ * Gateway chassis: row per NB router ports that represent GW chassis
+ */
+
+/*
+ * Logical_Flow
+   relation Out_Logical_Flow (
+        logical_datapath: string,
+        pipeline: string,
+        table_id: integer,
+        priority: integer,
+        __match: string,
+        actions: string,
+        external_ids: Map<string,string>
+
+#define PIPELINE_STAGES                                                   \
+    PIPELINE_STAGE(SWITCH, IN,  PORT_SEC_L2,    0, "ls_in_port_sec_l2")   \
+    PIPELINE_STAGE(SWITCH, IN,  PORT_SEC_IP,    1, "ls_in_port_sec_ip")   \
+    PIPELINE_STAGE(SWITCH, IN,  PORT_SEC_ND,    2, "ls_in_port_sec_nd")   \
+    PIPELINE_STAGE(SWITCH, IN,  PRE_ACL,        3, "ls_in_pre_acl")       \
+    PIPELINE_STAGE(SWITCH, IN,  PRE_LB,         4, "ls_in_pre_lb")        \
+    PIPELINE_STAGE(SWITCH, IN,  PRE_STATEFUL,   5, "ls_in_pre_stateful")  \
+    PIPELINE_STAGE(SWITCH, IN,  ACL,            6, "ls_in_acl")           \
+    PIPELINE_STAGE(SWITCH, IN,  QOS_MARK,       7, "ls_in_qos_mark")      \
+    PIPELINE_STAGE(SWITCH, IN,  QOS_METER,      8, "ls_in_qos_meter")     \
+    PIPELINE_STAGE(SWITCH, IN,  LB,             9, "ls_in_lb")            \
+    PIPELINE_STAGE(SWITCH, IN,  STATEFUL,      10, "ls_in_stateful")      \
+    PIPELINE_STAGE(SWITCH, IN,  ARP_ND_RSP,    11, "ls_in_arp_rsp")       \
+    PIPELINE_STAGE(SWITCH, IN,  DHCP_OPTIONS,  12, "ls_in_dhcp_options")  \
+    PIPELINE_STAGE(SWITCH, IN,  DHCP_RESPONSE, 13, "ls_in_dhcp_response") \
+    PIPELINE_STAGE(SWITCH, IN,  DNS_LOOKUP,    14, "ls_in_dns_lookup")    \
+    PIPELINE_STAGE(SWITCH, IN,  DNS_RESPONSE,  15, "ls_in_dns_response")  \
+    PIPELINE_STAGE(SWITCH, IN,  L2_LKUP,       16, "ls_in_l2_lkup")       \
+                                                                          \
+    PIPELINE_STAGE(SWITCH, OUT, PRE_LB,       0, "ls_out_pre_lb")         \
+    PIPELINE_STAGE(SWITCH, OUT, PRE_ACL,      1, "ls_out_pre_acl")        \
+    PIPELINE_STAGE(SWITCH, OUT, PRE_STATEFUL, 2, "ls_out_pre_stateful")   \
+    PIPELINE_STAGE(SWITCH, OUT, LB,           3, "ls_out_lb")             \
+    PIPELINE_STAGE(SWITCH, OUT, ACL,          4, "ls_out_acl")            \
+    PIPELINE_STAGE(SWITCH, OUT, QOS_MARK,     5, "ls_out_qos_mark")       \
+    PIPELINE_STAGE(SWITCH, OUT, QOS_METER,    6, "ls_out_qos_meter")      \
+    PIPELINE_STAGE(SWITCH, OUT, STATEFUL,     7, "ls_out_stateful")       \
+    PIPELINE_STAGE(SWITCH, OUT, PORT_SEC_IP,  8, "ls_out_port_sec_ip")    \
+    PIPELINE_STAGE(SWITCH, OUT, PORT_SEC_L2,  9, "ls_out_port_sec_l2")    \
+                                                                      \
+    PIPELINE_STAGE(ROUTER, IN,  ADMISSION,      0, "lr_in_admission")    \
+    PIPELINE_STAGE(ROUTER, IN,  IP_INPUT,       1, "lr_in_ip_input")     \
+    PIPELINE_STAGE(ROUTER, IN,  DEFRAG,         2, "lr_in_defrag")       \
+    PIPELINE_STAGE(ROUTER, IN,  UNSNAT,         3, "lr_in_unsnat")       \
+    PIPELINE_STAGE(ROUTER, IN,  DNAT,           4, "lr_in_dnat")         \
+    PIPELINE_STAGE(ROUTER, IN,  ND_RA_OPTIONS,  5, "lr_in_nd_ra_options") \
+    PIPELINE_STAGE(ROUTER, IN,  ND_RA_RESPONSE, 6, "lr_in_nd_ra_response") \
+    PIPELINE_STAGE(ROUTER, IN,  IP_ROUTING,     7, "lr_in_ip_routing")   \
+    PIPELINE_STAGE(ROUTER, IN,  ARP_RESOLVE,    8, "lr_in_arp_resolve")  \
+    PIPELINE_STAGE(ROUTER, IN,  GW_REDIRECT,    9, "lr_in_gw_redirect")  \
+    PIPELINE_STAGE(ROUTER, IN,  ARP_REQUEST,    10, "lr_in_arp_request")  \
+                                                                      \
+    PIPELINE_STAGE(ROUTER, OUT, UNDNAT,    0, "lr_out_undnat")        \
+    PIPELINE_STAGE(ROUTER, OUT, SNAT,      1, "lr_out_snat")          \
+    PIPELINE_STAGE(ROUTER, OUT, EGR_LOOP,  2, "lr_out_egr_loop")      \
+    PIPELINE_STAGE(ROUTER, OUT, DELIVERY,  3, "lr_out_delivery")
+
+#define PIPELINE_STAGE(DP_TYPE, PIPELINE, STAGE, TABLE, NAME)   \
+    S_##DP_TYPE##_##PIPELINE##_##STAGE                          \
+        = OVN_STAGE_BUILD(DP_##DP_TYPE, P_##PIPELINE, TABLE),
+    PIPELINE_STAGES
+#undef PIPELINE_STAGE
+};
+
+    )
+ */
+
+
+
+///* Logical switch ingress table 0: admission control framework (priority 100) */
+//for (ls in Logical_Switch) {
+//    var lsname = uuid2str(ls.uuid) in
+//    /* Logical VLANs not supported */
+//    Out_Logical_Flow(.logical_datapath = lsname,
+//                     .pipeline         = "ingress",
+//                     .table_id         = switch_stage(IN, "ls_in_port_sec_l2"),
+//                     .priority         = 100,
+//                     .__match          = "vlan.present",
+//                     .actions          = "drop;",
+//                     .external_ids     = map_empty() /*TODO: check*/);
+//
+//    /* Broadcast/multicast source address is invalid */
+//    Out_Logical_Flow(.logical_datapath = lsname,
+//                     .pipeline         = "ingress",
+//                     .table_id         = switch_stage(IN, "ls_in_port_sec_l2"),
+//                     .priority         = 100,
+//                     .__match          = "eth.src[40]",
+//                     .actions          = "drop;",
+//                     .external_ids     = map_empty() /*TODO: check*/);
+//
+//    /* Port security flows have priority 50 (see below) and will continue to the next table
+//       if packet source is acceptable. */
+//}
+//
+//function is_enabled(s: Set<bool>): bool = {
+//    set_nth(s, 0) == Some{true} or set_nth(s,0) == None
+//}
+//
+///* Logical switch ingress table 0: ingress port security - L2 (priority 50)
+//                  ingress table 1: ingress port security - IP (priority 90 and 80)
+//                  ingress table 2: ingress port security - ND (priority 90 and 80) */
+//for (ls in Logical_Switch) {
+//    for (lsp in Logical_Switch_Port if lsp.lswitch == ls) {
+//        for (pbinding in Out_Port_Binding if pbinding.logical_port == lsp.name) {
+//            /* drop packets from disabled logical ports (since logical flow tables are default drop) */
+//            if (is_enabled(lsp.enabled)) {
+//                var qid = match (map_get(pbinding.options, "qdisc_queue_id")) {
+//                        None => "",
+//                        Some{id} => $"set_queue(${id}); "
+//                    },
+//                    l2_ps = if (set_is_empty(lsp.port_security)) {
+//                        ""
+//                    } else {
+//                        $" && eth.src == {${string_join(port_security_eth_addresses(lsp.port_security), " ")}}"
+//                    }
+//                in
+//                /* Logical VLANs not supported */
+//                Out_Logical_Flow(.logical_datapath = lsname,
+//                                 .pipeline         = "ingress",
+//                                 .table_id         = switch_stage(IN, "ls_in_port_sec_l2"),
+//                                 .priority         = 50,
+//                                 .__match          = $"inport == ${lsp.name}${l2_ps}",
+//                                 .actions          = $"${qid}next;",
+//                                 .external_ids     = map_empty() /*TODO: check*/);
+//            }
+//        }
+//    }
+//}
+
 
 /*
  * Datapath tunnel key allocation:
