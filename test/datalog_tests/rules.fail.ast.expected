@@ -42,13 +42,16 @@ extern function std.map_is_empty (m: std.Map<'K,'V>): bool
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
 extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
 extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
 input relation R1 [R1]
 relation R2 [R2]
 relation R3 [R3]
@@ -209,6 +212,12 @@ pub fn std_set_insert<X: Ord+Clone>(s: &mut std_Set<X>, v: &X) {
     s.x.insert((*v).clone());
 }
 
+pub fn std_set_insert_imm<X: Ord+Clone>(s: &std_Set<X>, v: &X) -> std_Set<X> {
+    let mut s2 = s.clone();
+    s2.insert((*v).clone());
+    s2
+}
+
 pub fn std_set_contains<X: Ord>(s: &std_Set<X>, v: &X) -> bool {
     s.x.contains(v)
 }
@@ -217,14 +226,17 @@ pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
     s.x.is_empty()
 }
 
-
-
 pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
     match s.x.iter().nth(*n as usize) {
         None => std_Option::std_None,
         Some(x) => std_Option::std_Some{x: (*x).clone()}
     }
 }
+
+pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
+    std_Vec{x: s.x.iter().cloned().collect()}
+}
+
 
 // Map
 
@@ -328,7 +340,7 @@ pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,
 
 
 
-// string conversion
+// strings
 
 pub fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
     arcval::DDString::from(format!("{}", *x).to_string())
@@ -343,6 +355,10 @@ pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
         None => std_Option::std_None,
         Some(x) => std_Option::std_Some{x}
     }
+}
+
+pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
+    arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
 }
 
 // Hashing
