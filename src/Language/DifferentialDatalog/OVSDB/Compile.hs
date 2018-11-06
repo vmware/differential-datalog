@@ -129,7 +129,7 @@ mkTableName t tkind =
          TableInput       -> pp $ name t
          TableRealized    -> pp $ name t
          TableOutput      -> "Out_" <> (pp $ name t)
-         TableOutputProxy    | tableNeedsOutputProxy t 
+         TableOutputProxy    | tableNeedsOutputProxy t
                           -> "OutProxy_" <> (pp $ name t)
                              | otherwise
                           -> mkTableName t TableOutputSwizzled

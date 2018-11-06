@@ -38,23 +38,27 @@ import Language.DifferentialDatalog.OVSDB.Compile
 data TOption = OVSFile     String
              | OutputTable String
              | ROColumn    String
+             | KeyColumn   String
              | ProxyTable  String
 
 options :: [OptDescr TOption]
 options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file"
           , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "mark TABLE as output"
           , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "mark COLUMN as read-only"
+          , Option ['k'] ["key"]          (ReqArg KeyColumn   "TABLE.COLUMN") "mark COLUMN as key"
           , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "generate output proxy table for TABLE"
           ]
 
 data Config = Config { confOVSFile      :: FilePath
                      , confOutputTables :: [(String, [String])]
                      , confProxyTables  :: [String]
+                     , confKeys         :: M.Map String [String]
                      }
 
 defaultConfig = Config { confOVSFile      = ""
                        , confOutputTables = []
                        , confProxyTables  = []
+                       , confKeys         = M.empty
                        }
 
 
@@ -64,6 +68,15 @@ addOption config (OVSFile f) = do
     return config {confOVSFile = f}
 addOption config (OutputTable t) = return config{ confOutputTables = nub ((t,[]) : confOutputTables config)}
 addOption config (ProxyTable t) = return config{ confProxyTables = nub (t : confProxyTables config)}
+addOption config (KeyColumn c) = do
+    case splitOn "." c of
+         [table, col] -> do
+            when (isNothing $ lookup table $ confOutputTables config)
+                 $ errorWithoutStackTrace $ "Unknown output table name " ++ table
+            return $ config{confKeys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
+                                               $ confKeys config}
+         _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
+
 addOption config (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
@@ -89,6 +102,6 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables M.empty
+    dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables confKeys
     putStrLn $ render dlschema
     return ()
