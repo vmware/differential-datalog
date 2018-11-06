@@ -52,7 +52,8 @@ relation Out_SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: Set<uuid>
+    ssl: Set<uuid>,
+    options: Map<string,string>
 )
 relation Out_Address_Set (
     name: string,
@@ -173,23 +174,25 @@ output relation DeltaPlus_SB_Global (
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: Set<uuid>
+    ssl: Set<uuid>,
+    options: Map<string,string>
 )
-DeltaPlus_SB_Global(nb_cfg, external_ids, connections, ssl) :-
-    Out_SB_Global(nb_cfg, external_ids, connections, ssl),
-    not SB_Global(_, nb_cfg, external_ids, connections, ssl).
+DeltaPlus_SB_Global(nb_cfg, external_ids, connections, ssl, options) :-
+    Out_SB_Global(nb_cfg, external_ids, connections, ssl, options),
+    not SB_Global(_, nb_cfg, external_ids, connections, ssl, options).
 output relation DeltaMinus_SB_Global (
     _uuid: uuid
 )
 DeltaMinus_SB_Global(_uuid) :-
-    SB_Global(_uuid, nb_cfg, external_ids, connections, ssl),
-    not Out_SB_Global(nb_cfg, external_ids, connections, ssl).
+    SB_Global(_uuid, nb_cfg, external_ids, connections, ssl, options),
+    not Out_SB_Global(nb_cfg, external_ids, connections, ssl, options).
 input relation SB_Global (
     _uuid: uuid,
     nb_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: Set<uuid>
+    ssl: Set<uuid>,
+    options: Map<string,string>
 )
 primary key (x) x._uuid
 output relation DeltaPlus_Address_Set (
