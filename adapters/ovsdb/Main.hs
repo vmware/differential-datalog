@@ -69,7 +69,7 @@ addOption config (ROColumn c) = do
          [table, col] -> do
             when (isNothing $ lookup table $ confOutputTables config)
                  $ errorWithoutStackTrace $ "Unknown output table name " ++ table
-            let outtabs = map (\(t,ro) -> if t == table then (t, nub $ c:ro) else (t,ro))
+            let outtabs = map (\(t,ro) -> if t == table then (t, nub $ col:ro) else (t,ro))
                               $ confOutputTables config
             return $ config{confOutputTables = outtabs}
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
