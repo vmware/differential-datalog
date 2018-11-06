@@ -60,7 +60,7 @@ defaultConfig = Config { confOVSFile      = ""
 
 addOption :: Config -> TOption -> IO Config
 addOption config (OVSFile f) = do
-    when (confOVSFile config == "") $ errorWithoutStackTrace "Multiple input files specified"
+    when (confOVSFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
     return config {confOVSFile = f}
 addOption config (OutputTable t) = return config{ confOutputTables = nub ((t,[]) : confOutputTables config)}
 addOption config (ProxyTable t) = return config{ confProxyTables = nub (t : confProxyTables config)}
