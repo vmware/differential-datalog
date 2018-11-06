@@ -5,6 +5,10 @@ OVN_Southbound_DeltaPlus_Datapath_Binding:
 OVN_Southbound.DeltaPlus_Datapath_Binding{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b",2,std_Map { x: {"logical-router": "7ca7b79b-ba4f-36ae-e342-f650b1b2c09b", "name": "lr1"} }}
 OVN_Southbound.DeltaPlus_Datapath_Binding{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206",3,std_Map { x: {"logical-switch": "906d1cfd-7661-a2a0-a24c-a17e7ccfa206", "name": "ls1", "name2": "neutron_network_1"} }}
 
+OVN_Southbound_DeltaPlus_Logical_Flow:
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",0,100,"eth.src[40]","drop;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",0,100,"vlan.present","drop;",std_Map { x: {} }}
+
 OVN_Southbound_DeltaPlus_Meter:
 OVN_Southbound.DeltaPlus_Meter{"meter1","kbps",std_Set { x: {std.Right{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206"}} }}
 
