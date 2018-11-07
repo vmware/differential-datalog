@@ -62,8 +62,7 @@ instance Show Assignment where
     show = render . pp
 
 data Statement = ForStatement    { statPos :: Pos
-                                 , forExpr :: Expr
-                                 , forRelName :: String
+                                 , forAtom :: Atom
                                  , forCondition :: Maybe Expr
                                  , forStatement :: Statement }
                | IfStatement     { statPos :: Pos
@@ -83,8 +82,8 @@ data Statement = ForStatement    { statPos :: Pos
                | EmptyStatement  { statPos :: Pos }
 
 instance Eq Statement where
-    (==) (ForStatement _ e1 r1 c1 s1) (ForStatement _ e2 r2 c2 s2) =
-          e1 == e2 && r1 == r2 && c1 == c2 && s1 == s2
+    (==) (ForStatement _ a1 c1 s1) (ForStatement _ a2 c2 s2) =
+          a1 == a2 && c1 == c2 && s1 == s2
     (==) (IfStatement _ c1 s1 e1) (IfStatement _ c2 s2 e2) =
           c1 == c2 && s1 == s2 && e1 == e2
     (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
@@ -98,11 +97,11 @@ instance Eq Statement where
     (==) (EmptyStatement _) (EmptyStatement _) = True
 
 instance PP Statement where
-    pp (ForStatement _ e r c s) = "for" <+> "(" <> (pp e) <+> "in" <+> pp r <+>
-                                     maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
+    pp (ForStatement _ a c s) = "for" <+> "(" <> pp a <+>
+                                maybe empty (("if" <+>) . pp) c <> ")" $$ (nest' . pp) s
     pp (IfStatement _ c s e) = "if" <+> "(" <> (pp c) <> ")" $$ (nest' . pp) s $$
                                      maybe empty (("else" $$) . (nest' . pp)) e
-    pp (MatchStatement _ e l) = "match" <+> "(" <> (pp e) <> ")" $$ "{" $+$
+    pp (MatchStatement _ e l) = "match" <+> "(" <> pp e <> ")" $$ "{" $+$
                                 (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
                                 $$ "}"
     pp (VarStatement _ l s) = "var" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
@@ -140,9 +139,8 @@ convertAssignment (Assignment p l (Just t) r) = E $ ESet p (E $ ETyped p (E $ EV
 
 -- | convert statement into rules
 convertStatement :: Statement -> [Rule]
-convertStatement (ForStatement p e r mc s) =
+convertStatement (ForStatement p atom mc s) =
     let rules = convertStatement s
-        atom = Atom p r e
         rhs0 = RHSLiteral True atom
         rhs1 = map RHSCondition $ maybeToList mc in
     map (\r -> r{ruleRHS=(rhs0 : rhs1 ++ ruleRHS r)}) rules

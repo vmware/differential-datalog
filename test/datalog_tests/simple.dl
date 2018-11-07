@@ -298,7 +298,7 @@ for (a in X)
       _ -> Z(a.field-1)
    }
 
-for (X{a} in X)
+for (X[X{a}])
    match (a) {
       1 -> Z(a),
       2 -> Z(a+1),

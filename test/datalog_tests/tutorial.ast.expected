@@ -204,8 +204,8 @@ IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = add
 TargetAudience[person] :- Person[person], is_target_audience(person).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
-Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
-                                                                                                                                                          std.Some{.x=_} -> true,
-                                                                                                                                                          std.None{} -> false
-                                                                                                                                                      }, var a = lb.ip_addresses.
-Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], Load_Balancer[lb], (lb.ls == ls.ls).
+Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], match (lb.protocol) {
+                                                                                                                                                                                                                                std.Some{.x=_} -> true,
+                                                                                                                                                                                                                                std.None{} -> false
+                                                                                                                                                                                                                            }, var a = lb.ip_addresses.
+Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[(ls@ Logical_Switch{.ls=_})], Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], (lb.ls == ls.ls).

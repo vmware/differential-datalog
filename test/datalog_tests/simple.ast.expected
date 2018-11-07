@@ -375,23 +375,23 @@ Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=y).
 Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=y, .s2=x).
 Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=z), Reach(.s1=z, .s2=y).
 Answer(.x=x) :- Reach(.s1="Odeon", .s2=x).
+Z(.field=a.field) :- X[(a@ X{.field=_})].
 Z(.field=a.field) :- X[a].
-Z(.field=a.field) :- X[a].
-Z(.field=a.field) :- X[a], match (a.field) {
-                               1 -> true,
-                               2 -> false,
-                               _ -> false
-                           }.
-Z(.field=(a.field + 1)) :- X[a], match (a.field) {
-                                     1 -> false,
-                                     2 -> true,
-                                     _ -> false
-                                 }.
-Z(.field=(a.field - 1)) :- X[a], match (a.field) {
-                                     1 -> false,
-                                     2 -> false,
-                                     _ -> true
-                                 }.
+Z(.field=a.field) :- X[(a@ X{.field=_})], match (a.field) {
+                                              1 -> true,
+                                              2 -> false,
+                                              _ -> false
+                                          }.
+Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], match (a.field) {
+                                                    1 -> false,
+                                                    2 -> true,
+                                                    _ -> false
+                                                }.
+Z(.field=(a.field - 1)) :- X[(a@ X{.field=_})], match (a.field) {
+                                                    1 -> false,
+                                                    2 -> false,
+                                                    _ -> true
+                                                }.
 Z(.field=a) :- X(.field=a), match (a) {
                                 1 -> true,
                                 2 -> false,
@@ -421,26 +421,26 @@ Z(.field=(a - 1)) :- X(.field=a), match (a) {
                                       2 -> false,
                                       _ -> true
                                   }.
-Z(.field=a.field) :- X[a], ((a.field % 2) == 0).
-Z(.field=a.field) :- X[a], ((a.field % 2) == 0).
+Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0).
+Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0).
 Z(.field=a) :- X(.field=a), ((a % 2) == 0).
-Z(.field=(a.field + 1)) :- X[a], (a.field == 2).
-Z(.field=a.field) :- X[a], (not (a.field == 2)).
+Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], (a.field == 2).
+Z(.field=a.field) :- X[(a@ X{.field=_})], (not (a.field == 2)).
 Z(.field=(a + 1)) :- X(.field=a), (a == 2).
 Z(.field=a) :- X(.field=a), (a != 1).
-Z(.field=a.field) :- X[a], (a.field >= 2), (a.field > 2).
-Z(.field=(a.field + 2)) :- X[a], (a.field >= 2), (a.field > 2).
+Z(.field=a.field) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2).
+Z(.field=(a.field + 2)) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2).
 Z(.field=a) :- X(.field=a), (a >= 2), (a > 2).
 Z(.field=(a + 2)) :- X(.field=a), (a >= 2), (a > 2).
-Z(.field=(a.field + b.field)) :- X[a], X[b].
-Z(.field=(a.field + c.field)) :- X[a], X[c].
+Z(.field=(a.field + b.field)) :- X[(a@ X{.field=_})], X[(b@ X{.field=_})].
+Z(.field=(a.field + c.field)) :- X[(a@ X{.field=_})], X[(c@ X{.field=_})].
 Z(.field=(a + b)) :- X(.field=a), X(.field=b).
 Z(.field=(a + c)) :- X(.field=a), X(.field=c).
 Z(.field=(a + b)),
 Z(.field=(a + c)) :- X(.field=a), X(.field=b), X(.field=c).
-Z(.field=(a.field + b)) :- X[a], (var b: bigint) = (a.field + 2).
+Z(.field=(a.field + b)) :- X[(a@ X{.field=_})], (var b: bigint) = (a.field + 2).
 Z(.field=(a + b)) :- X(.field=a), var b = (a + 2).
-W(.f1=a.field, .f2=b, .f3=c) :- X[a], var b = (a.field + 2), var c = (b + a.field).
+W(.f1=a.field, .f2=b, .f3=c) :- X[(a@ X{.field=_})], var b = (a.field + 2), var c = (b + a.field).
 W(.f1=a, .f2=b, .f3=c) :- X(.field=a), var b = (a + 2), var c = (b + a).
 R1[1].
 R2[(1, 2)].

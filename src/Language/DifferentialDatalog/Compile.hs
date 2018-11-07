@@ -897,7 +897,7 @@ openAtom :: DatalogProgram -> Doc -> Atom -> CompilerMonad Doc
 openAtom d var Atom{..} = do
     let rel = getRelation d atomRelation
     constructor <- mkValConstructorName d $ relType rel
-    let varnames = map pp $ exprVars atomVal
+    let varnames = map pp $ atomVars atomVal
         vars = tuple varnames
         (pattern, cond) = mkPatExpr d "ref" atomVal
         cond_str = if cond == empty then empty else ("if" <+> cond)

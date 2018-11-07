@@ -31,7 +31,8 @@ module Language.DifferentialDatalog.Rule (
     ruleTypeMapM,
     ruleHasJoins,
     ruleAggregateTypeParams,
-    atomVarOccurrences
+    atomVarOccurrences,
+    atomVars
 ) where
 
 import qualified Data.Set as S
@@ -111,6 +112,15 @@ atomVarOccurrences ctx e =
                          EBinding _ v _ -> [(v, ctx')]
                          _              -> [])
                    (++) ctx e
+
+atomVars :: Expr -> [String]
+atomVars e =
+    exprCollect (\e' ->
+                  case e' of
+                       EVar _ v       -> [v]
+                       EBinding _ v _ -> [v]
+                       _              -> [])
+                   (++) e
 
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
 atomVarDecls d rl i = S.fromList $ atomVarTypes d (CtxRuleRAtom rl i) (atomVal $ rhsAtom $ ruleRHS rl !! i)

@@ -402,33 +402,10 @@ function port_security_eth_addresses(ps: Set<string>): Set<string> = {
                   ingress table 2: ingress port security - ND (priority 90 and 80) */
 
 /* Logical VLANs not supported */
-sb.Out_Logical_Flow(
-    .logical_datapath = lsname,
-    .pipeline         = "ingress",
-    .table_id         = switch_stage(IN, PORT_SEC_L2),
-    .priority         = 50,
-    .__match          = $"inport == ${lsp.name}" ++
-                        if (set_is_empty(lsp.port_security)) { "" } else {
-                            $" && eth.src == {${string_join(set2vec(port_security_eth_addresses(lsp.port_security)), \" \")}}"
-                        },
-    .actions          = match (map_get(pbinding_options, "qdisc_queue_id")) {
-                            None -> "next;",
-                            Some{id} -> $"set_queue(${id}); next;"
-                        },
-    .external_ids     = map_empty() /*TODO: check*/)
-:-
-    LogicalPortSwitch(.lport = lsp_uuid, .lswitch = ls_uuid),
-    var lsname = uuid2str(ls_uuid),
-    lsp@nb.Logical_Switch_Port(._uuid = lsp_uuid),
-    is_enabled(lsp.enabled),
-    sb.OutProxy_Port_Binding(.logical_port = lsp.name, .options = pbinding_options).
-
-/*
-
 for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
-        var lsname = uuid2str(lps.lswitch);
-        for (pbinding if sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
+        var lsname = uuid2str(lps.lswitch) in
+        for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
             sb.Out_Logical_Flow(
                 .logical_datapath = lsname,
                 .pipeline         = "ingress",
@@ -446,7 +423,6 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
         }
     }
 }
-*/
 
 /*
  * Datapath tunnel key allocation:

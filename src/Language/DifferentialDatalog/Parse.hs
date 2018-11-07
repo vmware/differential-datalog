@@ -281,8 +281,7 @@ arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $
                     ForStatement nopos <$ reserved "for"
-                                       <*> (symbol "(" *> expr)
-                                       <*> (reserved "in" *> relIdent)
+                                       <*> (symbol "(" *> atom)
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
@@ -319,7 +318,7 @@ rule = Rule nopos <$>
        (commaSep1 atom) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "@") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
@@ -334,12 +333,12 @@ rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $
 
 atom = withPos $ do
        p1 <- getPosition
-       binding <- optionMaybe $ try $ varIdent <* reservedOp "@"
+       binding <- optionMaybe $ try $ varIdent <* reservedOp "in"
        p2 <- getPosition
        rname <- relIdent
-       val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
+       val <- brackets expr
               <|>
-              brackets expr
+              (withPos $ eStruct rname <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
        return $ Atom nopos rname $ maybe val (\b -> E $ EBinding (p1, p2) b val) binding
 
 anonarg = ("",) <$> expr
