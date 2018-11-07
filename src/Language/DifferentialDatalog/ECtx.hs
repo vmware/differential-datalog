@@ -38,6 +38,8 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsSeq1,
      ctxInSeq1,
      ctxIsSeq2,
+     ctxInBinding,
+     ctxIsBinding,
      ctxIsTyped,
      ctxIsRuleRCond,
      ctxInRuleRHSPattern,
@@ -90,6 +92,13 @@ ctxIsSeq2 :: ECtx -> Bool
 ctxIsSeq2 CtxSeq2{} = True
 ctxIsSeq2 _         = False
 
+ctxInBinding :: ECtx -> Bool
+ctxInBinding ctx = any ctxIsBinding $ ctxAncestors ctx
+
+ctxIsBinding :: ECtx -> Bool
+ctxIsBinding CtxBinding{} = True
+ctxIsBinding _            = False
+
 ctxIsTyped :: ECtx -> Bool
 ctxIsTyped CtxTyped{} = True
 ctxIsTyped _          = False
@@ -106,6 +115,7 @@ ctxInRuleRHSPattern (CtxRuleRAtom rl idx) = rhsPolarity $ ruleRHS rl !! idx
 ctxInRuleRHSPattern CtxStruct{..}         = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTuple{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTyped{..}          = ctxInRuleRHSPattern ctxPar
+ctxInRuleRHSPattern CtxBinding{..}        = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern _                     = False
 
 ctxIsFunc :: ECtx -> Bool

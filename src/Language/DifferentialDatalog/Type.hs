@@ -302,6 +302,7 @@ exprNodeType' _ _   (EUnOp _ Not _)        = return tBool
 exprNodeType' d _   (EUnOp _ BNeg (Just e))= return $ typ' d e
 exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
 exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
+exprNodeType' d ctx (EBinding p _ e)       = mtype2me p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
@@ -531,6 +532,7 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
     where tlhs = exprTypeMaybe d ctx $ exprLeft e
 ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
 ctxExpectType d (CtxUnOp (EUnOp _ BNeg _) ctx)       = ctxExpectType d ctx
+ctxExpectType d (CtxBinding _ ctx)                   = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
 
 

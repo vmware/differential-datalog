@@ -1022,12 +1022,13 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     let afun = braces' $ prefix $$
                          "Some((" <> akey <> "," <+> aval <> "))"
     -- simplify pattern to only extract new variables from it
-    let strip (E e@EStruct{..}) = E $ e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
-        strip (E e@ETuple{..})  = E $ e{exprTupleFields = map strip exprTupleFields}
+    let strip (E e@EStruct{..})  = E e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
+        strip (E e@ETuple{..})   = E e{exprTupleFields = map strip exprTupleFields}
         strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar
-                                = E e
-        strip (E e@ETyped{..})  = E e{exprExpr = strip exprExpr}
-        strip _                 = ePHolder
+                                 = E e
+        strip (E e@EBinding{..}) = eVar exprVar -- there can be no new variables inside binding
+        strip (E e@ETyped{..})   = E e{exprExpr = strip exprExpr}
+        strip _                  = ePHolder
     -- Join function: open up both values, apply filters.
     open <- liftM2 ($$) (openTuple d ("*" <> vALUE_VAR1) post_join_vars)
                         (openAtom d ("*" <> vALUE_VAR2) atom{atomVal = strip $ atomVal atom})
@@ -1110,6 +1111,7 @@ normalizePattern d ctx e =
                                  -> ePHolder
          ETuple{..}  | all (== ePHolder) exprTupleFields
                                  -> ePHolder
+         EBinding{..}            -> exprPattern 
          _                       -> E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
@@ -1248,6 +1250,7 @@ mkPatExpr' d _         ETuple{..}                = return (e, cond)
                                    $ map (pp . snd) exprTupleFields
 mkPatExpr' _ _         EPHolder{}                = return ("_", empty)
 mkPatExpr' _ _         ETyped{..}                = return exprExpr
+mkPatExpr' d varprefix EBinding{..}              = return (varprefix <+> pp exprVar <> "@" <> fst exprPattern, snd exprPattern)
 mkPatExpr' _ _         e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
 
 -- Convert Datalog expression to Rust.

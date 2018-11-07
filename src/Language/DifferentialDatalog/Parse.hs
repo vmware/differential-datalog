@@ -63,7 +63,7 @@ parseDatalogString program file = do
 rustKeywords = ["type", "match"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
-                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@"]
 reservedNames = ["as",
                  "_",
                  "Aggregate",
@@ -319,7 +319,7 @@ rule = Rule nopos <$>
        (commaSep1 atom) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "@") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
@@ -333,11 +333,14 @@ rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *>
        <|> (RHSCondition <$> expr)
 
 atom = withPos $ do
+       p1 <- getPosition
+       binding <- optionMaybe $ try $ varIdent <* reservedOp "@"
+       p2 <- getPosition
        rname <- relIdent
        val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
               <|>
               brackets expr
-       return $ Atom nopos rname val
+       return $ Atom nopos rname $ maybe val (\b -> E $ EBinding (p1, p2) b val) binding
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
@@ -385,6 +388,7 @@ term  =  elhs
      <|> term'
 term' = withPos $
          eapply
+     <|> ebinding
      <|> epholder
      <|> estruct
      <|> eint
@@ -400,6 +404,9 @@ eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
                         _ <- funcIdent
                         symbol "("
+
+ebinding = eBinding <$ isbinding <*> (varIdent <* reservedOp "@") <*> expr
+    where isbinding = try $ lookAhead $ (\_ -> ()) <$> varIdent <* reservedOp "@"
 
 ebool = eBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
 evar = eVar <$> varIdent

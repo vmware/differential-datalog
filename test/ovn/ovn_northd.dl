@@ -392,7 +392,10 @@ function is_enabled(s: Set<bool>): bool = {
 }
 
 /* extract Ethernet addresses only */
-extern function port_security_eth_addresses(ps: Set<string>): Set<string>
+function port_security_eth_addresses(ps: Set<string>): Set<string> = {
+    // TODO: write proper implementation
+    ps
+}
 
 /* Logical switch ingress table 0: ingress port security - L2 (priority 50)
                   ingress table 1: ingress port security - IP (priority 90 and 80)
@@ -404,9 +407,9 @@ sb.Out_Logical_Flow(
     .pipeline         = "ingress",
     .table_id         = switch_stage(IN, PORT_SEC_L2),
     .priority         = 50,
-    .__match          = $"inport == ${lsp_name}" ++
-                        if (set_is_empty(lsp_port_security)) { "" } else {
-                            $" && eth.src == {${string_join(set2vec(port_security_eth_addresses(lsp_port_security)), \" \")}}"
+    .__match          = $"inport == ${lsp.name}" ++
+                        if (set_is_empty(lsp.port_security)) { "" } else {
+                            $" && eth.src == {${string_join(set2vec(port_security_eth_addresses(lsp.port_security)), \" \")}}"
                         },
     .actions          = match (map_get(pbinding_options, "qdisc_queue_id")) {
                             None -> "next;",
@@ -416,12 +419,9 @@ sb.Out_Logical_Flow(
 :-
     LogicalPortSwitch(.lport = lsp_uuid, .lswitch = ls_uuid),
     var lsname = uuid2str(ls_uuid),
-    nb.Logical_Switch_Port(._uuid = lsp_uuid,
-                           .name = lsp_name,
-                           .enabled = lsp_enabled,
-                           .port_security = lsp_port_security),
-    is_enabled(lsp_enabled),
-    sb.OutProxy_Port_Binding(.logical_port = lsp_name, .options = pbinding_options).
+    lsp@nb.Logical_Switch_Port(._uuid = lsp_uuid),
+    is_enabled(lsp.enabled),
+    sb.OutProxy_Port_Binding(.logical_port = lsp.name, .options = pbinding_options).
 
 /*
 

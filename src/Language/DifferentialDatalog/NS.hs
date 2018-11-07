@@ -154,5 +154,6 @@ ctxMVars d ctx =
          CtxBinOpL _ _            -> ([], plvars ++ prvars)
          CtxBinOpR _ _            -> ([], plvars ++ prvars)
          CtxUnOp _ _              -> ([], plvars ++ prvars)
+         CtxBinding _ _           -> (plvars, prvars)
          CtxTyped _ _             -> (plvars, prvars)
     where (plvars, prvars) = ctxMVars d $ ctxParent ctx
