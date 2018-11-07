@@ -30,6 +30,7 @@ Description: Compile 'DatalogProgram' to Rust.  See program.rs for corresponding
 
 module Language.DifferentialDatalog.Compile (
     compile,
+    rustProjectDir,
     isStructType,
     mkValConstructorName',
     mkConstructorName,
@@ -102,38 +103,44 @@ header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedF
 
 --cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
 
+rustProjectDir :: String -> String
+rustProjectDir specname = specname ++ "_ddlog"
+
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (specname </> "Cargo.toml"            , $(embedFile "rust/template/Cargo.toml"))
-        , (specname </> "main.rs"               , $(embedFile "rust/template/main.rs"))
-        , (specname </> "ovsdb.rs"              , $(embedFile "rust/template/ovsdb.rs"))
-        , (specname </> "valmap.rs"             , $(embedFile "rust/template/valmap.rs"))
-        , (specname </> "ddlog.h"               , $(embedFile "rust/template/ddlog.h"))
-        , (specname </> "ddlog_ovsdb_test.c"    , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
+        [ (dir </> "Cargo.toml"             , $(embedFile "rust/template/Cargo.toml"))
+        , (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
+        , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
+        , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
+        , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
+        , (dir </> (specname ++ "_ddlog.h") , $(embedFile "rust/template/ddlog.h"))
+        , (dir </> "ddlog_ovsdb_test.c"     , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
+    where dir = rustProjectDir specname
 
 -- Rust differential_datalog library
 rustLibFiles :: String -> [(String, String)]
 rustLibFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (specname </> "differential_datalog/Cargo.toml"    , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
-        , (specname </> "differential_datalog/int.rs"        , $(embedFile "rust/template/differential_datalog/int.rs"))
-        , (specname </> "differential_datalog/uint.rs"       , $(embedFile "rust/template/differential_datalog/uint.rs"))
-        , (specname </> "differential_datalog/arcval.rs"     , $(embedFile "rust/template/differential_datalog/arcval.rs"))
-        , (specname </> "differential_datalog/variable.rs"   , $(embedFile "rust/template/differential_datalog/variable.rs"))
-        , (specname </> "differential_datalog/profile.rs"    , $(embedFile "rust/template/differential_datalog/profile.rs"))
-        , (specname </> "differential_datalog/program.rs"    , $(embedFile "rust/template/differential_datalog/program.rs"))
-        , (specname </> "differential_datalog/record.rs"     , $(embedFile "rust/template/differential_datalog/record.rs"))
-        , (specname </> "differential_datalog/lib.rs"        , $(embedFile "rust/template/differential_datalog/lib.rs"))
-        , (specname </> "differential_datalog/test.rs"       , $(embedFile "rust/template/differential_datalog/test.rs"))
-        , (specname </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
-        , (specname </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
-        , (specname </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
-        , (specname </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
-        , (specname </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
-        , (specname </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))
+        [ (dir </> "differential_datalog/Cargo.toml"    , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
+        , (dir </> "differential_datalog/int.rs"        , $(embedFile "rust/template/differential_datalog/int.rs"))
+        , (dir </> "differential_datalog/uint.rs"       , $(embedFile "rust/template/differential_datalog/uint.rs"))
+        , (dir </> "differential_datalog/arcval.rs"     , $(embedFile "rust/template/differential_datalog/arcval.rs"))
+        , (dir </> "differential_datalog/variable.rs"   , $(embedFile "rust/template/differential_datalog/variable.rs"))
+        , (dir </> "differential_datalog/profile.rs"    , $(embedFile "rust/template/differential_datalog/profile.rs"))
+        , (dir </> "differential_datalog/program.rs"    , $(embedFile "rust/template/differential_datalog/program.rs"))
+        , (dir </> "differential_datalog/record.rs"     , $(embedFile "rust/template/differential_datalog/record.rs"))
+        , (dir </> "differential_datalog/lib.rs"        , $(embedFile "rust/template/differential_datalog/lib.rs"))
+        , (dir </> "differential_datalog/test.rs"       , $(embedFile "rust/template/differential_datalog/test.rs"))
+        , (dir </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
+        , (dir </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
+        , (dir </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
+        , (dir </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
+        , (dir </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
+        , (dir </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))
         ]
+    where dir = rustProjectDir specname
 
 
 {- The following types model corresponding entities in program.rs -}
@@ -298,7 +305,7 @@ compile d specname rs_code dir = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
-    updateFile (dir </> specname </> "lib.rs") (render lib)
+    updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
     return ()
 
 -- Replace file content if changed

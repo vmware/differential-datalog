@@ -7,7 +7,7 @@
 //#![feature(alloc_system)]
 //extern crate alloc_system;
 
-extern crate datalog_example;
+extern crate datalog_example_ddlog;
 extern crate differential_datalog;
 extern crate cmd_parser;
 extern crate time;
@@ -25,8 +25,8 @@ use std::env;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
-use datalog_example::*;
-use datalog_example::valmap::*;
+use datalog_example_ddlog::*;
+use datalog_example_ddlog::valmap::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;

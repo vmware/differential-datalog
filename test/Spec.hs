@@ -175,7 +175,6 @@ parserTest fname = do
     -- if a file contains .fail. in its name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
-    let specname = takeBaseName fname
     let astfile  = replaceExtension fname "ast"
     if shouldFail fname
       then do
@@ -214,7 +213,7 @@ compilerTest progress fname cli_args = do
     compile prog specname rs_code rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                          cwd = Just $ rust_dir </> specname
+                          cwd = Just $ rust_dir </> rustProjectDir specname
                      }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -261,7 +260,7 @@ cliTest progress fname specname rust_dir extra_args = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag ++ extra_args')) {
-                cwd = Just $ rust_dir </> specname,
+                cwd = Just $ rust_dir </> rustProjectDir specname,
                 std_in=UseHandle hdat,
                 std_out=UseHandle hout,
                 std_err=UseHandle herr
