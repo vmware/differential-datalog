@@ -397,6 +397,16 @@ function port_security_eth_addresses(ps: Set<string>): Set<string> = {
     ps
 }
 
+// space-separated vector of strings
+function vec_space_sep(items: Vec<string>): string = {
+    string_join(items, " ")
+}
+
+// space-separated set of strings
+function set_space_sep(items: Set<string>): string = {
+    vec_space_sep(set2vec(items))
+}
+
 /* Logical switch ingress table 0: ingress port security - L2 (priority 50)
                   ingress table 1: ingress port security - IP (priority 90 and 80)
                   ingress table 2: ingress port security - ND (priority 90 and 80) */
@@ -405,20 +415,23 @@ function port_security_eth_addresses(ps: Set<string>): Set<string> = {
 for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
         var lsname = uuid2str(lps.lswitch) in
+        var __match = if (set_is_empty(lsp.port_security)) {
+                $"inport == ${lsp.name}"
+            } else {
+                $"inport == ${lsp.name} && eth.src == {${set_space_sep(port_security_eth_addresses(lsp.port_security))}}"
+            } in
+        var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
+                None -> "next;",
+                Some{id} -> $"set_queue(${id}); next;"
+            } in
         for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
             sb.Out_Logical_Flow(
                 .logical_datapath = lsname,
                 .pipeline         = "ingress",
                 .table_id         = switch_stage(IN, PORT_SEC_L2),
                 .priority         = 50,
-                .__match          = $"inport == ${lsp.name}" ++
-                                    if (set_is_empty(lsp.port_security)) { "" } else {
-                                        $" && eth.src == {${string_join(set2vec(port_security_eth_addresses(lsp.port_security)), \" \")}}"
-                                    },
-                .actions          = match (map_get(pbinding.options, "qdisc_queue_id")) {
-                                        None -> "next;",
-                                        Some{id} -> $"set_queue(${id}); next;"
-                                    },
+                .__match          = __match,
+                .actions          = actions,
                 .external_ids     = map_empty())
         }
     }
