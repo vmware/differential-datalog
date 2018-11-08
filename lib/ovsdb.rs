@@ -48,3 +48,7 @@ pub fn ovsdb_group2map_remove_sentinel<K: Ord, G:Group<(K,ovsdb_uuid_or_string_t
     };
     res
 }
+
+pub fn ovsdb_set_map_uuid2str(ids: &std_Set<ovsdb_uuid>) -> std_Set<arcval::DDString> {
+    std_Set::from_iter(ids.x.iter().map(|id| ovsdb_uuid2str(id)))
+}

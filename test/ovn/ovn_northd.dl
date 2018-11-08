@@ -12,11 +12,11 @@ for (mb in nb.Meter_Band) {
 }
 
 /* Meter table */
-sb.Out_Meter(name, unit, str_bands) :-
-    nb.Meter(_, name, unit, bands, _),
-    var uuid_band = FlatMap(bands),
-    var str_band = uuid2str(uuid_band),
-    Aggregate((name, unit), str_bands = group2set(str_band)).
+for (meter in nb.Meter) {
+    sb.Out_Meter(.name = meter.name,
+                 .unit = meter.unit,
+                 .bands = set_map_uuid2str(meter.bands))
+}
 
 /* Datapath_Binding table */
 sb.Out_Datapath_Binding(uuid_str, 0, external_ids) :-
@@ -156,6 +156,7 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
         }
     }.
 
+/* Case 3: Port_Binding per logical router port */
 sb.Out_Port_Binding(.uuid_name          = uuid_name,
                     .logical_port       = lrp.name,
                     .__type             = __type,
@@ -189,6 +190,35 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
         };
         eids
     }.
+
+//relation TwoChassisWarning() :-
+//
+//
+///* Create derived port for Logical_Router_Ports with non-empty 'gateway_chassis' column */
+//sb.Out_Port_Binding(.uuid_name          = uuid2str(lrp._uuid),
+//                    .logical_port       = lrp.name,
+//                    .__type             = "chassisredirect",
+//                    .gateway_chassis    = map(uuid2str, lrp.gateway_chassis),
+//                    .options            = map_union(options1, options2),
+//                    .datapath           = uuid2str(lrouter_uuid),
+//                    .tunnel_key         = 0,
+//                    .parent_port        = set_empty(),
+//                    .tag                = set_empty(), // always empty for router ports
+//                    .mac                = set_singleton(string_join(set2vec(set_insert_imm(lrp.networks, lrp.mac)), " ")),
+//                    .nat_addresses      = set_empty(),
+//                    .external_ids       = lrp.external_ids) :-
+//    // find router ports with non-empty gateway_chassis
+//    nb.Logical_Router_Port[lrp],
+//        not set_is_empty(lrp.gateway_chassis),
+//    var name = "cr-" ++ lrp.name,
+//    // find corresponding logical router
+//    LogicalPortRouter(lrp._uuid, lrouter_uuid),
+//    lr in nb.Logical_Router(._uuid = lrouter_uuid),
+//
+//        is_some(map_get(lrp.options, "chassis")
+//             * It is an error if lrp.options:chassis exists.  Ignore the
+//          'gateway_chassis' in that case, and log a warning.
+
 
 sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
                          .logical_port       = pbinding.logical_port,
@@ -253,7 +283,7 @@ sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
  */
 
 /*
- * Gateway chassis: row per NB router ports that represent GW chassis
+ * Gateway_Chassis: row per NB router ports that represent GW chassis
  */
 
 typedef Direction = IN | OUT
