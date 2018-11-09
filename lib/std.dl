@@ -55,6 +55,7 @@ extern function count(g: Group<'A>): bit<64>
 extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
+extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
 
 /*
  * Map
@@ -86,3 +87,5 @@ extern function set_contains(s: Set<'X>, v: 'X): bool
 extern function set_is_empty(s: Set<'X>): bool
 extern function set_nth(s: Set<'X>, n: bit<64>): Option<'X>
 extern function set2vec(s: Set<'A>): Vec<'A>
+extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
+extern function set_unions(sets: Vec<Set<'X>>): Set<'X>

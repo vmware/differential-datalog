@@ -173,6 +173,20 @@ pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
     std_Vec{x: s.x.iter().cloned().collect()}
 }
 
+pub fn std_set_union<X: Ord + Clone>(s1: &std_Set<X>, s2: &std_Set<X>) -> std_Set<X> {
+    let mut s = s1.clone();
+    s.x.append(&mut s2.x.clone());
+    s
+}
+
+pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> {
+    let mut s = BTreeSet::new();
+    for si in sets.x.iter() {
+        s.append(&mut si.x.clone());
+    };
+    std_Set{x: s}
+}
+
 
 // Map
 
@@ -357,6 +371,17 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
         res.insert(k, v);
     };
     res
+}
+
+pub fn std_group_unzip<X: Ord, Y: Ord, G: Group<(X,Y)>+?Sized>(g: &G) -> (std_Vec<X>, std_Vec<Y>) {
+    let mut xs = std_Vec::new();
+    let mut ys = std_Vec::new();
+    for i in 0..g.size() {
+        let (x,y) = g.ith(i);
+        xs.push(x);
+        ys.push(y);
+    };
+    (xs,ys)
 }
 
 

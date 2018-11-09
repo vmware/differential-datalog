@@ -21,6 +21,7 @@ extern function std.count (g: std.Group<'A>): bit<64>
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
@@ -52,6 +53,8 @@ extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 input relation R1 [R1]
 relation R2 [R2]
@@ -238,6 +241,20 @@ pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
     std_Vec{x: s.x.iter().cloned().collect()}
 }
 
+pub fn std_set_union<X: Ord + Clone>(s1: &std_Set<X>, s2: &std_Set<X>) -> std_Set<X> {
+    let mut s = s1.clone();
+    s.x.append(&mut s2.x.clone());
+    s
+}
+
+pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> {
+    let mut s = BTreeSet::new();
+    for si in sets.x.iter() {
+        s.append(&mut si.x.clone());
+    };
+    std_Set{x: s}
+}
+
 
 // Map
 
@@ -422,6 +439,17 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
         res.insert(k, v);
     };
     res
+}
+
+pub fn std_group_unzip<X: Ord, Y: Ord, G: Group<(X,Y)>+?Sized>(g: &G) -> (std_Vec<X>, std_Vec<Y>) {
+    let mut xs = std_Vec::new();
+    let mut ys = std_Vec::new();
+    for i in 0..g.size() {
+        let (x,y) = g.ith(i);
+        xs.push(x);
+        ys.push(y);
+    };
+    (xs,ys)
 }
 
 

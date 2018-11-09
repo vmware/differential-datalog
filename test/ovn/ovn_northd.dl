@@ -307,15 +307,100 @@ sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
 /*
  * SB_Global copy nb_cfg and options from NB
  */
+for (nb_global in nb.NB_Global) {
+    sb.Out_SB_Global(.nb_cfg         = nb_global.nb_cfg,
+                     .external_ids   = nb_global.external_ids,
+                     .connections    = nb_global.connections,
+                     .ssl            = nb_global.ssl,
+                     .options        = nb_global.options)
+}
 
 /*
  * Address_Set: copy from NB + additional records generated from NB Port_Group (two records for each
- * Port_Group for IPv4 and IPv6 addresses)
+ * Port_Group for IPv4 and IPv6 addresses).
+ *
+ * There can be name collisions between the two types of Address_Set records.  User-defined records
+ * take precedence.
  */
+for (nb_as in nb.Address_Set) {
+    sb.Out_Address_Set(.name      = nb_as.name,
+                       .addresses = nb_as.addresses)
+}
+
+// TODO: link to C implementation
+function is_dynamic_lsp_address(addr: string): bool = false
+function split_addresses(addr: string): (Set<string>, Set<string>) = (set_empty(), set_empty())
+
+/* PortStaticAddresses: static IP addresses associated with each Logical_Switch_Port */
+relation PortStaticAddresses(lsport: uuid, ip4addrs: Set<string>, ip6addrs: Set<string>)
+
+/* PortDynamicAddresses: dynamic IP addresses associated with each Logical_Switch_Port */
+relation PortDynamicAddresses(lsport: uuid, ip4addrs: Set<string>, ip6addrs: Set<string>)
+
+PortStaticAddresses(.lsport     = port_uuid,
+                    .ip4addrs   = set_unions(ip4_addrs),
+                    .ip6addrs   = set_unions(ip6_addrs)) :-
+    nb.Logical_Switch_Port(._uuid = port_uuid, .addresses = addresses),
+    var address = FlatMap(if set_is_empty(addresses) set_singleton("") else addresses),
+    (var ip4addrs: Set<string>, var ip6addrs: Set<string>) = if (not is_dynamic_lsp_address(address)) {
+        split_addresses(address)
+    } else { (set_empty(), set_empty()) },
+    Aggregate((port_uuid), static_addrs = group_unzip((ip4addrs, ip6addrs))),
+    (var ip4_addrs, var ip6_addrs) = static_addrs.
+
+PortDynamicAddresses(.lsport     = port_uuid,
+                     .ip4addrs   = set_unions(ip4_addrs),
+                     .ip6addrs   = set_unions(ip6_addrs)) :-
+    nb.Logical_Switch_Port(._uuid = port_uuid, .dynamic_addresses = addresses),
+    var address = FlatMap(if set_is_empty(addresses) set_singleton("") else addresses),
+    (var ip4_addrs, var ip6_addrs) = split_addresses(address),
+    Aggregate((port_uuid), dyn_addrs = group_unzip((ip4_addrs, ip6_addrs))),
+    (var ip4_addrs, var ip6_addrs) = dyn_addrs.
+
+
+sb.Out_Address_Set(as_name, set_unions(pg_ip4addrs)) :-
+    nb.Port_Group(.ports = pg_ports, .name = pg_name),
+    var as_name = pg_name ++ "_ip4",
+    // avoid name collisions with user-defined Address_Sets
+    not nb.Address_Set(.name = as_name),
+    var port_uuid = FlatMap(pg_ports),
+    PortStaticAddresses(.lsport = port_uuid, .ip4addrs = stat),
+    PortDynamicAddresses(.lsport = port_uuid, .ip4addrs = dynamic),
+    var port_ip4addrs: Set<string> = set_union(stat, dynamic),
+    Aggregate((as_name), pg_ip4addrs = group2vec(port_ip4addrs)).
+
+sb.Out_Address_Set(as_name, set_empty()) :-
+    nb.Port_Group(.ports = set_empty(), .name = pg_name),
+    var as_name = pg_name ++ "_ip4",
+    // avoid name collisions with user-defined Address_Sets
+    not nb.Address_Set(.name = as_name).
+
+sb.Out_Address_Set(as_name, set_unions(pg_ip6addrs)) :-
+    nb.Port_Group(.ports = pg_ports, .name = pg_name),
+    var as_name = pg_name ++ "_ip6",
+    // avoid name collisions with user-defined Address_Sets
+    not nb.Address_Set(.name = as_name),
+    var port_uuid = FlatMap(pg_ports),
+    PortStaticAddresses(.lsport = port_uuid, .ip6addrs = stat),
+    PortDynamicAddresses(.lsport = port_uuid, .ip6addrs = dynamic),
+    var port_ip6addrs = set_union(stat, dynamic),
+    Aggregate((as_name), pg_ip6addrs = group2vec(port_ip6addrs)).
+
+sb.Out_Address_Set(as_name, set_empty()) :-
+    nb.Port_Group(.ports = set_empty(), .name = pg_name),
+    var as_name = pg_name ++ "_ip6",
+    // avoid name collisions with user-defined Address_Sets
+    not nb.Address_Set(.name = as_name).
+
 
 /*
  * Port_Group: copy from NB, but replace UUIDs with logical port names
  */
+sb.Out_Port_Group(.name = pg_name, .ports = port_names) :-
+    nb.Port_Group(.name = pg_name, .ports = pg_ports),
+    var port_uuid = FlatMap(pg_ports),
+    nb.Logical_Switch_Port(._uuid = port_uuid, .name = port_name),
+    Aggregate((pg_name), port_names = group2set(port_name)).
 
 /*
  * Multicast_Group: two rows per logical switch, one for flooding and one for packets with unknown

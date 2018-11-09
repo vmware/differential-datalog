@@ -1,5 +1,16 @@
 start;
 
+insert OVN_Northbound.NB_Global (
+    ._uuid          = 0xf9bc8181_c1fc_4b16_9ee0_47636742e40c,
+    .nb_cfg         = 1234,
+    .sb_cfg         = 5678,
+    .hv_cfg         = 8765,
+    .external_ids   = [],
+    .connections    = [],
+    .ssl            = [],
+    .options        = [("option1", "opt_value1")]
+),
+
 insert OVN_Northbound.Meter_Band (
     ._uuid = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d95,
     .action = "drop",
@@ -142,7 +153,7 @@ insert OVN_Northbound.Logical_Switch_Port(
     .parent_name = [],
     .tag_request = [],
     .tag = [],
-    .addresses = [],
+    .addresses = ["10.10.10.101", "10.10.10.102", "fe80::250:56ff:fec0:8"],
     .dynamic_addresses = [],
     .port_security = [],
     .up = [true],
@@ -161,7 +172,7 @@ insert OVN_Northbound.Logical_Switch_Port(
     .tag_request = [],
     .tag = [],
     .addresses = [],
-    .dynamic_addresses = [],
+    .dynamic_addresses = ["10.10.10.103", "abcd::250:56ff:fec0:8"],
     .port_security = [],
     .up = [true],
     .enabled = [true],
