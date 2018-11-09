@@ -823,7 +823,7 @@ compileRule' :: DatalogProgram -> Rule -> Int -> CompilerMonad [Doc]
 compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- Open up input constructor; bring Datalog variables into scope
     open <- if last_rhs_idx == 0
-               then openAtom  d vALUE_VAR $ rhsAtom $ head ruleRHS
+               then openAtom  d vALUE_VAR rl 0 $ rhsAtom $ head ruleRHS
                else openTuple d vALUE_VAR $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and the next
     -- join or antijoin
@@ -900,13 +900,13 @@ mkAggregate d prefix rl idx vs v fname e = do
 --     Value::Rel1(v1,v2) => (v1,v2),
 --     _ => return None
 -- };
-openAtom :: DatalogProgram -> Doc -> Atom -> CompilerMonad Doc
-openAtom d var Atom{..} = do
+openAtom :: DatalogProgram -> Doc -> Rule -> Int -> Atom -> CompilerMonad Doc
+openAtom d var rl idx Atom{..} = do
     let rel = getRelation d atomRelation
     constructor <- mkValConstructorName d $ relType rel
     let varnames = map pp $ atomVars atomVal
         vars = tuple varnames
-        (pattern, cond) = mkPatExpr d "ref" atomVal
+        (pattern, cond) = mkPatExpr d "ref" (CtxRuleRAtom rl idx) atomVal
         cond_str = if cond == empty then empty else ("if" <+> cond)
     return $
         "let" <+> vars <+> "= match " <> var <> "{"                                    $$
@@ -1000,7 +1000,7 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     "};"
     where
     r' = mkExpr d (CtxSetR e ctx) r EVal
-    (pattern, cond) = mkPatExpr d empty l
+    (pattern, cond) = mkPatExpr d empty (CtxSetL e ctx) l
     varnames = map (pp . fst) $ exprVarDecls (CtxSetL e ctx) l
     vars = tuple varnames
     vardecls = tuple $ map ("ref" <+>) varnames
@@ -1038,7 +1038,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
         strip _                  = ePHolder
     -- Join function: open up both values, apply filters.
     open <- liftM2 ($$) (openTuple d ("*" <> vALUE_VAR1) post_join_vars)
-                        (openAtom d ("*" <> vALUE_VAR2) atom{atomVal = strip $ atomVal atom})
+                        (openAtom d ("*" <> vALUE_VAR2) rl join_idx $ atom{atomVal = strip $ atomVal atom})
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
@@ -1118,7 +1118,7 @@ normalizePattern d ctx e =
                                  -> ePHolder
          ETuple{..}  | all (== ePHolder) exprTupleFields
                                  -> ePHolder
-         EBinding{..}            -> exprPattern 
+         EBinding{..}            -> exprPattern
          _                       -> E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
@@ -1185,7 +1185,7 @@ mkArrangement d rel (Arrangement pattern) = do
 -- arrangement.
 mkArrangementKey :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangementKey d rel (Arrangement pattern) = do
-    let (pat, cond) = mkPatExpr d empty pattern
+    let (pat, cond) = mkPatExpr d empty CtxTop pattern
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
     let getvars :: Type -> Expr -> [Field]
@@ -1217,20 +1217,40 @@ mkArrangementKey d rel (Arrangement pattern) = do
 --
 -- 'varprefix' is a prefix to be added to variables declared in the
 -- pattern, e.g., "ref".
-mkPatExpr :: DatalogProgram -> Doc -> Expr -> (Doc, Doc)
-mkPatExpr d varprefix e = evalState (exprFoldM (mkPatExpr' d varprefix) e) 0
+mkPatExpr :: DatalogProgram -> Doc -> ECtx -> Expr -> (Doc, Doc)
+mkPatExpr d varprefix ctx (E e) = evalState (mkPatExpr' d varprefix ctx e) 0
 
-mkPatExpr' :: DatalogProgram -> Doc -> ExprNode (Doc, Doc) -> State Int (Doc, Doc)
-mkPatExpr' _ varprefix EVar{..}                  = return (varprefix <+> pp exprVar, empty)
-mkPatExpr' _ varprefix EVarDecl{..}              = return (varprefix <+> pp exprVName, empty)
-mkPatExpr' _ _         (EBool _ True)            = return ("true", empty)
-mkPatExpr' _ _         (EBool _ False)           = return ("false", empty)
-mkPatExpr' _ varprefix EInt{..}                  = do
+mkPatExpr' :: DatalogProgram -> Doc -> ECtx -> ENode -> State Int (Doc, Doc)
+mkPatExpr' _ varprefix _   EVar{..}                  = return (varprefix <+> pp exprVar, empty)
+mkPatExpr' _ varprefix _   EVarDecl{..}              = return (varprefix <+> pp exprVName, empty)
+mkPatExpr' _ _         _   (EBool _ True)            = return ("true", empty)
+mkPatExpr' _ _         _   (EBool _ False)           = return ("false", empty)
+mkPatExpr' d varprefix ctx e@EStruct{..}             = do
+    fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d varprefix (CtxStruct e ctx f) e') exprStructFields
+    let t = consType d exprConstructor
+        struct_name = name t
+        pat = mkConstructorName struct_name (fromJust $ tdefType t) exprConstructor <>
+              (braces $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) fields)
+        cond = hsep $ intersperse "&&" $ filter (/= empty)
+                                       $ map (\(_,(_,c)) -> c) fields
+    return (pat, cond)
+mkPatExpr' d varprefix ctx e@ETuple{..}              = do
+    fields <- mapIdxM (\(E f) i -> mkPatExpr' d varprefix (CtxTuple e ctx i) f) exprTupleFields
+    let pat = tupleStruct $ map (pp . fst) fields
+        cond = hsep $ intersperse "&&" $ filter (/= empty)
+                                       $ map (pp . snd) fields
+    return (pat, cond)
+mkPatExpr' _ _         _   EPHolder{}                = return ("_", empty)
+mkPatExpr' d varprefix ctx e@ETyped{..}              = mkPatExpr' d varprefix (CtxTyped e ctx) $ enode exprExpr
+mkPatExpr' d varprefix ctx e@EBinding{..}            = do
+    (pat, cond) <- mkPatExpr' d varprefix (CtxBinding e ctx) $ enode exprPattern
+    return (varprefix <+> pp exprVar <> "@" <> pat, cond)
+mkPatExpr' d varprefix ctx e                         = do
     i <- get
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
-    return (varprefix <+> vname, "*" <> vname <+> "==" <+> mkInt exprIVal)
-mkPatExpr' _ varprefix EString{..}               = do
+    return (varprefix <+> vname, (if varprefix == "ref" then "*" else empty) <> vname <+> "==" <+> mkExpr d ctx (E e) EVal)
+{-mkPatExpr' _ varprefix EString{..}               = do
     i <- get
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
@@ -1241,24 +1261,8 @@ mkPatExpr' _ varprefix EBit{..}                  = do
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, "*" <> vname <+> "==" <+> "Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)")
-mkPatExpr' d _         EStruct{..}               = return (e, cond)
-    where
-    t = consType d exprConstructor
-    struct_name = name t
-    e = rname struct_name <>
-        (if isStructType (fromJust $ tdefType t) then empty else ("::" <> rname exprConstructor)) <>
-        (braces $ hsep $ punctuate comma $ map (\(fname, (e, _)) -> pp fname <> ":" <+> e) exprStructFields)
-    cond = hsep $ intersperse "&&" $ filter (/= empty)
-                                   $ map (\(_,(_,c)) -> c) exprStructFields
-mkPatExpr' d _         ETuple{..}                = return (e, cond)
-    where
-    e = tupleStruct $ map (pp . fst) exprTupleFields
-    cond = hsep $ intersperse "&&" $ filter (/= empty)
-                                   $ map (pp . snd) exprTupleFields
-mkPatExpr' _ _         EPHolder{}                = return ("_", empty)
-mkPatExpr' _ _         ETyped{..}                = return exprExpr
-mkPatExpr' d varprefix EBinding{..}              = return (varprefix <+> pp exprVar <> "@" <> fst exprPattern, snd exprPattern)
-mkPatExpr' _ _         e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
+-}
+--mkPatExpr' _ _         e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
 
 -- Convert Datalog expression to Rust.
 -- We generate the code so that all variables are references and must
@@ -1328,6 +1332,7 @@ mkExpr' d ctx e@ESlice{..} = (mkSlice (val exprOp, w) exprH exprL, EVal)
 -- Match expression is a reference
 mkExpr' d ctx e@EMatch{..} = (doc, EVal)
     where
+    e' = exprMap (E . sel3) e
     m = {-if exprIsVarOrFieldLVal d (CtxMatchExpr (exprMap (E . sel3) e) ctx) (E $ sel3 exprMatchExpr)
            then mutref exprMatchExpr
            else ref exprMatchExpr -}
@@ -1337,9 +1342,9 @@ mkExpr' d ctx e@EMatch{..} = (doc, EVal)
           (nest' $ vcat $ punctuate comma cases)
           $$
           "}"
-    cases = map (\(c,v) -> let (match, cond) = mkPatExpr d "ref" (E $ sel3 c)
-                               cond' = if cond == empty then empty else ("if" <+> cond) in
-                           match <+> cond' <+> "=>" <+> val v) exprCases
+    cases = mapIdx (\(c,v) idx -> let (match, cond) = mkPatExpr d "ref" (CtxMatchPat e' ctx idx) (E $ sel3 c)
+                                      cond' = if cond == empty then empty else ("if" <+> cond) in
+                                  match <+> cond' <+> "=>" <+> val v) exprCases
 
 -- Variables are mutable references
 mkExpr' _ _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
