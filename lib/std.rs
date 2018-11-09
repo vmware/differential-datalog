@@ -262,6 +262,10 @@ pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
     }
 }
 
+pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
+    s.x.contains_key(k)
+}
+
 pub fn std_map_is_empty<K: Ord, V: Clone>(m: &std_Map<K,V>) -> bool {
     m.x.is_empty()
 }

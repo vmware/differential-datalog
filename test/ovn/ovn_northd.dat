@@ -32,7 +32,21 @@ insert OVN_Northbound.Logical_Switch (
 insert OVN_Northbound.Logical_Router (
     ._uuid = 0x9bc0b2b1_50f6_42e3_ae36_4fba9bb7a77c,
     .name = "lr1",
-    .ports = [0x6d7ec8cb_48f1_4b77_8e9f_ea8980dd870b],
+    .ports = [ 0x6d7ec8cb_48f1_4b77_8e9f_ea8980dd870b
+             , 0x534213b1_38c0_4dfc_9d16_0399f9adc790
+             , 0xba2e141e_9fdb_44c2_a3d0_90f2fdcd0daf],
+    .static_routes = [],
+    .enabled = true,
+    .nat = [],
+    .load_balancer = [],
+    .options = [("chassis", "690dc4b6-3a95-46ea-90f5-e46818f2f1a3")],
+    .external_ids = []
+),
+
+insert OVN_Northbound.Logical_Router (
+    ._uuid = 0x4c44d213_714c_4e95_962e_506cb2a7555f,
+    .name = "lr2",
+    .ports = [ 0x1eb682bc_ab4b_4f9a_babe_9fda17aa9d83],
     .static_routes = [],
     .enabled = true,
     .nat = [],
@@ -59,6 +73,66 @@ insert OVN_Northbound.Logical_Router_Port(
     .ipv6_ra_configs = [],
     .external_ids = []
 ),
+
+insert OVN_Southbound.Chassis(
+    ._uuid                  = 0xf80a0286_e981_4dbc_bd8e_eceaf7dc7901,
+    .name                   = "chassis1",
+    .hostname               = "host1",
+    .encaps                 = [],
+    .vtep_logical_switches  = [],
+    .nb_cfg                 = 25,
+    .external_ids           = []
+),
+
+insert OVN_Northbound.Gateway_Chassis(
+    ._uuid          = 0x51cb16e5_edb0_4c7f_9f56_73cbb62fd4c4,
+    .name           = "gateway_chassis1",
+    .chassis_name   = "chassis1",
+    .priority       = 5,
+    .external_ids   = [],
+    .options        = []
+),
+
+insert OVN_Northbound.Logical_Router_Port(
+    ._uuid = 0x534213b1_38c0_4dfc_9d16_0399f9adc790,
+    .name = "redirect_port1",
+    .gateway_chassis = [0x51cb16e5_edb0_4c7f_9f56_73cbb62fd4c4],
+    .options = [],
+    .networks = [],
+    .mac = "aa:bb:cc:dd:ee:ff",
+    .peer = [],
+    .enabled = [true],
+    .ipv6_ra_configs = [],
+    .external_ids = []
+),
+
+insert OVN_Northbound.Logical_Router_Port(
+    ._uuid              = 0xba2e141e_9fdb_44c2_a3d0_90f2fdcd0daf,
+    .name               = "redirect_port2",
+    .gateway_chassis    = [],
+    .options            = [("redirect-chassis", "chassis1")],
+    .networks           = [],
+    .mac                = "11:22:33:44:55:66",
+    .peer               = [],
+    .enabled            = [true],
+    .ipv6_ra_configs    = [],
+    .external_ids       = []
+),
+
+insert OVN_Northbound.Logical_Router_Port(
+    ._uuid              = 0x1eb682bc_ab4b_4f9a_babe_9fda17aa9d83,
+    .name               = "redirect_port3",
+    .gateway_chassis    = [],
+    .options            = [("redirect-chassis", "chassis1")],
+    .networks           = [],
+    .mac                = "12:34:56:78:9a:bc",
+    .peer               = [],
+    .enabled            = [true],
+    .ipv6_ra_configs    = [],
+    .external_ids       = []
+),
+
+
 
 insert OVN_Northbound.Logical_Switch_Port(
     ._uuid = 0x564bb317_7362_47d9_a328_8bd44600a370,

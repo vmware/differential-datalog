@@ -2,6 +2,7 @@ import OVN_Northbound as nb
 import OVN_Southbound as sb
 import ovsdb
 import allocate
+import ovn
 
 /* Meter_Band table */
 for (mb in nb.Meter_Band) {
@@ -166,7 +167,7 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
                     .tunnel_key         = 0,
                     .parent_port        = set_empty(),
                     .tag                = set_empty(), // always empty for router ports
-                    .mac                = set_singleton(string_join(set2vec(set_insert_imm(lrp.networks, lrp.mac)), " ")),
+                    .mac                = set_singleton(set_space_sep(set_insert_imm(lrp.networks, lrp.mac))),
                     .nat_addresses      = set_empty(),
                     .external_ids       = lrp.external_ids) :-
     nb.Logical_Router_Port[lrp],
@@ -191,35 +192,98 @@ sb.Out_Port_Binding(.uuid_name          = uuid_name,
         eids
     }.
 
-//relation TwoChassisWarning() :-
-//
-//
-///* Create derived port for Logical_Router_Ports with non-empty 'gateway_chassis' column */
-//sb.Out_Port_Binding(.uuid_name          = uuid2str(lrp._uuid),
-//                    .logical_port       = lrp.name,
-//                    .__type             = "chassisredirect",
-//                    .gateway_chassis    = map(uuid2str, lrp.gateway_chassis),
-//                    .options            = map_union(options1, options2),
-//                    .datapath           = uuid2str(lrouter_uuid),
-//                    .tunnel_key         = 0,
-//                    .parent_port        = set_empty(),
-//                    .tag                = set_empty(), // always empty for router ports
-//                    .mac                = set_singleton(string_join(set2vec(set_insert_imm(lrp.networks, lrp.mac)), " ")),
-//                    .nat_addresses      = set_empty(),
-//                    .external_ids       = lrp.external_ids) :-
-//    // find router ports with non-empty gateway_chassis
-//    nb.Logical_Router_Port[lrp],
-//        not set_is_empty(lrp.gateway_chassis),
-//    var name = "cr-" ++ lrp.name,
-//    // find corresponding logical router
-//    LogicalPortRouter(lrp._uuid, lrouter_uuid),
-//    lr in nb.Logical_Router(._uuid = lrouter_uuid),
-//
-//        is_some(map_get(lrp.options, "chassis")
-//             * It is an error if lrp.options:chassis exists.  Ignore the
-//          'gateway_chassis' in that case, and log a warning.
+/*
+ * Create derived port for Logical_Router_Ports with non-empty 'gateway_chassis' column.
+ */
 
+/* ChassisRedirectPort -- an intermediate table of router ports for which derived ports
+   must be created in SB. */
+relation ChassisRedirectPort(lrp: nb.Logical_Router_Port, lr_uuid: uuid)
 
+ChassisRedirectPort(lrp1, lr._uuid) :-
+    // For each router, find router ports with non-empty gateway_chassis or a "redirect-chassis" option.
+    nb.Logical_Router[lr],
+    LogicalPortRouter(lrp_uuid, lr._uuid),
+    lrp in nb.Logical_Router_Port(._uuid = lrp_uuid),
+        (not set_is_empty(lrp.gateway_chassis)) or map_contains_key(lrp.options, "redirect-chassis"),
+    // if both gateway_chassis and options:redirect-chassis are present, log a warning and
+    // ignore options:redirect-chassis.
+    // (here we just log the warning; subsequent rules will ignore options:redirect-chassis)
+    if ((not set_is_empty(lrp.gateway_chassis)) and map_contains_key(lrp.options, "redirect-chassis")) {
+        warn($"logical router port ${lrp.name} has both options:" ++
+              "redirect-chassis and gateway_chassis populated "   ++
+              "redirect-chassis will be ignored in favour of gateway chassis");
+        true
+    } else { true },
+    // It is an error if lrp.options:chassis exists.
+    match (map_get(lrp.options, "chassis")) {
+        Some{_} -> {
+            warn("Bad configuration: redirect-chassis configured on port ${lrp.name} on L3 gateway router");
+            false
+        },
+        _ -> true
+    },
+    // It is an error if a given Logical_Router has more than one such Logical_Router_Port.
+    // If that happens, select an arbitrary one and log a warning.
+    Aggregate((lr), lrps = group2set(lrp)),
+    Some{var lrp1: nb.Logical_Router_Port} = match (set_size(lrps)) {
+        0 -> None,
+        1 -> set_nth(lrps,0),
+        _ -> {
+            warn($"Bad configuration: multiple ports with redirect-chassis on same logical router ${lr.name}");
+            set_nth(lrps,0)
+        }
+    }.
+
+/* Create derived ports */
+sb.Out_Port_Binding(.uuid_name          = "cr" ++ uuid2str(lrp._uuid),
+                    .logical_port       = lrp.name,
+                    .__type             = "chassisredirect",
+                    .gateway_chassis    = gateway_chassis,
+                    .options            = map_singleton("distributed-port", "cr-" ++ lrp.name),
+                    .datapath           = uuid2str(lr_uuid),
+                    .tunnel_key         = 0,
+                    .parent_port        = set_empty(),
+                    .tag                = set_empty(),  //always empty for router ports
+                    .mac                = set_singleton(set_space_sep(set_insert_imm(lrp.networks, lrp.mac))),
+                    .nat_addresses      = set_empty(),
+                    .external_ids       = lrp.external_ids) :-
+    ChassisRedirectPort(lrp, lr_uuid),
+    var gateway_chassis = if (not set_is_empty(lrp.gateway_chassis)) {
+        set_map_uuid2str(lrp.gateway_chassis)
+    } else {
+        set_singleton(uuid2str(lr_uuid))
+    }.
+
+/* Create sb.Gateway_Chassis for derived ports.
+ * - For derived ports with non-empty gateway_chassis, clone nb.Gateway_Chassis to
+ *   sb.Gateway_Chassis, replacing chassis_name's with matching sb.Chassis uuid's.
+ * - For derived ports with options:redirect-chassis, synthesize a fresh Gateway_Chassis
+ */
+sb.Out_Gateway_Chassis(.uuid_name       = uuid2str(gateway_chassis_uuid),
+                       .name            = gw_chassis.name,
+                       .chassis         = set_singleton(chassis_uuid),
+                       .priority        = gw_chassis.priority,
+                       .external_ids    = gw_chassis.external_ids,
+                       .options         = gw_chassis.options) :-
+    ChassisRedirectPort(lrp, lr_uuid),
+    var gateway_chassis_uuid = FlatMap(lrp.gateway_chassis),
+    gw_chassis in nb.Gateway_Chassis(._uuid = gateway_chassis_uuid),
+    sb.Chassis(._uuid = chassis_uuid, .name = gw_chassis.chassis_name).
+
+sb.Out_Gateway_Chassis(.uuid_name       = uuid2str(lr_uuid),
+                       .name            = $"${lrp.name}_${redirect_chassis}",
+                       .chassis         = set_singleton(chassis_uuid),
+                       .priority        = 0,
+                       .external_ids    = lrp.external_ids,
+                       .options         = map_empty()) :-
+    ChassisRedirectPort(lrp, lr_uuid),
+    set_is_empty(lrp.gateway_chassis),
+    Some{var redirect_chassis} = map_get(lrp.options, "redirect-chassis"),
+    sb.Chassis(._uuid = chassis_uuid, .name = redirect_chassis).
+
+/* Add allocated qdisc_queue_id and tunnel key to Port_Binding.
+ */
 sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
                          .logical_port       = pbinding.logical_port,
                          .__type             = pbinding.__type,
@@ -241,7 +305,7 @@ sb.OutProxy_Port_Binding(.uuid_name          = pbinding.uuid_name,
     }.
 
 /*
- * SB_Global (pull latest OVS schema; copy nb_cfg and options from NB)
+ * SB_Global copy nb_cfg and options from NB
  */
 
 /*
@@ -578,8 +642,8 @@ PortTunKeyAllocation(port, tunkey) :-
  */
 
 function port_has_qos_params(opts: Map<string, string>): bool = {
-    is_some(map_get(opts, "qos_max_rate")) or
-    is_some(map_get(opts, "qos_burst"))
+    map_contains_key(opts, "qos_max_rate") or
+    map_contains_key(opts, "qos_burst")
 }
 
 
