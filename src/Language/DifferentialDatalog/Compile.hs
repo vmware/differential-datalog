@@ -1225,6 +1225,11 @@ mkPatExpr' _ varprefix _   EVar{..}                  = return (varprefix <+> pp 
 mkPatExpr' _ varprefix _   EVarDecl{..}              = return (varprefix <+> pp exprVName, empty)
 mkPatExpr' _ _         _   (EBool _ True)            = return ("true", empty)
 mkPatExpr' _ _         _   (EBool _ False)           = return ("false", empty)
+mkPatExpr' _ varprefix _   EString{..}               = do
+    i <- get
+    put $ i+1
+    let vname = pp $ "_" <> pp i <> "_"
+    return (varprefix <+> vname, vname <+> ".str() ==" <+> "\"" <> pp exprString <> "\"")
 mkPatExpr' d varprefix ctx e@EStruct{..}             = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d varprefix (CtxStruct e ctx f) e') exprStructFields
     let t = consType d exprConstructor
@@ -1250,19 +1255,6 @@ mkPatExpr' d varprefix ctx e                         = do
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
     return (varprefix <+> vname, (if varprefix == "ref" then "*" else empty) <> vname <+> "==" <+> mkExpr d ctx (E e) EVal)
-{-mkPatExpr' _ varprefix EString{..}               = do
-    i <- get
-    put $ i+1
-    let vname = pp $ "_" <> pp i <> "_"
-    return (varprefix <+> vname, vname <+> ".str() ==" <+> "\"" <> pp exprString <> "\"")
-mkPatExpr' _ _         EBit{..} | exprWidth <= 128= return (pp exprIVal, empty)
-mkPatExpr' _ varprefix EBit{..}                  = do
-    i <- get
-    put $ i+1
-    let vname = pp $ "_" <> pp i <> "_"
-    return (varprefix <+> vname, "*" <> vname <+> "==" <+> "Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)")
--}
---mkPatExpr' _ _         e                         = error $ "Compile.mkPatExpr' " ++ (show $ exprMap fst e)
 
 -- Convert Datalog expression to Rust.
 -- We generate the code so that all variables are references and must
