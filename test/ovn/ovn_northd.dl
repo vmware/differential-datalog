@@ -410,6 +410,13 @@ sb.Out_Port_Group(.name = pg_name, .ports = port_names) :-
 /*
  * MAC binding: records inserted by hypervisors; northd removes records for deleted logical ports
  */
+sb.Out_MAC_Binding (.logical_port =   mb.logical_port,
+                    .ip           =   mb.ip,
+                    .mac          =   mb.mac,
+                    .datapath     =   datapath_name) :-
+    sb.MAC_Binding[mb],
+    sb.UUIDMap_Datapath_Binding(datapath_name, Left{mb.datapath}).
+
 
 /*
  * DHCP options: fixed table

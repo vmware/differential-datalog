@@ -1,8 +1,10 @@
 OVN_Southbound_DeltaMinus_Datapath_Binding:
 OVN_Southbound.DeltaMinus_Datapath_Binding{8820728388062355172047994593891609873}
 
+OVN_Southbound_DeltaMinus_MAC_Binding:
+OVN_Southbound.DeltaMinus_MAC_Binding{257847232922800482427539974900305656483}
+
 OVN_Southbound_DeltaPlus_Datapath_Binding:
-OVN_Southbound.DeltaPlus_Datapath_Binding{"5f55a7b2-6c50-2e96-954e-4c7113d2444c",2,std_Map { x: {"logical-router": "5f55a7b2-6c50-2e96-954e-4c7113d2444c", "name": "lr2"} }}
 OVN_Southbound.DeltaPlus_Datapath_Binding{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b",3,std_Map { x: {"logical-router": "7ca7b79b-ba4f-36ae-e342-f650b1b2c09b", "name": "lr1"} }}
 OVN_Southbound.DeltaPlus_Datapath_Binding{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206",4,std_Map { x: {"logical-switch": "906d1cfd-7661-a2a0-a24c-a17e7ccfa206", "name": "ls1", "name2": "neutron_network_1"} }}
 
@@ -25,10 +27,10 @@ OVN_Southbound.DeltaPlus_Meter_Band{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206","drop
 OVN_Southbound_DeltaPlus_Port_Binding:
 OVN_Southbound.DeltaPlus_Port_Binding{"0a22195e-dd79-e5a4-574f-31b561b02144","lsp2","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3", "peer": "lrp1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"70a30046-d48b-28a3-d947-627317b34b56","lsp1","",std_Set { x: {} },std_Map { x: {"option1": "val_option1"} },std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"10.10.10.101", "10.10.10.102", "fe80::250:56ff:fec0:8"} },std_Set { x: {} },std_Map { x: {"name": "lsp1_neutron_port", "neutron:port_name": "lsp1_neutron_port"} }}
-OVN_Southbound.DeltaPlus_Port_Binding{"839daa17-da9f-beba-9a4f-4babbc82b61e","redirect_port3","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"} },std.Right{"5f55a7b2-6c50-2e96-954e-4c7113d2444c"},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"12:34:56:78:9a:bc"} },std_Set { x: {} },std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Port_Binding{"839daa17-da9f-beba-9a4f-4babbc82b61e","redirect_port3","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"} },std.Left{126721406131080520775202535181152044108},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"12:34:56:78:9a:bc"} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"90c7adf9-9903-169d-fc4d-c038b1134253","redirect_port1","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"} },std.Right{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b"},1,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"aa:bb:cc:dd:ee:ff"} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"af0dcdfd-f290-d0a3-c244-db9f1e142eba","redirect_port2","l3gateway",std_Set { x: {} },std_Map { x: {"l3gateway-chassis": "690dc4b6-3a95-46ea-90f5-e46818f2f1a3"} },std.Right{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b"},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"11:22:33:44:55:66"} },std_Set { x: {} },std_Map { x: {} }}
-OVN_Southbound.DeltaPlus_Port_Binding{"cr839daa17-da9f-beba-9a4f-4babbc82b61e","redirect_port3","chassisredirect",std_Set { x: {std.Right{"5f55a7b2-6c50-2e96-954e-4c7113d2444c"}} },std_Map { x: {"distributed-port": "cr-redirect_port3"} },std.Right{"5f55a7b2-6c50-2e96-954e-4c7113d2444c"},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"12:34:56:78:9a:bc"} },std_Set { x: {} },std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Port_Binding{"cr839daa17-da9f-beba-9a4f-4babbc82b61e","redirect_port3","chassisredirect",std_Set { x: {std.Right{"5f55a7b2-6c50-2e96-954e-4c7113d2444c"}} },std_Map { x: {"distributed-port": "cr-redirect_port3"} },std.Left{126721406131080520775202535181152044108},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"12:34:56:78:9a:bc"} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"cr90c7adf9-9903-169d-fc4d-c038b1134253","redirect_port1","chassisredirect",std_Set { x: {std.Right{"c4d42fb6-cb73-569f-7f4c-b0ede516cb51"}} },std_Map { x: {"distributed-port": "cr-redirect_port1"} },std.Right{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b"},3,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"aa:bb:cc:dd:ee:ff"} },std_Set { x: {} },std_Map { x: {} }}
 
 OVN_Southbound_DeltaPlus_SB_Global:

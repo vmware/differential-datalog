@@ -72,6 +72,12 @@ insert OVN_Southbound.Datapath_Binding(
     .external_ids = [("logical-switch", "06a2cf7c-7ea1-4ca2-a0a2_6176fd1c6d12")]
 ),
 
+insert OVN_Southbound.Datapath_Binding(
+    ._uuid = 0x5f55a7b2_6c50_2e96_954e_4c7113d2444c,
+    .tunnel_key = 2,
+    .external_ids = [("logical-router", "5f55a7b2-6c50-2e96-954e-4c7113d2444c"), ("name", "lr2") ]
+),
+
 insert OVN_Northbound.Logical_Router_Port(
     ._uuid = 0x6d7ec8cb_48f1_4b77_8e9f_ea8980dd870b,
     .name = "lrp1",
@@ -195,6 +201,22 @@ insert OVN_Southbound.Port_Binding (
     .mac = [],
     .nat_addresses = [],
     .external_ids = []
+),
+
+insert OVN_Southbound.MAC_Binding(
+    ._uuid          = 0xc1fb9219_27c9_4eb8_8ed5_0fe7a5647aa3,
+    .logical_port   = "lsp1",
+    .ip             = "192.168.0.1",
+    .mac            = "fe:dc:ba:98:76:54",
+    .datapath       = 0x06a2cf7c_7ea1_4ca2_a0a2_6176fd1c6d11
+),
+
+insert OVN_Southbound.MAC_Binding(
+    ._uuid          = 0x6972b874_c267_4de9_9b4a_0566d5fe3597,
+    .logical_port   = "lsp2",
+    .ip             = "192.168.0.2",
+    .mac            = "fe:dc:ba:98:76:55",
+    .datapath       = 0x5f55a7b2_6c50_2e96_954e_4c7113d2444c
 );
 
 commit;
