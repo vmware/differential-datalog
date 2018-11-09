@@ -381,7 +381,7 @@ exprValidate1 d _ ctx (EApply p f as)     = do
     fun <- checkFunc p d f
     check (length as == length (funcArgs fun)) p
           "Number of arguments does not match function declaration"
-    mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a) 
+    mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
           $ zip as (map argMut $ funcArgs fun)
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
