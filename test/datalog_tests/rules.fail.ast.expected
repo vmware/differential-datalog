@@ -34,6 +34,7 @@ function std.is_some (x: std.Option<'A>): bool =
         std.Some{.x=_} -> true,
         _ -> false
     }
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
 extern function std.map_empty (): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
 extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
@@ -324,6 +325,10 @@ pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
         None => std_Option::std_None,
         Some(v) => std_Option::std_Some{x: (*v).clone()}
     }
+}
+
+pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
+    s.x.contains_key(k)
 }
 
 pub fn std_map_is_empty<K: Ord, V: Clone>(m: &std_Map<K,V>) -> bool {
