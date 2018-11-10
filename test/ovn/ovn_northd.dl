@@ -402,6 +402,10 @@ sb.Out_Port_Group(.name = pg_name, .ports = port_names) :-
     nb.Logical_Switch_Port(._uuid = port_uuid, .name = port_name),
     Aggregate((pg_name), port_names = group2set(port_name)).
 
+sb.Out_Port_Group(.name = pg_name, .ports = set_empty()) :-
+    nb.Port_Group(.name = pg_name, .ports = set_empty()).
+
+
 /*
  * Multicast_Group: two rows per logical switch, one for flooding and one for packets with unknown
  * destinations.
@@ -429,6 +433,27 @@ sb.Out_MAC_Binding (.logical_port =   mb.logical_port,
 /*
  * DNS: copied from NB + datapaths column pointer to LS datapaths that use the record
  */
+
+relation LogicalSwitchDNS(ls_uuid: uuid, dns_uuid: uuid)
+
+/* Flatten the list of dns_records in Logical_Switch */
+LogicalSwitchDNS(ls._uuid, dns_uuid) :-
+    nb.Logical_Switch[ls],
+    var dns_uuid = FlatMap(ls.dns_records).
+
+sb.Out_DNS(.records      = nbdns.records,
+           .datapaths    = datapaths,
+           .external_ids = nbdns.external_ids) :-
+    nb.DNS[nbdns],
+    LogicalSwitchDNS(ls_uuid, nbdns._uuid),
+    Aggregate((nbdns), datapaths = group2set(uuid2str(ls_uuid))).
+
+sb.Out_DNS(.records      = nbdns.records,
+           .datapaths    = set_empty(),
+           .external_ids = nbdns.external_ids) :-
+    nb.DNS[nbdns],
+    not LogicalSwitchDNS(_, nbdns._uuid).
+
 
 /*
  * RBAC_Role: fixed

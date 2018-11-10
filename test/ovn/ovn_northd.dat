@@ -35,7 +35,7 @@ insert OVN_Northbound.Logical_Switch (
     .acls = [],
     .qos_rules = [],
     .load_balancer = [],
-    .dns_records = [],
+    .dns_records = [0xf85fdfb3_235c_436e_9648_5bf86ecea25d],
     .other_config = [],
     .external_ids = [("neutron:network_name","neutron_network_1")]
 ),
@@ -217,6 +217,12 @@ insert OVN_Southbound.MAC_Binding(
     .ip             = "192.168.0.2",
     .mac            = "fe:dc:ba:98:76:55",
     .datapath       = 0x5f55a7b2_6c50_2e96_954e_4c7113d2444c
+),
+
+insert OVN_Northbound.DNS(
+    ._uuid          = 0xf85fdfb3_235c_436e_9648_5bf86ecea25d,
+    .records        = [("dns_key1", "dns_val1")],
+    .external_ids   = []
 );
 
 commit;
