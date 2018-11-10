@@ -411,6 +411,19 @@ sb.Out_Port_Group(.name = pg_name, .ports = set_empty()) :-
  * destinations.
  */
 
+// TODO: check that Multicast_Group.ports should not include derived ports
+sb.Out_Multicast_Group (.datapath   = datapath,
+                        .name       = "_MC_flood",
+                        .tunnel_key = 65535,
+                        .ports      = ports),
+sb.Out_Multicast_Group (.datapath   = datapath,
+                        .name       = "_MC_unknown",
+                        .tunnel_key = 65534,
+                        .ports      = ports) :-
+    nb.Logical_Switch[ls],
+    var datapath = uuid2str(ls._uuid),
+    var ports = set_map_uuid2str(ls.ports).
+
 /*
  * MAC binding: records inserted by hypervisors; northd removes records for deleted logical ports
  */
