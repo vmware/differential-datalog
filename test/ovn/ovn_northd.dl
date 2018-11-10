@@ -463,10 +463,6 @@ sb.Out_DNS(.records      = nbdns.records,
  * RBAC_Permission: fixed
  */
 
-/*
- * Gateway_Chassis: row per NB router ports that represent GW chassis
- */
-
 typedef Direction = IN | OUT
 
 typedef PipelineStage = PORT_SEC_L2
