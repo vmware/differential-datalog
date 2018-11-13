@@ -467,14 +467,76 @@ sb.Out_DNS(.records      = nbdns.records,
     nb.DNS[nbdns],
     not LogicalSwitchDNS(_, nbdns._uuid).
 
+/*
+ * RBAC_Permission: fixed
+ */
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "7df3749a-1754-4a78-afa4-3abf526fe510",
+    .table          = "Chassis",
+    .authorization  = set_singleton("name"),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "nb_cfg");
+            set_insert(s, "external_ids");
+            set_insert(s, "encaps");
+            set_insert(s, "vtep_logical_switches");
+            s
+        }
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "94bec860-431e-4d95-82e7-3b75d8997241",
+    .table          = "Encap",
+    .authorization  = set_singleton("chassis_name"),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "type");
+            set_insert(s, "options");
+            set_insert(s, "ip");
+            s
+        }
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "d8ceff1a-2b11-48bd-802f-4a991aa4e908",
+    .table          = "Port_Binding",
+    .authorization  = set_singleton(""),
+    .insert_delete  = false,
+    .update         = set_singleton("chassis")
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "6ffdc696-8bfb-4d82-b620-a00d39270b2f",
+    .table          = "MAC_Binding",
+    .authorization  = set_singleton(""),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "logical_port");
+            set_insert(s, "ip");
+            set_insert(s, "mac");
+            set_insert(s, "datapath");
+            s
+        }
+).
 
 /*
  * RBAC_Role: fixed
  */
-
-/*
- * RBAC_Permission: fixed
- */
+sb.Out_RBAC_Role (
+    .name        = "ovn-controller",
+    .permissions = {
+            var m: Map<string, string> = map_empty();
+            map_insert(m, "Chassis"     , "7df3749a-1754-4a78-afa4-3abf526fe510");
+            map_insert(m, "Encap"       , "94bec860-431e-4d95-82e7-3b75d8997241");
+            map_insert(m, "Port_Binding", "d8ceff1a-2b11-48bd-802f-4a991aa4e908");
+            map_insert(m, "MAC_Binding" , "6ffdc696-8bfb-4d82-b620-a00d39270b2f");
+            m
+        }
+).
 
 typedef Direction = IN | OUT
 

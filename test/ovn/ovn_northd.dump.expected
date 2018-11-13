@@ -40,6 +40,15 @@ OVN_Southbound.DeltaPlus_Port_Binding{"af0dcdfd-f290-d0a3-c244-db9f1e142eba","re
 OVN_Southbound.DeltaPlus_Port_Binding{"cr839daa17-da9f-beba-9a4f-4babbc82b61e","redirect_port3","chassisredirect",std_Set { x: {std.Right{"5f55a7b2-6c50-2e96-954e-4c7113d2444c"}} },std_Map { x: {"distributed-port": "cr-redirect_port3"} },std.Left{126721406131080520775202535181152044108},2,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"12:34:56:78:9a:bc"} },std_Set { x: {} },std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Port_Binding{"cr90c7adf9-9903-169d-fc4d-c038b1134253","redirect_port1","chassisredirect",std_Set { x: {std.Right{"c4d42fb6-cb73-569f-7f4c-b0ede516cb51"}} },std_Map { x: {"distributed-port": "cr-redirect_port1"} },std.Right{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b"},3,std_Set { x: {} },std_Set { x: {} },std_Set { x: {"aa:bb:cc:dd:ee:ff"} },std_Set { x: {} },std_Map { x: {} }}
 
+OVN_Southbound_DeltaPlus_RBAC_Permission:
+OVN_Southbound.DeltaPlus_RBAC_Permission{"6ffdc696-8bfb-4d82-b620-a00d39270b2f","MAC_Binding",std_Set { x: {""} },true,std_Set { x: {"datapath", "ip", "logical_port", "mac"} }}
+OVN_Southbound.DeltaPlus_RBAC_Permission{"7df3749a-1754-4a78-afa4-3abf526fe510","Chassis",std_Set { x: {"name"} },true,std_Set { x: {"encaps", "external_ids", "nb_cfg", "vtep_logical_switches"} }}
+OVN_Southbound.DeltaPlus_RBAC_Permission{"94bec860-431e-4d95-82e7-3b75d8997241","Encap",std_Set { x: {"chassis_name"} },true,std_Set { x: {"ip", "options", "type"} }}
+OVN_Southbound.DeltaPlus_RBAC_Permission{"d8ceff1a-2b11-48bd-802f-4a991aa4e908","Port_Binding",std_Set { x: {""} },false,std_Set { x: {"chassis"} }}
+
+OVN_Southbound_DeltaPlus_RBAC_Role:
+OVN_Southbound.DeltaPlus_RBAC_Role{"ovn-controller",std_Map { x: {"Chassis": std.Right{"7df3749a-1754-4a78-afa4-3abf526fe510"}, "Encap": std.Right{"94bec860-431e-4d95-82e7-3b75d8997241"}, "MAC_Binding": std.Right{"6ffdc696-8bfb-4d82-b620-a00d39270b2f"}, "Port_Binding": std.Right{"d8ceff1a-2b11-48bd-802f-4a991aa4e908"}} }}
+
 OVN_Southbound_DeltaPlus_SB_Global:
 OVN_Southbound.DeltaPlus_SB_Global{1234,std_Map { x: {} },std_Set { x: {} },std_Set { x: {} },std_Map { x: {"option1": "opt_value1"} }}
 
