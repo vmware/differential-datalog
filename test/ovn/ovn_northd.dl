@@ -469,12 +469,77 @@ sb.Out_DNS(.records      = nbdns.records,
 
 
 /*
- * RBAC_Role: fixed
- */
-
-/*
  * RBAC_Permission: fixed
  */
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "7df3749a-1754-4a78-afa4-3abf526fe510",
+    .table          = "Chassis",
+    .authorization  = set_singleton("name"),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "nb_cfg");
+            set_insert(s, "external_ids");
+            set_insert(s, "encaps");
+            set_insert(s, "vtep_logical_switches");
+            s
+        }
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "94bec860-431e-4d95-82e7-3b75d8997241",
+    .table          = "Encap",
+    .authorization  = set_singleton("chassis_name"),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "type");
+            set_insert(s, "options");
+            set_insert(s, "ip");
+            s
+        }
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "d8ceff1a-2b11-48bd-802f-4a991aa4e908",
+    .table          = "Port_Binding",
+    .authorization  = set_singleton(""),
+    .insert_delete  = false,
+    .update         = set_singleton("chassis")
+).
+
+sb.Out_RBAC_Permission (
+    .uuid_name      = "6ffdc696-8bfb-4d82-b620-a00d39270b2f",
+    .table          = "MAC_Binding",
+    .authorization  = set_singleton(""),
+    .insert_delete  = true,
+    .update         = {
+            var s: Set<string> = set_empty();
+            set_insert(s, "logical_port");
+            set_insert(s, "ip");
+            set_insert(s, "mac");
+            set_insert(s, "datapath");
+            s
+        }
+).
+
+/*
+ * RBAC_Role: fixed
+ */
+sb.Out_RBAC_Role (
+    .name        = "ovn-controller",
+    .permissions = {
+            var m: Map<string, string> = map_empty();
+            map_insert(m, "Chassis"     , "7df3749a-1754-4a78-afa4-3abf526fe510");
+            map_insert(m, "Encap"       , "94bec860-431e-4d95-82e7-3b75d8997241");
+            map_insert(m, "Port_Binding", "d8ceff1a-2b11-48bd-802f-4a991aa4e908");
+            map_insert(m, "MAC_Binding" , "6ffdc696-8bfb-4d82-b620-a00d39270b2f");
+            m
+        }
+).
+
+
 
 typedef Direction = IN | OUT
 
@@ -611,12 +676,6 @@ function is_enabled(s: Set<bool>): bool = {
     set_nth(s, 0) != Some{false}
 }
 
-/* extract Ethernet addresses only */
-function port_security_eth_addresses(ps: Set<string>): Set<string> = {
-    // TODO: write proper implementation
-    ps
-}
-
 // space-separated vector of strings
 function vec_space_sep(items: Vec<string>): string = {
     string_join(items, " ")
@@ -627,6 +686,32 @@ function set_space_sep(items: Set<string>): string = {
     vec_space_sep(set2vec(items))
 }
 
+/*
+ *
+ */
+typedef lport_addresses = LPortAddress {
+    ea_s: string,
+    ea: eth_addr,
+    ipv4_addrs: Vec<ipv4_netaddr>,
+    ipv6_addrs: Vec<ipv6_netaddr>
+}
+
+relation LSPortPSAddresses(lsport:   uuid,
+                           ps_addrs: lport_addresses)
+
+relation LSPortPSEthAddresses(lsport: uuid,
+                              addrs:  Set<string>)
+
+relation LSPortAddresses(lsport: uuid,
+                         addrs:  lport_addresses)
+
+relation LSPortHasPSAddresses(lsport: uuid) :-
+    LSPortPSAddresses(lsport, _)
+
+
+// TODO
+
+
 /* Logical switch ingress table 0: ingress port security - L2 (priority 50)
                   ingress table 1: ingress port security - IP (priority 90 and 80)
                   ingress table 2: ingress port security - ND (priority 90 and 80) */
@@ -634,17 +719,18 @@ function set_space_sep(items: Set<string>): string = {
 /* Logical VLANs not supported */
 for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
-        var lsname = uuid2str(lps.lswitch) in
-        var __match = if (set_is_empty(lsp.port_security)) {
-                $"inport == ${lsp.name}"
-            } else {
-                $"inport == ${lsp.name} && eth.src == {${set_space_sep(port_security_eth_addresses(lsp.port_security))}}"
-            } in
-        var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
-                None -> "next;",
-                Some{id} -> $"set_queue(${id}); next;"
-            } in
+      var lsname = uuid2str(lps.lswitch) in
+      for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
         for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
+            var __match = if (set_is_empty(lsp.port_security)) {
+                    $"inport == ${lsp.name}"
+                } else {
+                    $"inport == ${lsp.name} && eth.src == {${set_space_sep(lsp_eth_addrs.addrs)}}"
+                } in
+            var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
+                    None -> "next;",
+                    Some{id} -> $"set_queue(${id}); next;"
+                } in
             sb.Out_Logical_Flow(
                 .logical_datapath = lsname,
                 .pipeline         = "ingress",
@@ -652,10 +738,53 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
                 .priority         = 50,
                 .__match          = __match,
                 .actions          = actions,
-                .external_ids     = map_empty())
+                .external_ids     = map_empty());
         }
+      }
     }
 }
+
+        /**
+         * Build port security constraints on IPv4 and IPv6 src and dst fields
+         * and add logical flows to S_SWITCH_(IN/OUT)_PORT_SEC_IP stage.
+         *
+         * For each port security of the logical port, following
+         * logical flows are added
+         *   - If the port security has IPv4 addresses,
+         *     - Priority 90 flow to allow IPv4 packets for known IPv4 addresses
+         *
+         *   - If the port security has IPv6 addresses,
+         *     - Priority 90 flow to allow IPv6 packets for known IPv6 addresses
+         *
+         *   - If the port security has IPv4 addresses or IPv6 addresses or both
+         *     - Priority 80 flow to drop all IPv4 and IPv6 traffic
+         */
+
+for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
+    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
+      for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
+        var lsname = uuid2str(lps.lswitch) in
+        for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
+            for (ps_addrs in LSPortPSAddresses(.lsport = lsp._uuid)) {
+                if (vec_len(ps_addrs.ipv4_addrs) > 0) {
+                    var __match = $[|inport == ${json_string_escape(lsp.name)}
+ && eth.src == ${ps_addrs.ea_s}
+ && ip4.src == 0.0.0.0
+ && ip4.dst == 255.255.255.255
+ && udp.src == 68 && udp.dst == 67 |]
+                }
+            }
+/*        if (op->nbsp->n_port_security) {
+            build_port_security_ip(P_IN, op, lflows);
+            build_port_security_nd(op, lflows);
+        }*/
+
+
+        }
+      }
+    }
+}
+
 
 /*
  * Datapath tunnel key allocation:
@@ -818,3 +947,100 @@ QueueIDAllocation(port, Some{qid}) :-
     not AllocatedQIDs(chassis, _),
     var allocations = FlatMap(adjust_allocation_u64(map_empty(): Map<string, integer>, ports, 64'hf000)),
     (var port, var qid) = allocations.
+
+
+///*
+// * IPAM (IP address management) and MACAM (MAC address management)
+// *
+// * IPAM generally stands for IP address management.  In non-virtualized
+// * world, MAC addresses come with the hardware.  But, with virtualized
+// * workloads, they need to be assigned and managed.  This function
+// * does both IP address management (ipam) and MAC address management
+// * (macam).
+// */
+//
+//
+///* If the switch's other_config:subnet is set, allocate new addresses for
+// * ports that have the "dynamic" keyword in their addresses column.
+// */
+//
+///* Do not allocate addresses for logical switch ports that have a peer. */
+//
+///* If there's more than one dynamic addresses in port->addresses, log a warning
+//   and only allocate the first dynamic address */
+//
+//      VLOG_WARN_RL(&rl, "More than one dynamic address "
+//              "configured for logical switch port '%s'",
+//              nbsp->name);
+//
+////>> * MAC addresses suffixes in OUIs managed by OVN"s MACAM (MAC Address
+////>> Management) system, in the range 1...0xfffffe.
+////>> * IPv4 addresses in ranges managed by OVN's IPAM (IP Address Management)
+////>> system.  The range varies depending on the size of the subnet.
+////>>
+////>> Are these `dynamic_addresses` in OVN_Northbound.Logical_Switch_Port`?
+//
+///* Returns true if specified address specifies a dynamic address,
+// * supporting the following formats:
+// *
+// *    "dynamic":
+// *        Both MAC and IP are to be allocated dynamically.
+// *
+// *    "xx:xx:xx:xx:xx:xx dynamic":
+// *        Use specified MAC address, but allocate an IP address
+// *        dynamically.
+// */
+///*bool
+//is_dynamic_lsp_address(const char *address)
+//{
+//    struct eth_addr ea;
+//    int n;
+//    return (!strcmp(address, "dynamic")
+//            || (ovs_scan(address, ETH_ADDR_SCAN_FMT" dynamic%n",
+//                         ETH_ADDR_SCAN_ARGS(ea), &n) && address[n] == '\0'));
+//}*/
+//
+//
+///* Currently used MAC addresses, including:
+// * 
+// */
+//relation AllocatedTunKeys(keys: Set<integer>)
+//
+//AllocatedTunKeys(keys) :-
+//    sb.Datapath_Binding(.tunnel_key = tunkey),
+//    Aggregate((), keys = group2set(tunkey)).
+//
+//// Datapath_Binding's not yet in the Realized table
+//relation NotYetAllocatedTunKeys(datapaths: Vec<string>)
+//
+//NotYetAllocatedTunKeys(datapaths) :-
+//    sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
+//                                .id = Right{_}),
+//    datapath != "",
+//    Aggregate((), datapaths = group2vec(datapath)).
+//
+//// Perform the allocation
+//relation TunKeyAllocation(datapath: string, tunkey: integer)
+//
+//// transfer existing allocations from the realized table
+//TunKeyAllocation(datapath, tunkey) :-
+//     sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
+//                                 .id = Left{uuid}),
+//     sb.Datapath_Binding(._uuid = uuid,
+//                         .tunnel_key = tunkey).
+//
+//// Case 1: AllocatedTunKeys relation is not empty (i.e., contains
+//// a single record that stores a set of allocated keys)
+//TunKeyAllocation(datapath, tunkey) :-
+//    NotYetAllocatedTunKeys(unallocated),
+//    AllocatedTunKeys(allocated),
+//    var allocation = FlatMap(allocate_u64(allocated, unallocated, 64'hfffffffff)),
+//    (var datapath, var tunkey) = allocation.
+//
+//// Case 2: AllocatedTunKeys relation is empty
+//TunKeyAllocation(datapath, tunkey) :-
+//    NotYetAllocatedTunKeys(unallocated),
+//    not AllocatedTunKeys(_),
+//    var allocation = FlatMap(allocate_u64(set_empty(), unallocated, 64'hfffffffff)),
+//    (var datapath, var tunkey) = allocation.
+//
