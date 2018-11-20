@@ -815,6 +815,75 @@ impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
     }
 }
 
+
+macro_rules! decl_arr_from_record {
+    ( $i:tt ) => {
+        impl<T:FromRecord+Default> FromRecord for [T;$i] {
+            fn from_record(val: &Record) -> Result<Self, String> {
+                let vec = Vec::from_record(val)?;
+                let mut arr = <[T;$i]>::default();
+                if vec.len() != $i {
+                    return Result::Err(format!("cannot convert {:?} to array of length {}", *val, $i))
+                };
+                let mut idx = 0;
+                for v in vec.into_iter() {
+                    arr[idx] = v;
+                    idx = idx + 1;
+                };
+                Ok(arr)
+            }
+        }
+
+        impl<T:IntoRecord+Clone> IntoRecord for [T;$i] {
+            fn into_record(self) -> Record {
+                Record::Array(CollectionKind::Vector, self.into_iter().map(|x:&T|(*x).clone().into_record()).collect())
+            }
+        }
+    };
+}
+
+decl_arr_from_record!(1);
+decl_arr_from_record!(2);
+decl_arr_from_record!(3);
+decl_arr_from_record!(4);
+decl_arr_from_record!(5);
+decl_arr_from_record!(6);
+decl_arr_from_record!(7);
+decl_arr_from_record!(8);
+decl_arr_from_record!(9);
+decl_arr_from_record!(10);
+decl_arr_from_record!(11);
+decl_arr_from_record!(12);
+decl_arr_from_record!(13);
+decl_arr_from_record!(14);
+decl_arr_from_record!(15);
+decl_arr_from_record!(16);
+decl_arr_from_record!(17);
+decl_arr_from_record!(18);
+decl_arr_from_record!(19);
+decl_arr_from_record!(20);
+decl_arr_from_record!(21);
+decl_arr_from_record!(22);
+decl_arr_from_record!(23);
+decl_arr_from_record!(24);
+decl_arr_from_record!(25);
+decl_arr_from_record!(26);
+decl_arr_from_record!(27);
+decl_arr_from_record!(28);
+decl_arr_from_record!(29);
+decl_arr_from_record!(30);
+decl_arr_from_record!(31);
+decl_arr_from_record!(32);
+
+#[test]
+fn test_array() {
+    assert_eq!(<[bool;2]>::from_record(&Record::Array(CollectionKind::Vector, vec![Record::Bool(true), Record::Bool(false)])),
+               Ok([true, false]));
+    assert_eq!(<[bool;2]>::from_record(&Record::Array(CollectionKind::Vector, vec![Record::Bool(true)])),
+               Err("cannot convert Array(Vector, [Bool(true)]) to array of length 2".to_owned()));
+}
+
+
 impl<K: FromRecord+Ord, V: FromRecord> FromRecord for BTreeMap<K,V> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v|BTreeMap::from_iter(v))
