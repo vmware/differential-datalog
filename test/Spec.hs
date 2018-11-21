@@ -80,7 +80,7 @@ goldenTests progress = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] ["staticlib", "cdylib"])
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
@@ -125,7 +125,7 @@ ovnTests progress =
         [ goldenVsFiles "ovn_northd"
           ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn_northd.dump.expected"]
           ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn_northd.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" []}]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" [] ["staticlib"]}]
 
 sOUFFLE_DIR = "./test/souffle"
 
@@ -135,14 +135,14 @@ souffleTests progress =
         [ goldenVsFile "doop"
           (sOUFFLE_DIR </> "souffle.dl.expected")
           (sOUFFLE_DIR </> "souffle.dl")
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "-w", "1"]}]
+          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
 
 convertSouffle :: Bool -> IO ()
 convertSouffle progress = do
     dir <- makeAbsolute $ sOUFFLE_DIR
-    let inputDl = dir </> "self-contained.dl" 
-        outputDl = dir </> "souffle.dl" 
-        outputDat = dir </> "souffle.dat" 
+    let inputDl = dir </> "self-contained.dl"
+        outputDl = dir </> "souffle.dl"
+        outputDat = dir </> "souffle.dat"
         log = dir </> "souffle.log"
         convert_proc = (proc (dir </> "convert.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
@@ -202,15 +202,15 @@ parserTest fname = do
 --
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: Bool -> FilePath -> [String] -> IO ()
-compilerTest progress fname cli_args = do
+compilerTest :: Bool -> FilePath -> [String] -> [String] -> IO ()
+compilerTest progress fname cli_args crate_types = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
     (prog, rs_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-    compile prog specname rs_code rust_dir
+    compile prog specname rs_code rust_dir crate_types
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ rust_dir </> rustProjectDir specname

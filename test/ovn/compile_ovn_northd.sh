@@ -20,6 +20,7 @@ ovsdb2ddlog -f ovn-sb.ovsschema \
             -o RBAC_Permission  \
             -p Datapath_Binding \
             -p Port_Binding     \
+            -p Datapath_Binding     \
             --ro Port_Binding.chassis       \
             -k Multicast_Group.datapath     \
             -k Multicast_Group.name         \
@@ -34,7 +35,7 @@ ovsdb2ddlog -f ovn-sb.ovsschema \
             > OVN_Southbound.dl
 echo Compile ovn_northd.dl
 ddlog -i ovn_northd.dl -L../../lib
-pushd ovn_northd
+pushd ovn_northd_ddlog
 echo Running cargo build
 cargo build
 popd

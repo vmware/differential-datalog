@@ -37,12 +37,15 @@ rpath = false
 lto = false
 debug-assertions = false
 
-[lib]
-name = "datalog_example_ddlog"
-path = "./lib.rs"
-crate-type = ["cdylib", "rlib", "staticlib"]
-
 [[bin]]
 
 name = "datalog_example_cli"
 path = "./main.rs"
+
+# [lib] section must be in the ned
+
+[lib]
+name = "datalog_example_ddlog"
+path = "./lib.rs"
+# Compiler will append the crate-type attribute here
+# crate-type = ["rlib", "staticlib"]

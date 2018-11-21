@@ -101,7 +101,11 @@ gROUP_VAR = "group"
 header :: String -> Doc
 header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
 
---cargoFile = BS.unpack $(embedFile "rust/template/Cargo.toml")
+-- Cargo.toml
+cargo :: String -> [String] -> Doc
+cargo specname crate_types =
+    (pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/Cargo.toml")) $$
+    "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]"
 
 rustProjectDir :: String -> String
 rustProjectDir specname = specname ++ "_ddlog"
@@ -109,8 +113,7 @@ rustProjectDir specname = specname ++ "_ddlog"
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (dir </> "Cargo.toml"             , $(embedFile "rust/template/Cargo.toml"))
-        , (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
+        [ (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
         , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
         , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
         , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
@@ -286,10 +289,12 @@ mkConstructorName tname t c =
 --
 -- 'rs_code' - additional Rust code to be added to the generated program `lib.rs`.
 --
--- 'dir' - directory for the crate; will be created if does not
--- exists
-compile :: DatalogProgram -> String -> Doc -> FilePath -> IO ()
-compile d specname rs_code dir = do
+-- 'dir' - directory for the crate; will be created if does not exist
+--
+-- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
+--                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
+compile :: DatalogProgram -> String -> Doc -> FilePath -> [String] -> IO ()
+compile d specname rs_code dir crate_types = do
     let lib = compileLib d specname rs_code
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
@@ -305,6 +310,7 @@ compile d specname rs_code dir = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
+    updateFile (dir </> rustProjectDir specname </> "Cargo.toml") (render $ cargo specname crate_types)
     updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
     return ()
 
@@ -748,7 +754,7 @@ compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
-    let (facts, rules) = 
+    let (facts, rules) =
                 partition (null . ruleRHS)
                 $ filter ((== rn) . atomRelation . head . ruleLHS)
                 $ progRules d
@@ -780,7 +786,7 @@ compileRelation d rn = do
 compileKey :: DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
     val <- mkValue d (CtxKey rel) keyExpr
-    return $ 
+    return $
         "(|" <> kEY_VAR <> ": &Value|"                                                                $$
         "match" <+> kEY_VAR <+> "{"                                                                   $$
         "    Value::" <> mkValConstructorName' d relType <> "(" <> pp keyVar <> ") =>" <+> val <> "," $$
