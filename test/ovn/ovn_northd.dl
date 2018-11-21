@@ -697,6 +697,14 @@ LSPortPSAddresses(lsport, ps_addrs) :-
 relation LSPortPSEthAddresses(lsport: uuid,
                               addrs:  Set<string>)
 
+LSPortPSEthAddresses(lsport, addrs) :-
+    LSPortPSAddresses(lsport, ps_addrs),
+    Aggregate((lsport), addrs = group2set(ps_addrs.ea_s)).
+
+LSPortPSEthAddresses(lsport, set_empty()) :-
+    nb.Logical_Switch_Port(._uuid = lsport),
+    not LSPortPSAddresses(lsport,_).
+
 relation LSPortAddresses(lsport: uuid,
                          addrs:  lport_addresses)
 
@@ -719,8 +727,6 @@ function build_port_security_ipv6_flow(
 {
     var ip6_addrs: Vec<string> = vec_empty();
 
-    vec_push(ip6_addrs, if (pipeline == IN) "ip6.src" else "ip6.dst");
-
     /* Allow link-local address. */
     vec_push(ip6_addrs, ipv6_string_mapped(in6_generate_lla(ea)));
 
@@ -732,10 +738,8 @@ function build_port_security_ipv6_flow(
         vec_push(ip6_addrs, ipv6_string_mapped(addr.addr))
     };
 
-    " && %s == {" ++ string_join(ip6_addrs, ", ") ++ "}"
+    $" && ${if (pipeline == IN) \"ip6.src\" else \"ip6.dst\"} == {${string_join(ip6_addrs, \", \")}}"
 }
-
-
 
 /* Logical switch ingress table 0: ingress port security - L2 (priority 50)
                   ingress table 1: ingress port security - IP (priority 90 and 80)
