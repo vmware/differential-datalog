@@ -29,6 +29,7 @@ module Language.DifferentialDatalog.Type(
     typeIsPolymorphic,
     unifyTypes,
     exprType,
+    exprTypeMaybe,
     exprType',
     exprType'',
     exprNodeType,
@@ -45,7 +46,11 @@ module Language.DifferentialDatalog.Type(
     typeConsTree,
     consTreeAbduct,
     typeMapM,
-    funcTypeArgSubsts
+    funcTypeArgSubsts,
+    sET_TYPES,
+    gROUP_TYPE,
+    checkIterable,
+    typeIterType
 ) where
 
 import Data.Maybe
@@ -65,6 +70,9 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
+
+sET_TYPES = ["std.Set", "std.Vec"]
+gROUP_TYPE = "std.Group"
 
 -- | An object with type
 class WithType a where
@@ -267,6 +275,7 @@ exprNodeType' d ctx (EVarDecl p _)        = mtype2me p ctx $ ctxExpectType d ctx
 exprNodeType' _ ctx (ESeq p _ e2)         = mtype2me p ctx e2
 exprNodeType' d ctx (EITE p _ Nothing e)  = mtype2me p ctx e
 exprNodeType' d ctx (EITE _ _ (Just t) e) = return t
+exprNodeType' _ _   (EFor _ _ _ _)        = return $ tTuple []
 exprNodeType' _ _   (ESet _ _ _)          = return $ tTuple []
 
 exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
@@ -483,6 +492,8 @@ ctxExpectType d (CtxSeq2 _ ctx)                      = ctxExpectType d ctx
 ctxExpectType _ (CtxITEIf _ _)                       = Just tBool
 ctxExpectType d (CtxITEThen _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxITEElse _ ctx)                   = ctxExpectType d ctx
+ctxExpectType d (CtxForIter _ _)                     = Nothing
+ctxExpectType d (CtxForBody _ _)                     = Just $ tTuple []
 ctxExpectType d (CtxSetL e@(ESet _ _ rhs) ctx)       = exprTypeMaybe d (CtxSetR e ctx) rhs
 ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = -- avoid infinite recursion by evaluating lhs standalone
                                                        exprTypeMaybe d (CtxSeq1 (ESeq nopos lhs (error "ctxExpectType: should be unreachable")) ctx) lhs
@@ -653,3 +664,22 @@ typeMapM fun t@TVar{}      = fun t
 typeMapM fun t@TOpaque{..} = do
     args <- mapM (typeMapM fun) typeArgs
     fun $ t { typeArgs = args }
+
+typeIterType :: DatalogProgram -> Type -> Maybe Type
+typeIterType d t =
+    case typ' d t of
+         TOpaque _ tname [t'] | elem tname sET_TYPES -> Just t'
+         TOpaque _ "std.Map" [k,v]                   -> Just $ tTuple [k,v]
+         _                                           -> Nothing
+
+typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
+typeIsIterable d x =
+    case typ' d x of
+         TOpaque _ tname [_] | elem tname sET_TYPES -> True
+         TOpaque _ "std.Map" [_,_]                  -> True
+         _                                          -> False
+
+checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> ECtx -> a -> me ()
+checkIterable prefix p d ctx x =
+    check (typeIsIterable d x) p $
+          prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show (typ x)

@@ -1356,6 +1356,11 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
           (nest' $ val exprElse)            $$
           "}"
 
+mkExpr' _ _ EFor{..} = (doc, EVal)
+    where
+    doc = ("for" <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".x.iter() {") $$
+          (nest' $ val exprBody)                                                 $$
+          "}"
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments
 -- are compiled into normal assignments.  Note: assignments in rule
 -- atoms are handled by a different code path.

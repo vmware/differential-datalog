@@ -162,7 +162,7 @@ convertStatement (VarStatement p l s) =
     let rules = convertStatement s
         exprs = map convertAssignment l
         rhs = map RHSCondition exprs in
-    map (\r -> r{ruleRHS = (ruleRHS r) ++ rhs}) rules
+    map (\r -> r{ruleRHS = rhs ++ (ruleRHS r)}) rules
 convertStatement (BlockStatement p l) =
     let rulesList = map convertStatement l in
     concat rulesList
