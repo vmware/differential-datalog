@@ -18,6 +18,14 @@ use std::iter::FromIterator;
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+// Option
+fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
+    match x {
+        None => std_Option::std_None,
+        Some(v) => std_Option::std_Some{x: v}
+    }
+}
+
 // Vector
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -28,6 +36,9 @@ pub struct std_Vec<T> {
 impl <T: Ord> std_Vec<T> {
     pub fn new() -> Self {
         std_Vec{x: Vec::new()}
+    }
+    pub fn with_capacity(capacity: usize) -> Self {
+        std_Vec{x: Vec::with_capacity(capacity)}
     }
     pub fn push(&mut self, v: T) {
         self.x.push(v);
@@ -67,6 +78,40 @@ impl<T> IntoIterator for std_Vec<T> {
     fn into_iter(self) -> Self::IntoIter {
         self.x.into_iter()
     }
+}
+
+pub fn std_vec_len<X: Ord + Clone>(v: &std_Vec<X>) -> u64 {
+    v.x.len() as u64
+}
+
+pub fn std_vec_empty<X: Ord + Clone>() -> std_Vec<X> {
+    std_Vec::new()
+}
+
+pub fn std_vec_singleton<X: Ord + Clone>(x: &X) -> std_Vec<X> {
+    std_Vec{x: vec![x.clone()]}
+}
+
+pub fn std_vec_push<X: Ord+Clone>(v: &mut std_Vec<X>, x: &X) {
+    v.push((*x).clone());
+}
+
+pub fn std_vec_insert_imm<X: Ord+Clone>(v: &std_Vec<X>, x: &X) -> std_Vec<X> {
+    let mut v2 = v.clone();
+    v2.push((*x).clone());
+    v2
+}
+
+pub fn std_vec_contains<X: Ord>(v: &std_Vec<X>, x: &X) -> bool {
+    v.x.contains(x)
+}
+
+pub fn std_vec_is_empty<X: Ord>(v: &std_Vec<X>) -> bool {
+    v.x.is_empty()
+}
+
+pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &u64) -> std_Option<X> {
+    option2std(v.x.get(*n as usize).cloned())
 }
 
 // Set
@@ -163,10 +208,7 @@ pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
 }
 
 pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
-    match s.x.iter().nth(*n as usize) {
-        None => std_Option::std_None,
-        Some(x) => std_Option::std_Some{x: (*x).clone()}
-    }
+    option2std(s.x.iter().nth(*n as usize).cloned())
 }
 
 pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
@@ -270,10 +312,7 @@ pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V
 
 
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
-    match m.x.get(k) {
-        None => std_Option::std_None,
-        Some(v) => std_Option::std_Some{x: (*v).clone()}
-    }
+    option2std(m.x.get(k).cloned())
 }
 
 pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
@@ -305,10 +344,7 @@ pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
 }
 
 pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
-    match (*s).parse::<u64>().ok() {
-        None => std_Option::std_None,
-        Some(x) => std_Option::std_Some{x}
-    }
+    option2std((*s).parse::<u64>().ok())
 }
 
 pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {

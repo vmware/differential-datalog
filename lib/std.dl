@@ -1,7 +1,5 @@
 /* Description: DDlog "standard library" automatically imported into every module */
 
-extern type Vec<'A>
-
 /*
  * Option
  */
@@ -56,6 +54,20 @@ extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
+
+/*
+ * Vec
+ */
+extern type Vec<'A>
+
+extern function vec_empty(): Vec<'A>
+extern function vec_len(v: Vec<'X>): bit<64>
+extern function vec_singleton(x: 'X): Vec<'X>
+extern function vec_push(v: mut Vec<'X>, x: 'X): ()
+extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
+extern function vec_contains(v: Vec<'X>, x: 'X): bool
+extern function vec_is_empty(v: Vec<'X>): bool
+extern function vec_nth(v: Vec<'X>, n: bit<64>): Option<'X>
 
 /*
  * Map
