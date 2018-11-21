@@ -1,1 +1,45 @@
+extern type eth_addr
+extern type in6_addr
+
+typedef ovs_be32 = bit<32>
+
+typedef ipv4_netaddr = IPV4NetAddr {
+    addr: ovs_be32,            /* 192.168.10.123 */
+    mask: ovs_be32,            /* 255.255.255.0 */
+    network: ovs_be32,         /* 192.168.10.0 */
+    plen: bit<32>,             /* CIDR Prefix: 24. */
+
+    addr_s: string,            /* "192.168.10.123" */
+    network_s: string,         /* "192.168.10.0" */
+    bcast_s: string            /* "192.168.10.255" */
+}
+
+typedef ipv6_netaddr = IPV6NetAddr {
+    addr: in6_addr,          /* fc00::1 */
+    mask: in6_addr,          /* ffff:ffff:ffff:ffff:: */
+    sn_addr: in6_addr,       /* ff02:1:ff00::1 */
+    network: in6_addr,       /* fc00:: */
+    plen: bit<32>,           /* CIDR Prefix: 64 */
+
+    addr_s: string,          /* "fc00::1" */
+    sn_addr_s: string,       /* "ff02:1:ff00::1" */
+    network_s: string        /* "fc00::" */
+}
+
+typedef lport_addresses = LPortAddress {
+    ea_s: string,
+    ea: eth_addr,
+    ipv4_addrs: Vec<ipv4_netaddr>,
+    ipv6_addrs: Vec<ipv6_netaddr>
+}
+
+
 extern function warn(msg: string): ()
+
+/*
+ * C functions imported from OVS
+ */
+extern function in6_generate_lla(ea: eth_addr): in6_addr
+extern function ipv6_string_mapped(addr: in6_addr): string
+extern function extract_lsp_addresses(address: string): Option<lport_addresses>
+extern function json_string_escape(s: string): string

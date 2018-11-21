@@ -686,18 +686,13 @@ function set_space_sep(items: Set<string>): string = {
     vec_space_sep(set2vec(items))
 }
 
-/*
- *
- */
-typedef lport_addresses = LPortAddress {
-    ea_s: string,
-    ea: eth_addr,
-    ipv4_addrs: Vec<ipv4_netaddr>,
-    ipv6_addrs: Vec<ipv6_netaddr>
-}
-
 relation LSPortPSAddresses(lsport:   uuid,
                            ps_addrs: lport_addresses)
+
+LSPortPSAddresses(lsport, ps_addrs) :-
+    nb.Logical_Switch_Port(._uuid = lsport, .port_security = port_security),
+    var port_sec = FlatMap(port_security),
+    Some{var ps_addrs} = extract_lsp_addresses(port_sec).
 
 relation LSPortPSEthAddresses(lsport: uuid,
                               addrs:  Set<string>)
@@ -705,85 +700,182 @@ relation LSPortPSEthAddresses(lsport: uuid,
 relation LSPortAddresses(lsport: uuid,
                          addrs:  lport_addresses)
 
-relation LSPortHasPSAddresses(lsport: uuid) :-
-    LSPortPSAddresses(lsport, _)
+/*set_lsp_dynamic_addresses(const char *dynamic_addresses, struct ovn_port *op)
+{
+    extract_lsp_addresses(dynamic_addresses, &op->lsp_addrs[op->n_lsp_addrs]);
+    op->n_lsp_addrs++;
+}
 
+} else if (!extract_lsp_addresses(nbsp->addresses[j],
+&op->lsp_addrs[op->n_lsp_addrs])) {
+*/
 
 // TODO
+
+function build_port_security_ipv6_flow(
+    pipeline: Direction,
+    ea: eth_addr,
+    ipv6_addrs: Vec<ipv6_netaddr>): string =
+{
+    var ip6_addrs: Vec<string> = vec_empty();
+
+    vec_push(ip6_addrs, if (pipeline == IN) "ip6.src" else "ip6.dst");
+
+    /* Allow link-local address. */
+    vec_push(ip6_addrs, ipv6_string_mapped(in6_generate_lla(ea)));
+
+    /* Allow ip6.dst=ff00::/8 for multicast packets */
+    if (pipeline == OUT) {
+        vec_push(ip6_addrs, "ff00::/8")
+    } else ();
+    for (addr in ipv6_addrs) {
+        vec_push(ip6_addrs, ipv6_string_mapped(addr.addr))
+    };
+
+    " && %s == {" ++ string_join(ip6_addrs, ", ") ++ "}"
+}
+
 
 
 /* Logical switch ingress table 0: ingress port security - L2 (priority 50)
                   ingress table 1: ingress port security - IP (priority 90 and 80)
                   ingress table 2: ingress port security - ND (priority 90 and 80) */
-
-/* Logical VLANs not supported */
 for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
-      var lsname = uuid2str(lps.lswitch) in
-      for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
-        for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
-            var __match = if (set_is_empty(lsp.port_security)) {
-                    $"inport == ${lsp.name}"
-                } else {
-                    $"inport == ${lsp.name} && eth.src == {${set_space_sep(lsp_eth_addrs.addrs)}}"
-                } in
-            var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
-                    None -> "next;",
-                    Some{id} -> $"set_queue(${id}); next;"
-                } in
-            sb.Out_Logical_Flow(
-                .logical_datapath = lsname,
-                .pipeline         = "ingress",
-                .table_id         = switch_stage(IN, PORT_SEC_L2),
-                .priority         = 50,
-                .__match          = __match,
-                .actions          = actions,
-                .external_ids     = map_empty());
-        }
-      }
-    }
-}
-
-        /**
-         * Build port security constraints on IPv4 and IPv6 src and dst fields
-         * and add logical flows to S_SWITCH_(IN/OUT)_PORT_SEC_IP stage.
-         *
-         * For each port security of the logical port, following
-         * logical flows are added
-         *   - If the port security has IPv4 addresses,
-         *     - Priority 90 flow to allow IPv4 packets for known IPv4 addresses
-         *
-         *   - If the port security has IPv6 addresses,
-         *     - Priority 90 flow to allow IPv6 packets for known IPv6 addresses
-         *
-         *   - If the port security has IPv4 addresses or IPv6 addresses or both
-         *     - Priority 80 flow to drop all IPv4 and IPv6 traffic
-         */
-
-for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
-    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
-      for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
         var lsname = uuid2str(lps.lswitch) in
-        for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
-            for (ps_addrs in LSPortPSAddresses(.lsport = lsp._uuid)) {
-                if (vec_len(ps_addrs.ipv4_addrs) > 0) {
-                    var __match = $[|inport == ${json_string_escape(lsp.name)}
- && eth.src == ${ps_addrs.ea_s}
- && ip4.src == 0.0.0.0
- && ip4.dst == 255.255.255.255
- && udp.src == 68 && udp.dst == 67 |]
+        var json_key = json_string_escape(lsp.name) in
+        {
+            for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
+                for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
+                    var __match = if (set_is_empty(lsp.port_security)) {
+                            $"inport == ${json_key}"
+                        } else {
+                            $"inport == ${json_key} && eth.src == {${set_space_sep(lsp_eth_addrs.addrs)}}"
+                        } in
+                    var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
+                            None -> "next;",
+                            Some{id} -> $"set_queue(${id}); next;"
+                        } in
+                    sb.Out_Logical_Flow(
+                        .logical_datapath = lsname,
+                        .pipeline         = "ingress",
+                        .table_id         = switch_stage(IN, PORT_SEC_L2),
+                        .priority         = 50,
+                        .__match          = __match,
+                        .actions          = actions,
+                        .external_ids     = map_empty())
+                }
+            };
+            /**
+            * Build port security constraints on IPv4 and IPv6 src and dst fields
+            * and add logical flows to S_SWITCH_(IN/OUT)_PORT_SEC_IP stage.
+            *
+            * For each port security of the logical port, following
+            * logical flows are added
+            *   - If the port security has IPv4 addresses,
+            *     - Priority 90 flow to allow IPv4 packets for known IPv4 addresses
+            *
+            *   - If the port security has IPv6 addresses,
+            *     - Priority 90 flow to allow IPv6 packets for known IPv6 addresses
+            *
+            *   - If the port security has IPv4 addresses or IPv6 addresses or both
+            *     - Priority 80 flow to drop all IPv4 and IPv6 traffic
+            */
+            for (LSPortPSAddresses(.lsport = lsp._uuid, .ps_addrs = ps)
+                 if vec_len(ps.ipv4_addrs) > 64'd0 or vec_len(ps.ipv6_addrs) > 64'd0)
+            {
+                if (vec_len(ps.ipv4_addrs) > 64'd0) {
+                    var dhcp_match = $"inport == ${json_key}"             ++
+                                     $" && eth.src == ${ps.ea_s}"         ++
+                                     $" && ip4.src == 0.0.0.0"            ++
+                                     $" && ip4.dst == 255.255.255.255"    ++
+                                     $" && udp.src == 68 && udp.dst == 67" in {
+                        sb.Out_Logical_Flow(
+                            .logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, PORT_SEC_IP),
+                            .priority         = 90,
+                            .__match          = dhcp_match,
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+                    };
+                    var addrs = {
+                        var addrs: Vec<string> = vec_empty();
+                        for (addr in ps.ipv4_addrs) {
+                            /* When the netmask is applied, if the host portion is
+                             * non-zero, the host can only use the specified
+                             * address.  If zero, the host is allowed to use any
+                             * address in the subnet.
+                             */
+                            vec_push(addrs,
+                                     if (addr.plen == 32 or ((addr.addr & ~addr.mask) != 0)) {
+                                         addr.addr_s
+                                     } else {
+                                         /* host portion is zero */
+                                         $"${addr.network_s}/${addr.plen}"
+                                     })
+                        };
+                        addrs
+                    } in
+                    var __match =
+                        $"inport == ${json_key} && eth.src == ${ps.ea_s} && ip4.src == {" ++
+                        string_join(addrs, ", ") ++ "}" in
+                    {
+                        sb.Out_Logical_Flow(
+                            .logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, PORT_SEC_IP),
+                            .priority         = 90,
+                            .__match          = __match,
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+                    }
+                };
+                if (vec_len(ps.ipv6_addrs) > 64'd0) {
+                    var dad_match = $"inport == ${json_key}"              ++
+                                    $" && eth.src == ${ps.ea_s}"  ++
+                                    $" && ip6.src == ::"            ++
+                                    $" && ip6.dst == ff02::/16"     ++
+                                    $" && icmp6.type == {131, 135, 143}" in
+                    {
+                        sb.Out_Logical_Flow(
+                            .logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, PORT_SEC_IP),
+                            .priority         = 90,
+                            .__match          = dad_match,
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+                    };
+                    var __match = $"inport == ${json_key} && eth.src: ${ps.ea_s}" ++
+                                  build_port_security_ipv6_flow(IN, ps.ea, ps.ipv6_addrs) in
+                    {
+                        sb.Out_Logical_Flow(
+                            .logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, PORT_SEC_IP),
+                            .priority         = 90,
+                            .__match          = __match,
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+                    }
+                };
+                var __match = $"inport == ${json_key} && eth.src == ${ps.ea_s} && ip" in
+                {
+                    sb.Out_Logical_Flow(
+                        .logical_datapath = lsname,
+                        .pipeline         = "ingress",
+                        .table_id         = switch_stage(IN, PORT_SEC_IP),
+                        .priority         = 80,
+                        .__match          = __match,
+                        .actions          = "drop;",
+                        .external_ids     = map_empty())
                 }
             }
-/*        if (op->nbsp->n_port_security) {
-            build_port_security_ip(P_IN, op, lflows);
-            build_port_security_nd(op, lflows);
-        }*/
-
-
         }
-      }
     }
 }
+
 
 
 /*
