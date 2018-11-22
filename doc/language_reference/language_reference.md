@@ -321,6 +321,7 @@ term ::= "_"                 (* wildcard *)
        | var_term            (* variable reference *)
        | match_term          (* match term *)
        | ite_term            (* if-then-else term *)
+       | for_term            (* for-loop *)
        | vardecl_term        (* local variable declaration *)
 ```
 
@@ -381,6 +382,7 @@ cons_term    ::= (* positional arguments *)
 apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
 ite_term     ::= "if" term term "else" term
+for_term     ::= "for" "(" var_name "in" expr ")" term
 vardecl_term ::= "var" var_name
 
 match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"

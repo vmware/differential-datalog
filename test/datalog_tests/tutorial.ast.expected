@@ -10,6 +10,7 @@ typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, 
 typedef Host = Host{id: UUID, name: string, ip: IP4}
 typedef HostAddress = HostAddress{host: bit<64>, addrs: string}
 typedef HostIP = HostIP{host: bit<64>, addr: string}
+typedef HostIPVSep = HostIPVSep{host: bit<64>, addrs: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
@@ -157,6 +158,12 @@ extern function std.vec_singleton (x: 'X): std.Vec<'X>
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
+function vsep (strs: std.Vec<string>): string =
+    (var res = "";
+     (for (s in strs) {
+          res = ((res ++ s) ++ "\n")
+      };
+      res))
 output relation Address [Address]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
@@ -168,6 +175,7 @@ output relation Flow1 [Flow1]
 input relation Host [Host]
 input relation HostAddress [HostAddress]
 output relation HostIP [HostIP]
+output relation HostIPVSep [HostIPVSep]
 output relation HostInSubnet [HostInSubnet]
 output relation IntranetHost [IntranetHost]
 output relation IntranetHost2 [IntranetHost2]
@@ -205,6 +213,7 @@ EndpointString(.s=addr_port(ip, proto, preferred_port)) :- Endpoint(.ip=ip, .pro
 First5(.str=string_slice(p, 64'd0, 64'd5)) :- Phrases(.phrase=p).
 SanitizedEndpoint(.ep=endpoint) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
 HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), var addr = FlatMap(split_ip_list(addrs)).
+HostIPVSep(.host=host, .addrs=vaddrs) :- HostAddress(.host=host, .addrs=addrs), var vaddrs = vsep(split_ip_list(addrs)).
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).

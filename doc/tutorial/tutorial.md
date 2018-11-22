@@ -555,7 +555,7 @@ numbers respectively:
 ### Control flow
 
 DDlog functions are written using an *expression-oriented language*,
-where all statements are expressions.  DDlog does not support loops.
+where all statements are expressions.
 Evaluation order can be controlled using several constructs:
 
 1. Semicolon is used to separate expressions that are evaluated in sequence, from left to right.
@@ -566,7 +566,9 @@ Evaluation order can be controlled using several constructs:
 
 1. A new block (scope) can be created with curly braces `{ }`
 
-The following example illustrates all these constructs:
+1. A for loop
+
+The following example illustrates the first four of these constructs.  Loops are explained [below](#container-types-flatmap-and-for-loops).
 
 ```
 function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
@@ -725,12 +727,13 @@ SanitizedHTTPEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 ```
 
-#### Sets and FlatMap
+#### Container types, FlatMap, and for-loops
 
-DDlog supports two built-in container data types: `Vec`, `Set`.  `Vec`
-and `Set` are *generic* types that can be parameterized by any other
-DDlog type, e.g., `Vec<string>` is a vector of strings.  These types
-do not have constructors in DDlog, so objects with these types can
+DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
+are *generic* types that can be parameterized by any other
+DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
+a map from strings to Booleans.  These types
+do not have constructors in DDlog, so instances of these types can
 only be created by external functions.
 
 Let us assume that we have an extern function that splits a string
@@ -782,6 +785,21 @@ to split `addrs` into individul addresses.
 addr)` records.
 
 1. Store the resulting records in the `HostIP` relation.
+
+For-loops allow manipulating container types in a more procedural fashion, without first flattening them.
+The following function concatenates a vector of strings, each starting at a new line.
+
+```
+function vsep(strs: Vec<string>): string = {
+    var res = "";
+    for (s in strs) {
+        res = res ++ s ++ "\n"
+    };
+    res
+}
+```
+
+For loops can only iterate over container types: sets, maps, and vectors.
 
 #### Rules with multiple heads
 
