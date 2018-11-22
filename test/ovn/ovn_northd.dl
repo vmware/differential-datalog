@@ -438,10 +438,184 @@ sb.Out_MAC_Binding (.logical_port =   mb.logical_port,
 /*
  * DHCP options: fixed table
  */
+sb.Out_DHCP_Options (
+    .name   = "offerip",
+    .code   = 0,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "netmask",
+    .code   = 1,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "router",
+    .code   = 3,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "dns_server",
+    .code   = 6,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "log_server",
+    .code   = 7,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "lpr_server",
+    .code   = 9,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "swap_server",
+    .code   = 16,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "policy_filter",
+    .code   = 21,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "router_solicitation",
+    .code   = 32,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "nis_server",
+    .code   = 41,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "ntp_server",
+    .code   = 42,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "server_id",
+    .code   = 54,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "tftp_server",
+    .code   = 66,
+    .__type = "ipv4"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "classless_static_route",
+    .code   = 121,
+    .__type = "static_routes"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "ms_classless_static_route",
+    .code   = 249,
+    .__type = "static_routes"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "ip_forward_enable",
+    .code   = 19,
+    .__type = "bool"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "router_discovery",
+    .code   = 31,
+    .__type = "bool"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "ethernet_encap",
+    .code   = 36,
+    .__type = "bool"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "default_ttl",
+    .code   = 23,
+    .__type = "uint8"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "tcp_ttl",
+    .code   = 37,
+    .__type = "uint8"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "mtu",
+    .code   = 26,
+    .__type = "uint16"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "lease_time",
+    .code   = 51,
+    .__type = "uint32"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "T1",
+    .code   = 58,
+    .__type = "uint32"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "T2",
+    .code   = 59,
+    .__type = "uint32"
+).
+
+sb.Out_DHCP_Options (
+    .name   = "wpad",
+    .code   = 252,
+    .__type = "str"
+).
+
 
 /*
  * DHCPv6 options: fixed table
  */
+sb.Out_DHCPv6_Options (
+    .name   = "server_id",
+    .code   = 2,
+    .__type = "mac"
+).
+
+sb.Out_DHCPv6_Options (
+    .name   = "ia_addr",
+    .code   = 5,
+    .__type = "ipv6"
+).
+
+sb.Out_DHCPv6_Options (
+    .name   = "dns_server",
+    .code   = 23,
+    .__type = "ipv6"
+).
+
+sb.Out_DHCPv6_Options (
+    .name   = "domain_search",
+    .code   = 24,
+    .__type = "str"
+).
+
 
 /*
  * DNS: copied from NB + datapaths column pointer to LS datapaths that use the record
