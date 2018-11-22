@@ -1048,7 +1048,7 @@ typedef option_ip4_pkt_t = IP4Some{ p: ip4_pkt_t }
 
 However, defining an extra variant type for each type in the program quickly becomes a burden on
 the programmer.  Fortunately, DDlog allows us to define a generic option type that can be
-instantiated for any concrete type.  This types is defined in the DDlog standard library as follows:
+instantiated for any concrete type.  This type is defined in the DDlog standard library as follows:
 
 ```
 typedef Option<'A> = None
