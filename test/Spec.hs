@@ -60,7 +60,8 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
-bUILD_TYPE = "debug"
+--bUILD_TYPE = "debug"
+bUILD_TYPE = "release"
 
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 
