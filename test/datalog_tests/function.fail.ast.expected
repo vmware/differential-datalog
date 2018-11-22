@@ -6,13 +6,13 @@ error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already def
 
 error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already defined in this scope
 
-./test/datalog_tests/function.fail.dl:3:24-4:22: Conflicting definitions of constructor None found in the following modules: lib/std.dl, ./test/datalog_tests/function.fail.dl
+error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field "x"
 
 error: ./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1
 
-./test/datalog_tests/function.fail.dl:3:24-4:22: Conflicting definitions of constructor None found in the following modules: lib/std.dl, ./test/datalog_tests/function.fail.dl
+error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
 
-./test/datalog_tests/function.fail.dl:3:24-4:22: Conflicting definitions of constructor None found in the following modules: lib/std.dl, ./test/datalog_tests/function.fail.dl
+error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
 
 Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, column 1):
 unexpected "f"
