@@ -4,6 +4,39 @@ OVN_Southbound.DeltaMinus_Datapath_Binding{8820728388062355172047994593891609873
 OVN_Southbound_DeltaMinus_MAC_Binding:
 OVN_Southbound.DeltaMinus_MAC_Binding{257847232922800482427539974900305656483}
 
+OVN_Southbound_DeltaPlus_DHCP_Options:
+OVN_Southbound.DeltaPlus_DHCP_Options{"T1",58,"uint32"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"T2",59,"uint32"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"classless_static_route",121,"static_routes"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"default_ttl",23,"uint8"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"dns_server",6,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"ethernet_encap",36,"bool"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"ip_forward_enable",19,"bool"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"lease_time",51,"uint32"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"log_server",7,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"lpr_server",9,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"ms_classless_static_route",249,"static_routes"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"mtu",26,"uint16"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"netmask",1,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"nis_server",41,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"ntp_server",42,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"offerip",0,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"policy_filter",21,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"router",3,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"router_discovery",31,"bool"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"router_solicitation",32,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"server_id",54,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"swap_server",16,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"tcp_ttl",37,"uint8"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"tftp_server",66,"ipv4"}
+OVN_Southbound.DeltaPlus_DHCP_Options{"wpad",252,"str"}
+
+OVN_Southbound_DeltaPlus_DHCPv6_Options:
+OVN_Southbound.DeltaPlus_DHCPv6_Options{"dns_server",23,"ipv6"}
+OVN_Southbound.DeltaPlus_DHCPv6_Options{"domain_search",24,"str"}
+OVN_Southbound.DeltaPlus_DHCPv6_Options{"ia_addr",5,"ipv6"}
+OVN_Southbound.DeltaPlus_DHCPv6_Options{"server_id",2,"mac"}
+
 OVN_Southbound_DeltaPlus_DNS:
 OVN_Southbound.DeltaPlus_DNS{std_Map { x: {"dns_key1": "dns_val1"} },std_Set { x: {std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"}} },std_Map { x: {} }}
 
