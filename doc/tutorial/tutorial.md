@@ -703,6 +703,28 @@ SanitizedEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 ```
 
+#### Binding variables to rows
+
+It is sometimes convenient to refer to a table row as a whole.
+The following binds the `ep` variable to a row of the `Endpoint` relation.
+
+```
+SanitizedEndpoint(endpoint) :-
+    ep in Endpoint,
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    not Blacklisted(endpoint).
+```
+
+Here we filter the `Endpoint` relation to select HTTP endpoints only
+and bind resulting rows to `ep`:
+
+```
+SanitizedHTTPEndpoint(endpoint) :-
+    ep in Endpoint(.proto = "HTTP"),
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    not Blacklisted(endpoint).
+```
+
 #### Sets and FlatMap
 
 DDlog supports two built-in container data types: `Vec`, `Set`.  `Vec`
@@ -1026,7 +1048,7 @@ typedef option_ip4_pkt_t = IP4Some{ p: ip4_pkt_t }
 
 However, defining an extra variant type for each type in the program quickly becomes a burden on
 the programmer.  Fortunately, DDlog allows us to define a generic option type that can be
-instantiated for any concrete type.  This types is defined in the DDlog standard library as follows:
+instantiated for any concrete type.  This type is defined in the DDlog standard library as follows:
 
 ```
 typedef Option<'A> = None
@@ -1093,7 +1115,7 @@ its individual fields.
 ## A more imperative syntax
 
 Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog
-provides an alternative syntax for writing rules which resembles more traditional imperative 
+provides an alternative syntax for writing rules which resembles more traditional imperative
 languages.  For example, the previous program can be written as follows:
 
 ```
@@ -1109,11 +1131,22 @@ for (person in Person)
        TargetAudience(person)
 ```
 
+Using this syntax, joins are expressed with nested for-loops; for example the following computes
+an inner join of `Region` and `Person` relations over the `region.id` field:
+
+```
+for (region in Region) {
+    for (person in Person(.region = region.id))
+       if (is_target_audience(person))
+           TargetAudience(person, region)
+}
+```
+
 One can also define variables:
 
 ```
 for (person in Person)
-    var is_audience: bool = is_target_audience(person);
+    var is_audience: bool = is_target_audience(person) in
     if (is_audience)
         TargetAudience(person)
 ```
@@ -1122,7 +1155,7 @@ and one can also use `match` statements:
 
 ```
 for (person in Person)
-   var is_audience = is_target_audience(person);
+   var is_audience = is_target_audience(person) in
    match (is_audience) {
        true -> TargetAudience(person)
        _    -> skip
@@ -1132,7 +1165,7 @@ for (person in Person)
 These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested
 in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
 Also note that the `if` statement is not an expression, and thus the `else` clause is not required
-when using this syntax.  The DDlog compiler translates such programs in regular DDlog programs.
+when using this syntax.  The DDlog compiler translates such programs into regular DDlog programs.
 
 ## Modules
 

@@ -76,6 +76,7 @@ pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog
         debug_assert!(w == 1 || w == -1);
         upd_cb(&db, relid, v, w == 1)
     }));
+    let workers = if workers == 0 { 1 } else { workers };
     let prog = program.run(workers as usize);
     sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), db2)))
 }

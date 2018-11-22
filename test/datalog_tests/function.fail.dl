@@ -44,13 +44,10 @@ function shadow(): () = {
 
 //---
 
-typedef option_t<'A> = None
-                     | Some {value : 'A}
-
 // access guarded struct field
 function shadow(): () = {
     var a = Some{"foo"};
-    var b = a.value
+    var b = a.x
 }
 
 //---
@@ -68,21 +65,15 @@ function f2(arg: bigint): bigint = {
 
 //---
 
-typedef option_t<'A> = None
-                     | Some {value : 'A}
-
 // non-unique constructor in the LHS of assignment
 
-function f(x: option_t<'A>): () = {
+function f(x: Option<'A>): () = {
     Some{var s} = x
 }
 
 //---
 
-typedef option_t<'A> = None
-                     | Some {value : 'A}
-
-typedef t<'A> = T{field: option_t<'A>}
+typedef t<'A> = T{field: Option<'A>}
 
 // non-unique constructor in the LHS of assignment
 
