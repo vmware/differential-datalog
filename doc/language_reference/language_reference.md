@@ -525,8 +525,8 @@ atoms abbreviate rules with identical right-hand sides) and zero or more *body* 
 ```EBNF
 rule ::= atom (,atom)* ":-" rhs_clause (,rhs_clause)*
 
-atom ::= rel_name "(" expr (,expr)* ")"
-       | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
+atom ::= [var_name "in"] rel_name "(" expr (,expr)* ")"
+       | [var_name "in"] rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
        | rel_name "[" expr "]"
 
 rhs_clause ::= atom                                      (* 1.atom *)
@@ -701,8 +701,7 @@ https://en.wikipedia.org/wiki/FLWOR.
 ```
 rule ::= forStatement
 
-forStatement ::= "for" "(" expr "in" rel_name ")" statement
-             | "for" "(" expr "in" rel_name "if" expression ")" statement
+forStatement ::= "for" "(" expr "in" atom ["if" expression] ")" statement
 
 statement ::= forStatement
           | ifStatement
