@@ -37,5 +37,5 @@ echo Compile ovn_northd.dl
 ddlog -i ovn_northd.dl -L../../lib
 pushd ovn_northd_ddlog
 echo Running cargo build
-cargo build
+RUSTFLAGS='-L ../../../../ovs/ovn/lib/.libs -L ../../../../ovs/lib/.libs -lssl -lcrypto' cargo build
 popd
