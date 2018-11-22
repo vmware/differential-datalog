@@ -8,3 +8,5 @@ ruleRHSTermVars :: Rule -> Int -> [String]
 ruleLHSVars :: DatalogProgram -> Rule -> [Field]
 ruleTypeMapM :: (Monad m) => (Type -> m Type) -> Rule -> m Rule
 ruleHasJoins :: Rule -> Bool
+atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
+atomVars :: Expr -> [String]

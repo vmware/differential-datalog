@@ -15,7 +15,7 @@ typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
 typedef IntranetHost2 = IntranetHost2{addr: ip4_addr_t}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
-typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: option_t<string>, name: string}
+typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: std.Option<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
 typedef MCastAddress = MCastAddress{addr: ip_addr_t}
 typedef NetHost = NetHost{id: bigint, h: nethost_t}
@@ -47,10 +47,11 @@ typedef ip_addr_t = IPAddr{addr: bit<32>}
 typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} | IPUDP{udp: udp_pkt_t} | IPOther{}
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
-typedef option_t<'A> = None{} | Some{value: 'A}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
+typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
@@ -85,10 +86,10 @@ function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t =
         EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> ip4,
         _ -> IP4Pkt{.ttl=8'd0, .src=32'd0, .dst=32'd0, .payload=IPOther{}}
     }
-function pkt_ip4_ (pkt: eth_pkt_t): option_t<ip4_pkt_t> =
+function pkt_ip4_ (pkt: eth_pkt_t): std.Option<ip4_pkt_t> =
     match (pkt) {
-        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> Some{.value=ip4},
-        _ -> None{}
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> std.Some{.x=ip4},
+        _ -> std.None{}
     }
 function pkt_udp_port (pkt: eth_pkt_t): bit<16> =
     match (pkt) {
@@ -96,11 +97,11 @@ function pkt_udp_port (pkt: eth_pkt_t): bit<16> =
         EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> port,
         _ -> 16'd0
     }
-function pkt_udp_port2 (pkt: eth_pkt_t): option_t<bit<16>> =
+function pkt_udp_port2 (pkt: eth_pkt_t): std.Option<bit<16>> =
     match (pkt) {
-        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
-        EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> Some{.value=port},
-        _ -> None{}
+        EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> std.Some{.x=port},
+        EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> std.Some{.x=port},
+        _ -> std.None{}
     }
 extern function split (s: string, sep: string): std.Vec<string>
 function split_ip_list (x: string): std.Vec<string> =
@@ -110,9 +111,41 @@ extern function std.count (g: std.Group<'A>): bit<64>
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
+function std.is_none (x: std.Option<'A>): bool =
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+function std.is_some (x: std.Option<'A>): bool =
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
@@ -169,14 +202,14 @@ Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).
-UDPDstPort2(.port=port) :- Packet(.pkt=pkt), Some{.value=var port} = pkt_udp_port2(pkt).
+UDPDstPort2(.port=port) :- Packet(.pkt=pkt), std.Some{.x=var port} = pkt_udp_port2(pkt).
 IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
 IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 TargetAudience[person] :- Person[person], is_target_audience(person).
-Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=Some{.value=_}, .name=_).
+Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
-Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[lb], match (lb.protocol) {
-                                                                                                                                                          Some{.value=_} -> true,
-                                                                                                                                                          None{} -> false
-                                                                                                                                                      }, var a = lb.ip_addresses.
-Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[ls], Load_Balancer[lb], (lb.ls == ls.ls).
+Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], match (lb.protocol) {
+                                                                                                                                                                                                                                std.Some{.x=_} -> true,
+                                                                                                                                                                                                                                std.None{} -> false
+                                                                                                                                                                                                                            }, var a = lb.ip_addresses.
+Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[(ls@ Logical_Switch{.ls=_})], Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], (lb.ls == ls.ls).

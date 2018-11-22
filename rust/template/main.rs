@@ -7,7 +7,7 @@
 //#![feature(alloc_system)]
 //extern crate alloc_system;
 
-extern crate datalog_example;
+extern crate datalog_example_ddlog;
 extern crate differential_datalog;
 extern crate cmd_parser;
 extern crate time;
@@ -25,8 +25,8 @@ use std::env;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
-use datalog_example::*;
-use datalog_example::valmap::*;
+use datalog_example_ddlog::*;
+use datalog_example_ddlog::valmap::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;
@@ -87,6 +87,17 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
                 Some(rid) => rid as RelId
             };
             db.lock().unwrap().format_rel(relid, &mut stdout());
+            Ok(())
+        },
+        Command::Clear(rname) => {
+            let relid = match input_relname_to_id(&rname) {
+                None      => {
+                    eprintln!("Error: Unknown input relation {}", rname);
+                    return (-1, false);
+                },
+                Some(rid) => rid as RelId
+            };
+            p.clear_relation(relid);
             Ok(())
         },
         Command::Exit => {

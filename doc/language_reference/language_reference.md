@@ -525,8 +525,8 @@ atoms abbreviate rules with identical right-hand sides) and zero or more *body* 
 ```EBNF
 rule ::= atom (,atom)* ":-" rhs_clause (,rhs_clause)*
 
-atom ::= rel_name "(" expr (,expr)* ")"
-       | rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
+atom ::= [var_name "in"] rel_name "(" expr (,expr)* ")"
+       | [var_name "in"] rel_name "(" "." arg_name "=" expr [("," "." arg_name "=" expr)*] ")"
        | rel_name "[" expr "]"
 
 rhs_clause ::= atom                                      (* 1.atom *)
@@ -677,7 +677,8 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
    R(f(x)) :- S(x). //ok
    R(f(y)) :- S(x). //error: y is not declared
    ```
-1. A flat-map expression must have type `Set<x>` or `Vec<x>` for some type `x`.
+1. A flat-map expression must have type `Set<'X>` or `Vec<'X>` or `Map<'K,'V>` for some type `'X`,
+   `'K`, `'V`.
 
 ### Constraints on dependency graph
 
@@ -686,8 +687,6 @@ relations.  For each rule that contains relation 'R1' in its head and
 relation 'R2' with polarity 'p' in the body, there is an edge in the
 graph from 'R2' to 'R1' labeled 'p'.
 
-1. *Linearity*: For each atom 'R(...)' in the head of a rule, at most one
-   relation in the body of the rule can be mutually recursive with 'R'.
 1. *Stratified negation*: No cycle in a graph can contain an edge
    labeled with negative polarity.
 1. A body of a rule with an aggregate clause cannot contain an atom mutually
@@ -702,8 +701,7 @@ https://en.wikipedia.org/wiki/FLWOR.
 ```
 rule ::= forStatement
 
-forStatement ::= "for" "(" expr "in" rel_name ")" statement
-             | "for" "(" expr "in" rel_name "if" expression ")" statement
+forStatement ::= "for" "(" expr "in" atom ["if" expression] ")" statement
 
 statement ::= forStatement
           | ifStatement

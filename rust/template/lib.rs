@@ -32,12 +32,11 @@ use std::hash::Hasher;
 use std::os::raw;
 use std::borrow;
 use std::ptr;
+use std::ffi;
+use libc::size_t;
 
 pub mod valmap;
 pub mod ovsdb;
-mod stdlib;
-
-use self::stdlib::*;
 
 pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, sync::Arc<sync::Mutex<valmap::ValMap>>);
 
@@ -69,23 +68,26 @@ fn upd_cb(db: &sync::Arc<sync::Mutex<valmap::ValMap>>, relid: RelId, v: &Value, 
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog {
+pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog
+{
     let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
     let db2 = db.clone();
     let program = prog(sync::Arc::new(move |relid,v,w| {
         debug_assert!(w == 1 || w == -1);
         upd_cb(&db, relid, v, w == 1)
     }));
+    let workers = if workers == 0 { 1 } else { workers };
     let prog = program.run(workers as usize);
     sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), db2)))
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int {
+pub unsafe extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int
+{
     if prog.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     match sync::Arc::try_unwrap(prog) {
         Ok((prog,_)) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
             eprintln!("datalog_example_stop(): error acquiring lock: {}", e);
@@ -99,11 +101,12 @@ pub extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int {
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw::c_int {
+pub unsafe extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw::c_int
+{
     if prog.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_start(): error: {}", e);
         -1
@@ -113,11 +116,12 @@ pub extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw:
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw::c_int {
+pub unsafe extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw::c_int
+{
     if prog.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_commit(): error: {}", e);
         -1
@@ -127,15 +131,107 @@ pub extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_transaction_rollback(prog: *const HDDlog) -> raw::c_int {
+pub unsafe extern "C" fn datalog_example_transaction_rollback(prog: *const HDDlog) -> raw::c_int
+{
     if prog.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_transaction_rollback(): error: {}", e);
         -1
     });
     sync::Arc::into_raw(prog);
     res
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn datalog_example_apply_updates(prog: *const HDDlog, upds: *const *mut record::UpdCmd, n: size_t) -> raw::c_int
+{
+    if prog.is_null() || upds.is_null() {
+        return -1;
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let mut upds_vec = Vec::with_capacity(n as usize);
+    for i in 0..n {
+        let upd = match updcmd2upd(Box::from_raw(*upds.offset(i as isize)).as_ref()) {
+            Ok(upd) => upd,
+            Err(e) => {
+                eprintln!("datalog_example_apply_updates(): invalid argument: {}", e);
+                return -1;
+            }
+        };
+        upds_vec.push(upd);
+    };
+    let res = prog.0.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
+        eprintln!("datalog_example_apply_updates(): error: {}", e);
+        return -1;
+    });
+    sync::Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn datalog_example_clear_relation(
+    prog: *const HDDlog,
+    table: *const raw::c_char) -> raw::c_int
+{
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match clear_relation(&prog, table) {
+        Ok(()) => { 0 },
+        Err(e) => {
+            eprintln!("datalog_example_clear_relation(): error: {}", e);
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+unsafe fn clear_relation(prog: &HDDlog, table: *const raw::c_char) -> Result<(), String> {
+    let table_str = ffi::CStr::from_ptr(table).to_str().map_err(|e| format!("{}", e))?;
+    let relid = input_relname_to_id(table_str).ok_or_else(||format!("unknown input relation {}", table_str))?;
+    prog.0.lock().unwrap().clear_relation(relid as RelId)
+}
+
+#[no_mangle]
+pub extern "C" fn datalog_example_dump_table(
+    prog:    *const HDDlog,
+    table:   *const raw::c_char,
+    cb:      extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
+    cb_arg:  *mut raw::c_void) -> raw::c_int
+{
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res = match dump_table(&mut prog.1.lock().unwrap(), table, cb, cb_arg) {
+        Ok(recs) => {
+            0
+        },
+        Err(e) => {
+            eprintln!("datalog_example_dump_table(): error: {}", e);
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+fn dump_table(db: &mut valmap::ValMap,
+              table: *const raw::c_char,
+              cb: extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
+              cb_arg: *mut raw::c_void) -> Result<(), String>
+{
+    let table_str = unsafe{ ffi::CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
+    let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
+    for val in db.get_rel(relid as RelId) {
+        if !cb(cb_arg, Box::new(val.clone().into_record()).as_ref()) {
+            break;
+        }
+    };
+    Ok(())
 }

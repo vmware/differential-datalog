@@ -84,8 +84,12 @@ module Language.DifferentialDatalog.Syntax (
         eUnOp,
         eNot,
         ePHolder,
+        eBinding,
         eTyped,
+        FuncArg(..),
         Function(..),
+        funcMutArgs,
+        funcImmutArgs,
         funcShowProto,
         funcTypeVars,
         ModuleName(..),
@@ -473,6 +477,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EBinOp        {exprPos :: Pos, exprBOp :: BOp, exprLeft :: e, exprRight :: e}
                 | EUnOp         {exprPos :: Pos, exprUOp :: UOp, exprOp :: e}
                 | EPHolder      {exprPos :: Pos}
+                | EBinding      {exprPos :: Pos, exprVar :: String, exprPattern :: e}
                 | ETyped        {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
 
 instance Eq e => Eq (ExprNode e) where
@@ -494,6 +499,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EBinOp _ o1 l1 r1)      (EBinOp _ o2 l2 r2)        = o1 == o2 && l1 == l2 && r1 == r2
     (==) (EUnOp _ o1 e1)          (EUnOp _ o2 e2)            = o1 == o2 && e1 == e2
     (==) (EPHolder _)             (EPHolder _)               = True
+    (==) (EBinding _ v1 e1)       (EBinding _ v2 e2)         = v1 == v2 && e1 == e2
     (==) (ETyped _ e1 t1)         (ETyped _ e2 t2)           = e1 == e2 && t1 == t2
     (==) _                        _                          = False
 
@@ -532,6 +538,7 @@ instance PP e => PP (ExprNode e) where
     pp (EBinOp _ op e1 e2)   = parens $ pp e1 <+> pp op <+> pp e2
     pp (EUnOp _ op e)        = parens $ pp op <+> pp e
     pp (EPHolder _)          = "_"
+    pp (EBinding _ v e)      = parens $ pp v <> "@" <+> pp e
     pp (ETyped _ e t)        = parens $ pp e <> ":" <+> pp t
 
 instance PP e => Show (ExprNode e) where
@@ -578,14 +585,41 @@ eBinOp op l r       = E $ EBinOp    nopos op l r
 eUnOp op e          = E $ EUnOp     nopos op e
 eNot e              = eUnOp Not e
 ePHolder            = E $ EPHolder  nopos
+eBinding v e        = E $ EBinding  nopos v e
 eTyped e t          = E $ ETyped    nopos e t
+
+data FuncArg = FuncArg { argPos  :: Pos
+                       , argName :: String
+                       , argMut  :: Bool
+                       , argType :: Type
+                       }
+
+instance Eq FuncArg where
+    (==) (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = (m1, n1, t1) == (m2, n2, t2)
+
+instance WithPos FuncArg where
+    pos = argPos
+    atPos a p = a{argPos = p}
+
+instance WithName FuncArg where
+    name = argName
+    setName a n = a { argName = n }
+
+instance PP FuncArg where
+    pp FuncArg{..} = pp argName <> ":" <+> (if argMut then "mut" else empty) <+> pp argType
 
 data Function = Function { funcPos   :: Pos
                          , funcName  :: String
-                         , funcArgs  :: [Field]
+                         , funcArgs  :: [FuncArg]
                          , funcType  :: Type
                          , funcDef   :: Maybe Expr
                          }
+
+funcMutArgs :: Function -> [FuncArg]
+funcMutArgs f = filter argMut $ funcArgs f
+
+funcImmutArgs :: Function -> [FuncArg]
+funcImmutArgs f = filter (not . argMut) $ funcArgs f
 
 instance Eq Function where
     (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) =
@@ -619,7 +653,8 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars = nub . concatMap (typeTypeVars . fieldType) . funcArgs
+funcTypeVars Function{..} = nub $ concatMap (typeTypeVars . argType) funcArgs ++
+                                  typeTypeVars funcType
 
 data ModuleName = ModuleName {modulePath :: [String]}
                   deriving (Eq, Ord)
@@ -771,6 +806,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxBinOpR         {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Operand of a unary operator: 'op X'
           | CtxUnOp           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Pattern of a @-expression 'v@pat'
+          | CtxBinding        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a typed expression 'X: t'
           | CtxTyped          {ctxParExpr::ENode, ctxPar::ECtx}
 
@@ -810,6 +847,7 @@ instance PP ECtx where
                     CtxBinOpL{..}         -> "CtxBinOpL         " <+> epar
                     CtxBinOpR{..}         -> "CtxBinOpR         " <+> epar
                     CtxUnOp{..}           -> "CtxUnOp           " <+> epar
+                    CtxBinding{..}        -> "CtxBinding        " <+> epar
                     CtxTyped{..}          -> "CtxTyped          " <+> epar
                     CtxTop                -> error "pp CtxTop"
 

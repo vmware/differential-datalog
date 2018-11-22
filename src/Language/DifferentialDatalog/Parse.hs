@@ -63,7 +63,7 @@ parseDatalogString program file = do
 rustKeywords = ["type", "match"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
-                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~"]
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@"]
 reservedNames = ["as",
                  "_",
                  "Aggregate",
@@ -80,6 +80,7 @@ reservedNames = ["as",
                  "if",
                  "import",
                  "in",
+                 "mut",
                  "input",
                  "output",
                  "insert",
@@ -241,15 +242,18 @@ typeDef = (TypeDef nopos) <$ reserved "typedef" <*> typeIdent <*>
 
 func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> funcIdent
-                       <*> (parens $ commaSep arg)
+                       <*> (parens $ commaSep farg)
                        <*> (colon *> typeSpecSimple)
                        <*> (return Nothing))
        <|>
        (Function nopos <$  reserved "function"
                        <*> funcIdent
-                       <*> (parens $ commaSep arg)
+                       <*> (parens $ commaSep farg)
                        <*> (colon *> typeSpecSimple)
                        <*> (Just <$ reservedOp "=" <*> expr))
+
+
+farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 
 relation = do
     role <-  RelInput    <$ reserved "input" <* reserved "relation"
@@ -277,8 +281,7 @@ arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $
                     ForStatement nopos <$ reserved "for"
-                                       <*> (symbol "(" *> expr)
-                                       <*> (reserved "in" *> relIdent)
+                                       <*> (symbol "(" *> atom)
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
@@ -315,7 +318,7 @@ rule = Rule nopos <$>
        (commaSep1 atom) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
                RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
        <|> (RHSAggregate <$ reserved "Aggregate" <*>
                             (symbol "(" *> (parens $ commaSep varIdent)) <*>
@@ -329,11 +332,14 @@ rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> relIdent *>
        <|> (RHSCondition <$> expr)
 
 atom = withPos $ do
+       p1 <- getPosition
+       binding <- optionMaybe $ try $ varIdent <* reservedOp "in"
+       p2 <- getPosition
        rname <- relIdent
-       val <- (withPos $ eStruct rname <$> (parens $ commaSep (namedarg <|> anonarg)))
+       val <- brackets expr
               <|>
-              brackets expr
-       return $ Atom nopos rname val
+              (withPos $ eStruct rname <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
+       return $ Atom nopos rname $ maybe val (\b -> E $ EBinding (p1, p2) b val) binding
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
@@ -381,6 +387,7 @@ term  =  elhs
      <|> term'
 term' = withPos $
          eapply
+     <|> ebinding
      <|> epholder
      <|> estruct
      <|> eint
@@ -396,6 +403,9 @@ eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
                         _ <- funcIdent
                         symbol "("
+
+ebinding = eBinding <$ isbinding <*> (varIdent <* reservedOp "@") <*> expr
+    where isbinding = try $ lookAhead $ (\_ -> ()) <$> varIdent <* reservedOp "@"
 
 ebool = eBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
 evar = eVar <$> varIdent
@@ -549,6 +559,7 @@ slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (col
 field = isfield *> dot *> varIdent
     where isfield = try $ lookAhead $ do
                         _ <- dot
+                        _ <- notFollowedBy relIdent
                         varIdent
 dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do

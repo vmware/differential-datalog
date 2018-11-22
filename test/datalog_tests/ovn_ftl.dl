@@ -5,9 +5,6 @@
 // -Flow: the output table
 // -Logical_Switch
 
-typedef option_t<'A> = None
-                    | Some {value : 'A}
-
 typedef stage = LS_IN_ACL
               | LS_OUT_ACL
               | LR_IN_ADMISSION
@@ -54,7 +51,7 @@ for (lr in Logical_Router) {
 }
 
 /* Logical router ingress table 0: match (priority 50). */
-for (lrp in Logical_Router_Port if lrp.enabled) {
+for (lrp in Logical_Router_Port(.enabled = true)) {
     var p = lrp.name,
         e = lrp.mac in {
         Flow(lrp.lr, LR_IN_ADMISSION, 50,
@@ -138,7 +135,7 @@ for (lr in Logical_Router) {
 /* Logical router egress table 1: Delivery (priority 100).
  *
  * Priority 100 rules deliver packets to enabled logical ports. */
-for (lrp in Logical_Router_Port if lrp.enabled) {
+for (lrp in Logical_Router_Port(.enabled = true)) {
     var p = lrp.name in {
         Flow(lrp.lr, LR_OUT_DELIVERY, 100, $"outport == ${p}", "{ output; }")
     }
@@ -161,7 +158,7 @@ for (ls in Logical_Switch) {
     Flow(ls.ls, LS_OUT_ACL, 0, "1", "next;")
 }
 
-for (ls in Logical_Switch if ls.has_stateful_acl) {
+for (ls in Logical_Switch(.has_stateful_acl = true)) {
     Flow(ls.ls, LS_IN_ACL, 1,
          "ip && (!ct.est || (ct.est && ct_label.blocked))",
          "{ reg0[1] = 1; next; }");
@@ -261,7 +258,7 @@ for (ls in Logical_Switch) {
 /* If there are any stateful ACL rules in this datapath, we must
  * send all IP packets through the conntrack action, which handles
  * defragmentation, in order to match L4 headers. */
-for (ls in Logical_Switch if ls.has_stateful_acl) {
+for (ls in Logical_Switch(.has_stateful_acl = true)) {
     /* Ingress and Egress Pre-ACL Table (Priority 110).
      *
      * Not to do conntrack on ND packets. */
@@ -284,7 +281,7 @@ input relation Load_Balancer (
     lb:           bigint,
     ls:           bigint,
     ip_addresses: string,
-    protocol:     option_t<string>,
+    protocol:     Option<string>,
     name:         string
 )
 
@@ -368,11 +365,11 @@ for (ls in Logical_Switch) {
 input relation Logical_Switch_Port (
     lsp:                     bigint,
     ls:                      bigint,
-    parent:                  option_t<string>,
-    tag_request:             option_t<bigint>,
-    tag:                     option_t<bigint>,
+    parent:                  Option<string>,
+    tag_request:             Option<bigint>,
+    tag:                     Option<bigint>,
     /* can up and enabled fields really be missing? */
-    up:                      option_t<bool>,
+    up:                      Option<bool>,
     enabled:                 bool,
     port_security_not_empty: bool,
     port_security_l2:        string,
@@ -452,7 +449,7 @@ input relation Logical_Switch_Port_IP (
     up:                  bool
 )
 
-for (lspip in Logical_Switch_Port_IP if lspip.up) {
+for (lspip in Logical_Switch_Port_IP(.up = true)) {
     var e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
         if (lspip.ip_version == 4) {
             Flow(lspip.ls, LS_IN_ARP_RSP, 50, $"arp.tpa == ${a} && arp.op == 1", $[|

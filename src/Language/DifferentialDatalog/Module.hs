@@ -26,7 +26,7 @@ Module     : Module
 Description: DDlog's module system implemented as syntactic sugar over core syntax.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, OverloadedStrings #-}
 
 module Language.DifferentialDatalog.Module(
     parseDatalogProgram) where
@@ -36,21 +36,23 @@ import Control.Monad.Except
 import qualified Data.Map as M
 import qualified System.FilePath as F
 import System.Directory
+import System.FilePath.Posix
 import Data.List
 import Data.String.Utils
 import Data.Maybe
 import Data.Either
 import Debug.Trace
+import Text.PrettyPrint
 import qualified Text.Parsec as Parsec
 
 import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
-import Language.DifferentialDatalog.StdLib
 --import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
@@ -66,31 +68,42 @@ stdname = ModuleName ["std"]
 -- import standard library
 stdimp = Import nopos stdname (ModuleName [])
 
--- standard library module
-stdmod :: DatalogModule
-stdmod = DatalogModule {
-    moduleName = stdname,
-    moduleFile = "std.hs",
-    moduleDefs = (\(Right x) -> x) $ Parsec.parse datalogGrammar "std.hs" stdlibModule
-}
-
 -- | Parse a datalog program along with all its imports; returns a "flat"
--- program without imports.
+-- program without imports and the list of Rust files associated with each
+-- module in the program.
 --
 -- 'roots' is the list of directories to search for imports
 --
--- if 'import_std' is true, imports the standard library ('stdlibModule')
+-- if 'import_std' is true, imports the standard library ('std')
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO DatalogProgram
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc)
 parseDatalogProgram roots import_std fdata fname = do
     prog <- parseDatalogString fdata fname
     let prog' = if import_std 
                    then prog { progImports = stdimp : progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
-    imports <- evalStateT ((stdmod:) <$> parseImports roots main_mod)
-                          (if import_std then [stdname] else [])
-    flattenNamespace $ main_mod : imports
+    imports <- evalStateT (parseImports roots main_mod) []
+    let all_modules = main_mod : imports
+    prog'' <- flattenNamespace all_modules
+    -- collect Rust files associated with each module and place it in a separate Rust module
+    rs <- (vcat . catMaybes) <$>
+          mapM ((\mod -> do let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
+                            -- top-level module name is empty
+                            let mname = if moduleName mod == ModuleName []
+                                           then "__top"
+                                           else "__" <> (pp $ name2rust $ show $ moduleName mod)
+                            rs_exists <- doesFileExist rsfile
+                            if rs_exists
+                               then do rs_code <- readFile rsfile
+                                       return $ Just $ "pub use" <+> mname <> "::*;"   $$
+                                                       "mod" <+> mname <+> "{"         $$ 
+                                                       (nest' $ "use super::*;")       $$
+                                                       (nest' $ pp rs_code)            $$
+                                                       "}"
+                               else return Nothing))
+               all_modules
+    return (prog'', rs)
 
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
 mergeModules mods = do
@@ -126,7 +139,8 @@ parseImport roots mod Import{..} = do
     fname <- lift $ findModule roots mod importModule
     prog <- lift $ do fdata <- readFile fname
                       parseDatalogString fdata fname
-    let mod' = DatalogModule importModule fname $ prog { progImports = stdimp : progImports prog }
+    let std = if importModule == stdname then [] else [stdimp]
+    let mod' = DatalogModule importModule fname $ prog { progImports = std ++ progImports prog }
     imports <- parseImports roots mod'
     return $ mod' : imports
 

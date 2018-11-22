@@ -1,4 +1,4 @@
-import types
+import ovsdb
 
 
 /* Input relations */
@@ -10,7 +10,8 @@ input relation NB_Global (
     hv_cfg: integer,
     external_ids: Map<string,string>,
     connections: Set<uuid>,
-    ssl: Set<uuid>
+    ssl: Set<uuid>,
+    options: Map<string,string>
 )
 primary key (x) x._uuid
 input relation Logical_Switch (

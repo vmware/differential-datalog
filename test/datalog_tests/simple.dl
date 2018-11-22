@@ -147,12 +147,8 @@ function patterns(): () = {
     }
 }
 
-typedef option_t<'A> = None
-                     | Some {value : 'A}
-
-
 function shadow(): string = {
-    var b: option_t<string> = None;
+    var b: Option<string> = None;
     var a = Some{"foo"};
     match (a) {
         Some{v} -> v,
@@ -302,7 +298,7 @@ for (a in X)
       _ -> Z(a.field-1)
    }
 
-for (X{a} in X)
+for (X[X{a}])
    match (a) {
       1 -> Z(a),
       2 -> Z(a+1),

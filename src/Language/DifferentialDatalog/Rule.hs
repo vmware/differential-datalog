@@ -30,7 +30,9 @@ module Language.DifferentialDatalog.Rule (
     ruleLHSVars,
     ruleTypeMapM,
     ruleHasJoins,
-    ruleAggregateTypeParams
+    ruleAggregateTypeParams,
+    atomVarOccurrences,
+    atomVars
 ) where
 
 import qualified Data.Set as S
@@ -60,7 +62,7 @@ ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
 -- Variables visible _after_ 'i'th conjunct.
 ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Field
 ruleRHSVarSet' _ rl i | i < 0 = S.empty
-ruleRHSVarSet' d rl i = 
+ruleRHSVarSet' d rl i =
     case ruleRHS rl !! i of
          RHSLiteral True  a            -> vs `S.union` (atomVarDecls d rl i)
          RHSLiteral False _            -> vs
@@ -92,31 +94,46 @@ ruleAggregateTypeParams d rl idx =
          Right tmap -> tmap
 
 exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
-exprDecls d ctx e = 
+exprDecls d ctx e =
     S.fromList
-        $ map (\(v, ctx') -> Field nopos v $ exprType' d ctx' (eVarDecl v)) 
+        $ map (\(v, ctx') -> Field nopos v $ exprType d ctx' (eVarDecl v))
         $ exprVarDecls ctx e
 
-exprVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
-exprVarTypes d ctx e = 
-    map (\(v, ctx) -> Field nopos v $ exprType d ctx (eVar v)) 
-        $ exprVarOccurrences ctx e
+atomVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
+atomVarTypes d ctx e =
+    map (\(v, ctx) -> Field nopos v $ exprType d ctx (eVar v))
+        $ atomVarOccurrences ctx e
+
+atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
+atomVarOccurrences ctx e =
+    exprCollectCtx (\ctx' e' ->
+                    case e' of
+                         EVar _ v       -> [(v, ctx')]
+                         EBinding _ v _ -> [(v, ctx')]
+                         _              -> [])
+                   (++) ctx e
+
+atomVars :: Expr -> [String]
+atomVars e =
+    exprCollect (\e' ->
+                  case e' of
+                       EVar _ v       -> [v]
+                       EBinding _ v _ -> [v]
+                       _              -> [])
+                   (++) e
 
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
-atomVarDecls d rl i = 
-    S.fromList
-        $ exprVarTypes d (CtxRuleRAtom rl i) 
-        $ atomVal $ rhsAtom $ ruleRHS rl !! i
+atomVarDecls d rl i = S.fromList $ atomVarTypes d (CtxRuleRAtom rl i) (atomVal $ rhsAtom $ ruleRHS rl !! i)
 
 -- | Variables used in a RHS term of a rule
 ruleRHSTermVars :: Rule -> Int -> [String]
-ruleRHSTermVars rl i = 
+ruleRHSTermVars rl i =
     case ruleRHS rl !! i of
          RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
          RHSCondition{..} -> exprVars rhsExpr
          RHSFlatMap{..}   -> exprVars rhsMapExpr
          RHSAggregate{..} -> nub $ rhsGroupBy ++ exprVars rhsAggExpr
- 
+
 -- | All variables visible after the last RHS clause of the rule
 ruleVars :: DatalogProgram -> Rule -> [Field]
 ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
@@ -126,9 +143,9 @@ ruleLHSVars :: DatalogProgram -> Rule -> [Field]
 ruleLHSVars d rl = S.toList $ ruleLHSVarSet d rl
 
 ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Field
-ruleLHSVarSet d rl = S.fromList 
-    $ concat 
-    $ mapIdx (\a i -> exprVarTypes d (CtxRuleL rl i) $ atomVal a) 
+ruleLHSVarSet d rl = S.fromList
+    $ concat
+    $ mapIdx (\a i -> atomVarTypes d (CtxRuleL rl i) $ atomVal a)
     $ ruleLHS rl
 
 -- | Map function over all types in a rule

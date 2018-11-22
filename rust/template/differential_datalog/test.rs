@@ -229,7 +229,8 @@ fn test_one_relation(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel}]
+        nodes: vec![ProgNode::RelNode{rel}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -335,8 +336,10 @@ fn test_two_relations(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: rel1},
-        ProgNode::RelNode{rel: rel2}]
+        nodes: vec![
+            ProgNode::RelNode{rel: rel1},
+            ProgNode::RelNode{rel: rel2}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -464,7 +467,8 @@ fn test_join(nthreads: usize) {
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: rel1},
                     ProgNode::RelNode{rel: rel2},
-                    ProgNode::RelNode{rel: rel3}]
+                    ProgNode::RelNode{rel: rel3}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -600,10 +604,12 @@ fn test_antijoin(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: rel1},
-        ProgNode::RelNode{rel: rel2},
-        ProgNode::RelNode{rel: rel21},
-        ProgNode::RelNode{rel: rel3}]
+        nodes: vec![
+            ProgNode::RelNode{rel: rel1},
+            ProgNode::RelNode{rel: rel2},
+            ProgNode::RelNode{rel: rel21},
+            ProgNode::RelNode{rel: rel3}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -792,7 +798,8 @@ fn test_map(nthreads: usize) {
         nodes: vec![ProgNode::RelNode{rel: rel1},
                     ProgNode::RelNode{rel: rel2},
                     ProgNode::RelNode{rel: rel3},
-                    ProgNode::RelNode{rel: rel4}]
+                    ProgNode::RelNode{rel: rel4}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -976,7 +983,8 @@ fn test_recursion(nthreads: usize) {
     let prog: Program<Value> = Program {
         nodes: vec![ProgNode::RelNode{rel: parent},
                     ProgNode::SCCNode{rels: vec![ancestor]},
-                    ProgNode::RelNode{rel: common_ancestor}]
+                    ProgNode::RelNode{rel: common_ancestor}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
@@ -1041,6 +1049,16 @@ fn test_recursion(nthreads: usize) {
     let expect_set4 = FnvHashSet::from_iter(expect_vals4.iter().map(|x| x.clone()));
 
     assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
+
+    /* 3. Test clear_relation() */
+    running.transaction_start().unwrap();
+    running.clear_relation(1).unwrap();
+    running.transaction_commit().unwrap();
+
+    assert_eq!(*parentset.lock().unwrap(), FnvHashSet::default());
+    assert_eq!(*ancestorset.lock().unwrap(), FnvHashSet::default());
+    assert_eq!(*common_ancestorset.lock().unwrap(), FnvHashSet::default());
+
 
     running.stop().unwrap();
 }

@@ -111,6 +111,7 @@ getRelation d n = fromJust $ lookupRelation d n
 -- All variables available in the scope: (l-vars, read-only vars)
 type MField = (String, Maybe Type)
 f2mf f = (name f, Just $ fieldType f)
+arg2mf a = (name a, Just $ argType a)
 
 ctxAllVars :: DatalogProgram -> ECtx -> [Field]
 ctxAllVars d ctx = let (lvs, rvs) = ctxVars d ctx in lvs ++ rvs
@@ -124,7 +125,7 @@ ctxMVars :: DatalogProgram -> ECtx -> ([MField], [MField])
 ctxMVars d ctx =
     case ctx of
          CtxTop                   -> ([], [])
-         CtxFunc f                -> ([], map f2mf $ funcArgs f)
+         CtxFunc f                -> (map arg2mf $ funcMutArgs f, map arg2mf $ funcImmutArgs f)
          CtxRuleL rl _            -> ([], map f2mf $ ruleVars d rl)
          CtxRuleRAtom rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
@@ -153,5 +154,6 @@ ctxMVars d ctx =
          CtxBinOpL _ _            -> ([], plvars ++ prvars)
          CtxBinOpR _ _            -> ([], plvars ++ prvars)
          CtxUnOp _ _              -> ([], plvars ++ prvars)
+         CtxBinding _ _           -> (plvars, prvars)
          CtxTyped _ _             -> (plvars, prvars)
     where (plvars, prvars) = ctxMVars d $ ctxParent ctx

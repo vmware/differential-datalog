@@ -1,6 +1,4 @@
-//! Rust implementation of DDlog standard library functions and types.
-
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
+/// Rust implementation of DDlog standard library functions and types.
 
 use differential_datalog::arcval;
 use differential_datalog::record::*;
@@ -132,6 +130,64 @@ impl<T: Display + Ord> Display for std_Set<T> {
     }
 }
 
+pub fn std_set_size<X: Ord + Clone>(s: &std_Set<X>) -> u64 {
+    s.x.len() as u64
+}
+
+pub fn std_set_empty<X: Ord + Clone>() -> std_Set<X> {
+    std_Set::new()
+}
+
+pub fn std_set_singleton<X: Ord + Clone>(v: &X) -> std_Set<X> {
+    let mut s = std_Set::new();
+    s.insert(v.clone());
+    s
+}
+
+pub fn std_set_insert<X: Ord+Clone>(s: &mut std_Set<X>, v: &X) {
+    s.x.insert((*v).clone());
+}
+
+pub fn std_set_insert_imm<X: Ord+Clone>(s: &std_Set<X>, v: &X) -> std_Set<X> {
+    let mut s2 = s.clone();
+    s2.insert((*v).clone());
+    s2
+}
+
+pub fn std_set_contains<X: Ord>(s: &std_Set<X>, v: &X) -> bool {
+    s.x.contains(v)
+}
+
+pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
+    s.x.is_empty()
+}
+
+pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
+    match s.x.iter().nth(*n as usize) {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x: (*x).clone()}
+    }
+}
+
+pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
+    std_Vec{x: s.x.iter().cloned().collect()}
+}
+
+pub fn std_set_union<X: Ord + Clone>(s1: &std_Set<X>, s2: &std_Set<X>) -> std_Set<X> {
+    let mut s = s1.clone();
+    s.x.append(&mut s2.x.clone());
+    s
+}
+
+pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> {
+    let mut s = BTreeSet::new();
+    for si in sets.x.iter() {
+        s.append(&mut si.x.clone());
+    };
+    std_Set{x: s}
+}
+
+
 // Map
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -191,7 +247,54 @@ impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
     }
 }
 
-// string conversion
+pub fn std_map_empty<K: Ord + Clone,V: Clone>() -> std_Map<K, V> {
+    std_Map::new()
+}
+
+pub fn std_map_singleton<K: Ord + Clone,V: Clone>(k: &K, v: &V) -> std_Map<K, V> {
+    let mut m = std_Map::new();
+    m.insert(k.clone(), v.clone());
+    m
+}
+
+pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V) {
+    m.x.insert((*k).clone(), (*v).clone());
+}
+
+pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
+    let mut m2 = m.clone();
+    m2.insert((*k).clone(), (*v).clone());
+    m2
+}
+
+
+
+pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
+    match m.x.get(k) {
+        None => std_Option::std_None,
+        Some(v) => std_Option::std_Some{x: (*v).clone()}
+    }
+}
+
+pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
+    s.x.contains_key(k)
+}
+
+pub fn std_map_is_empty<K: Ord, V: Clone>(m: &std_Map<K,V>) -> bool {
+    m.x.is_empty()
+}
+
+
+
+pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,V>) -> std_Map<K, V> {
+    let mut m = m1.clone();
+    m.x.append(&mut m2.x.clone());
+    m
+}
+
+
+
+// strings
 
 pub fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
     arcval::DDString::from(format!("{}", *x).to_string())
@@ -199,6 +302,17 @@ pub fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
 
 pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
     arcval::DDString::from(format!("{:x}", *x).to_string())
+}
+
+pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
+    match (*s).parse::<u64>().ok() {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x}
+    }
+}
+
+pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
+    arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
 }
 
 // Hashing
@@ -234,7 +348,7 @@ pub fn std_count<A, G:Group<A>+?Sized>(g: &G) -> u64 {
     g.size()
 }
 
-pub fn std_group2set<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Set<A> {
+pub fn std_group2set<A: Ord, G: Group<A>+?Sized>(g: &G) -> std_Set<A> {
     let mut res = std_Set::new();
     for i in 0..g.size() {
         res.insert(g.ith(i));
@@ -258,6 +372,19 @@ pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
     };
     res
 }
+
+pub fn std_group_unzip<X: Ord, Y: Ord, G: Group<(X,Y)>+?Sized>(g: &G) -> (std_Vec<X>, std_Vec<Y>) {
+    let mut xs = std_Vec::new();
+    let mut ys = std_Vec::new();
+    for i in 0..g.size() {
+        let (x,y) = g.ith(i);
+        xs.push(x);
+        ys.push(y);
+    };
+    (xs,ys)
+}
+
+
 
 /* Tuples */
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]

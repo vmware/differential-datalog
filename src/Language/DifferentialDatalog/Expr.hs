@@ -116,6 +116,8 @@ exprFoldCtxM' f ctx e@(EBinOp p op l r)       = f ctx =<< EBinOp p op <$> exprFo
                                                                           exprFoldCtxM f (CtxBinOpR e ctx) r
 exprFoldCtxM' f ctx e@(EUnOp p op x)          = f ctx =<< EUnOp p op <$> (exprFoldCtxM f (CtxUnOp e ctx) x)
 exprFoldCtxM' f ctx   (EPHolder p)            = f ctx $ EPHolder p
+exprFoldCtxM' f ctx e@(EBinding p v x)        = do x' <- exprFoldCtxM f (CtxBinding e ctx) x
+                                                   f ctx $ EBinding p v x'
 exprFoldCtxM' f ctx e@(ETyped p x t)          = do x' <- exprFoldCtxM f (CtxTyped e ctx) x
                                                    f ctx $ ETyped p x' t
 
@@ -139,7 +141,8 @@ exprMapM g e = case e of
                    EBinOp p op l r     -> EBinOp p op <$> g l <*> g r
                    EUnOp p op v        -> EUnOp p op <$> g v
                    EPHolder p          -> return $ EPHolder p
-                   ETyped p v t        -> (\v' -> ETyped p v' t) <$> g v
+                   EBinding p v x      -> EBinding p v <$> g x
+                   ETyped p x t        -> (\x' -> ETyped p x' t) <$> g x
 
 
 exprMap :: (a -> b) -> ExprNode a -> ExprNode b
@@ -185,6 +188,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EBinOp _ _ l r        -> x' `op` l `op` r  
                                      EUnOp _ _ v           -> x' `op` v
                                      EPHolder _            -> x'
+                                     EBinding _ _ pat      -> x' `op` pat
                                      ETyped _ v _          -> x' `op` v
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
@@ -217,12 +221,13 @@ exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
 exprVarDecls ctx e = 
     exprFoldCtx (\ctx' e' -> 
                   case e' of
-                       EStruct _ _ fs -> concatMap snd fs
-                       ETuple _ fs    -> concat fs
-                       EVarDecl _ v   -> [(v, ctx')]
-                       ESet _ l _     -> l
-                       ETyped _ e'' _ -> e''
-                       _              -> []) ctx e
+                       EStruct _ _ fs   -> concatMap snd fs
+                       ETuple _ fs      -> concat fs
+                       EVarDecl _ v     -> [(v, ctx')]
+                       ESet _ l _       -> l
+                       EBinding _ v e'' -> (v, ctx') : e''
+                       ETyped _ e'' _   -> e''
+                       _                -> []) ctx e
 
 -- Non-recursively enumerate all functions invoked by the expression
 exprFuncs :: Expr -> [String]
@@ -251,8 +256,8 @@ isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 --
 -- * Deconstruction patterns are used in left-hand side of
 -- assignments that simultaneously deconstruct a value and bind its 
--- fields to fresh variables.  The consist of variable declarations, tuples,
--- placeholders, constructors, type annotations.  Types with multiple
+-- fields to fresh variables.  They are built out of variable declarations,
+-- tuples, placeholders, constructors, type annotations.  Types with multiple
 -- constructors cannot be deconstructed in this manner.
 --
 -- * Field expression: variables, fields, and type annotations.
@@ -277,6 +282,7 @@ exprIsPattern' (ETuple _ as)    = and as
 exprIsPattern' (EStruct _ _ as) = all snd as
 exprIsPattern' EPHolder{}       = True
 exprIsPattern' (ETyped _ e _)   = e
+exprIsPattern' (EBinding _ _ e) = e
 exprIsPattern' _                = False
 
 -- | True if 'e' is a deconstruction expression.
@@ -308,4 +314,3 @@ exprTypeMapM fun e = exprFoldM fun' e
     where
     fun' (ETyped p e t) = (E . ETyped p e) <$> typeMapM fun t
     fun' e              = return $ E e
-

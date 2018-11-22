@@ -2,6 +2,11 @@
 name = "datalog_example"
 version = "0.1.0"
 
+build = "build.rs"
+
+[build-dependencies]
+libtool = "0.1"
+
 [dependencies.differential_datalog]
 path = "./differential_datalog"
 
@@ -33,9 +38,9 @@ lto = false
 debug-assertions = false
 
 [lib]
-name = "datalog_example"
+name = "datalog_example_ddlog"
 path = "./lib.rs"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "rlib", "staticlib"]
 
 [[bin]]
 

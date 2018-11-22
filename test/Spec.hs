@@ -60,6 +60,7 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
+--bUILD_TYPE = "debug"
 bUILD_TYPE = "release"
 
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
@@ -87,27 +88,28 @@ goldenTests progress = do
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
 
 nbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] M.empty
+    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] [] M.empty
     writeFile "test/ovn/OVN_Northbound.dl" (render prog)
 
 sbTest = do
     prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema"
-                                  [ "SB_Global"
-                                  , "Logical_Flow"
-                                  , "Multicast_Group"
-                                  , "Meter"
-                                  , "Meter_Band"
-                                  , "Datapath_Binding"
-                                  , "Port_Binding"
-                                  , "Gateway_Chassis"
-                                  , "Port_Group"
-                                  , "MAC_Binding"
-                                  , "DHCP_Options"
-                                  , "DHCPv6_Options"
-                                  , "Address_Set"
-                                  , "DNS"
-                                  , "RBAC_Role"
-                                  , "RBAC_Permission"]
+                                  [ ("SB_Global", [])
+                                  , ("Logical_Flow", [])
+                                  , ("Multicast_Group", [])
+                                  , ("Meter", [])
+                                  , ("Meter_Band", [])
+                                  , ("Datapath_Binding", [])
+                                  , ("Port_Binding", ["chassis"])
+                                  , ("Gateway_Chassis", [])
+                                  , ("Port_Group", [])
+                                  , ("MAC_Binding", [])
+                                  , ("DHCP_Options", [])
+                                  , ("DHCPv6_Options", [])
+                                  , ("Address_Set", [])
+                                  , ("DNS", [])
+                                  , ("RBAC_Role", [])
+                                  , ("RBAC_Permission", [])]
+                                  [ "Datapath_Binding", "Port_Binding"]
                                   (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
                                               , ("Port_Binding"     , ["logical_port"])
                                               , ("DNS"              , ["external_ids"])
@@ -121,10 +123,10 @@ sbTest = do
 ovnTests :: Bool -> TestTree
 ovnTests progress =
   testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_ovsdb"
-          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn.dump.expected"]
-          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn.dl"; compilerTest progress "test/ovn/ovn.dl" []}]
+        [ goldenVsFiles "ovn_northd"
+          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn_northd.dump.expected"]
+          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn_northd.dump"]
+          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" []}]
 
 sOUFFLE_DIR = "./test/souffle"
 
@@ -150,12 +152,12 @@ convertSouffle progress = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
 
-parseValidate :: FilePath -> String -> IO DatalogProgram
+parseValidate :: FilePath -> String -> IO (DatalogProgram, Doc)
 parseValidate file program = do
-    d <- parseDatalogProgram [takeDirectory file] True program file
+    (d, rs_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return d'
+         Right d' -> return (d', rs_code)
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
@@ -174,7 +176,6 @@ parserTest fname = do
     -- if a file contains .fail. in its name it indicates a test
     -- that is supposed to fail during compilation.
     body <- readFile fname
-    let specname = takeBaseName fname
     let astfile  = replaceExtension fname "ast"
     if shouldFail fname
       then do
@@ -187,7 +188,7 @@ parserTest fname = do
         writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
-        prog <- parseValidate fname body
+        (prog, _) <- parseValidate fname body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -200,10 +201,6 @@ parserTest fname = do
 -- * Creates Cargo project in a directory obtained by removing file
 -- extension from 'fname'.
 --
--- * Checks if a file with the same name as 'fname' and '.rs' extension
--- (instead of '.dl') exists and passes its content as the 'imports' argument to
--- compiler.
---
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
 compilerTest :: Bool -> FilePath -> [String] -> IO ()
@@ -211,19 +208,13 @@ compilerTest progress fname cli_args = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
-    prog <- parseValidate fname body
-    -- include any user-provided Rust code
-    let importsfile = addExtension (dropExtension fname) "rs"
-    hasimports <- doesFileExist importsfile
-    imports <- if hasimports
-                  then readFile importsfile
-                  else return ""
+    (prog, rs_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-    compile prog specname imports rust_dir
+    compile prog specname rs_code rust_dir
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                          cwd = Just $ rust_dir </> specname
+                          cwd = Just $ rust_dir </> rustProjectDir specname
                      }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -270,7 +261,7 @@ cliTest progress fname specname rust_dir extra_args = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag ++ extra_args')) {
-                cwd = Just $ rust_dir </> specname,
+                cwd = Just $ rust_dir </> rustProjectDir specname,
                 std_in=UseHandle hdat,
                 std_out=UseHandle hout,
                 std_err=UseHandle herr

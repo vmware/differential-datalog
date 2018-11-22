@@ -1,9 +1,9 @@
-typedef ACL = ACL{id: uuid, name: option_t<string>, logical_switch: uuid, priority: bigint, direction: string, _match: string, action: string, log: bool, severity: option_t<string>}
+typedef ACL = ACL{id: uuid, name: std.Option<string>, logical_switch: uuid, priority: bigint, direction: string, _match: string, action: string, log: bool, severity: std.Option<string>}
 typedef ACL_external_ids = ACL_external_ids{acl: uuid, key: string, value: string}
 typedef Address_Set = Address_Set{id: uuid, name: string}
 typedef Address_Set_addresses = Address_Set_addresses{address_set: uuid, address: string}
 typedef Address_Set_external_ids = Address_Set_external_ids{address_set: uuid, key: string, value: string}
-typedef Connection = Connection{id: uuid, target: string, is_connected: bool, max_backoff: option_t<bigint>, inactivity_probe: option_t<bigint>}
+typedef Connection = Connection{id: uuid, target: string, is_connected: bool, max_backoff: std.Option<bigint>, inactivity_probe: std.Option<bigint>}
 typedef Connection_external_ids = Connection_external_ids{connection: uuid, value: string}
 typedef Connection_other_config = Connection_other_config{connection: uuid, other_config: string}
 typedef Connection_status = Connection_status{connection: uuid, key: string, value: string}
@@ -21,22 +21,22 @@ typedef DNS_records = DNS_records{dns: uuid, key: string, value: string}
 typedef Gateway_Chassis = Gateway_Chassis{id: uuid, logical_router: uuid, name: string, chassis_name: string, priority: bigint}
 typedef Gateway_Chassis_external_ids = Gateway_Chassis_external_ids{gateway_chassis: uuid, key: string, value: string}
 typedef Gateway_Chassis_options = Gateway_Chassis_options{gateway_chassis: uuid, key: string, value: string}
-typedef Load_Balancer = Load_Balancer{id: uuid, logical_switch: uuid, protocol: option_t<string>, name: string}
+typedef Load_Balancer = Load_Balancer{id: uuid, logical_switch: uuid, protocol: std.Option<string>, name: string}
 typedef Load_Balancer_external_ids = Load_Balancer_external_ids{load_balancer: uuid, key: string, value: string}
 typedef Load_Balancer_ip_addresses = Load_Balancer_ip_addresses{load_balancer: uuid, ip_address: string}
 typedef Load_Balancer_vips = Load_Balancer_vips{load_balancer: uuid, key: string, value: string}
-typedef Logical_Router = Logical_Router{id: uuid, enabled: option_t<bool>, name: string}
-typedef Logical_Router_Port = Logical_Router_Port{id: uuid, logical_router: uuid, name: string, mac: string, peer: option_t<string>, enabled: option_t<bool>}
+typedef Logical_Router = Logical_Router{id: uuid, enabled: std.Option<bool>, name: string}
+typedef Logical_Router_Port = Logical_Router_Port{id: uuid, logical_router: uuid, name: string, mac: string, peer: std.Option<string>, enabled: std.Option<bool>}
 typedef Logical_Router_Port_external_ids = Logical_Router_Port_external_ids{logical_router_port: uuid, key: string, value: string}
 typedef Logical_Router_Port_ipv6_ra_configs = Logical_Router_Port_ipv6_ra_configs{logical_router_port: uuid, key: string, value: string}
 typedef Logical_Router_Port_networks = Logical_Router_Port_networks{logical_router_port: uuid, network: string}
 typedef Logical_Router_Port_options = Logical_Router_Port_options{logical_router_port: uuid, key: string, value: string}
-typedef Logical_Router_Static_Route = Logical_Router_Static_Route{id: uuid, logical_router: uuid, ip_prefix: string, policy: option_t<string>, nexthop: string, output_port: option_t<string>}
+typedef Logical_Router_Static_Route = Logical_Router_Static_Route{id: uuid, logical_router: uuid, ip_prefix: string, policy: std.Option<string>, nexthop: string, output_port: std.Option<string>}
 typedef Logical_Router_Static_Route_external_ids = Logical_Router_Static_Route_external_ids{logical_router_static_route: uuid, key: string, value: string}
 typedef Logical_Router_external_ids = Logical_Router_external_ids{logical_router: uuid, key: string, value: string}
 typedef Logical_Router_options = Logical_Router_options{logical_router: uuid, key: string, value: string}
 typedef Logical_Switch = Logical_Switch{id: uuid, name: string, _type: string}
-typedef Logical_Switch_Port = Logical_Switch_Port{id: uuid, logical_switch: uuid, parent: option_t<string>, tag_request: option_t<bigint>, tag: option_t<bigint>, up: option_t<bool>, enabled: option_t<bool>, dhcpv4_options: option_t<uuid>, dhcpv6_options: option_t<uuid>, name: string, _type: string}
+typedef Logical_Switch_Port = Logical_Switch_Port{id: uuid, logical_switch: uuid, parent: std.Option<string>, tag_request: std.Option<bigint>, tag: std.Option<bigint>, up: std.Option<bool>, enabled: std.Option<bool>, dhcpv4_options: std.Option<uuid>, dhcpv6_options: std.Option<uuid>, name: string, _type: string}
 typedef Logical_Switch_Port_addresses = Logical_Switch_Port_addresses{logical_switch_port: uuid, address: string}
 typedef Logical_Switch_Port_dynamic_addresses = Logical_Switch_Port_dynamic_addresses{logical_switch_port: uuid, dynamic_address: string}
 typedef Logical_Switch_Port_external_ids = Logical_Switch_Port_external_ids{logical_switch_port: uuid, key: string, value: string}
@@ -49,7 +49,7 @@ typedef Logical_Switch_Port_ps_macs = Logical_Switch_Port_ps_macs{logical_switch
 typedef Logical_Switch_external_ids = Logical_Switch_external_ids{logical_switch: uuid, key: string, value: string}
 typedef Logical_Switch_has_stateful_acl_action = Logical_Switch_has_stateful_acl_action{logical_switch: uuid}
 typedef Logical_Switch_other_config = Logical_Switch_other_config{logical_switch: uuid, key: string, value: string}
-typedef NAT = NAT{id: uuid, logical_router: uuid, external_ip: string, external_mac: option_t<string>, logical_ip: string, logical_port: option_t<string>, _type: option_t<string>}
+typedef NAT = NAT{id: uuid, logical_router: uuid, external_ip: string, external_mac: std.Option<string>, logical_ip: string, logical_port: std.Option<string>, _type: std.Option<string>}
 typedef NAT_external_ids = NAT_external_ids{nat: uuid, key: string, value: string}
 typedef NB_Global = NB_Global{nb_cfg: bigint, sb_cfg: bigint, hv_cfg: bigint}
 typedef NB_Global_external_ids = NB_Global_external_ids{key: string, value: string}
@@ -64,43 +64,66 @@ typedef ip4_subnet_t = IP4Subnet{addr: ip4_addr_t, mask: ip4_addr_t}
 typedef ip6_addr_t = bit<128>
 typedef ip6_subnet_t = IP6Subnet{addr: ip6_addr_t, mask: ip6_addr_t}
 typedef ip_addr_t = IPAddr4{addr4: ip4_addr_t} | IPAddr6{addr6: ip6_addr_t}
-typedef ip_port_t = IPPort{ip: string, port: option_t<port_t>}
+typedef ip_port_t = IPPort{ip: string, port: std.Option<port_t>}
 typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet: ip6_subnet_t}
 typedef mac_addr_t = bit<48>
-typedef option_t<'A> = None{} | Some{value: 'A}
 typedef port_t = bit<16>
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
+typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef uuid = bit<128>
 extern function build_dhcp_netmask (cidr: string): string
-extern function eth_addr_from_string (str: string): option_t<mac_addr_t>
+extern function eth_addr_from_string (str: string): std.Option<mac_addr_t>
 extern function extract_ips (str: string): std.Set<ip_addr_t>
 extern function extract_mac (str: string): (mac_addr_t, string)
 extern function extract_subnets (str: string): std.Set<ip_subnet_t>
 extern function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 extern function ip_address_and_port_from_lb_key (key: string): ip_port_t
-extern function ip_parse (str: string): option_t<ip_addr_t>
+extern function ip_parse (str: string): std.Option<ip_addr_t>
 extern function ipv6_string_mapped (addr: ip6_addr_t): string
-function is_none (x: option_t<'A>): bool =
-    match (x) {
-        None{} -> true,
-        _ -> false
-    }
-function is_some (x: option_t<'A>): bool =
-    match (x) {
-        Some{.value=_} -> true,
-        _ -> false
-    }
 extern function std.__builtin_2string (x: 'X): string
 extern function std.count (g: std.Group<'A>): bit<64>
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
+function std.is_none (x: std.Option<'A>): bool =
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+function std.is_some (x: std.Option<'A>): bool =
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
 input relation ACL [ACL]
 input relation ACL_external_ids [ACL_external_ids]
 input relation Address_Set [Address_Set]
@@ -170,10 +193,10 @@ Logical_Switch_has_stateful_acl_action(.logical_switch=ls) :- ACL(.id=_, .name=_
 Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=subnet) :- Logical_Switch_Port_port_security(.logical_switch_port=lsp, .port_security=addrs), (var mac, var ips) = extract_mac(addrs), var subnet = FlatMap(extract_subnets(ips)).
 Logical_Switch_Port_ps_macs(.logical_switch_port=lsp, .mac=mac) :- Logical_Switch_Port_ps_ips(.logical_switch_port=lsp, .mac=mac, .ip=_).
 DHCP_Options_option_args(.dhcp_options=opts, .option=((key ++ "=") ++ value)) :- DHCP_Options_options(.dhcp_options=opts, .key=key, .value=value), ((key != "server_mac") and (key != "dhcpv6_stateless")).
-DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
-DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var mac} = eth_addr_from_string(val).
-DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=val) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), Some{.value=var ip4} = ip_parse(val).
-DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=ipv6_string_mapped(lla)) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), None{} = ip_parse(val), Some{.value=var mac} = eth_addr_from_string(val), var lla = in6_generate_lla(mac).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_mac", .value=val), std.Some{.x=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_mac(.dhcp_options=opts, .server_mac=mac) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), std.Some{.x=var mac} = eth_addr_from_string(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=val) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), std.Some{.x=var ip4} = ip_parse(val).
+DHCP_Options_server_ip(.dhcp_options=opts, .server_ip=ipv6_string_mapped(lla)) :- DHCP_Options_options(.dhcp_options=opts, .key="server_id", .value=val), std.None{} = ip_parse(val), std.Some{.x=var mac} = eth_addr_from_string(val), var lla = in6_generate_lla(mac).
 DHCP_Options_netmask(.dhcp_options=opts, .netmask=build_dhcp_netmask(cidr)) :- DHCP_Options(.id=opts, .cidr=cidr).
 DHCP_Options_stateful(.dhcp_options=opts, .stateful=true) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="false").
 DHCP_Options_stateful(.dhcp_options=opts, .stateful=false) :- DHCP_Options_options(.dhcp_options=opts, .key="dhcpv6_stateless", .value="true").

@@ -24,14 +24,15 @@ use super::{HDDlog, output_relname_to_id};
 /// ```
 ///
 #[no_mangle]
-pub extern "C" fn datalog_example_apply_ovsdb_updates(prog: *const HDDlog,
-                                                      prefix: *const c_char,
-                                                      updates: *const c_char) -> c_int
+pub unsafe extern "C" fn datalog_example_apply_ovsdb_updates(
+    prog: *const HDDlog,
+    prefix: *const c_char,
+    updates: *const c_char) -> c_int
 {
     if prog.is_null() || prefix.is_null() || updates.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     let res = apply_updates(&mut prog.0.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
         eprintln!("datalog_example_apply_ovsdb_updates(): error: {}", e);
         -1

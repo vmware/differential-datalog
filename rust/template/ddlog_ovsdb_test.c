@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "ddlog.h"
+#include "datalog_example_ddlog.h"
 
 int main(int args, char *argv)
 {

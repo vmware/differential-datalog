@@ -21,41 +21,71 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards #-} 
+{-# LANGUAGE RecordWildCards #-}
 
 import System.Environment
 import Text.PrettyPrint
 import System.Console.GetOpt
 import Control.Exception
 import Data.List
+import Data.Maybe
+import Data.List.Split
 import Control.Monad
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.OVSDB.Compile
 
 data TOption = OVSFile     String
-             | InputTable  String
              | OutputTable String
+             | ROColumn    String
+             | KeyColumn   String
+             | ProxyTable  String
 
 options :: [OptDescr TOption]
-options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")  "OVSDB schema file"
-          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE") "output table name"
+options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file"
+          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "mark TABLE as output"
+          , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "mark COLUMN as read-only"
+          , Option ['k'] ["key"]          (ReqArg KeyColumn   "TABLE.COLUMN") "mark COLUMN as key"
+          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "generate output proxy table for TABLE"
           ]
 
 data Config = Config { confOVSFile      :: FilePath
-                     , confOutputTables :: [String]
+                     , confOutputTables :: [(String, [String])]
+                     , confProxyTables  :: [String]
+                     , confKeys         :: M.Map String [String]
                      }
 
 defaultConfig = Config { confOVSFile      = ""
                        , confOutputTables = []
+                       , confProxyTables  = []
+                       , confKeys         = M.empty
                        }
 
 
 addOption :: Config -> TOption -> IO Config
 addOption config (OVSFile f) = do
-    when (confOVSFile config == "") $ errorWithoutStackTrace "Multiple input files specified"
+    when (confOVSFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
     return config {confOVSFile = f}
-addOption config (OutputTable t) = return config{ confOutputTables = nub (t : confOutputTables config)}
+addOption config (OutputTable t) = return config{ confOutputTables = nub ((t,[]) : confOutputTables config)}
+addOption config (ProxyTable t) = return config{ confProxyTables = nub (t : confProxyTables config)}
+addOption config (KeyColumn c) = do
+    case splitOn "." c of
+         [table, col] -> do
+            when (isNothing $ lookup table $ confOutputTables config)
+                 $ errorWithoutStackTrace $ "Unknown output table name " ++ table
+            return $ config{confKeys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
+                                               $ confKeys config}
+         _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
+
+addOption config (ROColumn c) = do
+    case splitOn "." c of
+         [table, col] -> do
+            when (isNothing $ lookup table $ confOutputTables config)
+                 $ errorWithoutStackTrace $ "Unknown output table name " ++ table
+            let outtabs = map (\(t,ro) -> if t == table then (t, nub $ col:ro) else (t,ro))
+                              $ confOutputTables config
+            return $ config{confOutputTables = outtabs}
+         _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
@@ -72,6 +102,6 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    dlschema <- compileSchemaFile confOVSFile confOutputTables M.empty
+    dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables confKeys
     putStrLn $ render dlschema
     return ()

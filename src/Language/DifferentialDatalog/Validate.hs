@@ -47,11 +47,16 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
-import Language.DifferentialDatalog.StdLib
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
 sET_TYPES = ["std.Set", "std.Vec"]
 gROUP_TYPE = "std.Group"
+
+bUILTIN_2STRING_FUNC :: String
+bUILTIN_2STRING_FUNC = "std.__builtin_2string"
+
+tOSTRING_FUNC_SUFFIX :: String
+tOSTRING_FUNC_SUFFIX = "2string"
 
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -207,7 +212,7 @@ funcValidateProto :: (MonadError String me) => DatalogProgram -> Function -> me 
 funcValidateProto d f@Function{..} = do
     uniqNames ("Multiple definitions of argument " ++) funcArgs
     let tvars = funcTypeVars f
-    mapM_ (typeValidate d tvars . fieldType) funcArgs
+    mapM_ (typeValidate d tvars . argType) funcArgs
     typeValidate d tvars funcType
 
 funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me ()
@@ -267,8 +272,7 @@ ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
     -- variable cannot be declared and used in the same atom
     uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
         $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars)
-        $ exprVarOccurrences (CtxRuleRAtom rl idx)
-        $ atomVal atom
+        $ atomVarOccurrences (CtxRuleRAtom rl idx) $ atomVal atom
 
 ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
     exprValidate d [] (CtxRuleRCond rl idx) e
@@ -286,8 +290,10 @@ ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
-ruleLHSValidate d rl Atom{..} idx = do
-    checkRelation atomPos d atomRelation
+ruleLHSValidate d rl a@Atom{..} idx = do
+    rel <- checkRelation atomPos d atomRelation
+    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a) 
+         $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
 -- Validate Aggregate term, compute type argument map for the aggregate function used in the term.
@@ -365,13 +371,18 @@ exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ s
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
-exprValidate1 _ _ ctx EVar{} | ctxInRuleRHSPattern ctx
-                                          = return ()
+exprValidate1 d _ ctx e@EVar{..} | ctxInRuleRHSPattern ctx
+                                          = do
+    when (ctxInBinding ctx) $
+        check (isJust $ lookupVar d ctx exprVar) (pos e) $ "Variable declarations not allowed inside @-bindings"
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
-exprValidate1 d _ ctx (EApply p f as)     = do fun <- checkFunc p d f
-                                               check (length as == length (funcArgs fun)) p
-                                                      "Number of arguments does not match function declaration"
+exprValidate1 d _ ctx (EApply p f as)     = do
+    fun <- checkFunc p d f
+    check (length as == length (funcArgs fun)) p
+          "Number of arguments does not match function declaration"
+    mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
+          $ zip as (map argMut $ funcArgs fun)
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
@@ -388,6 +399,7 @@ exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v)      = do
     check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
+    check (not $ ctxInBinding ctx) p "Variable declaration is not allowed inside @-binding"
     checkNoVar p d ctx v
 {-                                     | otherwise
                                           = do checkNoVar p d ctx v
@@ -405,6 +417,7 @@ exprValidate1 _ _ ctx (EPHolder p)        = do
                    CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
+exprValidate1 d _ ctx (EBinding p v _)    = checkNoVar p d ctx v
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
 
 -- True if a placeholder ("_") can appear in this context
@@ -417,6 +430,7 @@ ctxPHolderAllowed ctx =
          CtxStruct{}      -> pres
          CtxTuple{}       -> pres
          CtxMatchPat{}    -> True
+         CtxBinding{}     -> True
          _                -> False
     where
     par = ctxParent ctx
@@ -519,10 +533,10 @@ exprInjectStringConversions :: (MonadError String me) => DatalogProgram -> ECtx 
 exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (tr /= tString) = do
     -- find string conversion function
     fname <- case tr of
-                  TBool{}     -> return $ "std." ++ bUILTIN_2STRING_FUNC
-                  TInt{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
-                  TString{}   -> return $ "std." ++ bUILTIN_2STRING_FUNC
-                  TBit{}      -> return $ "std." ++ bUILTIN_2STRING_FUNC
+                  TBool{}     -> return $ bUILTIN_2STRING_FUNC
+                  TInt{}      -> return $ bUILTIN_2STRING_FUNC
+                  TString{}   -> return $ bUILTIN_2STRING_FUNC
+                  TBit{}      -> return $ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
