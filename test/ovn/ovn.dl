@@ -1,4 +1,8 @@
 extern type eth_addr
+
+extern function eth_addr_zero(): eth_addr
+extern function eth_addr2string(addr: eth_addr): string
+
 extern type in6_addr
 
 typedef ovs_be32 = bit<32>
@@ -32,7 +36,6 @@ typedef lport_addresses = LPortAddress {
     ipv4_addrs: Vec<ipv4_netaddr>,
     ipv6_addrs: Vec<ipv6_netaddr>
 }
-
 
 extern function warn(msg: string): ()
 

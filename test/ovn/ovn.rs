@@ -24,6 +24,15 @@ pub struct ovn_eth_addr {
     x: [u8; ETH_ADDR_SIZE]
 }
 
+pub fn ovn_eth_addr_zero() -> ovn_eth_addr {
+    ovn_eth_addr { x: [0; ETH_ADDR_SIZE] }
+}
+
+pub fn ovn_eth_addr2string(addr: &ovn_eth_addr) -> arcval::DDString {
+    arcval::DDString::from(format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+                                   addr.x[0], addr.x[1], addr.x[2], addr.x[3], addr.x[4], addr.x[5]))
+}
+
 impl FromRecord for ovn_eth_addr {
     fn from_record(val: &record::Record) -> Result<Self, String> {
         Ok(ovn_eth_addr{x: <[u8; ETH_ADDR_SIZE]>::from_record(val)?})

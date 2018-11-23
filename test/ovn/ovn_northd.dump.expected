@@ -62,6 +62,10 @@ OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7cc
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",1,90,"inport == \"lsp1\" && eth.src == aa:bb:cc:dd:ee:ff && ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && udp.src == 68 && udp.dst == 67","next;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",1,90,"inport == \"lsp1\" && eth.src == aa:bb:cc:dd:ee:ff && ip4.src == {10.13.1.1, 10.13.1.2}","next;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",1,90,"inport == \"lsp1\" && eth.src: 11:22:33:44:55:66 && ip6.src == {fe80::1322:33ff:fe44:5566, fe80::742a:ad2c:b47d:e7a}","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",2,80,"inport == \"lsp1\" && (arp || nd)","drop;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",2,90,"inport == \"lsp1\" && eth.src == 11:22:33:44:55:66 && arp.sha == 11:22:33:44:55:66 && arp.spa == {192.168.0.1}","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",2,90,"inport == \"lsp1\" && eth.src == 11:22:33:44:55:66 && ip6 && nd && ((nd.sll == 00:00:00:00:00:00 || nd.sll == 11:22:33:44:55:66) || ((nd.tll == 00:00:00:00:00:00 || nd.tll == 11:22:33:44:55:66) && (nd.target == fe80::1322:33ff:fe44:5566 || nd.target == fe80::742a:ad2c:b47d:e7a)))","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",2,90,"inport == \"lsp1\" && eth.src == aa:bb:cc:dd:ee:ff && arp.sha == aa:bb:cc:dd:ee:ff && arp.spa == {10.13.1.1, 10.13.1.2}","next;",std_Map { x: {} }}
 
 OVN_Southbound_DeltaPlus_Meter:
 OVN_Southbound.DeltaPlus_Meter{"meter1","kbps",std_Set { x: {std.Right{"956d1cfd-7661-a2a0-a24c-a17e7ccfa206"}} }}
