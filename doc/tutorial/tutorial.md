@@ -793,7 +793,7 @@ input relation X(x: bit<16>)
 output relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
 output relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
 
-Sum(x,y,x*y) :- X(x), X(y).
+Sum(x,y,x+y) :- X(x), X(y).
 Product(x,y,x*y) :- X(x), X(y).
 ```
 
