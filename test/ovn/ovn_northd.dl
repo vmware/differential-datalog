@@ -879,15 +879,31 @@ LSPortPSEthAddresses(lsport, set_empty()) :-
 relation LSPortAddresses(lsport: uuid,
                          addrs:  lport_addresses)
 
-/*set_lsp_dynamic_addresses(const char *dynamic_addresses, struct ovn_port *op)
-{
-    extract_lsp_addresses(dynamic_addresses, &op->lsp_addrs[op->n_lsp_addrs]);
-    op->n_lsp_addrs++;
-}
+LSPortAddresses(lsport, addrs) :-
+    nb.Logical_Switch_Port(._uuid = lsport, .addresses = addresses),
+    var address = FlatMap(addresses),
+    Some{var addrs} = extract_lsp_addresses(address).
 
-} else if (!extract_lsp_addresses(nbsp->addresses[j],
-&op->lsp_addrs[op->n_lsp_addrs])) {
-*/
+LSPortAddresses(lsport, addrs) :-
+    nb.Logical_Switch_Port(._uuid = lsport, .dynamic_addresses = addresses),
+    var address = FlatMap(addresses),
+    Some{var addrs} = extract_lsp_addresses(address).
+
+relation LSPortIPv4Address(lsport: uuid,
+                           ea_s:   string,
+                           addr:   ipv4_netaddr)
+
+LSPortIPv4Address(lsport, ea_s, addr) :-
+    LSPortAddresses(lsport, LPortAddress{.ea_s = ea_s, .ipv4_addrs = addrs}),
+    var addr = FlatMap(addrs).
+
+relation LSPortIPv6Address(lsport: uuid,
+                           ea_s:   string,
+                           addr:   ipv6_netaddr)
+
+LSPortIPv6Address(lsport, ea_s, addr) :-
+    LSPortAddresses(lsport, LPortAddress{.ea_s = ea_s, .ipv6_addrs = addrs}),
+    var addr = FlatMap(addrs).
 
 function build_port_security_ipv6_flow(
     pipeline: Direction,
@@ -1179,7 +1195,7 @@ for (ls in nb.Logical_Switch) {
 for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
         var lsname = uuid2str(lps.lswitch) in
-        if (lsp.__type = "localnet" or lsp.__type == "vtep") {
+        if (lsp.__type == "localnet" or lsp.__type == "vtep") {
             sb.Out_Logical_Flow(.logical_datapath = lsname,
                                 .pipeline         = "ingress",
                                 .table_id         = switch_stage(IN, ARP_ND_RSP),
@@ -1189,6 +1205,10 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
                                 .external_ids     = map_empty())
         }
     }
+}
+
+function lsp_is_up(lsp: nb.Logical_Switch_Port): bool = {
+    set_nth(lsp.up, 0) != Some{false}
 }
 
 /* Ingress table 11: ARP/ND responder, reply for known IPs.
@@ -1204,92 +1224,202 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
              *  - port type is router or
              *  - port type is localport
              */
-            if (lsp_is_up(lsp) && lsp.__type == "router" or lsp.__type == "localport")) {
-                for (LSPortAddresses(.lsport = lsp._uuid, .ps_addrs = ps))
+            if (lsp_is_up(lsp) or lsp.__type == "router" or lsp.__type == "localport") {
+                for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr))
                 {
+                    var __match = $"arp.tpa == ${addr.addr_s} && arp.op == 1" in
+                    var actions = $"eth.dst = eth.src; "            ++
+                                  $"eth.src = ${ea_s}; "            ++
+                                  $"arp.op = 2; /* ARP reply */ "   ++
+                                  $"arp.tha = arp.sha; "            ++
+                                  $"arp.sha = ${ea_s}; "            ++
+                                  $"arp.tpa = arp.spa; "            ++
+                                  $"arp.spa = addr.addr_s; "        ++
+                                  $"outport = inport; "             ++
+                                  $"flags.loopback = 1; "           ++
+                                  $"output;" in
+                    {
+                        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                            .pipeline         = "ingress",
+                                            .table_id         = switch_stage(IN, ARP_ND_RSP),
+                                            .priority         = 50,
+                                            .__match          = __match,
+                                            .actions          = actions,
+                                            .external_ids     = map_empty());
 
+                        /* Do not reply to an ARP request from the port that owns the
+                         * address (otherwise a DHCP client that ARPs to check for a
+                         * duplicate address will fail).  Instead, forward it the usual
+                         * way.
+                         *
+                         * (Another alternative would be to simply drop the packet.  If
+                         * everything is working as it is configured, then this would
+                         * produce equivalent results, since no one should reply to the
+                         * request.  But ARPing for one's own IP address is intended to
+                         * detect situations where the network is not working as
+                         * configured, so dropping the request would frustrate that
+                         * intent.) */
+                        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                            .pipeline         = "ingress",
+                                            .table_id         = switch_stage(IN, ARP_ND_RSP),
+                                            .priority         = 100,
+                                            .__match          = __match ++ $" && inport == ${json_key}",
+                                            .actions          = "next;",
+                                            .external_ids     = map_empty())
+                    }
+                };
 
-//        for (size_t i = 0; i < op->n_lsp_addrs; i++) {
-//            for (size_t j = 0; j < op->lsp_addrs[i].n_ipv4_addrs; j++) {
-//                ds_clear(&match);
-//                ds_put_format(&match, "arp.tpa == %s && arp.op == 1",
-//                              op->lsp_addrs[i].ipv4_addrs[j].addr_s);
-//                ds_clear(&actions);
-//                ds_put_format(&actions,
-//                    "eth.dst = eth.src; "
-//                    "eth.src = %s; "
-//                    "arp.op = 2; /* ARP reply */ "
-//                    "arp.tha = arp.sha; "
-//                    "arp.sha = %s; "
-//                    "arp.tpa = arp.spa; "
-//                    "arp.spa = %s; "
-//                    "outport = inport; "
-//                    "flags.loopback = 1; "
-//                    "output;",
-//                    op->lsp_addrs[i].ea_s, op->lsp_addrs[i].ea_s,
-//                    op->lsp_addrs[i].ipv4_addrs[j].addr_s);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_ARP_ND_RSP, 50,
-//                              ds_cstr(&match), ds_cstr(&actions));
-//
-//                /* Do not reply to an ARP request from the port that owns the
-//                 * address (otherwise a DHCP client that ARPs to check for a
-//                 * duplicate address will fail).  Instead, forward it the usual
-//                 * way.
-//                 *
-//                 * (Another alternative would be to simply drop the packet.  If
-//                 * everything is working as it is configured, then this would
-//                 * produce equivalent results, since no one should reply to the
-//                 * request.  But ARPing for one's own IP address is intended to
-//                 * detect situations where the network is not working as
-//                 * configured, so dropping the request would frustrate that
-//                 * intent.) */
-//                ds_put_format(&match, " && inport == %s", op->json_key);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_ARP_ND_RSP, 100,
-//                              ds_cstr(&match), "next;");
-//            }
-//
-//            /* For ND solicitations, we need to listen for both the
-//             * unicast IPv6 address and its all-nodes multicast address,
-//             * but always respond with the unicast IPv6 address. */
-//            for (size_t j = 0; j < op->lsp_addrs[i].n_ipv6_addrs; j++) {
-//                ds_clear(&match);
-//                ds_put_format(&match,
-//                        "nd_ns && ip6.dst == {%s, %s} && nd.target == %s",
-//                        op->lsp_addrs[i].ipv6_addrs[j].addr_s,
-//                        op->lsp_addrs[i].ipv6_addrs[j].sn_addr_s,
-//                        op->lsp_addrs[i].ipv6_addrs[j].addr_s);
-//
-//                ds_clear(&actions);
-//                ds_put_format(&actions,
-//                        "%s { "
-//                        "eth.src = %s; "
-//                        "ip6.src = %s; "
-//                        "nd.target = %s; "
-//                        "nd.tll = %s; "
-//                        "outport = inport; "
-//                        "flags.loopback = 1; "
-//                        "output; "
-//                        "};",
-//                        !strcmp(op->nbsp->type, "router") ?
-//                            "nd_na_router" : "nd_na",
-//                        op->lsp_addrs[i].ea_s,
-//                        op->lsp_addrs[i].ipv6_addrs[j].addr_s,
-//                        op->lsp_addrs[i].ipv6_addrs[j].addr_s,
-//                        op->lsp_addrs[i].ea_s);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_ARP_ND_RSP, 50,
-//                              ds_cstr(&match), ds_cstr(&actions));
-//
-//                /* Do not reply to a solicitation from the port that owns the
-//                 * address (otherwise DAD detection will fail). */
-//                ds_put_format(&match, " && inport == %s", op->json_key);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_ARP_ND_RSP, 100,
-//                              ds_cstr(&match), "next;");
+                /* For ND solicitations, we need to listen for both the
+                 * unicast IPv6 address and its all-nodes multicast address,
+                 * but always respond with the unicast IPv6 address. */
+                for (LSPortIPv6Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr))
+                {
+                    var __match = $"nd_ns && ip6.dst == {${addr.addr_s}, ${addr.sn_addr_s}} && nd.target == ${addr.addr_s}" in
+                    var actions = $"${if (lsp.__type == \"router\") \"nd_na_router\" else \"nd_na\"} { "    ++
+                                  $"eth.src = ${ea_s}; "                                                    ++
+                                  $"ip6.src = ${addr.addr_s}; "                                             ++
+                                  $"nd.target = ${addr.addr_s}; "                                           ++
+                                  $"nd.tll = ${ea_s}; "                                                     ++
+                                  "outport = inport; "                                                      ++
+                                  "flags.loopback = 1; "                                                    ++
+                                  "output; "                                                                ++
+                                  "};" in
+                    {
+                        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                            .pipeline         = "ingress",
+                                            .table_id         = switch_stage(IN, ARP_ND_RSP),
+                                            .priority         = 50,
+                                            .__match          = __match,
+                                            .actions          = actions,
+                                            .external_ids     = map_empty());
+
+                        /* Do not reply to a solicitation from the port that owns the
+                         * address (otherwise DAD detection will fail). */
+                        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                            .pipeline         = "ingress",
+                                            .table_id         = switch_stage(IN, ARP_ND_RSP),
+                                            .priority         = 100,
+                                            .__match          = __match ++ $" && inport == ${json_key}",
+                                            .actions          = actions,
+                                            .external_ids     = map_empty())
+                    }
                 }
             }
         }
     }
 }
 
+/* Ingress table 11: ARP/ND responder, by default goto next.
+ * (priority 0)*/
+for (ls in nb.Logical_Switch) {
+    var lsname = uuid2str(ls._uuid) in {
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, ARP_ND_RSP),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+    }
+}
+
+
+///* Logical switch ingress table 12 and 13: DHCP options and response
+//     * priority 100 flows. */
+//for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
+//    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
+//        var lsname = uuid2str(lps.lswitch) in
+//        var json_key = json_string_escape(lsp.name) in
+//        {
+//            /* Don't add the DHCP flows if the port is not enabled or if the
+//             * port is a router port. */
+//            if ((is_enabled(lsp.enabled) and lsp.__type != "router") and
+//               /* CMS has disabled both native DHCPv4 and DHCPv6 for this lport. */
+//               not (set_is_empty(lsp.dhcpv4_options) && set_is_empty(lsp.dhcpv6_options)))
+//            {
+//
+//    for (size_t i = 0; i < op->n_lsp_addrs; i++) {
+//        for (size_t j = 0; j < op->lsp_addrs[i].n_ipv4_addrs; j++) {
+//            struct ds options_action = DS_EMPTY_INITIALIZER;
+//            struct ds response_action = DS_EMPTY_INITIALIZER;
+//            struct ds ipv4_addr_match = DS_EMPTY_INITIALIZER;
+//            if (build_dhcpv4_action(
+//                    op, op->lsp_addrs[i].ipv4_addrs[j].addr,
+//                    &options_action, &response_action, &ipv4_addr_match)) {
+//                ds_clear(&match);
+//                ds_put_format(
+//                    &match, "inport == %s && eth.src == %s && "
+//                    "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && "
+//                    "udp.src == 68 && udp.dst == 67", op->json_key,
+//                    op->lsp_addrs[i].ea_s);
+//
+//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
+//                              100, ds_cstr(&match),
+//                              ds_cstr(&options_action));
+//                ds_clear(&match);
+//                /* Allow ip4.src = OFFER_IP and
+//                 * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
+//                 * cases
+//                 *  -  When the client wants to renew the IP by sending
+//                 *     the DHCPREQUEST to the server ip.
+//                 *  -  When the client wants to renew the IP by
+//                 *     broadcasting the DHCPREQUEST.
+//                 */
+//                ds_put_format(
+//                    &match, "inport == %s && eth.src == %s && "
+//                    "%s && udp.src == 68 && udp.dst == 67", op->json_key,
+//                    op->lsp_addrs[i].ea_s, ds_cstr(&ipv4_addr_match));
+//
+//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
+//                              100, ds_cstr(&match),
+//                              ds_cstr(&options_action));
+//                ds_clear(&match);
+//
+//                /* If REGBIT_DHCP_OPTS_RESULT is set, it means the
+//                 * put_dhcp_opts action  is successful. */
+//                ds_put_format(
+//                    &match, "inport == %s && eth.src == %s && "
+//                    "ip4 && udp.src == 68 && udp.dst == 67"
+//                    " && "REGBIT_DHCP_OPTS_RESULT, op->json_key,
+//                    op->lsp_addrs[i].ea_s);
+//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_RESPONSE,
+//                              100, ds_cstr(&match),
+//                              ds_cstr(&response_action));
+//                ds_destroy(&options_action);
+//                ds_destroy(&response_action);
+//                ds_destroy(&ipv4_addr_match);
+//                break;
+//            }
+//        }
+//
+//        for (size_t j = 0; j < op->lsp_addrs[i].n_ipv6_addrs; j++) {
+//            struct ds options_action = DS_EMPTY_INITIALIZER;
+//            struct ds response_action = DS_EMPTY_INITIALIZER;
+//            if (build_dhcpv6_action(
+//                    op, &op->lsp_addrs[i].ipv6_addrs[j].addr,
+//                    &options_action, &response_action)) {
+//                ds_clear(&match);
+//                ds_put_format(
+//                    &match, "inport == %s && eth.src == %s"
+//                    " && ip6.dst == ff02::1:2 && udp.src == 546 &&"
+//                    " udp.dst == 547", op->json_key,
+//                    op->lsp_addrs[i].ea_s);
+//
+//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS, 100,
+//                              ds_cstr(&match), ds_cstr(&options_action));
+//
+//                /* If REGBIT_DHCP_OPTS_RESULT is set to 1, it means the
+//                 * put_dhcpv6_opts action is successful */
+//                ds_put_cstr(&match, " && "REGBIT_DHCP_OPTS_RESULT);
+//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_RESPONSE, 100,
+//                              ds_cstr(&match), ds_cstr(&response_action));
+//                ds_destroy(&options_action);
+//                ds_destroy(&response_action);
+//                break;
+//            }
+//        }
+//    }
+//}
 
 /*
  * Datapath tunnel key allocation:
