@@ -72,8 +72,8 @@ data Statement = ForStatement    { statPos :: Pos
                | MatchStatement  { statPos :: Pos
                                  , matchExpr :: Expr
                                  , cases :: [(Expr, Statement)] }
-               | VarStatement    { statPos :: Pos
-                                 , varList :: [Assignment]
+               | AssignStatement { statPos :: Pos
+                                 , assignExpr :: Expr
                                  , varStatement :: Statement }
                | InsertStatement { statPos :: Pos
                                  , insertAtom :: Atom }
@@ -88,8 +88,8 @@ instance Eq Statement where
           c1 == c2 && s1 == s2 && e1 == e2
     (==) (MatchStatement _ e1 l1) (MatchStatement _ e2 l2) =
           e1 == e2 && l1 == l1
-    (==) (VarStatement _ l1 s1) (VarStatement _ l2 s2) =
-          l1 == l2 && s1 == s2
+    (==) (AssignStatement _ e1 s1) (AssignStatement _ e2 s2) =
+          e1 == e2 && s1 == s2
     (==) (InsertStatement _ a1) (InsertStatement _ a2) =
           a1 == a2
     (==) (BlockStatement _ l1) (BlockStatement _ l2) =
@@ -104,7 +104,7 @@ instance PP Statement where
     pp (MatchStatement _ e l) = "match" <+> "(" <> pp e <> ")" $$ "{" $+$
                                 (nest' $ vcat $ (punctuate "," $ map (\(e,s) -> pp e <+> "->" <+> pp s) l))
                                 $$ "}"
-    pp (VarStatement _ l s) = "var" <+> (hsep $ punctuate "," $ map pp l) <+> "in" $$ ((nest' . pp) s)
+    pp (AssignStatement _ e s) = pp e <+> "in" $$ ((nest' . pp) s)
     pp (InsertStatement _ a) =  pp a
     pp (BlockStatement _ l) =  "{" $+$
                                 (nest' $ vcat $ (punctuate ";" $ map pp l))
@@ -133,10 +133,6 @@ addRhsToRules:: RuleRHS -> [Rule] -> [Rule]
 addRhsToRules toAdd rules =
      map (\r -> r{ruleRHS=(toAdd : ruleRHS r)}) rules
 
-convertAssignment :: Assignment -> Expr
-convertAssignment (Assignment p l Nothing r) = E $ ESet p (E $ EVarDecl p l) r
-convertAssignment (Assignment p l (Just t) r) = E $ ESet p (E $ ETyped p (E $ EVarDecl p l) t) r
-
 -- | convert statement into rules
 convertStatement :: Statement -> [Rule]
 convertStatement (ForStatement p atom mc s) =
@@ -158,11 +154,9 @@ convertStatement (MatchStatement p e c) =
         matchList = explodeMatchCases $ map fst c
         matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
     in concat $ zipWith addRhsToRules matchExpressions rulesList
-convertStatement (VarStatement p l s) =
-    let rules = convertStatement s
-        exprs = map convertAssignment l
-        rhs = map RHSCondition exprs in
-    map (\r -> r{ruleRHS = rhs ++ (ruleRHS r)}) rules
+convertStatement (AssignStatement p e s) =
+    let rules = convertStatement s in
+    map (\r -> r{ruleRHS = (RHSCondition e) : (ruleRHS r)}) rules
 convertStatement (BlockStatement p l) =
     let rulesList = map convertStatement l in
     concat rulesList

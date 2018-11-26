@@ -489,17 +489,17 @@ Strings(.s="word1 word2").
 Strings(.s="line1\nline2").
 Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).
 Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}).
-Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), Aggregate((x), cnt = std.count(y)).
-Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)).
-Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), Aggregate((x), vec = std.group2vec(y)).
-Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), Aggregate((x), map = std.group2map((x, y))).
-Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), Aggregate((x), set = std.group2set(y)), var y = FlatMap(set).
+Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.count(y)).
+Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)).
+Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), var vec = Aggregate((x), std.group2vec(y)).
+Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), var map = Aggregate((x), std.group2map((x, y))).
+Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)), var y = FlatMap(set).
 WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
 Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
 ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).
 HostAddress(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), var addr = FlatMap(addrs).
 ExternalId(.host=host, .id=id) :- ExternalIds(.host=host, .ids=ids), var id = FlatMap(ids).
 Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.name=name, .id=id, .x=x).
-ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), Aggregate((name), ids = std.group2vec(id)).
-Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), Aggregate((name), xs = std.group2set(x)).
+ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), var ids = Aggregate((name), std.group2vec(id)).
+Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Aggregate((name), std.group2set(x)).
 Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.

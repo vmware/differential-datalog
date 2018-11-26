@@ -285,34 +285,30 @@ parseForStatement = withPos $
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
-statement = parseForStatement
-        <|> parseEmptyStatement
-        <|> parseIfStatement
-        <|> parseMatchStatement
-        <|> parseVarStatement
-        <|> parseInsertStatement
-        <|> parseBlockStatement
+statement = withPos $
+                parseForStatement
+            <|> parseEmptyStatement
+            <|> parseIfStatement
+            <|> parseMatchStatement
+            <|> parseInsertStatement
+            <|> parseAssignStatement
+            <|> parseBlockStatement
 
-parseAssignment = withPos $ (Assignment nopos) <$> varIdent
-                                               <*> (optionMaybe etype)
-                                               <*> (reserved "=" *> expr)
+parseEmptyStatement = EmptyStatement nopos <$ reserved "skip"
 
-parseEmptyStatement = withPos $ (EmptyStatement nopos) <$ reserved "skip"
+parseBlockStatement = BlockStatement nopos <$> (braces $ semiSep statement)
 
-parseBlockStatement = withPos $ (BlockStatement nopos) <$> (braces $ semiSep statement)
+parseIfStatement = IfStatement nopos <$ reserved "if"
+                                    <*> (parens expr) <*> statement
+                                    <*> (optionMaybe (reserved "else" *> statement))
 
-parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
-                                                <*> (parens expr) <*> statement
-                                                <*> (optionMaybe (reserved "else" *> statement))
+parseMatchStatement = MatchStatement nopos <$ reserved "match" <*> parens expr
+                                          <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
-parseMatchStatement = withPos $ (MatchStatement nopos) <$ reserved "match" <*> parens expr
-                      <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
+parseAssignStatement = AssignStatement nopos <$> try expr
+                                             <*> (reserved "in" *> statement)
 
-parseVarStatement = withPos $ (VarStatement nopos) <$ reserved "var"
-                                                  <*> commaSep parseAssignment
-                                                  <*> (reserved "in" *> statement)
-
-parseInsertStatement = withPos $ (InsertStatement nopos) <$> atom
+parseInsertStatement = InsertStatement nopos <$> try atom
 
 rule = Rule nopos <$>
        (commaSep1 atom) <*>
