@@ -225,7 +225,7 @@ ChassisRedirectPort(lrp1, lr._uuid) :-
     },
     // It is an error if a given Logical_Router has more than one such Logical_Router_Port.
     // If that happens, select an arbitrary one and log a warning.
-    Aggregate((lr), lrps = group2set(lrp)),
+    var lrps = Aggregate((lr), group2set(lrp)),
     Some{var lrp1: nb.Logical_Router_Port} = match (set_size(lrps)) {
         0 -> None,
         1 -> set_nth(lrps,0),
@@ -345,7 +345,7 @@ PortStaticAddresses(.lsport     = port_uuid,
     (var ip4addrs: Set<string>, var ip6addrs: Set<string>) = if (not is_dynamic_lsp_address(address)) {
         split_addresses(address)
     } else { (set_empty(), set_empty()) },
-    Aggregate((port_uuid), static_addrs = group_unzip((ip4addrs, ip6addrs))),
+    var static_addrs = Aggregate((port_uuid), group_unzip((ip4addrs, ip6addrs))),
     (var ip4_addrs, var ip6_addrs) = static_addrs.
 
 PortDynamicAddresses(.lsport     = port_uuid,
@@ -354,7 +354,7 @@ PortDynamicAddresses(.lsport     = port_uuid,
     nb.Logical_Switch_Port(._uuid = port_uuid, .dynamic_addresses = addresses),
     var address = FlatMap(if set_is_empty(addresses) set_singleton("") else addresses),
     (var ip4_addrs, var ip6_addrs) = split_addresses(address),
-    Aggregate((port_uuid), dyn_addrs = group_unzip((ip4_addrs, ip6_addrs))),
+    var dyn_addrs = Aggregate((port_uuid), group_unzip((ip4_addrs, ip6_addrs))),
     (var ip4_addrs, var ip6_addrs) = dyn_addrs.
 
 
@@ -367,7 +367,7 @@ sb.Out_Address_Set(as_name, set_unions(pg_ip4addrs)) :-
     PortStaticAddresses(.lsport = port_uuid, .ip4addrs = stat),
     PortDynamicAddresses(.lsport = port_uuid, .ip4addrs = dynamic),
     var port_ip4addrs: Set<string> = set_union(stat, dynamic),
-    Aggregate((as_name), pg_ip4addrs = group2vec(port_ip4addrs)).
+    var pg_ip4addrs = Aggregate((as_name), group2vec(port_ip4addrs)).
 
 sb.Out_Address_Set(as_name, set_empty()) :-
     nb.Port_Group(.ports = set_empty(), .name = pg_name),
@@ -384,7 +384,7 @@ sb.Out_Address_Set(as_name, set_unions(pg_ip6addrs)) :-
     PortStaticAddresses(.lsport = port_uuid, .ip6addrs = stat),
     PortDynamicAddresses(.lsport = port_uuid, .ip6addrs = dynamic),
     var port_ip6addrs = set_union(stat, dynamic),
-    Aggregate((as_name), pg_ip6addrs = group2vec(port_ip6addrs)).
+    var pg_ip6addrs = Aggregate((as_name), group2vec(port_ip6addrs)).
 
 sb.Out_Address_Set(as_name, set_empty()) :-
     nb.Port_Group(.ports = set_empty(), .name = pg_name),
@@ -400,7 +400,7 @@ sb.Out_Port_Group(.name = pg_name, .ports = port_names) :-
     nb.Port_Group(.name = pg_name, .ports = pg_ports),
     var port_uuid = FlatMap(pg_ports),
     nb.Logical_Switch_Port(._uuid = port_uuid, .name = port_name),
-    Aggregate((pg_name), port_names = group2set(port_name)).
+    var port_names = Aggregate((pg_name), group2set(port_name)).
 
 sb.Out_Port_Group(.name = pg_name, .ports = set_empty()) :-
     nb.Port_Group(.name = pg_name, .ports = set_empty()).
@@ -633,7 +633,7 @@ sb.Out_DNS(.records      = nbdns.records,
            .external_ids = nbdns.external_ids) :-
     nb.DNS[nbdns],
     LogicalSwitchDNS(ls_uuid, nbdns._uuid),
-    Aggregate((nbdns), datapaths = group2set(uuid2str(ls_uuid))).
+    var datapaths = Aggregate((nbdns), group2set(uuid2str(ls_uuid))).
 
 sb.Out_DNS(.records      = nbdns.records,
            .datapaths    = set_empty(),
@@ -870,7 +870,7 @@ relation LSPortPSEthAddresses(lsport: uuid,
 
 LSPortPSEthAddresses(lsport, addrs) :-
     LSPortPSAddresses(lsport, ps_addrs),
-    Aggregate((lsport), addrs = group2set(ps_addrs.ea_s)).
+    var addrs = Aggregate((lsport), group2set(ps_addrs.ea_s)).
 
 LSPortPSEthAddresses(lsport, set_empty()) :-
     nb.Logical_Switch_Port(._uuid = lsport),
@@ -1338,33 +1338,30 @@ for (ls in nb.Logical_Switch) {
 //               not (set_is_empty(lsp.dhcpv4_options) && set_is_empty(lsp.dhcpv6_options)))
 //            {
 //
-//    for (size_t i = 0; i < op->n_lsp_addrs; i++) {
-//        for (size_t j = 0; j < op->lsp_addrs[i].n_ipv4_addrs; j++) {
-//            struct ds options_action = DS_EMPTY_INITIALIZER;
-//            struct ds response_action = DS_EMPTY_INITIALIZER;
-//            struct ds ipv4_addr_match = DS_EMPTY_INITIALIZER;
-//            if (build_dhcpv4_action(
-//                    op, op->lsp_addrs[i].ipv4_addrs[j].addr,
-//                    &options_action, &response_action, &ipv4_addr_match)) {
-//                ds_clear(&match);
-//                ds_put_format(
-//                    &match, "inport == %s && eth.src == %s && "
-//                    "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && "
-//                    "udp.src == 68 && udp.dst == 67", op->json_key,
-//                    op->lsp_addrs[i].ea_s);
+//                for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr))
+//                {
+//                    var options_action = "" in
+//                    var response_action = "" in
+//                    var ipv4_addr_match = "" in
+//                    {
+//                        if (build_dhcpv4_action(op, op->lsp_addrs[i].ipv4_addrs[j].addr, &options_action, &response_action, &ipv4_addr_match)) {
+//                        var __match = "inport == %s && eth.src == %s && "
+//                                      "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && "
+//                                      "udp.src == 68 && udp.dst == 67", op->json_key,
+//                                      op->lsp_addrs[i].ea_s) in
 //
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
-//                              100, ds_cstr(&match),
-//                              ds_cstr(&options_action));
-//                ds_clear(&match);
-//                /* Allow ip4.src = OFFER_IP and
-//                 * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
-//                 * cases
-//                 *  -  When the client wants to renew the IP by sending
-//                 *     the DHCPREQUEST to the server ip.
-//                 *  -  When the client wants to renew the IP by
-//                 *     broadcasting the DHCPREQUEST.
-//                 */
+//                        ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
+//                                  100, ds_cstr(&match),
+//                                  ds_cstr(&options_action));
+//
+//                        /* Allow ip4.src = OFFER_IP and
+//                         * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
+//                         * cases
+//                         *  -  When the client wants to renew the IP by sending
+//                         *     the DHCPREQUEST to the server ip.
+//                         *  -  When the client wants to renew the IP by
+//                         *     broadcasting the DHCPREQUEST.
+//                         */
 //                ds_put_format(
 //                    &match, "inport == %s && eth.src == %s && "
 //                    "%s && udp.src == 68 && udp.dst == 67", op->json_key,
@@ -1433,7 +1430,7 @@ relation AllocatedTunKeys(keys: Set<integer>)
 
 AllocatedTunKeys(keys) :-
     sb.Datapath_Binding(.tunnel_key = tunkey),
-    Aggregate((), keys = group2set(tunkey)).
+    var keys = Aggregate((), group2set(tunkey)).
 
 // Datapath_Binding's not yet in the Realized table
 relation NotYetAllocatedTunKeys(datapaths: Vec<string>)
@@ -1442,7 +1439,7 @@ NotYetAllocatedTunKeys(datapaths) :-
     sb.UUIDMap_Datapath_Binding(.uuid_name = datapath,
                                 .id = Right{_}),
     datapath != "",
-    Aggregate((), datapaths = group2vec(datapath)).
+    var datapaths = Aggregate((), group2vec(datapath)).
 
 // Perform the allocation
 relation TunKeyAllocation(datapath: string, tunkey: integer)
@@ -1481,7 +1478,7 @@ relation AllocatedPortTunKeys(datapath: string, keys: Set<integer>)
 AllocatedPortTunKeys(datapath_name, keys) :-
     sb.Port_Binding(.datapath = datapath_uuid, .tunnel_key = tunkey),
     sb.UUIDMap_Datapath_Binding(datapath_name, Left{datapath_uuid}),
-    Aggregate((datapath_name), keys = group2set(tunkey)).
+    var keys = Aggregate((datapath_name), group2set(tunkey)).
 
 // Port_Binding's not yet in the Realized table
 relation NotYetAllocatedPortTunKeys(datapath: string, all_logical_ids: Vec<string>)
@@ -1490,7 +1487,7 @@ NotYetAllocatedPortTunKeys(datapath, all_names) :-
     sb.Out_Port_Binding(.uuid_name = uuid_name, .datapath = datapath),
     sb.UUIDMap_Port_Binding(.uuid_name = uuid_name,
                             .id = Right{_}),
-    Aggregate((datapath), all_names = group2vec(uuid_name)).
+    var all_names = Aggregate((datapath), group2vec(uuid_name)).
 
 // Perform the allocation
 relation PortTunKeyAllocation(port: string, tunkey: integer)
@@ -1551,7 +1548,7 @@ relation AggPortRequiresQID(chassis: uuid, ports: Vec<string>)
 
 AggPortRequiresQID(chassis, ports) :-
     PortRequiresQID(port, chassis),
-    Aggregate((chassis), ports = group2vec(port)).
+    var ports = Aggregate((chassis), group2vec(port)).
 
 relation AllocatedQIDs(chassis: uuid, allocated_ids: Map<string, integer>)
 
@@ -1561,7 +1558,7 @@ AllocatedQIDs(chassis, allocated_ids) :-
     Some{var qid_str} = map_get(pb.options, "qdisc_queue_id"),
     Some{var qid: bit<64>} = parse_dec_u64(qid_str),
     sb.UUIDMap_Port_Binding(port, Left{pb._uuid}),
-    Aggregate((chassis), allocated_ids = group2map((port, qid))).
+    var allocated_ids = Aggregate((chassis), group2map((port, qid))).
 
 // allocate queueue IDs to ports
 relation QueueIDAllocation(port: string, qids: Option<integer>)
@@ -1637,7 +1634,7 @@ QueueIDAllocation(port, Some{qid}) :-
 //
 //
 ///* Currently used MAC addresses, including:
-// * 
+// *
 // */
 //relation AllocatedTunKeys(keys: Set<integer>)
 //

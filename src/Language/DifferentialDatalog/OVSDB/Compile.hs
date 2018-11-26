@@ -409,14 +409,14 @@ mkDeltaUpdateRules t@Table{..} (Just keys) =
 -- Swizzled(x,refs') :- Output(x,refs),
 --                      var ref = FlatMap(refs),
 --                      UUIDMap(ref, ref'),
---                      Aggregate((x),refs'=group2set(ref')).
+--                      var refs' = Aggregate((x),group2set(ref')).
 --
 -- For a map:
 -- Swizzled(x,refs') :- Output(x,refs),
 --                      var key_val = FlatMap(refs),
 --                      (var key, var ref) = key_val,
 --                      UUIDMap(ref, ref'),
---                      Aggregate((x),refs'=group2map((key, ref'))).
+--                      var refs' = Aggregate((x),group2map((key, ref'))).
 --
 mkSwizzleRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String], MonadError String me) => Table -> me Doc
 mkSwizzleRules t | not (tableNeedsSwizzle t) = return empty
@@ -442,7 +442,7 @@ mkSwizzleRules t@Table{..} = do
                            map mkColName cols_after
             return $ "var __one =" <+> "FlatMap(if set_is_empty(" <> mkColName col <> ") set_singleton(\"\") else" <+> mkColName col <>"),"  $$
                      mkTableName reftable TableUUIDMap <> "(__one, __one_swizzled),"                                                         $$
-                     "Aggregate((" <> commaSep group_by <> ")," <+> swColName col <+> "= group2set_remove_sentinel(__one_swizzled))"
+                     "var" <+> swColName col <+> "= Aggregate((" <> commaSep group_by <> ")," <+> "group2set_remove_sentinel(__one_swizzled))"
         colSwizzle col | colIsMap col && isJust (colRefTableVal col) && isNothing (colRefTable col) = do
             let (cols_before, _: cols_after) = span ((/= name col) . name) ovscols
             reftable <- getTable (columnPos col) $ fromJust $ colRefTableVal col
@@ -452,7 +452,7 @@ mkSwizzleRules t@Table{..} = do
             return $ "var __one =" <+> "FlatMap(if map_is_empty(" <> mkColName col <> ") map_singleton(\"\", \"\") else" <+> mkColName col <> "),"  $$
                      "(var __one_key, var __one_ref) = __one,"                                                                                      $$
                      mkTableName reftable TableUUIDMap <> "(__one_ref, __one_swizzled),"                                                            $$
-                     "Aggregate((" <> commaSep group_by <> ")," <+> swColName col <+> "= group2map_remove_sentinel((__one_key, __one_swizzled)))"
+                     "var" <+> swColName col <+> "= Aggregate((" <> commaSep group_by <> ")," <+> "group2map_remove_sentinel((__one_key, __one_swizzled)))"
         colSwizzle col = err (pos col) $ "mkSwizzleRules: reference swizzling not implemented for map keys"
     swizzles <- mapM colSwizzle $ filter colIsRef ovscols
     return $

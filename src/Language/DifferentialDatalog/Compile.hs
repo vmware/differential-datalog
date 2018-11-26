@@ -847,7 +847,7 @@ compileRule' d rl@Rule{..} last_rhs_idx = {-trace ("compileRule' " ++ show rl ++
                     RHSLiteral True a     -> mkJoin d prefix a rl join_idx
                     RHSLiteral False a    -> (, join_idx) <$> mkAntijoin d prefix a rl join_idx
                     RHSFlatMap v e        -> (, join_idx) <$> mkFlatMap d prefix rl join_idx v e
-                    RHSAggregate vs v f e -> (, join_idx) <$> mkAggregate d prefix rl join_idx vs v f e
+                    RHSAggregate v vs f e -> (, join_idx) <$> mkAggregate d prefix rl join_idx vs v f e
            if {-trace ("last_idx' = " ++ show last_idx') $-} last_idx' < length ruleRHS
               then do rest <- compileRule' d rl last_idx'
                       return $ xform:rest

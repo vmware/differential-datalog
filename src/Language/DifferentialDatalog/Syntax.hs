@@ -418,7 +418,7 @@ instance Show Atom where
 -- all atoms.
 data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
-             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggFunc :: String, rhsAggExpr :: Expr}
+             | RHSAggregate {rhsVar :: String, rhsGroupBy :: [String], rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              deriving (Eq)
 
@@ -426,9 +426,9 @@ instance PP RuleRHS where
     pp (RHSLiteral True a)    = pp a
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
-    pp (RHSAggregate g v f e) = "Aggregate" <> "(" <>
+    pp (RHSAggregate v g f e) = "var" <+> pp v <+> "=" <+> "Aggregate" <> "(" <>
                                 (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
-                                pp v <+> "=" <+> pp f <> (parens $ pp e) <> ")"
+                                pp f <> (parens $ pp e) <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
 
 instance Show RuleRHS where

@@ -536,9 +536,9 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | expr                                      (* 3.condition *)
              | expr "=" expr                             (* 4.assignment *)
              | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
-             | "Aggregate" "("                           (* 6.aggregation *)
+             | "var " var_name = "Aggregate" "("         (* 6.aggregation *)
                 "(" [var_name ("," var_name)*] ")" ","
-                var_name "=" func_name "(" expr ")" ")"
+                    func_name "(" expr ")" ")"
 ```
 
 An atom is a predicate that holds when a given value belongs to a relation.
@@ -611,7 +611,7 @@ computes an aggreagate for each group using specified aggregate function,
 and binds the result to a new variable:
 
 ```
-ShortestPath(x,y, c) :- Path(x,y,cost), Aggregate((x,y), c = min(cost))
+ShortestPath(x,y, c) :- Path(x,y,cost), var c = Aggregate((x,y), min(cost))
 ```
 
 The aggregate function (e.g., `min` in this example) must have the following
@@ -660,7 +660,7 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
    clause has the effect of concealing all variables except for the
    group-by variables and the aggregate variable.
    ```
-   R(x,y) :- S(x), T(x, y), Aggregate((x), z = min(y)). // error:
+   R(x,y) :- S(x), T(x, y), var z = Aggregate((x), min(y)). // error:
         // y cannot be used in the head, as it is concealed by aggregation
    ```
 1. *Safety*: Negative literals may not introduce new variables or use wildcards.

@@ -279,7 +279,7 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     exprValidate d [] ctx e
     checkIterable "FlatMap expression" (pos e) d ctx $ exprType d ctx e
 
-ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
+ruleRHSValidate d rl (RHSAggregate v vs fname e) idx = do
     _ <- ruleCheckAggregate d rl idx
     return ()
 
@@ -300,7 +300,7 @@ ruleLHSValidate d rl a@Atom{..} idx = do
 -- compute concrete types for 'K and 'V
 ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me (M.Map String Type)
 ruleCheckAggregate d rl idx = do
-    let RHSAggregate vs v fname e = ruleRHS rl !! idx
+    let RHSAggregate v vs fname e = ruleRHS rl !! idx
     let ctx = CtxRuleRAggregate rl idx
     exprValidate d [] ctx e
     -- group-by variables are visible in this scope
