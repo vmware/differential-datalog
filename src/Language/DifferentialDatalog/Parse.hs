@@ -285,14 +285,15 @@ parseForStatement = withPos $
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
-statement = withPos $
-                parseForStatement
-            <|> parseEmptyStatement
-            <|> parseIfStatement
-            <|> parseMatchStatement
-            <|> parseInsertStatement
-            <|> parseAssignStatement
-            <|> parseBlockStatement
+statement = (withPos $
+                 parseForStatement
+             <|> parseEmptyStatement
+             <|> parseIfStatement
+             <|> parseMatchStatement
+             <|> parseAssignStatement
+             <|> parseInsertStatement
+             <|> parseBlockStatement)
+            <?> "statement"
 
 parseEmptyStatement = EmptyStatement nopos <$ reserved "skip"
 
@@ -305,8 +306,11 @@ parseIfStatement = IfStatement nopos <$ reserved "if"
 parseMatchStatement = MatchStatement nopos <$ reserved "match" <*> parens expr
                                           <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
-parseAssignStatement = AssignStatement nopos <$> try expr
-                                             <*> (reserved "in" *> statement)
+parseAssignStatement = do e <- try $ do e <- expr
+                                        reserved "in"
+                                        return e
+                          s <- statement
+                          return $ AssignStatement nopos e s
 
 parseInsertStatement = InsertStatement nopos <$> try atom
 
@@ -380,6 +384,7 @@ term  =  elhs
      <|> (withPos $ eTuple <$> (parens $ commaSep expr))
      <|> braces expr
      <|> term'
+     <?> "expression term"
 term' = withPos $
          eapply
      <|> ebinding
@@ -408,25 +413,27 @@ evar = eVar <$> varIdent
 
 ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
-pattern = withPos $
-          eTuple   <$> (parens $ commaSep pattern)
-      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
-      <|> eVarDecl <$> varIdent
-      <|> eVarDecl <$ reserved "var" <*> varIdent
-      <|> epholder
-      <|> ebool
-      <|> estring
-      <|> eint
+pattern = (withPos $
+           eTuple   <$> (parens $ commaSep pattern)
+       <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
+       <|> eVarDecl <$> varIdent
+       <|> eVarDecl <$ reserved "var" <*> varIdent
+       <|> epholder
+       <|> ebool
+       <|> estring
+       <|> eint)
+      <?> "match pattern"
 
 anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
-lhs = withPos $
-          eTuple <$> (parens $ commaSep lhs)
-      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
-      <|> fexpr
-      <|> evardcl
-      <|> epholder
+lhs = (withPos $
+           eTuple <$> (parens $ commaSep lhs)
+       <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
+       <|> fexpr
+       <|> evardcl
+       <|> epholder)
+      <?> "l-expression"
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 
@@ -537,6 +544,7 @@ etable = [[postf $ choice [postSlice, postApply, postField, postType]]
            binary ">"  Gt  AssocNone,
            binary ">=" Gte AssocNone]
          ,[binary "&" BAnd AssocLeft]
+         ,[binary "^" BXor AssocLeft]
          ,[binary "|" BOr AssocLeft]
          ,[binary "and" And AssocLeft]
          ,[binary "or" Or AssocLeft]

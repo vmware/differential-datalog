@@ -480,6 +480,7 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Div    -> do {isint1; isint2}
         BAnd   -> do {m; isbit1}
         BOr    -> do {m; isbit1}
+        BXor   -> do {m; isbit1}
         Concat | isString d e1
                -> return ()
         Concat -> do {isbit1; isbit2}

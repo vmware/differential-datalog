@@ -298,6 +298,7 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
          ShiftL -> return t1
          BAnd   -> return t1
          BOr    -> return t1
+         BXor   -> return t1
          Concat | isString d e1
                 -> return tString
          Concat -> return $ tBit (typeWidth t1 + typeWidth t2)
@@ -517,6 +518,7 @@ ctxExpectType d (CtxBinOpL e ctx)                    =
          Div    -> trhs
          BAnd   -> trhs
          BOr    -> trhs
+         BXor   -> trhs
          Concat -> Nothing
     where trhs = exprTypeMaybe d ctx $ exprRight e
 ctxExpectType d (CtxBinOpR e ctx)                    =
@@ -539,6 +541,7 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
          Div    -> tlhs
          BAnd   -> tlhs
          BOr    -> tlhs
+         BXor   -> tlhs
          Concat -> Nothing
     where tlhs = exprTypeMaybe d ctx $ exprLeft e
 ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
