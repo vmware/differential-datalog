@@ -150,6 +150,21 @@ insert OVN_Northbound.Logical_Router_Port(
 ),
 
 
+insert OVN_Northbound.DHCP_Options(
+    ._uuid              = 0xec5e3bbd_d2e5_4a94_8f1f_af841f7acc89,
+    .cidr               = "fe80::250:56ff:fec0:8/32",
+    .options            = [("server_id", "00:50:56:c0:00:08")],
+    .external_ids       = []
+),
+
+insert OVN_Northbound.DHCP_Options(
+    ._uuid              = 0xe324c2d3_7156_4334_9e22_710e5d865fa6,
+    .cidr               = "10.10.10.10/24",
+    .options            = [("server_id", "10.10.10.1"), ("server_mac", "00:50:56:c0:00:08"), ("lease_time", "120")],
+    .external_ids       = []
+),
+
+
 
 insert OVN_Northbound.Logical_Switch_Port(
     ._uuid = 0x564bb317_7362_47d9_a328_8bd44600a370,
@@ -167,8 +182,8 @@ insert OVN_Northbound.Logical_Switch_Port(
                       "11:22:33:44:55:66 192.168.0.1 fe80::742a:ad2c:b47d:e7a"],
     .up = [true],
     .enabled = [true],
-    .dhcpv4_options = [],
-    .dhcpv6_options = [],
+    .dhcpv4_options = [0xe324c2d3_7156_4334_9e22_710e5d865fa6],
+    .dhcpv6_options = [0xec5e3bbd_d2e5_4a94_8f1f_af841f7acc89],
     .external_ids = [("neutron:port_name", "lsp1_neutron_port")]
 ),
 

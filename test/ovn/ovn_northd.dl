@@ -1418,6 +1418,7 @@ function build_dhcpv6_action(
     match (ipv6_parse_masked(dhcpv6_options.cidr)) {
         Left{err} -> {
             /* cidr defined is invalid */
+            //warn($"cidr is invalid - ${err}");
             None
         },
         Right{(var host_ip, var mask)} -> {
@@ -1426,6 +1427,7 @@ function build_dhcpv6_action(
             if (not ipv6_mask_is_any(ip6_mask)) {
                 /* offer_ip doesn't belongs to the cidr defined in lport's DHCPv6
                  * options.*/
+                //warn($"ip does not belong to cidr");
                 None
             } else {
                 /* "server_id" should be the MAC address. */

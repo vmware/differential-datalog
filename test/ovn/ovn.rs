@@ -58,6 +58,8 @@ pub struct ovn_in6_addr {
     x: [u8; IN6_ADDR_SIZE]
 }
 
+pub const ovn_in6addr_any: ovn_in6_addr = ovn_in6_addr{x: [0; IN6_ADDR_SIZE]};
+
 impl FromRecord for ovn_in6_addr {
     fn from_record(val: &record::Record) -> Result<Self, String> {
         Ok(ovn_in6_addr{x: <[u8; IN6_ADDR_SIZE]>::from_record(val)?})
@@ -93,9 +95,7 @@ pub fn ovn_ipv6_string_mapped(addr: &ovn_in6_addr) -> arcval::DDString {
 }
 
 pub fn ovn_ipv6_mask_is_any(mask: &ovn_in6_addr) -> bool {
-    unsafe {
-        ipv6_mask_is_any(mask as *const ovn_in6_addr)
-    }
+    *mask == ovn_in6addr_any
 }
 
 pub fn ovn_json_string_escape(s: &arcval::DDString) -> arcval::DDString {
