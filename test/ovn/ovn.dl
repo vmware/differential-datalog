@@ -3,6 +3,10 @@ extern type eth_addr
 extern function eth_addr_zero(): eth_addr
 extern function eth_addr2string(addr: eth_addr): string
 
+function ip_fmt(ip: ovs_be32): string = {
+    $"${ntohl(ip) >> 32'd24}.${(ntohl(ip) >> 32'd16) & 32'hff}.${(ntohl(ip) >> 32'd8) & 32'hff}.${ntohl(ip) & 32'hff}"
+}
+
 extern type in6_addr
 
 typedef ovs_be32 = bit<32>
@@ -43,6 +47,16 @@ extern function warn(msg: string): ()
  * C functions imported from OVS
  */
 extern function in6_generate_lla(ea: eth_addr): in6_addr
+
 extern function ipv6_string_mapped(addr: in6_addr): string
+extern function ipv6_parse_masked(s: string): Either<string/*err*/, (in6_addr/*ip*/, in6_addr/*mask*/)>
+extern function ipv6_addr_bitxor(a: in6_addr, b: in6_addr): in6_addr
+extern function ipv6_addr_bitand(a: in6_addr, b: in6_addr): in6_addr
+extern function ipv6_mask_is_any(mask: in6_addr): bool
+
 extern function extract_lsp_addresses(address: string): Option<lport_addresses>
+
 extern function json_string_escape(s: string): string
+
+extern function ip_parse_masked(s: string): Either<string/*err*/, (ovs_be32/*host_ip*/, ovs_be32/*mask*/)>
+extern function eth_addr_from_string(s: string): Option<eth_addr>

@@ -37,6 +37,8 @@ extern function parse_dec_u64(s: string): Option<bit<64>>
 
 extern function string_join(strings: Vec<string>, sep: string): string
 
+extern function str_to_lower(s: string): string
+
 /*
  * hashing
  */
@@ -78,6 +80,7 @@ extern type Map<'K,'V>
 extern function map_empty(): Map<'K, 'V>
 extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
+extern function map_remove(m: mut Map<'K,'V>, k: 'K): ()
 extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
@@ -101,3 +104,8 @@ extern function set_nth(s: Set<'X>, n: bit<64>): Option<'X>
 extern function set2vec(s: Set<'A>): Vec<'A>
 extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
+
+/*
+ * Endianness
+ */
+extern function ntohl(x: bit<32>): bit<32>

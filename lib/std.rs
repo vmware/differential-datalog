@@ -303,6 +303,11 @@ pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V
     m.x.insert((*k).clone(), (*v).clone());
 }
 
+pub fn std_map_remove<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K) {
+    m.x.remove(k);
+}
+
+
 pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
     let mut m2 = m.clone();
     m2.insert((*k).clone(), (*v).clone());
@@ -349,6 +354,11 @@ pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
 
 pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
+}
+
+
+pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {
+    arcval::DDString::from(s.str().to_lowercase())
 }
 
 // Hashing
@@ -477,3 +487,8 @@ decl_tuple!(tuple17, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 decl_tuple!(tuple18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18);
 decl_tuple!(tuple19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19);
 decl_tuple!(tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20);
+
+// Endianness
+pub fn std_ntohl(x: &u32) -> u32 {
+    u32::from_be(*x)
+}

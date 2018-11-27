@@ -803,6 +803,22 @@ function router_stage(direction: Direction, stage: PipelineStage): integer =
     }
 }
 
+/* Register definitions specific to switches. */
+function rEGBIT_CONNTRACK_DEFRAG() : string = "reg0[0]"
+function rEGBIT_CONNTRACK_COMMIT() : string = "reg0[1]"
+function rEGBIT_CONNTRACK_NAT()    : string = "reg0[2]"
+function rEGBIT_DHCP_OPTS_RESULT() : string = "reg0[3]"
+function rEGBIT_DNS_LOOKUP_RESULT(): string = "reg0[4]"
+function rEGBIT_ND_RA_OPTS_RESULT(): string = "reg0[5]"
+
+/* Register definitions for switches and routers. */
+function rEGBIT_NAT_REDIRECT()     : string = "reg9[0]"
+/* Indicate that this packet has been recirculated using egress
+ * loopback.  This allows certain checks to be bypassed, such as a
+ * logical router dropping packets with source IP address equals
+ * one of the logical router's own IP addresses. */
+function rEGBIT_EGRESS_LOOPBACK()  : string = "reg9[1]"
+
 /*
  * Logical_Flow
    relation Out_Logical_Flow (
@@ -1323,100 +1339,257 @@ for (ls in nb.Logical_Switch) {
     }
 }
 
+function build_dhcpv4_action(
+    lsp_json_key: string,
+    dhcpv4_options: nb.DHCP_Options,
+    offer_ip: ovs_be32) : Option<(string, string, string)> =
+{
+    match (ip_parse_masked(dhcpv4_options.cidr)) {
+        Left{err} -> {
+            /* cidr defined is invalid */
+            None
+        },
+        Right{(var host_ip, var mask)} -> {
+            if (((offer_ip ^ host_ip) & mask) != 0) {
+               /* the offer ip of the logical port doesn't belong to the cidr
+                * defined in the DHCPv4 options.
+                */
+                None
+            } else {
+                match ((map_get(dhcpv4_options.options, "server_id"),
+                        map_get(dhcpv4_options.options, "server_mac"),
+                        map_get(dhcpv4_options.options, "lease_time")))
+                {
+                    (Some{var server_ip}, Some{var server_mac}, Some{var lease_time}) -> {
+                        var options_map = dhcpv4_options.options;
 
-///* Logical switch ingress table 12 and 13: DHCP options and response
-//     * priority 100 flows. */
-//for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
-//    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
-//        var lsname = uuid2str(lps.lswitch) in
-//        var json_key = json_string_escape(lsp.name) in
-//        {
-//            /* Don't add the DHCP flows if the port is not enabled or if the
-//             * port is a router port. */
-//            if ((is_enabled(lsp.enabled) and lsp.__type != "router") and
-//               /* CMS has disabled both native DHCPv4 and DHCPv6 for this lport. */
-//               not (set_is_empty(lsp.dhcpv4_options) && set_is_empty(lsp.dhcpv6_options)))
-//            {
-//
-//                for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr))
-//                {
-//                    var options_action = "" in
-//                    var response_action = "" in
-//                    var ipv4_addr_match = "" in
-//                    {
-//                        if (build_dhcpv4_action(op, op->lsp_addrs[i].ipv4_addrs[j].addr, &options_action, &response_action, &ipv4_addr_match)) {
-//                        var __match = "inport == %s && eth.src == %s && "
-//                                      "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && "
-//                                      "udp.src == 68 && udp.dst == 67", op->json_key,
-//                                      op->lsp_addrs[i].ea_s) in
-//
-//                        ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
-//                                  100, ds_cstr(&match),
-//                                  ds_cstr(&options_action));
-//
-//                        /* Allow ip4.src = OFFER_IP and
-//                         * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
-//                         * cases
-//                         *  -  When the client wants to renew the IP by sending
-//                         *     the DHCPREQUEST to the server ip.
-//                         *  -  When the client wants to renew the IP by
-//                         *     broadcasting the DHCPREQUEST.
-//                         */
-//                ds_put_format(
-//                    &match, "inport == %s && eth.src == %s && "
-//                    "%s && udp.src == 68 && udp.dst == 67", op->json_key,
-//                    op->lsp_addrs[i].ea_s, ds_cstr(&ipv4_addr_match));
-//
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS,
-//                              100, ds_cstr(&match),
-//                              ds_cstr(&options_action));
-//                ds_clear(&match);
-//
-//                /* If REGBIT_DHCP_OPTS_RESULT is set, it means the
-//                 * put_dhcp_opts action  is successful. */
-//                ds_put_format(
-//                    &match, "inport == %s && eth.src == %s && "
-//                    "ip4 && udp.src == 68 && udp.dst == 67"
-//                    " && "REGBIT_DHCP_OPTS_RESULT, op->json_key,
-//                    op->lsp_addrs[i].ea_s);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_RESPONSE,
-//                              100, ds_cstr(&match),
-//                              ds_cstr(&response_action));
-//                ds_destroy(&options_action);
-//                ds_destroy(&response_action);
-//                ds_destroy(&ipv4_addr_match);
-//                break;
-//            }
-//        }
-//
-//        for (size_t j = 0; j < op->lsp_addrs[i].n_ipv6_addrs; j++) {
-//            struct ds options_action = DS_EMPTY_INITIALIZER;
-//            struct ds response_action = DS_EMPTY_INITIALIZER;
-//            if (build_dhcpv6_action(
-//                    op, &op->lsp_addrs[i].ipv6_addrs[j].addr,
-//                    &options_action, &response_action)) {
-//                ds_clear(&match);
-//                ds_put_format(
-//                    &match, "inport == %s && eth.src == %s"
-//                    " && ip6.dst == ff02::1:2 && udp.src == 546 &&"
-//                    " udp.dst == 547", op->json_key,
-//                    op->lsp_addrs[i].ea_s);
-//
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_OPTIONS, 100,
-//                              ds_cstr(&match), ds_cstr(&options_action));
-//
-//                /* If REGBIT_DHCP_OPTS_RESULT is set to 1, it means the
-//                 * put_dhcpv6_opts action is successful */
-//                ds_put_cstr(&match, " && "REGBIT_DHCP_OPTS_RESULT);
-//                ovn_lflow_add(lflows, op->od, S_SWITCH_IN_DHCP_RESPONSE, 100,
-//                              ds_cstr(&match), ds_cstr(&response_action));
-//                ds_destroy(&options_action);
-//                ds_destroy(&response_action);
-//                break;
-//            }
-//        }
-//    }
-//}
+                        /* server_mac is not DHCPv4 option, delete it from the smap. */
+                        map_remove(options_map, "server_mac");
+                        map_insert(options_map, "netmask", ip_fmt(mask));
+
+                        /* We're not using SMAP_FOR_EACH because we want a consistent order of the
+                         * options on different architectures (big or little endian, SSE4.2) */
+                        var options: Vec<string> = vec_empty();
+                        for (node in options_map) {
+                            (var k, var v) = node;
+                            vec_push(options, $"${k} = ${v}")
+                        };
+                        var options_action = $"${rEGBIT_DHCP_OPTS_RESULT()} = put_dhcp_opts(offerip = ${ip_fmt(offer_ip)}, " ++
+                                             string_join(options, ", ") ++ "); next;";
+                        var response_action = $"eth.dst = eth.src; eth.src = ${server_mac}; "                           ++
+                                              $"ip4.dst = ${ip_fmt(offer_ip)}; ip4.src = ${server_ip}; udp.src = 67; "  ++
+                                              "udp.dst = 68; outport = inport; flags.loopback = 1; "                    ++
+                                              "output;";
+
+                        var ipv4_addr_match = $"ip4.src == ${ip_fmt(offer_ip)} && ip4.dst == {${server_ip}, 255.255.255.255}";
+                        Some{(options_action, response_action, ipv4_addr_match)}
+                    },
+                    _ -> {
+                        /* "server_id", "server_mac" and "lease_time" should be
+                         * present in the dhcp_options. */
+                        //static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 5);
+                        warn($"Required DHCPv4 options not defined for lport - ${lsp_json_key}");
+                        None
+                    }
+                }
+            }
+        }
+    }
+}
+
+function map_get_bool_def(m: Map<string, string>, k: string, def: bool): bool = {
+    match (map_get(m, k)) {
+        None -> def,
+        Some{x} -> {
+            if (def) {
+                str_to_lower(x) != "false"
+            } else {
+                str_to_lower(x) == "true"
+            }
+        }
+    }
+}
+
+function build_dhcpv6_action(
+    lsp_json_key: string,
+    dhcpv6_options: nb.DHCP_Options,
+    offer_ip: in6_addr): Option<(string, string)> =
+{
+    match (ipv6_parse_masked(dhcpv6_options.cidr)) {
+        Left{err} -> {
+            /* cidr defined is invalid */
+            None
+        },
+        Right{(var host_ip, var mask)} -> {
+            var ip6_mask: in6_addr = ipv6_addr_bitxor(offer_ip, host_ip);
+            ip6_mask = ipv6_addr_bitand(ip6_mask, mask);
+            if (not ipv6_mask_is_any(ip6_mask)) {
+                /* offer_ip doesn't belongs to the cidr defined in lport's DHCPv6
+                 * options.*/
+                None
+            } else {
+                /* "server_id" should be the MAC address. */
+                match (map_get(dhcpv6_options.options, "server_id")) {
+                    None -> {
+                        warn($"server_id not present in the DHCPv6 options for lport ${lsp_json_key}");
+                        None
+                    },
+                    Some{server_mac} -> {
+                        match (eth_addr_from_string(server_mac)) {
+                            None -> {
+                                warn($"server_id not present in the DHCPv6 options for lport ${lsp_json_key}");
+                                None
+                            },
+                            Some{ea} -> {
+                                /* Get the link local IP of the DHCPv6 server from the server MAC. */
+                                var server_ip = ipv6_string_mapped(in6_generate_lla(ea));
+                                var ia_addr = ipv6_string_mapped(offer_ip);
+                                var options: Vec<string> = vec_empty();
+
+                                /* Check whether the dhcpv6 options should be configured as stateful.
+                                 * Only reply with ia_addr option for dhcpv6 stateful address mode. */
+                                if (map_get_bool_def(dhcpv6_options.options, "dhcpv6_stateless", false) == false) {
+                                    vec_push(options, $"ia_addr = ${ia_addr}")
+                                } else ();
+
+                                /* We're not using SMAP_FOR_EACH because we want a consistent order of the
+                                 * options on different architectures (big or little endian, SSE4.2) */
+                                // FIXME: enumerate map in ascending order of keys. Is this good enough?
+                                for (node in dhcpv6_options.options) {
+                                    (var k, var v) = node;
+                                    if (k != "dhcpv6_stateless") {
+                                        vec_push(options, $"${k} = ${v}")
+                                    } else ()
+                                };
+
+                                var options_action = $"${rEGBIT_DHCP_OPTS_RESULT()} = put_dhcpv6_opts(" ++
+                                                     string_join(options, ", ")                         ++
+                                                     "); next;";
+                                var response_action = $"eth.dst = eth.src; eth.src = ${server_mac}; "               ++
+                                                      $"ip6.dst = ip6.src; ip6.src = ${server_ip}; udp.src = 547; " ++
+                                                       "udp.dst = 546; outport = inport; flags.loopback = 1; "
+                                                       "output;";
+                                Some{(options_action, response_action)}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/* Logical switch ingress table 12 and 13: DHCP options and response
+     * priority 100 flows. */
+for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
+    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
+        var lsname = uuid2str(lps.lswitch) in
+        var json_key = json_string_escape(lsp.name) in
+        {
+            /* Don't add the DHCP flows if the port is not enabled or if the
+             * port is a router port. */
+            if (is_enabled(lsp.enabled) and lsp.__type != "router") {
+                /* DHCPv4 options enabled for this port */
+                Some{var dhcpv4_options_uuid} = set_nth(lsp.dhcpv4_options, 0) in
+                {
+                    for (dhcpv4_options in nb.DHCP_Options(._uuid = dhcpv4_options_uuid)) {
+                        for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
+                            Some{(var options_action, var response_action, var ipv4_addr_match)} =
+                                build_dhcpv4_action(json_key, dhcpv4_options, addr.addr) in
+                            {
+                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && "     ++
+                                              "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && " ++
+                                              "udp.src == 68 && udp.dst == 67" in
+                                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                    .pipeline         = "ingress",
+                                                    .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                                                    .priority         = 100,
+                                                    .__match          = __match,
+                                                    .actions          = options_action,
+                                                    .external_ids     = map_empty());
+
+                                /* Allow ip4.src = OFFER_IP and
+                                 * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
+                                 * cases
+                                 *  -  When the client wants to renew the IP by sending
+                                 *     the DHCPREQUEST to the server ip.
+                                 *  -  When the client wants to renew the IP by
+                                 *     broadcasting the DHCPREQUEST.
+                                 */
+                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
+                                              $"${ipv4_addr_match} && udp.src == 68 && udp.dst == 67" in
+                                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                    .pipeline         = "ingress",
+                                                    .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                                                    .priority         = 100,
+                                                    .__match          = __match,
+                                                    .actions          = options_action,
+                                                    .external_ids     = map_empty());
+
+                                /* If REGBIT_DHCP_OPTS_RESULT is set, it means the
+                                 * put_dhcp_opts action  is successful. */
+                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
+                                              "ip4 && udp.src == 68 && udp.dst == 67 && "        ++
+                                              rEGBIT_DHCP_OPTS_RESULT() in
+                                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                    .pipeline         = "ingress",
+                                                    .table_id         = switch_stage(IN, DHCP_RESPONSE),
+                                                    .priority         = 100,
+                                                    .__match          = __match,
+                                                    .actions          = response_action,
+                                                    .external_ids     = map_empty())
+                                // FIXME: is there a constraint somewhere that guarantees that build_dhcpv4_action
+                                // returns Some() for at most 1 address in lsp_addrs? Otherwise, simulate this breaks
+                                // by computing an aggregate that returns the first element of a group.
+                                //break;
+                            }
+                        }
+                    }
+                };
+
+                /* DHCPv6 options enabled for this port */
+                Some{var dhcpv6_options_uuid} = set_nth(lsp.dhcpv6_options, 0) in
+                {
+                    for (dhcpv6_options in nb.DHCP_Options(._uuid = dhcpv6_options_uuid)) {
+                        for (LSPortIPv6Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
+                            Some{(var options_action, var response_action)} =
+                                build_dhcpv6_action(json_key, dhcpv6_options, addr.addr) in
+                            {
+                                var __match = $"inport == ${json_key} && eth.src == ${ea_s}"    ++
+                                              " && ip6.dst == ff02::1:2 && udp.src == 546 &&"   ++
+                                              " udp.dst == 547" in
+                                {
+                                    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                        .pipeline         = "ingress",
+                                                        .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                                                        .priority         = 100,
+                                                        .__match          = __match,
+                                                        .actions          = options_action,
+                                                        .external_ids     = map_empty());
+
+                                    /* If REGBIT_DHCP_OPTS_RESULT is set to 1, it means the
+                                     * put_dhcpv6_opts action is successful */
+                                    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                        .pipeline         = "ingress",
+                                                        .table_id         = switch_stage(IN, DHCP_RESPONSE),
+                                                        .priority         = 100,
+                                                        .__match          = __match ++ $" && ${rEGBIT_DHCP_OPTS_RESULT()}",
+                                                        .actions          = response_action,
+                                                        .external_ids     = map_empty())
+                                    // FIXME: is there a constraint somewhere that guarantees that build_dhcpv4_action
+                                    // returns Some() for at most 1 address in lsp_addrs? Otherwise, simulate this breaks
+                                    // by computing an aggregate that returns the first element of a group.
+                                    //break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /*
  * Datapath tunnel key allocation:

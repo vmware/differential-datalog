@@ -33,6 +33,17 @@ pub fn ovn_eth_addr2string(addr: &ovn_eth_addr) -> arcval::DDString {
                                    addr.x[0], addr.x[1], addr.x[2], addr.x[3], addr.x[4], addr.x[5]))
 }
 
+pub fn ovn_eth_addr_from_string(s: &arcval::DDString) -> std_Option<ovn_eth_addr> {
+    let mut ea: ovn_eth_addr = Default::default();
+    unsafe {
+        if eth_addr_from_string(ddstring2cstr(s).as_ptr(), &mut ea as *mut ovn_eth_addr) {
+            std_Option::std_Some{x: ea}
+        } else {
+            std_Option::std_None
+        }
+    }
+}
+
 impl FromRecord for ovn_eth_addr {
     fn from_record(val: &record::Record) -> Result<Self, String> {
         Ok(ovn_eth_addr{x: <[u8; ETH_ADDR_SIZE]>::from_record(val)?})
@@ -61,11 +72,29 @@ pub fn ovn_in6_generate_lla(ea: &ovn_eth_addr) -> ovn_in6_addr {
     addr
 }
 
+pub fn ovn_ipv6_addr_bitxor(a: &ovn_in6_addr, b: &ovn_in6_addr) -> ovn_in6_addr {
+    unsafe {
+        ipv6_addr_bitxor(a as *const ovn_in6_addr, b as *const ovn_in6_addr)
+    }
+}
+
+pub fn ovn_ipv6_addr_bitand(a: &ovn_in6_addr, b: &ovn_in6_addr) -> ovn_in6_addr {
+    unsafe {
+        ipv6_addr_bitand(a as *const ovn_in6_addr, b as *const ovn_in6_addr)
+    }
+}
+
 pub fn ovn_ipv6_string_mapped(addr: &ovn_in6_addr) -> arcval::DDString {
     let mut addr_str = [0 as i8; INET6_ADDRSTRLEN];
     unsafe {
         ipv6_string_mapped(&mut addr_str[0] as *mut raw::c_char, addr as *const ovn_in6_addr);
         cstr2ddstring(&addr_str as *const raw::c_char)
+    }
+}
+
+pub fn ovn_ipv6_mask_is_any(mask: &ovn_in6_addr) -> bool {
+    unsafe {
+        ipv6_mask_is_any(mask as *const ovn_in6_addr)
     }
 }
 
@@ -81,11 +110,43 @@ pub fn ovn_json_string_escape(s: &arcval::DDString) -> arcval::DDString {
 pub fn ovn_extract_lsp_addresses(address: &arcval::DDString) -> std_Option<ovn_lport_addresses> {
     unsafe {
         let mut laddrs: lport_addresses = Default::default();
-        if extract_lsp_addresses(ffi::CString::new(address.str()).unwrap().as_ptr() as *const raw::c_char,
-        &mut laddrs as *mut lport_addresses) {
+        if extract_lsp_addresses(ddstring2cstr(address).as_ptr(),
+                                 &mut laddrs as *mut lport_addresses) {
             std_Option::std_Some{x: laddrs.into_ddlog()}
         } else {
             std_Option::std_None
+        }
+    }
+}
+
+pub fn ovn_ipv6_parse_masked(s: &arcval::DDString) -> std_Either<arcval::DDString, (ovn_in6_addr, ovn_in6_addr)>
+{
+    unsafe {
+        let mut ip: ovn_in6_addr = Default::default();
+        let mut mask: ovn_in6_addr = Default::default();
+        let err = ipv6_parse_masked(ddstring2cstr(s).as_ptr(), &mut ip as *mut ovn_in6_addr, &mut mask as *mut ovn_in6_addr);
+        if (err != ptr::null_mut()) {
+            let errstr = cstr2ddstring(err);
+            free(err as *mut raw::c_void);
+            std_Either::std_Left{l: errstr}
+        } else {
+            std_Either::std_Right{r: (ip, mask)}
+        }
+    }
+}
+
+pub fn ovn_ip_parse_masked(s: &arcval::DDString) -> std_Either<arcval::DDString, (ovn_ovs_be32, ovn_ovs_be32)>
+{
+    unsafe {
+        let mut ip: ovn_ovs_be32 = 0;
+        let mut mask: ovn_ovs_be32 = 0;
+        let err = ip_parse_masked(ddstring2cstr(s).as_ptr(), &mut ip as *mut ovn_ovs_be32, &mut mask as *mut ovn_ovs_be32);
+        if (err != ptr::null_mut()) {
+            let errstr = cstr2ddstring(err);
+            free(err as *mut raw::c_void);
+            std_Either::std_Left{l: errstr}
+        } else {
+            std_Either::std_Right{r: (ip, mask)}
         }
     }
 }
@@ -99,6 +160,10 @@ unsafe fn cstr2string(s: *const raw::c_char) -> String {
 
 unsafe fn cstr2ddstring(s: *const raw::c_char) -> arcval::DDString {
     arcval::DDString::from(cstr2string(s))
+}
+
+fn ddstring2cstr(s: &arcval::DDString) -> ffi::CString {
+    ffi::CString::new(s.str()).unwrap()
 }
 
 fn warn(msg: &str) {
@@ -267,15 +332,24 @@ extern "C" {
 /* functions imported from libopenvswitch */
 #[link(name = "openvswitch")]
 extern "C" {
+    // lib/packets.h
     fn ipv6_string_mapped(addr_str: *mut raw::c_char, addr: *const ovn_in6_addr) -> *const raw::c_char;
+    fn ipv6_parse_masked(s: *const raw::c_char, ip: *mut ovn_in6_addr, mask: *mut ovn_in6_addr) -> *mut raw::c_char;
+    fn ipv6_mask_is_any(mask: *const ovn_in6_addr) -> bool;
+    fn ipv6_addr_bitxor(a: *const ovn_in6_addr, b: *const ovn_in6_addr) -> ovn_in6_addr;
+    fn ipv6_addr_bitand(a: *const ovn_in6_addr, b: *const ovn_in6_addr) -> ovn_in6_addr;
+    fn ip_parse_masked(s: *const raw::c_char, ip: *mut ovn_ovs_be32, mask: *mut ovn_ovs_be32) -> *mut raw::c_char;
+    fn eth_addr_from_string(s: *const raw::c_char, ea: *mut ovn_eth_addr) -> bool;
     // include/openvswitch/json.h
     fn json_string_escape(str: *const raw::c_char, out: *mut ovs_ds);
     // openvswitch/dynamic-string.h
     fn ds_destroy(ds: *mut ovs_ds);
     fn ds_cstr(ds: *const ovs_ds) -> *const raw::c_char;
+    fn export_in6_generate_lla(ea: ovn_eth_addr, lla: *mut ovn_in6_addr);
 }
 
+/* functions imported from libc */
+#[link(name = "c")]
 extern "C" {
-    // lib/packets.h
-    fn export_in6_generate_lla(ea: ovn_eth_addr, lla: *mut ovn_in6_addr);
+    fn free(ptr: *mut raw::c_void);
 }
