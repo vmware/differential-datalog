@@ -195,7 +195,7 @@ insert OVN_Northbound.Logical_Switch_Port(
     .parent_name = [],
     .tag_request = [],
     .tag = [],
-    .addresses = [],
+    .addresses = ["unknown"],
     .dynamic_addresses = ["10.10.10.103", "abcd::250:56ff:fec0:8"],
     .port_security = [],
     .up = [true],
