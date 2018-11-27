@@ -411,13 +411,25 @@ sb.Out_Port_Group(.name = pg_name, .ports = set_empty()) :-
  * destinations.
  */
 
+function mC_FLOOD(): string   = "_MC_flood"
+function mC_UNKNOWN(): string = "_MC_unknown"
+
 // TODO: check that Multicast_Group.ports should not include derived ports
+
+/* Only create flood group if the switch has enabled ports */
 sb.Out_Multicast_Group (.datapath   = datapath,
-                        .name       = "_MC_flood",
+                        .name       = mC_FLOOD(),
                         .tunnel_key = 65535,
-                        .ports      = ports),
+                        .ports      = set_map_uuid2str(port_ids)) :-
+    nb.Logical_Switch[ls],
+    var datapath = uuid2str(ls._uuid),
+    var port_id = FlatMap(ls.ports),
+    nb.Logical_Switch_Port(._uuid = port_id, .enabled = enabled),
+    is_enabled(enabled),
+    var port_ids = Aggregate((datapath), group2set(port_id)).
+
 sb.Out_Multicast_Group (.datapath   = datapath,
-                        .name       = "_MC_unknown",
+                        .name       = mC_UNKNOWN(),
                         .tunnel_key = 65534,
                         .ports      = ports) :-
     nb.Logical_Switch[ls],
@@ -1483,26 +1495,86 @@ function build_dhcpv6_action(
 
 
 /* Logical switch ingress table 12 and 13: DHCP options and response
-     * priority 100 flows. */
-for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
+ * priority 100 flows. */
+for (lsp in nb.Logical_Switch_Port
+         /* Don't add the DHCP flows if the port is not enabled or if the
+          * port is a router port. */
+         if is_enabled(lsp.enabled) and lsp.__type != "router")
+{
     for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
         var lsname = uuid2str(lps.lswitch) in
         var json_key = json_string_escape(lsp.name) in
         {
-            /* Don't add the DHCP flows if the port is not enabled or if the
-             * port is a router port. */
-            if (is_enabled(lsp.enabled) and lsp.__type != "router") {
-                /* DHCPv4 options enabled for this port */
-                Some{var dhcpv4_options_uuid} = set_nth(lsp.dhcpv4_options, 0) in
-                {
-                    for (dhcpv4_options in nb.DHCP_Options(._uuid = dhcpv4_options_uuid)) {
-                        for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
-                            Some{(var options_action, var response_action, var ipv4_addr_match)} =
-                                build_dhcpv4_action(json_key, dhcpv4_options, addr.addr) in
+            /* DHCPv4 options enabled for this port */
+            Some{var dhcpv4_options_uuid} = set_nth(lsp.dhcpv4_options, 0) in
+            {
+                for (dhcpv4_options in nb.DHCP_Options(._uuid = dhcpv4_options_uuid)) {
+                    for (LSPortIPv4Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
+                        Some{(var options_action, var response_action, var ipv4_addr_match)} =
+                            build_dhcpv4_action(json_key, dhcpv4_options, addr.addr) in
+                        {
+                            var __match = $"inport == ${json_key} && eth.src == ${ea_s} && "     ++
+                                          "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && " ++
+                                          "udp.src == 68 && udp.dst == 67" in
+                            sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                .pipeline         = "ingress",
+                                                .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                                                .priority         = 100,
+                                                .__match          = __match,
+                                                .actions          = options_action,
+                                                .external_ids     = map_empty());
+
+                            /* Allow ip4.src = OFFER_IP and
+                             * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
+                             * cases
+                             *  -  When the client wants to renew the IP by sending
+                             *     the DHCPREQUEST to the server ip.
+                             *  -  When the client wants to renew the IP by
+                             *     broadcasting the DHCPREQUEST.
+                             */
+                            var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
+                                          $"${ipv4_addr_match} && udp.src == 68 && udp.dst == 67" in
+                            sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                .pipeline         = "ingress",
+                                                .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                                                .priority         = 100,
+                                                .__match          = __match,
+                                                .actions          = options_action,
+                                                .external_ids     = map_empty());
+
+                            /* If REGBIT_DHCP_OPTS_RESULT is set, it means the
+                             * put_dhcp_opts action  is successful. */
+                            var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
+                                          "ip4 && udp.src == 68 && udp.dst == 67 && "        ++
+                                          rEGBIT_DHCP_OPTS_RESULT() in
+                            sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                .pipeline         = "ingress",
+                                                .table_id         = switch_stage(IN, DHCP_RESPONSE),
+                                                .priority         = 100,
+                                                .__match          = __match,
+                                                .actions          = response_action,
+                                                .external_ids     = map_empty())
+                            // FIXME: is there a constraint somewhere that guarantees that build_dhcpv4_action
+                            // returns Some() for at most 1 address in lsp_addrs? Otherwise, simulate this breaks
+                            // by computing an aggregate that returns the first element of a group.
+                            //break;
+                        }
+                    }
+                }
+            };
+
+            /* DHCPv6 options enabled for this port */
+            Some{var dhcpv6_options_uuid} = set_nth(lsp.dhcpv6_options, 0) in
+            {
+                for (dhcpv6_options in nb.DHCP_Options(._uuid = dhcpv6_options_uuid)) {
+                    for (LSPortIPv6Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
+                        Some{(var options_action, var response_action)} =
+                            build_dhcpv6_action(json_key, dhcpv6_options, addr.addr) in
+                        {
+                            var __match = $"inport == ${json_key} && eth.src == ${ea_s}"    ++
+                                          " && ip6.dst == ff02::1:2 && udp.src == 546 &&"   ++
+                                          " udp.dst == 547" in
                             {
-                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && "     ++
-                                              "ip4.src == 0.0.0.0 && ip4.dst == 255.255.255.255 && " ++
-                                              "udp.src == 68 && udp.dst == 67" in
                                 sb.Out_Logical_Flow(.logical_datapath = lsname,
                                                     .pipeline         = "ingress",
                                                     .table_id         = switch_stage(IN, DHCP_OPTIONS),
@@ -1511,34 +1583,13 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
                                                     .actions          = options_action,
                                                     .external_ids     = map_empty());
 
-                                /* Allow ip4.src = OFFER_IP and
-                                 * ip4.dst = {SERVER_IP, 255.255.255.255} for the below
-                                 * cases
-                                 *  -  When the client wants to renew the IP by sending
-                                 *     the DHCPREQUEST to the server ip.
-                                 *  -  When the client wants to renew the IP by
-                                 *     broadcasting the DHCPREQUEST.
-                                 */
-                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
-                                              $"${ipv4_addr_match} && udp.src == 68 && udp.dst == 67" in
-                                sb.Out_Logical_Flow(.logical_datapath = lsname,
-                                                    .pipeline         = "ingress",
-                                                    .table_id         = switch_stage(IN, DHCP_OPTIONS),
-                                                    .priority         = 100,
-                                                    .__match          = __match,
-                                                    .actions          = options_action,
-                                                    .external_ids     = map_empty());
-
-                                /* If REGBIT_DHCP_OPTS_RESULT is set, it means the
-                                 * put_dhcp_opts action  is successful. */
-                                var __match = $"inport == ${json_key} && eth.src == ${ea_s} && " ++
-                                              "ip4 && udp.src == 68 && udp.dst == 67 && "        ++
-                                              rEGBIT_DHCP_OPTS_RESULT() in
+                                /* If REGBIT_DHCP_OPTS_RESULT is set to 1, it means the
+                                 * put_dhcpv6_opts action is successful */
                                 sb.Out_Logical_Flow(.logical_datapath = lsname,
                                                     .pipeline         = "ingress",
                                                     .table_id         = switch_stage(IN, DHCP_RESPONSE),
                                                     .priority         = 100,
-                                                    .__match          = __match,
+                                                    .__match          = __match ++ $" && ${rEGBIT_DHCP_OPTS_RESULT()}",
                                                     .actions          = response_action,
                                                     .external_ids     = map_empty())
                                 // FIXME: is there a constraint somewhere that guarantees that build_dhcpv4_action
@@ -1548,48 +1599,112 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
                             }
                         }
                     }
-                };
-
-                /* DHCPv6 options enabled for this port */
-                Some{var dhcpv6_options_uuid} = set_nth(lsp.dhcpv6_options, 0) in
-                {
-                    for (dhcpv6_options in nb.DHCP_Options(._uuid = dhcpv6_options_uuid)) {
-                        for (LSPortIPv6Address(.lsport = lsp._uuid, .ea_s = ea_s, .addr = addr)) {
-                            Some{(var options_action, var response_action)} =
-                                build_dhcpv6_action(json_key, dhcpv6_options, addr.addr) in
-                            {
-                                var __match = $"inport == ${json_key} && eth.src == ${ea_s}"    ++
-                                              " && ip6.dst == ff02::1:2 && udp.src == 546 &&"   ++
-                                              " udp.dst == 547" in
-                                {
-                                    sb.Out_Logical_Flow(.logical_datapath = lsname,
-                                                        .pipeline         = "ingress",
-                                                        .table_id         = switch_stage(IN, DHCP_OPTIONS),
-                                                        .priority         = 100,
-                                                        .__match          = __match,
-                                                        .actions          = options_action,
-                                                        .external_ids     = map_empty());
-
-                                    /* If REGBIT_DHCP_OPTS_RESULT is set to 1, it means the
-                                     * put_dhcpv6_opts action is successful */
-                                    sb.Out_Logical_Flow(.logical_datapath = lsname,
-                                                        .pipeline         = "ingress",
-                                                        .table_id         = switch_stage(IN, DHCP_RESPONSE),
-                                                        .priority         = 100,
-                                                        .__match          = __match ++ $" && ${rEGBIT_DHCP_OPTS_RESULT()}",
-                                                        .actions          = response_action,
-                                                        .external_ids     = map_empty())
-                                    // FIXME: is there a constraint somewhere that guarantees that build_dhcpv4_action
-                                    // returns Some() for at most 1 address in lsp_addrs? Otherwise, simulate this breaks
-                                    // by computing an aggregate that returns the first element of a group.
-                                    //break;
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
+    }
+}
+
+
+
+relation LSHasDNSRecords(ls: uuid)
+
+
+LSHasDNSRecords(ls) :-
+    LogicalSwitchDNS(ls, dns),
+    nb.DNS(._uuid = dns).
+
+/* Logical switch ingress table 14 and 15: DNS lookup and response
+ * priority 100 flows.
+ */
+for (LSHasDNSRecords(ls))
+{
+    var lsname = uuid2str(ls) in
+    {
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DNS_RESPONSE),
+                            .priority         = 100,
+                            .__match          = "udp.dst == 53",
+                            .actions          = $"${rEGBIT_DNS_LOOKUP_RESULT()} = dns_lookup(); next;",
+                            .external_ids     = map_empty());
+
+        var action = "eth.dst <-> eth.src; ip4.src <-> ip4.dst; "           ++
+                     "udp.dst = udp.src; udp.src = 53; outport = inport; "  ++
+                     "flags.loopback = 1; output;" in
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DNS_RESPONSE),
+                            .priority         = 100,
+                            .__match          = $"udp.dst == 53 && ${rEGBIT_DNS_LOOKUP_RESULT()}",
+                            .actions          = action,
+                            .external_ids     = map_empty());
+
+        var action = "eth.dst <-> eth.src; ip6.src <-> ip6.dst; "           ++
+                     "udp.dst = udp.src; udp.src = 53; outport = inport; "  ++
+                     "flags.loopback = 1; output;" in
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DNS_RESPONSE),
+                            .priority         = 100,
+                            .__match          = $"udp.dst == 53 && ${rEGBIT_DNS_LOOKUP_RESULT()}",
+                            .actions          = action,
+                            .external_ids     = map_empty())
+    }
+}
+
+/* Ingress table 12 and 13: DHCP options and response, by default goto
+ * next. (priority 0).
+ * Ingress table 14 and 15: DNS lookup and response, by default goto next.
+ * (priority 0).*/
+for (ls in nb.Logical_Switch) {
+    var lsname = uuid2str(ls._uuid) in {
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DHCP_OPTIONS),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = "next;",
+                            .external_ids     = map_empty());
+
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DHCP_RESPONSE),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = "next;",
+                            .external_ids     = map_empty());
+
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DNS_LOOKUP),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = "next;",
+                            .external_ids     = map_empty());
+
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, DNS_RESPONSE),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = "next;",
+                            .external_ids     = map_empty())
+    }
+}
+
+
+/* Ingress table 16: Destination lookup, broadcast and multicast handling
+ * (priority 100). */
+for (ls in nb.Logical_Switch) {
+    var lsname = uuid2str(ls._uuid) in {
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "ingress",
+                            .table_id         = switch_stage(IN, L2_LKUP),
+                            .priority         = 100,
+                            .__match          = "eth.mcast",
+                            .actions          = $"outport = \"${mC_FLOOD()}\"; output;",
+                            .external_ids     = map_empty())
     }
 }
 
