@@ -422,6 +422,16 @@ function mC_UNKNOWN(): string = "_MC_unknown"
 
 // TODO: check that Multicast_Group.ports should not include derived ports
 
+/* Logical switches that have enabled ports with "unknown" address */
+relation LogicalSwitchUnknownPorts(ls: uuid, port_ids: Set<uuid>)
+
+LogicalSwitchUnknownPorts(ls, port_ids) :-
+    nb.Logical_Switch(._uuid = ls, .ports = ports),
+    var port_id = FlatMap(ports),
+    nb.Logical_Switch_Port(._uuid = port_id, .enabled = enabled, .addresses = addresses),
+    is_enabled(enabled) and set_contains(addresses, "unknown"),
+    var port_ids = Aggregate((ls), group2set(port_id)).
+
 /* Only create flood group if the switch has enabled ports */
 sb.Out_Multicast_Group (.datapath   = datapath,
                         .name       = mC_FLOOD(),
@@ -434,17 +444,12 @@ sb.Out_Multicast_Group (.datapath   = datapath,
     is_enabled(enabled),
     var port_ids = Aggregate((datapath), group2set(port_id)).
 
-/* Only create flood group if the switch has ports with "unknown" address */
-sb.Out_Multicast_Group (.datapath   = datapath,
+/* Only create unknown group if the switch has ports with "unknown" address */
+sb.Out_Multicast_Group (.datapath   = uuid2str(ls),
                         .name       = mC_UNKNOWN(),
                         .tunnel_key = 65534,
                         .ports      = set_map_uuid2str(port_ids)) :-
-    nb.Logical_Switch[ls],
-    var datapath = uuid2str(ls._uuid),
-    var port_id = FlatMap(ls.ports),
-    nb.Logical_Switch_Port(._uuid = port_id, .enabled = enabled, .addresses = addresses),
-    is_enabled(enabled) and set_contains(addresses, "unknown"),
-    var port_ids = Aggregate((datapath), group2set(port_id)).
+    LogicalSwitchUnknownPorts(ls, port_ids).
 
 /*
  * MAC binding: records inserted by hypervisors; northd removes records for deleted logical ports
@@ -994,12 +999,12 @@ for (lsp in nb.Logical_Switch_Port if is_enabled(lsp.enabled)) {
         var lsname = uuid2str(lps.lswitch) in
         var json_key = json_string_escape(lsp.name) in
         {
-            for (lsp_eth_addrs in LSPortPSEthAddresses(.lsport = lsp._uuid)) {
+            for (LSPortPSEthAddresses(.lsport = lsp._uuid, .addrs = lsp_eth_addrs)) {
                 for (pbinding in sb.OutProxy_Port_Binding(.logical_port = lsp.name)) {
                     var __match = if (set_is_empty(lsp.port_security)) {
                             $"inport == ${json_key}"
                         } else {
-                            $"inport == ${json_key} && eth.src == {${set_space_sep(lsp_eth_addrs.addrs)}}"
+                            $"inport == ${json_key} && eth.src == {${set_space_sep(lsp_eth_addrs)}}"
                         } in
                     var actions = match (map_get(pbinding.options, "qdisc_queue_id")) {
                             None -> "next;",
@@ -1706,15 +1711,14 @@ for (ls in nb.Logical_Switch) {
 /* Ingress table 16: Destination lookup, broadcast and multicast handling
  * (priority 100). */
 for (ls in nb.Logical_Switch) {
-    var lsname = uuid2str(ls._uuid) in {
-        sb.Out_Logical_Flow(.logical_datapath = lsname,
-                            .pipeline         = "ingress",
-                            .table_id         = switch_stage(IN, L2_LKUP),
-                            .priority         = 100,
-                            .__match          = "eth.mcast",
-                            .actions          = $"outport = \"${mC_FLOOD()}\"; output;",
-                            .external_ids     = map_empty())
-    }
+    var lsname = uuid2str(ls._uuid) in
+    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                        .pipeline         = "ingress",
+                        .table_id         = switch_stage(IN, L2_LKUP),
+                        .priority         = 100,
+                        .__match          = "eth.mcast",
+                        .actions          = $"outport = \"${mC_FLOOD()}\"; output;",
+                        .external_ids     = map_empty())
 }
 
 /*
@@ -1804,6 +1808,7 @@ for (lsp in nb.Logical_Switch_Port)
                 }
             }
         }
+// FIXME: do we care about this?
 /*        } else {
             static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 1);
 
@@ -1814,6 +1819,134 @@ for (lsp in nb.Logical_Switch_Port)
     }
 }
 
+/* Ingress table 16: Destination lookup for unknown MACs (priority 0). */
+for (LogicalSwitchUnknownPorts(.ls = ls_uuid)) {
+    var lsname = uuid2str(ls_uuid) in
+    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                        .pipeline         = "ingress",
+                        .table_id         = switch_stage(IN, L2_LKUP),
+                        .priority         = 0,
+                        .__match          = "1",
+                        .actions          = $"outport = \"${mC_UNKNOWN()}\"; output;",
+                        .external_ids     = map_empty())
+}
+
+/* Egress tables 8: Egress port security - IP (priority 0)
+ * Egress table 9: Egress port security L2 - multicast/broadcast (priority 100). */
+for (ls in nb.Logical_Switch) {
+    var lsname = uuid2str(ls._uuid) in {
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "egress",
+                            .table_id         = switch_stage(OUT, PORT_SEC_IP),
+                            .priority         = 0,
+                            .__match          = "1",
+                            .actions          = $"next;",
+                            .external_ids     = map_empty());
+        sb.Out_Logical_Flow(.logical_datapath = lsname,
+                            .pipeline         = "egress",
+                            .table_id         = switch_stage(OUT, PORT_SEC_L2),
+                            .priority         = 100,
+                            .__match          = "eth.mcast",
+                            .actions          = $"output;",
+                            .external_ids     = map_empty())
+    }
+}
+
+/* Egress table 8: Egress port security - IP (priorities 90 and 80)
+ * if port security enabled.
+ *
+ * Egress table 9: Egress port security - L2 (priorities 50 and 150).
+ *
+ * Priority 50 rules implement port security for enabled logical port.
+ *
+ * Priority 150 rules drop packets to disabled logical ports, so that they
+ * don't even receive multicast or broadcast packets. */
+for (lsp in nb.Logical_Switch_Port)
+{
+    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
+        var lsname = uuid2str(lps.lswitch) in
+        var json_key = json_string_escape(lsp.name) in
+        {
+            if (is_enabled(lsp.enabled)) {
+                for (LSPortPSEthAddresses(.lsport = lsp._uuid, .addrs = lsp_eth_addrs)) {
+                    var __match = $"outport == ${json_key} && eth.dst = {${set_space_sep(lsp_eth_addrs)}}" in
+                    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                        .pipeline         = "egress",
+                                        .table_id         = switch_stage(OUT, PORT_SEC_L2),
+                                        .priority         = 50,
+                                        .__match          = __match,
+                                        .actions          = $"output;",
+                                        .external_ids     = map_empty())
+                }
+            } else {
+                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                    .pipeline         = "egress",
+                                    .table_id         = switch_stage(OUT, PORT_SEC_L2),
+                                    .priority         = 150,
+                                    .__match          = $"outport == ${json_key}",
+                                    .actions          = $"drop;",
+                                    .external_ids     = map_empty())
+            };
+            for (LSPortPSAddresses(.lsport = lsp._uuid, .ps_addrs = ps)
+                 if vec_len(ps.ipv4_addrs) > 64'd0 or vec_len(ps.ipv6_addrs) > 64'd0)
+            {
+                if (vec_len(ps.ipv4_addrs) > 64'd0) {
+                    var addrs = {
+                        var addrs: Vec<string> = vec_empty();
+                        for (addr in ps.ipv4_addrs) {
+                            /* When the netmask is applied, if the host portion is
+                             * non-zero, the host can only use the specified
+                             * address.  If zero, the host is allowed to use any
+                             * address in the subnet.
+                             */
+                            vec_push(addrs,
+                                     if (addr.plen == 32 or ((addr.addr & ~addr.mask) != 0)) {
+                                         addr.addr_s ++
+                                            if (addr.plen != 32) { $", ${addr.bcast_s}" } else { "" }
+                                     } else {
+                                         /* host portion is zero */
+                                         $"${addr.network_s}/${addr.plen}"
+                                     })
+                        };
+                        addrs
+                    } in
+                    var __match =
+                        $"outport == ${json_key} && eth.dst == ${ps.ea_s} && ip4.dst == {255.255.255.255, 224.0.0.0/4, " ++
+                        string_join(addrs, ", ") ++ "}" in
+                    sb.Out_Logical_Flow(
+                        .logical_datapath = lsname,
+                        .pipeline         = "egress",
+                        .table_id         = switch_stage(OUT, PORT_SEC_IP),
+                        .priority         = 90,
+                        .__match          = __match,
+                        .actions          = "next;",
+                        .external_ids     = map_empty())
+                };
+                if (vec_len(ps.ipv6_addrs) > 64'd0) {
+                    var __match = $"outport == ${json_key} && eth.dst: ${ps.ea_s}" ++
+                                  build_port_security_ipv6_flow(OUT, ps.ea, ps.ipv6_addrs) in
+                    sb.Out_Logical_Flow(
+                        .logical_datapath = lsname,
+                        .pipeline         = "egress",
+                        .table_id         = switch_stage(OUT, PORT_SEC_IP),
+                        .priority         = 90,
+                        .__match          = __match,
+                        .actions          = "next;",
+                        .external_ids     = map_empty())
+                };
+                var __match = $"outport == ${json_key} && eth.dst == ${ps.ea_s} && ip" in
+                sb.Out_Logical_Flow(
+                    .logical_datapath = lsname,
+                    .pipeline         = "egress",
+                    .table_id         = switch_stage(OUT, PORT_SEC_IP),
+                    .priority         = 80,
+                    .__match          = __match,
+                    .actions          = "drop;",
+                    .external_ids     = map_empty())
+            }
+        }
+    }
+}
 
 
 /*

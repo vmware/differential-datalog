@@ -49,6 +49,17 @@ OVN_Southbound.DeltaPlus_Gateway_Chassis{"7ca7b79b-ba4f-36ae-e342-f650b1b2c09b",
 OVN_Southbound.DeltaPlus_Gateway_Chassis{"c4d42fb6-cb73-569f-7f4c-b0ede516cb51","gateway_chassis1",std_Set { x: {329700517176903794794161411552484030721} },5,std_Map { x: {} },std_Map { x: {} }}
 
 OVN_Southbound_DeltaPlus_Logical_Flow:
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,0,"1","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,80,"outport == \"lsp1\" && eth.dst == 11:22:33:44:55:66 && ip","drop;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,80,"outport == \"lsp1\" && eth.dst == aa:bb:cc:dd:ee:ff && ip","drop;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,90,"outport == \"lsp1\" && eth.dst == 11:22:33:44:55:66 && ip4.dst == {255.255.255.255, 224.0.0.0/4, 192.168.0.1}","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,90,"outport == \"lsp1\" && eth.dst == aa:bb:cc:dd:ee:ff && ip4.dst == {255.255.255.255, 224.0.0.0/4, 10.13.1.1, 10.13.1.2}","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",8,90,"outport == \"lsp1\" && eth.dst: 11:22:33:44:55:66 && ip6.dst == {fe80::1322:33ff:fe44:5566, ff00::/8, fe80::742a:ad2c:b47d:e7a}","next;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",9,50,"outport == \"lsp1\" && eth.dst = {11:22:33:44:55:66 aa:bb:cc:dd:ee:ff}","output;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",9,50,"outport == \"lsp1\" && eth.dst = {}","output;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",9,50,"outport == \"lsp2\" && eth.dst = {}","output;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",9,50,"outport == \"lsp3\" && eth.dst = {}","output;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"egress",9,100,"eth.mcast","output;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",0,50,"inport == \"lsp1\" && eth.src == {11:22:33:44:55:66 aa:bb:cc:dd:ee:ff}","next;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",0,50,"inport == \"lsp1\" && eth.src == {}","next;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",0,50,"inport == \"lsp2\"","next;",std_Map { x: {} }}
@@ -91,6 +102,7 @@ OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7cc
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",15,100,"udp.dst == 53","reg0[4] = dns_lookup(); next;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",15,100,"udp.dst == 53 && reg0[4]","eth.dst <-> eth.src; ip4.src <-> ip4.dst; udp.dst = udp.src; udp.src = 53; outport = inport; flags.loopback = 1; output;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",15,100,"udp.dst == 53 && reg0[4]","eth.dst <-> eth.src; ip6.src <-> ip6.dst; udp.dst = udp.src; udp.src = 53; outport = inport; flags.loopback = 1; output;",std_Map { x: {} }}
+OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",16,0,"1","outport = \"_MC_unknown\"; output;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",16,50,"eth.dst == 11:22:33:44:55:66 && is_chassis_resident(\"cr-redirect_port2\")","outport = \"lsp3\"; output;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",16,50,"eth.dst == 14:15:16:17:18:19 && is_chassis_resident(\"some_port\")","outport = \"lsp3\"; output;",std_Map { x: {} }}
 OVN_Southbound.DeltaPlus_Logical_Flow{std.Right{"906d1cfd-7661-a2a0-a24c-a17e7ccfa206"},"ingress",16,50,"eth.dst == 66:55:44:33:22:11","outport = \"lsp1\"; output;",std_Map { x: {} }}
