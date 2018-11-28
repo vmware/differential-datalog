@@ -109,3 +109,7 @@ extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
  * Endianness
  */
 extern function ntohl(x: bit<32>): bit<32>
+extern function ntohs(x: bit<16>): bit<16>
+
+extern function htonl(x: bit<32>): bit<32>
+extern function htons(x: bit<16>): bit<16>

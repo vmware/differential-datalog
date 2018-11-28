@@ -492,3 +492,15 @@ decl_tuple!(tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 pub fn std_ntohl(x: &u32) -> u32 {
     u32::from_be(*x)
 }
+
+pub fn std_ntohs(x: &u16) -> u16 {
+    u16::from_be(*x)
+}
+
+pub fn std_htonl(x: &u32) -> u32 {
+    u32::to_be(*x)
+}
+
+pub fn std_htons(x: &u16) -> u16 {
+    u16::to_be(*x)
+}
