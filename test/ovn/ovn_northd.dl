@@ -235,12 +235,22 @@ ChassisRedirectPort(lrp1, lr._uuid) :-
         }
     }.
 
+/* For each router port, tracks whether it's a redirect port of its router */
+relation RouterPortIsRedirect(lrp: uuid, is_redirect: bool)
+
+RouterPortIsRedirect(lrp, true) :- ChassisRedirectPort(nb.Logical_Router_Port{._uuid = lrp}, _).
+RouterPortIsRedirect(lrp, false) :-
+    nb.Logical_Router_Port(._uuid = lrp),
+    not ChassisRedirectPort(nb.Logical_Router_Port{._uuid = lrp}, _).
+
+function chassis_redirect_name(port_name: string): string = $"cr-${port_name}"
+
 /* Create derived ports */
 sb.Out_Port_Binding(.uuid_name          = "cr" ++ uuid2str(lrp._uuid),
                     .logical_port       = lrp.name,
                     .__type             = "chassisredirect",
                     .gateway_chassis    = gateway_chassis,
-                    .options            = map_singleton("distributed-port", "cr-" ++ lrp.name),
+                    .options            = map_singleton("distributed-port", chassis_redirect_name(lrp.name)),
                     .datapath           = uuid2str(lr_uuid),
                     .tunnel_key         = 0,
                     .parent_port        = set_empty(),
@@ -326,10 +336,6 @@ for (nb_as in nb.Address_Set) {
     sb.Out_Address_Set(.name      = nb_as.name,
                        .addresses = nb_as.addresses)
 }
-
-// TODO: link to C implementation
-function is_dynamic_lsp_address(addr: string): bool = false
-function split_addresses(addr: string): (Set<string>, Set<string>) = (set_empty(), set_empty())
 
 /* PortStaticAddresses: static IP addresses associated with each Logical_Switch_Port */
 relation PortStaticAddresses(lsport: uuid, ip4addrs: Set<string>, ip6addrs: Set<string>)
@@ -1613,7 +1619,6 @@ for (lsp in nb.Logical_Switch_Port
 
 relation LSHasDNSRecords(ls: uuid)
 
-
 LSHasDNSRecords(ls) :-
     LogicalSwitchDNS(ls, dns),
     nb.DNS(._uuid = dns).
@@ -1712,106 +1717,102 @@ for (ls in nb.Logical_Switch) {
     }
 }
 
+/*
+relation LSPortEthAddress(lsp: uuid, ea: eth_addr)
+LSPortEthAddress(lsp, ea) :-
+    nb.Logical_Switch_Port(._uuid = lsp, .addresses = addresses),
+    var address = FlatMap(addresses),
+    Some{var ea} = scan_eth_addr(address).
+LSPortEthAddress(lsp, ea) :-
+    nb.Logical_Switch_Port(._uuid = lsp, .dynamic_addresses = dyn_addresses, .addresses = addresses),
+    var address = FlatMap(dyn_addresses),
+    Some{var ea} = scan_eth_addr(address).
+*/
+
+relation LogicalRouterNAT(lr: uuid, nat: nb.NAT)
+
+LogicalRouterNAT(lr, nat) :-
+    nb.Logical_Router(._uuid = lr, .nat = nats),
+    var nat_uuid = FlatMap(nats),
+    nat in nb.NAT(._uuid = nat_uuid).
 
 /* Ingress table 16: Destination lookup, unicast handling (priority 50), */
-//HMAP_FOR_EACH (op, key_node, ports) {
-//    if (!op->nbsp) {
-//        continue;
-//    }
-//
-//    for (size_t i = 0; i < op->nbsp->n_addresses; i++) {
-//        /* Addresses are owned by the logical port.
-//         * Ethernet address followed by zero or more IPv4
-//         * or IPv6 addresses (or both). */
-//        struct eth_addr mac;
-//        if (ovs_scan(op->nbsp->addresses[i],
-//                    ETH_ADDR_SCAN_FMT, ETH_ADDR_SCAN_ARGS(mac))) {
-//            ds_clear(&match);
-//            ds_put_format(&match, "eth.dst == "ETH_ADDR_FMT,
-//                          ETH_ADDR_ARGS(mac));
-//
-//            ds_clear(&actions);
-//            ds_put_format(&actions, "outport = %s; output;", op->json_key);
-//            ovn_lflow_add(lflows, op->od, S_SWITCH_IN_L2_LKUP, 50,
-//                          ds_cstr(&match), ds_cstr(&actions));
-//        } else if (!strcmp(op->nbsp->addresses[i], "unknown")) {
-//            if (lsp_is_enabled(op->nbsp)) {
-//                ovn_multicast_add(mcgroups, &mc_unknown, op);
-//                op->od->has_unknown = true;
-//            }
-//        } else if (is_dynamic_lsp_address(op->nbsp->addresses[i])) {
-//            if (!op->nbsp->dynamic_addresses
-//                || !ovs_scan(op->nbsp->dynamic_addresses,
-//                        ETH_ADDR_SCAN_FMT, ETH_ADDR_SCAN_ARGS(mac))) {
-//                continue;
-//            }
-//            ds_clear(&match);
-//            ds_put_format(&match, "eth.dst == "ETH_ADDR_FMT,
-//                          ETH_ADDR_ARGS(mac));
-//
-//            ds_clear(&actions);
-//            ds_put_format(&actions, "outport = %s; output;", op->json_key);
-//            ovn_lflow_add(lflows, op->od, S_SWITCH_IN_L2_LKUP, 50,
-//                          ds_cstr(&match), ds_cstr(&actions));
-//        } else if (!strcmp(op->nbsp->addresses[i], "router")) {
-//            if (!op->peer || !op->peer->nbrp
-//                || !ovs_scan(op->peer->nbrp->mac,
-//                        ETH_ADDR_SCAN_FMT, ETH_ADDR_SCAN_ARGS(mac))) {
-//                continue;
-//            }
-//            ds_clear(&match);
-//            ds_put_format(&match, "eth.dst == "ETH_ADDR_FMT,
-//                          ETH_ADDR_ARGS(mac));
-//            if (op->peer->od->l3dgw_port
-//                && op->peer == op->peer->od->l3dgw_port
-//                && op->peer->od->l3redirect_port) {
-//                /* The destination lookup flow for the router's
-//                 * distributed gateway port MAC address should only be
-//                 * programmed on the "redirect-chassis". */
-//                ds_put_format(&match, " && is_chassis_resident(%s)",
-//                              op->peer->od->l3redirect_port->json_key);
-//            }
-//
-//            ds_clear(&actions);
-//            ds_put_format(&actions, "outport = %s; output;", op->json_key);
-//            ovn_lflow_add(lflows, op->od, S_SWITCH_IN_L2_LKUP, 50,
-//                          ds_cstr(&match), ds_cstr(&actions));
-//
-//            /* Add ethernet addresses specified in NAT rules on
-//             * distributed logical routers. */
-//            if (op->peer->od->l3dgw_port
-//                && op->peer == op->peer->od->l3dgw_port) {
-//                for (int j = 0; j < op->peer->od->nbr->n_nat; j++) {
-//                    const struct nbrec_nat *nat
-//                                              = op->peer->od->nbr->nat[j];
-//                    if (!strcmp(nat->type, "dnat_and_snat")
-//                        && nat->logical_port && nat->external_mac
-//                        && eth_addr_from_string(nat->external_mac, &mac)) {
-//
-//                        ds_clear(&match);
-//                        ds_put_format(&match, "eth.dst == "ETH_ADDR_FMT
-//                                      " && is_chassis_resident(\"%s\")",
-//                                      ETH_ADDR_ARGS(mac),
-//                                      nat->logical_port);
-//
-//                        ds_clear(&actions);
-//                        ds_put_format(&actions, "outport = %s; output;",
-//                                      op->json_key);
-//                        ovn_lflow_add(lflows, op->od, S_SWITCH_IN_L2_LKUP,
-//                                      50, ds_cstr(&match),
-//                                      ds_cstr(&actions));
-//                    }
-//                }
-//            }
-//        } else {
-//            static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 1);
-//
-//            VLOG_INFO_RL(&rl,
-//                         "%s: invalid syntax '%s' in addresses column",
-//                         op->nbsp->name, op->nbsp->addresses[i]);
-//        }
-//    }
-//}
+for (lsp in nb.Logical_Switch_Port)
+{
+    for (lps in LogicalPortSwitch(.lport = lsp._uuid)) {
+        var lsname = uuid2str(lps.lswitch) in
+        var json_key = json_string_escape(lsp.name) in {
+            // FIXME: for dynamic addresses, native imlementation first checks is_dynamic_lsp_address(lsp.address)
+            // before looking at lsp.dynamic_addresses. Is it possible that dynamic_addresses are not empty, but
+            // there is no dynamic address in lsp.addresses?
+            for (LSPortAddresses(.lsport = lsp._uuid, .addrs = addrs)) {
+                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                    .pipeline         = "ingress",
+                                    .table_id         = switch_stage(IN, L2_LKUP),
+                                    .priority         = 50,
+                                    .__match          = $"eth.dst == ${addrs.ea}",
+                                    .actions          = $"outport = ${json_key}; output;",
+                                    .external_ids     = map_empty())
+            };
+            if (set_contains(lsp.addresses, "router"))
+            {
+                Some{var lrport_name} = map_get(lsp.options, "router-port") in
+                for(nb.Logical_Router_Port(.name = lrport_name, ._uuid = lrport_uuid, .mac = mac_str)) {
+                        Some{var mac} = scan_eth_addr(mac_str) in {
+                        for (LogicalPortRouter(lrport_uuid, lr_uuid)) {
+                            for (nb.Logical_Router(._uuid = lr_uuid, .options = lroptions)) {
+                                for (RouterPortIsRedirect(lrport_uuid, is_redirect)) {
+                                    var __match = if (is_redirect) {
+                                        /* The destination lookup flow for the router's
+                                         * distributed gateway port MAC address should only be
+                                         * programmed on the "redirect-chassis". */
+                                        $"eth.dst == ${mac} && is_chassis_resident(${json_string_escape(chassis_redirect_name(lrport_name))})"
+                                    } else {
+                                        $"eth.dst == ${mac}"
+                                    } in
+                                    sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                        .pipeline         = "ingress",
+                                                        .table_id         = switch_stage(IN, L2_LKUP),
+                                                        .priority         = 50,
+                                                        .__match          = __match,
+                                                        .actions          = $"outport = ${json_key}; output;",
+                                                        .external_ids     = map_empty());
+
+                                    /* Add ethernet addresses specified in NAT rules on
+                                     * distributed logical routers. */
+                                    if (is_redirect) {
+                                        for (LogicalRouterNAT(.lr = lr_uuid, .nat = nat)) {
+                                            if (nat.__type == "dnat_and_snat") {
+                                                Some{var lport} = set_nth(nat.logical_port, 0) in
+                                                Some{var emac} = set_nth(nat.external_mac, 0) in
+                                                Some{var nat_mac} = eth_addr_from_string(emac) in
+                                                var __match = $"eth.dst == ${nat_mac} && is_chassis_resident(\"${lport}\")" in
+                                                sb.Out_Logical_Flow(.logical_datapath = lsname,
+                                                                    .pipeline         = "ingress",
+                                                                    .table_id         = switch_stage(IN, L2_LKUP),
+                                                                    .priority         = 50,
+                                                                    .__match          = __match,
+                                                                    .actions          = $"outport = ${json_key}; output;",
+                                                                    .external_ids     = map_empty())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+/*        } else {
+            static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(1, 1);
+
+            VLOG_INFO_RL(&rl,
+                         "%s: invalid syntax '%s' in addresses column",
+                         op->nbsp->name, op->nbsp->addresses[i]);
+        }*/
+    }
+}
 
 
 

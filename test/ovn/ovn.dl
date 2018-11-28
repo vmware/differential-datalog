@@ -44,6 +44,13 @@ typedef lport_addresses = LPortAddress {
 extern function warn(msg: string): ()
 
 /*
+ * C functions imported from OVN
+ */
+extern function is_dynamic_lsp_address(addr: string): bool
+extern function extract_lsp_addresses(address: string): Option<lport_addresses>
+extern function split_addresses(addr: string): (Set<string>, Set<string>)
+
+/*
  * C functions imported from OVS
  */
 extern function in6_generate_lla(ea: eth_addr): in6_addr
@@ -53,9 +60,7 @@ extern function ipv6_parse_masked(s: string): Either<string/*err*/, (in6_addr/*i
 extern function ipv6_addr_bitxor(a: in6_addr, b: in6_addr): in6_addr
 extern function ipv6_addr_bitand(a: in6_addr, b: in6_addr): in6_addr
 extern function ipv6_mask_is_any(mask: in6_addr): bool
-
-extern function extract_lsp_addresses(address: string): Option<lport_addresses>
-
+extern function scan_eth_addr(s: string): Option<eth_addr>
 extern function json_string_escape(s: string): string
 
 extern function ip_parse_masked(s: string): Either<string/*err*/, (ovs_be32/*host_ip*/, ovs_be32/*mask*/)>

@@ -151,6 +151,36 @@ pub fn ovn_ip_parse_masked(s: &arcval::DDString) -> std_Either<arcval::DDString,
     }
 }
 
+pub fn ovn_is_dynamic_lsp_address(address: &arcval::DDString) -> bool {
+    unsafe {
+        is_dynamic_lsp_address(ddstring2cstr(address).as_ptr())
+    }
+}
+
+pub fn ovn_split_addresses(addresses: &arcval::DDString) -> (std_Set<arcval::DDString>, std_Set<arcval::DDString>) {
+    let mut ip4_addrs = ovs_svec::new();
+    let mut ip6_addrs = ovs_svec::new();
+    unsafe {
+        split_addresses(ddstring2cstr(addresses).as_ptr(), &mut ip4_addrs as *mut ovs_svec, &mut ip6_addrs as *mut ovs_svec);
+        (ip4_addrs.into_strings(), ip6_addrs.into_strings())
+    }
+}
+
+pub fn ovn_scan_eth_addr(s: &arcval::DDString) -> std_Option<ovn_eth_addr> {
+    let mut ea = ovn_eth_addr_zero();
+    unsafe {
+        if ovs_scan(ddstring2cstr(s).as_ptr(), b"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx\0".as_ptr() as *const raw::c_char,
+                    &mut ea.x[0] as *mut u8, &mut ea.x[1] as *mut u8,
+                    &mut ea.x[2] as *mut u8, &mut ea.x[3] as *mut u8,
+                    &mut ea.x[4] as *mut u8, &mut ea.x[5] as *mut u8)
+        {
+            std_Option::std_Some{x: ea}
+        } else {
+            std_Option::std_None
+        }
+    }
+}
+
 /* Internals */
 
 unsafe fn cstr2string(s: *const raw::c_char) -> String {
@@ -186,6 +216,31 @@ impl ovs_ds {
     pub unsafe fn into_string(mut self) -> String {
         let res = cstr2string(ds_cstr(&self as *const ovs_ds));
         ds_destroy(&mut self as *mut ovs_ds);
+        res
+    }
+}
+
+/* OVS string vector type */
+#[repr(C)]
+struct ovs_svec {
+    names: *mut *mut raw::c_char,
+    n: libc::size_t,
+    allocated: libc::size_t
+}
+
+impl ovs_svec {
+    pub fn new() -> ovs_svec {
+        ovs_svec{names: ptr::null_mut(), n: 0, allocated: 0}
+    }
+
+    pub unsafe fn into_strings(mut self) -> std_Set<arcval::DDString> {
+        let mut res: std_Set<arcval::DDString> = std_Set::new();
+        unsafe {
+            for i in 0..self.n {
+                res.insert(cstr2ddstring(*self.names.offset(i as isize)));
+            }
+            svec_destroy(&mut self as *mut ovs_svec);
+        }
         res
     }
 }
@@ -327,6 +382,8 @@ extern "C" {
     // ovn/lib/ovn-util.h
     fn extract_lsp_addresses(address: *const raw::c_char, laddrs: *mut lport_addresses) -> bool;
     fn destroy_lport_addresses(addrs: *mut lport_addresses);
+    fn is_dynamic_lsp_address(address: *const raw::c_char) -> bool;
+    fn split_addresses(addresses: *const raw::c_char, ip4_addrs: *mut ovs_svec, ipv6_addrs: *mut ovs_svec);
 }
 
 /* functions imported from libopenvswitch */
@@ -346,6 +403,8 @@ extern "C" {
     fn ds_destroy(ds: *mut ovs_ds);
     fn ds_cstr(ds: *const ovs_ds) -> *const raw::c_char;
     fn export_in6_generate_lla(ea: ovn_eth_addr, lla: *mut ovn_in6_addr);
+    fn svec_destroy(v: *mut ovs_svec);
+    fn ovs_scan(s: *const raw::c_char, format: *const raw::c_char, ...) -> bool;
 }
 
 /* functions imported from libc */
