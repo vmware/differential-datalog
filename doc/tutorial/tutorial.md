@@ -799,7 +799,9 @@ function vsep(strs: Vec<string>): string = {
 }
 ```
 
-For loops can only iterate over container types: sets, maps, and vectors.
+Loops can only iterate over container types: sets, maps, and vectors.  When iterating over sets
+and vectors, the loop variable (`s` in the above example) has the same type as elements of the container
+(e.g., `string`).  When iterating over maps, the loop variable is a 2-tuple `(key,value)`.
 
 #### Rules with multiple heads
 
@@ -1169,7 +1171,15 @@ for (person in Person)
         TargetAudience(person)
 ```
 
-and one can also use `match` statements:
+Here is a more complex example that simultaneously filters out records that do not contain
+a "router-port" option and assign the value of this option to the `lrport_name` variable.
+
+for (lsp in Logical_Switch_Port) {
+    Some{var lrport_name} = map_get(lsp.options, "router-port") in
+    ...
+}
+
+One can also use `match` statements:
 
 ```
 for (person in Person)

@@ -718,7 +718,7 @@ ifStatement ::= "if" "(" expression ")" statement
 
 matchStatement ::= "match" "(" expression ")" "{" expression "->" statement (, expression "->" statement )* "}"
 
-varStatement ::= "var" identifier [ ":" simple_type_spec ] "=" expression (, identifier "=" expression )* in" statement
+varStatement ::= expr "=" expr "in" statement
 
 insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 
