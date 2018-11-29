@@ -85,48 +85,7 @@ goldenTests progress = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
-
-nbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] [] M.empty
-    writeFile "test/ovn/OVN_Northbound.dl" (render prog)
-
-sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema"
-                                  [ ("SB_Global", [])
-                                  , ("Logical_Flow", [])
-                                  , ("Multicast_Group", [])
-                                  , ("Meter", [])
-                                  , ("Meter_Band", [])
-                                  , ("Datapath_Binding", [])
-                                  , ("Port_Binding", ["chassis"])
-                                  , ("Gateway_Chassis", [])
-                                  , ("Port_Group", [])
-                                  , ("MAC_Binding", [])
-                                  , ("DHCP_Options", [])
-                                  , ("DHCPv6_Options", [])
-                                  , ("Address_Set", [])
-                                  , ("DNS", [])
-                                  , ("RBAC_Role", [])
-                                  , ("RBAC_Permission", [])]
-                                  [ "Datapath_Binding", "Port_Binding"]
-                                  (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
-                                              , ("Port_Binding"     , ["logical_port"])
-                                              , ("DNS"              , ["external_ids"])
-                                              , ("Datapath_Binding" , ["external_ids"])
-                                              , ("RBAC_Role"        , ["name"])
-                                              , ("Address_Set"      , ["name"])
-                                              , ("Port_Group"       , ["name"])
-                                              , ("Meter"            , ["name"]) ])
-    writeFile "test/ovn/OVN_Southbound.dl" (render prog)
-
-ovnTests :: Bool -> TestTree
-ovnTests progress =
-  testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_northd"
-          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn_northd.dump.expected"]
-          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn_northd.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" [] ["staticlib"]}]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
 
 sOUFFLE_DIR = "./test/souffle"
 
