@@ -1,1 +1,0 @@
-extern function warn(msg: string): ()

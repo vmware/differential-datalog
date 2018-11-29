@@ -285,47 +285,46 @@ parseForStatement = withPos $
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
-statement = parseForStatement
-        <|> parseEmptyStatement
-        <|> parseIfStatement
-        <|> parseMatchStatement
-        <|> parseVarStatement
-        <|> parseInsertStatement
-        <|> parseBlockStatement
+statement = (withPos $
+                 parseForStatement
+             <|> parseEmptyStatement
+             <|> parseIfStatement
+             <|> parseMatchStatement
+             <|> parseAssignStatement
+             <|> parseInsertStatement
+             <|> parseBlockStatement)
+            <?> "statement"
 
-parseAssignment = withPos $ (Assignment nopos) <$> varIdent
-                                               <*> (optionMaybe etype)
-                                               <*> (reserved "=" *> expr)
+parseEmptyStatement = EmptyStatement nopos <$ reserved "skip"
 
-parseEmptyStatement = withPos $ (EmptyStatement nopos) <$ reserved "skip"
+parseBlockStatement = BlockStatement nopos <$> (braces $ semiSep statement)
 
-parseBlockStatement = withPos $ (BlockStatement nopos) <$> (braces $ semiSep statement)
+parseIfStatement = IfStatement nopos <$ reserved "if"
+                                    <*> (parens expr) <*> statement
+                                    <*> (optionMaybe (reserved "else" *> statement))
 
-parseIfStatement = withPos $ (IfStatement nopos) <$ reserved "if"
-                                                <*> (parens expr) <*> statement
-                                                <*> (optionMaybe (reserved "else" *> statement))
+parseMatchStatement = MatchStatement nopos <$ reserved "match" <*> parens expr
+                                          <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
-parseMatchStatement = withPos $ (MatchStatement nopos) <$ reserved "match" <*> parens expr
-                      <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
+parseAssignStatement = do e <- try $ do e <- expr
+                                        reserved "in"
+                                        return e
+                          s <- statement
+                          return $ AssignStatement nopos e s
 
-parseVarStatement = withPos $ (VarStatement nopos) <$ reserved "var"
-                                                  <*> commaSep parseAssignment
-                                                  <*> (reserved "in" *> statement)
-
-parseInsertStatement = withPos $ (InsertStatement nopos) <$> atom
+parseInsertStatement = InsertStatement nopos <$> try atom
 
 rule = Rule nopos <$>
        (commaSep1 atom) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
-               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
-       <|> (RHSAggregate <$ reserved "Aggregate" <*>
-                            (symbol "(" *> (parens $ commaSep varIdent)) <*>
-                            (comma *> varIdent) <*>
-                            (reservedOp "=" *> funcIdent) <*>
-                            parens expr <*
-                            symbol ")")
+rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
+              RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom
+       <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
+              RHSAggregate <$> (reserved "var" *> varIdent) <*>
+                               (reserved "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
+                               (comma *> funcIdent) <*>
+                               (parens expr <* symbol ")")
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
               RHSFlatMap <$> (reserved "var" *> varIdent) <*>
                              (reservedOp "=" *> reserved "FlatMap" *> parens expr)
@@ -385,6 +384,7 @@ term  =  elhs
      <|> (withPos $ eTuple <$> (parens $ commaSep expr))
      <|> braces expr
      <|> term'
+     <?> "expression term"
 term' = withPos $
          eapply
      <|> ebinding
@@ -397,6 +397,7 @@ term' = withPos $
      <|> evar
      <|> ematch
      <|> eite
+     <|> efor
      <|> evardcl
 
 eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
@@ -412,25 +413,27 @@ evar = eVar <$> varIdent
 
 ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
-pattern = withPos $
-          eTuple   <$> (parens $ commaSep pattern)
-      <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
-      <|> eVarDecl <$> varIdent
-      <|> eVarDecl <$ reserved "var" <*> varIdent
-      <|> epholder
-      <|> ebool
-      <|> estring
-      <|> eint
+pattern = (withPos $
+           eTuple   <$> (parens $ commaSep pattern)
+       <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
+       <|> eVarDecl <$> varIdent
+       <|> eVarDecl <$ reserved "var" <*> varIdent
+       <|> epholder
+       <|> ebool
+       <|> estring
+       <|> eint)
+      <?> "match pattern"
 
 anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
-lhs = withPos $
-          eTuple <$> (parens $ commaSep lhs)
-      <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
-      <|> fexpr
-      <|> evardcl
-      <|> epholder
+lhs = (withPos $
+           eTuple <$> (parens $ commaSep lhs)
+       <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
+       <|> fexpr
+       <|> evardcl
+       <|> epholder)
+      <?> "l-expression"
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 
@@ -495,6 +498,7 @@ digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
 digitPrefix digit = (:) <$> digit <*> (many (digit <|> char '_'))
 
 eite    = eITE     <$ reserved "if" <*> term <*> term <*> (reserved "else" *> term)
+efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (varIdent <* reserved "in") <*> (expr <* symbol ")") <*> term
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 
@@ -540,6 +544,7 @@ etable = [[postf $ choice [postSlice, postApply, postField, postType]]
            binary ">"  Gt  AssocNone,
            binary ">=" Gte AssocNone]
          ,[binary "&" BAnd AssocLeft]
+         ,[binary "^" BXor AssocLeft]
          ,[binary "|" BOr AssocLeft]
          ,[binary "and" And AssocLeft]
          ,[binary "or" Or AssocLeft]

@@ -107,6 +107,9 @@ exprFoldCtxM' f ctx e@(EITE p i t el)         = f ctx =<< EITE p <$>
                                                           exprFoldCtxM f (CtxITEIf e ctx) i <*>
                                                           exprFoldCtxM f (CtxITEThen e ctx) t <*>
                                                           exprFoldCtxM f (CtxITEElse e ctx) el
+exprFoldCtxM' f ctx e@(EFor p v i b)          = f ctx =<< EFor p v <$>
+                                                          exprFoldCtxM f (CtxForIter e ctx) i <*>
+                                                          exprFoldCtxM f (CtxForBody e ctx) b
 exprFoldCtxM' f ctx e@(ESet p l r)            = do -- XXX: start with RHS, e.g., in validating an assignment it helps to know RHS type
                                                    -- before validating LHS
                                                    r' <- exprFoldCtxM f (CtxSetR e ctx) r
@@ -137,6 +140,7 @@ exprMapM g e = case e of
                    EVarDecl p v        -> return $ EVarDecl p v
                    ESeq p l r          -> ESeq p <$> g l <*> g r
                    EITE p i t el       -> EITE p <$> g i <*> g t <*> g el
+                   EFor p v i b        -> EFor p v <$> g i <*> g b
                    ESet p l r          -> ESet p <$> g l <*> g r
                    EBinOp p op l r     -> EBinOp p op <$> g l <*> g r
                    EUnOp p op v        -> EUnOp p op <$> g v
@@ -181,11 +185,12 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      ETuple _ fs           -> foldl' op x' fs
                                      ESlice _ v _ _        -> x' `op` v
                                      EMatch _ m cs         -> foldl' (\a (p,v) -> a `op` p `op` v) (x' `op` m) cs
-                                     EVarDecl _ _          -> x'    
-                                     ESeq _ l r            -> x' `op` l `op` r       
-                                     EITE _ i t el         -> x' `op` i `op` t `op` el 
+                                     EVarDecl _ _          -> x'
+                                     ESeq _ l r            -> x' `op` l `op` r
+                                     EITE _ i t el         -> x' `op` i `op` t `op` el
+                                     EFor _ v i b          -> x' `op` i `op` b
                                      ESet _ l r            -> x' `op` l `op` r
-                                     EBinOp _ _ l r        -> x' `op` l `op` r  
+                                     EBinOp _ _ l r        -> x' `op` l `op` r
                                      EUnOp _ _ v           -> x' `op` v
                                      EPHolder _            -> x'
                                      EBinding _ _ pat      -> x' `op` pat
@@ -202,7 +207,7 @@ exprCollect f op e = runIdentity $ exprCollectM (return . f) op e
 
 -- enumerate all variable occurrences in the expression
 exprVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
-exprVarOccurrences ctx e = exprCollectCtx (\ctx' e' -> 
+exprVarOccurrences ctx e = exprCollectCtx (\ctx' e' ->
                                             case e' of
                                                  EVar _ v -> [(v, ctx')]
                                                  _        -> [])
@@ -218,8 +223,8 @@ exprVars e = nub $ exprCollect (\case
 
 -- Variables declared inside expression, visible in the code that follows the expression
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
-exprVarDecls ctx e = 
-    exprFoldCtx (\ctx' e' -> 
+exprVarDecls ctx e =
+    exprFoldCtx (\ctx' e' ->
                   case e' of
                        EStruct _ _ fs   -> concatMap snd fs
                        ETuple _ fs      -> concat fs
@@ -236,7 +241,7 @@ exprFuncs e = exprFuncs' [] e
 exprFuncs' :: [String] -> Expr -> [String]
 exprFuncs' acc e = nub $ exprCollect (\case
                                        EApply _ f _ -> if' (elem f acc) [] [f]
-                                       _            -> []) 
+                                       _            -> [])
                                      (++) e
 
 -- Recursively enumerate all functions invoked by the expression
@@ -244,7 +249,7 @@ exprFuncsRec :: DatalogProgram -> Expr -> [String]
 exprFuncsRec d e = exprFuncsRec' d [] e
 
 exprFuncsRec' :: DatalogProgram -> [String] -> Expr -> [String]
-exprFuncsRec' d acc e = 
+exprFuncsRec' d acc e =
     let new = exprFuncs' acc e in
     new ++ foldl' (\acc' f -> maybe acc' ((acc'++) . exprFuncsRec' d (acc++new++acc')) $ funcDef $ getFunc d f) [] new
 
@@ -255,7 +260,7 @@ isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 -- | We support three kinds of patterns used in different contexts:
 --
 -- * Deconstruction patterns are used in left-hand side of
--- assignments that simultaneously deconstruct a value and bind its 
+-- assignments that simultaneously deconstruct a value and bind its
 -- fields to fresh variables.  They are built out of variable declarations,
 -- tuples, placeholders, constructors, type annotations.  Types with multiple
 -- constructors cannot be deconstructed in this manner.
@@ -263,9 +268,9 @@ isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 -- * Field expression: variables, fields, and type annotations.
 --
 -- * Match patterns are used in match expressions, relational
--- atoms, and in assignment terms in rules. They simultaneously restrict the 
--- structure of a value and bind its fields to fresh variables.  They are 
--- built out of variable declarations (optionally omitting the 'var' keyword), 
+-- atoms, and in assignment terms in rules. They simultaneously restrict the
+-- structure of a value and bind its fields to fresh variables.  They are
+-- built out of variable declarations (optionally omitting the 'var' keyword),
 -- tuples, constructors, placeholders, constant values, and type annotations.
 
 -- | True if expression can be interpreted as a match pattern.
@@ -297,7 +302,7 @@ exprIsDeconstruct' _ EPHolder{}       = True
 exprIsDeconstruct' _ (ETyped _ e _)   = e
 exprIsDeconstruct' _ _                = False
 
--- | True if 'e' is a variable or field expression, and 
+-- | True if 'e' is a variable or field expression, and
 -- can be assigned to (i.e., the variable is writable)
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
 exprIsVarOrFieldLVal d ctx e = exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e

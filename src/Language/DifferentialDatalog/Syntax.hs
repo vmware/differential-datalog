@@ -79,6 +79,7 @@ module Language.DifferentialDatalog.Syntax (
         eVarDecl,
         eSeq,
         eITE,
+        eFor,
         eSet,
         eBinOp,
         eUnOp,
@@ -417,7 +418,7 @@ instance Show Atom where
 -- all atoms.
 data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
-             | RHSAggregate {rhsGroupBy :: [String], rhsVar :: String, rhsAggFunc :: String, rhsAggExpr :: Expr}
+             | RHSAggregate {rhsVar :: String, rhsGroupBy :: [String], rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              deriving (Eq)
 
@@ -425,9 +426,9 @@ instance PP RuleRHS where
     pp (RHSLiteral True a)    = pp a
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
-    pp (RHSAggregate g v f e) = "Aggregate" <> "(" <>
+    pp (RHSAggregate v g f e) = "var" <+> pp v <+> "=" <+> "Aggregate" <> "(" <>
                                 (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
-                                pp v <+> "=" <+> pp f <> (parens $ pp e) <> ")"
+                                pp f <> (parens $ pp e) <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
 
 instance Show RuleRHS where
@@ -473,6 +474,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EVarDecl      {exprPos :: Pos, exprVName :: String}
                 | ESeq          {exprPos :: Pos, exprLeft :: e, exprRight :: e}
                 | EITE          {exprPos :: Pos, exprCond :: e, exprThen :: e, exprElse :: e}
+                | EFor          {exprPos :: Pos, exprLoopVar :: String, exprIter :: e, exprBody :: e}
                 | ESet          {exprPos :: Pos, exprLVal :: e, exprRVal :: e}
                 | EBinOp        {exprPos :: Pos, exprBOp :: BOp, exprLeft :: e, exprRight :: e}
                 | EUnOp         {exprPos :: Pos, exprUOp :: UOp, exprOp :: e}
@@ -495,6 +497,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EVarDecl _ v1)          (EVarDecl _ v2)            = v1 == v2
     (==) (ESeq _ l1 r1)           (ESeq _ l2 r2)             = l1 == l2 && r1 == r2
     (==) (EITE _ i1 t1 e1)        (EITE _ i2 t2 e2)          = i1 == i2 && t1 == t2 && e1 == e2
+    (==) (EFor _ v1 e1 b1)        (EFor _ v2 e2 b2)          = v1 == v2 && e1 == e2 && b1 == b2
     (==) (ESet _ l1 r1)           (ESet _ l2 r2)             = l1 == l2 && r1 == r2
     (==) (EBinOp _ o1 l1 r1)      (EBinOp _ o2 l2 r2)        = o1 == o2 && l1 == l2 && r1 == r2
     (==) (EUnOp _ o1 e1)          (EUnOp _ o2 e2)            = o1 == o2 && e1 == e2
@@ -534,6 +537,9 @@ instance PP e => PP (ExprNode e) where
                                (nest' $ pp t)
                                $$
                                rbrace <+> (("else" <+> lbrace) $$ (nest' $ pp e) $$ rbrace)
+    pp (EFor _ v e b)        = "for" <+> (parens $ pp v <+> "in" <+> pp e) <+> lbrace $$
+                               (nest' $ pp b)                                         $$
+                               rbrace
     pp (ESet _ l r)          = pp l <+> "=" <+> pp r
     pp (EBinOp _ op e1 e2)   = parens $ pp e1 <+> pp op <+> pp e2
     pp (EUnOp _ op e)        = parens $ pp op <+> pp e
@@ -580,6 +586,7 @@ eMatch e cs         = E $ EMatch    nopos e cs
 eVarDecl v          = E $ EVarDecl  nopos v
 eSeq l r            = E $ ESeq      nopos l r
 eITE i t e          = E $ EITE      nopos i t e
+eFor v e b          = E $ EFor      nopos v e b
 eSet l r            = E $ ESet      nopos l r
 eBinOp op l r       = E $ EBinOp    nopos op l r
 eUnOp op e          = E $ EUnOp     nopos op e
@@ -668,7 +675,7 @@ instance Show ModuleName where
 -- | Import statement
 data Import = Import { importPos    :: Pos
                      , importModule :: ModuleName
-                     , importAlias  :: ModuleName 
+                     , importAlias  :: ModuleName
                      }
 
 instance WithPos Import where
@@ -796,6 +803,10 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxITEThen        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | 'if (cond) ... else X'
           | CtxITEElse        {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'for (.. in e)'
+          | CtxForIter        {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'for (.. in e)'
+          | CtxForBody        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Left-hand side of an assignment: 'X = y'
           | CtxSetL           {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Righ-hand side of an assignment: 'y = X'
@@ -842,6 +853,8 @@ instance PP ECtx where
                     CtxITEIf{..}          -> "CtxITEIf          " <+> epar
                     CtxITEThen{..}        -> "CtxITEThen        " <+> epar
                     CtxITEElse{..}        -> "CtxITEElse        " <+> epar
+                    CtxForIter{..}        -> "CtxForIter        " <+> epar
+                    CtxForBody{..}        -> "CtxForBody        " <+> epar
                     CtxSetL{..}           -> "CtxSetL           " <+> epar
                     CtxSetR{..}           -> "CtxSetR           " <+> epar
                     CtxBinOpL{..}         -> "CtxBinOpL         " <+> epar

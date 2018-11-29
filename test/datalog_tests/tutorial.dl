@@ -183,6 +183,19 @@ output relation HostIP(host: bit<64>, addr: string)
 HostIP(host, addr) :- HostAddress(host, addrs),
                       var addr = FlatMap(split_ip_list(addrs)).
 
+function vsep(strs: Vec<string>): string = {
+    var res = "";
+    for (s in strs) {
+        res = res ++ s ++ "\n"
+    };
+    res
+}
+
+output relation HostIPVSep(host: bit<64>, addrs: string)
+
+HostIPVSep(host, vaddrs) :- HostAddress(host, addrs),
+                            var vaddrs = vsep(split_ip_list(addrs)).
+
 /*
  * Example: Multiple heads
  */

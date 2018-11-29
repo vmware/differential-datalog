@@ -49,9 +49,6 @@ import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
-sET_TYPES = ["std.Set", "std.Vec"]
-gROUP_TYPE = "std.Group"
-
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
 
@@ -280,19 +277,16 @@ ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
 ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
     let ctx = CtxRuleRFlatMap rl idx
     exprValidate d [] ctx e
-    case exprType' d ctx e of
-         TOpaque _ tname [_] | elem tname sET_TYPES -> return ()
-         TOpaque _ "std.Map" [_,_]                  -> return ()
-         t  -> err (pos e) $ "FlatMap expression must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show t
+    checkIterable "FlatMap expression" (pos e) d ctx $ exprType d ctx e
 
-ruleRHSValidate d rl (RHSAggregate vs v fname e) idx = do
+ruleRHSValidate d rl (RHSAggregate v vs fname e) idx = do
     _ <- ruleCheckAggregate d rl idx
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
 ruleLHSValidate d rl a@Atom{..} idx = do
     rel <- checkRelation atomPos d atomRelation
-    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a) 
+    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a)
          $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
@@ -306,7 +300,7 @@ ruleLHSValidate d rl a@Atom{..} idx = do
 -- compute concrete types for 'K and 'V
 ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me (M.Map String Type)
 ruleCheckAggregate d rl idx = do
-    let RHSAggregate vs v fname e = ruleRHS rl !! idx
+    let RHSAggregate v vs fname e = ruleRHS rl !! idx
     let ctx = CtxRuleRAggregate rl idx
     exprValidate d [] ctx e
     -- group-by variables are visible in this scope
@@ -408,6 +402,7 @@ exprValidate1 d _ ctx (EVarDecl p v)      = do
                                                       "Variable declaration is not allowed in this context"-}
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
+exprValidate1 d _ ctx EFor{..}            = checkNoVar exprPos d ctx exprLoopVar
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
 exprValidate1 _ _ _   EBinOp{}            = return ()
 exprValidate1 _ _ _   EUnOp{}             = return ()
@@ -485,6 +480,7 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Div    -> do {isint1; isint2}
         BAnd   -> do {m; isbit1}
         BOr    -> do {m; isbit1}
+        BXor   -> do {m; isbit1}
         Concat | isString d e1
                -> return ()
         Concat -> do {isbit1; isbit2}
@@ -499,8 +495,9 @@ exprValidate2 d _   (EUnOp _ BNeg e)    =
     check (isBit d e) (pos e) "Not a bit vector"
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
-exprValidate2 d _  (EITE p _ t e)       = checkTypesMatch p d t e
-exprValidate2 _ _   _                   = return ()
+exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
+exprValidate2 d ctx (EFor p _ i _)       = checkIterable "iterator" p d ctx i
+exprValidate2 _ _   _                    = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
 checkLExpr d ctx e | ctxIsRuleRCond ctx =
