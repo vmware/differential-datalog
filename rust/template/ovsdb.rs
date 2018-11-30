@@ -24,7 +24,7 @@ use super::{HDDlog, output_relname_to_id};
 /// ```
 ///
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_apply_ovsdb_updates(
+pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(
     prog: *const HDDlog,
     prefix: *const c_char,
     updates: *const c_char) -> c_int
@@ -34,7 +34,7 @@ pub unsafe extern "C" fn datalog_example_apply_ovsdb_updates(
     };
     let prog = sync::Arc::from_raw(prog);
     let res = apply_updates(&mut prog.0.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
-        eprintln!("datalog_example_apply_ovsdb_updates(): error: {}", e);
+        eprintln!("ddlog_apply_ovsdb_updates(): error: {}", e);
         -1
     });
     sync::Arc::into_raw(prog);
@@ -56,13 +56,13 @@ fn apply_updates(prog: &mut RunningProgram<Value>, prefix: *const c_char, update
 /// Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in JSON format.
 ///
 /// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
-/// later deallocated by calling `datalog_example_free_json()`
+/// later deallocated by calling `ddlog_free_json()`
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn datalog_example_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
-                                                             table: *const c_char,
-                                                             json:  *mut *mut c_char) -> c_int {
+pub extern "C" fn ddlog_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
+                                                   table: *const c_char,
+                                                   json:  *mut *mut c_char) -> c_int {
     if json.is_null() || prog.is_null() || table.is_null() {
         return -1;
     };
@@ -73,7 +73,7 @@ pub extern "C" fn datalog_example_dump_ovsdb_deltaplus_table(prog:  *const HDDlo
             0
         },
         Err(e) => {
-            eprintln!("datalog_example_dump_ovsdb_deltaplus_table(): error: {}", e);
+            eprintln!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e);
             -1
         }
     };
@@ -93,13 +93,13 @@ fn dump_deltaplus_table(db: &mut valmap::ValMap, table: *const c_char) -> Result
 /// Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands in JSON format.
 ///
 /// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
-/// later deallocated by calling `datalog_example_free_json()`
+/// later deallocated by calling `ddlog_free_json()`
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn datalog_example_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
-                                                              table: *const c_char,
-                                                              json:  *mut *mut c_char) -> c_int {
+pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
+                                                    table: *const c_char,
+                                                    json:  *mut *mut c_char) -> c_int {
     if json.is_null() || prog.is_null() || table.is_null() {
         return -1;
     };
@@ -110,7 +110,7 @@ pub extern "C" fn datalog_example_dump_ovsdb_deltaminus_table(prog:  *const HDDl
             0
         },
         Err(e) => {
-            eprintln!("datalog_example_dump_ovsdb_deltaplus_table(): error: {}", e);
+            eprintln!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e);
             -1
         }
     };
@@ -130,13 +130,13 @@ fn dump_deltaminus_table(db: &mut valmap::ValMap, table: *const c_char) -> Resul
 /// Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands in JSON format.
 ///
 /// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
-/// later deallocated by calling `datalog_example_free_json()`
+/// later deallocated by calling `ddlog_free_json()`
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn datalog_example_dump_ovsdb_deltupdate_table(prog:  *const HDDlog,
-                                                              table: *const c_char,
-                                                              json:  *mut *mut c_char) -> c_int {
+pub extern "C" fn ddlog_dump_ovsdb_deltupdate_table(prog:  *const HDDlog,
+                                                    table: *const c_char,
+                                                    json:  *mut *mut c_char) -> c_int {
     if json.is_null() || prog.is_null() || table.is_null() {
         return -1;
     };
@@ -147,7 +147,7 @@ pub extern "C" fn datalog_example_dump_ovsdb_deltupdate_table(prog:  *const HDDl
             0
         },
         Err(e) => {
-            eprintln!("datalog_example_dump_ovsdb_deltaupdate_table(): error: {}", e);
+            eprintln!("ddlog_dump_ovsdb_deltaupdate_table(): error: {}", e);
             -1
         }
     };
@@ -166,7 +166,7 @@ fn dump_deltaupdate_table(db: &mut valmap::ValMap, table: *const c_char) -> Resu
 
 /// Deallocates strings returned by other functions in this API.
 #[no_mangle]
-pub extern "C" fn datalog_example_free_json(str: *mut c_char) {
+pub extern "C" fn ddlog_free_json(str: *mut c_char) {
     if str.is_null() { return; }
     let cstr = unsafe{CString::from_raw(str)};
 }
