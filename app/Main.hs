@@ -126,10 +126,6 @@ compileProg conf@Config{..} = do
     (prog, rs_code) <- parseValidate conf
     -- generate Rust project
     let rust_dir = takeDirectory confDatalogFile
-<<<<<<< HEAD
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     compile prog specname rs_code rust_dir crate_types
-=======
-    compile prog specname rs_code rust_dir
->>>>>>> master

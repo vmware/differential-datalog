@@ -46,15 +46,11 @@ module Language.DifferentialDatalog.Type(
     typeConsTree,
     consTreeAbduct,
     typeMapM,
-<<<<<<< HEAD
     funcTypeArgSubsts,
     sET_TYPES,
     gROUP_TYPE,
     checkIterable,
     typeIterType
-=======
-    funcTypeArgSubsts
->>>>>>> master
 ) where
 
 import Data.Maybe

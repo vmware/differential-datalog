@@ -719,8 +719,6 @@ SanitizedEndpoint(endpoint) :-
 
 Here we filter the `Endpoint` relation to select HTTP endpoints only
 and bind resulting rows to `ep`:
-<<<<<<< HEAD
-=======
 
 ```
 SanitizedHTTPEndpoint(endpoint) :-
@@ -730,7 +728,6 @@ SanitizedHTTPEndpoint(endpoint) :-
 ```
 
 #### Sets and FlatMap
->>>>>>> master
 
 ```
 SanitizedHTTPEndpoint(endpoint) :-

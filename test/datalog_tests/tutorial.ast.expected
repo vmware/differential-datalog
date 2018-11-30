@@ -116,11 +116,8 @@ extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
-<<<<<<< HEAD
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
-=======
->>>>>>> master
 function std.is_none (x: std.Option<'A>): bool =
     match (x) {
         std.None{} -> true,
@@ -137,16 +134,11 @@ extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
 extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
 extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_is_empty (m: std.Map<'K,'V>): bool
-<<<<<<< HEAD
 extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
-=======
-extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
-extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
->>>>>>> master
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
@@ -159,7 +151,6 @@ extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): bit<64>
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
-<<<<<<< HEAD
 extern function std.str_to_lower (s: string): string
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
@@ -170,9 +161,6 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-=======
-extern function std.string_join (strings: std.Vec<string>, sep: string): string
->>>>>>> master
 extern function string_slice (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
     EthPacket{.src=ethsrc, .dst=ethdst, .payload=EthIP6{.ip6=IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=IPTCP{.tcp=TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}}}}}
@@ -243,15 +231,8 @@ IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = add
 TargetAudience[person] :- Person[person], is_target_audience(person).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
-<<<<<<< HEAD
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], var a = lb.ip_addresses, match (lb.protocol) {
                                                                                                                                                                                                                                                          std.Some{.x=_} -> true,
                                                                                                                                                                                                                                                          std.None{} -> false
                                                                                                                                                                                                                                                      }.
-=======
-Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], match (lb.protocol) {
-                                                                                                                                                                                                                                std.Some{.x=_} -> true,
-                                                                                                                                                                                                                                std.None{} -> false
-                                                                                                                                                                                                                            }, var a = lb.ip_addresses.
->>>>>>> master
 Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[(ls@ Logical_Switch{.ls=_})], Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], (lb.ls == ls.ls).

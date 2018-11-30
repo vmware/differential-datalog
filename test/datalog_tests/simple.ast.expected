@@ -244,11 +244,8 @@ extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
-<<<<<<< HEAD
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
-=======
->>>>>>> master
 function std.is_none (x: std.Option<'A>): bool =
     match (x) {
         std.None{} -> true,
@@ -265,16 +262,11 @@ extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
 extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
 extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_is_empty (m: std.Map<'K,'V>): bool
-<<<<<<< HEAD
 extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
-=======
-extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
-extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
->>>>>>> master
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
@@ -287,7 +279,6 @@ extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): bit<64>
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
-<<<<<<< HEAD
 extern function std.str_to_lower (s: string): string
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
@@ -298,9 +289,6 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-=======
-extern function std.string_join (strings: std.Vec<string>, sep: string): string
->>>>>>> master
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");

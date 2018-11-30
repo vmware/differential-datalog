@@ -52,13 +52,8 @@ for (lr in Logical_Router) {
 
 /* Logical router ingress table 0: match (priority 50). */
 for (lrp in Logical_Router_Port(.enabled = true)) {
-<<<<<<< HEAD
     var p = lrp.name in
     var e = lrp.mac in {
-=======
-    var p = lrp.name,
-        e = lrp.mac in {
->>>>>>> master
         Flow(lrp.lr, LR_IN_ADMISSION, 50,
              $"inport == ${p} && (eth.mcast || eth.dst == ${e})", "{ next; }")
     }
@@ -455,13 +450,9 @@ input relation Logical_Switch_Port_IP (
 )
 
 for (lspip in Logical_Switch_Port_IP(.up = true)) {
-<<<<<<< HEAD
     var e = lspip.mac in
     var a = lspip.ip in
     var p = lspip.lsp_name in {
-=======
-    var e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
->>>>>>> master
         if (lspip.ip_version == 4) {
             Flow(lspip.ls, LS_IN_ARP_RSP, 50, $"arp.tpa == ${a} && arp.op == 1", $[|
                 arp.tpa == ${a} && arp.op == 1) {

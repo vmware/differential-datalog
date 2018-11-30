@@ -1,10 +1,5 @@
 /* Description: DDlog "standard library" automatically imported into every module */
 
-<<<<<<< HEAD
-=======
-extern type Vec<'A>
-
->>>>>>> master
 /*
  * Option
  */
@@ -42,11 +37,8 @@ extern function parse_dec_u64(s: string): Option<bit<64>>
 
 extern function string_join(strings: Vec<string>, sep: string): string
 
-<<<<<<< HEAD
 extern function str_to_lower(s: string): string
 
-=======
->>>>>>> master
 /*
  * hashing
  */
@@ -66,7 +58,6 @@ extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
 
 /*
-<<<<<<< HEAD
  * Vec
  */
 extern type Vec<'A>
@@ -81,8 +72,6 @@ extern function vec_is_empty(v: Vec<'X>): bool
 extern function vec_nth(v: Vec<'X>, n: bit<64>): Option<'X>
 
 /*
-=======
->>>>>>> master
  * Map
  */
 
@@ -91,10 +80,7 @@ extern type Map<'K,'V>
 extern function map_empty(): Map<'K, 'V>
 extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
-<<<<<<< HEAD
 extern function map_remove(m: mut Map<'K,'V>, k: 'K): ()
-=======
->>>>>>> master
 extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
@@ -118,7 +104,6 @@ extern function set_nth(s: Set<'X>, n: bit<64>): Option<'X>
 extern function set2vec(s: Set<'A>): Vec<'A>
 extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
-<<<<<<< HEAD
 
 /*
  * Endianness
@@ -128,5 +113,3 @@ extern function ntohs(x: bit<16>): bit<16>
 
 extern function htonl(x: bit<32>): bit<32>
 extern function htons(x: bit<16>): bit<16>
-=======
->>>>>>> master

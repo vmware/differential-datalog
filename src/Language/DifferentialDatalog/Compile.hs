@@ -110,18 +110,10 @@ cargo specname crate_types =
 rustProjectDir :: String -> String
 rustProjectDir specname = specname ++ "_ddlog"
 
-rustProjectDir :: String -> String
-rustProjectDir specname = specname ++ "_ddlog"
-
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-<<<<<<< HEAD
         [ (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
-=======
-        [ (dir </> "Cargo.toml"             , $(embedFile "rust/template/Cargo.toml"))
-        , (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
->>>>>>> master
         , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
         , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
         , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
@@ -296,7 +288,6 @@ mkConstructorName tname t c =
 -- 'specname' - will be used as Cargo package and library names
 --
 -- 'rs_code' - additional Rust code to be added to the generated program `lib.rs`.
-<<<<<<< HEAD
 --
 -- 'dir' - directory for the crate; will be created if does not exist
 --
@@ -304,13 +295,6 @@ mkConstructorName tname t c =
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: DatalogProgram -> String -> Doc -> FilePath -> [String] -> IO ()
 compile d specname rs_code dir crate_types = do
-=======
---
--- 'dir' - directory for the crate; will be created if does not
--- exists
-compile :: DatalogProgram -> String -> Doc -> FilePath -> IO ()
-compile d specname rs_code dir = do
->>>>>>> master
     let lib = compileLib d specname rs_code
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
@@ -326,10 +310,7 @@ compile d specname rs_code dir = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
-<<<<<<< HEAD
     updateFile (dir </> rustProjectDir specname </> "Cargo.toml") (render $ cargo specname crate_types)
-=======
->>>>>>> master
     updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
     return ()
 
@@ -773,11 +754,7 @@ compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
-<<<<<<< HEAD
     let (facts, rules) =
-=======
-    let (facts, rules) = 
->>>>>>> master
                 partition (null . ruleRHS)
                 $ filter ((== rn) . atomRelation . head . ruleLHS)
                 $ progRules d

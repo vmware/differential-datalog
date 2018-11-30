@@ -60,13 +60,8 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
-<<<<<<< HEAD
-bUILD_TYPE = "debug"
---bUILD_TYPE = "release"
-=======
 --bUILD_TYPE = "debug"
 bUILD_TYPE = "release"
->>>>>>> master
 
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 
@@ -90,52 +85,7 @@ goldenTests progress = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
-<<<<<<< HEAD
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
-=======
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, ovnTests progress, souffleTests progress]
-
-nbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-nb.ovsschema" [] [] M.empty
-    writeFile "test/ovn/OVN_Northbound.dl" (render prog)
-
-sbTest = do
-    prog <- OVS.compileSchemaFile "test/ovn/ovn-sb.ovsschema"
-                                  [ ("SB_Global", [])
-                                  , ("Logical_Flow", [])
-                                  , ("Multicast_Group", [])
-                                  , ("Meter", [])
-                                  , ("Meter_Band", [])
-                                  , ("Datapath_Binding", [])
-                                  , ("Port_Binding", ["chassis"])
-                                  , ("Gateway_Chassis", [])
-                                  , ("Port_Group", [])
-                                  , ("MAC_Binding", [])
-                                  , ("DHCP_Options", [])
-                                  , ("DHCPv6_Options", [])
-                                  , ("Address_Set", [])
-                                  , ("DNS", [])
-                                  , ("RBAC_Role", [])
-                                  , ("RBAC_Permission", [])]
-                                  [ "Datapath_Binding", "Port_Binding"]
-                                  (M.fromList [ ("Multicast_Group"  , ["datapath", "name", "tunnel_key"])
-                                              , ("Port_Binding"     , ["logical_port"])
-                                              , ("DNS"              , ["external_ids"])
-                                              , ("Datapath_Binding" , ["external_ids"])
-                                              , ("RBAC_Role"        , ["name"])
-                                              , ("Address_Set"      , ["name"])
-                                              , ("Port_Group"       , ["name"])
-                                              , ("Meter"            , ["name"]) ])
-    writeFile "test/ovn/OVN_Southbound.dl" (render prog)
-
-ovnTests :: Bool -> TestTree
-ovnTests progress =
-  testGroup "ovn tests" $
-        [ goldenVsFiles "ovn_northd"
-          ["./test/ovn/OVN_Northbound.dl.expected", "./test/ovn/OVN_Southbound.dl.expected", "./test/ovn/ovn_northd.dump.expected"]
-          ["./test/ovn/OVN_Northbound.dl", "./test/ovn/OVN_Southbound.dl", "./test/ovn/ovn_northd.dump"]
-          $ do {nbTest; sbTest; parserTest "test/ovn/ovn_northd.dl"; compilerTest progress "test/ovn/ovn_northd.dl" []}]
->>>>>>> master
 
 sOUFFLE_DIR = "./test/souffle"
 
@@ -220,11 +170,7 @@ compilerTest progress fname cli_args crate_types = do
     (prog, rs_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-<<<<<<< HEAD
     compile prog specname rs_code rust_dir crate_types
-=======
-    compile prog specname rs_code rust_dir
->>>>>>> master
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ rust_dir </> rustProjectDir specname
