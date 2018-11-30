@@ -52,8 +52,8 @@ for (lr in Logical_Router) {
 
 /* Logical router ingress table 0: match (priority 50). */
 for (lrp in Logical_Router_Port(.enabled = true)) {
-    var p = lrp.name,
-        e = lrp.mac in {
+    var p = lrp.name in
+    var e = lrp.mac in {
         Flow(lrp.lr, LR_IN_ADMISSION, 50,
              $"inport == ${p} && (eth.mcast || eth.dst == ${e})", "{ next; }")
     }
@@ -399,10 +399,10 @@ for (lsp in Logical_Switch_Port) {
  *  Ingress table 2: Ingress port security - ND (priority 90 and 80)
  */
 for (lsp in Logical_Switch_Port if lsp.enabled) {
-    var  p = lsp.name,
-         l2 = lsp.port_security_l2,
-         ip = lsp.port_security_ip_ingress,
-         nd = lsp.port_security_nd in
+    var  p = lsp.name in
+    var l2 = lsp.port_security_l2 in
+    var ip = lsp.port_security_ip_ingress in
+    var nd = lsp.port_security_nd in
     {
         if (lsp.port_security_not_empty) { /* lsp.port_security != []) { TODO mbudiu */
             Flow(lsp.ls, LS_IN_PORT_SEC_L2, 50, $"inport == \"${p}\" && eth.src == ${l2}", "{ next; }");
@@ -450,7 +450,9 @@ input relation Logical_Switch_Port_IP (
 )
 
 for (lspip in Logical_Switch_Port_IP(.up = true)) {
-    var e = lspip.mac, a = lspip.ip, p = lspip.lsp_name in {
+    var e = lspip.mac in
+    var a = lspip.ip in
+    var p = lspip.lsp_name in {
         if (lspip.ip_version == 4) {
             Flow(lspip.ls, LS_IN_ARP_RSP, 50, $"arp.tpa == ${a} && arp.op == 1", $[|
                 arp.tpa == ${a} && arp.op == 1) {
@@ -612,7 +614,8 @@ for (ls in Logical_Switch) {
 /* Ingress table 12: Destination lookup, unicast handling (priority 50), */
 for (lsp in Logical_Switch_Port) {
     if (lsp.macs != "") {
-        var p = lsp.name, m = lsp.macs in {
+        var p = lsp.name in
+        var m = lsp.macs in {
             Flow(lsp.ls, LS_IN_L2_LKUP, 50, $"eth.dst == {${m}}", [|{
                 outport = "${P}";
                 output;
@@ -638,9 +641,9 @@ for (ls in Logical_Switch) {
  * Priority 150 rules drop packets to disabled logical ports: so that they
  * don't even receive multicast or broadcast packets. */
 for (lsp in Logical_Switch_Port) {
-    var p = lsp.name,
-        l2 = lsp.port_security_l2,
-        ip = lsp.port_security_ip_egress in {
+    var p = lsp.name in
+    var l2 = lsp.port_security_l2 in
+    var ip = lsp.port_security_ip_egress in {
         if (lsp.port_security_not_empty) { // TODO: lsp.port_security != [])
             Flow(lsp.ls, LS_OUT_PORT_SEC_IP, 90,
                  $[|"outport == "${p}" && (${ip})|], "{ next; }");

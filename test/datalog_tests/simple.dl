@@ -385,7 +385,8 @@ for (a in X)
 Z(a+b) :- X(a), var b = a+2.
 
 for (a in X)
-   var b = a.field+2, c = b+a.field in
+   var b = a.field+2 in
+   var c = b+a.field in
        W(a.field, b, c)
 // equivalent to
 W(a, b, c) :- X(a), var b = a+2, var c = b+a.
@@ -599,20 +600,20 @@ input relation AggregateMe1(x: string, y: string)
 
 output relation Aggregate1(x: string, cnt: bit<64>)
 
-Aggregate1(x, cnt) :- AggregateMe1(x,y), Aggregate((x), cnt = count(y)).
+Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), count(y)).
 
 output relation Aggregate2(x: string, set: Set<string>)
-Aggregate2(x, set) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)).
+Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)).
 
 output relation Aggregate3(x: string, vec: Vec<string>)
-Aggregate3(x, vec) :- AggregateMe1(x,y), Aggregate((x), vec = group2vec(y)).
+Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = Aggregate((x), group2vec(y)).
 
 
 output relation Aggregate4(x: string, map: Map<string,string>)
-Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y))).
+Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group2map((x,y))).
 
 output relation Disaggregate(x: string, y: string)
-Disaggregate(x,y) :- AggregateMe1(x,y), Aggregate((x), set = group2set(y)), var y = FlatMap(set).
+Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)), var y = FlatMap(set).
 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)
@@ -669,11 +670,11 @@ Allocation(name, id, x) :-
 
 relation ToAllocate(name: string, ids: Vec<string>)
 ToAllocate(name, ids) :-
-    Request(name, id), not Realized(name, id, _), Aggregate((name), ids = group2vec(id)).
+    Request(name, id), not Realized(name, id, _), var ids = Aggregate((name), group2vec(id)).
 
 relation Allocated(name: string, xs: Set<bit<32>>)
 Allocated(name, xs) :-
-    Realized(name, _, x), Aggregate((name), xs = group2set(x)).
+    Realized(name, _, x), var xs = Aggregate((name), group2set(x)).
 
 Allocation(name, id, x) :-
     ToAllocate(name, ids),

@@ -29,7 +29,7 @@ module Language.DifferentialDatalog.NS(
     lookupVar, checkVar, getVar,
     lookupConstructor, checkConstructor, getConstructor,
     lookupRelation, checkRelation, getRelation,
-    ctxMVars, ctxVars, 
+    ctxMVars, ctxVars,
     ctxAllVars,
     -- isLVar,
      ) where
@@ -149,6 +149,13 @@ ctxMVars d ctx =
          CtxITEIf _ _             -> ([], plvars ++ prvars)
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
+         CtxForIter _ _           -> (plvars, prvars)
+         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter)
+                                           -- variables that occur in the iterator expression are not
+                                           -- accessible inside the loop
+                                           plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars
+                                           prvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) prvars
+                                       in (plvars_not_iter, prvars_not_iter ++ [loopvar])
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> ([], plvars ++ prvars)
          CtxBinOpL _ _            -> ([], plvars ++ prvars)

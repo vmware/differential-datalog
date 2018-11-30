@@ -811,10 +811,12 @@ impl<V:Val> Program<V>
                     Some(rhs.as_ref().unwrap_or(first).map(f))
                 },
                 XForm::Aggregate{grpfun: &g, aggfun: &a} => {
-                    Some(rhs.as_ref().unwrap_or(first).
-                         flat_map(g).
-                         group(move |key, src, dst| dst.push((a(key, src),1))).
-                         map(|(_,v)|v))
+                    with_prof_context(
+                        "group",
+                        ||Some(rhs.as_ref().unwrap_or(first).
+                          flat_map(g).
+                          group(move |key, src, dst| dst.push((a(key, src),1))).
+                          map(|(_,v)|v)))
                 },
                 XForm::FlatMap{fmfun: &f} => {
                     Some(rhs.as_ref().unwrap_or(first).

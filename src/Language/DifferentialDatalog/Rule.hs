@@ -77,7 +77,7 @@ ruleRHSVarSet' d rl i =
                                           in S.insert (Field nopos v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate gvars avar fname e -> let ctx = CtxRuleRAggregate rl i
+         RHSAggregate avar gvars fname e -> let ctx = CtxRuleRAggregate rl i
                                                 gvars' = map (getVar d ctx) gvars
                                                 f = getFunc d fname
                                                 tmap = ruleAggregateTypeParams d rl i
@@ -155,7 +155,7 @@ ruleTypeMapM fun rule@Rule{..} = do
     rhs <- mapM (\rhs -> case rhs of
                   RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
                   RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
-                  RHSAggregate g v f e        -> RHSAggregate g v f <$> exprTypeMapM fun e
+                  RHSAggregate v g f e        -> RHSAggregate v g f <$> exprTypeMapM fun e
                   RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }

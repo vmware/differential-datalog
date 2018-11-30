@@ -555,7 +555,7 @@ numbers respectively:
 ### Control flow
 
 DDlog functions are written using an *expression-oriented language*,
-where all statements are expressions.  DDlog does not support loops.
+where all statements are expressions.
 Evaluation order can be controlled using several constructs:
 
 1. Semicolon is used to separate expressions that are evaluated in sequence, from left to right.
@@ -566,7 +566,9 @@ Evaluation order can be controlled using several constructs:
 
 1. A new block (scope) can be created with curly braces `{ }`
 
-The following example illustrates all these constructs:
+1. A for loop
+
+The following example illustrates the first four of these constructs.  Loops are explained [below](#container-types-flatmap-and-for-loops).
 
 ```
 function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
@@ -727,10 +729,20 @@ SanitizedHTTPEndpoint(endpoint) :-
 
 #### Sets and FlatMap
 
-DDlog supports two built-in container data types: `Vec`, `Set`.  `Vec`
-and `Set` are *generic* types that can be parameterized by any other
-DDlog type, e.g., `Vec<string>` is a vector of strings.  These types
-do not have constructors in DDlog, so objects with these types can
+```
+SanitizedHTTPEndpoint(endpoint) :-
+    ep in Endpoint(.proto = "HTTP"),
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    not Blacklisted(endpoint).
+```
+
+#### Container types, FlatMap, and for-loops
+
+DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
+are *generic* types that can be parameterized by any other
+DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
+a map from strings to Booleans.  These types
+do not have constructors in DDlog, so instances of these types can
 only be created by external functions.
 
 Let us assume that we have an extern function that splits a string
@@ -782,6 +794,23 @@ to split `addrs` into individul addresses.
 addr)` records.
 
 1. Store the resulting records in the `HostIP` relation.
+
+For-loops allow manipulating container types in a more procedural fashion, without first flattening them.
+The following function concatenates a vector of strings, each starting at a new line.
+
+```
+function vsep(strs: Vec<string>): string = {
+    var res = "";
+    for (s in strs) {
+        res = res ++ s ++ "\n"
+    };
+    res
+}
+```
+
+Loops can only iterate over container types: sets, maps, and vectors.  When iterating over sets
+and vectors, the loop variable (`s` in the above example) has the same type as elements of the container
+(e.g., `string`).  When iterating over maps, the loop variable is a 2-tuple `(key,value)`.
 
 #### Rules with multiple heads
 
@@ -1151,7 +1180,15 @@ for (person in Person)
         TargetAudience(person)
 ```
 
-and one can also use `match` statements:
+Here is a more complex example that simultaneously filters out records that do not contain
+a "router-port" option and assign the value of this option to the `lrport_name` variable.
+
+for (lsp in Logical_Switch_Port) {
+    Some{var lrport_name} = map_get(lsp.options, "router-port") in
+    ...
+}
+
+One can also use `match` statements:
 
 ```
 for (person in Person)

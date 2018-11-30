@@ -39,25 +39,40 @@ import Language.DifferentialDatalog.Compile
 data TOption = Datalog String
              | Action String
              | LibDir String
+             | DynLib
+             | NoDynLib
+             | StaticLib
+             | NoStaticLib
+             | Help
 
 data DLAction = ActionCompile
               | ActionValidate
+              | ActionHelp
               deriving Eq
 
 options :: [OptDescr TOption]
 options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "DDlog program"
           , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
           , Option ['L'] []                   (ReqArg LibDir   "PATH")        "extra DDlog library directory"
+          , Option []    ["dynlib"]           (NoArg DynLib)                  "generate dynamic library"
+          , Option []    ["no-dynlib"]        (NoArg NoDynLib)                "do not generate dynamic library (default)"
+          , Option []    ["staticlib"]        (NoArg StaticLib)               "generate static library (default)"
+          , Option []    ["no-staticlib"]     (NoArg NoStaticLib)             "do not generate static library"
+          , Option ['h'] ["help"]             (NoArg Help)                    "print help message"
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
                      , confLibDirs       :: [FilePath]
+                     , confStaticLib     :: Bool
+                     , confDynamicLib    :: Bool
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionCompile
                        , confLibDirs       = []
+                       , confStaticLib     = True
+                       , confDynamicLib    = False
                        }
 
 
@@ -66,14 +81,19 @@ addOption config (Datalog f)    = return config{ confDatalogFile  = f}
 addOption config (Action a)     = do a' <- case a of
                                                 "validate"   -> return ActionValidate
                                                 "compile"    -> return ActionCompile
-                                                _            -> error "invalid action"
+                                                _            -> errorWithoutStackTrace "invalid action"
                                      return config{confAction = a'}
 addOption config (LibDir d)     = return config { confLibDirs = nub (d:confLibDirs config)}
+addOption config DynLib         = return config { confDynamicLib = True }
+addOption config NoDynLib       = return config { confDynamicLib = False }
+addOption config StaticLib      = return config { confStaticLib = True }
+addOption config NoStaticLib    = return config { confStaticLib = False }
+addOption config Help           = return config { confAction = ActionHelp}
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
-    when (confDatalogFile == "")
-         $ error "input file not specified"
+    when (confDatalogFile == "" && confAction /= ActionHelp)
+         $ errorWithoutStackTrace "input file not specified"
 
 main = do
     args <- getArgs
@@ -85,8 +105,9 @@ main = do
                                       `catch`
                                       (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                 throw (e::SomeException))
-                   _ -> error $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
+                   _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
     case confAction config of
+         ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
          ActionValidate -> do { parseValidate config; return () }
          ActionCompile -> compileProg config
 
@@ -105,4 +126,6 @@ compileProg conf@Config{..} = do
     (prog, rs_code) <- parseValidate conf
     -- generate Rust project
     let rust_dir = takeDirectory confDatalogFile
-    compile prog specname rs_code rust_dir
+    let crate_types = (if confStaticLib then ["staticlib"] else []) ++
+                      (if confDynamicLib then ["cdylib"] else [])
+    compile prog specname rs_code rust_dir crate_types
