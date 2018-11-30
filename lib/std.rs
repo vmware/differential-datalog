@@ -208,7 +208,14 @@ pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
 }
 
 pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
+<<<<<<< HEAD:lib/std.rs
     option2std(s.x.iter().nth(*n as usize).cloned())
+=======
+    match s.x.iter().nth(*n as usize) {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x: (*x).clone()}
+    }
+>>>>>>> master:lib/std.rs
 }
 
 pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
@@ -303,11 +310,14 @@ pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V
     m.x.insert((*k).clone(), (*v).clone());
 }
 
+<<<<<<< HEAD:lib/std.rs
 pub fn std_map_remove<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K) {
     m.x.remove(k);
 }
 
 
+=======
+>>>>>>> master:lib/std.rs
 pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
     let mut m2 = m.clone();
     m2.insert((*k).clone(), (*v).clone());
@@ -317,7 +327,14 @@ pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V
 
 
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
+<<<<<<< HEAD:lib/std.rs
     option2std(m.x.get(k).cloned())
+=======
+    match m.x.get(k) {
+        None => std_Option::std_None,
+        Some(v) => std_Option::std_Some{x: (*v).clone()}
+    }
+>>>>>>> master:lib/std.rs
 }
 
 pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
@@ -349,18 +366,28 @@ pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
 }
 
 pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
+<<<<<<< HEAD:lib/std.rs
     option2std((*s).parse::<u64>().ok())
+=======
+    match (*s).parse::<u64>().ok() {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x}
+    }
+>>>>>>> master:lib/std.rs
 }
 
 pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
 }
 
+<<<<<<< HEAD:lib/std.rs
 
 pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(s.str().to_lowercase())
 }
 
+=======
+>>>>>>> master:lib/std.rs
 // Hashing
 
 pub fn std_hash64<T: Hash>(x: &T) -> u64 {

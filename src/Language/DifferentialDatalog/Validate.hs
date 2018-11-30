@@ -55,6 +55,12 @@ bUILTIN_2STRING_FUNC = "std.__builtin_2string"
 tOSTRING_FUNC_SUFFIX :: String
 tOSTRING_FUNC_SUFFIX = "2string"
 
+bUILTIN_2STRING_FUNC :: String
+bUILTIN_2STRING_FUNC = "std.__builtin_2string"
+
+tOSTRING_FUNC_SUFFIX :: String
+tOSTRING_FUNC_SUFFIX = "2string"
+
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 validate d = do
@@ -286,7 +292,11 @@ ruleRHSValidate d rl (RHSAggregate v vs fname e) idx = do
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
 ruleLHSValidate d rl a@Atom{..} idx = do
     rel <- checkRelation atomPos d atomRelation
+<<<<<<< HEAD
     when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a)
+=======
+    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a) 
+>>>>>>> master
          $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
     exprValidate d [] (CtxRuleL rl idx) atomVal
 

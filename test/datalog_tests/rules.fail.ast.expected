@@ -25,8 +25,11 @@ extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
+<<<<<<< HEAD
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
+=======
+>>>>>>> master
 function std.is_none (x: std.Option<'A>): bool =
     match (x) {
         std.None{} -> true,
@@ -43,11 +46,16 @@ extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
 extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
 extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+<<<<<<< HEAD
 extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+=======
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+>>>>>>> master
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
@@ -60,6 +68,7 @@ extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): bit<64>
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+<<<<<<< HEAD
 extern function std.str_to_lower (s: string): string
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
@@ -70,6 +79,9 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
+=======
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
+>>>>>>> master
 input relation R1 [R1]
 relation R2 [R2]
 relation R3 [R3]
@@ -100,6 +112,7 @@ use std::iter::FromIterator;
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+<<<<<<< HEAD
 // Option
 fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
     match x {
@@ -108,6 +121,8 @@ fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
     }
 }
 
+=======
+>>>>>>> master
 // Vector
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -119,9 +134,12 @@ impl <T: Ord> std_Vec<T> {
     pub fn new() -> Self {
         std_Vec{x: Vec::new()}
     }
+<<<<<<< HEAD
     pub fn with_capacity(capacity: usize) -> Self {
         std_Vec{x: Vec::with_capacity(capacity)}
     }
+=======
+>>>>>>> master
     pub fn push(&mut self, v: T) {
         self.x.push(v);
     }
@@ -162,6 +180,7 @@ impl<T> IntoIterator for std_Vec<T> {
     }
 }
 
+<<<<<<< HEAD
 pub fn std_vec_len<X: Ord + Clone>(v: &std_Vec<X>) -> u64 {
     v.x.len() as u64
 }
@@ -196,6 +215,8 @@ pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &u64) -> std_Option<X> {
     option2std(v.x.get(*n as usize).cloned())
 }
 
+=======
+>>>>>>> master
 // Set
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -290,7 +311,14 @@ pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
 }
 
 pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
+<<<<<<< HEAD
     option2std(s.x.iter().nth(*n as usize).cloned())
+=======
+    match s.x.iter().nth(*n as usize) {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x: (*x).clone()}
+    }
+>>>>>>> master
 }
 
 pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
@@ -385,11 +413,14 @@ pub fn std_map_insert<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K, v: &V
     m.x.insert((*k).clone(), (*v).clone());
 }
 
+<<<<<<< HEAD
 pub fn std_map_remove<K: Ord+Clone, V: Clone>(m: &mut std_Map<K,V>, k: &K) {
     m.x.remove(k);
 }
 
 
+=======
+>>>>>>> master
 pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V) -> std_Map<K,V> {
     let mut m2 = m.clone();
     m2.insert((*k).clone(), (*v).clone());
@@ -399,7 +430,14 @@ pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V
 
 
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
+<<<<<<< HEAD
     option2std(m.x.get(k).cloned())
+=======
+    match m.x.get(k) {
+        None => std_Option::std_None,
+        Some(v) => std_Option::std_Some{x: (*v).clone()}
+    }
+>>>>>>> master
 }
 
 pub fn std_map_contains_key<K: Ord, V: Clone>(s: &std_Map<K,V>, k: &K) -> bool {
@@ -431,18 +469,28 @@ pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
 }
 
 pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
+<<<<<<< HEAD
     option2std((*s).parse::<u64>().ok())
+=======
+    match (*s).parse::<u64>().ok() {
+        None => std_Option::std_None,
+        Some(x) => std_Option::std_Some{x}
+    }
+>>>>>>> master
 }
 
 pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
 }
 
+<<<<<<< HEAD
 
 pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(s.str().to_lowercase())
 }
 
+=======
+>>>>>>> master
 // Hashing
 
 pub fn std_hash64<T: Hash>(x: &T) -> u64 {
@@ -570,6 +618,7 @@ decl_tuple!(tuple18, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14
 decl_tuple!(tuple19, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19);
 decl_tuple!(tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20);
 
+<<<<<<< HEAD
 // Endianness
 pub fn std_ntohl(x: &u32) -> u32 {
     u32::from_be(*x)
@@ -587,6 +636,8 @@ pub fn std_htons(x: &u16) -> u16 {
     u16::to_be(*x)
 }
 
+=======
+>>>>>>> master
 })
 
 error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule

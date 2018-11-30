@@ -318,6 +318,7 @@ rule = Rule nopos <$>
        (commaSep1 atom) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
+<<<<<<< HEAD
 rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
@@ -325,6 +326,16 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
                                (reserved "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
                                (comma *> funcIdent) <*>
                                (parens expr <* symbol ")")
+=======
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
+               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom)
+       <|> (RHSAggregate <$ reserved "Aggregate" <*>
+                            (symbol "(" *> (parens $ commaSep varIdent)) <*>
+                            (comma *> varIdent) <*>
+                            (reservedOp "=" *> funcIdent) <*>
+                            parens expr <*
+                            symbol ")")
+>>>>>>> master
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
               RHSFlatMap <$> (reserved "var" *> varIdent) <*>
                              (reservedOp "=" *> reserved "FlatMap" *> parens expr)

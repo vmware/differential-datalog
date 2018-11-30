@@ -37,6 +37,14 @@ rpath = false
 lto = false
 debug-assertions = false
 
+<<<<<<< HEAD
+=======
+[lib]
+name = "datalog_example_ddlog"
+path = "./lib.rs"
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+>>>>>>> master
 [[bin]]
 
 name = "datalog_example_cli"

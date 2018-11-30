@@ -719,6 +719,18 @@ SanitizedEndpoint(endpoint) :-
 
 Here we filter the `Endpoint` relation to select HTTP endpoints only
 and bind resulting rows to `ep`:
+<<<<<<< HEAD
+=======
+
+```
+SanitizedHTTPEndpoint(endpoint) :-
+    ep in Endpoint(.proto = "HTTP"),
+    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
+    not Blacklisted(endpoint).
+```
+
+#### Sets and FlatMap
+>>>>>>> master
 
 ```
 SanitizedHTTPEndpoint(endpoint) :-
@@ -813,7 +825,7 @@ input relation X(x: bit<16>)
 output relation Sum(x: bit<16>, y: bit<16>, sum: bit<16>)
 output relation Product(x: bit<16>, y: bit<16>, prod: bit<16>)
 
-Sum(x,y,x*y) :- X(x), X(y).
+Sum(x,y,x+y) :- X(x), X(y).
 Product(x,y,x*y) :- X(x), X(y).
 ```
 

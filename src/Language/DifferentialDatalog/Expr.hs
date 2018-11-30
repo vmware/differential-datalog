@@ -260,7 +260,11 @@ isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
 -- | We support three kinds of patterns used in different contexts:
 --
 -- * Deconstruction patterns are used in left-hand side of
+<<<<<<< HEAD
 -- assignments that simultaneously deconstruct a value and bind its
+=======
+-- assignments that simultaneously deconstruct a value and bind its 
+>>>>>>> master
 -- fields to fresh variables.  They are built out of variable declarations,
 -- tuples, placeholders, constructors, type annotations.  Types with multiple
 -- constructors cannot be deconstructed in this manner.
