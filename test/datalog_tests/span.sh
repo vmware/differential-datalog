@@ -9,7 +9,7 @@ make
 cd ../datalog_tests
 ln -sf ../java_call/ddlogapi .
 # Force linking with the static library by deleting the dynamic library
-rm smap_ddlog/target/release/libspan_ddlog.so
+rm -f span_ddlog/target/release/libspan_ddlog.so
 # Compile Span.java
 javac -cp ../java_call Span.java
 # Create manifest file for jar
