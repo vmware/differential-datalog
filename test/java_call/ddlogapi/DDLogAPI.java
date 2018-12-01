@@ -12,12 +12,12 @@ public class DDLogAPI {
     /**
      * The C ddlog API
      */
-    static native long datalog_example_run(int workers);
-    static native int  datalog_example_stop(long hprog);
-    static native int datalog_example_transaction_start(long hprog);
-    static native int datalog_example_transaction_commit(long hprog);
-    static native int datalog_example_transaction_rollback(long hprog);
-    static public native int datalog_example_apply_updates(long hprog, long[] upds);
+    static native long ddlog_run(int workers);
+    static native int  ddlog_stop(long hprog);
+    static native int ddlog_transaction_start(long hprog);
+    static native int ddlog_transaction_commit(long hprog);
+    static native int ddlog_transaction_rollback(long hprog);
+    static public native int ddlog_apply_updates(long hprog, long[] upds);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -66,7 +66,7 @@ public class DDLogAPI {
     public static final int error = -1;
 
     public DDLogAPI(int workers) {
-        this.hprog = datalog_example_run(workers);
+        this.hprog = ddlog_run(workers);
     }
 
     public DDLogAPI() {
@@ -74,25 +74,25 @@ public class DDLogAPI {
     }
 
     public int stop() {
-        return DDLogAPI.datalog_example_stop(this.hprog);
+        return DDLogAPI.ddlog_stop(this.hprog);
     }
 
     /**
      *  Starts a transaction
      */
     public int start() {
-        return DDLogAPI.datalog_example_transaction_start(this.hprog);
+        return DDLogAPI.ddlog_transaction_start(this.hprog);
     }
     public int commit() {
-        return DDLogAPI.datalog_example_transaction_commit(this.hprog);
+        return DDLogAPI.ddlog_transaction_commit(this.hprog);
     }
     public int rollback() {
-        return DDLogAPI.datalog_example_transaction_rollback(this.hprog);
+        return DDLogAPI.ddlog_transaction_rollback(this.hprog);
     }
     public int applyUpdates(DDLogCommand[] commands) {
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
-        return datalog_example_apply_updates(this.hprog, handles);
+        return ddlog_apply_updates(this.hprog, handles);
     }
 }
