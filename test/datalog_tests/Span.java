@@ -8,7 +8,7 @@ public class Span {
         System.out.println("Hi");
         int e = api.start();
         System.out.println("Start " + e);
-        int e = api.commit();
+        e = api.commit();
         System.out.println("Commit " + e);
         e = api.stop();
         System.out.println("Stop " + e);

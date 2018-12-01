@@ -15,13 +15,14 @@ libddlogapi.so: ddlogapi.c ddlogapi_DDLogAPI.h
 
 ddlogapi/DDLogApi.class: ddlogapi/DDLogAPI.java ddlogapi/DDLogCommand.java \
                          ddlogapi/DDLogRecord.java
-	javac $<
+	javac -h .  $<
+
+external/External.class: external/External.java
+	javac -h .  $<
 
 ddlogapi_DDLogAPI.h: ddlogapi/DDLogAPI.class
-	javah ddlogapi.DDLogAPI
 
 external_External.h: external/External.class
-	javah external.External
 
 test: libexternal.so Main.class
 	java -Djava.library.path=. Main
