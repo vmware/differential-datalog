@@ -21,6 +21,7 @@ use std::process::exit;
 use std::io;
 use std::io::{Stdout,stdout,stderr};
 use std::env;
+//use std::mem;
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -157,6 +158,7 @@ pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>, nw
 }
 
 pub fn main() {
+    //println!("sizeof(Value) = {}", mem::size_of::<Value>());
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
