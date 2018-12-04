@@ -8,37 +8,42 @@
 /* The _1 in all the function names below
    is the JNI translation of the _ character from Java */
 
-JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1run(
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1run(
     JNIEnv *env, jobject obj, jint workers) {
     if (workers <= 0)
         workers = 1;
-    return (jlong)datalog_example_run((unsigned)workers);
+    return (jlong)ddlog_run((unsigned)workers);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1stop(
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1stop(
     JNIEnv *env, jobject obj, jlong handle) {
-    return datalog_example_stop((datalog_example_ddlog_prog)handle);
+    return ddlog_stop((ddlog_prog)handle);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1transaction_1start(
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1transaction_1start(
     JNIEnv * env, jobject obj, jlong handle) {
-    return datalog_example_transaction_start((datalog_example_ddlog_prog)handle);
+    return ddlog_transaction_start((ddlog_prog)handle);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1transaction_1rollback(
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1transaction_1commit(
     JNIEnv * env, jobject obj, jlong handle) {
-    return datalog_example_transaction_rollback((datalog_example_ddlog_prog)handle);
+    return ddlog_transaction_commit((ddlog_prog)handle);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_datalog_1example_1apply_1updates(
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1transaction_1rollback(
+    JNIEnv * env, jobject obj, jlong handle) {
+    return ddlog_transaction_rollback((ddlog_prog)handle);
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1apply_1updates(
     JNIEnv *env, jclass obj, jlong progHandle, jlongArray commandHandles) {
     jlong *a = (*env)->GetLongArrayElements(env, commandHandles, NULL);
     size_t size = (*env)->GetArrayLength(env, commandHandles);
     ddlog_cmd** updates = malloc(sizeof(ddlog_cmd*) * size);
     for (size_t i = 0; i < size; i++)
         updates[i] = (ddlog_cmd*)a[i];
-    int result = datalog_example_apply_updates(
-        (datalog_example_ddlog_prog)progHandle, updates, size);
+    int result = ddlog_apply_updates(
+        (ddlog_prog)progHandle, updates, size);
     (*env)->ReleaseLongArrayElements(env, commandHandles, a, 0);
     free(updates);
     return (jint)result;

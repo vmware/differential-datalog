@@ -2,12 +2,13 @@
 #define __DDLOG_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /*
  * *Note:* all functions in this library are thread-safe. E.g., it is legal to
- * call `datalog_example_transaction_start()` from thread 1,
- * `datalog_example_apply_ovsdb_updates()` from thread 2, and
- * `datalog_example_transaction_commit()` from thread 3.  Multiple concurrent
+ * call `ddlog_transaction_start()` from thread 1,
+ * `ddlog_apply_ovsdb_updates()` from thread 2, and
+ * `ddlog_transaction_commit()` from thread 3.  Multiple concurrent
  * updates from different threads are also valid.
  *
  * However, DDlog currently does not support concurrent or nested transactions.
@@ -18,10 +19,10 @@
 /*
  * Opaque handle to an instance of DDlog program.
  */
-typedef void * datalog_example_ddlog_prog;
+typedef void * ddlog_prog;
 
 /*
- * Insert or delete command to be passed to the `datalog_example_apply_updates()`
+ * Insert or delete command to be passed to the `ddlog_apply_updates()`
  */
 typedef void ddlog_cmd;
 
@@ -51,10 +52,10 @@ typedef void ddlog_record;
  * the system are likely to hurt the performance.
  *
  * Returns a program handle to be used in subsequent calls to
- * `datalog_example_transaction_start()`,
- * `datalog_example_transaction_commit()`, etc., or NULL in case of error.
+ * `ddlog_transaction_start()`,
+ * `ddlog_transaction_commit()`, etc., or NULL in case of error.
  */
-extern datalog_example_ddlog_prog datalog_example_run(unsigned int workers);
+extern ddlog_prog ddlog_run(unsigned int workers);
 
 /*
  * Stops the program; deallocates all resources, invalidates the handle.
@@ -65,7 +66,7 @@ extern datalog_example_ddlog_prog datalog_example_run(unsigned int workers);
  * On success, returns `0`; on error, returns `-1` and prints error message
  * to `stderr`.
  */
-extern int datalog_example_stop(datalog_example_ddlog_prog hprog);
+extern int ddlog_stop(ddlog_prog hprog);
 
 /*
  * Start a transaction.
@@ -76,9 +77,9 @@ extern int datalog_example_stop(datalog_example_ddlog_prog hprog);
  * This function will fail if another transaction is in progress.
  *
  * Within a transaction, updates to input relations are buffered until
- * `datalog_example_transaction_commit()` is called.
+ * `ddlog_transaction_commit()` is called.
  */
-extern int datalog_example_transaction_start(datalog_example_ddlog_prog hprog);
+extern int ddlog_transaction_start(ddlog_prog hprog);
 
 /*
  * Commit a transaction; propagate all buffered changes through all rules in the
@@ -89,7 +90,7 @@ extern int datalog_example_transaction_start(datalog_example_ddlog_prog hprog);
  *
  * This function will fail if there is no transaction in progress.
  */
-extern int datalog_example_transaction_commit(datalog_example_ddlog_prog hprog);
+extern int ddlog_transaction_commit(ddlog_prog hprog);
 
 /*
  * Discard all buffered updates and abort the current transaction.
@@ -99,7 +100,7 @@ extern int datalog_example_transaction_commit(datalog_example_ddlog_prog hprog);
  *
  * This function will fail if there is no transaction in progress.
  */
-extern int datalog_example_transaction_rollback(datalog_example_ddlog_prog hprog);
+extern int ddlog_transaction_rollback(ddlog_prog hprog);
 
 /*
  * Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
@@ -114,8 +115,8 @@ extern int datalog_example_transaction_rollback(datalog_example_ddlog_prog hprog
  * {"Logical_Switch":{"ffe8d84e-b4a0-419e-b865-19f151eed878":{"new":{"acls":["set",[]],"dns_records":["set",[]],"external_ids":["map",[]],"load_balancer":["set",[]],"name":"lsw0","other_config":["map",[]],"ports":["set",[]],"qos_rules":["set",[]]}}}}
  * ```
  */
-extern int datalog_example_apply_ovsdb_updates(
-	datalog_example_ddlog_prog hprog,
+extern int ddlog_apply_ovsdb_updates(
+	ddlog_prog hprog,
 	const char *prefix,
 	const char *updates);
 
@@ -123,12 +124,12 @@ extern int datalog_example_apply_ovsdb_updates(
  * Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in JSON format.
  *
  * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
- * later deallocated by calling `datalog_example_free_json()`
+ * later deallocated by calling `ddlog_free_json()`
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int datalog_example_dump_ovsdb_deltaplus_table(
-	datalog_example_ddlog_prog hprog,
+extern int ddlog_dump_ovsdb_deltaplus_table(
+	ddlog_prog hprog,
 	const char *table,
 	char **json);
 
@@ -136,12 +137,12 @@ extern int datalog_example_dump_ovsdb_deltaplus_table(
  * Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands in JSON format.
  *
  * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
- * later deallocated by calling `datalog_example_free_json()`
+ * later deallocated by calling `ddlog_free_json()`
  *
  * On error, returns a negative number and write error message to stderr.
  */
-extern int datalog_example_dump_ovsdb_deltaminus_table(
-	datalog_example_ddlog_prog hprog,
+extern int ddlog_dump_ovsdb_deltaminus_table(
+	ddlog_prog hprog,
 	const char *table,
 	char **json);
 
@@ -149,19 +150,19 @@ extern int datalog_example_dump_ovsdb_deltaminus_table(
  * Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands in JSON format.
  *
  * On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
- * later deallocated by calling `datalog_example_free_json()`
+ * later deallocated by calling `ddlog_free_json()`
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int datalog_example_dump_ovsdb_deltaupdate_table(
-	datalog_example_ddlog_prog hprog,
+extern int ddlog_dump_ovsdb_deltaupdate_table(
+	ddlog_prog hprog,
 	const char *table,
 	char **json);
 
 /*
  * Deallocates strings returned by other functions in this API.
  */
-extern void datalog_example_free_json(char *str);
+extern void ddlog_free_json(char *str);
 
 
 /*
@@ -173,7 +174,7 @@ extern void datalog_example_free_json(char *str);
  * On success, returns `0`. On error, returns a negative value and writes error
  * message to stderr.
  */
-extern int datalog_example_apply_updates(datalog_example_ddlog_prog prog,
+extern int ddlog_apply_updates(ddlog_prog prog,
 					 ddlog_cmd **upds,
 					 size_t n);
 
@@ -185,7 +186,7 @@ extern int datalog_example_apply_updates(datalog_example_ddlog_prog prog,
  * On success, returns `0`. On error, returns a negative value and writes error
  * message to stderr.
  */
-extern int datalog_example_clear_relation(datalog_example_ddlog_prog prog,
+extern int ddlog_clear_relation(ddlog_prog prog,
 					  const char *table);
 
 /*
@@ -200,7 +201,7 @@ extern int datalog_example_clear_relation(datalog_example_ddlog_prog prog,
  * The content of the table returned by this function represents database state
  * after the last committed transaction.
  */
-extern int datalog_example_dump_table(datalog_example_ddlog_prog prog,
+extern int ddlog_dump_table(ddlog_prog prog,
 				      const char *table,
 				      bool (*cb)(void *arg, const ddlog_record *rec),
 				      void *cb_arg);
@@ -222,7 +223,7 @@ extern int datalog_example_dump_table(datalog_example_ddlog_prog prog,
  *   the only way to obtain ownership.
  *
  * - The client yields ownership by either passing the record to DDlog as part
- *   of an update command (see `datalog_example_apply_updates()`) or by
+ *   of an update command (see `ddlog_apply_updates()`) or by
  *   attaching it to another owned object (e.g., appending it to a vector
  *   using `ddlog_vector_push()`).
  *
@@ -236,7 +237,7 @@ extern int datalog_example_dump_table(datalog_example_ddlog_prog prog,
  * - In addition to owned records, the client can also obtain pointers to
  *   *borrowed* records in one of two ways:
  *
- *	1. By invoking the `datalog_example_dump_table()` function to enumerate the
+ *	1. By invoking the `ddlog_dump_table()` function to enumerate the
  *   content of an output table.  This function takes a user callback and invokes it once
  *   for each record in the table.  The record, passed as argument to the
  *   callback is owned by DDlog and is only valid for the duration of the callback.
@@ -260,7 +261,7 @@ extern int datalog_example_dump_table(datalog_example_ddlog_prog prog,
  * The Record API does not perform any type checking, e.g., one can create a
  * vector with elements of different types or a struct whose fields don't match
  * declarations in the DDlog program. Type checking is performed by DDlog
- * before inserting records to the database, e.g., in the `datalog_example_apply_updates()`
+ * before inserting records to the database, e.g., in the `ddlog_apply_updates()`
  * function.  The function will fail if it detects type mismatch between relation type
  * and the record supplied by the client.
  *
@@ -653,7 +654,7 @@ extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
  * `rec` is the record to insert.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
- * `datalog_example_apply_updates()`.
+ * `ddlog_apply_updates()`.
  */
 extern ddlog_cmd* ddlog_insert_cmd(const char *table,
 				   ddlog_record *rec);
@@ -665,7 +666,7 @@ extern ddlog_cmd* ddlog_insert_cmd(const char *table,
  * `rec` is the record to delete.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
- * `datalog_example_apply_updates()`.
+ * `ddlog_apply_updates()`.
  */
 extern ddlog_cmd* ddlog_delete_val_cmd(const char *table,
 				       ddlog_record *rec);
@@ -678,7 +679,7 @@ extern ddlog_cmd* ddlog_delete_val_cmd(const char *table,
  * must match the type of the key.  The function takes ownership of `rec`.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
- * `datalog_example_apply_updates()`.
+ * `ddlog_apply_updates()`.
  *
  */
 extern ddlog_cmd* ddlog_delete_key_cmd(const char *table,

@@ -69,7 +69,7 @@ fn upd_cb(db: &sync::Arc<sync::Mutex<valmap::ValMap>>, relid: RelId, v: &Value, 
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog
+pub extern "C" fn ddlog_run(workers: raw::c_uint) -> *const HDDlog
 {
     let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
     let db2 = db.clone();
@@ -83,7 +83,7 @@ pub extern "C" fn datalog_example_run(workers: raw::c_uint) -> *const HDDlog
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int
+pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int
 {
     if prog.is_null() {
         return -1;
@@ -91,25 +91,25 @@ pub unsafe extern "C" fn datalog_example_stop(prog: *const HDDlog) -> raw::c_int
     let prog = sync::Arc::from_raw(prog);
     match sync::Arc::try_unwrap(prog) {
         Ok((prog,_)) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
-            eprintln!("datalog_example_stop(): error acquiring lock: {}", e);
+            eprintln!("ddlog_stop(): error acquiring lock: {}", e);
             -1
         }),
         Err(e) => {
-            eprintln!("datalog_example_stop(): cannot extract value from Arc");
+            eprintln!("ddlog_stop(): cannot extract value from Arc");
             -1
         }
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) -> raw::c_int
+pub unsafe extern "C" fn ddlog_transaction_start(prog: *const HDDlog) -> raw::c_int
 {
     if prog.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("datalog_example_transaction_start(): error: {}", e);
+        eprintln!("ddlog_transaction_start(): error: {}", e);
         -1
     });
     sync::Arc::into_raw(prog);
@@ -117,14 +117,14 @@ pub unsafe extern "C" fn datalog_example_transaction_start(prog: *const HDDlog) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog) -> raw::c_int
+pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c_int
 {
     if prog.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("datalog_example_transaction_commit(): error: {}", e);
+        eprintln!("ddlog_transaction_commit(): error: {}", e);
         -1
     });
     sync::Arc::into_raw(prog);
@@ -132,14 +132,14 @@ pub unsafe extern "C" fn datalog_example_transaction_commit(prog: *const HDDlog)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_transaction_rollback(prog: *const HDDlog) -> raw::c_int
+pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw::c_int
 {
     if prog.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
     let res = prog.0.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("datalog_example_transaction_rollback(): error: {}", e);
+        eprintln!("ddlog_transaction_rollback(): error: {}", e);
         -1
     });
     sync::Arc::into_raw(prog);
@@ -147,7 +147,7 @@ pub unsafe extern "C" fn datalog_example_transaction_rollback(prog: *const HDDlo
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_apply_updates(prog: *const HDDlog, upds: *const *mut record::UpdCmd, n: size_t) -> raw::c_int
+pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *mut record::UpdCmd, n: size_t) -> raw::c_int
 {
     if prog.is_null() || upds.is_null() {
         return -1;
@@ -158,14 +158,14 @@ pub unsafe extern "C" fn datalog_example_apply_updates(prog: *const HDDlog, upds
         let upd = match updcmd2upd(Box::from_raw(*upds.offset(i as isize)).as_ref()) {
             Ok(upd) => upd,
             Err(e) => {
-                eprintln!("datalog_example_apply_updates(): invalid argument: {}", e);
+                eprintln!("ddlog_apply_updates(): invalid argument: {}", e);
                 return -1;
             }
         };
         upds_vec.push(upd);
     };
     let res = prog.0.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
-        eprintln!("datalog_example_apply_updates(): error: {}", e);
+        eprintln!("ddlog_apply_updates(): error: {}", e);
         return -1;
     });
     sync::Arc::into_raw(prog);
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn datalog_example_apply_updates(prog: *const HDDlog, upds
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn datalog_example_clear_relation(
+pub unsafe extern "C" fn ddlog_clear_relation(
     prog: *const HDDlog,
     table: *const raw::c_char) -> raw::c_int
 {
@@ -184,7 +184,7 @@ pub unsafe extern "C" fn datalog_example_clear_relation(
     let res = match clear_relation(&prog, table) {
         Ok(()) => { 0 },
         Err(e) => {
-            eprintln!("datalog_example_clear_relation(): error: {}", e);
+            eprintln!("ddlog_clear_relation(): error: {}", e);
             -1
         }
     };
@@ -199,7 +199,7 @@ unsafe fn clear_relation(prog: &HDDlog, table: *const raw::c_char) -> Result<(),
 }
 
 #[no_mangle]
-pub extern "C" fn datalog_example_dump_table(
+pub extern "C" fn ddlog_dump_table(
     prog:    *const HDDlog,
     table:   *const raw::c_char,
     cb:      extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
@@ -214,7 +214,7 @@ pub extern "C" fn datalog_example_dump_table(
             0
         },
         Err(e) => {
-            eprintln!("datalog_example_dump_table(): error: {}", e);
+            eprintln!("ddlog_dump_table(): error: {}", e);
             -1
         }
     };

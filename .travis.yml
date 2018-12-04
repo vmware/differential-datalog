@@ -31,6 +31,7 @@ env:
    - TEST_SUITE='-p path'
    - TEST_SUITE='-p ovn'
    - TEST_SUITE='-p modules'
+   - TEST_SUITE='-p span'
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -58,7 +59,7 @@ install:
 # Build dependencies
 - stack --no-terminal --install-ghc test --only-dependencies
 
-script: 
+script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 - DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps

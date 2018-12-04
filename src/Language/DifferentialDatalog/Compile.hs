@@ -120,7 +120,7 @@ templateFiles specname =
         , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
         , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
         , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
-        , (dir </> (specname ++ "_ddlog.h") , $(embedFile "rust/template/ddlog.h"))
+        , (dir </> "ddlog.h"                , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"     , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
     where dir = rustProjectDir specname
