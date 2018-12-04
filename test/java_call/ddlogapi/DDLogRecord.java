@@ -226,4 +226,103 @@ public class DDLogRecord {
             throw new RuntimeException("Value is not a struct");
         return fromSharedHandle(DDLogAPI.ddlog_get_struct_field(this.handle, index));
     }
+
+    @Override
+    public String toString() {
+        this.checkHandle();
+        if (DDLogAPI.ddlog_is_bool(this.handle)) {
+            boolean b = DDLogAPI.ddlog_get_bool(this.handle);
+            return Boolean.toString(b);
+        }
+
+        if (DDLogAPI.ddlog_is_int(this.handle)) {
+            long l = DDLogAPI.ddlog_get_u64(this.handle);
+            return Long.toString(l);
+        }
+
+        if (DDLogAPI.ddlog_is_string(this.handle)) {
+            String s = DDLogAPI.ddlog_get_str(this.handle);
+            // TODO: this should escape some characters...
+            return "\"" + s + "\"";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        if (DDLogAPI.ddlog_is_tuple(this.handle)) {
+            int fields = DDLogAPI.ddlog_get_tuple_size(this.handle);
+            builder.append("(");
+            for (int i = 0; i < fields; i++) {
+                if (i > 0)
+                    builder.append(", ");
+                long handle = DDLogAPI.ddlog_get_tuple_field(this.handle, i);
+                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+            }
+            builder.append(")");
+            return builder.toString();
+        }
+
+        if (DDLogAPI.ddlog_is_vector(this.handle)) {
+            int fields = DDLogAPI.ddlog_get_vector_size(this.handle);
+            builder.append("[");
+            for (int i = 0; i < fields; i++) {
+                if (i > 0)
+                    builder.append(", ");
+                long handle = DDLogAPI.ddlog_get_vector_elem(this.handle, i);
+                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+            }
+            builder.append("]");
+            return builder.toString();
+        }
+
+        if (DDLogAPI.ddlog_is_set(this.handle)) {
+            int fields = DDLogAPI.ddlog_get_set_size(this.handle);
+            builder.append("{");
+            for (int i = 0; i < fields; i++) {
+                if (i > 0)
+                    builder.append(", ");
+                long handle = DDLogAPI.ddlog_get_set_elem(this.handle, i);
+                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+            }
+            builder.append("}");
+            return builder.toString();
+        }
+
+        if (DDLogAPI.ddlog_is_map(this.handle)) {
+            int fields = DDLogAPI.ddlog_get_map_size(this.handle);
+            builder.append("{");
+            for (int i = 0; i < fields; i++) {
+                if (i > 0)
+                    builder.append(", ");
+                long handle = DDLogAPI.ddlog_get_map_key(this.handle, i);
+                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+                builder.append("=>");
+                handle = DDLogAPI.ddlog_get_map_val(this.handle, i);
+                field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+            }
+            builder.append("}");
+            return builder.toString();
+        }
+
+        if (DDLogAPI.ddlog_is_pos_struct(this.handle)) {
+            String type = DDLogAPI.ddlog_get_constructor(this.handle);
+            builder.append("struct " + type + " {");
+            for (int i = 0; ; i++) {
+                long handle = DDLogAPI.ddlog_get_struct_field(this.handle, i);
+                if (handle == 0)
+                    break;
+                if (i > 0)
+                    builder.append(", ");
+                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
+                builder.append(field.toString());
+            }
+            builder.append("}");
+            return builder.toString();
+        }
+
+        throw new RuntimeException("Unhandled record type");
+    }
 }

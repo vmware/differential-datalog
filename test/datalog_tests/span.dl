@@ -1,4 +1,4 @@
-typedef uuid_t = bit<128>
+typedef uuid_t = string
 
 /* entity id */
 typedef entid_t = uuid_t
