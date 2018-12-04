@@ -69,17 +69,17 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1string(
 
 jlong create_from_vector(JNIEnv *env, jclass obj, jlongArray handles,
                          ddlog_record* (*creator)(ddlog_record** fields, size_t size)) {
-     jlong *a = (*env)->GetLongArrayElements(env, handles, NULL);
-     if (a == NULL)
-         return -1;
-     jsize len = (*env)->GetArrayLength(env, handles);
-     ddlog_record** fields = malloc(len * sizeof(ddlog_record*));
-     for (size_t i = 0; i < len; i++)
-         fields[i] = (ddlog_record*)a[i];
-     ddlog_record* result = creator(fields, (size_t)len);
-     (*env)->ReleaseLongArrayElements(env, handles, a, 0);
-     free(fields);
-     return (jlong)result;
+    jlong *a = (*env)->GetLongArrayElements(env, handles, NULL);
+    if (a == NULL)
+        return -1;
+    jsize len = (*env)->GetArrayLength(env, handles);
+    ddlog_record** fields = malloc(len * sizeof(ddlog_record*));
+    for (size_t i = 0; i < len; i++)
+        fields[i] = (ddlog_record*)a[i];
+    ddlog_record* result = creator(fields, (size_t)len);
+    (*env)->ReleaseLongArrayElements(env, handles, a, 0);
+    free(fields);
+    return (jlong)result;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1tuple(
@@ -105,6 +105,23 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1map(
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1pair(
     JNIEnv *env, jclass obj, jlong h1, jlong h2) {
     return (jlong)ddlog_pair((ddlog_record*)h1, (ddlog_record*)h2);
+}
+
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1struct(
+    JNIEnv *env, jclass obj, jstring s, jlongArray handles) {
+    const char* str = (*env)->GetStringUTFChars(env, s, NULL);
+    jsize len = (*env)->GetArrayLength(env, handles);
+    jlong *a = (*env)->GetLongArrayElements(env, handles, NULL);
+    if (a == NULL)
+        return -1;
+    ddlog_record** fields = malloc(len * sizeof(ddlog_record*));
+    for (size_t i = 0; i < len; i++)
+        fields[i] = (ddlog_record*)a[i];
+    ddlog_record* result = ddlog_struct(str, fields, len);
+    (*env)->ReleaseLongArrayElements(env, handles, a, 0);
+    free(fields);
+    (*env)->ReleaseStringUTFChars(env, s, str);
+    return (jlong)result;
 }
 
 JNIEXPORT jboolean JNICALL Java_ddlogapi_DDLogAPI_ddlog_1is_1bool(
