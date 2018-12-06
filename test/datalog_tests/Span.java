@@ -26,6 +26,7 @@ public class Span {
         List<DDLogCommand> commands;
 
         private final DDLogAPI api;
+        private static boolean debug = false;
 
         SpanParser(DDLogAPI api) {
             this.api = api;
@@ -55,7 +56,7 @@ public class Span {
 
             switch (command) {
                 case "echo":
-                    System.out.println(rest);
+                    System.out.println(rest.trim());
                     this.checkSemicolon();
                     break;
                 case "start":
@@ -86,13 +87,17 @@ public class Span {
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
                         DDLogCommand[] ca = this.commands.toArray(new DDLogCommand[0]);
-                        System.out.println("Executing " + ca.length + " commands");
+                        if (debug)
+                            System.out.println("Executing " + ca.length + " commands");
                         this.exitCode = this.api.applyUpdates(ca);
                         this.checkExitCode();
                         this.commands.clear();
                     }
                     break;
                 case "profile":
+                    this.exitCode = this.api.profile();
+                    this.checkExitCode();
+                    this.checkSemicolon();
                     break;
                 case "dump":
                     // Hardwired output relation name
@@ -117,11 +122,11 @@ public class Span {
 
     public static void main(String[] args) throws IOException {
         DDLogAPI api = new DDLogAPI(1);
-        System.out.println("Started DDlog");
         Instant start = Instant.now();
         SpanParser parser = new SpanParser(api);
         parser.run("span.dat");
         Instant end = Instant.now();
-        System.out.println("Elapsed time " + Duration.between(start, end));
+        if (debug)
+            System.out.println("Elapsed time " + Duration.between(start, end));
     }
 }

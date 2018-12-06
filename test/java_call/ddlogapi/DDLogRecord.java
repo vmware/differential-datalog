@@ -308,16 +308,28 @@ public class DDLogRecord {
         }
 
         if (DDLogAPI.ddlog_is_struct(this.handle)) {
-            String type = DDLogAPI.ddlog_get_constructor(this.handle);
-            builder.append("struct " + type + " {");
-            for (int i = 0; ; i++) {
-                long handle = DDLogAPI.ddlog_get_struct_field(this.handle, i);
-                if (handle == 0)
-                    break;
-                if (i > 0)
-                    builder.append(", ");
-                DDLogRecord field = DDLogRecord.fromSharedHandle(handle);
-                builder.append(field.toString());
+            long h = this.handle;
+            String type = DDLogAPI.ddlog_get_constructor(h);
+            builder.append(type + "{");
+
+            // Get the first field and check to see whether it is a struct with the same constructor
+            long f0 = DDLogAPI.ddlog_get_struct_field(h, 0);
+            if (f0 != 0) {
+                if (DDLogAPI.ddlog_is_struct(f0)) {
+                    String f0type = DDLogAPI.ddlog_get_constructor(f0);
+                    if (f0type.equals(type))
+                        h = f0;  // Scan the fields of f0
+                }
+
+                for (int i = 0; ; i++) {
+                    long fh = DDLogAPI.ddlog_get_struct_field(h, i);
+                    if (fh == 0)
+                        break;
+                    if (i > 0)
+                        builder.append(",");
+                    DDLogRecord field = DDLogRecord.fromSharedHandle(fh);
+                    builder.append(field.toString());
+                }
             }
             builder.append("}");
             return builder.toString();
