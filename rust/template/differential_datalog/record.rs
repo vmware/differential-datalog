@@ -206,14 +206,11 @@ pub unsafe extern "C" fn ddlog_vector(fields: *const *mut Record, len: size_t) -
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_vector(rec: *mut Record) -> bool {
-    let rec = Box::from_raw(rec);
-    let res = match rec.as_ref() {
-        Record::Array(CollectionKind::Vector,_) => true,
+pub unsafe extern "C" fn ddlog_is_vector(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Array(CollectionKind::Vector,_)) => true,
         _ => false
-    };
-    Box::into_raw(rec);
-    res
+    }
 }
 
 #[no_mangle]
@@ -251,14 +248,11 @@ pub unsafe extern "C" fn ddlog_set(fields: *const *mut Record, len: size_t) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_set(rec: *mut Record) -> bool {
-    let rec = Box::from_raw(rec);
-    let res = match rec.as_ref() {
-        Record::Array(CollectionKind::Set,_) => true,
+pub unsafe extern "C" fn ddlog_is_set(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Array(CollectionKind::Set,_)) => true,
         _ => false
-    };
-    Box::into_raw(rec);
-    res
+    }
 }
 
 #[no_mangle]
@@ -295,14 +289,11 @@ pub unsafe extern "C" fn ddlog_map(fields: *const *mut Record, len: size_t) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_map(rec: *mut Record) -> bool {
-    let rec = Box::from_raw(rec);
-    let res = match rec.as_ref() {
-        Record::Array(CollectionKind::Map,_) => true,
+pub unsafe extern "C" fn ddlog_is_map(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Array(CollectionKind::Map,_)) => true,
         _ => false
-    };
-    Box::into_raw(rec);
-    res
+    }
 }
 
 
@@ -376,9 +367,10 @@ pub unsafe extern "C" fn ddlog_struct_static_cons(constructor: *const c_char, fi
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_pos_struct(rec: *mut Record) -> bool {
+pub unsafe extern "C" fn ddlog_is_struct(rec: *const Record) -> bool {
     match rec.as_ref() {
         Some(Record::PosStruct(_,_)) => true,
+        Some(Record::NamedStruct(_,_)) => true,
         _ => false
     }
 }
@@ -387,6 +379,7 @@ pub unsafe extern "C" fn ddlog_is_pos_struct(rec: *mut Record) -> bool {
 pub unsafe extern "C" fn ddlog_get_struct_field(rec: *const Record, idx: size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::PosStruct(_, fields)) => fields.get(idx).map(|r|r as *const Record).unwrap_or(null_mut()),
+        Some(Record::NamedStruct(_, fields)) => fields.get(idx).map(|(_, r)|r as *const Record).unwrap_or(null_mut()),
         _ => null_mut()
     }
 }
