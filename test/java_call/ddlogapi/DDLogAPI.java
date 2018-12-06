@@ -51,7 +51,7 @@ public class DDLogAPI {
     static public native int ddlog_get_map_size(long handle);
     static public native long ddlog_get_map_key(long handle, int i);
     static public native long ddlog_get_map_val(long handle, int i);
-    static public native boolean ddlog_is_pos_struct(long handle);
+    static public native boolean ddlog_is_struct(long handle);
     static public native String ddlog_get_constructor(long handle);
     static public native long ddlog_get_struct_field(long handle, int i);
 
