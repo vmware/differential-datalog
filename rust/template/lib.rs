@@ -229,8 +229,12 @@ fn dump_table(db: &mut valmap::ValMap,
     let table_str = unsafe{ ffi::CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
     let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
     for val in db.get_rel(relid as RelId) {
-        if !cb(cb_arg, Box::new(val.clone().into_record()).as_ref()) {
-            break;
+        if let record::Record::NamedStruct(_, fields) = val.clone().into_record() {
+            if !cb(cb_arg, Box::new(fields.get(0).ok_or_else(||format!("invalid value {}", val))?.1.clone()).as_ref()) {
+                break;
+            }
+        } else {
+            return Result::Err(format!("invalid value {}", val));
         }
     };
     Ok(())
