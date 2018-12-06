@@ -533,7 +533,7 @@ extern bool ddlog_is_map(const ddlog_record *rec);
  *
  * Returns `0` if `rec` is not a map.
  */
-extern size_t ddlog_get_map_size(ddlog_record *rec);
+extern size_t ddlog_get_map_size(const ddlog_record *rec);
 
 /*
  * Retrieves the key of the `i`th element of the map.  The `ddlog_record` type
@@ -613,7 +613,7 @@ extern ddlog_record* ddlog_struct_static_cons(const char *constructor,
 					      size_t len);
 
 /*
- * Returns `true` if `rec` is a positional struct.
+ * Returns `true` if `rec` is a struct.
  */
 extern bool ddlog_is_struct(const ddlog_record *rec);
 

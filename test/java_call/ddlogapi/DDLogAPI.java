@@ -18,6 +18,7 @@ public class DDLogAPI {
     static native int ddlog_transaction_commit(long hprog);
     static native int ddlog_transaction_rollback(long hprog);
     static public native int ddlog_apply_updates(long hprog, long[] upds);
+    public native int dump_table(long hprog, String table, String callbackMethod);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -60,7 +61,7 @@ public class DDLogAPI {
     static public native long ddlog_delete_key_cmd(String table, long recordHandle);
 
     // This is a handle to the program; it wraps a void*.
-    private long hprog;
+    private final long hprog;
 
     public static final int success = 0;
     public static final int error = -1;
@@ -83,16 +84,31 @@ public class DDLogAPI {
     public int start() {
         return DDLogAPI.ddlog_transaction_start(this.hprog);
     }
+
     public int commit() {
         return DDLogAPI.ddlog_transaction_commit(this.hprog);
     }
+
     public int rollback() {
         return DDLogAPI.ddlog_transaction_rollback(this.hprog);
     }
+
     public int applyUpdates(DDLogCommand[] commands) {
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
         return ddlog_apply_updates(this.hprog, handles);
+    }
+
+    /// Callback invoked from dump.
+    boolean dumpCallback(long handle) {
+        DDLogRecord record = DDLogRecord.fromSharedHandle(handle);
+        System.out.println(record.toString());
+        return true;
+    }
+
+    public int dump(String table) {
+        System.out.println(table + ":");
+        return this.dump_table(this.hprog, table, "dumpCallback");
     }
 }

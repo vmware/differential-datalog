@@ -45,10 +45,6 @@ public class Span {
                 throw new RuntimeException("Expected semicolon after " + this.command + " found " + this.terminator);
         }
 
-        void dump(String table) {
-            // TODO
-        }
-
         void parseLine(String line) {
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
@@ -100,7 +96,8 @@ public class Span {
                     break;
                 case "dump":
                     // Hardwired output relation name
-                    dump("Span");
+                    this.exitCode = this.api.dump("Span");
+                    this.checkExitCode();
                     this.checkSemicolon();
                     break;
                 case "exit":
