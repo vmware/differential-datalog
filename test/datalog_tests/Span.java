@@ -126,7 +126,7 @@ public class Span {
         SpanParser parser = new SpanParser(api);
         parser.run("span.dat");
         Instant end = Instant.now();
-        if (debug)
+        if (false)
             System.out.println("Elapsed time " + Duration.between(start, end));
     }
 }
