@@ -393,7 +393,12 @@ pub unsafe extern "C" fn ddlog_get_constructor_non_null(rec: *const Record,
             *len = cons.len();
             cons.as_ref().as_ptr() as *const c_char
         },
+        Some(Record::NamedStruct(cons, _)) => {
+            *len = cons.len();
+            cons.as_ref().as_ptr() as *const c_char
+        },
         _ => {
+            *len = 0;
             null()
         }
     }
