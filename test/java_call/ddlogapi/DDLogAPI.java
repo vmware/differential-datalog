@@ -19,6 +19,7 @@ public class DDLogAPI {
     static native int ddlog_transaction_rollback(long hprog);
     static public native int ddlog_apply_updates(long hprog, long[] upds);
     public native int dump_table(long hprog, String table, String callbackMethod);
+    static public native String ddlog_profile(long hprog);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -110,5 +111,12 @@ public class DDLogAPI {
     public int dump(String table) {
         System.out.println(table + ":");
         return this.dump_table(this.hprog, table, "dumpCallback");
+    }
+
+    public int profile() {
+        String s = DDLogAPI.ddlog_profile(this.hprog);
+        System.out.println("Profile:");
+        System.out.println(s);
+        return 0;
     }
 }

@@ -83,6 +83,14 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_dump_1table(
     return (jint)result;
 }
 
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDLogAPI_ddlog_1profile(
+    JNIEnv *env, jobject obj, jlong progHandle) {
+    char* profile = ddlog_profile((ddlog_prog)progHandle);
+    jstring result = (*env)->NewStringUTF(env, profile);
+    ddlog_string_free(profile);
+    return result;
+}
+
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1bool(
     JNIEnv *env, jclass obj, jboolean b) {
     return (jlong)ddlog_bool(b);
