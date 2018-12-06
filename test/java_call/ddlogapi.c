@@ -49,6 +49,40 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1apply_1updates(
     return (jint)result;
 }
 
+struct CallbackInfo {
+    JNIEnv* env;
+    jobject obj;
+    const char* method;
+};
+
+bool dump_callback(void* callbackInfo, const ddlog_record* rec) {
+    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
+    JNIEnv* env = cbi->env;
+    jclass thisClass = (*env)->GetObjectClass(env, cbi->obj);
+    jmethodID method = (*env)->GetMethodID(env, thisClass, cbi->method, "(J)Z");
+    if (method == NULL)
+        return false;
+    jboolean result = (*env)->CallBooleanMethod(env, cbi->obj, method, (jlong)rec);
+    return (bool)result;
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_dump_1table(
+    JNIEnv *env, jobject obj, jlong progHandle, jstring table, jstring callback) {
+    const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
+    const char* cbk = (*env)->GetStringUTFChars(env, callback, NULL);
+    struct CallbackInfo* cbinfo = malloc(sizeof(struct CallbackInfo));
+    if (cbinfo == NULL)
+        return -1;
+    cbinfo->env = env;
+    cbinfo->obj = obj;
+    cbinfo->method = cbk;
+    int result = ddlog_dump_table((ddlog_prog)progHandle, tbl, dump_callback, cbinfo);
+    free(cbinfo);
+    (*env)->ReleaseStringUTFChars(env, table, tbl);
+    (*env)->ReleaseStringUTFChars(env, callback, cbk);
+    return (jint)result;
+}
+
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1bool(
     JNIEnv *env, jclass obj, jboolean b) {
     return (jlong)ddlog_bool(b);
