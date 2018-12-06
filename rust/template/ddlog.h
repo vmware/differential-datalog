@@ -206,6 +206,18 @@ extern int ddlog_dump_table(ddlog_prog prog,
 				      bool (*cb)(void *arg, const ddlog_record *rec),
 				      void *cb_arg);
 
+
+/***********************************************************************
+ * Profiling
+ ***********************************************************************/
+
+/*
+ * Returns DDlog program runtime profile as a C string.
+ *
+ * The returned string must be deallocated using ddlog_string_free().
+ */
+extern char* ddlog_profile(ddlog_prog prog);
+
 /***********************************************************************
  * Record API
  ***********************************************************************/
@@ -227,7 +239,7 @@ extern int ddlog_dump_table(ddlog_prog prog,
  *   attaching it to another owned object (e.g., appending it to a vector
  *   using `ddlog_vector_push()`).
  *
- * - Each owned record encapsulates some dynamically allocated memort.  To avoid
+ * - Each owned record encapsulates some dynamically allocated memory.  To avoid
  *   memory leaks, the client must transfer the ownership of every record they
  *   own or deallocate the record using `ddlog_free()`.
  *
@@ -273,6 +285,12 @@ extern int ddlog_dump_table(ddlog_prog prog,
  * Deallocate an owned record.
  */
 extern void ddlog_free(ddlog_record *rec);
+
+/*
+ * Deallocate a string returned by DDlog
+ * (currently only applicable to the string returned by ddlog_profile()).
+ */
+extern void ddlog_string_free(char *s);
 
 /*
  * Create a Boolean value

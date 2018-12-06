@@ -235,3 +235,28 @@ fn dump_table(db: &mut valmap::ValMap,
     };
     Ok(())
 }
+
+#[no_mangle]
+pub extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
+{
+    if prog.is_null() {
+        return ptr::null();
+    };
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res ={
+        let rprog = prog.0.lock().unwrap();
+        let profile = format!("{}", rprog.profile.lock().unwrap());
+        ffi::CString::new(profile).expect("Failed to convert profile string to C").into_raw()
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_string_free(s: *mut raw::c_char)
+{
+    if s.is_null() {
+        return;
+    };
+    unsafe { ffi::CString::from_raw(s); }
+}
