@@ -8,7 +8,7 @@ libexternal.so: external.c external_External.h
 	gcc $(GCCFLAGS) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $< -o $@
 
 libddlogapi.so: ddlogapi.c ddlogapi_DDLogAPI.h
-	gcc $(GCCFLAGS) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux $< -o $@
+	gcc $(GCCFLAGS) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../../rust/template  $< -o $@
 
 %.class: %.java
 	javac $<

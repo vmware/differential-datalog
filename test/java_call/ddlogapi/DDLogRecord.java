@@ -212,7 +212,7 @@ public class DDLogRecord {
 
     public boolean isStruct() {
         this.checkHandle();
-        return DDLogAPI.ddlog_is_pos_struct(this.handle);
+        return DDLogAPI.ddlog_is_struct(this.handle);
     }
 
     public String getStructName() {
@@ -307,7 +307,7 @@ public class DDLogRecord {
             return builder.toString();
         }
 
-        if (DDLogAPI.ddlog_is_pos_struct(this.handle)) {
+        if (DDLogAPI.ddlog_is_struct(this.handle)) {
             String type = DDLogAPI.ddlog_get_constructor(this.handle);
             builder.append("struct " + type + " {");
             for (int i = 0; ; i++) {

@@ -230,9 +230,9 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1map_1val(
     return (jlong)ddlog_get_map_val((ddlog_record*)handle, (size_t)index);
 }
 
-JNIEXPORT jboolean JNICALL Java_ddlogapi_DDLogAPI_ddlog_1is_1pos_1struct(
+JNIEXPORT jboolean JNICALL Java_ddlogapi_DDLogAPI_ddlog_1is_1struct(
     JNIEnv *env, jclass obj, jlong handle) {
-    return (jboolean)ddlog_is_pos_struct((ddlog_record*)handle);
+    return (jboolean)ddlog_is_struct((ddlog_record*)handle);
 }
 
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1constructor(
