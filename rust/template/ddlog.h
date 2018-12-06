@@ -526,7 +526,7 @@ extern ddlog_record* ddlog_map(ddlog_record **recs, size_t len);
 /*
  * Returns `true` if `rec` is a map and false otherwise
  */
-extern bool ddlog_is_map(ddlog_record *rec);
+extern bool ddlog_is_map(const ddlog_record *rec);
 
 /*
  * Retrieves the number of elements in a map.
@@ -615,7 +615,7 @@ extern ddlog_record* ddlog_struct_static_cons(const char *constructor,
 /*
  * Returns `true` if `rec` is a positional struct.
  */
-extern bool ddlog_is_pos_struct(ddlog_record *rec);
+extern bool ddlog_is_struct(const ddlog_record *rec);
 
 /*
  * Retrieves constructor name as a non-null-terminated string.  Returns string
