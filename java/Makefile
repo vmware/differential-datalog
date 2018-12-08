@@ -1,11 +1,6 @@
-LIBS = libddlogapi.so
 CLASS = ddlogapi/DDLogAPI.class
-GCCFLAGS = -shared -fPIC
 
-all: $(LIBS) $(CLASS)
-
-libddlogapi.so: ddlogapi.c ddlogapi_DDLogAPI.h
-	gcc $(GCCFLAGS) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../rust/template  $< -o $@
+all: $(CLASS)
 
 %.class: %.java
 	javac $<
@@ -15,4 +10,4 @@ ddlogapi_DDLogAPI.h ddlogapi/DDLogApi.class: ddlogapi/DDLogAPI.java ddlogapi/DDL
 	javac -h .  $<
 
 clean:
-	rm -f *.so *.class
+	rm -f *.class ddlogapi/*.class

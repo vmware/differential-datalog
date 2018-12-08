@@ -121,10 +121,14 @@ public class Span {
     }
 
     public static void main(String[] args) throws IOException {
+        if (args.length != 1) {
+            System.err.println("Usage: java -jar span.jar <dat_file_name>");
+            System.exit(-1);
+        };
         DDLogAPI api = new DDLogAPI(1);
         Instant start = Instant.now();
         SpanParser parser = new SpanParser(api);
-        parser.run("span.dat");
+        parser.run(args[0]);
         Instant end = Instant.now();
         if (false)
             System.out.println("Elapsed time " + Duration.between(start, end));
