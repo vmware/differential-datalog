@@ -93,6 +93,9 @@ vALUE_VAR1 = "__v1"
 vALUE_VAR2 :: Doc
 vALUE_VAR2 = "__v2"
 
+bOX_VAR :: Doc
+bOX_VAR = "__box"
+
 -- Input argument to aggregation function
 gROUP_VAR :: Doc
 gROUP_VAR = "group"
@@ -191,6 +194,10 @@ lval (x, ELVal, _) = x
 -- this can only be mutable reference in a valid program
 lval (x, ERef, _)  = parens $ "*" <> x
 lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
+
+-- put x in a box
+box :: Doc -> Doc
+box x = "boxed::Box::new(" <> x <> ")"
 
 -- Relation is a function that takes a list of arrangements and produces a Doc containing Rust
 -- code for the relation (since we won't know all required arrangements till we finish scanning
@@ -574,15 +581,15 @@ mkValueFromRecord d@DatalogProgram{..} =
     entries = map mkrelval $ M.elems progRelations
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))"  $$
+        "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                    $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> "(<" <> mkType t <> ">::from_record(rec)?))" $$
+        "Relations::" <> rname(name rel) <+> "=> {"                                                                  $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box $ "<" <> mkType t <> ">::from_record(rec)?)") $$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
@@ -680,8 +687,8 @@ mkValType d types grp_types =
     consname t = mkValConstructorName' d t
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
     mkValCons :: Type -> Doc
-    mkValCons t = consname t <> (parens $ mkType t)
-    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> "(())"
+    mkValCons t = consname t <> (parens $ mkBoxType t)
+    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box "()")
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
     mkgrptype t =
@@ -691,7 +698,7 @@ mkValType d types grp_types =
         "    }"                                                                             $$
         "    fn ith(&self, i:u64) ->" <+> mkType t <+> "{"                                  $$
         "        match self[i as usize].0 {"                                                $$
-        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => x.clone(),")            $$
+        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => (**x).clone(),")        $$
         "            _ => panic!(\"unexpected constructor\")"                               $$
         "        }"                                                                         $$
         "    }"                                                                             $$
@@ -789,7 +796,9 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
     return $
         "(|" <> kEY_VAR <> ": &Value|"                                                                $$
         "match" <+> kEY_VAR <+> "{"                                                                   $$
-        "    Value::" <> mkValConstructorName' d relType <> "(" <> pp keyVar <> ") =>" <+> val <> "," $$
+        "    Value::" <> mkValConstructorName' d relType <> "(__" <> pp keyVar <> ") => {"            $$
+        "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                   $$
+        "       " <> val <> "},"                                                                      $$
         "    _ => panic!(\"unexpected constructor in key_func\")"                                     $$
         "})"
 
@@ -884,7 +893,7 @@ mkAggregate d prefix rl idx vs v fname e = do
     -- - open-up key tuple
     -- - compute aggregate
     -- - return variables still in scope after this term
-    open <- openTuple d kEY_VAR key_vars
+    open <- openTuple d ("*" <> kEY_VAR) key_vars
     let tmap = ruleAggregateTypeParams d rl idx
     let tparams = hcat $ map (\tvar -> mkType (tmap M.! tvar) <> ",") $ funcTypeVars $ getFunc d fname
     let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "::<" <> tparams <> "_>(" <> gROUP_VAR <> ");"
@@ -916,20 +925,31 @@ openAtom d var rl idx Atom{..} = do
         cond_str = if cond == empty then empty else ("if" <+> cond)
     return $
         "let" <+> vars <+> "= match " <> var <> "{"                                    $$
-        "    " <> constructor <> parens pattern <+> cond_str <+> "=> " <> vars <> ","  $$
+        "    " <> constructor <> parens ("ref" <+> bOX_VAR) <+> "=> {"                 $$
+        "        match **" <> bOX_VAR <+> "{"                                          $$
+        "            " <> pattern <+> cond_str <+> "=> " <> vars <> ","                $$
+        "            _ => return None"                                                 $$
+        "        }"                                                                    $$
+        "    },"                                                                       $$
         "    _ => return None"                                                         $$
         "};"
 
 -- Generate Rust code to open up tuples and bring variables into scope.
 openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vs = do
-    (tup, cons) <- mkVarsTupleValuePat d vs
+    cons <- mkValConstructorName d $ tTuple $ map typ vs
+    let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     let vars = tuple $ map (pp . name) vs
     -- TODO: use unreachable() instead of panic!()
     return $
-        "let" <+> vars <+> "= match" <+> var <+> "{"                                              $$
-        "    " <> tup <> "=>" <+> vars <> ","                                                     $$
-        "    _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")"    $$
+        "let" <+> vars <+> "= match" <+> var <+> "{"                                                    $$
+        "    " <> cons <> parens ("ref" <+> bOX_VAR) <+> "=> {"                                         $$
+        "        match **" <> bOX_VAR <+> "{"                                                           $$
+        "            " <> pattern <+> "=>" <+> vars <> ","                                              $$
+        "            _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")," $$
+        "        }"                                                                                     $$
+        "    },"                                                                                        $$
+        "    _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")"          $$
         "};"
 
 -- Generate Rust constructor name for a type
@@ -961,22 +981,22 @@ mkValConstructorName' d t =
 mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue d ctx e = do
     constructor <- mkValConstructorName d $ exprType d ctx e
-    return $ constructor <> (parens $ mkExpr d ctx e EVal)
+    return $ constructor <> (parens $ box $ mkExpr d ctx e EVal)
 
 mkTupleValue :: DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
 mkTupleValue d es = do
     constructor <- mkValConstructorName d $ tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
-    return $ constructor <> (parens $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
+    return $ constructor <> (parens $ box $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
+    return $ constructor <> (parens $ box $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
 mkVarsTuple :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTuple d vs = do
     constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ tupleStruct $ map (pp . name) vs)
+    return $ constructor <> (parens $ box $ tupleStruct $ map (pp . name) vs)
 
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
@@ -1191,7 +1211,7 @@ mkArrangement d rel (Arrangement pattern) = do
 -- arrangement.
 mkArrangementKey :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangementKey d rel (Arrangement pattern) = do
-    let (pat, cond) = mkPatExpr d empty CtxTop pattern
+    let (pat, cond) = mkPatExpr d "ref" CtxTop pattern
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
     let getvars :: Type -> Expr -> [Field]
@@ -1205,12 +1225,15 @@ mkArrangementKey d rel (Arrangement pattern) = do
         getvars t (E ETyped{..})  = getvars t exprExpr
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
-    patvars <- mkVarsTuple d $ getvars (relType rel) pattern
+    patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
     constructor <- mkValConstructorName d $ relType rel
     let res = "Some(" <> patvars <> ")"
     return $ braces' $
-             "if let" <+> constructor <> parens pat <+> "=" <+> vALUE_VAR <+> "{"                           $$
-             (nest' $ if cond == empty then res else ("if" <+> cond <+> "{" <+> res <+> "} else { None }")) $$
+             "if let" <+> constructor <> parens bOX_VAR <+> "=" <+> vALUE_VAR <+> "{" $$
+             "    match" <+> "*" <> bOX_VAR <+> "{"                                   $$
+             "        " <> pat <+> "=>" <+> (if cond == empty then res else ("if" <+> cond <+> "{" <+> res <+> "} else { None }")) <> "," $$
+             "        _ => None"                                                      $$
+             "    }"                                                                  $$
              "} else { None }"
 
 -- Compile Datalog pattern expression to Rust.
@@ -1235,7 +1258,7 @@ mkPatExpr' _ varprefix _   EString{..}               = do
     i <- get
     put $ i+1
     let vname = pp $ "_" <> pp i <> "_"
-    return (varprefix <+> vname, vname <+> ".str() ==" <+> "\"" <> pp exprString <> "\"")
+    return (varprefix <+> vname, vname <> ".str() ==" <+> "\"" <> pp exprString <> "\"")
 mkPatExpr' d varprefix ctx e@EStruct{..}             = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d varprefix (CtxStruct e ctx f) e') exprStructFields
     let t = consType d exprConstructor
@@ -1418,6 +1441,8 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
                  EInt{} -> True
                  _      -> False
 
+mkBoxType :: (WithType a) => a -> Doc
+mkBoxType x = "boxed::Box<" <> mkType x <> ">"
 
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' $ typ x

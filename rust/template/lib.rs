@@ -33,6 +33,7 @@ use std::os::raw;
 use std::borrow;
 use std::ptr;
 use std::ffi;
+use std::boxed;
 use libc::size_t;
 
 pub mod valmap;
