@@ -230,9 +230,38 @@ fn dump_table(db: &mut valmap::ValMap,
     let table_str = unsafe{ ffi::CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
     let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
     for val in db.get_rel(relid as RelId) {
-        if !cb(cb_arg, Box::new(val.clone().into_record()).as_ref()) {
-            break;
+        if let record::Record::NamedStruct(_, fields) = val.clone().into_record() {
+            if !cb(cb_arg, Box::new(fields.get(0).ok_or_else(||format!("invalid value {}", val))?.1.clone()).as_ref()) {
+                break;
+            }
+        } else {
+            return Result::Err(format!("invalid value {}", val));
         }
     };
     Ok(())
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
+{
+    if prog.is_null() {
+        return ptr::null();
+    };
+    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let res ={
+        let rprog = prog.0.lock().unwrap();
+        let profile = format!("{}", rprog.profile.lock().unwrap());
+        ffi::CString::new(profile).expect("Failed to convert profile string to C").into_raw()
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_string_free(s: *mut raw::c_char)
+{
+    if s.is_null() {
+        return;
+    };
+    unsafe { ffi::CString::from_raw(s); }
 }
