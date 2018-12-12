@@ -365,7 +365,7 @@ exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ s
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
-exprValidate1 d _ ctx e@EVar{..} | ctxInRuleRHSPattern ctx
+exprValidate1 d _ ctx e@EVar{..} | ctxInRuleRHSPositivePattern ctx
                                           = do
     when (ctxInBinding ctx) $
         check (isJust $ lookupVar d ctx exprVar) (pos e) $ "Variable declarations not allowed inside @-bindings"
@@ -416,6 +416,9 @@ exprValidate1 _ _ ctx (EPHolder p)        = do
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d _ ctx (EBinding p v _)    = checkNoVar p d ctx v
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
+exprValidate1 _ _ ctx (ERef p _)          =
+    -- Rust does not allow pattern matching inside 'Arc'
+    check (ctxInRuleRHSPattern ctx) p "Dereference pattern not allowed in this context"
 
 -- True if a placeholder ("_") can appear in this context
 ctxPHolderAllowed :: ECtx -> Bool
@@ -428,6 +431,7 @@ ctxPHolderAllowed ctx =
          CtxTuple{}       -> pres
          CtxMatchPat{}    -> True
          CtxBinding{}     -> True
+         CtxRef{}         -> True
          _                -> False
     where
     par = ctxParent ctx

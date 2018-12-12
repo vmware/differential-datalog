@@ -481,6 +481,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EPHolder      {exprPos :: Pos}
                 | EBinding      {exprPos :: Pos, exprVar :: String, exprPattern :: e}
                 | ETyped        {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
+                | ERef          {exprPos :: Pos, exprPattern :: e}
 
 instance Eq e => Eq (ExprNode e) where
     (==) (EVar _ v1)              (EVar _ v2)                = v1 == v2
@@ -504,6 +505,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EPHolder _)             (EPHolder _)               = True
     (==) (EBinding _ v1 e1)       (EBinding _ v2 e2)         = v1 == v2 && e1 == e2
     (==) (ETyped _ e1 t1)         (ETyped _ e2 t2)           = e1 == e2 && t1 == t2
+    (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) _                        _                          = False
 
 instance WithPos (ExprNode e) where
@@ -546,6 +548,7 @@ instance PP e => PP (ExprNode e) where
     pp (EPHolder _)          = "_"
     pp (EBinding _ v e)      = parens $ pp v <> "@" <+> pp e
     pp (ETyped _ e t)        = parens $ pp e <> ":" <+> pp t
+    pp (ERef _ e)            = parens $ "&" <> pp e
 
 instance PP e => Show (ExprNode e) where
     show = render . pp
@@ -594,6 +597,7 @@ eNot e              = eUnOp Not e
 ePHolder            = E $ EPHolder  nopos
 eBinding v e        = E $ EBinding  nopos v e
 eTyped e t          = E $ ETyped    nopos e t
+eRef e              = E $ ERef      nopos e
 
 data FuncArg = FuncArg { argPos  :: Pos
                        , argName :: String
@@ -821,6 +825,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxBinding        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a typed expression 'X: t'
           | CtxTyped          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a &-pattern '&e'
+          | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
 
 instance PP ECtx where
     pp CtxTop        = "CtxTop"
@@ -862,6 +868,7 @@ instance PP ECtx where
                     CtxUnOp{..}           -> "CtxUnOp           " <+> epar
                     CtxBinding{..}        -> "CtxBinding        " <+> epar
                     CtxTyped{..}          -> "CtxTyped          " <+> epar
+                    CtxRef{..}            -> "CtxRef            " <+> epar
                     CtxTop                -> error "pp CtxTop"
 
 instance Show ECtx where

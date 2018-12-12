@@ -1,6 +1,13 @@
 /* Description: DDlog "standard library" automatically imported into every module */
 
 /*
+ * Ref
+ */
+extern type Ref<'A>
+
+extern function ref_new(x: 'A): Ref<'A>
+
+/*
  * Option
  */
 

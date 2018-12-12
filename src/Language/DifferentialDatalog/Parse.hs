@@ -527,6 +527,7 @@ mkLit (Just w) v | w == 0              = fail "Unsigned literals must have width
                  | otherwise           = fail "Value exceeds specified width"
 
 etable = [[postf $ choice [postSlice, postApply, postField, postType]]
+         ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
          ,[binary "%" Mod AssocLeft,
@@ -574,6 +575,7 @@ dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
 
 etype = reservedOp ":" *> typeSpecSimple
 
+preRef = (\start e -> E $ ERef (start, snd $ pos e) e) <$> getPosition <* reservedOp "&"
 prefix n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n
 binary n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reservedOp n
 sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ reservedOp n

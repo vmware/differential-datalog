@@ -34,6 +34,7 @@ use std::borrow;
 use std::ptr;
 use std::ffi;
 use std::boxed;
+use std::ops::Deref;
 use libc::size_t;
 
 pub mod valmap;

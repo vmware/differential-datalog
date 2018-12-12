@@ -220,3 +220,15 @@ commit;
 
 echo Allocation after clear;
 dump Allocation;
+
+start;
+
+insert Referenced(true, std.Some{"hello"});
+
+commit;
+
+echo Referee;
+dump Referee;
+
+echo Filtered;
+dump Filtered;

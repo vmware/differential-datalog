@@ -5,6 +5,7 @@ typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 extern function std.__builtin_2string (x: 'X): string
@@ -40,6 +41,7 @@ extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.ref_new (x: 'A): std.Ref<'A>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>

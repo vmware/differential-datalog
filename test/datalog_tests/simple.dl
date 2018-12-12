@@ -681,3 +681,16 @@ Allocation(name, id, x) :-
     Allocated(name, xs),
     var allocation = FlatMap(allocate_u32(xs, ids, (32'd1 << 32'd24) - 32'd1)),
     (var id, var x) = allocation.
+
+/* Ref test */
+
+input relation Referenced(x: bool, y: Option<string>)
+
+output relation Referee(r: Ref<Referenced>)
+
+Referee(ref_new(r)) :-
+    r in Referenced(_, Some{_}).
+
+output relation Filtered(r: string)
+
+Filtered(str) :- Referee(.r = &Referenced{.x = true, .y = Some{str}}).

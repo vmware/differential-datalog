@@ -42,6 +42,7 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsBinding,
      ctxIsTyped,
      ctxIsRuleRCond,
+     ctxInRuleRHSPositivePattern,
      ctxInRuleRHSPattern,
      ctxIsFunc)
 where
@@ -110,13 +111,27 @@ ctxIsRuleRCond _              = False
 -- | True if context is inside a positive right-hand-side literal of a
 -- rule, in a pattern expression, i.e., an expression where new
 -- variables can be declared.
+ctxInRuleRHSPositivePattern :: ECtx -> Bool
+ctxInRuleRHSPositivePattern (CtxRuleRAtom rl idx) = rhsPolarity $ ruleRHS rl !! idx
+ctxInRuleRHSPositivePattern CtxStruct{..}         = ctxInRuleRHSPositivePattern ctxPar
+ctxInRuleRHSPositivePattern CtxTuple{..}          = ctxInRuleRHSPositivePattern ctxPar
+ctxInRuleRHSPositivePattern CtxTyped{..}          = ctxInRuleRHSPositivePattern ctxPar
+ctxInRuleRHSPositivePattern CtxBinding{..}        = ctxInRuleRHSPositivePattern ctxPar
+ctxInRuleRHSPositivePattern CtxRef{..}            = ctxInRuleRHSPositivePattern ctxPar
+ctxInRuleRHSPositivePattern _                     = False
+
+-- | True if context is inside a (positive or negative) right-hand-side literal of a
+-- rule, in a pattern expression, i.e., an expression where new
+-- variables can be declared.
 ctxInRuleRHSPattern :: ECtx -> Bool
-ctxInRuleRHSPattern (CtxRuleRAtom rl idx) = rhsPolarity $ ruleRHS rl !! idx
+ctxInRuleRHSPattern (CtxRuleRAtom rl idx) = True
 ctxInRuleRHSPattern CtxStruct{..}         = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTuple{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTyped{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxBinding{..}        = ctxInRuleRHSPattern ctxPar
+ctxInRuleRHSPattern CtxRef{..}            = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern _                     = False
+
 
 ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True
