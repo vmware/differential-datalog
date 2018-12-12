@@ -1323,7 +1323,7 @@ mkPatExpr' d varprefix ctx e@EBinding{..}            = do
 mkPatExpr' d varprefix ctx e@ERef{..}                = do
     vname <- allocPatVar
     subpattern <- mkPatExpr' d varprefix (CtxRef e ctx) $ enode exprPattern
-    return $ Match (varprefix <+> vname) empty [(pp vname <> ".deref()" , subpattern)]
+    return $ Match (varprefix <+> vname) empty [("(*" <> pp vname <> ").deref()" , subpattern)]
 mkPatExpr' d varprefix ctx e                         = do
     vname <- allocPatVar
     return $ Match (varprefix <+> vname) 

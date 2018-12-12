@@ -49,6 +49,7 @@ module Language.DifferentialDatalog.Type(
     funcTypeArgSubsts,
     sET_TYPES,
     gROUP_TYPE,
+    rEF_TYPE,
     checkIterable,
     typeIterType
 ) where

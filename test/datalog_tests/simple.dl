@@ -694,3 +694,11 @@ Referee(ref_new(r)) :-
 output relation Filtered(r: Ref<Referenced>)
 
 Filtered(r.r) :- r in Referee(.r = &Referenced{.x = true}).
+
+output relation &Referee2(r: Referenced)
+
+&Referee2(r) :- Referenced[r].
+
+output relation Filtered2(r: Ref<Referee2>)
+
+Filtered2(r) :- r in &Referee2(.r = Referenced{.x = true}).
