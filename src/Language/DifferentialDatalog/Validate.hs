@@ -366,9 +366,7 @@ exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ s
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
 exprValidate1 d _ ctx e@EVar{..} | ctxInRuleRHSPositivePattern ctx
-                                          = do
-    when (ctxInBinding ctx) $
-        check (isJust $ lookupVar d ctx exprVar) (pos e) $ "Variable declarations not allowed inside @-bindings"
+                                          = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
 exprValidate1 d _ ctx (EApply p f as)     = do
@@ -395,7 +393,6 @@ exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v)      = do
     check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
-    check (not $ ctxInBinding ctx) p "Variable declaration is not allowed inside @-binding"
     checkNoVar p d ctx v
 {-                                     | otherwise
                                           = do checkNoVar p d ctx v
@@ -414,7 +411,9 @@ exprValidate1 _ _ ctx (EPHolder p)        = do
                    CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
-exprValidate1 d _ ctx (EBinding p v _)    = checkNoVar p d ctx v
+exprValidate1 d _ ctx (EBinding p v _)    = do
+    checkNoVar p d ctx v
+    
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
 exprValidate1 _ _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'

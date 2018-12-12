@@ -13,7 +13,7 @@ typedef C = C{f1: string, f2: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
 typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
-typedef Filtered = Filtered{r: string}
+typedef Filtered = Filtered{r: std.Ref<Referenced>}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
 typedef Gangster = Gangster{nickname: string, name: string}
 typedef HostAddress = HostAddress{host: bit<64>, addr: string}
@@ -518,4 +518,4 @@ ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.n
 Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Aggregate((name), std.group2set(x)).
 Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
 Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})].
-Filtered(.r=str) :- Referee(.r=(&Referenced{.x=true, .y=std.Some{.x=str}})).
+Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})].
