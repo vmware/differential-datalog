@@ -123,6 +123,8 @@ exprFoldCtxM' f ctx e@(EBinding p v x)        = do x' <- exprFoldCtxM f (CtxBind
                                                    f ctx $ EBinding p v x'
 exprFoldCtxM' f ctx e@(ETyped p x t)          = do x' <- exprFoldCtxM f (CtxTyped e ctx) x
                                                    f ctx $ ETyped p x' t
+exprFoldCtxM' f ctx e@(ERef p x)              = do x' <- exprFoldCtxM f (CtxRef e ctx) x
+                                                   f ctx $ ERef p x'
 
 exprMapM :: (Monad m) => (a -> m b) -> ExprNode a -> m (ExprNode b)
 exprMapM g e = case e of
@@ -147,6 +149,7 @@ exprMapM g e = case e of
                    EPHolder p          -> return $ EPHolder p
                    EBinding p v x      -> EBinding p v <$> g x
                    ETyped p x t        -> (\x' -> ETyped p x' t) <$> g x
+                   ERef p x            -> ERef p <$> g x
 
 
 exprMap :: (a -> b) -> ExprNode a -> ExprNode b
@@ -195,6 +198,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EPHolder _            -> x'
                                      EBinding _ _ pat      -> x' `op` pat
                                      ETyped _ v _          -> x' `op` v
+                                     ERef _ v              -> x' `op` v
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
 exprCollectM f op e = exprCollectCtxM (\_ e' -> f e') op undefined e
@@ -287,6 +291,7 @@ exprIsPattern' (ETuple _ as)    = and as
 exprIsPattern' (EStruct _ _ as) = all snd as
 exprIsPattern' EPHolder{}       = True
 exprIsPattern' (ETyped _ e _)   = e
+exprIsPattern' (ERef _ e)       = e
 exprIsPattern' (EBinding _ _ e) = e
 exprIsPattern' _                = False
 

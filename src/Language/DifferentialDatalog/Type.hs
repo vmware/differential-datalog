@@ -74,6 +74,8 @@ import Language.DifferentialDatalog.ECtx
 sET_TYPES = ["std.Set", "std.Vec"]
 gROUP_TYPE = "std.Group"
 
+rEF_TYPE = "std.Ref"
+
 -- | An object with type
 class WithType a where
     typ     :: a -> Type
@@ -219,7 +221,7 @@ exprNodeType' d ctx e@(EVar p v)            =
     let (lvs, rvs) = ctxMVars d ctx in
     case lookup v $ lvs ++ rvs of
          Just mt -> mtype2me p ctx mt
-         Nothing | ctxInRuleRHSPattern ctx -- handle implicit vardecls in rules
+         Nothing | ctxInRuleRHSPositivePattern ctx -- handle implicit vardecls in rules
                  -> mtype2me p ctx $ ctxExpectType d ctx
          _       -> eunknown p ctx
 
@@ -314,6 +316,8 @@ exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
 exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
 exprNodeType' d ctx (EBinding p _ e)       = mtype2me p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
+exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t] 
+exprNodeType' _ ctx (ERef p _)             = eunknown p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
 --exprTypes r ctx e = nub $ execState (exprTraverseTypeM r (\ctx' e' -> modify ((fromJust $ exprNodeType r ctx' e'):)) ctx e) []
@@ -548,7 +552,10 @@ ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
 ctxExpectType d (CtxUnOp (EUnOp _ BNeg _) ctx)       = ctxExpectType d ctx
 ctxExpectType d (CtxBinding _ ctx)                   = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
-
+ctxExpectType d (CtxRef (ERef _ e) ctx)              =
+    case ctxExpectType' d ctx of
+         Just (TOpaque _ rEF_TYPE [t]) -> Just t
+         _ -> Nothing
 
 ctxExpectType'' :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType'' d ctx = typ'' d <$> ctxExpectType d ctx
@@ -578,12 +585,13 @@ typeConsTree d t = CT t [EPHolder nopos]
 consTreeNodeExpand :: DatalogProgram -> Type -> [CTreeNode]
 consTreeNodeExpand d t =
     case typ' d t of
-         TStruct _ cs -> map (\c -> EStruct nopos (name c)
-                                            $ map (\a -> (name a, CT (typ a) [EPHolder nopos]))
-                                            $ consArgs c) cs
-         TTuple _ fs  -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
-         TBool{}      -> [EBool nopos False, EBool nopos True]
-         _            -> [EPHolder nopos]
+         TStruct _ cs               -> map (\c -> EStruct nopos (name c)
+                                                  $ map (\a -> (name a, CT (typ a) [EPHolder nopos]))
+                                                  $ consArgs c) cs
+         TTuple _ fs                -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
+         TBool{}                    -> [EBool nopos False, EBool nopos True]
+         TOpaque _ rEF_TYPE [t']    -> [ERef nopos $ CT t' [EPHolder nopos]]
+         _                          -> [EPHolder nopos]
 
 -- | Abduct a pattern from constructor tree. Returns the remaining
 -- tree and the abducted part.
@@ -620,6 +628,10 @@ consTreeAbduct' d ct@(CT t nodes) (E e) =
              let (leftover, abducted) = unzip $ map (\(ETuple _ ts) -> abductTuple d es ts) nodes
              in (CT t $ concat leftover, CT t $ concat abducted)
          ETyped p x _   -> consTreeAbduct d ct x
+         ERef p x       ->
+             let [ERef _ ct'] = nodes in
+             let (leftover, abducted) = consTreeAbduct d ct' x in
+             (CT t [ERef nopos leftover], CT t [ERef nopos abducted])
 
 
 abductTuple :: DatalogProgram -> [Expr] -> [ConsTree] -> ([CTreeNode], [CTreeNode])

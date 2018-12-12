@@ -213,3 +213,7 @@ Allocation{"b","3",16777215}
 Allocation{"b","4",1}
 Allocation{"b","5",2}
 Allocation after clear
+Referee
+Referee{Referenced{true,std.Some{"hello"}}}
+Filtered
+Filtered{"hello"}

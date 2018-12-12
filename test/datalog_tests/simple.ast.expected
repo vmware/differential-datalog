@@ -13,6 +13,7 @@ typedef C = C{f1: string, f2: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
 typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
+typedef Filtered = Filtered{r: string}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
 typedef Gangster = Gangster{nickname: string, name: string}
 typedef HostAddress = HostAddress{host: bit<64>, addr: string}
@@ -31,6 +32,8 @@ typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef Reach = Reach{s1: station, s2: station}
 typedef Realized = Realized{name: string, id: string, x: bit<32>}
+typedef Referee = Referee{r: std.Ref<Referenced>}
+typedef Referenced = Referenced{x: bool, y: std.Option<string>}
 typedef Rel1 = Rel1{x: bigint, y: IPAddr}
 typedef Rel2 = Rel2{x: bigint, z: FooStruct}
 typedef Rel3 = Rel3{x: bigint, y: IPAddr, z: FooStruct}
@@ -69,6 +72,7 @@ typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef string_syn = string
@@ -268,6 +272,7 @@ extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.ref_new (x: 'A): std.Ref<'A>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
@@ -347,6 +352,7 @@ input relation Blacklist [Blacklist]
 output relation Disaggregate [Disaggregate]
 output relation ExternalId [ExternalId]
 input relation ExternalIds [ExternalIds]
+output relation Filtered [Filtered]
 input relation Gangster [Gangster]
 output relation HostAddress [HostAddress]
 input relation HostAddresses [HostAddresses]
@@ -363,6 +369,8 @@ output relation R6 [R6]
 output relation R7 [R7]
 output relation Reach [Reach]
 input relation Realized [Realized]
+output relation Referee [Referee]
+input relation Referenced [Referenced]
 input relation Rel1 [Rel1]
 input relation Rel2 [Rel2]
 output relation Rel3 [Rel3]
@@ -509,3 +517,5 @@ Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.n
 ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), var ids = Aggregate((name), std.group2vec(id)).
 Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Aggregate((name), std.group2set(x)).
 Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
+Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})].
+Filtered(.r=str) :- Referee(.r=(&Referenced{.x=true, .y=std.Some{.x=str}})).

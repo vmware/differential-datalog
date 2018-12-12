@@ -18,6 +18,14 @@ use std::iter::FromIterator;
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+// Ref
+pub type std_Ref<A> = arcval::ArcVal<A>;
+
+pub fn std_ref_new<A: Clone>(x: &A) -> std_Ref<A> {
+    arcval::ArcVal::from(x.clone())
+}
+
+
 // Option
 fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
     match x {
