@@ -691,6 +691,6 @@ output relation Referee(r: Ref<Referenced>)
 Referee(ref_new(r)) :-
     r in Referenced(_, Some{_}).
 
-output relation Filtered(r: string)
+output relation Filtered(r: Ref<Referenced>)
 
-Filtered(str) :- Referee(.r = &Referenced{.x = true, .y = Some{str}}).
+Filtered(r.r) :- r in Referee(.r = &Referenced{.x = true}).

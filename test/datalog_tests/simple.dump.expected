@@ -216,4 +216,4 @@ Allocation after clear
 Referee
 Referee{Referenced{true,std.Some{"hello"}}}
 Filtered
-Filtered{"hello"}
+Filtered{Referenced{true,std.Some{"hello"}}}

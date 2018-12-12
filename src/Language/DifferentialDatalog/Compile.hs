@@ -1313,8 +1313,13 @@ mkPatExpr' d varprefix ctx e@ETuple{..}              = do
 mkPatExpr' _ _         _   EPHolder{}                = return $ Match "_" empty []
 mkPatExpr' d varprefix ctx e@ETyped{..}              = mkPatExpr' d varprefix (CtxTyped e ctx) $ enode exprExpr
 mkPatExpr' d varprefix ctx e@EBinding{..}            = do
+    -- Rust does not allow variable declarations inside bindings.
+    -- To bypass this, we convert the bind pattern into a nested pattern.
+    -- Unfortunately, this means that binding can only be used when there
+    -- is a single pattern to match against, e.g., in an atom or an assignment
+    -- clause in a rule.
     Match pat cond subpatterns <- mkPatExpr' d varprefix (CtxBinding e ctx) $ enode exprPattern
-    return $ Match (varprefix <+> pp exprVar <> "@" <> pat) cond subpatterns
+    return $ Match (varprefix <+> pp exprVar) empty ((pp exprVar, Match pat cond []):subpatterns)
 mkPatExpr' d varprefix ctx e@ERef{..}                = do
     vname <- allocPatVar
     subpattern <- mkPatExpr' d varprefix (CtxRef e ctx) $ enode exprPattern
