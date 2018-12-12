@@ -1322,7 +1322,8 @@ mkPatExpr' d varprefix ctx e@EBinding{..}            = do
     return $ Match (varprefix <+> pp exprVar) empty ((pp exprVar, Match pat cond []):subpatterns)
 mkPatExpr' d varprefix ctx e@ERef{..}                = do
     vname <- allocPatVar
-    subpattern <- mkPatExpr' d varprefix (CtxRef e ctx) $ enode exprPattern
+    subpattern <- mkPatExpr' d empty {- deref() returns reference, so not need for 'varprefix' anymore -}
+                             (CtxRef e ctx) $ enode exprPattern
     return $ Match (varprefix <+> vname) empty [("(*" <> pp vname <> ").deref()" , subpattern)]
 mkPatExpr' d varprefix ctx e                         = do
     vname <- allocPatVar
