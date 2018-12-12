@@ -217,3 +217,7 @@ Referee
 Referee{Referenced{true,std.Some{"hello"}}}
 Filtered
 Filtered{Referenced{true,std.Some{"hello"}}}
+Referee2
+Referee2{Referenced{true,std.Some{"hello"}}}
+Filtered2
+Filtered2{Referee2{Referenced{true,std.Some{"hello"}}}}

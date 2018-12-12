@@ -14,6 +14,7 @@ typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
 typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
 typedef Filtered = Filtered{r: std.Ref<Referenced>}
+typedef Filtered2 = Filtered2{r: std.Ref<Referee2>}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
 typedef Gangster = Gangster{nickname: string, name: string}
 typedef HostAddress = HostAddress{host: bit<64>, addr: string}
@@ -33,6 +34,7 @@ typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef Reach = Reach{s1: station, s2: station}
 typedef Realized = Realized{name: string, id: string, x: bit<32>}
 typedef Referee = Referee{r: std.Ref<Referenced>}
+typedef Referee2 = Referee2{r: Referenced}
 typedef Referenced = Referenced{x: bool, y: std.Option<string>}
 typedef Rel1 = Rel1{x: bigint, y: IPAddr}
 typedef Rel2 = Rel2{x: bigint, z: FooStruct}
@@ -353,6 +355,7 @@ output relation Disaggregate [Disaggregate]
 output relation ExternalId [ExternalId]
 input relation ExternalIds [ExternalIds]
 output relation Filtered [Filtered]
+output relation Filtered2 [Filtered2]
 input relation Gangster [Gangster]
 output relation HostAddress [HostAddress]
 input relation HostAddresses [HostAddresses]
@@ -370,6 +373,7 @@ output relation R7 [R7]
 output relation Reach [Reach]
 input relation Realized [Realized]
 output relation Referee [Referee]
+output relation Referee2 [std.Ref<Referee2>]
 input relation Referenced [Referenced]
 input relation Rel1 [Rel1]
 input relation Rel2 [Rel2]
@@ -519,3 +523,5 @@ Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Agg
 Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
 Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})].
 Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})].
+Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[r].
+Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))].

@@ -46,6 +46,7 @@ import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Statement
+import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
@@ -259,6 +260,8 @@ relation = do
     role <-  RelInput    <$ reserved "input" <* reserved "relation"
          <|> RelOutput   <$ reserved "output" <* reserved "relation"
          <|> RelInternal <$ reserved "relation"
+    p1 <- getPosition
+    isref <- option False $ (\_ -> True) <$> reservedOp "&"
     relName <- relIdent
     ((do start <- getPosition
          fields <- parens $ commaSep arg
@@ -267,12 +270,16 @@ relation = do
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
          let tdef = TypeDef nopos relName [] $ Just tspec
-         let rel = Relation nopos role relName (TUser p relName []) pkey
+         let t = if isref
+                    then TUser p "Ref" [TUser p relName []]
+                    else TUser p relName []
+         let rel = Relation nopos role relName t pkey
          return [SpType tdef, SpRelation rel])
       <|>
-       (do rel <- (\tspec -> Relation nopos role relName tspec) <$>
-                     (brackets typeSpecSimple) <*>
-                     (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
+       (do rel <- (\tspec p2 -> let t = if isref then TUser (p1,p2) "Ref" [tspec] else tspec
+                                in Relation nopos role relName t) 
+                  <$> (brackets typeSpecSimple) <*> getPosition <*>
+                      (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))
 
 key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr
@@ -281,7 +288,7 @@ arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $
                     ForStatement nopos <$ reserved "for"
-                                       <*> (symbol "(" *> atom)
+                                       <*> (symbol "(" *> atom False)
                                        <*> (optionMaybe (reserved "if" *> expr))
                                        <*> (symbol ")" *> statement)
 
@@ -312,14 +319,14 @@ parseAssignStatement = do e <- try $ do e <- expr
                           s <- statement
                           return $ AssignStatement nopos e s
 
-parseInsertStatement = InsertStatement nopos <$> try atom
+parseInsertStatement = InsertStatement nopos <$> try (atom True)
 
 rule = Rule nopos <$>
-       (commaSep1 atom) <*>
+       (commaSep1 $ atom True) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> relIdent *> (symbol "(" <|> symbol "[")
-              RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom
+rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
+              RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
               RHSAggregate <$> (reserved "var" *> varIdent) <*>
                                (reserved "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
@@ -330,15 +337,22 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
                              (reservedOp "=" *> reserved "FlatMap" *> parens expr)
        <|> (RHSCondition <$> expr)
 
-atom = withPos $ do
+atom is_head = withPos $ do
        p1 <- getPosition
        binding <- optionMaybe $ try $ varIdent <* reservedOp "in"
        p2 <- getPosition
+       isref <- option False $ (\_ -> True) <$> reservedOp "&"
        rname <- relIdent
        val <- brackets expr
               <|>
               (withPos $ eStruct rname <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
-       return $ Atom nopos rname $ maybe val (\b -> E $ EBinding (p1, p2) b val) binding
+       p3 <- getPosition
+       let val' = if isref && is_head
+                     then E (EApply (p2,p3) "ref_new" [val])
+                     else if isref
+                          then E (ERef (p2,p3) val)
+                          else val
+       return $ Atom nopos rname $ maybe val' (\b -> E $ EBinding (p1, p2) b val') binding
 
 anonarg = ("",) <$> expr
 namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
