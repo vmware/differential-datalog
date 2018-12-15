@@ -50,6 +50,7 @@ extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
@@ -98,6 +99,7 @@ use std::collections::btree_map;
 use std::vec::{Vec};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+use std::ops;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -116,6 +118,17 @@ fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
         None => std_Option::std_None,
         Some(v) => std_Option::std_Some{x: v}
     }
+}
+
+// Range
+pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, to: &A, step: &A) -> std_Vec<A> {
+    let mut vec = std_Vec::new();
+    let mut x = from.clone();
+    while x <= *to {
+        vec.push(x.clone());
+        x = x + step.clone();
+    };
+    vec
 }
 
 // Vector
