@@ -14,6 +14,7 @@ use std::collections::btree_map;
 use std::vec::{Vec};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+use std::ops;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -32,6 +33,17 @@ fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
         None => std_Option::std_None,
         Some(v) => std_Option::std_Some{x: v}
     }
+}
+
+// Range
+pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, to: &A, step: &A) -> std_Vec<A> {
+    let mut vec = std_Vec::new();
+    let mut x = from.clone();
+    while x <= *to {
+        vec.push(x.clone());
+        x = x + to.clone();
+    };
+    vec
 }
 
 // Vector
