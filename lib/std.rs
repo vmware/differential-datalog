@@ -41,7 +41,7 @@ pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, t
     let mut x = from.clone();
     while x <= *to {
         vec.push(x.clone());
-        x = x + to.clone();
+        x = x + step.clone();
     };
     vec
 }
