@@ -661,7 +661,7 @@ mkFunc d f@Function{..} | isJust funcDef =
     mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType a
     tvars = case funcTypeVars f of
                  []  -> empty
-                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Eq + Ord + Clone + Hash + PartialEq + PartialOrd") . pp) tvs) <> ">"
 
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: DatalogProgram -> S.Set Type -> S.Set Type -> Doc

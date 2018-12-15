@@ -150,7 +150,7 @@ convertStatement (IfStatement p c s (Just e)) =
         rules1' = addRhsToRules (RHSCondition $ eNot c) rules1 in
     rules0' ++ rules1'
 convertStatement (MatchStatement p e c) =
-    let rulesList = map (\(co, s) -> convertStatement s) c
+    let rulesList = map (convertStatement . snd) c
         matchList = explodeMatchCases $ map fst c
         matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
     in concat $ zipWith addRhsToRules matchExpressions rulesList
