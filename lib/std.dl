@@ -35,6 +35,11 @@ typedef Either<'A,'B> = Left{l: 'A}
                       | Right{r: 'B}
 
 /*
+ * Range
+ */
+extern function range(from: 'A, to: 'A, step: 'A): Vec<'A>
+
+/*
  * String conversion
  */
 extern function __builtin_2string(x: 'X): string
