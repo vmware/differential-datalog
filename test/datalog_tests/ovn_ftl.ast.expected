@@ -61,6 +61,7 @@ extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
 extern function std.str_to_lower (s: string): string
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
 extern function std.vec_is_empty (v: std.Vec<'X>): bool
