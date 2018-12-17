@@ -65,6 +65,7 @@ extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
 extern function std.str_to_lower (s: string): string
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
 extern function std.vec_is_empty (v: std.Vec<'X>): bool
@@ -458,6 +459,10 @@ pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
 
 pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
+}
+
+pub fn std_string_split(s: &arcval::DDString, sep: &arcval::DDString) -> std_Vec<arcval::DDString> {
+    std_Vec{x: s.str().split(sep.str()).map(|x| arcval::DDString::from_str(x)).collect()}
 }
 
 pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {

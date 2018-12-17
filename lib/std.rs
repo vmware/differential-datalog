@@ -375,6 +375,10 @@ pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDStri
     arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
 }
 
+pub fn std_string_split(s: &arcval::DDString, sep: &arcval::DDString) -> std_Vec<arcval::DDString> {
+    std_Vec{x: s.str().split(sep.str()).map(|x| arcval::DDString::from_str(x)).collect()}
+}
+
 pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {
     arcval::DDString::from(s.str().to_lowercase())
 }

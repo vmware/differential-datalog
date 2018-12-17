@@ -48,6 +48,7 @@ extern function hex(x: 'X): string
 extern function parse_dec_u64(s: string): Option<bit<64>>
 
 extern function string_join(strings: Vec<string>, sep: string): string
+extern function string_split(s: string, sep: string): Vec<string>
 
 extern function str_to_lower(s: string): string
 
