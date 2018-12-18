@@ -1,4 +1,4 @@
-use timely::progress::nested::product::Product;
+use timely::order::Product;
 use timely::dataflow::*;
 use timely::dataflow::scopes::{Child};
 use timely::dataflow::operators::*;
@@ -16,9 +16,9 @@ use profile::*;
 /// addition of collections, and a final `distinct` operator applied before connecting the definition.
 pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
-    feedback: Option<Handle<G::Timestamp, u32,(D, Product<G::Timestamp, u32>, isize)>>,
-    current: Collection<Child<'a, G, u32>, D>,
-    cycle: Collection<Child<'a, G, u32>, D>,
+    feedback: Option<Handle<Product<G::Timestamp, u32>, (D, Product<G::Timestamp, u32>, isize)>>,
+    current: Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>,
+    cycle: Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>,
     name: String
 }
 
@@ -31,22 +31,22 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Variable<'a, G, D> where G::Timesta
         result.add(source);
         result
     }*/
-    pub fn from(source: &Collection<Child<'a, G, u32>, D>, name: &str) -> Variable<'a, G, D> {
-        let (feedback, cycle) = source.inner.scope().loop_variable(u32::max_value(), 1);
-        let cycle = Collection::new(cycle);
-        let mut result = Variable { feedback: Some(feedback), current: cycle.clone().filter(|_| false), cycle: cycle, name: name.to_string() };
+    pub fn from(source: &Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>, name: &str) -> Variable<'a, G, D> {
+        let (feedback, cycle) = source.inner.scope().loop_variable(1);
+        let cycle_col = Collection::new(cycle);
+        let mut result = Variable { feedback: Some(feedback), current: cycle_col.clone().filter(|_| false), cycle: cycle_col, name: name.to_string() };
         result.add(source);
         result
     }
 
     /// Adds a new source of data to the `Variable`.
-    pub fn add(&mut self, source: &Collection<Child<'a, G, u32>, D>) {
+    pub fn add(&mut self, source: &Collection<Child<'a, G, Product<G::Timestamp,u32>>, D>) {
         self.current = self.current.concat(source);
     }
 }
 
 impl<'a, G: Scope, D: Default+Data+Hashable> ::std::ops::Deref for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
-    type Target = Collection<Child<'a, G, u32>, D>;
+    type Target = Collection<Child<'a, G, Product<G::Timestamp,u32>>, D>;
     fn deref(&self) -> &Self::Target {
         &self.cycle
     }

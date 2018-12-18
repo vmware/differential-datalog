@@ -5,9 +5,9 @@ version = "0.1.0"
 [dependencies.graph_map]
 git="https://github.com/frankmcsherry/graph-map.git"
 
-[dependencies.differential-dataflow]
-git="https://github.com/frankmcsherry/differential-dataflow.git"
-tag="v0.7.0"
+#[dependencies.differential-dataflow]
+#git="https://github.com/frankmcsherry/differential-dataflow.git"
+#tag="v0.8.0"
 
 [dev-dependencies]
 getopts="0.2.14"
@@ -16,12 +16,13 @@ byteorder="0.4.2"
 itertools="^0.6"
 
 [dependencies]
-abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
-timely = { git = "https://github.com/frankmcsherry/timely-dataflow", tag = "v0.7.0" }
+differential-dataflow = "0.8"
+abomonation = "0.7"
+timely = "0.8"
 fnv="1.0.2"
 num = "0.2"
-serde = "1.0.14"
-serde_derive = "1.0.14"
+serde = "1.0"
+serde_derive = "1.0"
 libc = "0.2"
 
 [features]
