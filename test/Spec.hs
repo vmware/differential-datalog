@@ -43,9 +43,11 @@ import GHC.IO.Exception
 import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import GHC.Conc.Sync
 import qualified Data.Set as S
 import qualified Data.Map as M
+import qualified Codec.Compression.GZip as GZ
 
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
@@ -92,9 +94,9 @@ sOUFFLE_DIR = "./test/souffle"
 souffleTests :: Bool -> TestTree
 souffleTests progress =
   testGroup "souffle tests" $
-        [ goldenVsFile "doop"
-          (sOUFFLE_DIR </> "souffle.dl.expected")
-          (sOUFFLE_DIR </> "souffle.dl")
+        [ goldenVsFiles "doop"
+          [sOUFFLE_DIR </> "souffle.dump.expected.gz"]
+          [sOUFFLE_DIR </> "souffle.dump"]
           $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
 
 convertSouffle :: Bool -> IO ()
@@ -242,10 +244,21 @@ cliTest progress fname specname rust_dir extra_args = do
 goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
 goldenVsFiles name ref new act =
   goldenTest name
-             (do {refs <- mapM BS.readFile ref; evaluate $ rnf refs; return refs})
+             (do {refs <- mapM readDecompress ref; evaluate $ rnf refs; return refs})
              (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news})
              cmp upd
   where
+  readDecompress :: FilePath -> IO BS.ByteString
+  readDecompress f = do
+    dat <- BS.readFile f
+    return $ if takeExtension f == ".gz"
+       then LBS.toStrict $ GZ.decompress $ LBS.fromStrict dat
+       else dat
+  writeCompress :: FilePath -> BS.ByteString -> IO ()
+  writeCompress f dat =
+    if takeExtension f == ".gz"
+       then LBS.writeFile f $ GZ.compress $ LBS.fromStrict dat
+       else BS.writeFile f dat
   cmp [] [] = return Nothing
   cmp xs ys = return $ (\errs -> if null errs then Nothing else Just (intercalate "\n" errs)) $
               mapMaybe (\((x,r),(y,n)) ->
@@ -254,7 +267,7 @@ goldenVsFiles name ref new act =
                        else Just $ printf "Files '%s' and '%s' differ" r n)
                   $ zip (zip xs ref) (zip ys new)
   upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
-                                 when (not exists) $ BS.writeFile r b)
+                                 when (not exists) $ writeCompress r b)
              $ zip ref bufs
 
 -- A non-recursive version of findByExtension

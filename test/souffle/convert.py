@@ -32,7 +32,7 @@ class Files(object):
         self.output("function cat(s: string, t: string): string = s ++ t")
         self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
-        self.outputData("timestamp", ";")
+        #self.outputData("timestamp", ";")
         self.outputData("start", ";")
         print "Reading from", inputName, "writing output to", outputName, "writing data to", outputDataName
 
@@ -47,9 +47,9 @@ class Files(object):
 
     def done(self):
         self.outputData("echo Finished adding data, committing", ";")
-        self.outputData("timestamp", ";")
+        #self.outputData("timestamp", ";")
         self.outputData("commit", ";")
-        self.outputData("timestamp", ";")
+        #self.outputData("timestamp", ";")
         self.outputData("profile", ";")
         self.outputData("dump", ";")
         self.outputData("echo done", ";")
