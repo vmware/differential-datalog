@@ -32,8 +32,6 @@ use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
-use timely::progress::nested::product::Product;
-use timely::progress::timestamp::RootTimestamp;
 use timely::logging::TimelyEvent;
 use timely::worker::Worker;
 use differential_dataflow::input::{Input,InputSession};
@@ -43,8 +41,11 @@ use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
+
 use variable::*;
 use profile::*;
+
+type TS = usize;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
@@ -58,9 +59,6 @@ pub type Response<X> = Result<X, String>;
 /// Value trait describes types that can be stored in a collection
 pub trait Val: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + Sync + 'static {}
 impl<T> Val for T where T: Eq + Ord + Clone + Send + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + Debug + Abomonation + Default + Sync + 'static {}
-
-//pub trait ValTraceReader<V: Val> : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
-//impl<T,V: Val> ValTraceReader<V> for T where T : TraceReader<V,V,Product<RootTimestamp,u64>,isize>+Clone+'static {}
 
 /// Unique identifier of a datalog relation
 pub type RelId = usize;
@@ -358,7 +356,7 @@ impl<V:Val> Program<V>
         let prof_thread = thread::spawn(move||Self::prof_thread_func(prof_recv, profile2));
 
         /* Shared timestamp managed by worker 0 and read by all other workers */
-        let progress_lock = Arc::new(RwLock::new(Product::new(RootTimestamp,0)));
+        let progress_lock = Arc::new(RwLock::new(0));
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
         let h = thread::spawn(move ||
@@ -392,9 +390,9 @@ impl<V:Val> Program<V>
                     });
 
                     let rx = rx.clone();
-                    let mut all_sessions = worker.dataflow::<u64,_,_>(|outer: &mut Child<Worker<Allocator>, u64>| {
-                        let mut sessions : FnvHashMap<RelId, InputSession<u64, V, isize>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, u64>,V,isize>> = FnvHashMap::default();
+                    let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| {
+                        let mut sessions : FnvHashMap<RelId, InputSession<TS, V, isize>> = FnvHashMap::default();
+                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,isize>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
@@ -429,7 +427,7 @@ impl<V:Val> Program<V>
                                         collections.insert(r.id, collection);
                                     };
                                     /* create a nested scope for mutually recursive relations */
-                                    let new_collections = outer.scoped(|inner| {
+                                    let new_collections = outer.scoped("recursive component", |inner| {
                                         /* create variables for relations defined in the SCC. */
                                         let mut vars = FnvHashMap::default();
                                         /* arrangements created inside the nested scope */
@@ -524,7 +522,7 @@ impl<V:Val> Program<V>
                     });
                     //println!("worker {} started", worker.index());
 
-                    let mut epoch: u64 = 0;
+                    let mut epoch: TS = 0;
 
                     // feed initial data to sessions
                     if worker_index == 0 {
@@ -533,11 +531,11 @@ impl<V:Val> Program<V>
                         }
                         epoch = epoch + 1;
                         Self::advance(&mut all_sessions, epoch);
-                        Self::flush(&mut all_sessions, &probe, worker, &progress_lock, &progress_barrier);
+                        Self::flush(&mut all_sessions, &probe, worker, &*progress_lock, &progress_barrier);
                     }
 
                     // close session handles for non-input sessions
-                    let mut sessions: FnvHashMap<RelId, InputSession<u64, V, isize>> =
+                    let mut sessions: FnvHashMap<RelId, InputSession<TS, V, isize>> =
                         all_sessions.drain().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
 
                     /* Only worker 0 receives data */
@@ -589,7 +587,7 @@ impl<V:Val> Program<V>
                     loop {
                         progress_barrier.wait();
                         let time = *progress_lock.read().unwrap();
-                        if time == Product::new(RootTimestamp, 0xffffffffffffffff as u64) {
+                        if time == 0xffffffffffffffff as TS {
                             return
                         };
                         while probe.less_than(&time) {
@@ -656,7 +654,7 @@ impl<V:Val> Program<V>
     }
 
     /* Advance the epoch on all input sessions */
-    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>, epoch : u64) {
+    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, isize>>, epoch : TS) {
         for (_,s) in sessions.into_iter() {
             //print!("advance\n");
             s.advance_to(epoch);
@@ -665,10 +663,10 @@ impl<V:Val> Program<V>
 
     /* Propagate all changes through the pipeline */
     fn flush(
-        sessions: &mut FnvHashMap<RelId, InputSession<u64, V, isize>>,
-        probe: &ProbeHandle<Product<RootTimestamp, u64>>,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, isize>>,
+        probe: &ProbeHandle<TS>,
         worker: &mut Worker<Allocator>,
-        progress_lock: &RwLock<Product<RootTimestamp, u64>>,
+        progress_lock: &RwLock<TS>,
         progress_barrier: &Barrier)
     {
         for (_,r) in sessions.into_iter() {
@@ -686,10 +684,10 @@ impl<V:Val> Program<V>
         }
     }
 
-    fn stop_workers(progress_lock: &RwLock<Product<RootTimestamp, u64>>,
+    fn stop_workers(progress_lock: &RwLock<TS>,
                     progress_barrier: &Barrier)
     {
-        *progress_lock.write().unwrap() = Product::new(RootTimestamp, 0xffffffffffffffff as u64);
+        *progress_lock.write().unwrap() = 0xffffffffffffffff as TS;
         progress_barrier.wait();
     }
 

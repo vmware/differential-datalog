@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::fmt;
 use std::io;
 use abomonation::Abomonation;
-use program::Val;
 use std::ops::Deref;
 use super::record::{FromRecord, IntoRecord, Record};
 

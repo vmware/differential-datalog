@@ -17,9 +17,9 @@ path = "./cmd_parser"
 path = "./ovsdb"
 
 [dependencies]
-abomonation= { git = "https://github.com/frankmcsherry/abomonation" }
-serde = "1.0.14"
-serde_derive = "1.0.14"
+abomonation= "0.7"
+serde = "1.0"
+serde_derive = "1.0"
 fnv="1.0.2"
 libc="0.2"
 time="0.1"

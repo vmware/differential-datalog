@@ -75,3 +75,4 @@ tests:
     - filepath
     - process
     - deepseq
+    - zlib
