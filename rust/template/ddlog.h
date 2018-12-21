@@ -28,6 +28,11 @@ typedef void * ddlog_prog;
 typedef void ddlog_cmd;
 
 /*
+ * Unique DDlog table identifier
+ */
+typedef size_t table_id;
+
+/*
  * The record type represents DDlog values that can be written to and
  * read from the DDlog database.
  *
@@ -53,11 +58,55 @@ typedef void ddlog_record;
  * valid, values larger than the number of cores in the system are
  * likely to hurt the performance.
  *
+ * `do_store` - set to true to store the copy of output tables inside DDlog.
+ * When set, the client can use the following APIs to retrieve the contents of
+ * tables:
+ *	- `ddlog_dump_ovsdb_deltaplus_table()`
+ *	- `ddlog_dump_ovsdb_deltaminus_table()`
+ *	- `ddlog_dump_ovsdb_deltaupdate_table()`
+ *	- `ddlog_dump_table()`
+ * This has a cost in terms of memory and CPU.  In addition, the current implementation
+ * serializes all writes to its internal copies of tables, introducing contention
+ * when `workers > 1`.  Therefore, this flag should be set to `false` if the
+ * client prefers to use DDlog in streaming mode, via the callback mechanism
+ * (see below).
+ *
+ * `cb` - callback to be invoked for every record added to or removed from an
+ * output relation.  DDlog guarantees that the callback can only be invoked in
+ * two situations: (1) from the `ddlog_run()` function, as the DDlog program
+ * is initialized with static records (if any), (2) from
+ * `ddlog_transaction_commit()`, as DDlog applies updates performed by the
+ * transaction.
+ *   The `cb` function takes the following arguments:
+ *	- `arg`	     - opaque used-defined value
+ *	- `table`    - table being modified
+ *	- `rex`	     - record that has been inserted or deleted to the
+ *	- `polarity` - `true` - record has been added
+ *		       `false` - record has been deleted
+ *
+ * IMPORTANT: Thread safety: DDlog invokes the callback from its worker threads
+ * without any serialization to avoid contention. Hence, if the `workers` argument
+ * is greater than 1, then `cb` must be prepared to handle concurrent invocations
+ * from multiple threads.
+ *
+ * IMPORTANT: DDlog does not guarantee that callback is invoked at most once for
+ * each record and for each transaction.  Depending on your specific dataflow,
+ * it is possible that DDlog will, e.g., create and then delete a record within a
+ * transaction, and invoke `cb` both times.
+ *
+ * Setting `cb` to NULL disables notifications.
+ *
  * Returns a program handle to be used in subsequent calls to
  * `ddlog_transaction_start()`,
  * `ddlog_transaction_commit()`, etc., or NULL in case of error.
  */
-extern ddlog_prog ddlog_run(unsigned int workers);
+extern ddlog_prog ddlog_run(unsigned int workers,
+			    bool do_store,
+			    bool (*cb)(void *arg,
+				       table_id tablie,
+				       const ddlog_record *rec,
+				       bool polarity),
+			    void* cb_arg);
 
 /*
  * Stops the program; deallocates all resources, invalidates the handle.
@@ -126,6 +175,9 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
  * Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in
  * JSON format.
  *
+ * Requires that `hprog` was created by calling `ddlog_run()` with
+ * `do_store` flag set to `true`.  Fails otherwise.
+ *
  * On success, returns `0` and stores a pointer to JSON string in
  * `json`.  This pointer must be later deallocated by calling
  * `ddlog_free_json()`
@@ -140,6 +192,9 @@ extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog,
  * Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands
  * in JSON format.
  *
+ * Requires that `hprog` was created by calling `ddlog_run()` with
+ * `do_store` flag set to `true`.  Fails otherwise.
+ *
  * On success, returns `0` and stores a pointer to JSON string in
  * `json`.  This pointer must be later deallocated by calling
  * `ddlog_free_json()`
@@ -153,6 +208,9 @@ extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog,
 /*
  * Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands
  * in JSON format.
+ *
+ * Requires that `hprog` was created by calling `ddlog_run()` with
+ * `do_store` flag set to `true`.  Fails otherwise.
  *
  * On success, returns `0` and stores a pointer to JSON string in
  * `json`.  This pointer must be later deallocated by calling
@@ -198,6 +256,9 @@ extern int ddlog_clear_relation(ddlog_prog prog, const char *table);
  * `table` is a null-terminated string that specifies the name of the
  * table.  `cb_arg` is an opaque argument passed to each invocation.
  *
+ * Requires that `hprog` was created by calling `ddlog_run()` with
+ * `do_store` flag set to `true`.  Fails otherwise.
+ *
  * The `rec` argument of the callback function is a borrowed reference
  * that is only valid for the duration of the callback.
  *
@@ -205,9 +266,8 @@ extern int ddlog_clear_relation(ddlog_prog prog, const char *table);
  * database state after the last committed transaction.
  */
 extern int ddlog_dump_table(ddlog_prog prog, const char *table,
-                            bool (*cb)(void *arg, const ddlog_record *rec),
-                            void *cb_arg);
-
+                            bool (*cb)(uintptr_t arg, const ddlog_record *rec),
+                            uintptr_t cb_arg);
 
 /***********************************************************************
  * Profiling

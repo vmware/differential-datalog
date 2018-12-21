@@ -40,7 +40,7 @@ use libc::size_t;
 pub mod valmap;
 pub mod ovsdb;
 
-pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, sync::Arc<sync::Mutex<valmap::ValMap>>);
+pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, Option<sync::Arc<sync::Mutex<valmap::ValMap>>>);
 
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
     match c {
@@ -70,17 +70,54 @@ fn upd_cb(db: &sync::Arc<sync::Mutex<valmap::ValMap>>, relid: RelId, v: &Value, 
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_run(workers: raw::c_uint) -> *const HDDlog
+pub extern "C" fn ddlog_run(workers: raw::c_uint,
+                            do_store: bool,
+                            cb: Option<extern "C" fn(arg: libc::uintptr_t,
+                                                     table: libc::size_t,
+                                                     rec: *const record::Record,
+                                                     polarity: bool)>,
+                            cb_arg:  libc::uintptr_t) -> *const HDDlog
 {
-    let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
-    let db2 = db.clone();
-    let program = prog(sync::Arc::new(move |relid,v,w| {
-        debug_assert!(w == 1 || w == -1);
-        upd_cb(&db, relid, v, w == 1)
-    }));
     let workers = if workers == 0 { 1 } else { workers };
-    let prog = program.run(workers as usize);
-    sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), db2)))
+    if do_store {
+        let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
+        let db2 = db.clone();
+        match cb {
+            None => {
+                let program = prog(sync::Arc::new(move |relid,v,w| {
+                    debug_assert!(w == 1 || w == -1);
+                    upd_cb(&db, relid, v, w == 1)
+                }));
+                let prog = program.run(workers as usize);
+                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), Some(db2))))
+            },
+            Some(cb) => {
+                let program = prog(sync::Arc::new(move |relid,v,w| {
+                    debug_assert!(w == 1 || w == -1);
+                    upd_cb(&db, relid, v, w == 1);
+                    cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
+                }));
+                let prog = program.run(workers as usize);
+                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), Some(db2))))
+            }
+        }
+    } else {
+        match cb {
+            None => {
+                let program = prog(sync::Arc::new(|_,_,_| {}));
+                let prog = program.run(workers as usize);
+                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), None)))
+            },
+            Some(cb) => {
+                let program = prog(sync::Arc::new(move |relid,v,w| {
+                        debug_assert!(w == 1 || w == -1);
+                        cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
+                    }));
+                let prog = program.run(workers as usize);
+                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), None)))
+            }
+        }
+    }
 }
 
 #[no_mangle]
@@ -210,14 +247,19 @@ pub extern "C" fn ddlog_dump_table(
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = match dump_table(&mut prog.1.lock().unwrap(), table, cb, cb_arg) {
-        Ok(recs) => {
-            0
-        },
-        Err(e) => {
-            eprintln!("ddlog_dump_table(): error: {}", e);
-            -1
+    let res = if let Some(ref db) = prog.1 {
+        match dump_table(&mut db.lock().unwrap(), table, cb, cb_arg) {
+            Ok(recs) => {
+                0
+            },
+            Err(e) => {
+                eprintln!("ddlog_dump_table(): error: {}", e);
+                -1
+            }
         }
+    } else {
+        eprintln!("ddlog_dump_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        -1
     };
     sync::Arc::into_raw(prog);
     res
@@ -231,12 +273,8 @@ fn dump_table(db: &mut valmap::ValMap,
     let table_str = unsafe{ ffi::CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
     let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
     for val in db.get_rel(relid as RelId) {
-        if let record::Record::NamedStruct(_, fields) = val.clone().into_record() {
-            if !cb(cb_arg, Box::new(fields.get(0).ok_or_else(||format!("invalid value {}", val))?.1.clone()).as_ref()) {
-                break;
-            }
-        } else {
-            return Result::Err(format!("invalid value {}", val));
+        if !cb(cb_arg, &val.clone().into_record() as *const record::Record) {
+            break;
         }
     };
     Ok(())

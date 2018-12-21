@@ -1088,3 +1088,26 @@ fn test_enum() {
                                         f3: Foo{f1: 0}};
     assert_eq!(DummyEnum::from_record(&enm.clone().into_record()), Ok(enm));
 }
+
+
+#[macro_export]
+macro_rules! decl_val_enum_into_record {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$arg:ident} ),* ) => {
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
+                match self {
+                    $($n::$cons{$arg} => $arg.into_record()),*
+                }
+            }
+        }
+    };
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($arg:ident) ),* ) => {
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
+                match self {
+                    $($n::$cons($arg) => $arg.into_record()),*
+                }
+            }
+        }
+    };
+}
