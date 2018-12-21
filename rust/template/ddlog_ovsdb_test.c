@@ -6,7 +6,7 @@
 
 int main(int args, char *argv)
 {
-	ddlog_prog prog = ddlog_run(1);
+	ddlog_prog prog = ddlog_run(1, true, NULL, 0);
 	if (prog == NULL) {
 		fprintf(stderr, "failed to initialize DDlog program\n");
 		return -1;

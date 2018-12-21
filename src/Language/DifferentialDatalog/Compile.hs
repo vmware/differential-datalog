@@ -681,7 +681,7 @@ mkValType d types grp_types =
     "        }"                                                                             $$
     "    }"                                                                                 $$
     "}"                                                                                     $$
-    "decl_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                       $$
+    "decl_val_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                   $$
     (vcat $ map mkgrptype $ S.toList grp_types)
     where
     consname t = mkValConstructorName' d t
