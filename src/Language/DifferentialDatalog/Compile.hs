@@ -1055,7 +1055,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
         strip (E e@ETuple{..})   = E e{exprTupleFields = map strip exprTupleFields}
         strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar
                                  = E e
-        strip (E e@EBinding{..}) = eVar exprVar -- there can be no new variables inside binding
+        strip (E e@EBinding{..}) = E e{exprPattern = strip exprPattern}
         strip (E e@ETyped{..})   = E e{exprExpr = strip exprExpr}
         strip (E e@ERef{..})     = E e{exprPattern = strip exprPattern}
         strip _                  = ePHolder
