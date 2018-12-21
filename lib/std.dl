@@ -71,6 +71,10 @@ extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
 
+/* Returns the first element of the group.
+ * It always exists, as aggregation cannot return an empty group. */
+extern function group_first(g: Group<'A>): 'A
+
 /*
  * Vec
  */

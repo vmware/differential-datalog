@@ -456,7 +456,9 @@ pub fn std_group_unzip<X: Ord, Y: Ord, G: Group<(X,Y)>+?Sized>(g: &G) -> (std_Ve
     (xs,ys)
 }
 
-
+pub fn std_group_first<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
+    g.ith(0)
+}
 
 /* Tuples */
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
