@@ -110,7 +110,7 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
             0
         },
         Err(e) => {
-            eprintln!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e);
+            eprintln!("ddlog_dump_ovsdb_deltaminus_table(): error: {}", e);
             -1
         }
     };
