@@ -134,9 +134,9 @@ fn dump_deltaminus_table(db: &mut valmap::ValMap, table: *const c_char) -> Resul
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn ddlog_dump_ovsdb_deltupdate_table(prog:  *const HDDlog,
-                                                    table: *const c_char,
-                                                    json:  *mut *mut c_char) -> c_int {
+pub extern "C" fn ddlog_dump_ovsdb_deltaupdate_table(prog:  *const HDDlog,
+                                                     table: *const c_char,
+                                                     json:  *mut *mut c_char) -> c_int {
     if json.is_null() || prog.is_null() || table.is_null() {
         return -1;
     };
