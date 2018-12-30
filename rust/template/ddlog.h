@@ -51,6 +51,13 @@ typedef void ddlog_record;
 
 
 /*
+ * Get DDlog table id by name.
+ *
+ * On error, returns -1.
+ */
+extern table_id ddlog_get_table_id(const char* tname);
+
+/*
  * Create an instance of DDlog program.
  *
  * `workers` is the number of DDlog worker threads that will be
@@ -103,7 +110,7 @@ typedef void ddlog_record;
 extern ddlog_prog ddlog_run(unsigned int workers,
 			    bool do_store,
 			    bool (*cb)(void *arg,
-				       table_id tablie,
+				       table_id table,
 				       const ddlog_record *rec,
 				       bool polarity),
 			    void* cb_arg);
@@ -184,8 +191,7 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog,
-                                            const char *table,
+extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog, table_id table,
                                             char **json);
 
 /*
@@ -201,8 +207,7 @@ extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog,
  *
  * On error, returns a negative number and write error message to stderr.
  */
-extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog,
-                                             const char *table,
+extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog, table_id table,
                                              char **json);
 
 /*
@@ -218,8 +223,7 @@ extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog,
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int ddlog_dump_ovsdb_deltaupdate_table(ddlog_prog hprog,
-                                              const char *table,
+extern int ddlog_dump_ovsdb_deltaupdate_table(ddlog_prog hprog, table_id table,
                                               char **json);
 
 /*
@@ -247,14 +251,13 @@ extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
  * On success, returns `0`. On error, returns a negative value and
  * writes error message to stderr.
  */
-extern int ddlog_clear_relation(ddlog_prog prog, const char *table);
+extern int ddlog_clear_relation(ddlog_prog prog, table_id table);
 
 /*
  * Dump the content of an output table by invoking `cb` for each value
  * in the table.
  *
- * `table` is a null-terminated string that specifies the name of the
- * table.  `cb_arg` is an opaque argument passed to each invocation.
+ * `cb_arg` is an opaque argument passed to each invocation.
  *
  * Requires that `hprog` was created by calling `ddlog_run()` with
  * `do_store` flag set to `true`.  Fails otherwise.
@@ -265,7 +268,7 @@ extern int ddlog_clear_relation(ddlog_prog prog, const char *table);
  * The content of the table returned by this function represents
  * database state after the last committed transaction.
  */
-extern int ddlog_dump_table(ddlog_prog prog, const char *table,
+extern int ddlog_dump_table(ddlog_prog prog, table_id table,
                             bool (*cb)(uintptr_t arg, const ddlog_record *rec),
                             uintptr_t cb_arg);
 
@@ -737,39 +740,36 @@ extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
 /*
  * Create an insert command.
  *
- * `table` is the null-terminated name of the table to insert to.  `rec`
- * is the record to insert.  The function takes ownership of this
- * record.
+ * `table` is the table to insert to.  `rec` is the record to insert.
+ * The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
  */
-extern ddlog_cmd* ddlog_insert_cmd(const char *table, ddlog_record *rec);
+extern ddlog_cmd* ddlog_insert_cmd(table_id table, ddlog_record *rec);
 
 /*
  * Create delete-by-value command.
  *
- * `table` is the null-terminated name of the table to delete from.
- * `rec` is the record to delete.  The function takes ownership of this
- * record.
+ * `table` is the table to delete from. `rec` is the record to delete.
+ * The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
  */
-extern ddlog_cmd* ddlog_delete_val_cmd(const char *table, ddlog_record *rec);
+extern ddlog_cmd* ddlog_delete_val_cmd(table_id table, ddlog_record *rec);
 
 /*
  * Create delete-by-key command.
  *
- * `table` is the null-terminated name of the table to delete from.
- * `rec` is the key to delete.  The table must have a primary key and
- * `rec` type must match the type of the key.  The function takes
- * ownership of `rec`.
+ * `table` is the table to delete from.  `rec` is the key to delete.  The
+ * table must have a primary key and `rec` type must match the type of the
+ * key.  The function takes ownership of `rec`.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
  *
  */
-extern ddlog_cmd* ddlog_delete_key_cmd(const char *table, ddlog_record *rec);
+extern ddlog_cmd* ddlog_delete_key_cmd(table_id table, ddlog_record *rec);
 
 #endif

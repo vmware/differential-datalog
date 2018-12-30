@@ -77,13 +77,14 @@ fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<
             };
             if old.is_some() {
                 // delete_key
-                cmds.push(UpdCmd::DeleteKey(Cow::from(table.to_owned()), uuid.clone()))
+                cmds.push(UpdCmd::DeleteKey(RelIdentifier::RelName(Cow::from(table.to_owned())), uuid.clone()))
             };
             if new.is_some() {
                 let mut fields = new.unwrap()?;
                 fields.push((Cow::from("_uuid"), uuid));
                 // insert
-                cmds.push(UpdCmd::Insert(Cow::from(table.to_owned()), Record::NamedStruct(Cow::from(table.to_owned()), fields)))
+                cmds.push(UpdCmd::Insert(RelIdentifier::RelName(Cow::from(table.to_owned())),
+                                         Record::NamedStruct(Cow::from(table.to_owned()), fields)))
             };
             Ok(())
         },

@@ -44,21 +44,28 @@ pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, Option<sync::Arc<sync::Mu
 
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
     match c {
-        record::UpdCmd::Insert(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
+        record::UpdCmd::Insert(rident, rec) => {
+            let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert{relid: relid as RelId, v: val})
         },
-        record::UpdCmd::Delete(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
+        record::UpdCmd::Delete(rident, rec) => {
+            let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue{relid: relid as RelId, v: val})
         },
-        record::UpdCmd::DeleteKey(rname, rec) => {
-            let relid: Relations = relname2id(rname).ok_or_else(||format!("Unknown relation {}", rname))?;
+        record::UpdCmd::DeleteKey(rident, rec) => {
+            let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey{relid: relid as RelId, k: key})
         }
+    }
+}
+
+fn relident2id(r: &record::RelIdentifier) -> Option<Relations> {
+    match r {
+        record::RelIdentifier::RelName(rname) => relname2id(rname),
+        record::RelIdentifier::RelId(id)      => relid2rel(*id)
     }
 }
 
@@ -67,6 +74,27 @@ fn __null_cb(_relid: RelId, _v: &Value, _w: isize) {}
 
 fn upd_cb(db: &sync::Arc<sync::Mutex<valmap::ValMap>>, relid: RelId, v: &Value, pol: bool) {
     db.lock().unwrap().update(relid, v, pol);
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t
+{
+    if tname.is_null() {
+        return libc::size_t::max_value();
+    };
+    match get_table_id(tname) {
+        Ok(relid) => relid as libc::size_t,
+        Err(e) => {
+            eprintln!("ddlog_get_table_id(): error: {}", e);
+            libc::size_t::max_value()
+        }
+    }
+}
+
+fn get_table_id(tname: *const raw::c_char) -> Result<Relations, String>
+{
+    let table_str = unsafe{ ffi::CStr::from_ptr(tname) }.to_str().map_err(|e| format!("{}", e))?;
+    relname2id(table_str).ok_or_else(||format!("unknown relation {}", table_str))
 }
 
 #[no_mangle]
@@ -213,9 +241,9 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_clear_relation(
     prog: *const HDDlog,
-    table: *const raw::c_char) -> raw::c_int
+    table: libc::size_t) -> raw::c_int
 {
-    if prog.is_null() || table.is_null() {
+    if prog.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
@@ -230,20 +258,18 @@ pub unsafe extern "C" fn ddlog_clear_relation(
     res
 }
 
-unsafe fn clear_relation(prog: &HDDlog, table: *const raw::c_char) -> Result<(), String> {
-    let table_str = ffi::CStr::from_ptr(table).to_str().map_err(|e| format!("{}", e))?;
-    let relid = input_relname_to_id(table_str).ok_or_else(||format!("unknown input relation {}", table_str))?;
-    prog.0.lock().unwrap().clear_relation(relid as RelId)
+unsafe fn clear_relation(prog: &HDDlog, table: libc::size_t) -> Result<(), String> {
+    prog.0.lock().unwrap().clear_relation(table)
 }
 
 #[no_mangle]
 pub extern "C" fn ddlog_dump_table(
     prog:    *const HDDlog,
-    table:   *const raw::c_char,
+    table:   libc::size_t,
     cb:      extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
     cb_arg:  *mut raw::c_void) -> raw::c_int
 {
-    if prog.is_null() || table.is_null() {
+    if prog.is_null() {
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
@@ -266,13 +292,11 @@ pub extern "C" fn ddlog_dump_table(
 }
 
 fn dump_table(db: &mut valmap::ValMap,
-              table: *const raw::c_char,
+              table: libc::size_t,
               cb: extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
               cb_arg: *mut raw::c_void) -> Result<(), String>
 {
-    let table_str = unsafe{ ffi::CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
-    let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
-    for val in db.get_rel(relid as RelId) {
+    for val in db.get_rel(table) {
         if !cb(cb_arg, &val.clone().into_record() as *const record::Record) {
             break;
         }
