@@ -72,6 +72,9 @@ fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<
         Value::Object(mut m) => {
             let old = lookup(&mut m, "old").ok().map(|v|row_from_obj(v));
             let new = lookup(&mut m, "new").ok().map(|v|row_from_obj(v));
+            if new.is_none() && old.is_none() {
+                return Err(format!("row is not in <row-update> format: {}", Value::Object(m)));
+            };
             if old.is_some() {
                 // delete_key
                 cmds.push(UpdCmd::DeleteKey(Cow::from(table.to_owned()), uuid.clone()))
