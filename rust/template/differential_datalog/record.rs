@@ -11,6 +11,7 @@ use std::ptr::{null_mut, null};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use libc::size_t;
+use std::fmt;
 
 #[cfg(test)]
 use num::bigint::{ToBigInt, ToBigUint};
@@ -43,11 +44,32 @@ pub enum CollectionKind {
     Map
 }
 
+
+#[derive(Debug,PartialEq,Eq,Clone)]
+pub enum RelIdentifier {
+    RelName(Name),
+    RelId(usize)
+}
+
+/*
+ * Relation can be identified by name (e.g., when parsing JSON or text)
+ * or ID, which is more efficient if the caller bothered to convert
+ * relation name to ID.
+ */
+impl fmt::Display for RelIdentifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RelIdentifier::RelName(rname) => write!(f, "{}", rname),
+            RelIdentifier::RelId(rid) => write!(f, "{}", rid)
+        }
+    }
+}
+
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum UpdCmd {
-    Insert (Name, Record),
-    Delete (Name, Record),
-    DeleteKey (Name, Record)
+    Insert (RelIdentifier, Record),
+    Delete (RelIdentifier, Record),
+    DeleteKey (RelIdentifier, Record)
 }
 
 /*
@@ -413,33 +435,21 @@ unsafe fn mk_record_vec(fields: *const *mut Record, len: size_t) -> Vec<Record> 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_insert_cmd(table: *const c_char, rec: *mut Record) -> *mut UpdCmd {
+pub unsafe extern "C" fn ddlog_insert_cmd(table: libc::size_t, rec: *mut Record) -> *mut UpdCmd {
     let rec = Box::from_raw(rec);
-    let table = match CStr::from_ptr(table).to_str() {
-        Ok(s) => s,
-        Err(_) => {return null_mut();}
-    };
-    Box::into_raw(Box::new(UpdCmd::Insert(Cow::from(table.to_owned()), *rec)))
+    Box::into_raw(Box::new(UpdCmd::Insert(RelIdentifier::RelId(table), *rec)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_delete_val_cmd(table: *const c_char, rec: *mut Record) -> *mut UpdCmd {
+pub unsafe extern "C" fn ddlog_delete_val_cmd(table: libc::size_t, rec: *mut Record) -> *mut UpdCmd {
     let rec = Box::from_raw(rec);
-    let table = match CStr::from_ptr(table).to_str() {
-        Ok(s) => s,
-        Err(_) => {return null_mut();}
-    };
-    Box::into_raw(Box::new(UpdCmd::Delete(Cow::from(table.to_owned()), *rec)))
+    Box::into_raw(Box::new(UpdCmd::Delete(RelIdentifier::RelId(table), *rec)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_delete_key_cmd(table: *const c_char, rec: *mut Record) -> *mut UpdCmd {
+pub unsafe extern "C" fn ddlog_delete_key_cmd(table: libc::size_t, rec: *mut Record) -> *mut UpdCmd {
     let rec = Box::from_raw(rec);
-    let table = match CStr::from_ptr(table).to_str() {
-        Ok(s) => s,
-        Err(_) => {return null_mut();}
-    };
-    Box::into_raw(Box::new(UpdCmd::DeleteKey(Cow::from(table.to_owned()), *rec)))
+    Box::into_raw(Box::new(UpdCmd::DeleteKey(RelIdentifier::RelId(table), *rec)))
 }
 
 pub trait FromRecord: Sized {

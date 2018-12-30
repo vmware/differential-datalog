@@ -61,9 +61,9 @@ fn apply_updates(prog: &mut RunningProgram<Value>, prefix: *const c_char, update
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
 pub extern "C" fn ddlog_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
-                                                   table: *const c_char,
+                                                   table: libc::size_t,
                                                    json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() || table.is_null() {
+    if json.is_null() || prog.is_null() {
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
@@ -86,11 +86,9 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
     res
 }
 
-fn dump_deltaplus_table(db: &mut valmap::ValMap, table: *const c_char) -> Result<CString, String> {
-    let table_str = unsafe{ CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
-    let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
+fn dump_deltaplus_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
     let cmds: Result<Vec<String>, String> =
-        db.get_rel(relid as RelId)
+        db.get_rel(table as RelId)
           .iter().map(|v| record_into_insert_str(v.clone().into_record())).collect();
     Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
 }
@@ -103,9 +101,9 @@ fn dump_deltaplus_table(db: &mut valmap::ValMap, table: *const c_char) -> Result
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
 pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
-                                                    table: *const c_char,
+                                                    table: libc::size_t,
                                                     json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() || table.is_null() {
+    if json.is_null() || prog.is_null() {
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
@@ -128,11 +126,9 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
     res
 }
 
-fn dump_deltaminus_table(db: &mut valmap::ValMap, table: *const c_char) -> Result<CString, String> {
-    let table_str = unsafe{ CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
-    let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
+fn dump_deltaminus_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
     let cmds: Result<Vec<String>, String> =
-        db.get_rel(relid as RelId)
+        db.get_rel(table as RelId)
           .iter().map(|v| record_into_delete_str(v.clone().into_record())).collect();
     Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
 }
@@ -145,9 +141,9 @@ fn dump_deltaminus_table(db: &mut valmap::ValMap, table: *const c_char) -> Resul
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
 pub extern "C" fn ddlog_dump_ovsdb_deltaupdate_table(prog:  *const HDDlog,
-                                                     table: *const c_char,
+                                                     table: libc::size_t,
                                                      json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() || table.is_null() {
+    if json.is_null() || prog.is_null() {
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
@@ -170,11 +166,9 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaupdate_table(prog:  *const HDDlog,
     res
 }
 
-fn dump_deltaupdate_table(db: &mut valmap::ValMap, table: *const c_char) -> Result<CString, String> {
-    let table_str = unsafe{ CStr::from_ptr(table) }.to_str().map_err(|e| format!("{}", e))?;
-    let relid = output_relname_to_id(table_str).ok_or_else(||format!("unknown output relation {}", table_str))?;
+fn dump_deltaupdate_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
     let cmds: Result<Vec<String>, String> =
-        db.get_rel(relid as RelId)
+        db.get_rel(table as RelId)
           .iter().map(|v| record_into_update_str(v.clone().into_record())).collect();
     Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
 }
