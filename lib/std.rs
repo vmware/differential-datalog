@@ -26,6 +26,21 @@ pub fn std_ref_new<A: Clone>(x: &A) -> std_Ref<A> {
     arcval::ArcVal::from(x.clone())
 }
 
+pub fn std_max<A: Ord + Clone>(x: &A, y: &A) -> A {
+    if *x >= *y {
+        x.clone()
+    } else {
+        y.clone()
+    }
+}
+
+pub fn std_min<A: Ord + Clone>(x: &A, y: &A) -> A {
+    if *x <= *y {
+        x.clone()
+    } else {
+        y.clone()
+    }
+}
 
 // Option
 fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
