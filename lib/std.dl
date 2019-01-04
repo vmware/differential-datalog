@@ -8,6 +8,12 @@ extern type Ref<'A>
 extern function ref_new(x: 'A): Ref<'A>
 
 /*
+ * max(), min()
+ */
+extern function max(x: 'A, y: 'A): 'A
+extern function min(x: 'A, y: 'A): 'A
+
+/*
  * Option
  */
 
