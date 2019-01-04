@@ -111,21 +111,20 @@ main = do
          ActionValidate -> do { parseValidate config; return () }
          ActionCompile -> compileProg config
 
-
-parseValidate :: Config -> IO (DatalogProgram, Doc)
+parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
-    (d, rs_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
+    (d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return (d', rs_code)
+         Right d' -> return (d', rs_code, toml_code)
 
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
-    (prog, rs_code) <- parseValidate conf
+    (prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
     let rust_dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    compile prog specname rs_code rust_dir crate_types
+    compile prog specname rs_code toml_code rust_dir crate_types

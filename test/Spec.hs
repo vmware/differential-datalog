@@ -113,12 +113,12 @@ convertSouffle progress = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
 
-parseValidate :: FilePath -> String -> IO (DatalogProgram, Doc)
+parseValidate :: FilePath -> String -> IO (DatalogProgram, Doc, Doc)
 parseValidate file program = do
-    (d, rs_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
+    (d, rs_code, toml_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
     case validate d of
          Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return (d', rs_code)
+         Right d' -> return (d', rs_code, toml_code)
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
@@ -149,7 +149,7 @@ parserTest fname = do
         writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
-        (prog, _) <- parseValidate fname body
+        (prog, _, _) <- parseValidate fname body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -169,10 +169,10 @@ compilerTest progress fname cli_args crate_types = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
-    (prog, rs_code) <- parseValidate fname body
+    (prog, rs_code, toml_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-    compile prog specname rs_code rust_dir crate_types
+    compile prog specname rs_code toml_code rust_dir crate_types
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ rust_dir </> rustProjectDir specname
