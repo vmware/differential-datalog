@@ -105,10 +105,12 @@ header :: String -> Doc
 header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
 
 -- Cargo.toml
-cargo :: String -> [String] -> Doc
-cargo specname crate_types =
+cargo :: String -> Doc -> [String] -> Doc
+cargo specname toml_code crate_types =
     (pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/Cargo.toml")) $$
-    "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]"
+    "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]" $$
+    "" $$
+    toml_code
 
 rustProjectDir :: String -> String
 rustProjectDir specname = specname ++ "_ddlog"
@@ -294,14 +296,16 @@ mkConstructorName tname t c =
 --
 -- 'specname' - will be used as Cargo package and library names
 --
--- 'rs_code' - additional Rust code to be added to the generated program `lib.rs`.
+-- 'rs_code' - additional Rust code to be added to the generated program 'lib.rs'.
+--
+-- 'toml_code' - code to be added to the generated 'Cargo.toml' file
 --
 -- 'dir' - directory for the crate; will be created if does not exist
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: DatalogProgram -> String -> Doc -> FilePath -> [String] -> IO ()
-compile d specname rs_code dir crate_types = do
+compile :: DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
+compile d specname rs_code toml_code dir crate_types = do
     let lib = compileLib d specname rs_code
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
@@ -317,7 +321,7 @@ compile d specname rs_code dir crate_types = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
-    updateFile (dir </> rustProjectDir specname </> "Cargo.toml") (render $ cargo specname crate_types)
+    updateFile (dir </> rustProjectDir specname </> "Cargo.toml") (render $ cargo specname toml_code crate_types)
     updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
     return ()
 
@@ -416,7 +420,7 @@ mkTypedef tdef@TypeDef{..} =
                       else "<" <> (hsep $ punctuate comma $ map ((<> ": Val") . pp) tdefArgs) <> ">"
     targs_disp = if null tdefArgs
                     then empty
-                    else "<" <> (hsep $ punctuate comma $ map ((<> ": fmt::Display + fmt::Debug") . pp) tdefArgs) <> ">"
+                    else "<" <> (hsep $ punctuate comma $ map ((<> ": fmt::Debug") . pp) tdefArgs) <> ">"
 
 
     mkField :: Field -> Doc

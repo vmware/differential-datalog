@@ -49,6 +49,8 @@ extern function std.map_is_empty (m: std.Map<'K,'V>): bool
 extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+extern function std.max (x: 'A, y: 'A): 'A
+extern function std.min (x: 'A, y: 'A): 'A
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>

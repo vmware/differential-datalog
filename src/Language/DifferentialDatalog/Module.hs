@@ -76,7 +76,7 @@ stdimp = Import nopos stdname (ModuleName [])
 --
 -- if 'import_std' is true, imports the standard library ('std')
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc)
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc, Doc)
 parseDatalogProgram roots import_std fdata fname = do
     prog <- parseDatalogString fdata fname
     let prog' = if import_std 
@@ -87,23 +87,40 @@ parseDatalogProgram roots import_std fdata fname = do
     let all_modules = main_mod : imports
     prog'' <- flattenNamespace all_modules
     -- collect Rust files associated with each module and place it in a separate Rust module
-    rs <- (vcat . catMaybes) <$>
-          mapM ((\mod -> do let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
-                            -- top-level module name is empty
-                            let mname = if moduleName mod == ModuleName []
-                                           then "__top"
-                                           else "__" <> (pp $ name2rust $ show $ moduleName mod)
-                            rs_exists <- doesFileExist rsfile
-                            if rs_exists
-                               then do rs_code <- readFile rsfile
-                                       return $ Just $ "pub use" <+> mname <> "::*;"   $$
-                                                       "mod" <+> mname <+> "{"         $$ 
-                                                       (nest' $ "use super::*;")       $$
-                                                       (nest' $ pp rs_code)            $$
-                                                       "}"
+    rs <- ((\(macros, rs) -> (vcat $ nub $ concat macros) $+$ vcat rs) . unzip . catMaybes) <$>
+          mapM ((\mod -> do
+                    let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
+                    -- top-level module name is empty
+                    let mname = if moduleName mod == ModuleName []
+                                   then "__top"
+                                   else "__" <> (pp $ name2rust $ show $ moduleName mod)
+                    rs_exists <- doesFileExist rsfile
+                    if rs_exists
+                       then do rs_code <- readFile rsfile
+                               -- Extract lines of the form '#[macro_use] extern crate ...'
+                               -- and place them in the root of the crate, as Rust does not allow
+                               -- macro_use exports in a submodule
+                               let (macro_lines, rs_lines) = partition (isPrefixOf "#[macro_use] extern crate") 
+                                                             $ lines rs_code
+                               let rs_code' = vcat $ map pp rs_lines
+                               return $ Just ( map pp macro_lines
+                                             , "pub use" <+> mname <> "::*;"   $$
+                                               "mod" <+> mname <+> "{"         $$ 
+                                               (nest' $ "use super::*;")       $$
+                                               (nest' rs_code')                $$
+                                               "}")
+                       else return Nothing))
+               all_modules
+    -- collect .toml files associated with modules
+    toml <- (vcat . catMaybes) <$>
+          mapM ((\mod -> do let tomlfile = addExtension (dropExtension $ moduleFile mod) "toml"
+                            exists <- doesFileExist tomlfile
+                            if exists
+                               then do toml_code <- readFile tomlfile
+                                       return $ Just $ pp toml_code
                                else return Nothing))
                all_modules
-    return (prog'', rs)
+    return (prog'', rs, toml)
 
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
 mergeModules mods = do
