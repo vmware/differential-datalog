@@ -860,7 +860,14 @@ impl<V:Val> Program<V>
                     let collection = lookup_collection(*relid).unwrap();
                     Some(rhs.as_ref().unwrap_or(first).
                          flat_map(af).
-                         antijoin(&collection.flat_map(fmf)).
+                         antijoin(
+                             // FIXME: use distinct_total() instead of distinct when evaluating a
+                             // non-recursive rule.  distinct_total requires S::Timestamp to have
+                             // TotalOrder trait, which cannot be guaranteed statically, unless we
+                             // have a separate implementation of mk_rule for non-recursive case.
+                             &with_prof_context(
+                                 "antijoin",
+                                 ||collection.flat_map(fmf).distinct())).
                          map(|(_,v)|v))
                 }
             };
