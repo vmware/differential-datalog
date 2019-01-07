@@ -238,3 +238,151 @@ dump Referee2;
 
 echo Filtered2;
 dump Filtered2;
+
+start;
+
+insert Alloc(.id = 1,
+             .allocated = [],
+             .toallocate = [],
+             .min_val = 0,
+             .max_val = 0),
+
+insert Alloc(.id = 2,
+             .allocated = [],
+             .toallocate = ["a"],
+             .min_val = 0,
+             .max_val = 0),
+
+insert Alloc(.id = 3,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 0,
+             .max_val = 0),
+
+insert Alloc(.id = 4,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 0,
+             .max_val = 1),
+
+insert Alloc(.id = 5,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 1000,
+             .max_val = 1001),
+
+insert Alloc(.id = 5,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 1000,
+             .max_val = 1001),
+
+insert Alloc(.id = 5,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 0xfffffffe,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 6,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 0xfffffffc,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 7,
+             .allocated = [],
+             .toallocate = ["a", "b"],
+             .min_val = 0x0,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 8,
+             .allocated = [],
+             .toallocate = ["a", "b", "c", "d", "e", "f"],
+             .min_val = 0x0,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 9,
+             .allocated = [("x", 0), ("y", 1000), ("z", 10000)],
+             .toallocate = ["x", "b", "c", "d", "e", "z"],
+             .min_val = 0x0,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 10,
+             .allocated = [("x", 0), ("y", 0xffffffff), ("z", 10000)],
+             .toallocate = ["x", "b", "c", "d", "e", "z"],
+             .min_val = 0x0,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 11,
+             .allocated = [("x", 1), ("y", 3), ("z", 5)],
+             .toallocate = ["x", "b", "c", "d", "e", "z"],
+             .min_val = 0,
+             .max_val = 10),
+
+insert Alloc(.id = 12,
+             .allocated = [("x", 1), ("y", 3), ("z", 5)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q"],
+             .min_val = 0,
+             .max_val = 10),
+
+insert Alloc(.id = 13,
+             .allocated = [("x", 1), ("y", 3), ("z", 5)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0,
+             .max_val = 10),
+
+insert Alloc(.id = 14,
+             .allocated = [("x", 0xfffffff7), ("y", 0xfffffff9), ("z", 0xffffffff)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0xfffffff6,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 15,
+             .allocated = [("x", 0xfffff7), ("y", 0xfffff9), ("z", 0xffffff)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0xfffffff6,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 16,
+             .allocated = [("x", 11), ("y", 13), ("z", 20)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 10,
+             .max_val = 20),
+
+insert Alloc(.id = 17,
+             .allocated = [("x", 10), ("y", 11), ("z", 12)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 10,
+             .max_val = 12),
+
+insert Alloc(.id = 18,
+             .allocated = [("x", 0xfffffffd), ("y", 0xfffffffe), ("z", 0xffffffff)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0xfffffffd,
+             .max_val = 0xffffffff),
+
+insert Alloc(.id = 19,
+             .allocated = [("x", 0), ("y", 1), ("z", 2)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0,
+             .max_val = 2),
+
+insert Alloc(.id = 20,
+             .allocated = [("x", 0), ("y", 1), ("z", 2)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 0,
+             .max_val = 0),
+
+insert Alloc(.id = 21,
+             .allocated = [("x", 0), ("y", 1), ("z", 2)],
+             .toallocate = ["x", "b", "c", "d", "e", "z", "p", "q", "r"],
+             .min_val = 1,
+             .max_val = 1),
+
+commit;
+
+echo NewAllocation;
+dump NewAllocation;
+
+echo Adjusted;
+dump Adjusted;

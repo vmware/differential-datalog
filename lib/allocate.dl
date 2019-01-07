@@ -12,8 +12,8 @@ extern function allocate(
 // Allocate a unique identifier in the range `min_val..max_val` for each element in `toallocate`,
 // while preserving existing allocations in `allocated`.
 //
-// Returns both old and new allocations.  May only assign a subset of values if the address space has been
-// exhausted.
+// For each value in `toallocate`, either returns existing allocation in `allocated` or allocates
+// an unused value in the range.
 extern function adjust_allocation(
     allocated: Map<'A, 'N>,
     toallocate: Vec<'A>,

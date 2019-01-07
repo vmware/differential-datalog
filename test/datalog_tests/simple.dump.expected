@@ -221,3 +221,45 @@ Referee2
 Referee2{Referenced{true,std.Some{"hello"}}}
 Filtered2
 Filtered2{Referee2{Referenced{true,std.Some{"hello"}}}}
+NewAllocation
+NewAllocation{1,std_Vec { x: [] }}
+NewAllocation{2,std_Vec { x: [("a", 0)] }}
+NewAllocation{3,std_Vec { x: [("a", 0)] }}
+NewAllocation{4,std_Vec { x: [("a", 0), ("b", 1)] }}
+NewAllocation{5,std_Vec { x: [("a", 1000), ("b", 1001)] }}
+NewAllocation{5,std_Vec { x: [("a", 4294967294), ("b", 4294967295)] }}
+NewAllocation{6,std_Vec { x: [("a", 4294967292), ("b", 4294967293)] }}
+NewAllocation{7,std_Vec { x: [("a", 0), ("b", 1)] }}
+NewAllocation{8,std_Vec { x: [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)] }}
+NewAllocation{9,std_Vec { x: [("x", 10001), ("b", 10002), ("c", 10003), ("d", 10004), ("e", 10005), ("z", 10006)] }}
+NewAllocation{10,std_Vec { x: [("x", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("z", 6)] }}
+NewAllocation{11,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0)] }}
+NewAllocation{12,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)] }}
+NewAllocation{13,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)] }}
+NewAllocation{14,std_Vec { x: [("x", 4294967286), ("b", 4294967288), ("c", 4294967290), ("d", 4294967291), ("e", 4294967292), ("z", 4294967293), ("p", 4294967294)] }}
+NewAllocation{15,std_Vec { x: [("x", 4294967286), ("b", 4294967287), ("c", 4294967288), ("d", 4294967289), ("e", 4294967290), ("z", 4294967291), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)] }}
+NewAllocation{16,std_Vec { x: [("x", 10), ("b", 12), ("c", 14), ("d", 15), ("e", 16), ("z", 17), ("p", 18), ("q", 19)] }}
+NewAllocation{17,std_Vec { x: [] }}
+NewAllocation{18,std_Vec { x: [] }}
+NewAllocation{19,std_Vec { x: [] }}
+Adjusted
+Adjusted{1,std_Vec { x: [] }}
+Adjusted{2,std_Vec { x: [("a", 0)] }}
+Adjusted{3,std_Vec { x: [("a", 0)] }}
+Adjusted{4,std_Vec { x: [("a", 0), ("b", 1)] }}
+Adjusted{5,std_Vec { x: [("a", 1000), ("b", 1001)] }}
+Adjusted{5,std_Vec { x: [("a", 4294967294), ("b", 4294967295)] }}
+Adjusted{6,std_Vec { x: [("a", 4294967292), ("b", 4294967293)] }}
+Adjusted{7,std_Vec { x: [("a", 0), ("b", 1)] }}
+Adjusted{8,std_Vec { x: [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)] }}
+Adjusted{9,std_Vec { x: [("x", 0), ("b", 10001), ("c", 10002), ("d", 10003), ("e", 10004), ("z", 10000)] }}
+Adjusted{10,std_Vec { x: [("x", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("z", 10000)] }}
+Adjusted{11,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5)] }}
+Adjusted{12,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0)] }}
+Adjusted{13,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0), ("r", 2)] }}
+Adjusted{14,std_Vec { x: [("x", 4294967287), ("b", 4294967286), ("c", 4294967288), ("d", 4294967290), ("e", 4294967291), ("z", 4294967295), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)] }}
+Adjusted{15,std_Vec { x: [("x", 16777207), ("b", 4294967286), ("c", 4294967287), ("d", 4294967288), ("e", 4294967289), ("z", 16777215), ("p", 4294967290), ("q", 4294967291), ("r", 4294967292)] }}
+Adjusted{16,std_Vec { x: [("x", 11), ("b", 10), ("c", 12), ("d", 14), ("e", 15), ("z", 20), ("p", 16), ("q", 17), ("r", 18)] }}
+Adjusted{17,std_Vec { x: [("x", 10), ("z", 12)] }}
+Adjusted{18,std_Vec { x: [("x", 4294967293), ("z", 4294967295)] }}
+Adjusted{19,std_Vec { x: [("x", 0), ("z", 2)] }}

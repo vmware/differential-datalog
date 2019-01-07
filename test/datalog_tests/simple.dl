@@ -1,3 +1,5 @@
+import allocate
+
 /* Test types */
 
 // This is a one-line comment
@@ -657,8 +659,6 @@ ExternalId(host, id) :- ExternalIds(host, ids),
 
 /* Allocator test */
 
-extern function allocate_u32(allocated: Set<bit<32>>, toallocate: Vec<'B>, max_val: bit<32>): Vec<('B, bit<32>)>
-
 // allocate a unique x per name
 input relation Realized(name: string, id: string, x: bit<32>)
 input relation Request(name: string, id: string)
@@ -679,7 +679,7 @@ Allocated(name, xs) :-
 Allocation(name, id, x) :-
     ToAllocate(name, ids),
     Allocated(name, xs),
-    var allocation = FlatMap(allocate_u32(xs, ids, (32'd1 << 32'd24) - 32'd1)),
+    var allocation = FlatMap(allocate(xs, ids, 32'd1, (32'd1 << 32'd24) - 32'd1)),
     (var id, var x) = allocation.
 
 /* Ref test */
@@ -702,3 +702,30 @@ output relation &Referee2(r: Referenced)
 output relation Filtered2(r: Ref<Referee2>)
 
 Filtered2(r) :- r in &Referee2(.r = Referenced{.x = true}).
+
+/* More allocator tests */
+input relation Alloc(id: bigint,
+                     allocated: Map<string, bit<32>>,
+                     toallocate: Vec<string>,
+                     min_val: bit<32>,
+                     max_val: bit<32>)
+
+output relation NewAllocation(id: bigint, alloc: Vec<(string, bit<32>)>)
+
+NewAllocation(id, alloc) :-
+    Alloc(id, allocated, toallocate, min_val, max_val),
+    var allocated_nums = {
+        var allocated_nums: Set<bit<32>> = set_empty();
+        for (a in allocated) {
+            (_, var num) = a;
+            set_insert(allocated_nums, num)
+        };
+        allocated_nums
+    },
+    var alloc = allocate(allocated_nums, toallocate, min_val, max_val).
+
+output relation Adjusted(id: bigint, alloc: Vec<(string, bit<32>)>)
+
+Adjusted(id, alloc) :-
+    Alloc(id, allocated, toallocate, min_val, max_val),
+    var alloc = adjust_allocation(allocated, toallocate, min_val, max_val).
