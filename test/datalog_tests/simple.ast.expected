@@ -1,9 +1,11 @@
 typedef Address = Address{addr: ip_addr_t}
+typedef Adjusted = Adjusted{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
 typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
 typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
+typedef Alloc = Alloc{id: bigint, allocated: std.Map<string,bit<32>>, toallocate: std.Vec<string>, min_val: bit<32>, max_val: bit<32>}
 typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
 typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
@@ -26,6 +28,7 @@ typedef IP6Addr = bit<128>
 typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
 typedef Innocent = Innocent{name: string}
 typedef Links = Links{l: line, s1: station, s2: station}
+typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef Parent = Parent{child: person, parent: person}
 typedef R1 = bigint
 typedef R3 = R3{f1: bigint, f2: bool}
@@ -116,7 +119,8 @@ function a8 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 function a9 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
-extern function allocate_u32 (allocated: std.Set<bit<32>>, toallocate: std.Vec<'B>, max_val: bit<32>): std.Vec<('B, bit<32>)>
+extern function allocate.adjust_allocation (allocated: std.Map<'A,'N>, toallocate: std.Vec<'A>, min_val: 'N, max_val: 'N): std.Vec<('A, 'N)>
+extern function allocate.allocate (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =
@@ -349,11 +353,13 @@ function vars (): () =
 function x (): Alt =
     C0{.x=32'd5}
 input relation Address [Address]
+output relation Adjusted [Adjusted]
 output relation Aggregate1 [Aggregate1]
 output relation Aggregate2 [Aggregate2]
 output relation Aggregate3 [Aggregate3]
 output relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
+input relation Alloc [Alloc]
 relation Allocated [Allocated]
 output relation Allocation [Allocation]
 output relation Answer [Answer]
@@ -369,6 +375,7 @@ input relation HostAddresses [HostAddresses]
 input relation Human [Human]
 output relation Innocent [Innocent]
 input relation Links [Links]
+output relation NewAllocation [NewAllocation]
 input relation Parent [Parent]
 input relation R1 [R1]
 input relation R2 [(bigint, bigint)]
@@ -527,8 +534,15 @@ ExternalId(.host=host, .id=id) :- ExternalIds(.host=host, .ids=ids), var id = Fl
 Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.name=name, .id=id, .x=x).
 ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), var ids = Aggregate((name), std.group2vec(id)).
 Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Aggregate((name), std.group2set(x)).
-Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate_u32(xs, ids, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
+Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
 Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})].
 Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})].
 Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[r].
 Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))].
+NewAllocation(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
+                                                                                                                                                              (for (a in allocated) {
+                                                                                                                                                                   ((_, var num) = a;
+                                                                                                                                                                    std.set_insert(allocated_nums, num))
+                                                                                                                                                               };
+                                                                                                                                                               allocated_nums)), var alloc = allocate.allocate(allocated_nums, toallocate, min_val, max_val).
+Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val).
