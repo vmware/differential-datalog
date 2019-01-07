@@ -242,6 +242,8 @@ NewAllocation{16,std_Vec { x: [("x", 10), ("b", 12), ("c", 14), ("d", 15), ("e",
 NewAllocation{17,std_Vec { x: [] }}
 NewAllocation{18,std_Vec { x: [] }}
 NewAllocation{19,std_Vec { x: [] }}
+NewAllocation{20,std_Vec { x: [] }}
+NewAllocation{21,std_Vec { x: [] }}
 Adjusted
 Adjusted{1,std_Vec { x: [] }}
 Adjusted{2,std_Vec { x: [("a", 0)] }}
@@ -263,3 +265,5 @@ Adjusted{16,std_Vec { x: [("x", 11), ("b", 10), ("c", 12), ("d", 14), ("e", 15),
 Adjusted{17,std_Vec { x: [("x", 10), ("z", 12)] }}
 Adjusted{18,std_Vec { x: [("x", 4294967293), ("z", 4294967295)] }}
 Adjusted{19,std_Vec { x: [("x", 0), ("z", 2)] }}
+Adjusted{20,std_Vec { x: [("x", 0), ("z", 2)] }}
+Adjusted{21,std_Vec { x: [("x", 0), ("z", 2)] }}
