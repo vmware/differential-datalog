@@ -100,6 +100,12 @@ bOX_VAR = "__box"
 gROUP_VAR :: Doc
 gROUP_VAR = "group"
 
+-- Functions that return a Rust reference rather than a value.
+-- FIXME: there should be a way to annotate function definitions
+-- with this, but for now we only have one such function.
+fUNCS_RETURN_REF :: [String]
+fUNCS_RETURN_REF = ["std.deref"]
+
 -- Rust imports
 header :: String -> Doc
 header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
@@ -1375,9 +1381,10 @@ mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
 mkExpr' d _ EApply{..}  =
     (rname exprFunc <> (parens $ commaSep
                         $ map (\(a, mut) -> if mut then mutref a else ref a)
-                        $ zip exprArgs (map argMut $ funcArgs f)), EVal)
+                        $ zip exprArgs (map argMut $ funcArgs f)), kind)
     where
     f = getFunc d exprFunc
+    kind = if elem exprFunc fUNCS_RETURN_REF then EReference else EVal
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)

@@ -6,6 +6,7 @@
 extern type Ref<'A>
 
 extern function ref_new(x: 'A): Ref<'A>
+extern function deref(x: Ref<'A>): 'A
 
 /*
  * max(), min()

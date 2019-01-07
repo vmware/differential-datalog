@@ -26,6 +26,11 @@ pub fn std_ref_new<A: Clone>(x: &A) -> std_Ref<A> {
     arcval::ArcVal::from(x.clone())
 }
 
+pub fn std_deref<A: Clone>(x: &std_Ref<A>) -> &A {
+    x.deref()
+}
+
+// min/max
 pub fn std_max<A: Ord + Clone>(x: &A, y: &A) -> A {
     if *x >= *y {
         x.clone()
