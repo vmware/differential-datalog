@@ -1,19 +1,21 @@
-// Allocate a unique 64-bit identifier in the range `1..max_val` for each element in `toallocate`.
+// Allocate a unique identifier in the range `min_val..max_val` for each element in `toallocate`.
 // `allocated` stores already allocated ids that must not be re-used.
 //
 // Returns new allocations.  May only assign a subset of values if the address space has been
 // exhausted.
-extern function allocate_u64(
-    allocated: Set<bit<64>>,
+extern function allocate(
+    allocated: Set<'N>,
     toallocate: Vec<'B>,
-    max_val: bit<64>): Vec<('B, bit<64>)>
+    min_val: 'N,
+    max_val: 'N): Vec<('B, 'N)>
 
-// Allocate a unique 64-bit identifier in the range `1..max_val` for each element in `toallocate`,
+// Allocate a unique identifier in the range `min_val..max_val` for each element in `toallocate`,
 // while preserving existing allocations in `allocated`.
 //
 // Returns both old and new allocations.  May only assign a subset of values if the address space has been
 // exhausted.
-extern function adjust_allocation_u64(
-    allocated: Map<'A, bit<64>>,
+extern function adjust_allocation(
+    allocated: Map<'A, 'N>,
     toallocate: Vec<'A>,
-    max_val: bit<64>): Vec<('A, bit<64>)>
+    min_val: 'N,
+    max_val: 'N): Vec<('A, 'N)>
