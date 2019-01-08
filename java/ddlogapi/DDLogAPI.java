@@ -1,5 +1,7 @@
 package ddlogapi;
 
+import java.util.*;
+
 /**
  * Java wrapper around Differential Datalog C API that manipulates
  * DDlog programs.
@@ -18,7 +20,7 @@ public class DDLogAPI {
     static native int ddlog_transaction_commit(long hprog);
     static native int ddlog_transaction_rollback(long hprog);
     static public native int ddlog_apply_updates(long hprog, long[] upds);
-    public native int dump_table(long hprog, String table, String callbackMethod);
+    public native int dump_table(long hprog, int table, String callbackMethod);
     static public native String ddlog_profile(long hprog);
 
     // All the following methods return in fact handles
@@ -34,6 +36,7 @@ public class DDLogAPI {
     static public native long ddlog_pair(long handle1, long handle2);
     static public native long ddlog_struct(String constructor, long[] handles);
     // Getters
+    static public native int ddlog_get_table_id(String table);
     static public native boolean ddlog_is_bool(long handle);
     static public native boolean ddlog_get_bool(long handle);
     static public native boolean ddlog_is_int(long handle);
@@ -57,22 +60,34 @@ public class DDLogAPI {
     static public native String ddlog_get_constructor(long handle);
     static public native long ddlog_get_struct_field(long handle, int i);
 
-    static public native long ddlog_insert_cmd(String table, long recordHandle);
-    static public native long ddlog_delete_val_cmd(String table, long recordHandle);
-    static public native long ddlog_delete_key_cmd(String table, long recordHandle);
+    static public native long ddlog_insert_cmd(int table, long recordHandle);
+    static public native long ddlog_delete_val_cmd(int table, long recordHandle);
+    static public native long ddlog_delete_key_cmd(int table, long recordHandle);
 
     // This is a handle to the program; it wraps a void*.
     private final long hprog;
 
     public static final int success = 0;
     public static final int error = -1;
+    // Maps table names to table IDs
+    private final Map<String, Integer> tableId;
 
     public DDLogAPI(int workers) {
+        this.tableId = new HashMap<String, Integer>();
         this.hprog = ddlog_run(workers);
     }
 
     public DDLogAPI() {
         this(1);
+    }
+
+    public int getTableId(String table) {
+        if (!this.tableId.containsKey(table)) {
+            int id = ddlog_get_table_id(table);
+            this.tableId.put(table, id);
+            return id;
+        }
+        return this.tableId.get(table);
     }
 
     public int stop() {
@@ -110,7 +125,10 @@ public class DDLogAPI {
 
     public int dump(String table) {
         System.out.println(table + ":");
-        return this.dump_table(this.hprog, table, "dumpCallback");
+        int id = this.getTableId(table);
+        if (id == -1)
+            throw new RuntimeException("Unknown table " + table);
+        return this.dump_table(this.hprog, id, "dumpCallback");
     }
 
     public int profile() {

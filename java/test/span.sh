@@ -17,10 +17,13 @@ mkdir -p META-INF
 echo "Main-Class: Span" > META-INF/MANIFEST.MF
 # Create jar containing Span and the Ddlog API
 jar cmvf META-INF/MANIFEST.MF span.jar Span*.class ../ddlogapi/*.class
+rm -rf META-INF
 # Create a shared library containing all the native code: ddlogapi.c, libspan_ddlog.a
 gcc -shared -Wl,-soname,ddlogapi -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux -I../../rust/template ../ddlogapi.c ../ddlogapi_DDLogAPI.h -L../../test/datalog_tests/span_ddlog/target/release/ -lspan_ddlog -o libddlogapi.so
-# Run the java program pointing to the created shared library   
+# Run the java program pointing to the created shared library
 java -Djava.library.path=. -jar span.jar ../../test/datalog_tests/span.dat >span.java.dump
+# Compare outputs
+diff span.java.dump ../../test/datalog_tests/span.dump
 
 # Cleanup
 rm -rf META-INF *.class

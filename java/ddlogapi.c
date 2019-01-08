@@ -12,7 +12,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1run(
     JNIEnv *env, jobject obj, jint workers) {
     if (workers <= 0)
         workers = 1;
-    return (jlong)ddlog_run((unsigned)workers);
+    return (jlong)ddlog_run((unsigned)workers, true, NULL, NULL);
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1stop(
@@ -55,7 +55,15 @@ struct CallbackInfo {
     const char* method;
 };
 
-bool dump_callback(void* callbackInfo, const ddlog_record* rec) {
+JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1table_1id(
+    JNIEnv *env, jclass class, jstring table) {
+    const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
+    table_id id = ddlog_get_table_id(tbl);
+    (*env)->ReleaseStringUTFChars(env, table, tbl);
+    return (jint)id;
+}
+
+bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env = cbi->env;
     jclass thisClass = (*env)->GetObjectClass(env, cbi->obj);
@@ -67,8 +75,7 @@ bool dump_callback(void* callbackInfo, const ddlog_record* rec) {
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_dump_1table(
-    JNIEnv *env, jobject obj, jlong progHandle, jstring table, jstring callback) {
-    const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
+    JNIEnv *env, jobject obj, jlong progHandle, jint table, jstring callback) {
     const char* cbk = (*env)->GetStringUTFChars(env, callback, NULL);
     struct CallbackInfo* cbinfo = malloc(sizeof(struct CallbackInfo));
     if (cbinfo == NULL)
@@ -76,9 +83,8 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_dump_1table(
     cbinfo->env = env;
     cbinfo->obj = obj;
     cbinfo->method = cbk;
-    int result = ddlog_dump_table((ddlog_prog)progHandle, tbl, dump_callback, cbinfo);
+    int result = ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo);
     free(cbinfo);
-    (*env)->ReleaseStringUTFChars(env, table, tbl);
     (*env)->ReleaseStringUTFChars(env, callback, cbk);
     return (jint)result;
 }
@@ -290,25 +296,19 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1struct_1field(
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1insert_1cmd(
-    JNIEnv *env, jclass obj, jstring table, jlong handle) {
-    const char* str = (*env)->GetStringUTFChars(env, table, NULL);
-    ddlog_cmd* result = ddlog_insert_cmd(str, (ddlog_record*)handle);
-    (*env)->ReleaseStringUTFChars(env, table, str);
+    JNIEnv *env, jclass obj, jint table, jlong handle) {
+    ddlog_cmd* result = ddlog_insert_cmd(table, (ddlog_record*)handle);
     return (jlong)result;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1delete_1val_1cmd(
-    JNIEnv *env, jclass obj, jstring table, jlong handle) {
-    const char* str = (*env)->GetStringUTFChars(env, table, NULL);
-    ddlog_cmd* result = ddlog_delete_val_cmd(str, (ddlog_record*)handle);
-    (*env)->ReleaseStringUTFChars(env, table, str);
+    JNIEnv *env, jclass obj, jint table, jlong handle) {
+    ddlog_cmd* result = ddlog_delete_val_cmd(table, (ddlog_record*)handle);
     return (jlong)result;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1delete_1key_1cmd(
-    JNIEnv *env, jclass obj, jstring table, jlong handle) {
-    const char* str = (*env)->GetStringUTFChars(env, table, NULL);
-    ddlog_cmd* result = ddlog_delete_key_cmd(str, (ddlog_record*)handle);
-    (*env)->ReleaseStringUTFChars(env, table, str);
+    JNIEnv *env, jclass obj, jint table, jlong handle) {
+    ddlog_cmd* result = ddlog_delete_key_cmd(table, (ddlog_record*)handle);
     return (jlong)result;
 }
