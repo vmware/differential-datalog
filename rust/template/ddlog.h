@@ -167,7 +167,7 @@ extern int ddlog_transaction_rollback(ddlog_prog hprog);
  * Must be called in the context of a transaction.
  *
  * `prefix` contains is the prefix to be added to JSON table names, e.g,
- * `OVN_Southbound_` or `OVN_Northbound_` for OVN southbound and
+ * `OVN_Southbound.` or `OVN_Northbound.` for OVN southbound and
  * northbound database updates.
  *
  * `updates` is the JSON string, e.g.,
