@@ -83,7 +83,8 @@ public class Span {
                     array[1] = new DDLogRecord(args[1].trim().replace("\"", ""));
                     DDLogRecord strct = DDLogRecord.makeStruct(relation, array);
 
-                    DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, relation, strct);
+                    int id = this.api.getTableId(relation);
+                    DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, strct);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
                         DDLogCommand[] ca = this.commands.toArray(new DDLogCommand[0]);

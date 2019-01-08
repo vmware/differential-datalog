@@ -8,10 +8,10 @@ public class DDLogCommand {
     };
 
     public final Kind kind;
-    public final String table;
+    public final int table;
     public final DDLogRecord value;
 
-    public DDLogCommand(final Kind kind, final String table, final DDLogRecord value) {
+    public DDLogCommand(final Kind kind, final int table, final DDLogRecord value) {
         this.kind = kind;
         this.table = table;
         this.value = value;

@@ -2,7 +2,7 @@ CLASS = ddlogapi/DDLogAPI.class
 
 all: $(CLASS)
 
-%.class: %.java
+%.class: %.java ddlogapi_DDLogAPI.h
 	javac $<
 
 ddlogapi_DDLogAPI.h ddlogapi/DDLogApi.class: ddlogapi/DDLogAPI.java ddlogapi/DDLogCommand.java \
