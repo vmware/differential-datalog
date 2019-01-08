@@ -6,12 +6,23 @@ import java.util.regex.Matcher;
 import java.util.*;
 import java.time.Instant;
 import java.time.Duration;
+import java.lang.RuntimeException;
 
 import ddlogapi.DDLogAPI;
 import ddlogapi.DDLogCommand;
 import ddlogapi.DDLogRecord;
 
-public class Span {
+public class SpanTest {
+    public static class Dependency {
+        String parent;
+        String child;
+    }
+
+    public static class Binding {
+        String entity;
+        String tn;
+    }
+
     public static class SpanParser {
         static Pattern commandPattern = Pattern.compile("^(\\S+)(.*)([;,])$");
         static Pattern argsPattern = Pattern.compile("^\\s*(\\S+)\\(([^)]*)\\)$");
@@ -46,7 +57,11 @@ public class Span {
                 throw new RuntimeException("Expected semicolon after " + this.command + " found " + this.terminator);
         }
 
-        void parseLine(String line) {
+        private static String clean(String s) {
+            return s.trim().replace("\"", "");
+        }
+
+        void parseLine(String line) throws IllegalAccessException {
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
                 throw new RuntimeException("Could not isolate command");
@@ -78,11 +93,32 @@ public class Span {
                     String[] args = a.split(",");
                     if (args.length != 2)
                         throw new RuntimeException("Expected 2 arguments, got " + args.length + ":" + a);
-                    DDLogRecord[] array = new DDLogRecord[2];
-                    array[0] = new DDLogRecord(args[0].trim().replace("\"", ""));
-                    array[1] = new DDLogRecord(args[1].trim().replace("\"", ""));
-                    DDLogRecord strct = DDLogRecord.makeStruct(relation, array);
+                    /*
+                      This is an alternative way to create a DDLogRecord; it requires one
+                      to know the internal APIs of DDLogRecord.
 
+                    DDLogRecord[] array = new DDLogRecord[2];
+                    array[0] = new DDLogRecord(clean(args[0]));
+                    array[1] = new DDLogRecord(clean(args[1]));
+                    DDLogRecord strct = DDLogRecord.makeStruct(relation, array);
+                    */
+
+                    Object o;
+                    if (relation.equals("Dependency")) {
+                        Dependency d = new Dependency();
+                        d.parent = clean(args[0]);
+                        d.child = clean(args[1]);
+                        o = d;
+                    } else if (relation.equals("Binding")) {
+                        Binding b = new Binding();
+                        b.entity = clean(args[0]);
+                        b.tn = clean(args[1]);
+                        o = b;
+                    } else {
+                        throw new RuntimeException("Unexpected class: " + relation);
+                    }
+
+                    DDLogRecord strct = DDLogRecord.convertObject(o);
                     int id = this.api.getTableId(relation);
                     DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, strct);
                     this.commands.add(c);
@@ -117,7 +153,13 @@ public class Span {
         }
 
         void run(String file) throws IOException {
-            Files.lines(Paths.get(file)).forEach(l -> parseLine(l));
+            Files.lines(Paths.get(file)).forEach(l -> {
+                    try {
+                        parseLine(l);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
         }
     }
 

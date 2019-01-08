@@ -1,5 +1,7 @@
 package ddlogapi;
 
+import java.lang.reflect.*;
+
 /**
  * Java wrapper around Differential Datalog C API that manipulates
  * DDlog data structures.
@@ -81,6 +83,46 @@ public class DDLogRecord {
     }
 
     /**
+     * Convert an object o into a DDLogRecord that represents a struct.
+     * The name of the struct is the class name of o.
+     */
+    public static DDLogRecord convertObject(Object o) throws IllegalAccessException {
+        String name = o.getClass().getSimpleName();
+        Field[] fields = o.getClass().getDeclaredFields();
+        DDLogRecord[] fra = new DDLogRecord[fields.length];
+
+        int index = 0;
+        for (Field f: fields) {
+            DDLogRecord fr = createField(o, f);
+            fra[index++] = fr;
+        }
+        return DDLogRecord.makeStruct(name, fra);
+    }
+
+    private static DDLogRecord createField(Object o, Field field) throws IllegalAccessException {
+        field.setAccessible(true);
+        Object value = field.get(o);
+        if (value == null)
+            throw new RuntimeException("Null field " + field.getName());
+        Class<?> type = field.getType();
+        if (String.class.equals(type))
+            return new DDLogRecord((String)value);
+        if (!type.isPrimitive())
+            throw new RuntimeException("Field " + field.getName() + " of type " + type + " not supported");
+        if (long.class.equals(type))
+            return new DDLogRecord((long)value);
+        else if (int.class.equals(type))
+            return new DDLogRecord((long)(int)value);
+        else if (short.class.equals(type))
+            return new DDLogRecord((long)(short)value);
+        else if (byte.class.equals(type))
+            return new DDLogRecord((long)(byte)value);
+        else if (boolean.class.equals(type))
+            return new DDLogRecord((boolean)value);
+        throw new RuntimeException("Field " + field.getName() + " of type " + type + " not supported");
+    }
+
+    /**
      * Creates a pair with the specified fields.
      */
     public DDLogRecord(DDLogRecord first, DDLogRecord second) {
@@ -96,6 +138,52 @@ public class DDLogRecord {
             handles[i] = fields[i].getHandleAndInvalidate();
         }
         return handles;
+    }
+
+    public Object toRecord() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+        if (!DDLogAPI.ddlog_is_struct(this.handle))
+            throw new RuntimeException("This is not a struct");
+
+        long h = this.handle;
+        String type = DDLogAPI.ddlog_get_constructor(h);
+        Class c = Class.forName(type);
+        Object instance = c.newInstance();
+
+        // Get the first field and check to see whether it is a struct with the same constructor
+        long f0 = DDLogAPI.ddlog_get_struct_field(h, 0);
+        if (f0 != 0) {
+            if (DDLogAPI.ddlog_is_struct(f0)) {
+                String f0type = DDLogAPI.ddlog_get_constructor(f0);
+                if (f0type.equals(type))
+                    h = f0;  // Scan the fields of f0
+            }
+
+            Field[] fields = c.getDeclaredFields();
+            for (int i = 0; ; i++) {
+                long fh = DDLogAPI.ddlog_get_struct_field(h, i);
+                if (fh == 0)
+                    break;
+                Field f = fields[i];
+                f.setAccessible(true);
+
+                DDLogRecord field = DDLogRecord.fromSharedHandle(fh);
+                field.checkHandle();
+
+                if (DDLogAPI.ddlog_is_bool(field.handle)) {
+                    boolean b = field.getBoolean();
+                    f.set(this, b);
+                } else if (DDLogAPI.ddlog_is_int(field.handle)) {
+                    long l = field.getLong();
+                    f.set(this, l);
+                } else if (DDLogAPI.ddlog_is_string(field.handle)) {
+                    String s = field.getString();
+                    f.set(this, s);
+                } else {
+                    throw new RuntimeException("Unsupported field type " + f.getType());
+                }
+            }
+        }
+        return instance;
     }
 
     public static DDLogRecord makeTuple(DDLogRecord[] fields) {
