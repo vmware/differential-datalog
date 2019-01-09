@@ -87,7 +87,7 @@ extern table_id ddlog_get_table_id(const char* tname);
  *   The `cb` function takes the following arguments:
  *	- `arg`	     - opaque used-defined value
  *	- `table`    - table being modified
- *	- `rex`	     - record that has been inserted or deleted to the
+ *	- `rec`	     - record that has been inserted or deleted
  *	- `polarity` - `true` - record has been added
  *		       `false` - record has been deleted
  *
@@ -103,6 +103,12 @@ extern table_id ddlog_get_table_id(const char* tname);
  *
  * Setting `cb` to NULL disables notifications.
  *
+ * `print_err_msg` - callback to redirect diagnostic messages to.  Before
+ * returning an error, functions in this API invoke this callback to print
+ * error explanation.
+ *
+ * Setting `print_err_msg` to NULL causes ddlog to print to `stderr`.
+ *
  * Returns a program handle to be used in subsequent calls to
  * `ddlog_transaction_start()`,
  * `ddlog_transaction_commit()`, etc., or NULL in case of error.
@@ -113,7 +119,8 @@ extern ddlog_prog ddlog_run(unsigned int workers,
 				       table_id table,
 				       const ddlog_record *rec,
 				       bool polarity),
-			    void* cb_arg);
+			    uintptr_t cb_arg,
+			    void (*print_err_msg)(const char *msg));
 
 /*
  * Stops the program; deallocates all resources, invalidates the handle.
