@@ -40,9 +40,28 @@ use libc::size_t;
 pub mod valmap;
 pub mod ovsdb;
 
-pub type HDDlog = (sync::Mutex<RunningProgram<Value>>, Option<sync::Arc<sync::Mutex<valmap::ValMap>>>);
+pub struct HDDlog {
+    prog: sync::Mutex<RunningProgram<Value>>,
+    db: Option<sync::Arc<sync::Mutex<valmap::ValMap>>>,
+    print_err: Option<extern "C" fn(msg: *const raw::c_char)>
+}
 
-pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
+impl HDDlog {
+    pub fn print_err(f: Option<extern "C" fn(msg: *const raw::c_char)>, msg: &str) {
+        match f {
+            None    => eprintln!("{}", msg),
+            Some(f) => f(ffi::CString::new(msg).unwrap().into_raw())
+        }
+    }
+
+    pub fn eprintln(&self, msg: &str)
+    {
+        Self::print_err(self.print_err, msg)
+    }
+}
+
+pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String>
+{
     match c {
         record::UpdCmd::Insert(rident, rec) => {
             let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
@@ -85,7 +104,6 @@ pub extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t
     match get_table_id(tname) {
         Ok(relid) => relid as libc::size_t,
         Err(e) => {
-            eprintln!("ddlog_get_table_id(): error: {}", e);
             libc::size_t::max_value()
         }
     }
@@ -98,13 +116,15 @@ fn get_table_id(tname: *const raw::c_char) -> Result<Relations, String>
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_run(workers: raw::c_uint,
-                            do_store: bool,
-                            cb: Option<extern "C" fn(arg: libc::uintptr_t,
-                                                     table: libc::size_t,
-                                                     rec: *const record::Record,
-                                                     polarity: bool)>,
-                            cb_arg:  libc::uintptr_t) -> *const HDDlog
+pub extern "C" fn ddlog_run(
+    workers: raw::c_uint,
+    do_store: bool,
+    cb: Option<extern "C" fn(arg: libc::uintptr_t,
+                             table: libc::size_t,
+                             rec: *const record::Record,
+                             polarity: bool)>,
+    cb_arg:  libc::uintptr_t,
+    print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
     let workers = if workers == 0 { 1 } else { workers };
     if do_store {
@@ -117,7 +137,9 @@ pub extern "C" fn ddlog_run(workers: raw::c_uint,
                     upd_cb(&db, relid, v, w == 1)
                 }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), Some(db2))))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
+                                                          db: Some(db2),
+                                                          print_err: print_err}))
             },
             Some(cb) => {
                 let program = prog(sync::Arc::new(move |relid,v,w| {
@@ -126,7 +148,9 @@ pub extern "C" fn ddlog_run(workers: raw::c_uint,
                     cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
                 }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), Some(db2))))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
+                                                          db: Some(db2),
+                                                          print_err: print_err}))
             }
         }
     } else {
@@ -134,7 +158,9 @@ pub extern "C" fn ddlog_run(workers: raw::c_uint,
             None => {
                 let program = prog(sync::Arc::new(|_,_,_| {}));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), None)))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:sync::Mutex::new(prog),
+                                                          db: None,
+                                                          print_err: print_err}))
             },
             Some(cb) => {
                 let program = prog(sync::Arc::new(move |relid,v,w| {
@@ -142,7 +168,9 @@ pub extern "C" fn ddlog_run(workers: raw::c_uint,
                         cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
                     }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new((sync::Mutex::new(prog), None)))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
+                                                          db: None,
+                                                          print_err: print_err}))
             }
         }
     }
@@ -156,12 +184,12 @@ pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int
     };
     let prog = sync::Arc::from_raw(prog);
     match sync::Arc::try_unwrap(prog) {
-        Ok((prog,_)) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
-            eprintln!("ddlog_stop(): error acquiring lock: {}", e);
+        Ok(HDDlog{prog, db, print_err}) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
+            HDDlog::print_err(print_err, &format!("ddlog_stop(): error acquiring lock: {}", e));
             -1
         }),
-        Err(e) => {
-            eprintln!("ddlog_stop(): cannot extract value from Arc");
+        Err(pref) => {
+            pref.eprintln("ddlog_stop(): cannot extract value from Arc");
             -1
         }
     }
@@ -174,8 +202,8 @@ pub unsafe extern "C" fn ddlog_transaction_start(prog: *const HDDlog) -> raw::c_
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = prog.0.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("ddlog_transaction_start(): error: {}", e);
+    let res = prog.prog.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
+        prog.eprintln(&format!("ddlog_transaction_start(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
@@ -189,8 +217,8 @@ pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = prog.0.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("ddlog_transaction_commit(): error: {}", e);
+    let res = prog.prog.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
+        prog.eprintln(&format!("ddlog_transaction_commit(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
@@ -204,8 +232,8 @@ pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw:
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = prog.0.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
-        eprintln!("ddlog_transaction_rollback(): error: {}", e);
+    let res = prog.prog.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
+        prog.eprintln(&format!("ddlog_transaction_rollback(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
@@ -224,14 +252,14 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
         let upd = match updcmd2upd(Box::from_raw(*upds.offset(i as isize)).as_ref()) {
             Ok(upd) => upd,
             Err(e) => {
-                eprintln!("ddlog_apply_updates(): invalid argument: {}", e);
+                prog.eprintln(&format!("ddlog_apply_updates(): invalid argument: {}", e));
                 return -1;
             }
         };
         upds_vec.push(upd);
     };
-    let res = prog.0.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
-        eprintln!("ddlog_apply_updates(): error: {}", e);
+    let res = prog.prog.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
+        prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
         return -1;
     });
     sync::Arc::into_raw(prog);
@@ -250,7 +278,7 @@ pub unsafe extern "C" fn ddlog_clear_relation(
     let res = match clear_relation(&prog, table) {
         Ok(()) => { 0 },
         Err(e) => {
-            eprintln!("ddlog_clear_relation(): error: {}", e);
+            prog.eprintln(&format!("ddlog_clear_relation(): error: {}", e));
             -1
         }
     };
@@ -259,7 +287,7 @@ pub unsafe extern "C" fn ddlog_clear_relation(
 }
 
 unsafe fn clear_relation(prog: &HDDlog, table: libc::size_t) -> Result<(), String> {
-    prog.0.lock().unwrap().clear_relation(table)
+    prog.prog.lock().unwrap().clear_relation(table)
 }
 
 #[no_mangle]
@@ -273,18 +301,18 @@ pub extern "C" fn ddlog_dump_table(
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.1 {
+    let res = if let Some(ref db) = prog.db {
         match dump_table(&mut db.lock().unwrap(), table, cb, cb_arg) {
             Ok(recs) => {
                 0
             },
             Err(e) => {
-                eprintln!("ddlog_dump_table(): error: {}", e);
+                prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
                 -1
             }
         }
     } else {
-        eprintln!("ddlog_dump_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        prog.eprintln("ddlog_dump_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
         -1
     };
     sync::Arc::into_raw(prog);
@@ -311,8 +339,8 @@ pub extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
         return ptr::null();
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res ={
-        let rprog = prog.0.lock().unwrap();
+    let res = {
+        let rprog = prog.prog.lock().unwrap();
         let profile = format!("{}", rprog.profile.lock().unwrap());
         ffi::CString::new(profile).expect("Failed to convert profile string to C").into_raw()
     };

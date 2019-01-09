@@ -33,8 +33,8 @@ pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = apply_updates(&mut prog.0.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
-        eprintln!("ddlog_apply_ovsdb_updates(): error: {}", e);
+    let res = apply_updates(&mut prog.prog.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
+        prog.eprintln(&format!("ddlog_apply_ovsdb_updates(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
@@ -67,19 +67,19 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.1 {
+    let res = if let Some(ref db) = prog.db {
         match dump_deltaplus_table(&mut db.lock().unwrap(), table) {
             Ok(jinserts) => {
                 unsafe { *json = jinserts.into_raw() };
                 0
             },
             Err(e) => {
-                eprintln!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e);
+                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e));
                 -1
             }
         }
     } else {
-        eprintln!("ddlog_dump_ovsdb_deltaplus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        prog.eprintln("ddlog_dump_ovsdb_deltaplus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
         -1
     };
     sync::Arc::into_raw(prog);
@@ -107,19 +107,19 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.1 {
+    let res = if let Some(ref db) = prog.db {
         match dump_deltaminus_table(&mut db.lock().unwrap(), table) {
             Ok(jdeletes) => {
                 unsafe { *json = jdeletes.into_raw() };
                 0
             },
             Err(e) => {
-                eprintln!("ddlog_dump_ovsdb_deltaminus_table(): error: {}", e);
+                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaminus_table(): error: {}", e));
                 -1
             }
         }
     } else {
-        eprintln!("ddlog_dump_ovsdb_deltaminus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        prog.eprintln("ddlog_dump_ovsdb_deltaminus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
         -1
     };
     sync::Arc::into_raw(prog);
@@ -147,19 +147,19 @@ pub extern "C" fn ddlog_dump_ovsdb_deltaupdate_table(prog:  *const HDDlog,
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.1 {
+    let res = if let Some(ref db) = prog.db {
         match dump_deltaupdate_table(&mut db.lock().unwrap(), table) {
             Ok(jupdates) => {
                 unsafe { *json = jupdates.into_raw() };
                 0
             },
             Err(e) => {
-                eprintln!("ddlog_dump_ovsdb_deltaupdate_table(): error: {}", e);
+                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaupdate_table(): error: {}", e));
                 -1
             }
         }
     } else {
-        eprintln!("ddlog_dump_ovsdb_deltaupdate_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        prog.eprintln("ddlog_dump_ovsdb_deltaupdate_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
         -1
     };
     sync::Arc::into_raw(prog);
