@@ -71,6 +71,7 @@ extern function std.str_to_lower (s: string): string
 extern function std.string_contains (s1: string, s2: string): bool
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
 extern function std.vec_is_empty (v: std.Vec<'X>): bool
@@ -243,6 +244,10 @@ mod __std {
     
     pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &u64) -> std_Option<X> {
         option2std(v.x.get(*n as usize).cloned())
+    }
+    
+    pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
+        std_Set{x: s.x.iter().cloned().collect()}
     }
     
     // Set

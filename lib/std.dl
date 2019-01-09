@@ -95,6 +95,7 @@ extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
 extern function vec_contains(v: Vec<'X>, x: 'X): bool
 extern function vec_is_empty(v: Vec<'X>): bool
 extern function vec_nth(v: Vec<'X>, n: bit<64>): Option<'X>
+extern function vec2set(s: Vec<'A>): Set<'A>
 
 /*
  * Map
