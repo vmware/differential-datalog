@@ -1,0 +1,82 @@
+typedef Binding = Binding{entity: entid_t, tn: tnid_t}
+typedef Dependency = Dependency{parent: entid_t, child: entid_t}
+typedef Span = Span{entity: uuid_t, tn: tnid_t}
+typedef ent_category_t = EntContainer{} | EntRuleSection{} | EntOther{}
+typedef entid_t = uuid_t
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
+typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+extern type std.Ref<'A>
+extern type std.Set<'A>
+extern type std.Vec<'A>
+typedef tnid_t = uuid_t
+typedef uuid_t = string
+extern function std.__builtin_2string (x: 'X): string
+extern function std.count (g: std.Group<'A>): bit<64>
+extern function std.deref (x: std.Ref<'A>): 'A
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_first (g: std.Group<'A>): 'A
+extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
+extern function std.htonl (x: bit<32>): bit<32>
+extern function std.htons (x: bit<16>): bit<16>
+function std.is_none (x: std.Option<'A>): bool =
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+function std.is_some (x: std.Option<'A>): bool =
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+extern function std.max (x: 'A, y: 'A): 'A
+extern function std.min (x: 'A, y: 'A): 'A
+extern function std.ntohl (x: bit<32>): bit<32>
+extern function std.ntohs (x: bit<16>): bit<16>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
+extern function std.ref_new (x: 'A): std.Ref<'A>
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.str_to_lower (s: string): string
+extern function std.string_contains (s1: string, s2: string): bool
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
+extern function std.vec_empty (): std.Vec<'A>
+extern function std.vec_is_empty (v: std.Vec<'X>): bool
+extern function std.vec_len (v: std.Vec<'X>): bit<64>
+extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
+extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
+extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+extern function std.vec_singleton (x: 'X): std.Vec<'X>
+input relation Binding [Binding]
+input relation Dependency [Dependency]
+output relation Span [Span]
+Span(.entity=entity, .tn=tn) :- Binding(.entity=entity, .tn=tn).
+Span(.entity=parent, .tn=tn) :- Dependency(.parent=parent, .child=child), Span(.entity=child, .tn=tn).
