@@ -140,13 +140,17 @@ public class DDLogRecord {
         return handles;
     }
 
-    public Object toRecord() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    /**
+     * Converts a DDLogRecord which is a struct to a Java Object.
+     * The class name and class fields must match the struct name and fields.
+     */
+    public Object toObject() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
         if (!DDLogAPI.ddlog_is_struct(this.handle))
             throw new RuntimeException("This is not a struct");
 
         long h = this.handle;
-        String type = DDLogAPI.ddlog_get_constructor(h);
-        Class c = Class.forName(type);
+        String constructor = DDLogAPI.ddlog_get_constructor(h);
+        Class c = Class.forName(constructor);
         Object instance = c.newInstance();
 
         // Get the first field and check to see whether it is a struct with the same constructor
@@ -154,7 +158,7 @@ public class DDLogRecord {
         if (f0 != 0) {
             if (DDLogAPI.ddlog_is_struct(f0)) {
                 String f0type = DDLogAPI.ddlog_get_constructor(f0);
-                if (f0type.equals(type))
+                if (f0type.equals(constructor))
                     h = f0;  // Scan the fields of f0
             }
 
@@ -169,15 +173,25 @@ public class DDLogRecord {
                 DDLogRecord field = DDLogRecord.fromSharedHandle(fh);
                 field.checkHandle();
 
-                if (DDLogAPI.ddlog_is_bool(field.handle)) {
-                    boolean b = field.getBoolean();
-                    f.set(this, b);
-                } else if (DDLogAPI.ddlog_is_int(field.handle)) {
-                    long l = field.getLong();
-                    f.set(this, l);
-                } else if (DDLogAPI.ddlog_is_string(field.handle)) {
+                Class<?> type = f.getType();
+                if (String.class.equals(type)) {
                     String s = field.getString();
-                    f.set(this, s);
+                    f.set(instance, s);
+                } else if (long.class.equals(type)) {
+                    long l = field.getLong();
+                    f.set(instance, l);
+                } else if (int.class.equals(type)) {
+                    long l = field.getLong();
+                    f.set(instance, (int)l);
+                } else if (short.class.equals(type)) {
+                    long l = field.getLong();
+                    f.set(instance, (short)l);
+                } else if (byte.class.equals(type)) {
+                    long l = field.getLong();
+                    f.set(instance, (byte)l);
+                } else if (boolean.class.equals(type)) {
+                    boolean b = field.getBoolean();
+                    f.set(instance, b);
                 } else {
                     throw new RuntimeException("Unsupported field type " + f.getType());
                 }

@@ -1,6 +1,7 @@
 package ddlogapi;
 
 import java.util.*;
+import java.util.function.*;
 
 /**
  * Java wrapper around Differential Datalog C API that manipulates
@@ -14,14 +15,14 @@ public class DDLogAPI {
     /**
      * The C ddlog API
      */
-    static native long ddlog_run(int workers);
+    native long ddlog_run(int workers, String callbackName);
+    native int dump_table(long hprog, int table, String callbackMethod);
     static native int  ddlog_stop(long hprog);
     static native int ddlog_transaction_start(long hprog);
     static native int ddlog_transaction_commit(long hprog);
     static native int ddlog_transaction_rollback(long hprog);
-    static public native int ddlog_apply_updates(long hprog, long[] upds);
-    public native int dump_table(long hprog, int table, String callbackMethod);
-    static public native String ddlog_profile(long hprog);
+    static native int ddlog_apply_updates(long hprog, long[] upds);
+    static native String ddlog_profile(long hprog);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -71,14 +72,27 @@ public class DDLogAPI {
     public static final int error = -1;
     // Maps table names to table IDs
     private final Map<String, Integer> tableId;
+    // Callback to invoke for each record on commit.
+    // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
+    // This callback can be invoked simultaneously from multiple threads.
+    private final Consumer<DDLogCommand> commitCallback;
 
-    public DDLogAPI(int workers) {
+    public DDLogAPI(int workers, Consumer<DDLogCommand> callback) {
         this.tableId = new HashMap<String, Integer>();
-        this.hprog = ddlog_run(workers);
+        String onCommit = callback == null ? null : "onCommit";
+        this.commitCallback = callback;
+        this.hprog = this.ddlog_run(workers, onCommit);
     }
 
-    public DDLogAPI() {
-        this(1);
+    /// Callback invoked from commit.
+    boolean onCommit(int tableid, long handle, boolean polarity) {
+        if (this.commitCallback != null) {
+            DDLogCommand.Kind kind = polarity ? DDLogCommand.Kind.Insert : DDLogCommand.Kind.DeleteVal;
+            DDLogRecord record = DDLogRecord.fromSharedHandle(handle);
+            DDLogCommand command = new DDLogCommand(kind, tableid, record);
+            this.commitCallback.accept(command);
+        }
+        return true;
     }
 
     public int getTableId(String table) {
