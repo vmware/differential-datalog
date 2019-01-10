@@ -23,6 +23,16 @@ public class SpanTest {
         String tn;
     }
 
+    static class SpanComparator implements Comparator<Span> {
+        @Override
+        public int compare(Span left, Span right) {
+            int cl = left.entity.compareTo(right.entity);
+            if (cl != 0)
+                return cl;
+            return left.tn.compareTo(right.tn);
+        }
+    }
+
     public static class SpanParser {
         static Pattern commandPattern = Pattern.compile("^(\\S+)(.*)([;,])$");
         static Pattern argsPattern = Pattern.compile("^\\s*(\\S+)\\(([^)]*)\\)$");
@@ -37,14 +47,40 @@ public class SpanTest {
         List<DDLogCommand> commands;
 
         private final DDLogAPI api;
-        private static boolean debug = false;
+        private static boolean debug = true;
+        private static Set<Span> span;
+        private int spanTableId;
+        private boolean localTables = true;
 
-        SpanParser(DDLogAPI api) {
-            this.api = api;
+        SpanParser() {
+            if (localTables) {
+                this.api = new DDLogAPI(1, r -> this.onCommit(r));
+                this.spanTableId = this.api.getTableId("Span");
+                this.span = new TreeSet<Span>(new SpanComparator());
+            } else {
+                this.api = new DDLogAPI(1, null);
+            }
             this.command = null;
             this.exitCode = -1;
             this.terminator = "";
             this.commands = new ArrayList<DDLogCommand>();
+        }
+
+        void onCommit(DDLogCommand command) {
+            if (command.table != this.spanTableId)
+                return;
+            try {
+                Span span = (Span)command.value.toObject();
+                if (command.kind == DDLogCommand.Kind.Insert)
+                    this.span.add(span);
+                else if (command.kind == DDLogCommand.Kind.DeleteVal)
+                    this.span.remove(span);
+                else
+                    throw new RuntimeException("Unexpected command " + this.command);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                throw new RuntimeException(ex);
+            }
         }
 
         void checkExitCode() {
@@ -68,6 +104,8 @@ public class SpanTest {
             this.command = m.group(1);
             String rest = m.group(2);
             this.terminator = m.group(3);
+            if (debug && !command.equals("insert"))
+                System.err.println(command);
 
             switch (command) {
                 case "echo":
@@ -119,13 +157,15 @@ public class SpanTest {
                     }
 
                     DDLogRecord strct = DDLogRecord.convertObject(o);
+                    if (debug && false)
+                        System.err.println(strct.toString());
                     int id = this.api.getTableId(relation);
                     DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, strct);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
                         DDLogCommand[] ca = this.commands.toArray(new DDLogCommand[0]);
                         if (debug)
-                            System.out.println("Executing " + ca.length + " commands");
+                            System.err.println("Executing " + ca.length + " commands");
                         this.exitCode = this.api.applyUpdates(ca);
                         this.checkExitCode();
                         this.commands.clear();
@@ -138,14 +178,21 @@ public class SpanTest {
                     break;
                 case "dump":
                     // Hardwired output relation name
-                    this.exitCode = this.api.dump("Span");
-                    this.checkExitCode();
-                    this.checkSemicolon();
+                    if (this.localTables) {
+                        System.out.println("Span:");
+                        for (Span s: this.span)
+                            System.out.println(s);
+                    } else {
+                        this.exitCode = this.api.dump("Span");
+                        this.checkExitCode();
+                        this.checkSemicolon();
+                    }
                     break;
                 case "exit":
                     this.exitCode = this.api.stop();
                     this.checkExitCode();
                     this.checkSemicolon();
+                    System.out.println();
                     break;
                 default:
                     throw new RuntimeException("Unexpected command " + command);
@@ -160,6 +207,8 @@ public class SpanTest {
                         throw new RuntimeException(e);
                     }
                 });
+            api.stop();
+            this.span.clear();
         }
     }
 
@@ -168,12 +217,11 @@ public class SpanTest {
             System.err.println("Usage: java -jar span.jar <dat_file_name>");
             System.exit(-1);
         };
-        DDLogAPI api = new DDLogAPI(1);
         Instant start = Instant.now();
-        SpanParser parser = new SpanParser(api);
+        SpanParser parser = new SpanParser();
         parser.run(args[0]);
         Instant end = Instant.now();
-        if (false)
-            System.out.println("Elapsed time " + Duration.between(start, end));
+        if (true)
+            System.err.println("Elapsed time " + Duration.between(start, end));
     }
 }

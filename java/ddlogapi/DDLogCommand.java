@@ -37,4 +37,9 @@ public class DDLogCommand {
                 throw new RuntimeException("Unexpected command " + this.kind);
         }
     }
+
+    @Override
+    public String toString() {
+        return "From " + this.table + " " + this.kind + " " + this.value.toString();
+    }
 }

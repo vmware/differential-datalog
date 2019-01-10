@@ -2,21 +2,121 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <stdio.h>
 #include "ddlogapi_DDLogAPI.h"
 #include "ddlog.h"
 
 /* The _1 in all the function names below
    is the JNI translation of the _ character from Java */
 
+// Describes a callback to an instance method.
+struct CallbackInfo {
+    JNIEnv* env;  // may be NULL if the callback is invoked from a different thread.
+    JavaVM* jvm;  // Used to retrieve a new env when it is NULL.
+    // Class containing method to be called.  A global JNI reference.
+    jclass  cls;
+    // Instance object of the class.  A global JNI reference.
+    jobject obj;
+    // Handle to the method to call.
+    jmethodID method;
+    // chained so we can resolve the leaks.
+    struct CallbackInfo* next;
+};
+
+static struct CallbackInfo* toDelete = NULL;
+
+// Debugging code
+static void printClass(JNIEnv* env, jobject obj) {
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    // First get the class object
+    jmethodID mid = (*env)->GetMethodID(env, cls, "getClass", "()Ljava/lang/Class;");
+    jobject clsObj = (*env)->CallObjectMethod(env, obj, mid);
+    // Now get the class object's class descriptor
+    cls = (*env)->GetObjectClass(env, clsObj);
+    // Find the getName() method on the class object
+    mid = (*env)->GetMethodID(env, cls, "getName", "()Ljava/lang/String;");
+    // Call the getName() to get a jstring object back
+    jstring strObj = (jstring)(*env)->CallObjectMethod(env, clsObj, mid);
+    const char* str = (*env)->GetStringUTFChars(env, strObj, NULL);
+    // Print the class name
+    fprintf(stderr, "Class is: %s\n", str);
+    (*env)->ReleaseStringUTFChars(env, strObj, str);
+}
+
+static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring method, const char* signature) {
+    if (method == NULL)
+        return NULL;
+    struct CallbackInfo* cbinfo = malloc(sizeof(struct CallbackInfo));
+    if (cbinfo == NULL)
+        return NULL;
+    jint error = (*env)->GetJavaVM(env, &cbinfo->jvm);
+    cbinfo->env = NULL;
+    cbinfo->obj = (*env)->NewGlobalRef(env, obj);
+    jclass thisClass = (*env)->GetObjectClass(env, cbinfo->obj);
+    cbinfo->cls = (jclass)(*env)->NewGlobalRef(env, thisClass);
+    const char* methodstr = (*env)->GetStringUTFChars(env, method, NULL);
+    jmethodID methodId = (*env)->GetMethodID(env, cbinfo->cls, methodstr, signature);
+    (*env)->ReleaseStringUTFChars(env, method, methodstr);
+
+    if (methodId == NULL)
+        return NULL;
+    cbinfo->method = methodId;
+    // chain all structures to be deleted.
+    cbinfo->next = toDelete;
+    toDelete = cbinfo;
+    return cbinfo;
+}
+
+static void deleteCallback(struct CallbackInfo* cbinfo) {
+    if (cbinfo == NULL)
+        return;
+    JNIEnv* env;
+    if (cbinfo->env == NULL)
+        (*cbinfo->jvm)->AttachCurrentThread(cbinfo->jvm, (void**)&env, NULL);
+    else
+        env = cbinfo->env;
+    (*env)->DeleteGlobalRef(env, cbinfo->cls);
+    (*env)->DeleteGlobalRef(env, cbinfo->obj);
+    if (cbinfo->env == NULL)
+        (*cbinfo->jvm)->DetachCurrentThread(cbinfo->jvm);
+    free(cbinfo);
+}
+
+bool commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
+    if (cbi == NULL || cbi->jvm == NULL)
+        return false;
+    JNIEnv* env;
+    (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
+    jboolean result = (*env)->CallBooleanMethod(
+        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
+    return (bool)result;
+}
+
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1run(
-    JNIEnv *env, jobject obj, jint workers) {
+    JNIEnv *env, jobject obj, jint workers, jstring callback) {
     if (workers <= 0)
         workers = 1;
-    return (jlong)ddlog_run((unsigned)workers, true, NULL, NULL);
+
+    if (callback == NULL)
+        return (jlong)ddlog_run((unsigned)workers, true, NULL, NULL);
+
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)Z");
+    if (cbinfo == NULL)
+        return 0;
+    return (jlong)ddlog_run((unsigned)workers, true, commit_callback, (void*)cbinfo);
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1stop(
     JNIEnv *env, jobject obj, jlong handle) {
+    struct CallbackInfo* current = toDelete;
+    while (current != NULL) {
+        struct CallbackInfo* next = current->next;
+        deleteCallback(current);
+        current = next;
+    }
+    toDelete = NULL;
     return ddlog_stop((ddlog_prog)handle);
 }
 
@@ -49,12 +149,6 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1apply_1updates(
     return (jint)result;
 }
 
-struct CallbackInfo {
-    JNIEnv* env;
-    jobject obj;
-    const char* method;
-};
-
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1table_1id(
     JNIEnv *env, jclass class, jstring table) {
     const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
@@ -66,26 +160,18 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1get_1table_1id(
 bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env = cbi->env;
-    jclass thisClass = (*env)->GetObjectClass(env, cbi->obj);
-    jmethodID method = (*env)->GetMethodID(env, thisClass, cbi->method, "(J)Z");
-    if (method == NULL)
-        return false;
-    jboolean result = (*env)->CallBooleanMethod(env, cbi->obj, method, (jlong)rec);
+    assert(env);
+    jboolean result = (*env)->CallBooleanMethod(env, cbi->obj, cbi->method, (jlong)rec);
     return (bool)result;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_dump_1table(
     JNIEnv *env, jobject obj, jlong progHandle, jint table, jstring callback) {
-    const char* cbk = (*env)->GetStringUTFChars(env, callback, NULL);
-    struct CallbackInfo* cbinfo = malloc(sizeof(struct CallbackInfo));
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(J)Z");
     if (cbinfo == NULL)
         return -1;
-    cbinfo->env = env;
-    cbinfo->obj = obj;
-    cbinfo->method = cbk;
+    cbinfo->env = env;  // the dump_callback will be called on the same thread
     int result = ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo);
-    free(cbinfo);
-    (*env)->ReleaseStringUTFChars(env, callback, cbk);
     return (jint)result;
 }
 
