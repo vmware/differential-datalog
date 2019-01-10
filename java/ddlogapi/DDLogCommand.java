@@ -1,5 +1,7 @@
 package ddlogapi;
 
+import java.lang.reflect.*;
+
 public class DDLogCommand {
     public enum Kind {
         DeleteVal,
@@ -45,8 +47,9 @@ public class DDLogCommand {
         }
     }
 
-    public <T> T getValue(Class<T> classOfT) {
-        return this.value.toTypedObject(classOfT);
+    public <T> T getValue(Class<T> classOfT)
+        throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+        return (T) this.value.toTypedObject(classOfT);
     }
 
     @Override

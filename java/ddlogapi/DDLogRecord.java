@@ -140,8 +140,9 @@ public class DDLogRecord {
         return handles;
     }
 
-    public <T> T toTypedObject(Class<T> classOfT) throws InstantiationException, IllegalAccessException {
-        Object instance = classOfT.newInstance();
+    public <T> T toTypedObject(Class<T> classOfT)
+            throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+        Object instance = classOfT.getDeclaredConstructor().newInstance();
         long h = this.handle;
 
         // Get the first field and check to see whether it is a struct with the same constructor
@@ -195,14 +196,15 @@ public class DDLogRecord {
      * Converts a DDLogRecord which is a struct to a Java Object.
      * The class name and class fields must match the struct name and fields.
      */
-    public Object toObject() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    public Object toObject()
+            throws ClassNotFoundException, InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         if (!DDLogAPI.ddlog_is_struct(this.handle))
             throw new RuntimeException("This is not a struct");
 
         long h = this.handle;
         String constructor = DDLogAPI.ddlog_get_constructor(h);
         Class c = Class.forName(constructor);
-        return toTypedObject(c);
+        return toTypedObject((Class<?>)c);
     }
 
     public static DDLogRecord makeTuple(DDLogRecord[] fields) {
