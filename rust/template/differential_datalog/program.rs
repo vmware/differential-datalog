@@ -1140,18 +1140,41 @@ impl<V:Val> RunningProgram<V> {
         }
     }
 
-    /* Returns a reference to relation content.
+    /* Returns a reference to indexed input relation content.
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    /*pub fn relation_content(&mut self, relid: RelId) -> Response<&ValSet<V>> {
-        self.flush().and_then(move |_| {
-            match self.relations.get_mut(&relid) {
-                None => resp_from_error!("unknown relation {}", relid),
-                Some(rel) => Ok(&rel.elements)
-            }
-        })
-    }*/
+    pub fn get_input_relation_index(&mut self, relid: RelId) -> Response<&IndexedValSet<V>> {
+        match self.relations.get(&relid) {
+            None => {
+                Err(format!("unknown relation {}", relid))
+            },
+            Some(RelationInstance::Flat{..}) => {
+                Err(format!("not an indexed relation {}", relid))
+            },
+            Some(RelationInstance::Indexed{elements, ..}) => {
+                Ok(elements)
+            },
+        }
+    }
+
+    /* Returns a reference to a flat input relation content.
+     * If called in the middle of a transaction, returns state snapshot including changes
+     * made by the current transaction.
+     */
+    pub fn get_input_relation_data(&mut self, relid: RelId) -> Response<&ValSet<V>> {
+        match self.relations.get(&relid) {
+            None => {
+                Err(format!("unknown relation {}", relid))
+            },
+            Some(RelationInstance::Indexed{..}) => {
+                Err(format!("not a flat relation {}", relid))
+            },
+            Some(RelationInstance::Flat{elements, ..}) => {
+                Ok(elements)
+            },
+        }
+    }
 
     /* Returns a reference to delta accumulated by the current transaction
      */
