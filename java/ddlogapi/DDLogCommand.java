@@ -17,6 +17,13 @@ public class DDLogCommand {
         this.value = value;
     }
 
+    public DDLogCommand(final Kind kind, final int table, final Object value)
+            throws IllegalAccessException, InstantiationException, IllegalAccessException {
+        this.kind = kind;
+        this.table = table;
+        this.value = DDLogRecord.convertObject(value);
+    }
+
     /**
      * Allocates the underlying C data structure representing the command.
      * At this time the command takes ownership of the value.
@@ -36,6 +43,10 @@ public class DDLogCommand {
             default:
                 throw new RuntimeException("Unexpected command " + this.kind);
         }
+    }
+
+    public <T> T getValue(Class<T> classOfT) {
+        return this.value.toTypedObject(classOfT);
     }
 
     @Override

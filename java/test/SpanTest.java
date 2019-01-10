@@ -10,7 +10,6 @@ import java.lang.RuntimeException;
 
 import ddlogapi.DDLogAPI;
 import ddlogapi.DDLogCommand;
-import ddlogapi.DDLogRecord;
 
 public class SpanTest {
     public static class Dependency {
@@ -70,7 +69,7 @@ public class SpanTest {
             if (command.table != this.spanTableId)
                 return;
             try {
-                Span span = (Span)command.value.toObject();
+                Span span = command.getValue(Span.class);
                 if (command.kind == DDLogCommand.Kind.Insert)
                     this.span.add(span);
                 else if (command.kind == DDLogCommand.Kind.DeleteVal)
@@ -97,7 +96,7 @@ public class SpanTest {
             return s.trim().replace("\"", "");
         }
 
-        void parseLine(String line) throws IllegalAccessException {
+        void parseLine(String line) throws IllegalAccessException, InstantiationException {
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
                 throw new RuntimeException("Could not isolate command");
@@ -131,16 +130,6 @@ public class SpanTest {
                     String[] args = a.split(",");
                     if (args.length != 2)
                         throw new RuntimeException("Expected 2 arguments, got " + args.length + ":" + a);
-                    /*
-                      This is an alternative way to create a DDLogRecord; it requires one
-                      to know the internal APIs of DDLogRecord.
-
-                    DDLogRecord[] array = new DDLogRecord[2];
-                    array[0] = new DDLogRecord(clean(args[0]));
-                    array[1] = new DDLogRecord(clean(args[1]));
-                    DDLogRecord strct = DDLogRecord.makeStruct(relation, array);
-                    */
-
                     Object o;
                     if (relation.equals("Dependency")) {
                         Dependency d = new Dependency();
@@ -156,11 +145,8 @@ public class SpanTest {
                         throw new RuntimeException("Unexpected class: " + relation);
                     }
 
-                    DDLogRecord strct = DDLogRecord.convertObject(o);
-                    if (debug && false)
-                        System.err.println(strct.toString());
                     int id = this.api.getTableId(relation);
-                    DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, strct);
+                    DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, o);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
                         DDLogCommand[] ca = this.commands.toArray(new DDLogCommand[0]);
@@ -189,8 +175,6 @@ public class SpanTest {
                     }
                     break;
                 case "exit":
-                    this.exitCode = this.api.stop();
-                    this.checkExitCode();
                     this.checkSemicolon();
                     System.out.println();
                     break;
@@ -203,11 +187,11 @@ public class SpanTest {
             Files.lines(Paths.get(file)).forEach(l -> {
                     try {
                         parseLine(l);
-                    } catch (IllegalAccessException e) {
+                    } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 });
-            api.stop();
+            this.api.stop();
             this.span.clear();
         }
     }

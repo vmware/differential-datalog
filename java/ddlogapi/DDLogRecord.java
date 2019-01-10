@@ -140,29 +140,20 @@ public class DDLogRecord {
         return handles;
     }
 
-    /**
-     * Converts a DDLogRecord which is a struct to a Java Object.
-     * The class name and class fields must match the struct name and fields.
-     */
-    public Object toObject() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
-        if (!DDLogAPI.ddlog_is_struct(this.handle))
-            throw new RuntimeException("This is not a struct");
-
+    public <T> T toTypedObject(Class<T> classOfT) throws InstantiationException, IllegalAccessException {
+        Object instance = classOfT.newInstance();
         long h = this.handle;
-        String constructor = DDLogAPI.ddlog_get_constructor(h);
-        Class c = Class.forName(constructor);
-        Object instance = c.newInstance();
 
         // Get the first field and check to see whether it is a struct with the same constructor
         long f0 = DDLogAPI.ddlog_get_struct_field(h, 0);
         if (f0 != 0) {
             if (DDLogAPI.ddlog_is_struct(f0)) {
                 String f0type = DDLogAPI.ddlog_get_constructor(f0);
-                if (f0type.equals(constructor))
+                if (f0type.equals(classOfT.getSimpleName()))
                     h = f0;  // Scan the fields of f0
             }
 
-            Field[] fields = c.getDeclaredFields();
+            Field[] fields = classOfT.getDeclaredFields();
             for (int i = 0; ; i++) {
                 long fh = DDLogAPI.ddlog_get_struct_field(h, i);
                 if (fh == 0)
@@ -197,7 +188,21 @@ public class DDLogRecord {
                 }
             }
         }
-        return instance;
+        return classOfT.cast(instance);
+    }
+
+    /**
+     * Converts a DDLogRecord which is a struct to a Java Object.
+     * The class name and class fields must match the struct name and fields.
+     */
+    public Object toObject() throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+        if (!DDLogAPI.ddlog_is_struct(this.handle))
+            throw new RuntimeException("This is not a struct");
+
+        long h = this.handle;
+        String constructor = DDLogAPI.ddlog_get_constructor(h);
+        Class c = Class.forName(constructor);
+        return toTypedObject(c);
     }
 
     public static DDLogRecord makeTuple(DDLogRecord[] fields) {
