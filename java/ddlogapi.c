@@ -100,12 +100,12 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDLogAPI_ddlog_1run(
         workers = 1;
 
     if (callback == NULL)
-        return (jlong)ddlog_run((unsigned)workers, true, NULL, NULL);
+        return (jlong)ddlog_run((unsigned)workers, true, NULL, 0, NULL);
 
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)Z");
     if (cbinfo == NULL)
         return 0;
-    return (jlong)ddlog_run((unsigned)workers, true, commit_callback, (void*)cbinfo);
+    return (jlong)ddlog_run((unsigned)workers, true, commit_callback, (uintptr_t)cbinfo, NULL);
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDLogAPI_ddlog_1stop(
