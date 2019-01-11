@@ -14,20 +14,6 @@ input relation R1(a1: string)
 
 //---
 
-// non-linear rules
-
-input relation R1(a1: string)
-
-relation R2(a2: string)
-relation R3(a3: string, b3: string)
-relation R4(a4: string, b4: string)
-
-R2(x) :- R1(x).
-R2(x) :- R3(x, y), R4(y, z).
-R3(x,y), R4(x,y) :- R2(x), R2(y).
-
-//---
-
 // non-stratified negation
 
 input relation R1(a1: string)

@@ -442,6 +442,19 @@ output relation Table12(id: bit<128>, name: string, f3: S)
 Table12(hash128((id,name,f2,f3)), name, f3) :- Table1(id, name), Table2(name, f2, f3).
 
 
+/* non-linear rules are now allowed*/
+
+input relation R1_nl(a1: string)
+
+relation R2_nl(a2: string)
+relation R3_nl(a3: string, b3: string)
+relation R4_nl(a4: string, b4: string)
+
+R2_nl(x) :- R1_nl(x).
+R2_nl(x) :- R3_nl(x, y), R4_nl(y, z).
+R3_nl(x,y), R4_nl(x,y) :- R2_nl(x), R2_nl(y).
+
+
 /* strings test */
 input relation Strings(s: string)
 
