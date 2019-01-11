@@ -31,7 +31,11 @@ typedef Links = Links{l: line, s1: station, s2: station}
 typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef Parent = Parent{child: person, parent: person}
 typedef R1 = bigint
+typedef R1_nl = R1_nl{a1: string}
+typedef R2_nl = R2_nl{a2: string}
 typedef R3 = R3{f1: bigint, f2: bool}
+typedef R3_nl = R3_nl{a3: string, b3: string}
+typedef R4_nl = R4_nl{a4: string, b4: string}
 typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
 typedef Reach = Reach{s1: station, s2: station}
@@ -379,9 +383,13 @@ input relation Links [Links]
 output relation NewAllocation [NewAllocation]
 input relation Parent [Parent]
 input relation R1 [R1]
+input relation R1_nl [R1_nl]
 input relation R2 [(bigint, bigint)]
+relation R2_nl [R2_nl]
 input relation R3 [R3]
+relation R3_nl [R3_nl]
 output relation R4 [R3]
+relation R4_nl [R4_nl]
 output relation R5 [bigint]
 output relation R6 [R6]
 output relation R7 [R7]
@@ -498,6 +506,10 @@ R7(.f1=1, .f2=16'd2).
 R7(.f1=1, .f2=16'd3).
 R7[R7Other{}].
 Table12(.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3) :- Table1(.id=id, .name=name), Table2(.name=name, .f2=f2, .f3=f3).
+R2_nl(.a2=x) :- R1_nl(.a1=x).
+R2_nl(.a2=x) :- R3_nl(.a3=x, .b3=y), R4_nl(.a4=y, .b4=z).
+R3_nl(.a3=x, .b3=y),
+R4_nl(.a4=x, .b4=y) :- R2_nl(.a2=x), R2_nl(.a2=y).
 Strings(.s="").
 Strings(.s="foo").
 Strings(.s="bar\n").
