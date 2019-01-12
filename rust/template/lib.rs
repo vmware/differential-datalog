@@ -20,7 +20,7 @@ use differential_datalog::uint::*;
 use differential_datalog::int::*;
 use differential_datalog::arcval;
 use differential_datalog::record;
-use differential_datalog::record::{FromRecord, IntoRecord};
+use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
 use abomonation::Abomonation;
 
 use fnv::{FnvHashSet, FnvHashMap};
@@ -77,6 +77,11 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String>
             let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey{relid: relid as RelId, k: key})
+        },
+        record::UpdCmd::Modify(rident, key, rec) => {
+            let relid: Relations = relident2id(rident).ok_or_else(||format!("Unknown relation {}", rident))?;
+            let key = relkey_from_record(relid, key)?;
+            Ok(Update::Modify{relid: relid as RelId, k: key, m: Box::new(rec.clone())})
         }
     }
 }

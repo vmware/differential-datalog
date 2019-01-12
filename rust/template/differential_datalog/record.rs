@@ -2,7 +2,7 @@
 
 use num::{ToPrimitive, BigInt, BigUint};
 use std::vec;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{btree_map, BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::borrow::Cow;
 #[cfg(test)]
@@ -69,7 +69,8 @@ impl fmt::Display for RelIdentifier {
 pub enum UpdCmd {
     Insert (RelIdentifier, Record),
     Delete (RelIdentifier, Record),
-    DeleteKey (RelIdentifier, Record)
+    DeleteKey (RelIdentifier, Record),
+    Modify (RelIdentifier, Record, Record)
 }
 
 /*
@@ -452,6 +453,14 @@ pub unsafe extern "C" fn ddlog_delete_key_cmd(table: libc::size_t, rec: *mut Rec
     Box::into_raw(Box::new(UpdCmd::DeleteKey(RelIdentifier::RelId(table), *rec)))
 }
 
+/// `Mutator` trait represents an object that can be used to mutate a value (e.g., change some of
+/// its fields).
+pub trait Mutator<V> {
+    /// Consumes a value and returns an updated value.
+    fn mutate(&self, v: &mut V) -> Result<(), String>;
+}
+
+/// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
 pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
 }
@@ -460,7 +469,6 @@ pub trait IntoRecord {
     fn into_record(self) -> Record;
 }
 
-/// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
 impl FromRecord for u8 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
@@ -474,6 +482,13 @@ impl FromRecord for u8 {
                 Result::Err(format!("not an int {:?}", *v))
             }
         }
+    }
+}
+
+impl Mutator<u8> for Record {
+    fn mutate(&self, v: &mut u8) -> Result<(), String> {
+        *v = u8::from_record(self)?;
+        Ok(())
     }
 }
 
@@ -514,6 +529,13 @@ impl IntoRecord for u16 {
     }
 }
 
+impl Mutator<u16> for Record {
+    fn mutate(&self, v: &mut u16) -> Result<(), String> {
+        *v = u16::from_record(self)?;
+        Ok(())
+    }
+}
+
 #[test]
 fn test_u16() {
     assert_eq!(u16::from_record(&Record::Int(25_u16.to_bigint().unwrap())), Ok(25));
@@ -542,6 +564,13 @@ impl FromRecord for u32 {
 impl IntoRecord for u32 {
     fn into_record(self) -> Record {
         Record::Int(BigInt::from(self))
+    }
+}
+
+impl Mutator<u32> for Record {
+    fn mutate(&self, v: &mut u32) -> Result<(), String> {
+        *v = u32::from_record(self)?;
+        Ok(())
     }
 }
 
@@ -576,6 +605,13 @@ impl IntoRecord for u64 {
     }
 }
 
+impl Mutator<u64> for Record {
+    fn mutate(&self, v: &mut u64) -> Result<(), String> {
+        *v = u64::from_record(self)?;
+        Ok(())
+    }
+}
+
 #[test]
 fn test_u64() {
     assert_eq!(u64::from_record(&Record::Int(25_u64.to_bigint().unwrap())), Ok(25));
@@ -606,6 +642,13 @@ impl IntoRecord for u128 {
     }
 }
 
+impl Mutator<u128> for Record {
+    fn mutate(&self, v: &mut u128) -> Result<(), String> {
+        *v = u128::from_record(self)?;
+        Ok(())
+    }
+}
+
 #[test]
 fn test_u128() {
     assert_eq!(u128::from_record(&Record::Int(25_u128.to_bigint().unwrap())), Ok(25));
@@ -630,6 +673,13 @@ impl FromRecord for BigInt {
 impl IntoRecord for BigInt {
     fn into_record(self) -> Record {
         Record::Int(self)
+    }
+}
+
+impl Mutator<BigInt> for Record {
+    fn mutate(&self, v: &mut BigInt) -> Result<(), String> {
+        *v = BigInt::from_record(self)?;
+        Ok(())
     }
 }
 
@@ -661,6 +711,13 @@ impl IntoRecord for BigUint {
     }
 }
 
+impl Mutator<BigUint> for Record {
+    fn mutate(&self, v: &mut BigUint) -> Result<(), String> {
+        *v = BigUint::from_record(self)?;
+        Ok(())
+    }
+}
+
 #[test]
 fn test_biguint() {
     let vi = (25_i64).to_bigint().unwrap();
@@ -689,6 +746,13 @@ impl IntoRecord for bool {
     }
 }
 
+impl Mutator<bool> for Record {
+    fn mutate(&self, v: &mut bool) -> Result<(), String> {
+        *v = bool::from_record(self)?;
+        Ok(())
+    }
+}
+
 #[test]
 fn test_bool() {
     assert_eq!(bool::from_record(&Record::Bool(true)), Ok(true));
@@ -709,6 +773,13 @@ impl FromRecord for String {
 impl IntoRecord for String {
     fn into_record(self) -> Record {
         Record::String(self)
+    }
+}
+
+impl Mutator<String> for Record {
+    fn mutate(&self, v: &mut String) -> Result<(), String> {
+        *v = String::from_record(self)?;
+        Ok(())
     }
 }
 
@@ -735,6 +806,12 @@ impl IntoRecord for () {
     }
 }
 
+impl Mutator<()> for Record {
+    fn mutate(&self, _v: &mut ()) -> Result<(), String> {
+        Ok(())
+    }
+}
+
 macro_rules! decl_tuple_from_record {
     ( $n:tt, $( $t:tt , $i:tt),+ ) => {
         impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
@@ -751,6 +828,13 @@ macro_rules! decl_tuple_from_record {
         impl <$($t: IntoRecord),*> IntoRecord for ($($t),*) {
             fn into_record(self) -> $crate::record::Record {
                 Record::Tuple(vec![$(self.$i.into_record()),*])
+            }
+        }
+
+        impl <$($t: FromRecord),*> Mutator<($($t),*)> for Record {
+            fn mutate(&self, v: &mut ($($t),*)) -> Result<(), String> {
+                *v = <($($t),*)>::from_record(self)?;
+                Ok(())
             }
         }
     };
@@ -823,6 +907,18 @@ impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
     }
 }
 
+impl<T: FromRecord> Mutator<vec::Vec<T>> for Record {
+    fn mutate(&self, v: &mut vec::Vec<T>) -> Result<(), String> {
+        *v = <vec::Vec<T>>::from_record(self)?;
+        Ok(())
+    }
+}
+
+#[test]
+fn test_vec() {
+    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(CollectionKind::Unknown, vec![Record::Bool(true), Record::Bool(false)])),
+               Ok(vec![true, false]));
+}
 
 macro_rules! decl_arr_from_record {
     ( $i:tt ) => {
@@ -845,6 +941,13 @@ macro_rules! decl_arr_from_record {
         impl<T:IntoRecord+Clone> IntoRecord for [T;$i] {
             fn into_record(self) -> Record {
                 Record::Array(CollectionKind::Vector, self.into_iter().map(|x:&T|(*x).clone().into_record()).collect())
+            }
+        }
+
+        impl<T:FromRecord+Default> Mutator<[T;$i]> for Record {
+            fn mutate(&self, v: &mut [T;$i]) -> Result<(), String> {
+                *v = <[T;$i]>::from_record(self)?;
+                Ok(())
             }
         }
     };
@@ -904,6 +1007,66 @@ impl<K: IntoRecord+Ord, V:IntoRecord> IntoRecord for BTreeMap<K,V> {
     }
 }
 
+/* Map update semantics is that the update contains keys that are in one of the maps but not the
+ * other, plus keys that are in both maps but with different values. */
+impl<K: FromRecord+Ord, V: FromRecord + PartialEq> Mutator<BTreeMap<K,V>> for Record {
+    fn mutate(&self, map: &mut BTreeMap<K,V>) -> Result<(), String> {
+        let upd = <BTreeMap<K,V>>::from_record(self)?;
+        for (k, v) in upd.into_iter() {
+            match map.entry(k) {
+                btree_map::Entry::Vacant(ve) => {
+                    /* key not in map -- insert */
+                    ve.insert(v);
+                },
+                btree_map::Entry::Occupied(mut oe) => {
+                    if *oe.get() == v {
+                        /* key in map with the same value -- delete */
+                        oe.remove_entry();
+                    } else {
+                        /* key in map, different value -- set new value */
+                        oe.insert(v);
+                    }
+                }
+            }
+        };
+        Ok(())
+    }
+}
+
+#[test]
+fn test_map() {
+    assert_eq!(<BTreeMap<u32, u32>>::from_record(&Record::Array(CollectionKind::Unknown,
+                                                                vec![Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(10))]),
+                                                                     Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ])),
+               Ok(BTreeMap::from_iter(vec![(0,10), (1,10)])));
+
+    let mut v = <BTreeMap<u32, u32>>::from_record(&Record::Array(CollectionKind::Unknown,
+                                                  vec![Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(10))]),
+                                                       Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ])).unwrap();
+    Record::Array(CollectionKind::Unknown,
+                  vec![Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(10))]),
+                       Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ]).
+               mutate(&mut v).unwrap();
+    assert_eq!(v, BTreeMap::from_iter(vec![]));
+
+    v = <BTreeMap<u32, u32>>::from_record(&Record::Array(CollectionKind::Unknown,
+                                          vec![Record::Tuple(vec![Record::Int(BigInt::from(2)), Record::Int(BigInt::from(20))]),
+                                               Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(20))] ) ])).unwrap();
+    Record::Array(CollectionKind::Unknown,
+                             vec![Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(10))]),
+                                  Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ]).
+               mutate(&mut v).unwrap();
+    assert_eq!(v, BTreeMap::from_iter(vec![(0,10), (1,10), (2,20)]));
+
+    v =  <BTreeMap<u32, u32>>::from_record(&Record::Array(CollectionKind::Unknown,
+                                            vec![Record::Tuple(vec![Record::Int(BigInt::from(2)), Record::Int(BigInt::from(20))]),
+                                                 Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ])).unwrap();
+    Record::Array(CollectionKind::Unknown,
+                             vec![Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(10))]),
+                                  Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Int(BigInt::from(10))] ) ]).
+               mutate(&mut v).unwrap();
+    assert_eq!(v, BTreeMap::from_iter(vec![(0,10), (2,20)]));
+}
 
 impl<T: FromRecord+Ord> FromRecord for BTreeSet<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
@@ -917,25 +1080,51 @@ impl<T: IntoRecord+Ord> IntoRecord for BTreeSet<T> {
     }
 }
 
-
-#[test]
-fn test_vec() {
-    assert_eq!(<vec::Vec<bool>>::from_record(&Record::Array(CollectionKind::Unknown, vec![Record::Bool(true), Record::Bool(false)])),
-               Ok(vec![true, false]));
+/* Set update semantics: update contains values that are in one of the maps but not the
+ * other. */
+impl<T: FromRecord+Ord> Mutator<BTreeSet<T>> for Record {
+    fn mutate(&self, set: &mut BTreeSet<T>) -> Result<(), String> {
+        let upd = <BTreeSet<T>>::from_record(self)?;
+        for v in upd.into_iter() {
+            if !set.remove(&v) {
+                set.insert(v);
+            }
+        };
+        Ok(())
+    }
 }
 
+#[test]
+fn test_set() {
+    assert_eq!(<BTreeSet<u32>>::from_record(&Record::Array(CollectionKind::Unknown, vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(1))])),
+               Ok(BTreeSet::from_iter(vec![0, 1])));
+
+    let mut v = <BTreeSet<u32>>::from_record(&Record::Array(CollectionKind::Unknown,
+                                             vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(2))])).unwrap();
+    Record::Array(CollectionKind::Unknown, vec![Record::Int(BigInt::from(0)), Record::Int(BigInt::from(1))]).
+               mutate(&mut v).unwrap();
+    assert_eq!(v, BTreeSet::from_iter(vec![1, 2]));
+}
+
+
+
 #[cfg(test)]
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(Eq, PartialEq, Debug, Clone, Default)]
 struct Foo<T> {
     f1: T
 }
 
-pub fn arg_find<'a>(args: &'a Vec<(Name, Record)>, argname: &str, constructor: &str) -> Result<&'a Record, String> {
-    args.iter().find(|(n,_)|*n==argname).ok_or_else(||format!("missing field {} in {}", argname, constructor)).map(|(_,v)| v)
+pub fn arg_extract<T:FromRecord+Default>(args: &Vec<(Name, Record)>, argname: &str) -> Result<T, String> {
+    args.iter().find(|(n,_)|*n==argname).map_or_else(||Ok(Default::default()), |(_,v)| T::from_record(v))
 }
 
+pub fn arg_find<'a>(args: &'a Vec<(Name, Record)>, argname: &str) -> Option<&'a Record> {
+    args.iter().find(|(n,_)|*n==argname).map(|(_,v)|v)
+}
+
+
 #[cfg(test)]
-impl <T: FromRecord> FromRecord for Foo<T> {
+impl <T: FromRecord+Default> FromRecord for Foo<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::PosStruct(constr, args) => {
@@ -948,8 +1137,8 @@ impl <T: FromRecord> FromRecord for Foo<T> {
             },
             Record::NamedStruct(constr, args) => {
                 match constr.as_ref() {
-                    "Foo" if args.len() == 1 => {
-                        Ok(Foo{f1: T::from_record(arg_find(args, "f1", "Foo")?)?})
+                    "Foo" => {
+                        Ok(Foo{f1: arg_extract(args, "f1")?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type Foo in {:?}", c, *val))
                 }
@@ -972,6 +1161,32 @@ macro_rules! decl_struct_into_record {
     };
 }
 
+#[macro_export]
+macro_rules! decl_record_mutator_struct {
+    ( $n:ident, <$( $targ:ident),*>, $( $arg:ident : $type:ty),* ) => {
+        impl<$($targ),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
+            where $($crate::record::Record: $crate::record::Mutator<$targ>),*
+        {
+            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
+                match self {
+                    $crate::record::Record::PosStruct(..) => {
+                        return Err(format!("Cannot use positional struct as mutator"));
+                    },
+                    $crate::record::Record::NamedStruct(_, args) => {
+                        $(if let Some(arg_upd) = $crate::record::arg_find(args, stringify!($arg)) {
+                            <$crate::record::Mutator<$type>>::mutate(arg_upd, &mut x.$arg)?;
+                          };)*
+                    },
+                    _ => {
+                        return Result::Err(format!("not a struct {:?}", *self));
+                    }
+                };
+                Ok(())
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 pub struct NestedStruct<T>{x:bool, y: Foo<T>}
 
@@ -982,10 +1197,36 @@ pub struct StructWithNoFields;
 decl_struct_into_record!(Foo, <T>, f1);
 
 #[cfg(test)]
+decl_record_mutator_struct!(Foo, <T>, f1: T);
+
+#[cfg(test)]
 decl_struct_into_record!(NestedStruct, <T>, x,y);
 
 #[cfg(test)]
+decl_record_mutator_struct!(NestedStruct, <T>, x: bool, y: Foo<T>);
+
+#[cfg(test)]
 decl_struct_into_record!(StructWithNoFields, <>,);
+
+#[cfg(test)]
+decl_record_mutator_struct!(StructWithNoFields, <>, );
+
+#[test]
+fn test_struct()
+{
+    let foo1: Foo<BTreeMap<u32, String>> = Foo{f1: BTreeMap::from_iter(vec![(5,"five".to_owned()), (6,"six".to_owned())])};
+    let foo2 = <Foo<BTreeMap<u32, String>>>::from_record(&foo1.clone().into_record()).unwrap();
+
+    assert_eq!(foo1, foo2);
+
+    let upd = Record::NamedStruct(Cow::from("Foo"),
+                                  vec![(Cow::from("f1"), Record::Array(CollectionKind::Unknown,
+                                                                       vec![Record::Tuple(vec![Record::Int(BigInt::from(5)), Record::String("5".to_owned())])]))]);
+    let mut foo_mod = foo1.clone();
+    upd.mutate(&mut foo_mod).unwrap();
+    let foo_expected = Foo{f1: BTreeMap::from_iter(vec![(5,"5".to_owned()), (6,"six".to_owned())])};
+    assert_eq!(foo_mod, foo_expected);
+}
 
 
 #[cfg(test)]
@@ -1000,7 +1241,7 @@ enum DummyEnum<T> {
 }
 
 #[cfg(test)]
-impl <T: FromRecord> FromRecord for DummyEnum<T> {
+impl <T: FromRecord+Default> FromRecord for DummyEnum<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::PosStruct(constr, args) => {
@@ -1023,16 +1264,16 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
             Record::NamedStruct(constr, args) => {
                 match constr.as_ref() {
                     "Constr1" if args.len() == 2 => {
-                        Ok(DummyEnum::Constr1{f1: <Bbool>::from_record(arg_find(args, "f1", "Constr1")?)?,
-                                              f2: String::from_record(arg_find(args, "f2", "Constr1")?)?})
+                        Ok(DummyEnum::Constr1{f1: arg_extract::<Bbool>(args, "f1")?,
+                                              f2: arg_extract::<String>(args, "f2")?})
                     },
                     "Constr2" if args.len() == 3 => {
-                        Ok(DummyEnum::Constr2{f1: <T>::from_record(arg_find(args, "f1", "Constr2")?)?,
-                                              f2: <BigInt>::from_record(arg_find(args, "f2", "Constr2")?)?,
-                                              f3: <Foo<T>>::from_record(arg_find(args, "f3", "Constr2")?)?})
+                        Ok(DummyEnum::Constr2{f1: arg_extract::<T>(args, "f1")?,
+                                              f2: arg_extract::<BigInt>(args, "f2")?,
+                                              f3: arg_extract::<Foo<T>>(args, "f3")?})
                     },
                     "Constr3" if args.len() == 1 => {
-                        Ok(DummyEnum::Constr3{f1: <(bool,bool)>::from_record(arg_find(args, "f1", "Constr3")?)?})
+                        Ok(DummyEnum::Constr3{f1: arg_extract::<(bool,bool)>(args, "f1")?})
                     },
                     c => Result::Err(format!("unknown constructor {} of type DummyEnum in {:?}", c, *val))
                 }
@@ -1042,6 +1283,44 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
             }
         }
     }
+}
+
+#[macro_export]
+macro_rules! decl_record_mutator_enum {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
+        impl<$($targ: $crate::record::FromRecord+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
+            where $($crate::record::Record: $crate::record::Mutator<$targ>),*
+        {
+            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
+                match self {
+                    $crate::record::Record::PosStruct(..) => {
+                        return Err(format!("Cannot use positional struct as mutator"));
+                    },
+                    $crate::record::Record::NamedStruct(constr, args) => {
+                        match (x, constr.as_ref()) {
+                            $(
+                                ($n::$cons{$($arg),*}, stringify!($cons)) => {
+                                    $(
+                                        if let Some(arg_upd) = $crate::record::arg_find(args, stringify!($arg)) {
+                                            <Mutator<$type>>::mutate(arg_upd, $arg)?;
+                                        };
+                                     )*
+                                },
+
+                            )*
+                            (x, _) => {
+                                *x = <$n<$($targ),*>>::from_record(self)?;
+                            }
+                        }
+                    },
+                    _ => {
+                        return Result::Err(format!("not a struct {:?}", *self));
+                    }
+                };
+                Ok(())
+            }
+        }
+    };
 }
 
 #[macro_export]
@@ -1069,8 +1348,12 @@ macro_rules! decl_enum_into_record {
 #[cfg(test)]
 decl_enum_into_record!(DummyEnum,<T>,Constr1{f1,f2},Constr2{f1,f2,f3},Constr3{f1});
 
+#[cfg(test)]
+decl_record_mutator_enum!(DummyEnum,<T>,Constr1{f1:Bbool ,f2: String},Constr2{f1: T, f2: BigInt, f3: Foo<T>},Constr3{f1: (bool, bool)});
+
 #[test]
-fn test_enum() {
+fn test_enum()
+{
     assert_eq!(DummyEnum::from_record(&Record::PosStruct(Cow::from("Constr1"),
                                                     vec![Record::Bool(true), Record::String("foo".to_string())])),
                Ok(DummyEnum::Constr1::<bool>{f1: true, f2: "foo".to_string()}));
@@ -1116,6 +1399,35 @@ macro_rules! decl_val_enum_into_record {
             fn into_record(self) -> $crate::record::Record {
                 match self {
                     $($n::$cons($arg) => $arg.into_record()),*
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! decl_record_mutator_val_enum {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($type:ty)),* ) => {
+        impl<$($targ: $crate::record::FromRecord+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
+            where $($crate::record::Record: $crate::record::Mutator<$targ>),*
+        {
+            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
+                match self {
+                    $crate::record::Record::PosStruct(..) => {
+                        Err(format!("Cannot use positional struct as mutator"))
+                    },
+                    $crate::record::Record::NamedStruct(_, args) => {
+                        match x {
+                            $(
+                                $n::$cons(v) => {
+                                    <Mutator<$type>>::mutate(self, v)
+                                }
+                            ),*
+                        }
+                    },
+                    _ => {
+                        Result::Err(format!("not a struct {:?}", *self))
+                    }
                 }
             }
         }
