@@ -68,7 +68,7 @@ pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, t
 
 // Vector
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
 pub struct std_Vec<T> {
     pub x: Vec<T>
 }
@@ -94,6 +94,13 @@ impl<T: FromRecord> FromRecord for std_Vec<T> {
 impl<T: IntoRecord> IntoRecord for std_Vec<T> {
     fn into_record(self) -> Record {
         self.x.into_record()
+    }
+}
+
+impl<T: FromRecord> Mutator<std_Vec<T>> for Record
+{
+    fn mutate(&self, vec: &mut std_Vec<T>) -> Result<(), String> {
+        self.mutate(&mut vec.x)
     }
 }
 
@@ -160,7 +167,7 @@ pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
 
 // Set
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
 pub struct std_Set<T: Ord> {
     pub x: BTreeSet<T>
 }
@@ -186,6 +193,13 @@ impl<T: IntoRecord + Ord> IntoRecord for std_Set<T> {
     }
 }
 
+impl<T: FromRecord + Ord> Mutator<std_Set<T>> for Record
+    
+{
+    fn mutate(&self, set: &mut std_Set<T>) -> Result<(), String> {
+        self.mutate(&mut set.x)
+    }
+}
 
 impl<T: Ord> IntoIterator for std_Set<T> {
     type Item = T;
@@ -276,7 +290,7 @@ pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> 
 
 // Map
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
 pub struct std_Map<K: Ord,V> {
     pub x: BTreeMap<K,V>
 }
@@ -299,6 +313,13 @@ impl<K: FromRecord+Ord, V: FromRecord> FromRecord for std_Map<K,V> {
 impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for std_Map<K,V> {
     fn into_record(self) -> Record {
         self.x.into_record()
+    }
+}
+
+impl<K: FromRecord + Ord, V: FromRecord + PartialEq> Mutator<std_Map<K,V>> for Record
+{
+    fn mutate(&self, map: &mut std_Map<K,V>) -> Result<(), String> {
+        self.mutate(&mut map.x)
     }
 }
 
@@ -515,6 +536,13 @@ macro_rules! decl_tuple {
             fn into_record(self) -> Record {
                 let $name($($t),*) = self;
                 Record::Tuple(vec![$($t.into_record()),*])
+            }
+        }
+
+        impl <$($t: FromRecord),*> Mutator<$name<$($t),*>> for Record {
+            fn mutate(&self, x: &mut $name<$($t),*>) -> Result<(), String> {
+                *x = <$name<$($t),*>>::from_record(self)?;
+                Ok(())
             }
         }
     };

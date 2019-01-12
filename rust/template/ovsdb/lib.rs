@@ -34,10 +34,6 @@ fn parse_uuid(s: &str) -> Result<BigInt, String> {
         .ok_or_else(||format!("invalid uuid string \"{}\"", s))
 }
 
-fn lookup<'a>(m: &'a mut Map<String, Value>, field: &str) -> Result<Value, String> {
-    m.remove(field).ok_or_else(||format!("JSON map does not contain \"{}\" field: {:?}", field, m))
-}
-
 /* <table-updates> is an object that maps from a table name to a <table-update>.
  *
  * `prefix` is the DB name prepended to all table names
@@ -60,22 +56,57 @@ fn cmds_from_table_update(table: String, updates: Value, cmds: &mut Vec<UpdCmd>)
     }
 }
 
-/* A <row-update> is an object
- *  with the following members:
+/* Convert `<row-update>` JSON object to one or more `UpdCmd`'s.  The object can have one of two
+ * formats. The old ("update-1") format has the following members:
  *
- * "old": <row>   present for "delete" and "modify" updates
- * "new": <row>   present for "initial", "insert", and "modify" updates
+ * `"old": <row>`   present for "delete" and "modify" updates
+ * `"new": <row>`   present for "initial", "insert", and "modify" updates
+ *
+ * The new ("update-2") has one of the following members:
+ * `"initial": <row>`
+ * `"insert": <row>`
+ * `"delete": <row>`
+ * `"modify": <row>`
  */
 fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<UpdCmd>) -> Result<(), String> {
     let uuid = Record::Int(parse_uuid(uuid.as_ref())?);
     match update {
         Value::Object(mut m) => {
-            let old = lookup(&mut m, "old").ok().map(|v|row_from_obj(v));
-            let new = lookup(&mut m, "new").ok().map(|v|row_from_obj(v));
-            if new.is_none() && old.is_none() {
+            /* Handle update-2 format */
+            match m.remove("insert").or_else(||m.remove("initial")) {
+                Some(v) => {
+                    let mut insert = row_from_obj(v)?;
+                    insert.push((Cow::from("_uuid"), uuid));
+                    cmds.push(UpdCmd::Insert(RelIdentifier::RelName(Cow::from(table.to_owned())),
+                    Record::NamedStruct(Cow::from(table.to_owned()), insert)));
+                    return Ok(());
+                },
+                None => ()
+            };
+
+            match m.remove("modify") {
+                Some(v) => {
+                    let mut insert = row_from_obj(v)?;
+                    cmds.push(UpdCmd::Modify(RelIdentifier::RelName(Cow::from(table.to_owned())),
+                                             uuid,
+                                             Record::NamedStruct(Cow::from(table.to_owned()), insert)));
+                    return Ok(());
+                },
+                None => ()
+            };
+
+            if m.contains_key("delete") {
+                cmds.push(UpdCmd::DeleteKey(RelIdentifier::RelName(Cow::from(table.to_owned())), uuid.clone()));
+                return Ok(());
+            };
+
+            /* None of update-2 fields found; try update-1 format */
+            let old = m.contains_key("old");
+            let new = m.remove("new").map(|v|row_from_obj(v));
+            if new.is_none() && !old {
                 return Err(format!("row is not in <row-update> format: {}", Value::Object(m)));
             };
-            if old.is_some() {
+            if old {
                 // delete_key
                 cmds.push(UpdCmd::DeleteKey(RelIdentifier::RelName(Cow::from(table.to_owned())), uuid.clone()))
             };

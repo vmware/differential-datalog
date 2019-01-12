@@ -397,27 +397,31 @@ mkTypedef :: TypeDef -> Doc
 mkTypedef tdef@TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
-                          -> derive                                                                    $$
+                          -> derive_struct                                                             $$
                              "pub struct" <+> rname tdefName <> targs <+> "{"                          $$
                              (nest' $ vcat $ punctuate comma $ map mkField $ consArgs $ head typeCons) $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
                              mkStructIntoRecord tdef                                                   $$
+                             mkStructMutator tdef                                                      $$
                              display
                           | otherwise
-                          -> derive                                                                    $$
+                          -> derive_enum                                                               $$
                              "pub enum" <+> rname tdefName <> targs <+> "{"                            $$
                              (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
                              mkEnumIntoRecord tdef                                                     $$
-                             display
+                             mkEnumMutator tdef                                                        $$
+                             display                                                                   $$
+                             default_enum
          Just t           -> "type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
-    derive = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
+    derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]"
+    derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
@@ -427,6 +431,9 @@ mkTypedef tdef@TypeDef{..} =
     targs_disp = if null tdefArgs
                     then empty
                     else "<" <> (hsep $ punctuate comma $ map ((<> ": fmt::Debug") . pp) tdefArgs) <> ">"
+    targs_def = if null tdefArgs
+                   then empty
+                   else "<" <> (hsep $ punctuate comma $ map ((<> ": Default") . pp) tdefArgs) <> ">"
 
 
     mkField :: Field -> Doc
@@ -462,6 +469,15 @@ mkTypedef tdef@TypeDef{..} =
         (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
         where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
 
+    default_enum =
+              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                    $$
+              "    fn default() -> Self {"                                                                     $$
+              "        " <> cname <> "{" <> def_args <> "}"                                                    $$
+              "    }"                                                                                          $$
+              "}"
+        where c = head $ typeCons $ fromJust tdefType
+              cname = mkConstructorName tdefName (fromJust tdefType) (name c)
+              def_args = commaSep $ map (\a -> (pp $ name a) <+> ": Default::default()") $ consArgs c
 {-
 Generate FromRecord trait implementation for a struct type:
 
@@ -517,7 +533,7 @@ mkFromRecord t@TypeDef{..} =
     "}"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord") . pp) tdefArgs) <> ">"
+    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord + Default") . pp) tdefArgs) <> ">"
     pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
     mkposcons :: Constructor -> Doc
     mkposcons c@Constructor{..} =
@@ -530,12 +546,12 @@ mkFromRecord t@TypeDef{..} =
     named_constructors = vcat $ map mknamedcons $ typeCons $ fromJust tdefType
     mknamedcons :: Constructor -> Doc
     mknamedcons c@Constructor{..} =
-        "\"" <> pp (name c) <> "\"" <+> "if args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
+        "\"" <> pp (name c) <> "\" => {" $$
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": <" <> mkType f <> ">::from_record(record::arg_find(args, \"" <> (pp $ unddname f) <> "\", \"" <> cname <> "\")?)?") consArgs
+        fields = map (\f -> pp (name f) <> ": record::arg_extract::<" <> mkType f <> ">(args, \"" <> (pp $ unddname f) <> "\")?") consArgs
 
 
 mkStructIntoRecord :: TypeDef -> Doc
@@ -545,12 +561,27 @@ mkStructIntoRecord t@TypeDef{..} =
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
 
+mkStructMutator :: TypeDef -> Doc
+mkStructMutator t@TypeDef{..} =
+    "decl_record_mutator_struct!(" <> rname (name t) <> ", " <> targs <> "," <+> args <> ");"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType arg) $ consArgs $ head $ typeCons $ fromJust tdefType
+
 mkEnumIntoRecord :: TypeDef -> Doc
 mkEnumIntoRecord t@TypeDef{..} =
-    "decl_enum_into_record!(" <> rname (name t) <> ", " <> targs <> "," <+> cons <> ");"
+    "decl_enum_into_record!(" <> rname (name t) <> "," <+> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     cons = commaSep $ map (\c -> (rname $ name c) <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
+                    $ typeCons $ fromJust tdefType
+
+mkEnumMutator :: TypeDef -> Doc
+mkEnumMutator t@TypeDef{..} =
+    "decl_record_mutator_enum!(" <> rname (name t) <> "," <+> targs <> "," <+> cons <> ");"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    cons = commaSep $ map (\c -> (rname $ name c) <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType arg) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
 unddname :: (WithName a) => a -> String
@@ -692,10 +723,12 @@ mkValType d types grp_types =
     "    }"                                                                                 $$
     "}"                                                                                     $$
     "decl_val_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                   $$
+    "decl_record_mutator_val_enum!(Value, <>," <+> decl_mutator_entries <> ");"             $$
     (vcat $ map mkgrptype $ S.toList grp_types)
     where
     consname t = mkValConstructorName' d t
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
+    decl_mutator_entries = commaSep $ map (\t -> consname t <> "(" <> mkType t <> ")") $ S.toList types
     mkValCons :: Type -> Doc
     mkValCons t = consname t <> (parens $ mkBoxType t)
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box "()")

@@ -44,6 +44,7 @@ use differential_dataflow::logging::DifferentialEvent;
 
 use variable::*;
 use profile::*;
+use record::Mutator;
 
 type TS = usize;
 
@@ -280,21 +281,25 @@ impl<V: Val> RelationInstance<V> {
 
 /// A data type to represent insert and delete commands.  A unified type lets us
 /// combine many updates in one message.
-/// 'DeleteValue' takes a complete value to be deleted;
-/// 'DeleteKey' takes key only and is only defined for relations with 'key_func'
-#[derive(Debug)]
+/// `DeleteValue` takes a complete value to be deleted;
+/// `DeleteKey` takes key only and is only defined for relations with 'key_func';
+/// `Modify` takes a key and a `Mutator` trait object that represents an update
+/// to be applied to the given key.
+//#[derive(Debug)]
 pub enum Update<V: Val> {
     Insert{relid: RelId, v: V},
     DeleteValue{relid: RelId, v: V},
-    DeleteKey{relid: RelId, k: V}
+    DeleteKey{relid: RelId, k: V},
+    Modify{relid: RelId, k: V, m: Box<dyn Mutator<V> + Send>}
 }
 
 impl<V:Val> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
-            Update::Insert{relid, v: _}      => *relid,
-            Update::DeleteValue{relid, v: _} => *relid,
-            Update::DeleteKey{relid, k: _}   => *relid
+            Update::Insert{relid, ..}      => *relid,
+            Update::DeleteValue{relid, ..} => *relid,
+            Update::DeleteKey{relid, ..}   => *relid,
+            Update::Modify{relid, ..}      => *relid,
         }
     }
     pub fn is_delete_key(&self) -> bool {
@@ -305,7 +310,8 @@ impl<V:Val> Update<V> {
     }
     pub fn key(&self) -> &V {
         match self {
-            Update::DeleteKey{relid: _, k}   => k,
+            Update::DeleteKey{k, ..} => k,
+            Update::Modify{k, ..}    => k,
             _ => panic!("Update::key: not a DeleteKey command")
         }
     }
@@ -559,9 +565,12 @@ impl<V:Val> Program<V>
                                             Update::DeleteValue{relid, v} => {
                                                 sessions.get_mut(&relid).unwrap().remove(v);
                                             },
-                                            Update::DeleteKey{relid: _,k: _} => {
+                                            Update::DeleteKey{..} => {
                                                 // workers don't know about keys
                                                 panic!("DeleteKey command received by worker thread")
+                                            },
+                                            Update::Modify{..} => {
+                                                panic!("Modify command received by worker thread")
                                             }
                                         }
                                     };
@@ -964,6 +973,15 @@ impl<V:Val> RunningProgram<V> {
         }])
     }
 
+    /// Modify a key if it exists in the relation.
+    pub fn modify_key(&mut self, relid: RelId, k: V, m: Box<dyn Mutator<V> + Send>) -> Response<()> {
+        self.apply_updates(vec![Update::Modify {
+            relid: relid,
+            k:     k,
+            m:     m
+        }])
+    }
+
     /// Apply multiple insert and delete operations in one batch.
     /// Updates can only be applied to input relations (see `struct Relation`).
     pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
@@ -1057,18 +1075,21 @@ impl<V:Val> RunningProgram<V> {
     fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, upd: Update<V>, updates: &mut Vec<Update<V>>) -> Response<()>
     {
         let ok = match &upd {
-            Update::Insert{relid: _, v}      => {
+            Update::Insert{v, ..}           => {
                 let new = s.insert(v.clone());
                 if new { Self::delta_inc(ds, v); };
                 new
             },
-            Update::DeleteValue{relid: _, v} => {
+            Update::DeleteValue{v, ..}      => {
                 let present = s.remove(&v);
                 if present { Self::delta_dec(ds, v); };
                 present
             },
-            Update::DeleteKey{relid, k: _}   => {
+            Update::DeleteKey{relid, ..}    => {
                 return Err(format!("Cannot delete by key from relation {} that does not have a primary key", relid));
+            },
+            Update::Modify{relid, ..}       => {
+                return Err(format!("Cannot modify record in relation {} that does not have a primary key", relid));
             }
         };
         if ok {
@@ -1134,6 +1155,23 @@ impl<V:Val> RunningProgram<V> {
                     },
                     hash_map::Entry::Vacant(_) => {
                         return Err(format!("DeleteKey: key not found {:?}", k))
+                    }
+                }
+            },
+            Update::Modify{relid, k, m}   => {
+                match s.entry(k.clone()) {
+                    hash_map::Entry::Occupied(mut oe) => {
+                        let new = oe.get_mut();
+                        let old = new.clone();
+                        m.mutate(new)?;
+                        Self::delta_dec(ds, &old);
+                        updates.push(Update::DeleteValue{relid, v: old});
+                        Self::delta_inc(ds, &new);
+                        updates.push(Update::Insert{relid, v: new.clone()});
+                        Ok(())
+                    },
+                    hash_map::Entry::Vacant(_) => {
+                        return Err(format!("Modify: key not found {:?}", k))
                     }
                 }
             }

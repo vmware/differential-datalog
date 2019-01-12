@@ -10,7 +10,7 @@ use serde::de::Error;
 use std::fmt;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use super::record::{FromRecord, IntoRecord, Record};
+use super::record::{FromRecord, IntoRecord, Record, Mutator};
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}
@@ -123,6 +123,14 @@ impl IntoRecord for Int {
         self.x.into_record()
     }
 }
+
+impl Mutator<Int> for Record {
+    fn mutate(&self, i: &mut Int) -> Result<(), String> {
+        self.mutate(&mut i.x)
+    }
+}
+
+
 
 #[test]
 fn test_fromrecord() {

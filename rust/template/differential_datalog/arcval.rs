@@ -5,7 +5,7 @@ use std::fmt;
 use std::io;
 use abomonation::Abomonation;
 use std::ops::Deref;
-use super::record::{FromRecord, IntoRecord, Record};
+use super::record::{FromRecord, IntoRecord, Record, Mutator};
 
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
@@ -102,5 +102,16 @@ impl<T: FromRecord> FromRecord for ArcVal<T> {
 impl<T: IntoRecord+Clone> IntoRecord for ArcVal<T> {
     fn into_record(self) -> Record {
         (*self.x).clone().into_record()
+    }
+}
+
+impl<T: Clone> Mutator<ArcVal<T>> for Record
+    where Record: Mutator<T>
+{
+    fn mutate(&self, arc: &mut ArcVal<T>) -> Result<(), String> {
+        let mut copy: T = (*arc).deref().clone();
+        self.mutate(&mut copy)?;
+        *arc = ArcVal::from(copy);
+        Ok(())
     }
 }
