@@ -22,4 +22,9 @@ pub mod program;
 pub mod uint;
 pub mod int;
 pub mod arcval;
+
+#[macro_use]
 pub mod record;
+
+#[cfg(test)]
+mod test_record;
