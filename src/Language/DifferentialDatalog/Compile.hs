@@ -147,6 +147,7 @@ rustLibFiles specname =
         , (dir </> "differential_datalog/record.rs"     , $(embedFile "rust/template/differential_datalog/record.rs"))
         , (dir </> "differential_datalog/lib.rs"        , $(embedFile "rust/template/differential_datalog/lib.rs"))
         , (dir </> "differential_datalog/test.rs"       , $(embedFile "rust/template/differential_datalog/test.rs"))
+        , (dir </> "differential_datalog/test_record.rs", $(embedFile "rust/template/differential_datalog/test_record.rs"))
         , (dir </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (dir </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (dir </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
