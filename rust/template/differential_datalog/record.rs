@@ -925,7 +925,7 @@ impl<T: IntoRecord+Ord> IntoRecord for BTreeSet<T> {
     }
 }
 
-/* Set update semantics: update contains values that are in one of the maps but not the
+/* Set update semantics: update contains values that are in one of the sets but not the
  * other. */
 impl<T: FromRecord+Ord> Mutator<BTreeSet<T>> for Record {
     fn mutate(&self, set: &mut BTreeSet<T>) -> Result<(), String> {

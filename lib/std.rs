@@ -194,7 +194,6 @@ impl<T: IntoRecord + Ord> IntoRecord for std_Set<T> {
 }
 
 impl<T: FromRecord + Ord> Mutator<std_Set<T>> for Record
-    
 {
     fn mutate(&self, set: &mut std_Set<T>) -> Result<(), String> {
         self.mutate(&mut set.x)
