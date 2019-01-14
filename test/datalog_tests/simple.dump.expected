@@ -244,6 +244,29 @@ NewAllocation{18,std_Vec { x: [] }}
 NewAllocation{19,std_Vec { x: [] }}
 NewAllocation{20,std_Vec { x: [] }}
 NewAllocation{21,std_Vec { x: [] }}
+NewAllocationOpt
+NewAllocationOpt{1,std_Vec { x: [] }}
+NewAllocationOpt{2,std_Vec { x: [("a", std.Some{0})] }}
+NewAllocationOpt{3,std_Vec { x: [("a", std.Some{0}), ("b", std.None{})] }}
+NewAllocationOpt{4,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1})] }}
+NewAllocationOpt{5,std_Vec { x: [("a", std.Some{1000}), ("b", std.Some{1001})] }}
+NewAllocationOpt{5,std_Vec { x: [("a", std.Some{4294967294}), ("b", std.Some{4294967295})] }}
+NewAllocationOpt{6,std_Vec { x: [("a", std.Some{4294967292}), ("b", std.Some{4294967293})] }}
+NewAllocationOpt{7,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1})] }}
+NewAllocationOpt{8,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1}), ("c", std.Some{2}), ("d", std.Some{3}), ("e", std.Some{4}), ("f", std.Some{5})] }}
+NewAllocationOpt{9,std_Vec { x: [("x", std.Some{10001}), ("b", std.Some{10002}), ("c", std.Some{10003}), ("d", std.Some{10004}), ("e", std.Some{10005}), ("z", std.Some{10006})] }}
+NewAllocationOpt{10,std_Vec { x: [("x", std.Some{1}), ("b", std.Some{2}), ("c", std.Some{3}), ("d", std.Some{4}), ("e", std.Some{5}), ("z", std.Some{6})] }}
+NewAllocationOpt{11,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0})] }}
+NewAllocationOpt{12,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0}), ("p", std.Some{2}), ("q", std.Some{4})] }}
+NewAllocationOpt{13,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0}), ("p", std.Some{2}), ("q", std.Some{4}), ("r", std.None{})] }}
+NewAllocationOpt{14,std_Vec { x: [("x", std.Some{4294967286}), ("b", std.Some{4294967288}), ("c", std.Some{4294967290}), ("d", std.Some{4294967291}), ("e", std.Some{4294967292}), ("z", std.Some{4294967293}), ("p", std.Some{4294967294}), ("q", std.None{}), ("r", std.None{})] }}
+NewAllocationOpt{15,std_Vec { x: [("x", std.Some{4294967286}), ("b", std.Some{4294967287}), ("c", std.Some{4294967288}), ("d", std.Some{4294967289}), ("e", std.Some{4294967290}), ("z", std.Some{4294967291}), ("p", std.Some{4294967292}), ("q", std.Some{4294967293}), ("r", std.Some{4294967294})] }}
+NewAllocationOpt{16,std_Vec { x: [("x", std.Some{10}), ("b", std.Some{12}), ("c", std.Some{14}), ("d", std.Some{15}), ("e", std.Some{16}), ("z", std.Some{17}), ("p", std.Some{18}), ("q", std.Some{19}), ("r", std.None{})] }}
+NewAllocationOpt{17,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}
+NewAllocationOpt{18,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}
+NewAllocationOpt{19,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}
+NewAllocationOpt{20,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}
+NewAllocationOpt{21,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}
 Adjusted
 Adjusted{1,std_Vec { x: [] }}
 Adjusted{2,std_Vec { x: [("a", 0)] }}

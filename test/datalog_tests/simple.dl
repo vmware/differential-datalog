@@ -737,6 +737,20 @@ NewAllocation(id, alloc) :-
     },
     var alloc = allocate(allocated_nums, toallocate, min_val, max_val).
 
+output relation NewAllocationOpt(id: bigint, alloc: Vec<(string, Option<bit<32>>)>)
+
+NewAllocationOpt(id, alloc) :-
+    Alloc(id, allocated, toallocate, min_val, max_val),
+    var allocated_nums = {
+        var allocated_nums: Set<bit<32>> = set_empty();
+        for (a in allocated) {
+            (_, var num) = a;
+            set_insert(allocated_nums, num)
+        };
+        allocated_nums
+    },
+    var alloc = allocate_opt(allocated_nums, toallocate, min_val, max_val).
+
 output relation Adjusted(id: bigint, alloc: Vec<(string, bit<32>)>)
 
 Adjusted(id, alloc) :-

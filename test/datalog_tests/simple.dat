@@ -384,5 +384,8 @@ commit;
 echo NewAllocation;
 dump NewAllocation;
 
+echo NewAllocationOpt;
+dump NewAllocationOpt;
+
 echo Adjusted;
 dump Adjusted;

@@ -29,6 +29,7 @@ typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
 typedef Innocent = Innocent{name: string}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
+typedef NewAllocationOpt = NewAllocationOpt{id: bigint, alloc: std.Vec<(string, std.Option<bit<32>>)>}
 typedef Parent = Parent{child: person, parent: person}
 typedef R1 = bigint
 typedef R1_nl = R1_nl{a1: string}
@@ -125,6 +126,7 @@ function a9 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 extern function allocate.adjust_allocation (allocated: std.Map<'A,'N>, toallocate: std.Vec<'A>, min_val: 'N, max_val: 'N): std.Vec<('A, 'N)>
 extern function allocate.allocate (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
+extern function allocate.allocate_opt (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, std.Option<'N>)>
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =
@@ -381,6 +383,7 @@ input relation Human [Human]
 output relation Innocent [Innocent]
 input relation Links [Links]
 output relation NewAllocation [NewAllocation]
+output relation NewAllocationOpt [NewAllocationOpt]
 input relation Parent [Parent]
 input relation R1 [R1]
 input relation R1_nl [R1_nl]
@@ -558,4 +561,10 @@ NewAllocation(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toal
                                                                                                                                                                     std.set_insert(allocated_nums, num))
                                                                                                                                                                };
                                                                                                                                                                allocated_nums)), var alloc = allocate.allocate(allocated_nums, toallocate, min_val, max_val).
+NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
+                                                                                                                                                                 (for (a in allocated) {
+                                                                                                                                                                      ((_, var num) = a;
+                                                                                                                                                                       std.set_insert(allocated_nums, num))
+                                                                                                                                                                  };
+                                                                                                                                                                  allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val).
 Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val).
