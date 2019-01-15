@@ -1,7 +1,10 @@
 typedef Binding = Binding{entity: entid_t, tn: tnid_t}
+typedef ContainerSpan = ContainerSpan{entity: uuid_t, tn: tnid_t}
 typedef Dependency = Dependency{parent: entid_t, child: entid_t}
+typedef Entity = Entity{id: entid_t, cat: ent_category_t, name: string}
+typedef Source = Source{parent: entid_t, child: entid_t}
 typedef Span = Span{entity: uuid_t, tn: tnid_t}
-typedef ent_category_t = EntContainer{} | EntRuleSection{} | EntOther{}
+typedef ent_category_t = EntContainer{} | EntRule{} | EntOther{}
 typedef entid_t = uuid_t
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
@@ -76,7 +79,12 @@ extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
 input relation Binding [Binding]
+output relation ContainerSpan [ContainerSpan]
 input relation Dependency [Dependency]
+input relation Entity [Entity]
+input relation Source [Source]
 output relation Span [Span]
 Span(.entity=entity, .tn=tn) :- Binding(.entity=entity, .tn=tn).
 Span(.entity=parent, .tn=tn) :- Dependency(.parent=parent, .child=child), Span(.entity=child, .tn=tn).
+ContainerSpan(.entity=section, .tn=tn) :- Span(.entity=section, .tn=tn), Entity(.id=section, .cat=EntRule{}, .name=_).
+ContainerSpan(.entity=parent, .tn=tn) :- ContainerSpan(.entity=child, .tn=tn), Source(.parent=parent, .child=child).
