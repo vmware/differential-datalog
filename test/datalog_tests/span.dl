@@ -39,7 +39,7 @@ RuleSpan(entity, tn) :-
 
 /* Propagate span from Rules along source edges
  */
-output relation SourceSpan(entity: uuid_t, tn: tnid_t)
+relation SourceSpan(entity: uuid_t, tn: tnid_t)
 
 SourceSpan(section, tn) :- RuleSpan(section, tn).
 SourceSpan(child, tn) :- SourceSpan(parent, tn), Source(parent, child).
