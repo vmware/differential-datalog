@@ -6,15 +6,8 @@ typedef entid_t = uuid_t
 /* transport node id */
 typedef tnid_t = uuid_t
 
-/* entity category */
-typedef ent_category_t = EntContainer
-                       | EntRule
-                       | EntOther
-
-/* An entity represents an object in the dependency graph:
-   RuleSection, Rule, Containers, LSP, Vif, etc.
- */
-input relation Entity(id: entid_t, cat: ent_category_t, name: string)
+input relation FWRule(id: entid_t)
+input relation Container(id: entid_t)
 
 /* Some entities are bound to transport nodes
  */
@@ -27,19 +20,37 @@ input relation Binding(entity: entid_t, tn: tnid_t)
 input relation Dependency(parent: entid_t, child: entid_t)
 input relation Source(parent: entid_t, child: entid_t)
 
-output relation Span(entity: uuid_t, tn: tnid_t)
+/* Span, computed by traversing dependency edges
+ */
+relation Span(entity: uuid_t, tn: tnid_t)
 
 // base case
 Span(entity, tn) :- Binding(entity, tn).
 // recursive step: propagate bindings along the dependency graph
 Span(parent, tn) :- Dependency(parent, child), Span(child, tn).
 
+/* RuleSpan: restriction of the Span relation to Rule nodes.
+ */
+output relation RuleSpan(entity: uuid_t, tn: tnid_t)
+
+RuleSpan(entity, tn) :-
+    Span(entity, tn),
+    FWRule(entity).
+
 /* Propagate span from Rules along source edges
+ */
+output relation SourceSpan(entity: uuid_t, tn: tnid_t)
+
+SourceSpan(section, tn) :- RuleSpan(section, tn).
+SourceSpan(child, tn) :- SourceSpan(parent, tn), Source(parent, child).
+
+/* ContainerSpan: restricts the SourceSpan relation to Container nodes.
  */
 output relation ContainerSpan(entity: uuid_t, tn: tnid_t)
 
-ContainerSpan(section, tn) :- Span(section, tn), Entity(section, EntRule, _).
-ContainerSpan(parent, tn) :- ContainerSpan(child, tn), Source(parent, child).
+ContainerSpan(entity, tn) :-
+    SourceSpan(entity, tn),
+    Container(entity).
 
 /* For container nodes, add span computed over the source graph to
    container's normal span.
