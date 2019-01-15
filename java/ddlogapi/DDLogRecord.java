@@ -1,5 +1,6 @@
 package ddlogapi;
 
+import java.util.*;
 import java.lang.reflect.*;
 
 /**
@@ -82,14 +83,28 @@ public class DDLogRecord {
         this.shared = false;
     }
 
+    private static void getAllFields(Class clazz, List<Field> result) {
+        while (clazz != null) {
+            Field[] fields = clazz.getDeclaredFields();
+            result.addAll(Arrays.asList(fields));
+            clazz = clazz.getSuperclass();
+        }
+    }
+
+    private static List<Field> getAllFields(Class clazz) {
+        ArrayList<Field> result = new ArrayList<Field>();
+        getAllFields(clazz, result);
+        return result;
+    }
+
     /**
      * Convert an object o into a DDLogRecord that represents a struct.
      * The name of the struct is the class name of o.
      */
     public static DDLogRecord convertObject(Object o) throws IllegalAccessException {
         String name = o.getClass().getSimpleName();
-        Field[] fields = o.getClass().getDeclaredFields();
-        DDLogRecord[] fra = new DDLogRecord[fields.length];
+        List<Field> fields = getAllFields(o.getClass());
+        DDLogRecord[] fra = new DDLogRecord[fields.size()];
 
         int index = 0;
         for (Field f: fields) {
@@ -154,12 +169,12 @@ public class DDLogRecord {
                     h = f0;  // Scan the fields of f0
             }
 
-            Field[] fields = classOfT.getDeclaredFields();
+            List<Field> fields = getAllFields(classOfT);
             for (int i = 0; ; i++) {
                 long fh = DDLogAPI.ddlog_get_struct_field(h, i);
                 if (fh == 0)
                     break;
-                Field f = fields[i];
+                Field f = fields.get(i);
                 f.setAccessible(true);
 
                 DDLogRecord field = DDLogRecord.fromSharedHandle(fh);
