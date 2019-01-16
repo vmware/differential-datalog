@@ -42,7 +42,7 @@ RuleSpan(entity, tn) :-
 relation SourceSpan(entity: uuid_t, tn: tnid_t)
 
 SourceSpan(section, tn) :- RuleSpan(section, tn).
-SourceSpan(child, tn) :- SourceSpan(parent, tn), Source(parent, child).
+SourceSpan(parent, tn) :- SourceSpan(child, tn), Source(parent, child).
 
 /* ContainerSpan: restricts the SourceSpan relation to Container nodes.
  */
