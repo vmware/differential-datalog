@@ -5,7 +5,11 @@ set -ex
 
 # Compile the span.dl DDlog program; generates
 # ../test/datalog_tests/span_ddlog/target/release/libspan_ddlog.a and .so
-stack test --ta '-p span'
+#stack test --ta '-p span'
+ddlog -i ../../test/datalog_tests/span.dl -L../../lib
+pushd ../../test/datalog_tests/span_ddlog
+cargo build --release
+popd
 # Build the Java library with the Ddlog API
 make -C ..
 # Force linking with the static library by deleting the dynamic library
