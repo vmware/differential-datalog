@@ -41,7 +41,7 @@ module Language.DifferentialDatalog.DatalogProgram (
 ) 
 where
 
-import qualified Data.Graph.Inductive as G
+import qualified Data.Graph.Inductive           as G
 import qualified Data.Map as M
 import Data.Maybe
 import Control.Monad.Identity
