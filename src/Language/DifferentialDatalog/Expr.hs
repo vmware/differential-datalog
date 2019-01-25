@@ -224,7 +224,6 @@ exprVars e = nub $ exprCollect (\case
                                 _        -> [])
                                (++) e
 
-
 -- Variables declared inside expression, visible in the code that follows the expression
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
 exprVarDecls ctx e =

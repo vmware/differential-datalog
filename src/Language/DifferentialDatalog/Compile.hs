@@ -72,6 +72,7 @@ import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Optimize
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
@@ -751,19 +752,19 @@ mkValType d types grp_types =
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
 compileSCC d dep nodes | recursive = compileSCCNode d relnames
-                       | otherwise =  compileRelNode d (head relnames)
+                       | otherwise = compileRelNode d (head relnames)
     where
     recursive = any (\(from, to) -> elem from nodes && elem to nodes) $ G.edges dep
     relnames = map (fromJust . G.lab dep) nodes
 
 compileRelNode :: DatalogProgram -> String -> CompilerMonad ProgNode
 compileRelNode d relname = do
-    rel <- compileRelation d relname
+    rel <- compileRelation d False relname
     return $ RelNode rel
 
 compileSCCNode :: DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
-    rels <- mapM (compileRelation d) relnames
+    rels <- mapM (compileRelation d True) relnames
     return $ SCCNode rels
 
 {- Generate Rust representation of relation and associated rules.
@@ -801,14 +802,13 @@ let ancestor = {
     }
 };
 -}
-compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
-compileRelation d rn = do
+compileRelation :: DatalogProgram -> Bool -> String -> CompilerMonad ProgRel
+compileRelation d recursive rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
     let (facts, rules) =
                 partition (null . ruleRHS)
-                $ filter ((== rn) . atomRelation . head . ruleLHS)
-                $ progRules d
+                $ relRules d rn
     rules' <- mapM (compileRule d) rules
     facts' <- mapM (compileFact d) facts
     key_func <- maybe (return "None")
@@ -820,17 +820,19 @@ compileRelation d rn = do
                 then "change_cb:    Some(__update_cb.clone())"
                 else "change_cb:    None"
     let f arrangements =
-            "Relation {"                                                                          $$
-            "    name:         \"" <> pp rn <> "\".to_string(),"                                  $$
-            "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","      $$
-            "    distinct:     " <> (if relRole == RelOutput then "true" else "false") <> ","     $$
-            "    key_func:     " <> key_func <> ","                                               $$
-            "    id:           " <> relId rn <> ","                                               $$
-            "    rules:        vec!["                                                             $$
-            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                               $$
-            "    arrangements: vec!["                                                             $$
-            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")                         $$
-            (nest' cb)                                                                            $$
+            "Relation {"                                                                                        $$
+            "    name:         \"" <> pp rn <> "\".to_string(),"                                                $$
+            "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
+            "    distinct:     " <> (if relRole == RelOutput && not (relIsDistinctByConstruction d rel)
+                                        then "true"
+                                        else "false") <> ","  $$
+            "    key_func:     " <> key_func <> ","                                                             $$
+            "    id:           " <> relId rn <> ","                                                             $$
+            "    rules:        vec!["                                                                           $$
+            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                                             $$
+            "    arrangements: vec!["                                                                           $$
+            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")                                       $$
+            (nest' cb)                                                                                          $$
             "}"
     return (rn, f, facts')
 
