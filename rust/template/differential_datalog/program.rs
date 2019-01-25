@@ -411,7 +411,7 @@ impl<V:Val> Program<V>
                                     };
                                     /* don't distinct input collections, as this is already done by the set_update logic */
                                     if !r.input && r.distinct {
-                                        collection = with_prof_context(&r.name,
+                                        collection = with_prof_context(&format!("{}.distinct_total", r.name),
                                                                        ||collection.distinct_total());
                                     }
                                     /* create arrangements */
