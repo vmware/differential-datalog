@@ -101,18 +101,27 @@ pub unsafe extern "C" fn ddlog_get_bool(rec: *const Record) -> bool
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_u64(v: u64) -> *mut Record
-{
-    Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ddlog_is_int(rec: *const Record) -> bool
 {
     match rec.as_ref() {
         Some(Record::Int(_)) => true,
         _ => false
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_int_bits(rec: *const Record) -> size_t
+{
+    match rec.as_ref() {
+        Some(Record::Int(bigint)) => bigint.bits() as size_t,
+        _ => 0
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_u64(v: u64) -> *mut Record
+{
+    Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
 }
 
 #[no_mangle]
@@ -124,6 +133,20 @@ pub unsafe extern "C" fn ddlog_get_u64(rec: *const Record) -> u64
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ddlog_u128(v: u128) -> *mut Record
+{
+    Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_u128(rec: *const Record) -> u128
+{
+    match rec.as_ref() {
+        Some(Record::Int(i)) => i.to_u128().unwrap_or(0),
+        _ => 0
+    }
+}
 
 /// Returns NULL if s is not a valid UTF8 string.
 #[no_mangle]
