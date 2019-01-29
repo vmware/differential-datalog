@@ -386,21 +386,45 @@ extern bool ddlog_is_bool(const ddlog_record *rec);
 extern bool ddlog_get_bool(const ddlog_record *rec);
 
 /*
- * Create an integer value.
- */
-extern ddlog_record* ddlog_u64(uint64_t v);
-
-/*
  * Returns `true` if `rec` is an integer and `false` otherwise.
  */
 extern bool ddlog_is_int(const ddlog_record *rec);
 
 /*
+ * Returns the fewest bits necessary to express the integer value,
+ * not including the sign.
+ *
+ * Returns `0` if the `rec` is not an integer record.
+ */
+extern size_t ddlog_int_bits(*const ddlog_record *rec) -> size_t;
+
+/*
+ * Create an integer value.  Can be used to populate any ddlog field
+ * of type `bit<N>`, `N<=64`
+ */
+extern ddlog_record* ddlog_u64(uint64_t v);
+
+/*
  * Retrieves the value of an integer.
  *
- * Returns `0` if `rec` is not an integer.
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 64 bits.
  */
 extern uint64_t ddlog_get_u64(const ddlog_record *rec);
+
+/*
+ * Create an integer value.  Can be used to populate any ddlog field
+ * of type `bit<N>`, `N<=128`
+ */
+extern ddlog_record* ddlog_u128(uint128_t v);
+
+/*
+ * Retrieves the value of an integer.
+ *
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 128 bits.
+ */
+extern uint128_t ddlog_get_u128(const ddlog_record *rec);
 
 /*
  * Create a string value.  This function copies `s` to an internal
