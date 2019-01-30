@@ -317,23 +317,23 @@ extern function std.vec_singleton (x: 'X): std.Vec<'X>
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
-      (var str3 = (("str1: " ++ str1) ++ "");
+      (var str3 = ("str1: " ++ str1);
        (var str4 = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
         (var str5 = [|str1: ${str1},
 str2: ${str2},
 str3: ${str3}.|];
-         (var str6 = (("" ++ (str1 ++ str2)) ++ "");
-          (var str7 = (("" ++ (var x = (str1 ++ str2);
-                               x)) ++ "");
-           (var str8 = (("" ++ (var x = (str1 ++ str2);
-                                dummy(x))) ++ "");
+         (var str6 = ("" ++ (str1 ++ str2));
+          (var str7 = ("" ++ (var x = (str1 ++ str2);
+                              x));
+           (var str8 = ("" ++ (var x = (str1 ++ str2);
+                               dummy(x)));
             ()))))))))
 function tostring1 (): () =
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
-        (var err = (((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ "");
+        (var err = ((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d);
          ())))))
 function tostring2 (): () =
     ((var a: bigint) = 5;
@@ -341,7 +341,7 @@ function tostring2 (): () =
       ((var c: bool) = true;
        ((var d: string) = "foo";
         ((var e: serializable_t) = ConsInt{.x=0};
-         (var err = (((((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e)) ++ "");
+         (var err = ((((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e));
           ()))))))
 function use_parameterized (x: string, y: string_syn): string =
     parameterized(x, y)

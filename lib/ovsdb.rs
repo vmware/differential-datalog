@@ -13,7 +13,7 @@ pub fn ovsdb_group2vec_remove_sentinel<G: Group<ovsdb_uuid_or_string_t>+?Sized>(
     for i in 0..g.size() {
         match g.ith(i) {
             std_Either::std_Right{r} => {
-                if r.str() != "" { res.push(std_Either::std_Right{r}); };
+                if r.as_str() != "" { res.push(std_Either::std_Right{r}); };
             },
             v => { res.push(v); }
         }
@@ -26,7 +26,7 @@ pub fn ovsdb_group2set_remove_sentinel<G: Group<ovsdb_uuid_or_string_t>+?Sized>(
     for i in 0..g.size() {
         match g.ith(i) {
             std_Either::std_Right{r} => {
-                if r.str() != "" { res.insert(std_Either::std_Right{r}); };
+                if r.as_str() != "" { res.insert(std_Either::std_Right{r}); };
             },
             v => { res.insert(v); }
         }
@@ -41,7 +41,7 @@ pub fn ovsdb_group2map_remove_sentinel<K: Ord, G:Group<(K,ovsdb_uuid_or_string_t
         let (k,v) = g.ith(i);
         match v {
             std_Either::std_Right{r} => {
-                if r.str() != "" { res.insert(k, std_Either::std_Right{r}); };
+                if r.as_str() != "" { res.insert(k, std_Either::std_Right{r}); };
             },
             _ => { res.insert(k, v); }
         }
@@ -49,6 +49,6 @@ pub fn ovsdb_group2map_remove_sentinel<K: Ord, G:Group<(K,ovsdb_uuid_or_string_t
     res
 }
 
-pub fn ovsdb_set_map_uuid2str(ids: &std_Set<ovsdb_uuid>) -> std_Set<arcval::DDString> {
+pub fn ovsdb_set_map_uuid2str(ids: &std_Set<ovsdb_uuid>) -> std_Set<String> {
     std_Set::from_iter(ids.x.iter().map(|id| ovsdb_uuid2str(id)))
 }

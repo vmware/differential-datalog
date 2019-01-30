@@ -403,32 +403,32 @@ pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,
 
 // strings
 
-pub fn std___builtin_2string<T: Display>(x: &T) -> arcval::DDString {
-    arcval::DDString::from(format!("{}", *x).to_string())
+pub fn std___builtin_2string<T: Display>(x: &T) -> String {
+    format!("{}", *x).to_string()
 }
 
-pub fn std_hex<T: fmt::LowerHex>(x: &T) -> arcval::DDString {
-    arcval::DDString::from(format!("{:x}", *x).to_string())
+pub fn std_hex<T: fmt::LowerHex>(x: &T) -> String {
+    format!("{:x}", *x).to_string()
 }
 
-pub fn std_parse_dec_u64(s: &arcval::DDString) -> std_Option<u64> {
-    option2std((*s).parse::<u64>().ok())
+pub fn std_parse_dec_u64(s: &String) -> std_Option<u64> {
+    option2std(s.parse::<u64>().ok())
 }
 
-pub fn std_string_join(strings: &std_Vec<arcval::DDString>, sep: &arcval::DDString) -> arcval::DDString {
-    arcval::DDString::from(strings.x.iter().map(|s|s.str()).collect::<Vec<&str>>().join(sep.as_str()))
+pub fn std_string_join(strings: &std_Vec<String>, sep: &String) -> String {
+    strings.x.join(sep.as_str())
 }
 
-pub fn std_string_split(s: &arcval::DDString, sep: &arcval::DDString) -> std_Vec<arcval::DDString> {
-    std_Vec{x: s.str().split(sep.str()).map(|x| arcval::DDString::from_str(x)).collect()}
+pub fn std_string_split(s: &String, sep: &String) -> std_Vec<String> {
+    std_Vec{x: s.split(sep).map(|x| x.to_owned()).collect()}
 }
 
-pub fn std_string_contains(s1: &arcval::DDString, s2: &arcval::DDString) -> bool {
-    s1.str().contains(s2.str())
+pub fn std_string_contains(s1: &String, s2: &String) -> bool {
+    s1.contains(s2.as_str())
 }
 
-pub fn std_str_to_lower(s: &arcval::DDString) -> arcval::DDString {
-    arcval::DDString::from(s.str().to_lowercase())
+pub fn std_str_to_lower(s: &String) -> String {
+    s.to_lowercase()
 }
 
 // Hashing

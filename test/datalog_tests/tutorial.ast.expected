@@ -68,11 +68,11 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                           16'd80
                                       }
                            };
-     (((("" ++ ip_addr_t2string(ip)) ++ ":") ++ std.__builtin_2string(port)) ++ ""))
+     ((("" ++ ip_addr_t2string(ip)) ++ ":") ++ std.__builtin_2string(port)))
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) =
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
 function ip_addr_t2string (ip: ip_addr_t): string =
-    (((((((("" ++ std.__builtin_2string(ip.addr[31:24])) ++ ".") ++ std.__builtin_2string(ip.addr[23:16])) ++ ".") ++ std.__builtin_2string(ip.addr[15:8])) ++ ".") ++ std.__builtin_2string(ip.addr[7:0])) ++ "")
+    ((((((("" ++ std.__builtin_2string(ip.addr[31:24])) ++ ".") ++ std.__builtin_2string(ip.addr[23:16])) ++ ".") ++ std.__builtin_2string(ip.addr[15:8])) ++ ".") ++ std.__builtin_2string(ip.addr[7:0]))
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t =
     IPAddr{.addr=(((b3 ++ b2) ++ b1) ++ b0)}
 function is_multicast_addr (ip: ip_addr_t): bool =
@@ -80,9 +80,9 @@ function is_multicast_addr (ip: ip_addr_t): bool =
 function is_target_audience (person: Person): bool =
     ((person.nationality == "USA") and (person.occupation == "student"))
 function mac_addr_t2string (mac: mac_addr_t): string =
-    (((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0])) ++ "")
+    ((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0]))
 function nethost_t2string (h: nethost_t): string =
-    (((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac)) ++ "")
+    ((("Host: IP=" ++ ip_addr_t2string(h.ip)) ++ ", MAC=") ++ mac_addr_t2string(h.mac))
 function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t =
     match (pkt) {
         EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=var ip4}} -> ip4,
@@ -221,8 +221,8 @@ Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w
 Word1(.word="Hello,", .cat=CategoryOther{}).
 Word2(.word="World!", .cat=CategoryOther{}).
 HostInSubnet(.host=host_id, .subnet=subnet_id) :- Host(.id=host_id, .name=_, .ip=host_ip), Subnet(.id=subnet_id, .prefix=subnet_prefix, .mask=subnet_mask), ((host_ip & subnet_mask) == subnet_prefix).
-Pow2(.p=(((("The square of " ++ std.__builtin_2string(x)) ++ " is ") ++ std.__builtin_2string((x * x))) ++ "")) :- Number(.n=x).
-NetHostString(.id=id, .s=(("" ++ nethost_t2string(h)) ++ "")) :- NetHost(.id=id, .h=h).
+Pow2(.p=((("The square of " ++ std.__builtin_2string(x)) ++ " is ") ++ std.__builtin_2string((x * x)))) :- Number(.n=x).
+NetHostString(.id=id, .s=("" ++ nethost_t2string(h))) :- NetHost(.id=id, .h=h).
 Address(.addr=ip_from_bytes(b3, b2, b1, b0)) :- Bytes(.b3=b3, .b2=b2, .b1=b1, .b0=b0).
 MCastAddress(.addr=a) :- Address(.addr=a), is_multicast_addr(a).
 EndpointString(.s=addr_port(ip, proto, preferred_port)) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port).
@@ -239,10 +239,10 @@ UDPDstPort2(.port=port) :- Packet(.pkt=pkt), std.Some{.x=var port} = pkt_udp_por
 IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
 IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 TargetAudience[person] :- Person[person], is_target_audience(person).
-Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ addresses) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
+Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
-Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=(("ip4.dst == " ++ a) ++ ""), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], var a = lb.ip_addresses, match (lb.protocol) {
-                                                                                                                                                                                                                                                         std.Some{.x=_} -> true,
-                                                                                                                                                                                                                                                         std.None{} -> false
-                                                                                                                                                                                                                                                     }.
+Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], var a = lb.ip_addresses, match (lb.protocol) {
+                                                                                                                                                                                                                                                 std.Some{.x=_} -> true,
+                                                                                                                                                                                                                                                 std.None{} -> false
+                                                                                                                                                                                                                                             }.
 Flow1(.lr=ls.ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch[(ls@ Logical_Switch{.ls=_})], Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], (lb.ls == ls.ls).
