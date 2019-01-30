@@ -60,6 +60,18 @@ impl HDDlog {
     }
 }
 
+pub fn string_append_str(mut s1: String, s2: &str) -> String
+{
+    s1.push_str(s2);
+    s1
+}
+
+pub fn string_append(mut s1: String, s2: &String) -> String
+{
+    s1.push_str(s2.as_str());
+    s1
+}
+
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String>
 {
     match c {

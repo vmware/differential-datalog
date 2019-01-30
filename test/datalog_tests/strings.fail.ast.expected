@@ -9,4 +9,4 @@ error: ./test/datalog_tests/strings.fail.dl:7:18-7:19: Cannot find declaration o
 
 error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1
 
-error: ./test/datalog_tests/strings.fail.dl:19:16-19:54: Cannot match expected type bigint and actual type serializable_t in the call to string conversion function "serializable_t2string"
+error: ./test/datalog_tests/strings.fail.dl:19:15-19:55: Cannot match expected type bigint and actual type serializable_t in the call to string conversion function "serializable_t2string"

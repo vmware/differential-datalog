@@ -496,7 +496,9 @@ interpolate p = do
 interpolate' mprefix = do
     str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ string "${"; return ()})
     let prefix' = maybe str
-                        (\prefix -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
+                        (\prefix -> if exprString (enode str) == ""
+                                       then prefix
+                                       else E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
                         mprefix
     (do eof
         return prefix'

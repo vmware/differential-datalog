@@ -1350,7 +1350,7 @@ mkPatExpr' _ _      _   (EBool _ True)  _         = return $ Match "true" empty 
 mkPatExpr' _ _      _   (EBool _ False) _         = return $ Match "false" empty []
 mkPatExpr' _ inkind _   EString{..}     varkind   = do
     vname <- allocPatVar
-    return $ Match (varprefix inkind varkind <+> vname) (vname <> ".str() ==" <+> "\"" <> pp exprString <> "\"") []
+    return $ Match (varprefix inkind varkind <+> vname) (vname <> ".as_str() ==" <+> "\"" <> pp exprString <> "\"") []
 mkPatExpr' d inkind ctx e@EStruct{..}   varkind   = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind) exprStructFields
     let t = consType d exprConstructor
@@ -1428,7 +1428,7 @@ mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
-mkExpr' _ _ EString{..} = ("arcval::DDString::from(String::from(r###\"" <> pp exprString <> "\"###))", EVal)
+mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
@@ -1517,7 +1517,9 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
     v = case exprBOp of
              Concat | t == tString
-                    -> ref exprLeft <> ".concat(" <> ref exprRight <> ".str())"
+                    -> case sel3 exprRight of
+                            EString _ s -> "string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
+                            _           -> "string_append(" <> e1 <> "," <+> ref exprRight <> ")"
              Concat -> mkConcat (e1, typeWidth t1) (e1, typeWidth t2)
              Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
              op     -> parens $ e1 <+> mkBinOp op <+> e2
@@ -1556,7 +1558,7 @@ mkType x = mkType' $ typ x
 mkType' :: Type -> Doc
 mkType' TBool{}                    = "bool"
 mkType' TInt{}                     = "Int"
-mkType' TString{}                  = "arcval::DDString"
+mkType' TString{}                  = "String"
 mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 16 = "u16"
                  | typeWidth <= 32 = "u32"
