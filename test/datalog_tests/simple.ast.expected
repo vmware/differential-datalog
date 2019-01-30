@@ -316,10 +316,12 @@ extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
-     (var str2 = (("foobar" ++ "buzz") ++ "\nraw string quoted string");
+     (var str2 = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
       (var str3 = (("str1: " ++ str1) ++ "");
        (var str4 = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
-        (var str5 = (((((("str1: " ++ str1) ++ ",\nstr2: ") ++ str2) ++ ",\nstr3: ") ++ str3) ++ ".");
+        (var str5 = [|str1: ${str1},
+str2: ${str2},
+str3: ${str3}.|];
          (var str6 = (("" ++ (str1 ++ str2)) ++ "");
           (var str7 = (("" ++ (var x = (str1 ++ str2);
                                x)) ++ "");
@@ -527,12 +529,12 @@ Strings(.s="foo").
 Strings(.s="foo\nbuzz\nbar").
 Strings(.s="\n    foo\n    buzz\n    bar").
 Strings(.s="bar\916\n\928").
-Strings(.s="bar\916\n\928 quoted string").
+Strings(.s=("bar\916\n\928" ++ " quoted string")).
 Strings(.s="\n    foo\\r\\n\n    buzz\n    bar").
 Strings(.s="foo-bar").
 Strings(.s="foo\nbar").
 Strings(.s="foo\\bar").
-Strings(.s="foo\\bar").
+Strings(.s=("foo\\" ++ "bar")).
 Strings(.s="word1 word2").
 Strings(.s="line1\nline2").
 Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).

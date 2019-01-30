@@ -407,7 +407,6 @@ term' = withPos $
      <|> eint
      <|> ebool
      <|> estring
-     <|> einterpolated_string
      <|> evar
      <|> ematch
      <|> eite
@@ -434,7 +433,7 @@ pattern = (withPos $
        <|> eVarDecl <$ reserved "var" <*> varIdent
        <|> epholder
        <|> ebool
-       <|> estring
+       <|> epattern_string
        <|> eint)
       <?> "match pattern"
 
@@ -455,21 +454,29 @@ anonlhs = ("",) <$> lhs
 namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
 
---eint  = Int <$> (fromIntegral <$> decimal)
 eint  = lexeme eint'
-estring = (eString . concat) <$>
-          many1 (stringLit <|> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace)))
+estring =   equoted_string
+        <|> eraw_string
+        <|> einterpolated_raw_string
+
+eraw_string = eString <$> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace))
+
+-- A constant string that can be used to pattern match against
+epattern_string = do
+    estr <- equoted_string <|> eraw_string
+    case estr of
+         E EString{} -> return estr
+         _ -> fail "Non-constant string in pattern expression"
 
 -- Parse interpolated strings, converting them to string concatenation
 -- expressions.
 -- First, parse as normal string literal;
 -- then apply a separate parser to the resulting string to extract
 -- interpolated expressions.
-einterpolated_string = einterpolated_quoted_string <|> einterpolated_raw_string
 
-einterpolated_quoted_string = do
-    p <- try $ lookAhead $ do {string "$\""; getPosition}
-    str <- char '$' *> stringLit
+equoted_string = do
+    p <- try $ lookAhead $ do {string "\""; getPosition}
+    str <- concat <$> many1 stringLit
     case parse (interpolate p) "" str of
          Left  er -> fail $ show er
          Right ex -> return ex
