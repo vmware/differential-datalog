@@ -393,14 +393,14 @@ converted to `"foobar"`.
 
 *String interpolation* allows evaluating arbitrary DDlog expressions
 to construct a string (this feature is inspired by JavaScript).
-Interpolated strings start with the `$` character, embedded expressions
+Embedded expressions
 are wrapped in `${}`.  The following program defines relation
 `Pow2` to contain strings that enumerate the squares of all numbers in relation `Number`.
 
 ```
 input relation Number(n: bigint)
 output relation Pow2(p: string)
-Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+Pow2("The square of ${x} is ${x*x}") :- Number(x).
 ```
 
 Built-in types have built-in conversions to strings.  To convert a
@@ -416,7 +416,7 @@ addresses in a standard format, e.g., `"192.168.0.1"` and
 numbers, in an interpolated string an IP address is formatted as a
 decimal integer.  We can create a custom formatting function for IP
 addresses called `format_bit32_as_ip`, which we can then invoke: e.g.,
-`$"IP address: ${format_bit32_as_ip(addr)}"`, but
+`"IP address: ${format_bit32_as_ip(addr)}"`, but
 this is error-prone, since it is easy to forget to call the
 formatting function when printing IP addresses.  An alternative is to declare a new type for IP addresses:
 
@@ -430,7 +430,7 @@ a single field of type `bit<32>`.  We can write a user-defined formatting method
 
 ```
 function ip_addr_t2string(ip: ip_addr_t): string = {
-    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+    "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 ```
 
@@ -449,7 +449,7 @@ representation:
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+    "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
      \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
 ```
@@ -464,7 +464,7 @@ typedef nethost_t = NHost {
 }
 
 function nethost_t2string(h: nethost_t): string = {
-    $"Host: IP=${h.ip}, MAC=${h.mac}"
+    "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 ```
 
@@ -478,7 +478,7 @@ representation of hosts:
 input relation NetHost(id: bigint, h: nethost_t)
 output relation NetHostString(id: bigint, s: string)
 
-NetHostString(id, $"${h}") :- NetHost(id, h).
+NetHostString(id, "${h}") :- NetHost(id, h).
 ```
 
 Try feeding the following `.dat` file to this program:
@@ -584,7 +584,7 @@ function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): strin
         }
     };  // semicolon required for sequencing
     // Return the address:port string
-    $"${ip}:${port}"
+    "${ip}:${port}"
 }
 ```
 

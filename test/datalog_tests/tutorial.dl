@@ -64,18 +64,18 @@ HostInSubnet(host_id, subnet_id) :- Host(host_id, _, host_ip),
 input relation Number(n: bigint)
 output relation Pow2(p: string)
 
-Pow2($"The square of ${x} is ${x*x}") :- Number(x).
+Pow2("The square of ${x} is ${x*x}") :- Number(x).
 
 typedef ip_addr_t = IPAddr{addr: bit<32>}
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
 function ip_addr_t2string(ip: ip_addr_t): string = {
-    $"${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
+    "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 
 function mac_addr_t2string(mac: mac_addr_t): string = {
-    $"${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
-     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
+    "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
+    \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
 
 typedef nethost_t = NHost {
@@ -84,13 +84,13 @@ typedef nethost_t = NHost {
 }
 
 function nethost_t2string(h: nethost_t): string = {
-    $"Host: IP=${h.ip}, MAC=${h.mac}"
+    "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 
 input relation NetHost(id: bigint, h: nethost_t)
 output relation NetHostString(id: bigint, s: string)
 
-NetHostString(id, $"${h}") :- NetHost(id, h).
+NetHostString(id, "${h}") :- NetHost(id, h).
 
 /*
  * Example: arithmetics
@@ -131,7 +131,7 @@ function addr_port(ip: ip_addr_t,
                     16'd80 // assume HTTP
             }
         };
-    $"${ip}:${port}"
+    "${ip}:${port}"
 }
 
 input relation Endpoint(ip: ip_addr_t,
@@ -395,7 +395,7 @@ output relation Flow(lr: bigint,
 Flow(.lr=ls,
      .stage=LS_IN_PRE_LB,
      .prio=100,
-     .matchStr= $"ip4.dst == ${addresses}",
+     .matchStr= "ip4.dst == ${addresses}",
      .actionStr="{ reg0[0] = 1; next; }")   :-
     Load_Balancer(_, ls, addresses, Some{_}, _).
 
@@ -421,7 +421,7 @@ output relation Flow1(lr: bigint,
 for (lb in Load_Balancer) {
     var a = lb.ip_addresses in
     match (lb.protocol) {
-        Some{_} -> Flow1(lb.ls, LS_IN_PRE_LB, 100, $"ip4.dst == ${a}", "{ reg0[0] = 1; next; }"),
+        Some{_} -> Flow1(lb.ls, LS_IN_PRE_LB, 100, "ip4.dst == ${a}", "{ reg0[0] = 1; next; }"),
         None -> {}
     }
 }

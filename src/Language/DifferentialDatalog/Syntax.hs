@@ -519,7 +519,10 @@ instance PP e => PP (ExprNode e) where
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
-    pp (EString _ s)         = pp (show s)
+    pp (EString _ s) | isInfixOf "${" s
+                              = "[|" <> pp s <> "|]"
+                     | otherwise
+                             = pp $ show s
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ hsep $ punctuate comma
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
