@@ -396,7 +396,7 @@ extern bool ddlog_is_int(const ddlog_record *rec);
  *
  * Returns `0` if the `rec` is not an integer record.
  */
-extern size_t ddlog_int_bits(*const ddlog_record *rec) -> size_t;
+extern size_t ddlog_int_bits(const ddlog_record *rec);
 
 /*
  * Create an integer value.  Can be used to populate any ddlog field
