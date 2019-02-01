@@ -7,43 +7,45 @@ import java.util.*;
 import java.time.Instant;
 import java.time.Duration;
 import java.lang.RuntimeException;
+import java.math.BigInteger;
 
-import ddlogapi.DDLogAPI;
-import ddlogapi.DDLogCommand;
+import ddlogapi.DDlogAPI;
+import ddlogapi.DDlogCommand;
 
 public class SpanTest {
     public static abstract class ParentChild {
-        String parent;
-        String child;
+        BigInteger parent;
+        BigInteger child;
 
-        protected ParentChild(final String parent, final String child) {
+        protected ParentChild(final BigInteger parent, final BigInteger child) {
             this.parent = parent;
             this.child = child;
         }
     }
     public static final class Source extends ParentChild {
-        public Source(final String parent, final String child) { super(parent, child); }
+        public Source(final BigInteger parent, final BigInteger child) { super(parent, child); }
     }
     public static final class Dependency extends ParentChild {
-        public Dependency(final String parent, final String child) { super(parent, child); }
+        public Dependency(final BigInteger parent, final BigInteger child) { super(parent, child); }
     }
 
     // A class that can be used to represent most Span relations
     // including Span, Binding, RuleSpan, ContainerSpan
     public abstract static class SpanBase {
-        String entity;
-        String tn;
+        BigInteger entity;
+        BigInteger tn;
 
         protected SpanBase() {}
 
-        protected SpanBase(String entity, String tn) {
+        protected SpanBase(BigInteger entity, BigInteger tn) {
             this.entity = entity;
             this.tn = tn;
         }
 
         @Override
         public String toString() {
-            return this.getClass().getSimpleName() + "{\"" + this.entity + "\",\"" + this.tn + "\"}";
+            return this.getClass().getSimpleName() + "{" +
+                    this.entity.toString() + "," + this.tn.toString() + "}";
         }
     }
     static class SpanComparator implements Comparator<SpanBase> {
@@ -58,20 +60,24 @@ public class SpanTest {
     public static final class RuleSpan extends SpanBase {
         // We need an empty constructor for reflection to work.
         public RuleSpan() {}
-        public RuleSpan(final String entity, final String tn) { super(entity, tn); }
+        public RuleSpan(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
+    }
+    public static final class ContainerSpan extends SpanBase {
+        public ContainerSpan() {}
+        public ContainerSpan(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
     }
     public static final class Binding extends SpanBase {
-        public Binding(final String entity, final String tn) { super(entity, tn); }
+        public Binding(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
     }
 
     // Classes with just 1 field
     public static class Container {
-        final String id;
-        public Container(final String id) { this.id = id; }
+        final BigInteger id;
+        public Container(final BigInteger id) { this.id = id; }
     }
     public static class FWRule {
-        final String id;
-        public FWRule(final String id) { this.id = id; }
+        final BigInteger id;
+        public FWRule(final BigInteger id) { this.id = id; }
     }
 
     public static class SpanParser {
@@ -85,39 +91,51 @@ public class SpanTest {
         /// Terminator for current command.
         String terminator;
         /// List of commands to execute
-        List<DDLogCommand> commands;
+        List<DDlogCommand> commands;
 
-        private final DDLogAPI api;
+        private final DDlogAPI api;
         private static boolean debug = true;
         private static Set<RuleSpan> ruleSpan;
+        private static Set<ContainerSpan> containerSpan;
         private int ruleSpanTableId;
+        private int containerSpanTableId;
         private boolean localTables = true;
 
         SpanParser() {
             if (localTables) {
-                this.api = new DDLogAPI(1, r -> this.onCommit(r));
+                this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.ruleSpanTableId = this.api.getTableId("RuleSpan");
+                this.containerSpanTableId = this.api.getTableId("ContainerSpan");
                 this.ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
+                this.containerSpan = new TreeSet<ContainerSpan>(new SpanComparator());
             } else {
-                this.api = new DDLogAPI(1, null);
+                this.api = new DDlogAPI(1, null);
             }
             this.command = null;
             this.exitCode = -1;
             this.terminator = "";
-            this.commands = new ArrayList<DDLogCommand>();
+            this.commands = new ArrayList<DDlogCommand>();
         }
 
-        void onCommit(DDLogCommand command) {
-            if (command.table != this.ruleSpanTableId)
-                return;
+        void onCommit(DDlogCommand command) {
             try {
-                RuleSpan span = command.getValue(RuleSpan.class);
-                if (command.kind == DDLogCommand.Kind.Insert)
-                    this.ruleSpan.add(span);
-                else if (command.kind == DDLogCommand.Kind.DeleteVal)
-                    this.ruleSpan.remove(span);
-                else
-                    throw new RuntimeException("Unexpected command " + this.command);
+                if (command.table == this.ruleSpanTableId) {
+                    RuleSpan span = command.getValue(RuleSpan.class);
+                    if (command.kind == DDlogCommand.Kind.Insert)
+                        this.ruleSpan.add(span);
+                    else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                        this.ruleSpan.remove(span);
+                    else
+                        throw new RuntimeException("Unexpected command " + this.command);
+                } else if (command.table == this.containerSpanTableId) {
+                    ContainerSpan span = command.getValue(ContainerSpan.class);
+                    if (command.kind == DDlogCommand.Kind.Insert)
+                        this.containerSpan.add(span);
+                    else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                        this.containerSpan.remove(span);
+                    else
+                        throw new RuntimeException("Unexpected command " + this.command);
+                }
             } catch (Exception ex) {
                 ex.printStackTrace();
                 throw new RuntimeException(ex);
@@ -134,30 +152,64 @@ public class SpanTest {
                 throw new RuntimeException("Expected semicolon after " + this.command + " found " + this.terminator);
         }
 
-        private static String clean(String s) {
-            return s.trim().replace("\"", "");
-        }
-
-        private static String[] cleanAndSplit(String s) {
-            String[] result = s.split(",");
-            for (int i = 0; i < result.length; i++)
-                result[i] = clean(result[i]);
+        private static BigInteger[] cleanAndSplit(String s) {
+            String[] tmp = s.split(",");
+            BigInteger[] result = new BigInteger[tmp.length];
+            for (int i = 0; i < tmp.length; i++) {
+                String t = tmp[i].trim();
+                if (t.startsWith("0x"))
+                    t = t.substring(2);
+                result[i] = new BigInteger(t, 16);
+            }
             return result;
         }
 
-        private static void checkSize(String[] array, int size) {
+        private static void checkSize(BigInteger[] array, int size) {
             if (array.length != size)
                 throw new RuntimeException("Expected " + size + " arguments, got " + array.length);
         }
 
-        void parseLine(String line) throws IllegalAccessException, InstantiationException {
+        private DDlogCommand createCommand(String command, String arguments)
+                throws IllegalAccessException, InstantiationException {
+            Matcher m = argsPattern.matcher(arguments);
+            if (!m.find())
+                throw new RuntimeException("Cannot parse arguments for " + command);
+            String relation = m.group(1);
+            int id = this.api.getTableId(relation);
+            String a = m.group(2);
+            BigInteger[] args = cleanAndSplit(a);
+            Object o;
+            if (relation.equals("Container")) {
+                checkSize(args, 1);
+                o = new Container(args[0]);
+            } else  if (relation.equals("FWRule")) {
+                checkSize(args, 1);
+                o = new FWRule(args[0]);
+            } else if (relation.equals("Dependency")) {
+                checkSize(args, 2);
+                o = new Dependency(args[0], args[1]);
+            } else if (relation.equals("Source")) {
+                checkSize(args, 2);
+                o = new Source(args[0], args[1]);
+            } else if (relation.equals("Binding")) {
+                checkSize(args, 2);
+                o = new Binding(args[0], args[1]);
+            } else {
+                throw new RuntimeException("Unexpected class: " + relation);
+            }
+            DDlogCommand.Kind kind = command.equals("insert") ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            return new DDlogCommand(kind, id, o);
+        }
+
+        void parseLine(String line)
+                throws IllegalAccessException, InstantiationException {
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
                 throw new RuntimeException("Could not isolate command");
             this.command = m.group(1);
             String rest = m.group(2);
             this.terminator = m.group(3);
-            if (debug && !command.equals("insert"))
+            if (debug && !command.equals("insert") && !command.equals("delete"))
                 System.err.println(line);
 
             switch (command) {
@@ -176,37 +228,11 @@ public class SpanTest {
                     this.checkSemicolon();
                     break;
                 case "insert":
-                    m = argsPattern.matcher(rest);
-                    if (!m.find())
-                        throw new RuntimeException("Cannot parse arguments for " + command);
-                    String relation = m.group(1);
-                    String a = m.group(2);
-                    String[] args = cleanAndSplit(a);
-                    Object o;
-                    if (relation.equals("Container")) {
-                        checkSize(args, 1);
-                        o = new Container(args[0]);
-                    } else  if (relation.equals("FWRule")) {
-                        checkSize(args, 1);
-                        o = new FWRule(args[0]);
-                    } else if (relation.equals("Dependency")) {
-                        checkSize(args, 2);
-                        o = new Dependency(args[0], args[1]);
-                    } else if (relation.equals("Source")) {
-                        checkSize(args, 2);
-                        o = new Source(args[0], args[1]);
-                    } else if (relation.equals("Binding")) {
-                        checkSize(args, 2);
-                        o = new Binding(args[0], args[1]);
-                    } else {
-                        throw new RuntimeException("Unexpected class: " + relation);
-                    }
-
-                    int id = this.api.getTableId(relation);
-                    DDLogCommand c = new DDLogCommand(DDLogCommand.Kind.Insert, id, o);
+                case "delete":
+                    DDlogCommand c = this.createCommand(command, rest);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
-                        DDLogCommand[] ca = this.commands.toArray(new DDLogCommand[0]);
+                        DDlogCommand[] ca = this.commands.toArray(new DDlogCommand[0]);
                         if (debug)
                             System.err.println("Executing " + ca.length + " commands");
                         this.exitCode = this.api.applyUpdates(ca);
@@ -222,10 +248,16 @@ public class SpanTest {
                 case "dump":
                     // Hardwired output relation name
                     if (this.localTables) {
+                        System.out.println("ContainerSpan:");
+                        for (ContainerSpan s: this.containerSpan)
+                            System.out.println(s);
+                        System.out.println();
                         System.out.println("RuleSpan:");
                         for (RuleSpan s: this.ruleSpan)
                             System.out.println(s);
+                        System.out.println();
                     } else {
+                        this.exitCode = this.api.dump("ContainerSpan");
                         this.exitCode = this.api.dump("RuleSpan");
                         this.checkExitCode();
                         this.checkSemicolon();
@@ -250,6 +282,7 @@ public class SpanTest {
                 });
             this.api.stop();
             this.ruleSpan.clear();
+            this.containerSpan.clear();
         }
     }
 

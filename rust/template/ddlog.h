@@ -416,7 +416,7 @@ extern uint64_t ddlog_get_u64(const ddlog_record *rec);
  * Create an integer value.  Can be used to populate any ddlog field
  * of type `bit<N>`, `N<=128`
  */
-extern ddlog_record* ddlog_u128(uint128_t v);
+extern ddlog_record* ddlog_u128(__uint128_t v);
 
 /*
  * Retrieves the value of an integer.
@@ -424,7 +424,7 @@ extern ddlog_record* ddlog_u128(uint128_t v);
  * Returns `0` if `rec` is not an integer or if its value does not
  * fit into 128 bits.
  */
-extern uint128_t ddlog_get_u128(const ddlog_record *rec);
+extern __uint128_t ddlog_get_u128(const ddlog_record *rec);
 
 /*
  * Create a string value.  This function copies `s` to an internal

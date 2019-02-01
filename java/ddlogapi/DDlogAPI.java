@@ -7,7 +7,7 @@ import java.util.function.*;
  * Java wrapper around Differential Datalog C API that manipulates
  * DDlog programs.
  */
-public class DDLogAPI {
+public class DDlogAPI {
     static {
         System.loadLibrary("ddlogapi");
     }
@@ -29,6 +29,7 @@ public class DDLogAPI {
     // Constructors
     static public native long ddlog_bool(boolean b);
     static public native long ddlog_u64(long v);
+    static public native long ddlog_u128(long hi, long lo);
     static public native long ddlog_string(String s);
     static public native long ddlog_tuple(long[] handles);
     static public native long ddlog_vector(long[] handles);
@@ -42,6 +43,7 @@ public class DDLogAPI {
     static public native boolean ddlog_get_bool(long handle);
     static public native boolean ddlog_is_int(long handle);
     static public native long ddlog_get_u64(long handle);
+    static public native boolean ddlog_get_u128(long handle, long[] output);  // true for success
     static public native boolean ddlog_is_string(long handle);
     static public native String ddlog_get_str(long handle);
     static public native boolean ddlog_is_tuple(long handle);
@@ -75,9 +77,9 @@ public class DDLogAPI {
     // Callback to invoke for each record on commit.
     // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
     // This callback can be invoked simultaneously from multiple threads.
-    private final Consumer<DDLogCommand> commitCallback;
+    private final Consumer<DDlogCommand> commitCallback;
 
-    public DDLogAPI(int workers, Consumer<DDLogCommand> callback) {
+    public DDlogAPI(int workers, Consumer<DDlogCommand> callback) {
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
@@ -87,9 +89,9 @@ public class DDLogAPI {
     /// Callback invoked from commit.
     boolean onCommit(int tableid, long handle, boolean polarity) {
         if (this.commitCallback != null) {
-            DDLogCommand.Kind kind = polarity ? DDLogCommand.Kind.Insert : DDLogCommand.Kind.DeleteVal;
-            DDLogRecord record = DDLogRecord.fromSharedHandle(handle);
-            DDLogCommand command = new DDLogCommand(kind, tableid, record);
+            DDlogCommand.Kind kind = polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            DDlogCommand command = new DDlogCommand(kind, tableid, record);
             this.commitCallback.accept(command);
         }
         return true;
@@ -105,25 +107,25 @@ public class DDLogAPI {
     }
 
     public int stop() {
-        return DDLogAPI.ddlog_stop(this.hprog);
+        return DDlogAPI.ddlog_stop(this.hprog);
     }
 
     /**
      *  Starts a transaction
      */
     public int start() {
-        return DDLogAPI.ddlog_transaction_start(this.hprog);
+        return DDlogAPI.ddlog_transaction_start(this.hprog);
     }
 
     public int commit() {
-        return DDLogAPI.ddlog_transaction_commit(this.hprog);
+        return DDlogAPI.ddlog_transaction_commit(this.hprog);
     }
 
     public int rollback() {
-        return DDLogAPI.ddlog_transaction_rollback(this.hprog);
+        return DDlogAPI.ddlog_transaction_rollback(this.hprog);
     }
 
-    public int applyUpdates(DDLogCommand[] commands) {
+    public int applyUpdates(DDlogCommand[] commands) {
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
@@ -132,7 +134,7 @@ public class DDLogAPI {
 
     /// Callback invoked from dump.
     boolean dumpCallback(long handle) {
-        DDLogRecord record = DDLogRecord.fromSharedHandle(handle);
+        DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
         System.out.println(record.toString());
         return true;
     }
@@ -146,7 +148,7 @@ public class DDLogAPI {
     }
 
     public int profile() {
-        String s = DDLogAPI.ddlog_profile(this.hprog);
+        String s = DDlogAPI.ddlog_profile(this.hprog);
         System.out.println("Profile:");
         System.out.println(s);
         return 0;

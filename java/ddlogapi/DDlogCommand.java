@@ -2,7 +2,7 @@ package ddlogapi;
 
 import java.lang.reflect.*;
 
-public class DDLogCommand {
+public class DDlogCommand {
     public enum Kind {
         DeleteVal,
         DeleteKey,
@@ -11,19 +11,19 @@ public class DDLogCommand {
 
     public final Kind kind;
     public final int table;
-    public final DDLogRecord value;
+    public final DDlogRecord value;
 
-    public DDLogCommand(final Kind kind, final int table, final DDLogRecord value) {
+    public DDlogCommand(final Kind kind, final int table, final DDlogRecord value) {
         this.kind = kind;
         this.table = table;
         this.value = value;
     }
 
-    public DDLogCommand(final Kind kind, final int table, final Object value)
+    public DDlogCommand(final Kind kind, final int table, final Object value)
             throws IllegalAccessException, InstantiationException, IllegalAccessException {
         this.kind = kind;
         this.table = table;
-        this.value = DDLogRecord.convertObject(value);
+        this.value = DDlogRecord.convertObject(value);
     }
 
     /**
@@ -34,13 +34,13 @@ public class DDLogCommand {
     public long allocate() {
         switch (this.kind) {
             case DeleteKey:
-                return DDLogAPI.ddlog_delete_key_cmd(
+                return DDlogAPI.ddlog_delete_key_cmd(
                         this.table, this.value.getHandleAndInvalidate());
             case DeleteVal:
-                return DDLogAPI.ddlog_delete_val_cmd(
+                return DDlogAPI.ddlog_delete_val_cmd(
                         this.table, this.value.getHandleAndInvalidate());
             case Insert:
-                return DDLogAPI.ddlog_insert_cmd(
+                return DDlogAPI.ddlog_insert_cmd(
                         this.table, this.value.getHandleAndInvalidate());
             default:
                 throw new RuntimeException("Unexpected command " + this.kind);
