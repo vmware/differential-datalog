@@ -1,0 +1,67 @@
+\documentclass{svproc}
+
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{blue}{rgb}{0.13,0.13,1}
+\definecolor{green}{rgb}{0,0.5,0}
+\definecolor{red}{rgb}{0.9,0,0}
+\definecolor{grey}{rgb}{0.46,0.45,0.48}
+
+\lstset{language=Java,
+  commentstyle=\color{green},
+  keywordstyle=\color{blue},
+  stringstyle=\color{red},
+  basicstyle=\ttfamily}
+
+\lstdefinelanguage{ddlog}{
+  language=Java, % we base it on Java, just for comments
+  morekeywords={input, output, typedef, relation, typedef, bool,
+    string, bit},
+}
+
+\newcommand{\LR}[1]{\textbf{\color{red}LR: #1}}
+
+\author{
+        Leonid Ryzhyk \and
+        Mihai Budiu}
+\institute{VMware Research}
+
+\title{Differential Datalog}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Abstract}
+
+In distributed systems, the control plane is responsible for
+reconfiguring the system in response to external events.  Due to
+performance and scalability requirements, it is impractical to
+recompute the entire configuration on every update.  Instead,
+developers employ \emph{incremental algorithms} that update their
+outputs in response to input changes.  Such algorithms are notoriously
+hard to develop, leading to complex and inflexible implementations.
+
+To address this complexity, we have developed Differential Datalog
+(DDlog), a dialect of Datalog that automates incremental view updates.
+A DDlog programmer only has to write an algorithm for solving the
+original (non-incremental) problem.  Given this description, the DDlog
+compiler generates an efficient incremental implementation.  The DDlog
+runtime automatically maintains the indexes required for efficiently
+computing view updates.
+
+\input{intro}
+\input{ddlog}
+\input{system}
+\input{applications}
+\input{conclusions}
+
+\bibliographystyle{abbrv}
+\bibliography{top}
+
+\end{document}

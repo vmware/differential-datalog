@@ -1,0 +1,91 @@
+\section{DDlog Implementation}\label{sec-system}
+
+\subsection{The DDlog compilation flow}
+
+Figure~\ref{fig:compiler-flow} shows how DDlog programs are compiled
+into native code.  The DDlog compiler generates Rust code, which is
+linked with the Differential Dataflow
+library~\cite{differential-dataflow} to produce a static or dynamic
+library, which exposes an API to invoke the incremental computation at
+runtime.  Differential Dataflow is the secret sauce behind DDlog's
+excellent incremental performance.  It executes computations
+represented as dataflow graphs, consisting of relational operators:
+joins, antijoins, unions, aggregations, filters, and flatmaps, defined
+over data collections.  Each operator has a highly optimized
+incremental implementation, incorporating many generic optimizations.
+Operators can be parameterized with arbitrary user-defined logic,
+which enables a wide range of programs to be implemented on top of
+Differential Dataflow.  Differential Dataflow is an independent
+open-source project~\cite{differential-dataflow}, described in a
+series of
+publications~\cite{timely-dataflow,differential-dataflow-paper} and
+online documents~\cite{dd-mdbook,dd-reference}.
+
+\subsection{C and Java interfaces}
+
+The compiled DDlog program exposes a transactional API to add and
+delete records from input relations and notify the client about
+changes in output relations at runtime.  The API is natively
+implemented in Rust, with bindings available for other languages,
+currently C and Java.  We use the latter to integrate DDlog in the NSC
+control plane.  The Java API to DDlog is packaged as a JAR file, and
+supplied together with a dynamically-linked library (DLL) that
+comprises the native executable.  The Java API is program-independent,
+but the native executable needs to be regenerated every time the DDlog
+program is changed. We illustrate the Java API to DDlog with a
+skeleton example in Figure~\ref{fig:javaapi}.
+
+\begin{figure}
+    \footnotesize
+    \begin{lstlisting}[language=Java]
+/* Java class that represents a record in the Dependency
+ * relation. */
+class Genealogy {
+  String parent;
+  String child;
+}
+
+/* Instantiate the DDlog program; add a record to the
+ * Dependency relation. */
+static void main() {
+  DDlogAPI api = new DDlogAPI(2 /* threads */,
+               r -> onCommit(r) /* callback */);
+  /* Obtain handle to Dependency relation. */
+  int table = api.getTable("Genealogy");
+  /* Create an instance of Dependency class. */
+  Genealogy g = new Genealogy();
+  dep.parent = "Mike";
+  dep.child  = "John";
+  /* Create DDlog insert command. */
+  DDlogCommand command = new DDlogCommand(
+     DDlogCommand.Kind.Insert,
+     table,
+     dep);
+
+  /* Execute command as an atomic transaction. */
+  int exitcode = api.start();  // start transaction
+  DDlogCommand[] commands = new DDlogCommands[1];
+  commands[0] = command;
+  exitcode = api.applyUpdates(commands);
+  /* commit transaction; causes the callback to be 
+   * invoked for each new or deleted output record */
+  exitcode = api.commit();
+  /* Terminate execution of the DDlog program. */
+  api.stop();
+}
+
+static void onCommit(DDlogCommand command) {
+  /* Callback invoked on commit once for each insertion or
+   * deletion in an output relation. */
+  int outputTable = command.tableId;
+  if (command.kind == DDlogCommand.Kind.Insert) {
+    Object value = command.getObject();
+    // insert into outputTable
+  } else {
+    // delete from outputTable
+  }
+}
+\end{lstlisting}
+\caption{Example program showing the Java API to pass and receive data
+  from a DDlog program.\label{fig:javaapi}.}
+\end{figure}
