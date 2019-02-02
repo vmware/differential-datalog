@@ -33,7 +33,7 @@ Datalog does not have concepts like data types, arithmetics, strings or function
 writing of safe, clear, and concise code, DDlog extends pure Datalog with:
 
     1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
-    tuples, and tagged unions.
+    tuples, tagged unions, vectors, sets, and maps.
 
     2. Standard integer and bitvector arithmetic.
 
@@ -42,11 +42,13 @@ resorting to external functions.
 
     4. String operations, including string concatenation and interpolation.
 
+    5. Syntactic sugar for writing imperative-style code using for/let/assignments.
+
 5. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
 primary use case is to integrate with other applications that require deductive database
-functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust or
-C/C++ program (bindings for other languages can be easily added, but Rust and C are the only ones we
-support at the moment).  This enables good performance, but somewhat limits the flexibility, as
+functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust,
+C/C++ or Java program (bindings for other languages can be easily added).  This enables good performance,
+but somewhat limits the flexibility, as
 changes to the relational schema or rules require re-compilation.
 
 Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
@@ -111,7 +113,7 @@ stack test
 
 # vim syntax highlighting
 
-Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential 
+Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential
 datalog syntax highlighting in `.dl` files.
 
 # Using IntelliJ IDEA
