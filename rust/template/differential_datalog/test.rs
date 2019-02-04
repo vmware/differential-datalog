@@ -431,7 +431,7 @@ fn test_join(nthreads: usize) {
             key_func:     None,
             id:           2,      
             rules:        Vec::new(),
-            arrangements: vec![Arrangement{
+            arrangements: vec![Arrangement::ArrangementMap{
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
@@ -555,6 +555,10 @@ fn test_antijoin(nthreads: usize) {
         }
     }
 
+    fn fmnull_fun(v: Value) -> Option<Value> {
+        Some(v)
+    }
+
     let relset21: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel21 = {
         let relset21 = relset21.clone();
@@ -572,14 +576,15 @@ fn test_antijoin(nthreads: usize) {
                             mfun: &(mfun as MapFunc<Value>)
                         }]
                 }],
-            arrangements: vec![],
+            arrangements: vec![
+                Arrangement::ArrangementSet{
+                    name: "arrange2.1".to_string(),
+                    fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                    distinct: true
+                }],
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T21", &relset21, v, pol)))
         }
     };
-
-    fn fmnull_fun(v: Value) -> Option<Value> {
-        Some(v)
-    }
 
     let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel3 = {
@@ -594,8 +599,7 @@ fn test_antijoin(nthreads: usize) {
                 rel: 1,
                 xforms: vec![XForm::Antijoin{
                     afun: &(afun1 as ArrangeFunc<Value>),
-                    rel:  21,
-                    fmfun:&(fmnull_fun as FilterMapFunc<Value>)
+                    arrangement: (21,0)
                 }]
             }],
             arrangements: Vec::new(),
@@ -867,9 +871,6 @@ fn test_recursion(nthreads: usize) {
             _ => None
         }
     }
-    fn arrange_by_self(v: Value) -> Option<(Value, Value)> {
-        Some((v.clone(),Value::empty()))
-    }
 
     fn jfun(_parent: &Value, ancestor: &Value, child: &Value) -> Option<Value> {
         Some(Value::Tuple2(Box::new(ancestor.clone()), Box::new(child.clone())))
@@ -893,7 +894,7 @@ fn test_recursion(nthreads: usize) {
             key_func:     None,
             id:           1,
             rules:        Vec::new(),
-            arrangements: vec![Arrangement{
+            arrangements: vec![Arrangement::ArrangementMap{
                 name: "arrange_by_parent".to_string(),
                 afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
@@ -924,13 +925,14 @@ fn test_recursion(nthreads: usize) {
                     }]
                 }],
             arrangements: vec![
-                Arrangement{
+                Arrangement::ArrangementMap{
                     name: "arrange_by_ancestor".to_string(),
                     afun: &(arrange_by_fst as ArrangeFunc<Value>)
                 },
-                Arrangement{
+                Arrangement::ArrangementSet{
                     name: "arrange_by_self".to_string(),
-                    afun: &(arrange_by_self as ArrangeFunc<Value>)
+                    fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                    distinct: true
                 }],
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("ancestor", &ancestorset, v, pol)))
         }
@@ -963,13 +965,11 @@ fn test_recursion(nthreads: usize) {
                         },
                         XForm::Antijoin{
                             afun:        &(anti_arrange1 as ArrangeFunc<Value>),
-                            rel:         2,
-                            fmfun:       &(fmnull_fun as FilterMapFunc<Value>)
+                            arrangement: (2,1)
                         },
                         XForm::Antijoin{
                             afun:        &(anti_arrange2 as ArrangeFunc<Value>),
-                            rel:         2,
-                            fmfun:       &(fmnull_fun as FilterMapFunc<Value>)
+                            arrangement: (2,1)
                         },
                         XForm::Filter{
                             ffun: &(ffun as FilterFunc<Value>)
