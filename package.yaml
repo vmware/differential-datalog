@@ -43,12 +43,21 @@ executables:
   ddlog:
     main:                Main.hs
     source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -optl-static
-    - -optl-pthread
+    # Mac OS does not support statically linked executables.
+    when:
+    - condition: os(linux)
+      then:
+          ghc-options:
+              - -threaded
+              - -rtsopts
+              - -with-rtsopts=-N
+              - -optl-static
+              - -optl-pthread
+      else:
+          ghc-options:
+              - -threaded
+              - -rtsopts
+              - -with-rtsopts=-N
     dependencies:
     - differential-datalog
     - filepath

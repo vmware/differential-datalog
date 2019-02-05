@@ -25,8 +25,8 @@ cache:
         - .stack-work
 
 env:
+   - TEST_SUITE='-p tutorial' BUILD_BINARY=1
    - TEST_SUITE='-p souffle'
-   - TEST_SUITE='-p tutorial'
    - TEST_SUITE='-p simple'
    - TEST_SUITE='-p path'
    - TEST_SUITE='-p ovn'
@@ -64,7 +64,26 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 - DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 
-after_success:
- - |
-   # Build and ship binary
-   ./.travis/attach-binary.sh
+before_deploy:
+    # add date and OS name to the tag
+    - export DIST_NAME=ddlog-$TRAVIS_TAG-$(date +'%Y%m%d%H%M%S')-$TRAVIS_OS_NAME
+    #- git tag $TRAVIS_TAG
+    # copy distribution files to a separate directory
+    - stack install --no-terminal
+    - export DIST_DIR=ddlog
+    - mkdir -p $DIST_DIR/bin
+    - export BIN="$(stack path --local-install-root)/bin/ddlog"
+    - cp "$BIN" "$DIST_DIR/bin/"
+    - cp -r lib "$DIST_DIR/"
+    - cp -r java "$DIST_DIR/"
+    - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
+
+deploy:
+  provider: releases
+  api_key: $GITHUB_TOKEN
+  file: "$DIST_NAME.tar.gz"
+  skip_cleanup: true
+  draft: true
+  on:
+    tags: true
+    condition: $BUILD_BINARY = 1
