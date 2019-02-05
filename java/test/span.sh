@@ -3,8 +3,6 @@
 
 set -ex
 
-#stack test --ta '-p span_uuid'
-
 # Compile the span_uuid.dl DDlog program
 ddlog -i ../../test/datalog_tests/span_uuid.dl -L../../lib
 # Compile the rust program; generates ../test/datalog_tests/span_ddlog/target/release/libspan_ddlog.a and .so
