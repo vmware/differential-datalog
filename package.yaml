@@ -36,6 +36,9 @@ dependencies:
 
 library:
   source-dirs: src
+  ghc-options:
+  - -optl-static
+  - -optl-pthread
 executables:
   ddlog:
     main:                Main.hs
@@ -44,6 +47,8 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -optl-static
+    - -optl-pthread
     dependencies:
     - differential-datalog
     - filepath
