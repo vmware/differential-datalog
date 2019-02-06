@@ -161,15 +161,30 @@ rustLibFiles specname =
 
 {- The following types model corresponding entities in program.rs -}
 
--- Arrangement is uniquely identified by its _normalized_ pattern
--- expression.  The normalized pattern only contains variables
--- involved in the arrangement key, with normalized names (so that
--- two patterns isomorphic modulo variable names have the same
--- normalized representation) and only expand constructors that
--- either contain a key variable or are non-unique.
-data Arrangement = Arrangement {
-    arngPattern :: Expr
-} deriving Eq
+-- There are two kinds of arrangements:
+--
+-- + 'ArrangementMap' arranges the collection into key-value pairs of type
+--   '(Value,Value)', where the second value in the pair is a record from the
+--   original collection.  These arrangements are used in join's and semi-joins.
+--
+-- + 'ArrangementSet' arranges the collection in '(Value, ())' pairs, where the
+--   value is the key extracted from relation.  These arrangements are used in
+--   antijoins and semijoins.
+--
+-- A semijoin can use either 'ArrangementSet' or 'ArrangementMap'.  The latter is
+-- more expensive and should only be used if the same arrangement is shared with a
+-- join operator.
+--
+-- 'arngPattern' is a _normalized_ pattern that only contains variables involved
+-- in the arrangement key, with normalized names (so that two patterns isomorphic
+-- modulo variable names have the same normalized representation) and that only
+-- expand constructors that either contain a key variable or are non-unique.
+--
+-- The 'distinct' flag in 'ArrangementSet' indicates that this arrangement is used
+-- in an antijoin and thefore must contain distinct entries.
+data Arrangement = ArrangementMap { arngPattern :: Expr }
+                 | ArrangementSet { arngPattern :: Expr, arngDistinct :: Bool}
+                 deriving Eq
 
 -- Rust expression kind
 data EKind = EVal         -- normal value
@@ -1086,7 +1101,7 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
         (arr, vmap) = normalizeArrangement d (getRelation d $ atomRelation atom) ctx $ atomVal atom
-    aid <- addArrangement (atomRelation atom) arr
+    aid <- addArrangement (atomRelation atom) (ArrangementMap arr)
     -- Variables from previous terms that will be used in terms
     -- following the join.
     let post_join_vars = (rhsVarsAfter d rl (join_idx - 1)) `intersect`
@@ -1128,11 +1143,11 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
-    -- filter-map collection to anti-join with
+    -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
     let rel = getRelation d atomRelation
     let (arr, vmap) = normalizeArrangement d rel ctx atomVal
-    fmfun <- mkArrangementKey d rel arr
+    aid <- addArrangement atomRelation (ArrangementSet arr True)
     -- Arrange variables from previous terms
     akey <- mkTupleValue d $ map (\(_, e, ctx') -> (e, ctx')) vmap
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
@@ -1140,13 +1155,12 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
                          "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                                                 $$
              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-             "    rel:  " <> relId atomRelation <> ","                                                          $$
-             (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f}")        $$
+             "    arrangement: (" <> relId atomRelation <> "," <> pp aid <> "),"                                $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
-normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr, ECtx)])
-normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
+normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Expr, [(String, Expr, ECtx)])
+normalizeArrangement d rel ctx pat = (renamed, vmap)
     where
     pat' = exprFoldCtx (normalizePattern d) ctx pat
     (renamed, (_, vmap)) = runState (rename ctx pat') (0, [])
@@ -1243,21 +1257,31 @@ mkNode (SCCNode rels)    =
     "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . sel1) rels) <> "]}"
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangement d rel (Arrangement pattern) = do
-    filter_key <- mkArrangementKey d rel (Arrangement pattern)
+mkArrangement d rel (ArrangementMap pattern) = do
+    filter_key <- mkArrangementKey d rel pattern
     let afun = braces' $
-               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                  $$
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
     return $
-        "Arrangement{"                                                                                      $$
+        "Arrangement::Map{"                                                                                 $$
         "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
         "}"
 
+mkArrangement d rel (ArrangementSet pattern distinct) = do
+    filter_key <- mkArrangementKey d rel pattern
+    let fmfun = braces' filter_key
+    return $
+        "Arrangement::Set{"                                                                            $$
+        "    name: r###\"" <> pp pattern <> "\"###.to_string(),"                                       $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")   $$
+        "    distinct:" <+> (if distinct then "true" else "false")                                     $$
+        "}"
+
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.
-mkArrangementKey :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangementKey d rel (Arrangement pattern) = do
+mkArrangementKey :: DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
+mkArrangementKey d rel pattern = do
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
     let getvars :: Type -> Expr -> [Field]

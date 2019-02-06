@@ -222,14 +222,14 @@ pub enum XForm<V: Val> {
 #[derive(Clone)]
 pub enum Arrangement<V: Val> {
     /// Arrange into (key,value) pairs
-    ArrangementMap {
+    Map {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
         afun: &'static ArrangeFunc<V>
     },
     /// Arrange into a set of values
-    ArrangementSet {
+    Set {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
@@ -243,8 +243,8 @@ impl<V: Val> Arrangement<V> {
     fn name(&self) -> String
     {
         match self {
-            Arrangement::ArrangementMap{name,..} => name.clone(),
-            Arrangement::ArrangementSet{name,..} => name.clone()
+            Arrangement::Map{name,..} => name.clone(),
+            Arrangement::Set{name,..} => name.clone()
         }
     }
 }
@@ -261,10 +261,10 @@ impl<V: Val> Arrangement<V>
         S::Timestamp: Lattice+Ord+TotalOrder
     {
         match self {
-            Arrangement::ArrangementMap{name: _, afun} => {
+            Arrangement::Map{name: _, afun} => {
                 ArrangedCollection::ArrangedMap(collection.flat_map(*afun).arrange_by_key())
             },
-            Arrangement::ArrangementSet{name:_, fmfun, distinct} => {
+            Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
                     ArrangedCollection::ArrangedSet(filtered.distinct_total().arrange_by_self())
@@ -284,10 +284,10 @@ impl<V: Val> Arrangement<V>
         S::Timestamp: Lattice+Ord
     {
         match self {
-            Arrangement::ArrangementMap{name: _, afun} => {
+            Arrangement::Map{name: _, afun} => {
                 ArrangedCollection::ArrangedMap(collection.flat_map(*afun).arrange_by_key())
             },
-            Arrangement::ArrangementSet{name:_, fmfun, distinct} => {
+            Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
                     ArrangedCollection::ArrangedSet(filtered.distinct().arrange_by_self())
@@ -1417,7 +1417,7 @@ impl<V:Val> RunningProgram<V> {
     }
 }
 
-
+// Versions of semijoin and antijoin operators that take arrangement instead of collection.
 fn semijoin_arranged<G,K,V,R,R2,T>(collection: &Collection<G, (K,V), R>,
                                    other: &Arranged<G, K, (), R2, T>) -> Collection<G, (K, V), <R as Mul<R2>>::Output>
 where
