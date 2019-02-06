@@ -431,7 +431,7 @@ fn test_join(nthreads: usize) {
             key_func:     None,
             id:           2,      
             rules:        Vec::new(),
-            arrangements: vec![Arrangement::ArrangementMap{
+            arrangements: vec![Arrangement::Map{
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
@@ -577,7 +577,7 @@ fn test_antijoin(nthreads: usize) {
                         }]
                 }],
             arrangements: vec![
-                Arrangement::ArrangementSet{
+                Arrangement::Set{
                     name: "arrange2.1".to_string(),
                     fmfun: &(fmnull_fun as FilterMapFunc<Value>),
                     distinct: true
@@ -894,7 +894,7 @@ fn test_recursion(nthreads: usize) {
             key_func:     None,
             id:           1,
             rules:        Vec::new(),
-            arrangements: vec![Arrangement::ArrangementMap{
+            arrangements: vec![Arrangement::Map{
                 name: "arrange_by_parent".to_string(),
                 afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
@@ -925,11 +925,11 @@ fn test_recursion(nthreads: usize) {
                     }]
                 }],
             arrangements: vec![
-                Arrangement::ArrangementMap{
+                Arrangement::Map{
                     name: "arrange_by_ancestor".to_string(),
                     afun: &(arrange_by_fst as ArrangeFunc<Value>)
                 },
-                Arrangement::ArrangementSet{
+                Arrangement::Set{
                     name: "arrange_by_self".to_string(),
                     fmfun: &(fmnull_fun as FilterMapFunc<Value>),
                     distinct: true
