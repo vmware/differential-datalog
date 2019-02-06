@@ -1,5 +1,6 @@
 \documentclass{svproc}
 
+\usepackage[T1]{fontenc}
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{wrapfig}
@@ -20,7 +21,9 @@
 \lstdefinelanguage{ddlog}{
   language=Java, % we base it on Java, just for comments
   morekeywords={input, output, typedef, relation, typedef, bool,
-    string, bit},
+    string, bit, extern, function, var, for, match, skip, in,
+    Aggregate, FlatMap},
+  deletestring=[b]{'}
 }
 
 \newcommand{\LR}[1]{\textbf{\color{red}LR: #1}}
@@ -46,6 +49,8 @@ recompute the entire configuration on every update.  Instead,
 developers employ \emph{incremental algorithms} that update their
 outputs in response to input changes.  Such algorithms are notoriously
 hard to develop, leading to complex and inflexible implementations.
+(This is the classic ``incremental view update''
+problem~\cite{Gupta-sigmod93}).
 
 To address this complexity, we have developed Differential Datalog
 (DDlog), a dialect of Datalog that automates incremental view updates.
@@ -55,10 +60,17 @@ compiler generates an efficient incremental implementation.  The DDlog
 runtime automatically maintains the indexes required for efficiently
 computing view updates.
 
+The DDlog language is targeted for system builders.  In consequence,
+the language emphasizes usability, by providing a rich set of types,
+an powerful expression language, including string manipulation, and
+an alternative syntax for defining relations, which has a more
+imperative flavor.
+
 \input{intro}
 \input{ddlog}
 \input{system}
 \input{applications}
+\input{related}
 \input{conclusions}
 
 \bibliographystyle{abbrv}

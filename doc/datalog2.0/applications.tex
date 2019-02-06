@@ -1,3 +1,50 @@
 \section{Applications}\label{sec:applications}
 
-TODO: describe OVN and other applications.
+\subsection{Controller for Virtual Networks}
+
+The most significant program DDlog program that we have written is a
+reimplementation of the OVN controller, which is part of the virtual
+network management software stack of Open virtual Switch
+(OvS)~\cite{Pfaff-nsdi15}.
+
+OVN translates a set of network management policies into OpenFlow
+rules that have to be installed on the virtual switches in the
+network.  The logic is very complicated, comprising tens of input,
+output and intermediate relations.
+
+The original program was written in C, and is not fully incremental.
+The DDlog implementation has about 6000 lines of code, about the same
+size as the original code-base, but it is fully incremental.
+Preliminary evaluations indicate that the incremental performance is
+several orders of magnitude better than the original program for large
+networks.
+
+TODO: how well does it work.
+
+\subsection{Program analysis}
+
+We have evaluated DDlog on a large Datalog program written for the
+Souffle Datalog compiler.  The Datalog program has performs many
+compiler analyses simultaneously, computing the fixed-point of several
+analyses.  For this purpose we have written a Python program that
+converts a large subset of the Souffle Datalog syntax into DDlog (we
+have manually handled the missing features); the input program has
+580 lines.
+
+The input data to the program consists of 3.5 million tuples.
+
+TODO: how well does it work?
+
+\subsection{Firewall management}
+
+We have reimplemented a proprietary network management application in
+DDlog.  The application manages a firewall in a network of switches
+and virtual machines (VMs).  The firewall is driven by a centralized
+policy.  The centralized policy is implemented in a distributed
+fashion by the VMs and network switches, each of which performs
+filtering using local rules.  When the centralized policy changes we
+want to perform the minimum updates in all network devices.  The core
+of this program is a graph reachability problem, which is written in a
+few lines of DDlog.  The DDlog program outperformed in performance by
+a factor of 3-8 a hand-written incremental Java program that had
+thousands of lines of code.

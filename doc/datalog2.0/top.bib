@@ -77,3 +77,337 @@
   title =	 {{Open Virtual Network} architecture},
   url =          {\url{http://www.openvswitch.org/support/dist-docs/ovn-architecture.7.html}}
 }
+
+@inproceedings{scholz-cc16,
+  title =	 {On fast large-scale program analysis in {Datalog}},
+  author =	 {Scholz, Bernhard and Jordan, Herbert and
+                  Suboti{\'c}, Pavle and Westmann, Till},
+  booktitle =	 {International Conference on Compiler Construction
+                  (CC '16)},
+  pages =	 {196--206},
+  year =	 2016,
+  organization = {ACM},
+  abstract =	 {Designing and crafting a static program analysis is
+                  challenging due to the complexity of the task at
+                  hand. Among the challenges are modelling the
+                  semantics of the input language, finding suitable
+                  abstractions for the analysis, and handwriting
+                  efficient code for the analysis in a traditional
+                  imperative language such as C++. Hence, the
+                  development of static program analysis tools is
+                  costly in terms of development time and resources
+                  for real world languages. To overcome, or at least
+                  alleviate the costs of developing a static program
+                  analysis, Datalog has been proposed as a domain
+                  specific language (DSL). With Datalog, a designer
+                  expresses a static program analysis in the form of a
+                  logical specification. While a domain specific
+                  language approach aids in the ease of development of
+                  program analyses, it is commonly accepted that such
+                  an approach has worse runtime performance than
+                  handcrafted static analysis tools.  In this work, we
+                  introduce a new program synthesis methodology for
+                  Datalog specifications to produce highly efficient
+                  monolithic C++ analyzers. The synthesis technique
+                  requires the re-interpretation of the semi-naïve
+                  evaluation as a scaffolding for translation using
+                  partial evaluation. To achieve high-performance, we
+                  employ staged- compilation techniques and specialize
+                  the underlying relational data structures for a
+                  given Datalog specification. Experimentation on
+                  benchmarks for large-scale program analysis
+                  validates the superior performance of our approach
+                  over available Datalog tools and demonstrates our
+                  competitiveness with state-of-the-art handcrafted
+                  tools},
+  url =		 {http://discovery.ucl.ac.uk/1474713/1/main.pdf}
+}
+
+@InProceedings{meijer-dpcool03,
+  author =       {Erik Meijer and Wolfram Schulte and Gavin Bierman},
+  title =        {Unifying Tables, Objects and Documents},
+  booktitle =    {International Workshop on Declarative Programming in
+                  the Context of Object-Oriented Languages (DPCOOL)},
+  year =         2003,
+  address =      {Uppsala, Sweden},
+  month =        {August 25},
+  url =          {http://research.microsoft.com/users/schulte/Papers/UnifyingTablesObjectsAndDocuments(DPCOOL2003).pdf},
+  abstract =     {This paper proposes a number of type system and
+                  language extensions to natively support relational
+                  and hierarchical data within a statically typed
+                  object-oriented setting. In our approach SQL tables
+                  and XML documents become first class citizens that
+                  benefit from the full range of features available in
+                  a modern programming language like C\# or Java. This
+                  allows objects, tables and documents to be
+                  constructed, loaded, passed, transformed, updated,
+                  and queried in a unified and typesafe manner.},
+  comments =     {The first proposal for LINQ, at this point called
+                  Xen.  The proposal contains: streams, including
+                  1-element and maybe zero-element streams, anonymous
+                  structs, indexable by labels or position.
+                  Stream+structs = tables.  A tuple (struct) can be
+                  seen as an stream of union types (called
+                  discriminated unions).  Union types are
+                  automatically tagged by the system.  The definition
+                  allows nested streams, which are flattened.  Some of
+                  this support is designed for XML.  XML literals are
+                  first-class concepts in the language!  The original
+                  syntax was really confusing, LINQ is better.  You
+                  could lift methods, predicates, anonymous methods
+                  over streams with just a stream.method.}
+}
+
+@inproceedings{Meijer-sigmod06,
+  author =	 {Meijer, Erik and Beckman, Brian and Bierman, Gavin},
+  title =	 {{LINQ}: Reconciling Object, Relations and {XML} in
+                  the {.NET} Framework},
+  booktitle =	 {International Conference on Management of Data (SIGMOD '06)},
+  year =	 2006,
+  location =	 {Chicago, IL, USA},
+  pages =	 {706--706},
+  url =		 {http://doi.acm.org/10.1145/1142473.1142552},
+  abstract =	 {Many software applications today need to handle data
+                  from different data models; typically objects from
+                  the host programming language along with the
+                  relational and XML data models. The ROX impedance
+                  mismatch makes programs awkward to write and hard to
+                  maintain.The .NET Language-Integrated Query (LINQ)
+                  framework, proposed for the next release of the .NET
+                  framework, approaches this problem by defining a
+                  pattern of general-purpose standard query operators
+                  for traversal, filter, and projection. Based on this
+                  pattern, any .NET language can define special query
+                  comprehension syntax that is subsequently compiled
+                  into these standard operators (our code examples are
+                  in VB).Besides the general query operators, the LINQ
+                  framework also defines two domain specific APIs that
+                  work over XML (XLinq) and relational data (DLinq)
+                  respectively. The operators over XML use a
+                  lightweight and easy to use in-memory XML
+                  representation to provide XQuery-style
+                  expressiveness in the host programming language. The
+                  operators over relational data provide a simple OR
+                  mapping by leveraging remotable queries that are
+                  executed directly in the back-end relational store.}
+}
+
+@inproceedings{Pfaff-nsdi15,
+  author =	 {Pfaff, Ben and Pettit, Justin and Koponen, Teemu and
+                  Jackson, Ethan J. and Zhou, Andy and Rajahalme,
+                  Jarno and Gross, Jesse and Wang, Alex and Stringer,
+                  Jonathan and Shelar, Pravin and Amidon, Keith and
+                  Casado, Mart\'{\i}n},
+  title =	 {The Design and Implementation of {Open vSwitch}},
+  booktitle =	 {Networked Systems Design and Implementation
+                  (NSDI'15)},
+  year =	 2015,
+  location =	 {Oakland, CA},
+  pages =	 {117--130},
+  numpages =	 14,
+  url =		 {http://dl.acm.org/citation.cfm?id=2789770.2789779},
+  abstract =	 {We describe the design and implementation of Open
+                  vSwitch, a multi-layer, open source virtual switch
+                  for all major hypervisor platforms. Open vSwitch was
+                  designed de novo for networking in virtual
+                  environments, resulting in major design departures
+                  from traditional software switching
+                  architectures. We detail the advanced flow
+                  classification and caching techniques that Open
+                  vSwitch uses to optimize its operations and conserve
+                  hypervisor resources. We evaluate Open vSwitch
+                  performance, drawing from our deployment experiences
+                  over the past seven years of using and improving
+                  Open vSwitch.}
+}
+
+@inproceedings{Bravenboer-oopsla09,
+  author =	 {Bravenboer, Martin and Smaragdakis, Yannis},
+  title =	 {Strictly Declarative Specification of Sophisticated
+                  Points-to Analyses},
+  booktitle =	 {SIGPLAN Conference on Object Oriented Programming
+                  Systems Languages and Applications (OOPSLA '09)},
+  year =	 2009,
+  location =	 {Orlando, Florida, USA},
+  pages =	 {243--262},
+  numpages =	 20,
+  url =		 {http://doi.acm.org/10.1145/1640089.1640108},
+  keywords =	 {DOOP, bdds, datalog, declarative, points-to
+                  analysis},
+  abstract =	 { We present the DOOP framework for points-to
+                  analysis of Java programs. DOOP builds on the idea
+                  of specifying pointer analysis algorithms
+                  declaratively, using Datalog: a logic-based language
+                  for defining (recursive) relations. We carry the
+                  declarative approach further than past work by
+                  describing the full end-to-end analysis in Datalog
+                  and optimizing aggressively using a novel technique
+                  specifically targeting highly recursive Datalog
+                  programs.  \par As a result, DOOP achieves several
+                  benefits, including full order-of-magnitude
+                  improvements in runtime. We compare DOOP with Lhotak
+                  and Hendren's PADDLE, which defines the state of the
+                  art for context-sensitive analyses. For the exact
+                  same logical points-to definitions (and,
+                  consequently, identical precision) DOOP is more than
+                  15x faster than PADDLE for a 1-call-site sensitive
+                  analysis of the DaCapo benchmarks, with lower but
+                  still substantial speedups for other important
+                  analyses. Additionally, DOOP scales to very precise
+                  analyses that are impossible with PADDLE and Whaley
+                  et al.'s bddbddb, directly addressing open problems
+                  in past literature. Finally, our implementation is
+                  modular and can be easily configured to analyses
+                  with a wide range of characteristics, largely due to
+                  its declarativeness.  }
+}
+
+@inproceedings{Aref-sigmod15,
+  author =	 {Aref, Molham and ten Cate, Balder and Green, Todd
+                  J. and Kimelfeld, Benny and Olteanu, Dan and
+                  Pasalic, Emir and Veldhuizen, Todd L. and Washburn,
+                  Geoffrey},
+  title =	 {Design and Implementation of the LogicBlox System},
+  booktitle =	 {ACM SIGMOD International Conference on Management of
+                  Data (SIGMOD '15)},
+  year =	 2015,
+  location =	 {Melbourne, Victoria, Australia},
+  pages =	 {1371--1382},
+  numpages =	 12,
+  url =		 {http://doi.acm.org/10.1145/2723372.2742796},
+  keywords =	 {datalog, incremental maintenance, leapfrog triejoin,
+                  live programming, logicblox, logiql, predictive
+                  analytics, transaction repair},
+  abstract =	 { The LogicBlox system aims to reduce the complexity
+                  of software development for modern applications
+                  which enhance and automate decision-making and
+                  enable their users to evolve their capabilities via
+                  a ``self-service'' model. Our perspective in this
+                  area is informed by over twenty years of experience
+                  building dozens of mission-critical enterprise
+                  applications that are in use by hundreds of large
+                  enterprises across industries such as retail,
+                  telecommunications, banking, and government. We
+                  designed and built LogicBlox to be the system we
+                  wished we had when developing those applications.
+                  \par In this paper, we discuss the design
+                  considerations behind the LogicBlox system and give
+                  an overview of its implementation, highlighting
+                  innovative aspects. These include: LogiQL, a unified
+                  and declarative language based on Datalog; the use
+                  of purely functional data structures; novel join
+                  processing strategies; advanced incremental
+                  maintenance and live programming facilities; a novel
+                  concurrency control scheme; and built-in support for
+                  prescriptive and predictive analytics.  }
+}
+
+@article{Yang-vldb17,
+  author =	 {Yang, Mohan and Shkapsky, Alexander and Zaniolo,
+                  Carlo},
+  title =	 {Scaling Up the Performance of More Powerful Datalog
+                  Systems on Multicore Machines},
+  journal =	 {The VLDB Journal},
+  volume =	 26,
+  number =	 2,
+  month =	 apr,
+  year =	 2017,
+  issn =	 {1066-8888},
+  pages =	 {229--248},
+  numpages =	 20,
+  url =		 {https://doi.org/10.1007/s00778-016-0448-z},
+  keywords =	 {AND/OR tree, Bottom-up evaluation, Datalog,
+                  Multicore, Parallel},
+  abstract =	 {Extending RDBMS technology to achieve performance
+                  and scalability for queries that are much more
+                  powerful than those of SQL-2 has been the goal of
+                  deductive database research for more than thirty
+                  years. The $$\mathcal {D}e\mathcal {A}\mathcal
+                  {L}\mathcal {S}$$DeALS system has made major
+                  progress toward this goal, by (1) Datalog extensions
+                  that support the more powerful recursive queries
+                  needed in advanced applications, and (2) superior
+                  performance for both traditional recursive queries
+                  and those made possible by the new extensions, while
+                  (3) delivering competitive performance with
+                  commercial RDBMSs on non-recursive queries. In this
+                  paper, we focus on the techniques used to support
+                  the in-memory evaluation of Datalog programs on
+                  multicore machines. In $$\mathcal {D}e\mathcal
+                  {A}\mathcal {L}\mathcal {S}$$DeALS, a Datalog
+                  program is represented as an AND/OR tree, and
+                  multiple copies of the same AND/OR tree are used to
+                  access the tables in the database concurrently
+                  during the parallel evaluation. We describe
+                  compilation techniques that (1) recognize when the
+                  given program is lock-free, (2) transform a locking
+                  program into a lock-free program, and (3) find an
+                  efficient parallel plan that correctly evaluates the
+                  program while minimizing the use of locks and other
+                  overhead required for parallel evaluation. Extensive
+                  experiments demonstrate the effectiveness of the
+                  proposed techniques.}
+}
+
+@inproceedings{Arntzenius:2016:DFD:2951913.2951948,
+  author =	 {Arntzenius, Michael and Krishnaswami, Neelakantan
+                  R.},
+  title =	 {Datafun: A Functional Datalog},
+  booktitle =	 {Proceedings of the 21st ACM SIGPLAN International
+                  Conference on Functional Programming},
+  series =	 {ICFP 2016},
+  year =	 2016,
+  isbn =	 {978-1-4503-4219-3},
+  location =	 {Nara, Japan},
+  pages =	 {214--227},
+  numpages =	 14,
+  url =		 {http://doi.acm.org/10.1145/2951913.2951948},
+  doi =		 {10.1145/2951913.2951948},
+  acmid =	 2951948,
+  publisher =	 {ACM},
+  address =	 {New York, NY, USA},
+  keywords =	 {Datalog, Prolog, adjoint logic, denotational
+                  semantics, domain-specific languages, functional
+                  programming, logic programming, operational
+                  semantics, type theory},
+}
+
+@inproceedings{Gupta-sigmod93,
+  author =	 {Gupta, Ashish and Mumick, Inderpal Singh and
+                  Subrahmanian, V. S.},
+  title =	 {Maintaining Views Incrementally},
+  booktitle =	 {ACM SIGMOD International Conference on Management of
+                  Data (SIGMOD '93)},
+  year =	 1993,
+  isbn =	 {0-89791-592-5},
+  location =	 {Washington, D.C., USA},
+  pages =	 {157--166},
+  numpages =	 10,
+  url =		 {http://doi.acm.org/10.1145/170035.170066},
+  comments =	 {We present incremental evaluation algorithms to
+                  compute changes to materialized views in relational
+                  and deductive database systems, in response to
+                  changes (insertions, deletions, and updates) to the
+                  relations. The view definitions can be in SQL or
+                  Datalog, and may use UNION, negation, aggregation
+                  (e.g. SUM, MIN), linear recursion, and general
+                  recursion. We first present a counting algorithm
+                  that tracks the number of alternative derivations
+                  (counts) for each derived tuple in a view. The
+                  algorithm works with both set and duplicate
+                  semantics. We present the algorithm for nonrecursive
+                  views (with negation and aggregation), and show that
+                  the count for a tuple can be computed at little or
+                  no cost above the cost of deriving the tuple. The
+                  algorithm is optimal in that it computes exactly
+                  those view tuples that are inserted or deleted. Note
+                  that we store only the number of derivations, not
+                  the derivations themselves. We then present the
+                  Delete and Rederive algorithm, DRed, for incremental
+                  maintenance of recursive views (negation and
+                  aggregation are permitted). The algorithm works by
+                  first deleting a superset of the tuples that need to
+                  be deleted, and then rederiving some of them. The
+                  algorithm can also be used when the view definition
+                  is itself altered.}
+}
