@@ -160,6 +160,10 @@ pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 /// (see `XForm::Join`).
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
+/// Function type used to assemble the result of a semijoin into a value.
+/// Takes join key and value (see `XForm::Semijoin`).
+pub type SemijoinFunc<V> = fn(&V,&V, &()) -> Option<V>;
+
 /// Aggregation function: aggregates multiple values into a single value.
 pub type AggFunc<V> = fn(&V, &[(&V, isize)]) -> V;
 
@@ -208,6 +212,16 @@ pub enum XForm<V: Val> {
         /// Function used to put together ouput value
         jfun: &'static JoinFunc<V>
     },
+    /// Semijoin
+    Semijoin {
+        /// Arrange the relation before performing semijoin on it.
+        afun: &'static ArrangeFunc<V>,
+        /// Arrangement to semijoin with.
+        arrangement: ArrId,
+        /// Function used to put together ouput value
+        jfun: &'static SemijoinFunc<V>
+    },
+
     /// Antijoin arranges the input relation using `afun` and retuns a subset of values that
     /// correspond to keys not present in relation `rel`.
     Antijoin {
@@ -262,14 +276,14 @@ impl<V: Val> Arrangement<V>
     {
         match self {
             Arrangement::Map{name: _, afun} => {
-                ArrangedCollection::ArrangedMap(collection.flat_map(*afun).arrange_by_key())
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
             },
             Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::ArrangedSet(filtered.distinct_total().arrange_by_self())
+                    ArrangedCollection::Set(filtered.distinct_total().arrange_by_self())
                 } else {
-                    ArrangedCollection::ArrangedSet(filtered.arrange_by_self())
+                    ArrangedCollection::Set(filtered.arrange_by_self())
                 }
             }
         }
@@ -285,14 +299,14 @@ impl<V: Val> Arrangement<V>
     {
         match self {
             Arrangement::Map{name: _, afun} => {
-                ArrangedCollection::ArrangedMap(collection.flat_map(*afun).arrange_by_key())
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
             },
             Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::ArrangedSet(filtered.distinct().arrange_by_self())
+                    ArrangedCollection::Set(filtered.distinct().arrange_by_self())
                 } else {
-                    ArrangedCollection::ArrangedSet(filtered.arrange_by_self())
+                    ArrangedCollection::Set(filtered.arrange_by_self())
                 }
             }
         }
@@ -308,10 +322,10 @@ where
     T1: TraceReader<V,V,S::Timestamp,isize> + Clone,
     T2: TraceReader<V,(),S::Timestamp,isize> + Clone
 {
-    ArrangedMap (
+    Map (
         Arranged<S,V,V,isize,T1>
     ),
-    ArrangedSet (
+    Set (
         Arranged<S,V,(),isize,T2>
     ),
 }
@@ -330,8 +344,8 @@ where
                               TraceEnter<V,(),S::Timestamp,isize,T2,Product<S::Timestamp,TSNested>>>
     {
         match self {
-            ArrangedCollection::ArrangedMap(arr) => ArrangedCollection::ArrangedMap(arr.enter(inner)),
-            ArrangedCollection::ArrangedSet(arr) => ArrangedCollection::ArrangedSet(arr.enter(inner))
+            ArrangedCollection::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
+            ArrangedCollection::Set(arr) => ArrangedCollection::Set(arr.enter(inner))
         }
     }
 }
@@ -868,6 +882,7 @@ impl<V:Val> Program<V>
         r.xforms.iter().any(|xform|
                             match xform {
                                 XForm::Join{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
+                                XForm::Semijoin{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
                                 XForm::Antijoin{afun: _, arrangement} => { *arrangement == arrid },
                                 _ => false
                             })
@@ -901,6 +916,11 @@ impl<V:Val> Program<V>
                 for xform in &rule.xforms {
                     match xform {
                         XForm::Join{afun: _, arrangement: arrid, jfun: _} => {
+                            if rels.iter().all(|r|r.id != arrid.0) {
+                                result.insert(Dep::DepArr(*arrid));
+                            }
+                        },
+                        XForm::Semijoin{afun: _, arrangement: arrid, jfun: _} => {
                             if rels.iter().all(|r|r.id != arrid.0) {
                                 result.insert(Dep::DepArr(*arrid));
                             }
@@ -964,9 +984,9 @@ impl<V:Val> Program<V>
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
                     match arrangements1.get(&arrid) {
-                        Some(ArrangedCollection::ArrangedMap(arranged)) => {
+                        Some(ArrangedCollection::Map(arranged)) => {
                             with_prof_context(
-                                "rule (local)"
+                                "rule (local join)"
                                 /*rule.name + jname*/,
                                 ||Some(rhs.as_ref().unwrap_or(first).
                                   flat_map(af).arrange_by_key().
@@ -974,9 +994,9 @@ impl<V:Val> Program<V>
                         },
                         _ => {
                             match arrangements2.get(&arrid) {
-                                Some(ArrangedCollection::ArrangedMap(arranged)) => {
+                                Some(ArrangedCollection::Map(arranged)) => {
                                     with_prof_context(
-                                        "rule (global)"
+                                        "rule (global join)"
                                         /*rule.name + jname*/,
                                         ||Some(rhs.as_ref().unwrap_or(first).
                                                flat_map(af).arrange_by_key().
@@ -989,9 +1009,34 @@ impl<V:Val> Program<V>
                         }
                     }
                 },
+                XForm::Semijoin{afun: &af, arrangement: arrid, jfun: &jf} => {
+                    match arrangements1.get(&arrid) {
+                        Some(ArrangedCollection::Set(arranged)) => {
+                            with_prof_context(
+                                "rule (local semijoin)",
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                  flat_map(af).arrange_by_key().
+                                  join_core(arranged, jf)))
+                        },
+                        _ => {
+                            match arrangements2.get(&arrid) {
+                                Some(ArrangedCollection::Set(arranged)) => {
+                                    with_prof_context(
+                                        "rule (global semijoin)",
+                                        ||Some(rhs.as_ref().unwrap_or(first).
+                                               flat_map(af).arrange_by_key().
+                                               join_core(arranged, jf)))
+                                },
+                                _ => {
+                                    panic!("XForm::Semijoin: unknown arrangement {:?}", arrid)
+                                }
+                            }
+                        }
+                    }
+                },
                 XForm::Antijoin {afun: &af, arrangement: arrid} => {
                     match arrangements2.get(arrid) {
-                        Some(ArrangedCollection::ArrangedSet(arranged)) => {
+                        Some(ArrangedCollection::Set(arranged)) => {
                             Some(with_prof_context(
                                     "antijoin",
                                     ||antijoin_arranged(
