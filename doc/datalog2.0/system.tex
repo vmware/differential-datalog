@@ -77,25 +77,22 @@ Ancestor(ancestor, descendant) :- Ancestor(ancestor0, ancestor1),
 // Java program interfacing with DDlog program    
 static class Parent {
   String parent;
-  String child;
-}
+  String child; }
 static class Ancestor {
   String ancestor;
-  String descendant;
-}
+  String descendant; }
 
 /* Instantiate the DDlog program; add a record to the
  * Parent relation. */
 static void main() {
   DDlogAPI api = new DDlogAPI(2 /* threads */,
                r -> onCommit(r) /* callback */);
-  int parentTable = api.getTable("Parent");
+  int parentRelation = api.getTable("Parent");
   Parent p = new Parent();
-  p.parent = "Mike";
-  p.child  = "John";
+  p.parent = "Mike"; p.child  = "John";
   /* Create DDlog insert command. */
   DDlogCommand command = new DDlogCommand(
-     DDlogCommand.Kind.Insert, parentTable, p);
+     DDlogCommand.Kind.Insert, parentRelation, p);
   int exitcode = api.start();  // start transaction
   DDlogCommand[] commands = new DDlogCommands[1];
   commands[0] = command;
@@ -107,16 +104,15 @@ static void main() {
   api.stop();
 }
 
+/* Callback invoked on commit once for each insertion or
+ * deletion in an output relation. */
 static void onCommit(DDlogCommand command) {
-  /* Callback invoked on commit once for each insertion or
-   * deletion in an output relation. */
-  int outputTable = command.tableId;
+  int outputRelation = command.tableId;
   Ancestor value = command.getObject<Ancestor>();
-  if (command.kind == DDlogCommand.Kind.Insert) {
+  if (command.kind == DDlogCommand.Kind.Insert) 
     // ancestor inserted
-  } else {
+  else 
     // ancestor deleted
-  }
 }
 \end{lstlisting}
 \caption{Example program showing the Java API to pass and receive data

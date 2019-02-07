@@ -225,7 +225,7 @@
   author =	 {Bravenboer, Martin and Smaragdakis, Yannis},
   title =	 {Strictly Declarative Specification of Sophisticated
                   Points-to Analyses},
-  booktitle =	 {SIGPLAN Conference on Object Oriented Programming
+  booktitle =	 {Conference on Object Oriented Programming
                   Systems Languages and Applications (OOPSLA '09)},
   year =	 2009,
   location =	 {Orlando, Florida, USA},
@@ -234,7 +234,7 @@
   url =		 {http://doi.acm.org/10.1145/1640089.1640108},
   keywords =	 {DOOP, bdds, datalog, declarative, points-to
                   analysis},
-  abstract =	 { We present the DOOP framework for points-to
+  abstract =	 {We present the DOOP framework for points-to
                   analysis of Java programs. DOOP builds on the idea
                   of specifying pointer analysis algorithms
                   declaratively, using Datalog: a logic-based language
@@ -267,8 +267,8 @@
                   J. and Kimelfeld, Benny and Olteanu, Dan and
                   Pasalic, Emir and Veldhuizen, Todd L. and Washburn,
                   Geoffrey},
-  title =	 {Design and Implementation of the LogicBlox System},
-  booktitle =	 {ACM SIGMOD International Conference on Management of
+  title =	 {Design and Implementation of the {LogicBlox} System},
+  booktitle =	 {International Conference on Management of
                   Data (SIGMOD '15)},
   year =	 2015,
   location =	 {Melbourne, Victoria, Australia},
@@ -278,7 +278,7 @@
   keywords =	 {datalog, incremental maintenance, leapfrog triejoin,
                   live programming, logicblox, logiql, predictive
                   analytics, transaction repair},
-  abstract =	 { The LogicBlox system aims to reduce the complexity
+  abstract =	 {The LogicBlox system aims to reduce the complexity
                   of software development for modern applications
                   which enhance and automate decision-making and
                   enable their users to evolve their capabilities via
@@ -305,7 +305,7 @@
 @article{Yang-vldb17,
   author =	 {Yang, Mohan and Shkapsky, Alexander and Zaniolo,
                   Carlo},
-  title =	 {Scaling Up the Performance of More Powerful Datalog
+  title =	 {Scaling Up the Performance of More Powerful {Datalog}
                   Systems on Multicore Machines},
   journal =	 {The VLDB Journal},
   volume =	 26,
@@ -349,10 +349,10 @@
                   proposed techniques.}
 }
 
-@inproceedings{Arntzenius:2016:DFD:2951913.2951948,
+@inproceedings{Arntzenius-icfp16,
   author =	 {Arntzenius, Michael and Krishnaswami, Neelakantan
                   R.},
-  title =	 {Datafun: A Functional Datalog},
+  title =	 {{Datafun}: A Functional Datalog},
   booktitle =	 {Proceedings of the 21st ACM SIGPLAN International
                   Conference on Functional Programming},
   series =	 {ICFP 2016},
@@ -362,21 +362,27 @@
   pages =	 {214--227},
   numpages =	 14,
   url =		 {http://doi.acm.org/10.1145/2951913.2951948},
-  doi =		 {10.1145/2951913.2951948},
-  acmid =	 2951948,
-  publisher =	 {ACM},
-  address =	 {New York, NY, USA},
   keywords =	 {Datalog, Prolog, adjoint logic, denotational
                   semantics, domain-specific languages, functional
                   programming, logic programming, operational
                   semantics, type theory},
+  abstract =	 {Datalog may be considered either an unusually
+                  powerful query language or a carefully limited logic
+                  programming language. Datalog is declarative,
+                  expressive, and optimizable, and has been applied
+                  successfully in a wide variety of problem
+                  domains. However, most use-cases require extending
+                  Datalog in an application-specific manner. In this
+                  paper we define Datafun, an analogue of Datalog
+                  supporting higher-order functional programming. The
+                  key idea is to track monotonicity with types. }
 }
 
 @inproceedings{Gupta-sigmod93,
   author =	 {Gupta, Ashish and Mumick, Inderpal Singh and
                   Subrahmanian, V. S.},
   title =	 {Maintaining Views Incrementally},
-  booktitle =	 {ACM SIGMOD International Conference on Management of
+  booktitle =	 {International Conference on Management of
                   Data (SIGMOD '93)},
   year =	 1993,
   isbn =	 {0-89791-592-5},
@@ -410,4 +416,267 @@
                   be deleted, and then rederiving some of them. The
                   algorithm can also be used when the view definition
                   is itself altered.}
+}
+
+@article{Bellomarini-vldb18,
+  author =	 {Bellomarini, Luigi and Sallinger, Emanuel and
+                  Gottlob, Georg},
+  title =	 {The {Vadalog} System: {Datalog}-based Reasoning for
+                  Knowledge Graphs},
+  journal =	 {Proc. VLDB Endow.},
+  issue_date =	 {May 2018},
+  volume =	 11,
+  number =	 9,
+  month =	 may,
+  year =	 2018,
+  pages =	 {975--987},
+  url =		 {https://doi.org/10.14778/3213880.3213888},
+  abstract =	 {Over the past years, there has been a resurgence of
+                  Datalog-based systems in the database community as
+                  well as in industry. In this context, it has been
+                  recognized that to handle the complex
+                  knowledge-based scenarios encountered today, such as
+                  reasoning over large knowledge graphs, Datalog has
+                  to be extended with features such as existential
+                  quantification. Yet, Datalog-based reasoning in the
+                  presence of existential quantification is in general
+                  undecidable. Many efforts have been made to define
+                  decidable fragments. Warded Datalog+/- is a very
+                  promising one, as it captures PTIME complexity while
+                  allowing ontological reasoning. Yet so far, no
+                  implementation of Warded Datalog+/- was
+                  available. In this paper we present the Vadalog
+                  system, a Datalog-based system for performing
+                  complex logic reasoning tasks, such as those
+                  required in advanced knowledge graphs. The Vadalog
+                  system is Oxford's contribution to the VADA research
+                  programme, a joint effort of the universities of
+                  Oxford, Manchester and Edinburgh and around 20
+                  industrial partners. As the main contribution of
+                  this paper, we illustrate the first implementation
+                  of Warded Datalog+/-, a high-performance Datalog+/-
+                  system utilizing an aggressive termination control
+                  strategy. We also provide a comprehensive
+                  experimental evaluation.}
+}
+
+@incollection{Borraz-Sanchez-dlp18,
+  author =	 {Borraz-S\'{a}nchez, Conrado and Klabjan, Diego and
+                  Pasalic, Emir and Aref, Molham},
+  title =	 {{SolverBlox}: Algebraic Modeling in {Datalog}},
+  booktitle =	 {Declarative Logic Programming},
+  editor =	 {Kifer, Michael and Liu, Yanhong Annie},
+  year =	 2018,
+  isbn =	 {978-1-97000-199-0},
+  pages =	 {331--354},
+  url =		 {https://doi.org/10.1145/3191315.3191322},
+  abstract =	 {Datalog is a deductive query language for relational
+                  databases. We introduce LogiQL, a language based on
+                  Datalog and show how it can be used to specify
+                  mixed integer linear optimization models and solve
+                  them. Unlike pure algebraic modeling languages,
+                  LogiQL allows the user to both specify models, and
+                  manipulate and transform the inputs and outputs of
+                  the models. This is an advantage over conventional
+                  optimization modeling languages that rely on reading
+                  data via plug-in tools or importing data from
+                  external sources via files. In this chapter, we give
+                  a brief overview of LogiQL and describe two mixed
+                  integer programming case studies: a
+                  production-transportation model and a formulation of
+                  the traveling salesman problem.}
+}
+
+@inproceedings{Green-pods15,
+  author =	 {Green, Todd J.},
+  title =	 {{LogiQL}: A Declarative Language for Enterprise
+                  Applications},
+  booktitle =	 {Symposium on Principles of Database Systems (PODS '15)},
+  year =	 2015,
+  isbn =	 {978-1-4503-2757-2},
+  location =	 {Melbourne, Victoria, Australia},
+  pages =	 {59--64},
+  numpages =	 6,
+  url =		 {http://doi.acm.org/10.1145/2745754.2745780},
+  keywords =	 {datalog, incremental maintenance, leapfrog triejoin,
+                  logicblox, logiql, transaction repair},
+  abstract =	 {We give an overview of LogiQL, a declarative,
+                  Datalog based language for data management and
+                  analytics, along with techniques for efficient
+                  evaluation of LogiQL programs, emphasizing
+                  theoretical foundations when possible. These
+                  techniques include: leapfrog triejoin and its
+                  associated incremental maintenance algorithm, which
+                  we measure against appropriate optimality criteria;
+                  purely-functional data structures, which provide
+                  elegant versioning and branching capabilities that
+                  are indispensable for LogiQL; and transaction
+                  repair, a lock-free concurrency control scheme that
+                  uses LogiQL, incremental maintenance, and
+                  purely-functional data structures as essential
+                  ingredients.}
+}
+
+@article{Barany-tods17,
+  author =	 {B\'{a}r\'{a}ny, Vince and Cate, Balder Ten and
+                  Kimelfeld, Benny and Olteanu, Dan and Vagena,
+                  Zografoula},
+  title =	 {Declarative Probabilistic Programming with Datalog},
+  journal =	 {ACM Trans. Database Syst.},
+  issue_date =	 {November 2017},
+  volume =	 42,
+  number =	 4,
+  month =	 oct,
+  year =	 2017,
+  issn =	 {0362-5915},
+  pages =	 {22:1--22:35},
+  articleno =	 22,
+  numpages =	 35,
+  url =		 {http://doi.acm.org/10.1145/3132700},
+  keywords =	 {Chase, Datalog, declarative, probabilistic
+                  programming, probability measure space},
+  abstract =	 { Probabilistic programming languages are used for
+                  developing statistical models. They typically
+                  consist of two components: a specification of a
+                  stochastic process (the prior) and a specification
+                  of observations that restrict the probability space
+                  to a conditional subspace (the posterior). Use cases
+                  of such formalisms include the development of
+                  algorithms in machine learning and artificial
+                  intelligence.  In this article, we establish a
+                  probabilistic-programming extension of Datalog that,
+                  on the one hand, allows for defining a rich family
+                  of statistical models, and on the other hand retains
+                  the fundamental properties of declarativity. Our
+                  proposed extension provides mechanisms to include
+                  common numerical probability functions; in
+                  particular, conclusions of rules may contain values
+                  drawn from such functions. The semantics of a
+                  program is a probability distribution over the
+                  possible outcomes of the input database with respect
+                  to the program. Observations are naturally
+                  incorporated by means of integrity constraints over
+                  the extensional and intensional relations. The
+                  resulting semantics is robust under different chases
+                  and invariant to rewritings that preserve logical
+                  equivalence.}
+}
+
+@article{loo-cacm09,
+  title =	 {Declarative networking},
+  author =	 {Loo, Boon Thau and Condie, Tyson and Garofalakis,
+                  Minos and Gay, David E and Hellerstein, Joseph M and
+                  Maniatis, Petros and Ramakrishnan, Raghu and Roscoe,
+                  Timothy and Stoica, Ion},
+  journal =	 {Communications of the ACM},
+  volume =	 52,
+  number =	 11,
+  pages =	 {87--95},
+  year =	 2009,
+  abstract =	 {Declarative Networking is a programming methodology
+                  that enables developers to concisely specify network
+                  protocols and services, which are directly compiled
+                  to a dataflow framework that executes the
+                  specifications. This paper provides an introduction
+                  to basic issues in declarative networking, including
+                  language design, optimization, and dataflow
+                  execution. We present the intuition behind
+                  declarative programming of networks, including roots
+                  in Datalog, extensions for networked environments,
+                  and the semantics of long-running queries over
+                  network state. We focus on a sublanguage we call
+                  Network Datalog (NDlog), including execution
+                  strategies that provide crisp eventual consistency
+                  semantics with significant flexibility in
+                  execution. We also describe a more general language
+                  called Overlog, which makes some compromises between
+                  expressive richness and semantic guarantees. We
+                  provide an overview of declarative network
+                  protocols, with a focus on routing protocols and
+                  overlay networks. Finally, we highlight related work
+                  in declarative networking, and new declarative
+                  approaches to related problems.}
+}
+
+@article{Seo-vldb13,
+  author =	 {Seo, Jiwon and Park, Jongsoo and Shin, Jaeho and
+                  Lam, Monica S.},
+  title =	 {Distributed {Socialite}: A {Datalog}-based Language
+                  for Large-scale Graph Analysis},
+  journal =	 {Proc. VLDB Endow.},
+  issue_date =	 {September 2013},
+  volume =	 6,
+  number =	 14,
+  month =	 sep,
+  year =	 2013,
+  issn =	 {2150-8097},
+  pages =	 {1906--1917},
+  url =		 {http://dx.doi.org/10.14778/2556549.2556572},
+  abstract =	 { Large-scale graph analysis is becoming important
+                  with the rise of world-wide social network
+                  services. Recently in SociaLite, we proposed
+                  extensions to Datalog to efficiently and succinctly
+                  implement graph analysis programs on sequential
+                  machines. This paper describes novel extensions and
+                  optimizations of SociaLite for parallel and
+                  distributed executions to support large-scale graph
+                  analysis.  With distributed SociaLite, programmers
+                  simply annotate how data are to be distributed, then
+                  the necessary communication is automatically
+                  inferred to generate parallel code for cluster of
+                  multi-core machines. It optimizes the evaluation of
+                  recursive monotone aggregate functions using a delta
+                  stepping technique. In addition, approximate
+                  computation is supported in SociaLite, allowing
+                  programmers to trade off accuracy for less time and
+                  space.  We evaluated SociaLite with six core graph
+                  algorithms used in many social network analyses. Our
+                  experiment with 64 Amazon EC2 8-core instances shows
+                  that SociaLite programs performed within a factor of
+                  two with respect to ideal weak scaling. Compared to
+                  optimized Giraph, an open-source alternative of
+                  Pregel, SociaLite programs are 4 to 12 times faster
+                  across benchmark algorithms, and 22 times more
+                  succinct on average.  As a declarative query
+                  language, SociaLite, with the help of a compiler
+                  that generates efficient parallel and approximate
+                  code, can be used easily to create many social apps
+                  that operate on large-scale distributed graphs.  }
+}
+
+@incollection{Maier-book18,
+  author =	 {Maier, David and Tekle, K. Tuncay and Kifer, Michael
+                  and Warren, David S.},
+  title =	 {Datalog: Concepts, History, and Outlook},
+  booktitle =	 {Declarative Logic Programming},
+  editor =	 {Kifer, Michael and Liu, Yanhong Annie},
+  year =	 2018,
+  isbn =	 {978-1-97000-199-0},
+  pages =	 {3--100},
+  numpages =	 98,
+  url =		 {https://doi.org/10.1145/3191315.3191317},
+  publisher =	 {Association for Computing Machinery and Morgan
+                  \&\#38; Claypool},
+  abstract =	 { This chapter is a survey of the history and the
+                  main concepts of Datalog.We begin with an
+                  introduction to the language and its use for
+                  database definition and querying. We then look back
+                  at the threads from logic languages, databases,
+                  artificial intelligence, and expert systems that led
+                  to the emergence of Datalog and reminiscence about
+                  the origin of the name. We consider the interaction
+                  of recursion with other common data language
+                  features, such as negation and aggregation, and look
+                  at other extensions, such as constraints, updates,
+                  and object-oriented features.We provide an overview
+                  of the main approaches to Datalog evaluation and
+                  their variants, then recount some early
+                  implementations of Datalog and of similar deductive
+                  database systems.We speculate on the reasons for the
+                  decline in the interest in the language in the 1990s
+                  and the causes for its later resurgence in a number
+                  of application areas.We conclude with several
+                  examples of current systems based on or supporting
+                  Datalog and briefly examine the performance of some
+                  of them.  }
 }

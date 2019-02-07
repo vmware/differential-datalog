@@ -1,12 +1,24 @@
 \section{Related work}
 
-Various flavors of Datalog.  Souffle~\cite{scholz-cc16}.
-Doop~\cite{Bravenboer-oopsla09}.  Differential Dataflow.
-
-LINQ~\cite{meijer-dpcool03,Meijer-sigmod06}.
+There is significant work building Datalog engines for various
+purposes: Souffle~\cite{scholz-cc16} (program analysis),
+Doop~\cite{Bravenboer-oopsla09} (program analysis),
+LogiQL~\cite{Borraz-Sanchez-dlp18} (integer linear programming),
+Vadalog~\cite{Bellomarini-vldb18} (existential quantification),
+DeALS~\cite{Yang-vldb17} (concurrent execution),
+DataFun~\cite{Arntzenius-icfp16} (higher-order functional
+programming), NDLog~\cite{loo-cacm09} (declarative networking),
+SociaLite~\cite{Seo-vldb13} (large scale graph analysis),
+and~\cite{Barany-tods17} (probabilistic programming).  A survey can be
+found in~\cite{Maier-book18}.
 
 The only other incremental Datalog engine that we are aware of is a
-commercial product of LogicBlox~\cite{Aref-sigmod15}.
+LogiQL~\cite{Green-pods15}, a commercial product of
+LogicBlox~\cite{Aref-sigmod15}.
 
-DeALS~\cite{Yang-vldb17} focuses on concurrency.
+DDlog is built on top of Differential Dataflow~\cite{dd}; several
+interesting declarative query engines were built on top of
+DD~\cite{timely-dataflow,differential-dataflow-paper}.
 
+Some of the DDlog features were inspired by .Net
+LINQ~\cite{meijer-dpcool03,Meijer-sigmod06}.
