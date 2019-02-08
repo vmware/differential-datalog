@@ -1386,11 +1386,16 @@ mkArrangement d rel (ArrangementMap pattern) = do
 mkArrangement d rel (ArrangementSet pattern distinct) = do
     filter_key <- mkArrangementKey d rel pattern
     let fmfun = braces' filter_key
+    -- Arrangement contains distinct elements by construction and does
+    -- not require expensive `distinct()` or `distinct_total()` applied to
+    -- it if it is defined over all fields of a distinct relation (i.e.,
+    -- the pattern expression does not contain placeholders).
+    let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders pattern)
     return $
         "Arrangement::Set{"                                                                            $$
         "    name: r###\"" <> pp pattern <> "\"###.to_string(),"                                       $$
         (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")   $$
-        "    distinct:" <+> (if distinct then "true" else "false")                                     $$
+        "    distinct:" <+> (if distinct && not distinct_by_construction then "true" else "false")     $$
         "}"
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
