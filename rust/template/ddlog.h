@@ -68,9 +68,7 @@ extern table_id ddlog_get_table_id(const char* tname);
  * `do_store` - set to true to store the copy of output tables inside DDlog.
  * When set, the client can use the following APIs to retrieve the contents of
  * tables:
- *	- `ddlog_dump_ovsdb_deltaplus_table()`
- *	- `ddlog_dump_ovsdb_deltaminus_table()`
- *	- `ddlog_dump_ovsdb_deltaupdate_table()`
+ *	- `ddlog_dump_ovsdb_delta()`
  *	- `ddlog_dump_table()`
  * This has a cost in terms of memory and CPU.  In addition, the current implementation
  * serializes all writes to its internal copies of tables, introducing contention
@@ -186,8 +184,11 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
                                      const char *updates);
 
 /*
- * Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in
- * JSON format.
+ * Dump Delta-Plus, Delta-Minus, and Delta-Update tables for OVSDB table
+ * `table` declared in DDlog module `module`, as a sequence of OVSDB insert,
+ * delete, and update commands in * JSON format.
+ *
+ * `module` must be a fully qualified name of a module.
  *
  * Requires that `hprog` was created by calling `ddlog_run()` with
  * `do_store` flag set to `true`.  Fails otherwise.
@@ -198,40 +199,8 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog, table_id table,
-                                            char **json);
-
-/*
- * Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands
- * in JSON format.
- *
- * Requires that `hprog` was created by calling `ddlog_run()` with
- * `do_store` flag set to `true`.  Fails otherwise.
- *
- * On success, returns `0` and stores a pointer to JSON string in
- * `json`.  This pointer must be later deallocated by calling
- * `ddlog_free_json()`
- *
- * On error, returns a negative number and write error message to stderr.
- */
-extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog, table_id table,
-                                             char **json);
-
-/*
- * Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands
- * in JSON format.
- *
- * Requires that `hprog` was created by calling `ddlog_run()` with
- * `do_store` flag set to `true`.  Fails otherwise.
- *
- * On success, returns `0` and stores a pointer to JSON string in
- * `json`.  This pointer must be later deallocated by calling
- * `ddlog_free_json()`
- *
- * On error, returns a negative number and writes error message to stderr.
- */
-extern int ddlog_dump_ovsdb_deltaupdate_table(ddlog_prog hprog, table_id table,
-                                              char **json);
+extern int ddlog_dump_ovsdb_delta(ddlog_prog hprog, const char *module,
+				  const char *table, char **json);
 
 /*
  * Deallocates strings returned by other functions in this API.
