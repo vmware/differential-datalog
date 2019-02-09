@@ -1419,6 +1419,8 @@ impl<V:Val> RunningProgram<V> {
     fn delta_undo(&mut self) -> Response<()> {
         let mut updates = vec![];
         for (relid, rel) in &self.relations {
+            // first delete, then insert to avoid duplicate key
+            // errors in `apply_updates()`
             for (k, w) in rel.delta() {
                 if *w {
                     updates.push(
@@ -1426,7 +1428,10 @@ impl<V:Val> RunningProgram<V> {
                             relid: *relid,
                             v:     k.clone()
                         })
-                } else {
+                };
+            };
+            for (k, w) in rel.delta() {
+                if !*w {
                     updates.push(
                         Update::Insert{
                             relid: *relid,
