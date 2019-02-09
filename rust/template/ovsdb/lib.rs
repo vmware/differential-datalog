@@ -357,3 +357,8 @@ fn uuid_from_int(i: &BigInt) -> Result<String, String> {
 pub fn ovsdb_uuid2str(i: &u128) -> String {
     uuid::Uuid::from_u128(*i).to_hyphenated().to_string()
 }
+
+pub fn ovsdb_uuid2name(i: &u128) -> String {
+    let s = uuid::Uuid::from_u128(*i).to_simple().to_string();
+    format!("u{}_{}_{}_{}_{}", &s[0..8], &s[8..12], &s[12..16], &s[16..20], &s[20..32])
+}

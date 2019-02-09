@@ -10,10 +10,19 @@ function extract_uuid (id: uuid_or_string_t): uuid = {
     }
 }
 
+// Generate string representation of UUID, e.g.,
+// "1312e69d-84de-46e3-963a-707a1e26e24d"
 extern function uuid2str(id: uuid): string
+
+// convert uuid to a valid OVS identifier, e.g.,
+// u1312e69d_84de_46e3_963a_707a1e26e24d
+extern function uuid2name(id: uuid): string
 
 // map `uuid2str` function over a set
 extern function set_map_uuid2str(ids: Set<uuid>): Set<string>
+
+// map `uuid2str` function over a set
+extern function set_map_uuid2name(ids: Set<uuid>): Set<string>
 
 // map `extract_uuid` over a set. Returns a set of uuids and a `0` value
 // if at least one `Right{str}` value occurs in the input set
