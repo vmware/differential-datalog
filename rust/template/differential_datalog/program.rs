@@ -1245,7 +1245,14 @@ impl<V:Val> Program<V>
                 match arrangements.lookup_arr(*arrangement) {
                     A::Arrangement1(ArrangedCollection::Set(arranged)) => {
                         let col = with_prof_context(
-                            "antijoin",
+                            "antijoin (global)",
+                            ||ffun.map_or_else(||antijoin_arranged(&arr,arranged).map(|(_,v)|v),
+                                               |f|antijoin_arranged(&arr.filter(move |_,v|f(v)),arranged).map(|(_,v)|v)));
+                        Self::xform_collection(col, &*next, arrangements)
+                    },
+                    A::Arrangement2(ArrangedCollection::Set(arranged)) => {
+                        let col = with_prof_context(
+                            "antijoin (child)",
                             ||ffun.map_or_else(||antijoin_arranged(&arr,arranged).map(|(_,v)|v),
                                                |f|antijoin_arranged(&arr.filter(move |_,v|f(v)),arranged).map(|(_,v)|v)));
                         Self::xform_collection(col, &*next, arrangements)
