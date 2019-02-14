@@ -329,7 +329,7 @@ fn test_two_relations(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           2,      
-            rules:        vec![Rule{rel: 1, xforms: Vec::new()}],
+            rules:        vec![Rule::CollectionRule{rel: 1, xform: None}],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))
         }
@@ -459,14 +459,20 @@ fn test_semijoin(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           3,
-            rules:        vec![Rule{
-                rel: 1, 
-                xforms: vec![XForm::Semijoin{
-                    afun:        &(afun1 as ArrangeFunc<Value>),
-                    arrangement: (2,0),
-                    jfun:        &(jfun as SemijoinFunc<Value>)
-                }]
-            }],
+            rules:        vec![
+                Rule::CollectionRule{
+                    rel: 1, 
+                    xform: Some(
+                        XFormCollection::Arrange{
+                            afun: &(afun1 as ArrangeFunc<Value>),
+                            next: Box::new(XFormArrangement::Semijoin{
+                                ffun:        None,
+                                arrangement: (2,0),
+                                jfun:        &(jfun as SemijoinFunc<Value>),
+                                next:        Box::new(None)
+                            })
+                        })
+                }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))
         }
@@ -561,14 +567,20 @@ fn test_join(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           3,
-            rules:        vec![Rule{
-                rel: 1, 
-                xforms: vec![XForm::Join{
-                    afun:        &(afun1 as ArrangeFunc<Value>),
-                    arrangement: (2,0),
-                    jfun:        &(jfun as JoinFunc<Value>)
-                }]
-            }],
+            rules:        vec![
+                Rule::CollectionRule{
+                    rel: 1,
+                    xform: Some(
+                        XFormCollection::Arrange{
+                            afun: &(afun1 as ArrangeFunc<Value>),
+                            next: Box::new(XFormArrangement::Join{
+                                ffun:        None,
+                                arrangement: (2,0),
+                                jfun:        &(jfun as JoinFunc<Value>),
+                                next:        Box::new(None)
+                            })
+                        })
+                }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))
         }
@@ -679,12 +691,13 @@ fn test_antijoin(nthreads: usize) {
             key_func:     None,
             id:           21,
             rules:        vec![
-                Rule{
+                Rule::CollectionRule{
                     rel: 2,
-                    xforms: vec![
-                        XForm::Map{
-                            mfun: &(mfun as MapFunc<Value>)
-                        }]
+                    xform: Some(
+                        XFormCollection::Map{
+                            mfun: &(mfun as MapFunc<Value>),
+                            next: Box::new(None)
+                        })
                 }],
             arrangements: vec![
                 Arrangement::Set{
@@ -705,13 +718,20 @@ fn test_antijoin(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           3,
-            rules:        vec![Rule{
-                rel: 1,
-                xforms: vec![XForm::Antijoin{
-                    afun: &(afun1 as ArrangeFunc<Value>),
-                    arrangement: (21,0)
-                }]
-            }],
+            rules:        vec![
+                Rule::CollectionRule {
+                    rel: 1,
+                    xform: Some(
+                        XFormCollection::Arrange{
+                            afun: &(afun1 as ArrangeFunc<Value>),
+                            next: Box::new(
+                                XFormArrangement::Antijoin{
+                                    ffun: None,
+                                    arrangement: (21,0),
+                                    next: Box::new(None)
+                                })
+                        })
+                }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))
         }
@@ -840,22 +860,25 @@ fn test_map(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           2,
-            rules:        vec![Rule{
+            rules:        vec![Rule::CollectionRule{
                 rel: 1,
-                xforms: vec![
-                    XForm::Map{
-                        mfun: &(mfun as MapFunc<Value>)
-                    },
-                    XForm::Filter{
-                        ffun: &(ffun as FilterFunc<Value>)
-                    },
-                    XForm::FilterMap{
-                        fmfun: &(fmfun as FilterMapFunc<Value>)
-                    },
-                    XForm::FlatMap{
-                        fmfun: &(flatmapfun as FlatMapFunc<Value>)
-                    }
-                ]
+                xform: Some(
+                    XFormCollection::Map{
+                        mfun: &(mfun as MapFunc<Value>),
+                        next: Box::new(Some(
+                                XFormCollection::Filter{
+                                    ffun: &(ffun as FilterFunc<Value>),
+                                    next: Box::new(Some(
+                                            XFormCollection::FilterMap{
+                                                fmfun: &(fmfun as FilterMapFunc<Value>),
+                                                next: Box::new(Some(
+                                                        XFormCollection::FlatMap{
+                                                            fmfun: &(flatmapfun as FlatMapFunc<Value>),
+                                                            next: Box::new(None)
+                                                        }))
+                                            }))
+                                }))
+                    })
             }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))
@@ -870,14 +893,16 @@ fn test_map(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           3,
-            rules:        vec![Rule{
+            rules:        vec![Rule::CollectionRule{
                 rel: 2,
-                xforms: vec![
-                    XForm::Aggregate{
-                        grpfun: &(gfun3 as ArrangeFunc<Value>),
-                        aggfun: &(agfun3 as AggFunc<Value>)
-                    }
-                ]
+                xform: Some(
+                    XFormCollection::Arrange {
+                        afun: &(gfun3 as ArrangeFunc<Value>),
+                        next: Box::new(XFormArrangement::Aggregate{
+                            aggfun: &(agfun3 as AggFunc<Value>),
+                            next: Box::new(None)
+                        })
+                    })
             }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))
@@ -893,14 +918,16 @@ fn test_map(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           4,
-            rules:        vec![Rule{
+            rules:        vec![Rule::CollectionRule{
                 rel: 2,
-                xforms: vec![
-                    XForm::Aggregate{
-                        grpfun: &(gfun4 as ArrangeFunc<Value>),
-                        aggfun: &(agfun4 as AggFunc<Value>)
-                    }
-                ]
+                xform: Some(
+                    XFormCollection::Arrange {
+                        afun: &(gfun4 as ArrangeFunc<Value>),
+                        next: Box::new(XFormArrangement::Aggregate {
+                            aggfun: &(agfun4 as AggFunc<Value>),
+                            next: Box::new(None)
+                        })
+                    })
             }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T4", &relset4, v, pol)))
@@ -1022,17 +1049,18 @@ fn test_recursion(nthreads: usize) {
             key_func:     None,
             id:           2,
             rules:        vec![
-                Rule{
+                Rule::CollectionRule{
                     rel: 1,
-                    xforms: vec![]
+                    xform: None
                 },
-                Rule{
-                    rel: 2,
-                    xforms: vec![XForm::Join{
-                        afun:        &(arrange_by_snd as ArrangeFunc<Value>),
+                Rule::ArrangementRule{
+                    arr: (2,2),
+                    xform: XFormArrangement::Join{
+                        ffun:        None,
                         arrangement: (1,0),
-                        jfun:        &(jfun as JoinFunc<Value>)
-                    }]
+                        jfun: &(jfun as JoinFunc<Value>),
+                        next: Box::new(None)
+                    }
                 }],
             arrangements: vec![
                 Arrangement::Map{
@@ -1043,7 +1071,12 @@ fn test_recursion(nthreads: usize) {
                     name: "arrange_by_self".to_string(),
                     fmfun: &(fmnull_fun as FilterMapFunc<Value>),
                     distinct: true
-                }],
+                },
+                Arrangement::Map{
+                    name: "arrange_by_snd".to_string(),
+                    afun: &(arrange_by_snd as ArrangeFunc<Value>)
+                }
+            ],
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("ancestor", &ancestorset, v, pol)))
         }
     };
@@ -1065,25 +1098,31 @@ fn test_recursion(nthreads: usize) {
             key_func:     None,
             id:           3,
             rules:        vec![
-                Rule{
-                    rel: 2,
-                    xforms: vec![
-                        XForm::Join{
-                            afun:        &(arrange_by_fst as ArrangeFunc<Value>),
-                            arrangement: (2,0),
-                            jfun:        &(jfun2 as JoinFunc<Value>)
-                        },
-                        XForm::Antijoin{
+                Rule::ArrangementRule{
+                    arr: (2,0),
+                    xform: XFormArrangement::Join{
+                        ffun:        None,
+                        arrangement: (2,0),
+                        jfun: &(jfun2 as JoinFunc<Value>),
+                        next: Box::new(Some(XFormCollection::Arrange{      
                             afun:        &(anti_arrange1 as ArrangeFunc<Value>),
-                            arrangement: (2,1)
-                        },
-                        XForm::Antijoin{
-                            afun:        &(anti_arrange2 as ArrangeFunc<Value>),
-                            arrangement: (2,1)
-                        },
-                        XForm::Filter{
-                            ffun: &(ffun as FilterFunc<Value>)
-                        }]
+                            next: Box::new(XFormArrangement::Antijoin {
+                                ffun: None,
+                                arrangement: (2,1),
+                                next: Box::new(Some(XFormCollection::Arrange{
+                                    afun:        &(anti_arrange2 as ArrangeFunc<Value>),
+                                    next: Box::new(XFormArrangement::Antijoin{
+                                        ffun: None,
+                                        arrangement: (2,1),
+                                        next: Box::new(Some(XFormCollection::Filter{
+                                            ffun: &(ffun as FilterFunc<Value>),
+                                            next: Box::new(None)
+                                        }))
+                                    })
+                                }))
+                            })
+                        }))
+                    }
                 }],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("common_ancestor", &common_ancestorset, v, pol)))
