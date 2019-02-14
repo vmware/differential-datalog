@@ -1,5 +1,0 @@
-- OVSDB schema -> Datalog compiler
-    - compiler                            ?
-    - tests                               ?
-- FTL syntax
-    - tests                               Mihai, Leonid
