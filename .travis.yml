@@ -25,12 +25,12 @@ cache:
         - .stack-work
 
 env:
-    #   - TEST_SUITE='-p tutorial' BUILD_BINARY=1
-    #- TEST_SUITE='-p souffle'
-    #- TEST_SUITE='-p simple'
-    #- TEST_SUITE='-p path'
-    #- TEST_SUITE='-p ovn'
-    #- TEST_SUITE='-p modules'
+   - TEST_SUITE='-p tutorial' BUILD_BINARY=1
+   - TEST_SUITE='-p souffle'
+   - TEST_SUITE='-p simple'
+   - TEST_SUITE='-p path'
+   - TEST_SUITE='-p ovn'
+   - TEST_SUITE='-p modules'
    - TEST_SUITE='-p span' JAVA=1
 
 addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
@@ -47,14 +47,15 @@ addons:
   apt:
     packages:
       - libgmp-dev
-      - openjdk-11-jdk
 
 before_install:
-# Download and unpack the stack executable
 - pip install --user parglare
+# Download and unpack the stack executable
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
+# Travis does not set JAVA_HOME on MacOS
+- if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
 
 install:
 # Build dependencies
@@ -64,7 +65,7 @@ script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 - DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
-- if [ $JAVA = 1 ]; then cd java/test && ./span.sh; fi
+- if [ $JAVA = 1 ]; then stack install && cd java/test && ./span.sh; fi
 
 before_deploy:
     # add date and OS name to the tag

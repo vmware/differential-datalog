@@ -10,8 +10,8 @@ else
 fi
 
 case `uname -s` in
-    Darwin*)    SHLIBEXT=dylib;;
-    Linux*)     SHLIBEXT=so;;
+    Darwin*)    SHLIBEXT=dylib; JDK_OS=darwin;;
+    Linux*)     SHLIBEXT=so; JDK_OS=linux;;
     *)          echo "Unsupported OS"; exit -1
 esac
 
@@ -34,7 +34,7 @@ echo "Main-Class: SpanTest" > META-INF/MANIFEST.MF
 jar cmvf META-INF/MANIFEST.MF span.jar SpanTest*.class ../ddlogapi/*.class
 rm -rf META-INF
 # Create a shared library containing all the native code: ddlogapi.c, libspan_uuid_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux -I../../rust/template ../ddlogapi.c -L../../test/datalog_tests/span_uuid_ddlog/target/release/ -lspan_uuid_ddlog -o libddlogapi.${SHLIBEXT}
+${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template ../ddlogapi.c -L../../test/datalog_tests/span_uuid_ddlog/target/release/ -lspan_uuid_ddlog -o libddlogapi.${SHLIBEXT}
 # Run the java program pointing to the created shared library
 #java -Xcheck:jni -Djava.library.path=. -jar span.jar ../../test/datalog_tests/span_uuid.dat >span_uuid.java.dump
 java -Djava.library.path=. -jar span.jar ../../test/datalog_tests/span_uuid.dat > span_uuid.java.dump
