@@ -4,7 +4,7 @@ use differential_datalog::program::*;
 use differential_datalog::record::IntoRecord;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use super::{Value, updcmd2upd};
+use super::{Value, updcmd2upd, relname2id};
 use ddlog_ovsdb_adapter::*;
 use super::valmap;
 use std::sync;
@@ -60,117 +60,74 @@ fn apply_updates(prog: &mut RunningProgram<Value>, prefix: *const c_char, update
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn ddlog_dump_ovsdb_deltaplus_table(prog:  *const HDDlog,
-                                                   table: libc::size_t,
-                                                   json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() {
+pub extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
+                                         module: *const c_char,
+                                         table:  *const c_char,
+                                         json:   *mut *mut c_char) -> c_int
+{
+    if json.is_null() || prog.is_null() || module.is_null() || table.is_null() {
         return -1;
     };
     let prog = unsafe {sync::Arc::from_raw(prog)};
     let res = if let Some(ref db) = prog.db {
-        match dump_deltaplus_table(&mut db.lock().unwrap(), table) {
-            Ok(jinserts) => {
-                unsafe { *json = jinserts.into_raw() };
+        match dump_delta(&mut db.lock().unwrap(), module, table) {
+            Ok(json_string) => {
+                unsafe { *json = json_string.into_raw() };
                 0
             },
             Err(e) => {
-                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaplus_table(): error: {}", e));
+                prog.eprintln(&format!("ddlog_dump_ovsdb_delta(): error: {}", e));
                 -1
             }
         }
     } else {
-        prog.eprintln("ddlog_dump_ovsdb_deltaplus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
+        prog.eprintln("ddlog_dump_ovsdb_delta(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
         -1
     };
     sync::Arc::into_raw(prog);
     res
 }
 
-fn dump_deltaplus_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
-    let cmds: Result<Vec<String>, String> =
-        db.get_rel(table as RelId)
-          .iter().map(|v| record_into_insert_str(v.clone().into_record())).collect();
-    Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
-}
+fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_char) -> Result<CString, String>
+{
+    let table_str: &str = unsafe {CStr::from_ptr(table)}.to_str().map_err(|e|format!("{}", e))?;
+    let module_str: &str = unsafe {CStr::from_ptr(module)}.to_str().map_err(|e|format!("{}", e))?;
+    let plus_table_name = format!("{}.DeltaPlus_{}", module_str, table_str);
+    let minus_table_name = format!("{}.DeltaMinus_{}", module_str, table_str);
+    let upd_table_name = format!("{}.Update_{}", module_str, table_str);
 
-/// Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands in JSON format.
-///
-/// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
-/// later deallocated by calling `ddlog_free_json()`
-///
-/// On error, returns a negative number and writes error message to stderr.
-#[no_mangle]
-pub extern "C" fn ddlog_dump_ovsdb_deltaminus_table(prog:  *const HDDlog,
-                                                    table: libc::size_t,
-                                                    json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() {
-        return -1;
+    /* DeltaPlus */
+    let plus_cmds: Result<Vec<String>, String> = {
+        let plus_table_id = relname2id(&plus_table_name).ok_or_else(||format!("unknown table {}", plus_table_name))?;
+        db.get_rel(plus_table_id as RelId)
+          .iter().map(|v| record_into_insert_str(v.clone().into_record(), table_str)).collect()
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.db {
-        match dump_deltaminus_table(&mut db.lock().unwrap(), table) {
-            Ok(jdeletes) => {
-                unsafe { *json = jdeletes.into_raw() };
-                0
+    let plus_cmds = plus_cmds?;
+
+    /* DeltaMinus */
+    let minus_cmds: Result<Vec<String>, String> = {
+        let minus_table_id = relname2id(&minus_table_name).ok_or_else(||format!("unknown table {}", minus_table_name))?;
+        db.get_rel(minus_table_id as RelId)
+          .iter().map(|v| record_into_delete_str(v.clone().into_record(), table_str)).collect()
+    };
+    let mut minus_cmds = minus_cmds?;
+
+    /* Update */
+    let upd_cmds: Result<Vec<String>, String> = {
+        match relname2id(&upd_table_name) {
+            Some(upd_table_id) => {
+                db.get_rel(upd_table_id as RelId)
+                   .iter().map(|v| record_into_update_str(v.clone().into_record(), table_str)).collect()
             },
-            Err(e) => {
-                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaminus_table(): error: {}", e));
-                -1
-            }
+            None => Ok(vec![])
         }
-    } else {
-        prog.eprintln("ddlog_dump_ovsdb_deltaminus_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
-        -1
     };
-    sync::Arc::into_raw(prog);
-    res
-}
+    let mut upd_cmds = upd_cmds?;
 
-fn dump_deltaminus_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
-    let cmds: Result<Vec<String>, String> =
-        db.get_rel(table as RelId)
-          .iter().map(|v| record_into_delete_str(v.clone().into_record())).collect();
-    Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
-}
-
-/// Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands in JSON format.
-///
-/// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
-/// later deallocated by calling `ddlog_free_json()`
-///
-/// On error, returns a negative number and writes error message to stderr.
-#[no_mangle]
-pub extern "C" fn ddlog_dump_ovsdb_deltaupdate_table(prog:  *const HDDlog,
-                                                     table: libc::size_t,
-                                                     json:  *mut *mut c_char) -> c_int {
-    if json.is_null() || prog.is_null() {
-        return -1;
-    };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
-    let res = if let Some(ref db) = prog.db {
-        match dump_deltaupdate_table(&mut db.lock().unwrap(), table) {
-            Ok(jupdates) => {
-                unsafe { *json = jupdates.into_raw() };
-                0
-            },
-            Err(e) => {
-                prog.eprintln(&format!("ddlog_dump_ovsdb_deltaupdate_table(): error: {}", e));
-                -1
-            }
-        }
-    } else {
-        prog.eprintln("ddlog_dump_ovsdb_deltaupdate_table(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
-        -1
-    };
-    sync::Arc::into_raw(prog);
-    res
-}
-
-fn dump_deltaupdate_table(db: &mut valmap::ValMap, table: libc::size_t) -> Result<CString, String> {
-    let cmds: Result<Vec<String>, String> =
-        db.get_rel(table as RelId)
-          .iter().map(|v| record_into_update_str(v.clone().into_record())).collect();
-    Ok(unsafe{ CString::from_vec_unchecked(cmds?.join(",").into_bytes()) } )
+    let mut cmds = plus_cmds;
+    cmds.append(&mut minus_cmds);
+    cmds.append(&mut upd_cmds);
+    Ok(unsafe{ CString::from_vec_unchecked(cmds.join(",").into_bytes()) } )
 }
 
 /// Deallocates strings returned by other functions in this API.

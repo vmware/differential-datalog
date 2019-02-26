@@ -36,4 +36,4 @@ TAGS
 tags
 *.facts
 *.jar
-java/test/span.java.dump
+java/test/span_uuid.java.dump

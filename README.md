@@ -33,7 +33,7 @@ Datalog does not have concepts like data types, arithmetics, strings or function
 writing of safe, clear, and concise code, DDlog extends pure Datalog with:
 
     1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
-    tuples, tagged unions, and vectors and sets.
+    tuples, tagged unions, vectors, sets, and maps.
 
     2. Standard integer and bitvector arithmetic.
 

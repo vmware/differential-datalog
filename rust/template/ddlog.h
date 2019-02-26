@@ -68,9 +68,7 @@ extern table_id ddlog_get_table_id(const char* tname);
  * `do_store` - set to true to store the copy of output tables inside DDlog.
  * When set, the client can use the following APIs to retrieve the contents of
  * tables:
- *	- `ddlog_dump_ovsdb_deltaplus_table()`
- *	- `ddlog_dump_ovsdb_deltaminus_table()`
- *	- `ddlog_dump_ovsdb_deltaupdate_table()`
+ *	- `ddlog_dump_ovsdb_delta()`
  *	- `ddlog_dump_table()`
  * This has a cost in terms of memory and CPU.  In addition, the current implementation
  * serializes all writes to its internal copies of tables, introducing contention
@@ -186,8 +184,11 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
                                      const char *updates);
 
 /*
- * Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in
- * JSON format.
+ * Dump Delta-Plus, Delta-Minus, and Delta-Update tables for OVSDB table
+ * `table` declared in DDlog module `module`, as a sequence of OVSDB insert,
+ * delete, and update commands in * JSON format.
+ *
+ * `module` must be a fully qualified name of a module.
  *
  * Requires that `hprog` was created by calling `ddlog_run()` with
  * `do_store` flag set to `true`.  Fails otherwise.
@@ -198,40 +199,8 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
  *
  * On error, returns a negative number and writes error message to stderr.
  */
-extern int ddlog_dump_ovsdb_deltaplus_table(ddlog_prog hprog, table_id table,
-                                            char **json);
-
-/*
- * Dump OVSDB Delta-Minus table as a sequence of OVSDB Delete commands
- * in JSON format.
- *
- * Requires that `hprog` was created by calling `ddlog_run()` with
- * `do_store` flag set to `true`.  Fails otherwise.
- *
- * On success, returns `0` and stores a pointer to JSON string in
- * `json`.  This pointer must be later deallocated by calling
- * `ddlog_free_json()`
- *
- * On error, returns a negative number and write error message to stderr.
- */
-extern int ddlog_dump_ovsdb_deltaminus_table(ddlog_prog hprog, table_id table,
-                                             char **json);
-
-/*
- * Dump OVSDB Delta-Update table as a sequence of OVSDB Update commands
- * in JSON format.
- *
- * Requires that `hprog` was created by calling `ddlog_run()` with
- * `do_store` flag set to `true`.  Fails otherwise.
- *
- * On success, returns `0` and stores a pointer to JSON string in
- * `json`.  This pointer must be later deallocated by calling
- * `ddlog_free_json()`
- *
- * On error, returns a negative number and writes error message to stderr.
- */
-extern int ddlog_dump_ovsdb_deltaupdate_table(ddlog_prog hprog, table_id table,
-                                              char **json);
+extern int ddlog_dump_ovsdb_delta(ddlog_prog hprog, const char *module,
+				  const char *table, char **json);
 
 /*
  * Deallocates strings returned by other functions in this API.
@@ -386,21 +355,45 @@ extern bool ddlog_is_bool(const ddlog_record *rec);
 extern bool ddlog_get_bool(const ddlog_record *rec);
 
 /*
- * Create an integer value.
- */
-extern ddlog_record* ddlog_u64(uint64_t v);
-
-/*
  * Returns `true` if `rec` is an integer and `false` otherwise.
  */
 extern bool ddlog_is_int(const ddlog_record *rec);
 
 /*
+ * Returns the fewest bits necessary to express the integer value,
+ * not including the sign.
+ *
+ * Returns `0` if the `rec` is not an integer record.
+ */
+extern size_t ddlog_int_bits(const ddlog_record *rec);
+
+/*
+ * Create an integer value.  Can be used to populate any ddlog field
+ * of type `bit<N>`, `N<=64`
+ */
+extern ddlog_record* ddlog_u64(uint64_t v);
+
+/*
  * Retrieves the value of an integer.
  *
- * Returns `0` if `rec` is not an integer.
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 64 bits.
  */
 extern uint64_t ddlog_get_u64(const ddlog_record *rec);
+
+/*
+ * Create an integer value.  Can be used to populate any ddlog field
+ * of type `bit<N>`, `N<=128`
+ */
+extern ddlog_record* ddlog_u128(__uint128_t v);
+
+/*
+ * Retrieves the value of an integer.
+ *
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 128 bits.
+ */
+extern __uint128_t ddlog_get_u128(const ddlog_record *rec);
 
 /*
  * Create a string value.  This function copies `s` to an internal

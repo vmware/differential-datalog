@@ -161,15 +161,30 @@ rustLibFiles specname =
 
 {- The following types model corresponding entities in program.rs -}
 
--- Arrangement is uniquely identified by its _normalized_ pattern
--- expression.  The normalized pattern only contains variables
--- involved in the arrangement key, with normalized names (so that
--- two patterns isomorphic modulo variable names have the same
--- normalized representation) and only expand constructors that
--- either contain a key variable or are non-unique.
-data Arrangement = Arrangement {
-    arngPattern :: Expr
-} deriving Eq
+-- There are two kinds of arrangements:
+--
+-- + 'ArrangementMap' arranges the collection into key-value pairs of type
+--   '(Value,Value)', where the second value in the pair is a record from the
+--   original collection.  These arrangements are used in join's and semi-joins.
+--
+-- + 'ArrangementSet' arranges the collection in '(Value, ())' pairs, where the
+--   value is the key extracted from relation.  These arrangements are used in
+--   antijoins and semijoins.
+--
+-- A semijoin can use either 'ArrangementSet' or 'ArrangementMap'.  The latter is
+-- more expensive and should only be used if the same arrangement is shared with a
+-- join operator.
+--
+-- 'arngPattern' is a _normalized_ pattern that only contains variables involved
+-- in the arrangement key, with normalized names (so that two patterns isomorphic
+-- modulo variable names have the same normalized representation) and that only
+-- expand constructors that either contain a key variable or are non-unique.
+--
+-- The 'distinct' flag in 'ArrangementSet' indicates that this arrangement is used
+-- in an antijoin and thefore must contain distinct entries.
+data Arrangement = ArrangementMap { arngPattern :: Expr }
+                 | ArrangementSet { arngPattern :: Expr, arngDistinct :: Bool}
+                 deriving Eq
 
 -- Rust expression kind
 data EKind = EVal         -- normal value
@@ -209,11 +224,14 @@ lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " +
 box :: Doc -> Doc
 box x = "boxed::Box::new(" <> x <> ")"
 
--- Relation is a function that takes a list of arrangements and produces a Doc containing Rust
--- code for the relation (since we won't know all required arrangements till we finish scanning
--- the program) + a list of ground facts
-type ProgRel = (String, [Doc] -> Doc, [Doc])
+-- Compiled relation: Rust code for the 'struct Relation' plus grounds facts for this relation.
+data ProgRel = ProgRel {
+    prelName    :: String,
+    prelCode    :: Doc,
+    prelFacts   :: [Doc]
+}
 
+-- Compiled program node: individual relation or a recursive fragment
 data ProgNode = SCCNode [ProgRel]
               | RelNode ProgRel
 
@@ -261,15 +279,73 @@ addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
 addGroupType :: Type -> CompilerMonad ()
 addGroupType t = modify $ \s -> s{cGroupTypes = S.insert t $ cGroupTypes s}
 
--- Create a new arrangement or return existing arrangement id
-addArrangement :: String -> Arrangement -> CompilerMonad ArrId
-addArrangement relname arr = do
+-- Create a new arrangement for use in a join operator:
+-- * If the arrangement exists, do nothing
+-- * If a semijoin arrangment with the same pattern exists,
+--   promote it to a join arrangement
+-- * Otherwise, add the new arrangement
+addJoinArrangement :: String -> Expr -> CompilerMonad ()
+addJoinArrangement relname pattern = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let (arrs', aid) = case findIndex (==arr) arrs of
-                            Nothing -> (arrs ++ [arr], length arrs)
-                            Just i  -> (arrs, i)
+    let join_arr = ArrangementMap pattern
+    let semijoin_idx = elemIndex (ArrangementSet pattern False) arrs
+    let arrs' = if elem join_arr arrs
+                   then arrs
+                   else maybe (arrs ++ [join_arr])
+                              (\idx -> take idx arrs ++ [join_arr] ++ drop (idx+1) arrs)
+                              semijoin_idx
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
-    return aid
+
+-- Create a new arrangement for use in a semijoin operator:
+-- * If a semijoin, antijoin or join arrangement with the same pattern exists, do nothing
+-- * Otherwise, add the new arrangement
+addSemijoinArrangement :: String -> Expr -> CompilerMonad ()
+addSemijoinArrangement relname pattern = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    let arrs' = if (elem (ArrangementSet pattern True) arrs ||
+                    elem (ArrangementSet pattern False) arrs ||
+                    elem (ArrangementMap pattern) arrs)
+                   then arrs
+                   else arrs ++ [ArrangementSet pattern False]
+    modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
+
+-- Create a new arrangement for use in a antijoin operator:
+-- * If the arrangement exists, do nothing
+-- * If a semijoin arrangement with the same pattern exists, promote it to
+--   an antijoin by setting 'distinct' to false
+-- * Otherwise, add the new arrangement
+addAntijoinArrangement :: String -> Expr -> CompilerMonad ()
+addAntijoinArrangement relname pattern = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    let antijoin_arr = ArrangementSet pattern True
+    let semijoin_idx = elemIndex (ArrangementSet pattern False) arrs
+    let arrs' = if elem antijoin_arr arrs
+                   then arrs
+                   else maybe (arrs ++ [antijoin_arr])
+                              (\idx -> take idx arrs ++ [antijoin_arr] ++ drop (idx+1) arrs)
+                              semijoin_idx
+    modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
+
+-- Find an arrangement of the form 'ArrangementSet pattern _'
+getSemijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
+getSemijoinArrangement relname pattern = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    return $ findIndex (\case
+                         ArrangementSet pattern' _ -> pattern' == pattern
+                         _                         -> False)
+                       arrs
+
+-- Find an arrangement of the form 'ArrangementMap pattern'
+getJoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
+getJoinArrangement relname pattern = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    return $ elemIndex (ArrangementMap pattern) arrs
+
+-- Find an arrangement of the form 'ArrangementSet pattern True'
+getAntijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
+getAntijoinArrangement relname pattern = do
+    arrs <- gets $ (M.! relname) . cArrangements
+    return $ elemIndex (ArrangementSet pattern True) arrs
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -376,7 +452,10 @@ compileLib d specname rs_code =
     -- used to implement Value::default()
     types = S.fromList $ (tTuple []) : (map (typeNormalize d' . relType) $ M.elems $ progRelations d')
     -- Compile SCCs
-    (prog, cstate) = runState (do nodes <- mapM (compileSCC d' depgraph) sccs
+    (prog, cstate) = runState (do -- First pass: compute arrangements
+                                  createArrangements d'
+                                  -- Second pass: compile relations
+                                  nodes <- mapM (compileSCC d' depgraph) sccs
                                   mkProg d' nodes)
                               $ emptyCompilerState{cArrangements = arrs,
                                                    cTypes        = types}
@@ -749,6 +828,34 @@ mkValType d types grp_types =
         "    }"                                                                             $$
         "}"
 
+-- Iterate through all rules in the program; precompute the set of arrangements for each
+-- relation.  This is done as a separate compiler pass to maximize arrangement sharing
+-- between joins and semijoins: if a particular key is only used in a semijoin operator,
+-- the it is sufficient to create a cheaper 'Arrangement.Set' for it.  If it is also used
+-- in a join, then we create an 'Arrangement.Map' and share it between a join and a semijoin.
+createArrangements :: DatalogProgram -> CompilerMonad ()
+createArrangements d = mapM_ (createRelArrangements d) $ progRelations d
+
+createRelArrangements :: DatalogProgram -> Relation -> CompilerMonad ()
+createRelArrangements d rel = mapM_ (createRuleArrangements d) $ relRules d $ name rel
+
+createRuleArrangements :: DatalogProgram -> Rule -> CompilerMonad ()
+createRuleArrangements d rule = mapM_ (createRuleArrangement d rule) [1..(length (ruleRHS rule) - 1)]
+
+createRuleArrangement :: DatalogProgram -> Rule -> Int -> CompilerMonad ()
+createRuleArrangement d rule idx = do
+    let rhs = ruleRHS rule !! idx
+    let ctx = CtxRuleRAtom rule idx
+    let rel = getRelation d $ atomRelation $ rhsAtom rhs
+    let (arr, _) = normalizeArrangement d rel ctx $ atomVal $ rhsAtom rhs
+    -- If the literal does not introduce new variables, it's a semijoin
+    let is_semi = null $ ruleRHSNewVars d rule idx
+    case rhs of
+         RHSLiteral True a | is_semi   -> addSemijoinArrangement (name rel) arr
+                           | otherwise -> addJoinArrangement (name rel) arr
+         RHSLiteral False a            -> addAntijoinArrangement (name rel) arr
+         _                             -> return ()
+
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
 compileSCC d dep nodes | recursive = compileSCCNode d relnames
@@ -759,12 +866,12 @@ compileSCC d dep nodes | recursive = compileSCCNode d relnames
 
 compileRelNode :: DatalogProgram -> String -> CompilerMonad ProgNode
 compileRelNode d relname = do
-    rel <- compileRelation d False relname
+    rel <- compileRelation d relname
     return $ RelNode rel
 
 compileSCCNode :: DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
-    rels <- mapM (compileRelation d True) relnames
+    rels <- mapM (compileRelation d) relnames
     return $ SCCNode rels
 
 {- Generate Rust representation of relation and associated rules.
@@ -802,8 +909,8 @@ let ancestor = {
     }
 };
 -}
-compileRelation :: DatalogProgram -> Bool -> String -> CompilerMonad ProgRel
-compileRelation d recursive rn = do
+compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
+compileRelation d rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
     let (facts, rules) =
@@ -819,7 +926,9 @@ compileRelation d recursive rn = do
     let cb = if relRole == RelOutput
                 then "change_cb:    Some(__update_cb.clone())"
                 else "change_cb:    None"
-    let f arrangements =
+    arrangements <- gets $ (M.! rn) . cArrangements
+    compiled_arrangements <- mapM (mkArrangement d rel) arrangements
+    let code =
             "Relation {"                                                                                        $$
             "    name:         \"" <> pp rn <> "\".to_string(),"                                                $$
             "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
@@ -831,10 +940,10 @@ compileRelation d recursive rn = do
             "    rules:        vec!["                                                                           $$
             (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                                             $$
             "    arrangements: vec!["                                                                           $$
-            (nest' $ nest' $ vcat (punctuate comma arrangements) <> "],")                                       $$
+            (nest' $ nest' $ vcat (punctuate comma compiled_arrangements) <> "],")                              $$
             (nest' cb)                                                                                          $$
             "}"
-    return (rn, f, facts')
+    return ProgRel{ prelName = rn, prelCode = code, prelFacts = facts' }
 
 compileKey :: DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
@@ -1078,15 +1187,23 @@ mkCondFilter :: DatalogProgram -> ECtx -> Expr -> Doc
 mkCondFilter d ctx e =
     "if !" <> mkExpr d ctx e EVal <+> "{return None;};"
 
--- Compile XForm::Join
+-- Compile XForm::Join or XForm::Semijoin
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
 mkJoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad (Doc, Int)
 mkJoin d prefix atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
-        (arr, vmap) = normalizeArrangement d (getRelation d $ atomRelation atom) ctx $ atomVal atom
-    aid <- addArrangement (atomRelation atom) arr
+    let rel = getRelation d $ atomRelation atom
+    let (arr, vmap) = normalizeArrangement d rel ctx $ atomVal atom
+    -- If the operator does not introduce new variables then it's a semijoin
+    let semi = null $ ruleRHSNewVars d rl join_idx
+    semi_arr_idx <- getSemijoinArrangement (atomRelation atom) arr
+    join_arr_idx <- getJoinArrangement (atomRelation atom) arr
+    -- Treat semijoin as normal join if we only have a map arrangement for it
+    let (aid, is_semi) = if semi
+                            then maybe (fromJust join_arr_idx, False) (,True) semi_arr_idx
+                            else (fromJust join_arr_idx, False)
     -- Variables from previous terms that will be used in terms
     -- following the join.
     let post_join_vars = (rhsVarsAfter d rl (join_idx - 1)) `intersect`
@@ -1106,8 +1223,10 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
         strip (E e@ERef{..})     = E e{exprPattern = strip exprPattern}
         strip _                  = ePHolder
     -- Join function: open up both values, apply filters.
-    open <- liftM2 ($$) (openTuple d ("*" <> vALUE_VAR1) post_join_vars)
-                        (openAtom d ("*" <> vALUE_VAR2) rl join_idx $ atom{atomVal = strip $ atomVal atom})
+    open <- if is_semi
+               then openTuple d ("*" <> vALUE_VAR1) post_join_vars
+               else liftM2 ($$) (openTuple d ("*" <> vALUE_VAR1) post_join_vars)
+                           (openAtom d ("*" <> vALUE_VAR2) rl join_idx $ atom{atomVal = strip $ atomVal atom})
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
@@ -1118,21 +1237,35 @@ mkJoin d prefix atom rl@Rule{..} join_idx = do
     let jfun = braces' $ open                     $$
                          vcat filters             $$
                          "Some" <> parens ret
-    let doc = "XForm::Join{"                                                                                                                      $$
-              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")                                  $$
-              "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-              (nest' $ "jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>" $$ jfun $$ "__f}") $$
-              "}"
+    let doc = if is_semi
+                 then "XForm::Semijoin{"                                                                                              $$
+                      "    afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>"                                       $$
+                      nest' afun                                                                                                      $$
+                      "    __f},"                                                                                                     $$
+                      "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
+                      "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value,_" <> vALUE_VAR2 <> ": &()) -> Option<Value>"       $$
+                      nest' jfun                                                                                                      $$
+                      "    __f}"                                                                                                      $$
+                      "}"
+                 else "XForm::Join{"                                                                                                  $$
+                      "    afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>"                                       $$
+                      nest' afun                                                                                                      $$
+                      "    __f},"                                                                                                     $$
+                      "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
+                      "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>"     $$
+                      nest' jfun                                                                                                      $$
+                      "    __f}"                                                                                                      $$
+                      "}"
     return (doc, last_idx')
 
 -- Compile XForm::Antijoin
 mkAntijoin :: DatalogProgram -> Doc -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
-    -- filter-map collection to anti-join with
+    -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
     let rel = getRelation d atomRelation
     let (arr, vmap) = normalizeArrangement d rel ctx atomVal
-    fmfun <- mkArrangementKey d rel arr
+    Just aid <- getAntijoinArrangement atomRelation arr
     -- Arrange variables from previous terms
     akey <- mkTupleValue d $ map (\(_, e, ctx') -> (e, ctx')) vmap
     aval <- mkVarsTupleValue d $ rhsVarsAfter d rl ajoin_idx
@@ -1140,13 +1273,12 @@ mkAntijoin d prefix Atom{..} rl@Rule{..} ajoin_idx = do
                          "Some((" <> akey <> "," <+> aval <> "))"
     return $ "XForm::Antijoin{"                                                                                 $$
              (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-             "    rel:  " <> relId atomRelation <> ","                                                          $$
-             (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f}")        $$
+             "    arrangement: (" <> relId atomRelation <> "," <> pp aid <> "),"                                $$
              "}"
 
 -- Normalize pattern expression for use in arrangement
-normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Arrangement, [(String, Expr, ECtx)])
-normalizeArrangement d rel ctx pat = (Arrangement renamed, vmap)
+normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Expr, [(String, Expr, ECtx)])
+normalizeArrangement d rel ctx pat = (renamed, vmap)
     where
     pat' = exprFoldCtx (normalizePattern d) ctx pat
     (renamed, (_, vmap)) = runState (rename ctx pat') (0, [])
@@ -1215,13 +1347,10 @@ rhsVarsAfter d rl i =
 
 mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
 mkProg d nodes = do
-    rels <- vcat <$>
-            mapM (\(rn, rel, _) -> do
-                  relarrs <- gets ((M.! rn) . cArrangements)
-                  arrs <- mapM (mkArrangement d (getRelation d rn)) relarrs
-                  return $ "let" <+> rname rn <+> "=" <+> rel arrs <> ";")
-                 (concatMap nodeRels nodes)
-    let facts = concatMap sel3 $ concatMap nodeRels nodes
+    let rels = vcat $
+               map (\ProgRel{..} -> "let" <+> rname prelName <+> "=" <+> prelCode <> ";")
+                   (concatMap nodeRels nodes)
+    let facts = concatMap prelFacts $ concatMap nodeRels nodes
     let pnodes = map mkNode nodes
         prog = "Program {"                                      $$
                "    nodes: vec!["                               $$
@@ -1237,27 +1366,42 @@ mkProg d nodes = do
         "}"
 
 mkNode :: ProgNode -> Doc
-mkNode (RelNode (rel,_,_)) =
+mkNode (RelNode (ProgRel rel _ _)) =
     "ProgNode::RelNode{rel:" <+> rname rel <> "}"
 mkNode (SCCNode rels)    =
-    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . sel1) rels) <> "]}"
+    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . prelName) rels) <> "]}"
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangement d rel (Arrangement pattern) = do
-    filter_key <- mkArrangementKey d rel (Arrangement pattern)
+mkArrangement d rel (ArrangementMap pattern) = do
+    filter_key <- mkArrangementKey d rel pattern
     let afun = braces' $
-               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                  $$
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
     return $
-        "Arrangement{"                                                                                      $$
+        "Arrangement::Map{"                                                                                 $$
         "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
         "}"
 
+mkArrangement d rel (ArrangementSet pattern distinct) = do
+    filter_key <- mkArrangementKey d rel pattern
+    let fmfun = braces' filter_key
+    -- Arrangement contains distinct elements by construction and does
+    -- not require expensive `distinct()` or `distinct_total()` applied to
+    -- it if it is defined over all fields of a distinct relation (i.e.,
+    -- the pattern expression does not contain placeholders).
+    let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders pattern)
+    return $
+        "Arrangement::Set{"                                                                            $$
+        "    name: r###\"" <> pp pattern <> "\"###.to_string(),"                                       $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")   $$
+        "    distinct:" <+> (if distinct && not distinct_by_construction then "true" else "false")     $$
+        "}"
+
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.
-mkArrangementKey :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangementKey d rel (Arrangement pattern) = do
+mkArrangementKey :: DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
+mkArrangementKey d rel pattern = do
     -- extract variables with types from pattern, in the order
     -- consistent with that returned by 'rename'.
     let getvars :: Type -> Expr -> [Field]

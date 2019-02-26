@@ -1,4 +1,5 @@
 {-
+ -
 Copyright (c) 2018 VMware, Inc.
 SPDX-License-Identifier: MIT
 
@@ -44,6 +45,7 @@ module Language.DifferentialDatalog.Expr (
     exprFuncsRec,
     isLVar,
     exprIsPattern,
+    exprContainsPHolders,
     exprIsDeconstruct,
     exprIsVarOrFieldLVal,
     exprTypeMapM
@@ -293,6 +295,14 @@ exprIsPattern' (ETyped _ e _)   = e
 exprIsPattern' (ERef _ e)       = e
 exprIsPattern' (EBinding _ _ e) = e
 exprIsPattern' _                = False
+
+-- | True if 'e' contains a placeholder ('_')
+exprContainsPHolders :: Expr -> Bool
+exprContainsPHolders e =
+    exprCollect (\case
+                  EPHolder _ -> True
+                  _          -> False)
+                (||) e
 
 -- | True if 'e' is a deconstruction expression.
 exprIsDeconstruct :: DatalogProgram -> Expr -> Bool

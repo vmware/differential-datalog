@@ -1,4 +1,3 @@
 *.class
-external_External.h
 *.so
-ddlogapi_DDLogAPI.h
+ddlogapi_DDlogAPI.h
