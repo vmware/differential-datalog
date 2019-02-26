@@ -1,0 +1,5 @@
+*.bbl
+*.blg
+*.log
+*.aux
+top.pdf
