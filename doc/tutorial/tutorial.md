@@ -732,9 +732,7 @@ SanitizedHTTPEndpoint(endpoint) :-
 DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
 are *generic* types that can be parameterized by any other
 DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
-a map from strings to Booleans.  These types
-do not have constructors in DDlog, so instances of these types can
-only be created by external functions.
+a map from strings to Booleans.
 
 Let us assume that we have an extern function that splits a string
 into a list of substrings according to a separator:
@@ -1190,7 +1188,7 @@ for (person in Person)
    }
 ```
 
-These 5 kinds of statements (`for`, `if`, `switch`, `var`, blocks enclosed in braces) can be nested
+These 5 kinds of statements (`for`, `if`, `match`, `var`, blocks enclosed in braces) can be nested
 in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
 Also note that the `if` statement is not an expression, and thus the `else` clause is not required
 when using this syntax.  The DDlog compiler translates such programs into regular DDlog programs.
