@@ -2,6 +2,21 @@
 
 \subsection{Motivation}
 
+Many real-world applications must update their output in response to input changes.  Consider, for
+example, a cluster management system such as Kubernetes~\cite{kubernetes} that configures cluster
+nodes to execute a user-defined workload.  As the workload changes, e.g., container instances are
+added or removed from the system, the configuration must change accordingly.  In a large cluster,
+computing configuration from scratch is prohibitively expensive.  Instead, modern cluster management
+systems, including Kubernetes, apply changes incrementally, only updating state effected by the
+change.
+
+As another example, program analysis frameworks like Doop~\cite{Bravenboer-oopsla09} evaluate a set
+of rules defined over the abstract syntax tree of the program.  Such an analyzer can be integrated
+into the IDE to alert the developer as soon as a potential bug is introduced in the program.  This
+requires re-evaluating the rules after every few keystrokes.  In order to achieve interactive
+performance when working with very large code bases, the re-evaluation must occur incrementally,
+preserving as much as possible intermediate results computed at earlier iterations.
+
 Incremental algorithms tend to be significantly more complex than
 their non-incremental versions.  In a nutshell, an incremental
 algorithm propagates input changes to the output via all intermediate
@@ -15,21 +30,19 @@ greatly impacts the development cost, feature velocity,
 maintainability, and the performance of the control systems.
 
 \emph{We argue that, instead of dealing with the complexity of
-  incremental computation on a case-by-case basis, control plane
+  incremental computation on a case-by-case basis,
   developers should embrace programming tools that solve the problem
-  once and for all.}  One such tool is \emph{Differential Datalog
+  once and for all.}  In this paper we present one such tool -- \emph{Differential Datalog
   (DDlog)}~\cite{ddlog} -- a programming language that automates
-incremental computation.  A DDlog programmer only has to write an
-algorithm for solving the original (non-incremental) problem.  Given
+incremental computation.  A DDlog programmer only has to write a
+Datalog specification for the original (non-incremental) problem.  Given
 this description, the DDlog compiler generates an efficient
 incremental implementation.  
 
 \subsection{Overview}
 
-DDlog is a bottom-up, incremental, in-memory, typed Datalog engine for
-writing application-embedded deductive database engines.  DDlog is an
-open-source project, hosted on github~\cite{ddlog}, with a permissive
-MIT-license.
+DDlog is a \emph{bottom-up}, \emph{incremental}, \emph{in-memory}, \emph{typed} Datalog engine for
+writing \emph{embedded} deductive databases.
 
 \textbf{Bottom-up:} DDlog starts from a set of ground facts (provided
 by the user) and computes all possible derived facts by following
@@ -83,3 +96,5 @@ same address space with an application that requires deductive
 database functionality.  A DDlog program is compiled into a Rust
 library that can be linked against a Rust, C/C++ or Java program
 (bindings for other languages can be easily added).
+
+DDlog is an open-source project, hosted on github~\cite{ddlog}, with a permissive MIT-license.

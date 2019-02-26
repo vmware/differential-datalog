@@ -2,7 +2,7 @@ PDFLATEX = pdflatex -interaction=nonstopmode
 
 PAPER = top
 
-${PAPER}.pdf: *.tex ${PAPER}.bib span.pdf
+${PAPER}.pdf: *.tex ${PAPER}.bib
 	$(PDFLATEX) ${PAPER}
 	bibtex ${PAPER}
 	$(PDFLATEX) ${PAPER}

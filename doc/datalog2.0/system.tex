@@ -15,37 +15,50 @@ online documents~\cite{dd-mdbook,dd-reference}.  DD can be executed
 using multiple cores or even multiple shared-nothing machines, but we
 currently only support a single machine.
 
+\begin{figure}
+    \includegraphics[width=\columnwidth,clip=true,trim=0in 4in 4in
+      0in]{compiler-flow.pdf}
+    \caption{DDlog compilation flow.\label{fig:compiler-flow}}
+\end{figure}
+
+
 The output of the DDlog compiler, and the input to the DD library is a
-dataflow graph, which may contain cycles (cycles are introduced by
-recursion).  The edges of the dataflow graph are typed relations, and
-the nodes are dataflow relational operators.  DD natively implements
-the following operators: join, antijoin, distinct, union, aggregation,
+dataflow graph, which may contain cycles (introduced by
+recursion).  The nodes of the graph represent relations are dataflow
+relational operators; edges connect operators to their input and output
+relations.  DD natively implements
+the following operators: join, antijoin, union, aggregation,
 filter, and flatmap.  Each operator has a highly optimized
-implementation, incorporating temporal indexes that keep multiple
-versions of each relation and allow efficient incremental evaluation.
-The DD runtime library is responsible for executing the emitted
-dataflow graph across many cores, in a transactional fashion.  The
-DD runtime can be allocated a specific number of threads.
+implementation, incorporating temporal indexes that track
+updates to each relation over time and allow efficient incremental evaluation.
+The DD library is responsible for executing the emitted
+dataflow graph across many cores.  The
+DD runtime can be configured with one or more worker threads.
 
 \subsection{Transactional API}
 
 The interaction with a running DDlog program is done through a
 transactional API.  At any time only one transaction can be
-outstanding.  After \texttt{start}ing a transaction the users can
+outstanding.  After \texttt{start}ing a transaction the user can
 insert and delete any number of tuples from input relations.  When
 attempting to \texttt{commit} a transaction all updates are applied
 atomically and changes to all output relations are produced.  Users
-can register an upcall to be notified of these changes.  These
-notifications will happen on different threads, while the thread
-executing the \texttt{commit} is blocked.  Figure~\ref{fig:javaapi}
+can register an upcall to be notified of these changes.
+%These
+%notifications will happen on different threads, while the thread
+%executing the \texttt{commit} is blocked.
+Figure~\ref{fig:javaapi}
 shows an example Java program that interacts with a DDlog program.
 
 \subsection{The command-line interface}
 
-For every DDlog program the compiler generates an executable library,
-a Rust program that allows invoking the DDlog program from Rust, and a
-command-line interface program (CLI) that allows users to interact
-with the DDlog program directly.  The CLI allows users to start
+For every DDlog program the compiler generates a static or dynamic library
+(depending on user-provided compiler flags), that exports the transactional API
+to the DDlog program, which can be 
+invoked from from Rust or other languages, and a
+command-line interface prograam (CLI) that allows users to interact
+with the DDlog program directly via a command line or a command file. 
+The CLI allows users to start
 transactions, insert or delete tuples in input relations, commit
 transactions, dump the contents of relations, and get statistics
 about resource consumption.  The CLI is used for regression testing
@@ -53,16 +66,16 @@ and debugging.
 
 \subsection{C and Java interfaces}
 
-The compiled DDlog program exposes a transactional API to add and
-delete records from input relations and notify the application about
-changes in output relations at runtime.  The API is natively
+The DDlog API is natively
 implemented in Rust, with bindings available for other languages,
-currently C and Java.  The Java API is program-independent, but the
-native executable needs to be regenerated every time the DDlog program
-is changed.  We illustrate the Java API to a simple DDlog with a
+currently C and Java.
+%The Java API is program-independent, but the
+%native executable needs to be regenerated every time the DDlog program
+%is changed.
+We illustrate the Java API to a simple DDlog program with a
 skeleton example in Figure~\ref{fig:javaapi}.
 
-\begin{figure}[t]
+\begin{figure}
   \footnotesize
   \begin{lstlisting}[language=ddlog]
 // DDlog program    
