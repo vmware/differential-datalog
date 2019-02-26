@@ -25,6 +25,7 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Rule (
     ruleRHSVars,
+    ruleRHSNewVars,
     ruleVars,
     ruleRHSTermVars,
     ruleLHSVars,
@@ -49,6 +50,12 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Validate
+
+-- | New variables declared in the 'i'th conjunct in the right-hand
+-- side of a rule.
+ruleRHSNewVars :: DatalogProgram -> Rule -> Int -> [Field]
+ruleRHSNewVars d rule idx =
+    S.toList $ ruleRHSVarSet' d rule idx S.\\ ruleRHSVarSet' d rule (idx-1)
 
 ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i

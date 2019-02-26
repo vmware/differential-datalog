@@ -50,7 +50,7 @@ class Files(object):
         #self.outputData("timestamp", ";")
         self.outputData("commit", ";")
         #self.outputData("timestamp", ";")
-        self.outputData("profile", ";")
+        #self.outputData("profile", ";")
         self.outputData("dump", ";")
         self.outputData("echo done", ";")
         self.outputData("exit", ";")

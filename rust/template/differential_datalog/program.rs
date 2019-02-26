@@ -25,6 +25,7 @@ use std::sync::mpsc;
 // creating relations
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
+use std::ops::{Mul,Deref};
 
 use timely;
 use timely::communication::initialize::{Configuration};
@@ -34,6 +35,7 @@ use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
 use timely::logging::TimelyEvent;
 use timely::worker::Worker;
+use timely::order::{Product,TotalOrder};
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
@@ -41,12 +43,21 @@ use differential_dataflow::Collection;
 use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
+use differential_dataflow::Data;
+use differential_dataflow::difference::Diff;
+use differential_dataflow::hashable::Hashable;
+use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
+use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKeyTrace;
+use differential_dataflow::trace::wrappers::enter::TraceEnter;
 
 use variable::*;
 use profile::*;
 use record::Mutator;
 
 type TS = usize;
+
+// Use 32-bit timestamps for inner scopes to save memory
+type TSNested = u32;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
@@ -149,6 +160,10 @@ pub type ArrangeFunc<V> = fn(V) -> Option<(V,V)>;
 /// (see `XForm::Join`).
 pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 
+/// Function type used to assemble the result of a semijoin into a value.
+/// Takes join key and value (see `XForm::Semijoin`).
+pub type SemijoinFunc<V> = fn(&V,&V, &()) -> Option<V>;
+
 /// Aggregation function: aggregates multiple values into a single value.
 pub type AggFunc<V> = fn(&V, &[(&V, isize)]) -> V;
 
@@ -197,25 +212,142 @@ pub enum XForm<V: Val> {
         /// Function used to put together ouput value
         jfun: &'static JoinFunc<V>
     },
+    /// Semijoin
+    Semijoin {
+        /// Arrange the relation before performing semijoin on it.
+        afun: &'static ArrangeFunc<V>,
+        /// Arrangement to semijoin with.
+        arrangement: ArrId,
+        /// Function used to put together ouput value
+        jfun: &'static SemijoinFunc<V>
+    },
+
     /// Antijoin arranges the input relation using `afun` and retuns a subset of values that
     /// correspond to keys not present in relation `rel`.
     Antijoin {
         /// Arrange the relation before performing antijoin.
         afun: &'static ArrangeFunc<V>,
-        /// Relation to antijoin with
-        rel: RelId,
-        /// Filter-map relation to antijoin with before performing the antijoin
-        fmfun: &'static FilterMapFunc<V>
+        /// Arrangement to antijoin with
+        arrangement: ArrId
     }
 }
 
-/// Describes arrangement of a relation into (key,value) pairs.
+/// Describes arrangement of a relation.
 #[derive(Clone)]
-pub struct Arrangement<V: Val> {
-    /// Arrangement name; does not have to be unique
-    pub name: String,
-    /// Function used to produce arrangement.
-    pub afun: &'static ArrangeFunc<V>
+pub enum Arrangement<V: Val> {
+    /// Arrange into (key,value) pairs
+    Map {
+        /// Arrangement name; does not have to be unique
+        name: String,
+        /// Function used to produce arrangement.
+        afun: &'static ArrangeFunc<V>
+    },
+    /// Arrange into a set of values
+    Set {
+        /// Arrangement name; does not have to be unique
+        name: String,
+        /// Function used to produce arrangement.
+        fmfun: &'static FilterMapFunc<V>,
+        /// Apply distinct_total() before arranging filtered collection.
+        distinct: bool
+    }
+}
+
+impl<V: Val> Arrangement<V> {
+    fn name(&self) -> String
+    {
+        match self {
+            Arrangement::Map{name,..} => name.clone(),
+            Arrangement::Set{name,..} => name.clone()
+        }
+    }
+}
+
+impl<V: Val> Arrangement<V>
+{
+    fn build_arrangement_root<S>(&self, collection: &Collection<S,V,isize>)
+        -> ArrangedCollection<S,V,
+                              TraceAgent<V,V,S::Timestamp,isize,DefaultValTrace<V,V,S::Timestamp,isize>>,
+                              TraceAgent<V,(),S::Timestamp,isize,DefaultKeyTrace<V,S::Timestamp,isize>>>
+    where
+        S: Scope,
+        Collection<S,V,isize>: ThresholdTotal<S,V,isize>,
+        S::Timestamp: Lattice+Ord+TotalOrder
+    {
+        match self {
+            Arrangement::Map{name: _, afun} => {
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
+            },
+            Arrangement::Set{name:_, fmfun, distinct} => {
+                let filtered = collection.flat_map(*fmfun);
+                if *distinct {
+                    ArrangedCollection::Set(filtered.distinct_total().arrange_by_self())
+                } else {
+                    ArrangedCollection::Set(filtered.arrange_by_self())
+                }
+            }
+        }
+    }
+
+    fn build_arrangement<S>(&self, collection: &Collection<S,V,isize>)
+        -> ArrangedCollection<S,V,
+                              TraceAgent<V,V,S::Timestamp,isize,DefaultValTrace<V,V,S::Timestamp,isize>>,
+                              TraceAgent<V,(),S::Timestamp,isize,DefaultKeyTrace<V,S::Timestamp,isize>>>
+    where
+        S: Scope,
+        S::Timestamp: Lattice+Ord
+    {
+        match self {
+            Arrangement::Map{name: _, afun} => {
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
+            },
+            Arrangement::Set{name:_, fmfun, distinct} => {
+                let filtered = collection.flat_map(*fmfun);
+                if *distinct {
+                    ArrangedCollection::Set(filtered.distinct().arrange_by_self())
+                } else {
+                    ArrangedCollection::Set(filtered.arrange_by_self())
+                }
+            }
+        }
+    }
+
+}
+
+enum ArrangedCollection<S,V,T1,T2>
+where
+    S:Scope,
+    V:Val,
+    S::Timestamp: Lattice+Ord,
+    T1: TraceReader<V,V,S::Timestamp,isize> + Clone,
+    T2: TraceReader<V,(),S::Timestamp,isize> + Clone
+{
+    Map (
+        Arranged<S,V,V,isize,T1>
+    ),
+    Set (
+        Arranged<S,V,(),isize,T2>
+    ),
+}
+
+impl<S,V,T1,T2> ArrangedCollection<S,V,T1,T2>
+where
+    S: Scope,
+    V: Val,
+    S::Timestamp: Lattice+Ord,
+    T1:TraceReader<V,V,S::Timestamp,isize> + Clone,
+    T2:TraceReader<V,(),S::Timestamp,isize> + Clone
+{
+    fn enter<'a>(&self, inner: &Child<'a, S,Product<S::Timestamp,TSNested>>)
+        -> ArrangedCollection<Child<'a, S,Product<S::Timestamp,TSNested>>,V,
+                              TraceEnter<V,V,S::Timestamp,isize,T1,Product<S::Timestamp,TSNested>>,
+                              TraceEnter<V,(),S::Timestamp,isize,T2,Product<S::Timestamp,TSNested>>>
+    {
+        match self {
+            ArrangedCollection::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
+            ArrangedCollection::Set(arr) => ArrangedCollection::Set(arr.enter(inner))
+        }
+    }
 }
 
 /* Relation content. */
@@ -416,8 +548,8 @@ impl<V:Val> Program<V>
                                     }
                                     /* create arrangements */
                                     for (i,arr) in r.arrangements.iter().enumerate() {
-                                        with_prof_context(&arr.name,
-                                                          ||arrangements.insert((r.id, i), collection.flat_map(arr.afun).arrange_by_key()));
+                                        with_prof_context(&arr.name(),
+                                                          ||arrangements.insert((r.id, i), arr.build_arrangement_root(&collection)));
                                     };
                                     collections.insert(r.id, collection);
                                 },
@@ -438,12 +570,12 @@ impl<V:Val> Program<V>
                                         let mut vars = FnvHashMap::default();
                                         /* arrangements created inside the nested scope */
                                         let mut local_arrangements = FnvHashMap::default();
-                                        /* arrangement entered from global scope */
+                                        /* arrangements entered from global scope */
                                         let mut inner_arrangements = FnvHashMap::default();
                                         /* collections entered from global scope */
                                         let mut inner_collections = FnvHashMap::default();
                                         for r in rs.iter() {
-                                            vars.insert(&r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
+                                            vars.insert(r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
                                         };
                                         /* create arrangements */
                                         for rel in rs {
@@ -451,8 +583,9 @@ impl<V:Val> Program<V>
                                                 /* check if arrangement is actually used inside this node */
                                                 if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n == nodeid) {
                                                     with_prof_context(
-                                                        &format!("local {}", arr.name),
-                                                        ||local_arrangements.insert((rel.id, i), vars.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                                        &format!("local {}", arr.name()),
+                                                        ||local_arrangements.insert((rel.id, i),
+                                                                                    arr.build_arrangement(vars.get(&rel.id).unwrap().deref())));
                                                 }
                                             }
                                         };
@@ -501,8 +634,8 @@ impl<V:Val> Program<V>
                                             /* only if the arrangement is used outside of this node */
                                             if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n != nodeid) {
                                                 with_prof_context(
-                                                    &format!("global {}", arr.name),
-                                                    ||arrangements.insert((rel.id, i), collections.get(&rel.id).unwrap().flat_map(arr.afun).arrange_by_key()));
+                                                    &format!("global {}", arr.name()),
+                                                    ||arrangements.insert((rel.id, i), arr.build_arrangement(collections.get(&rel.id).unwrap())));
                                             }
                                         };
                                     };
@@ -749,6 +882,8 @@ impl<V:Val> Program<V>
         r.xforms.iter().any(|xform|
                             match xform {
                                 XForm::Join{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
+                                XForm::Semijoin{afun: _, arrangement, jfun: _} => { *arrangement == arrid },
+                                XForm::Antijoin{afun: _, arrangement} => { *arrangement == arrid },
                                 _ => false
                             })
     }
@@ -785,9 +920,14 @@ impl<V:Val> Program<V>
                                 result.insert(Dep::DepArr(*arrid));
                             }
                         },
-                        XForm::Antijoin {afun: _, rel: relid, fmfun: _} => {
-                            if rels.iter().all(|r|r.id != *relid) {
-                                result.insert(Dep::DepRel(*relid));
+                        XForm::Semijoin{afun: _, arrangement: arrid, jfun: _} => {
+                            if rels.iter().all(|r|r.id != arrid.0) {
+                                result.insert(Dep::DepArr(*arrid));
+                            }
+                        },
+                        XForm::Antijoin {afun: _, arrangement: arrid} => {
+                            if rels.iter().all(|r|r.id != arrid.0) {
+                                result.insert(Dep::DepArr(*arrid));
                             }
                         },
                         _ => {}
@@ -800,15 +940,19 @@ impl<V:Val> Program<V>
     }
 
     /* Compile right-hand-side of a rule to a collection */
-    fn mk_rule<'a,S:Scope,T1,T2,F>(&'a self,
-                                  rule: &Rule<V>,
-                                  lookup_collection: F,
-                                  arrangements1: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T1>>,
-                                  arrangements2: &'a FnvHashMap<ArrId, Arranged<S,V,V,isize,T2>>) -> Collection<S,V>
-        where T1 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
-              T2 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
-              S::Timestamp : Lattice,
-              F: Fn(RelId) -> Option<&'a Collection<S,V>>
+    fn mk_rule<'a,S:Scope,T1,T2,T3,T4,F>(
+        &'a self,
+        rule: &Rule<V>,
+        lookup_collection: F,
+        arrangements1: &'a FnvHashMap<ArrId, ArrangedCollection<S,V,T1,T2>>,
+        arrangements2: &'a FnvHashMap<ArrId, ArrangedCollection<S,V,T3,T4>>) -> Collection<S,V>
+    where
+        T1 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
+        T2 : TraceReader<V,(),S::Timestamp,isize> + Clone + 'static,
+        T3 : TraceReader<V,V,S::Timestamp,isize> + Clone + 'static,
+        T4 : TraceReader<V,(),S::Timestamp,isize> + Clone + 'static,
+        S::Timestamp : Lattice,
+        F: Fn(RelId) -> Option<&'a Collection<S,V>>
     {
         let first = lookup_collection(rule.rel).expect(&format!("mk_rule: unknown relation id {:?}", rule.rel));
         let mut rhs = None;
@@ -840,44 +984,70 @@ impl<V:Val> Program<V>
                 },
                 XForm::Join{afun: &af, arrangement: arrid, jfun: &jf} => {
                     match arrangements1.get(&arrid) {
-                        Some(arranged) => {
+                        Some(ArrangedCollection::Map(arranged)) => {
                             with_prof_context(
-                                "rule (local)"
+                                "rule (local join)"
                                 /*rule.name + jname*/,
                                 ||Some(rhs.as_ref().unwrap_or(first).
                                   flat_map(af).arrange_by_key().
                                   join_core(arranged, jf)))
                         },
-                        None      => {
+                        _ => {
                             match arrangements2.get(&arrid) {
-                                Some(arranged) => {
+                                Some(ArrangedCollection::Map(arranged)) => {
                                     with_prof_context(
-                                        "rule (global)"
+                                        "rule (global join)"
                                         /*rule.name + jname*/,
                                         ||Some(rhs.as_ref().unwrap_or(first).
                                                flat_map(af).arrange_by_key().
                                                join_core(arranged, jf)))
                                 },
-                                None => {
+                                _ => {
                                     panic!("XForm::Join: unknown arrangement {:?}", arrid)
                                 }
                             }
                         }
                     }
                 },
-                XForm::Antijoin {afun: &af, rel: relid, fmfun: &fmf} => {
-                    let collection = lookup_collection(*relid).unwrap();
-                    Some(rhs.as_ref().unwrap_or(first).
-                         flat_map(af).
-                         antijoin(
-                             // FIXME: use distinct_total() instead of distinct when evaluating a
-                             // non-recursive rule.  distinct_total requires S::Timestamp to have
-                             // TotalOrder trait, which cannot be guaranteed statically, unless we
-                             // have a separate implementation of mk_rule for non-recursive case.
-                             &with_prof_context(
-                                 "antijoin",
-                                 ||collection.flat_map(fmf).distinct())).
-                         map(|(_,v)|v))
+                XForm::Semijoin{afun: &af, arrangement: arrid, jfun: &jf} => {
+                    match arrangements1.get(&arrid) {
+                        Some(ArrangedCollection::Set(arranged)) => {
+                            with_prof_context(
+                                "rule (local semijoin)",
+                                ||Some(rhs.as_ref().unwrap_or(first).
+                                  flat_map(af).arrange_by_key().
+                                  join_core(arranged, jf)))
+                        },
+                        _ => {
+                            match arrangements2.get(&arrid) {
+                                Some(ArrangedCollection::Set(arranged)) => {
+                                    with_prof_context(
+                                        "rule (global semijoin)",
+                                        ||Some(rhs.as_ref().unwrap_or(first).
+                                               flat_map(af).arrange_by_key().
+                                               join_core(arranged, jf)))
+                                },
+                                _ => {
+                                    panic!("XForm::Semijoin: unknown arrangement {:?}", arrid)
+                                }
+                            }
+                        }
+                    }
+                },
+                XForm::Antijoin {afun: &af, arrangement: arrid} => {
+                    match arrangements2.get(arrid) {
+                        Some(ArrangedCollection::Set(arranged)) => {
+                            Some(with_prof_context(
+                                    "antijoin",
+                                    ||antijoin_arranged(
+                                        &rhs.as_ref().unwrap_or(first).flat_map(af),
+                                        arranged)).
+                                 map(|(_,v)|v))
+                        },
+                        _ => {
+                            panic!("XForm::Antijoin: unknown arrangement {:?}", arrid)
+                        }
+                    }
                 }
             };
         };
@@ -1249,6 +1419,8 @@ impl<V:Val> RunningProgram<V> {
     fn delta_undo(&mut self) -> Response<()> {
         let mut updates = vec![];
         for (relid, rel) in &self.relations {
+            // first delete, then insert to avoid duplicate key
+            // errors in `apply_updates()`
             for (k, w) in rel.delta() {
                 if *w {
                     updates.push(
@@ -1256,7 +1428,10 @@ impl<V:Val> RunningProgram<V> {
                             relid: *relid,
                             v:     k.clone()
                         })
-                } else {
+                };
+            };
+            for (k, w) in rel.delta() {
+                if !*w {
                     updates.push(
                         Update::Insert{
                             relid: *relid,
@@ -1290,4 +1465,35 @@ impl<V:Val> RunningProgram<V> {
             }
         })
     }
+}
+
+// Versions of semijoin and antijoin operators that take arrangement instead of collection.
+fn semijoin_arranged<G,K,V,R,R2,T>(collection: &Collection<G, (K,V), R>,
+                                   other: &Arranged<G, K, (), R2, T>) -> Collection<G, (K, V), <R as Mul<R2>>::Output>
+where
+    G: Scope,
+    G::Timestamp: Lattice+Ord,
+    T: TraceReader<K,(),G::Timestamp,R2> + Clone + 'static,
+    K: Data+Hashable,
+    V: Data,
+    R2: Diff,
+    R: Diff + Mul<R2>,
+    <R as Mul<R2>>::Output: Diff
+{
+    let arranged1 = collection.arrange_by_key();
+    arranged1.join_core(other, |k,v,_| Some((k.clone(), v.clone())))
+}
+
+fn antijoin_arranged<G,K,V,R,R2,T>(collection: &Collection<G, (K,V), R>,
+                                   other: &Arranged<G, K, (), R2, T>) -> Collection<G, (K, V), R>
+where
+    G: Scope,
+    G::Timestamp: Lattice+Ord,
+    T: TraceReader<K,(),G::Timestamp,R2> + Clone + 'static,
+    K: Data+Hashable,
+    V: Data,
+    R2: Diff,
+    R: Diff + Mul<R2, Output=R>
+{
+    collection.concat(&semijoin_arranged(collection, other).negate())
 }

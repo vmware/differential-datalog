@@ -40,6 +40,12 @@
   url =          {\url{https://github.com/TimelyDataflow/differential-dataflow}}
 }
 
+@Misc{kubernetes,
+  author = 	 {Kubernetes},
+  title = 	 {Production-Grade Container Orchestration},
+  url =      {\url{https://kubernetes.io/}}
+}
+
 @Inproceedings{differential-dataflow-paper,
   author =	 {McSherry, Frank and Murray, Derek and Isaacs,
                   Rebecca and Isard, Michael},
@@ -77,3 +83,918 @@
   title =	 {{Open Virtual Network} architecture},
   url =          {\url{http://www.openvswitch.org/support/dist-docs/ovn-architecture.7.html}}
 }
+
+@inproceedings{scholz-cc16,
+  title =	 {On fast large-scale program analysis in {Datalog}},
+  author =	 {Scholz, Bernhard and Jordan, Herbert and
+                  Suboti{\'c}, Pavle and Westmann, Till},
+  booktitle =	 {International Conference on Compiler Construction
+                  (CC '16)},
+  pages =	 {196--206},
+  year =	 2016,
+  organization = {ACM},
+  abstract =	 {Designing and crafting a static program analysis is
+                  challenging due to the complexity of the task at
+                  hand. Among the challenges are modelling the
+                  semantics of the input language, finding suitable
+                  abstractions for the analysis, and handwriting
+                  efficient code for the analysis in a traditional
+                  imperative language such as C++. Hence, the
+                  development of static program analysis tools is
+                  costly in terms of development time and resources
+                  for real world languages. To overcome, or at least
+                  alleviate the costs of developing a static program
+                  analysis, Datalog has been proposed as a domain
+                  specific language (DSL). With Datalog, a designer
+                  expresses a static program analysis in the form of a
+                  logical specification. While a domain specific
+                  language approach aids in the ease of development of
+                  program analyses, it is commonly accepted that such
+                  an approach has worse runtime performance than
+                  handcrafted static analysis tools.  In this work, we
+                  introduce a new program synthesis methodology for
+                  Datalog specifications to produce highly efficient
+                  monolithic C++ analyzers. The synthesis technique
+                  requires the re-interpretation of the semi-naïve
+                  evaluation as a scaffolding for translation using
+                  partial evaluation. To achieve high-performance, we
+                  employ staged- compilation techniques and specialize
+                  the underlying relational data structures for a
+                  given Datalog specification. Experimentation on
+                  benchmarks for large-scale program analysis
+                  validates the superior performance of our approach
+                  over available Datalog tools and demonstrates our
+                  competitiveness with state-of-the-art handcrafted
+                  tools},
+  url =		 {http://discovery.ucl.ac.uk/1474713/1/main.pdf}
+}
+
+@InProceedings{meijer-dpcool03,
+  author =       {Erik Meijer and Wolfram Schulte and Gavin Bierman},
+  title =        {Unifying Tables, Objects and Documents},
+  booktitle =    {International Workshop on Declarative Programming in
+                  the Context of Object-Oriented Languages (DPCOOL)},
+  year =         2003,
+  address =      {Uppsala, Sweden},
+  month =        {August 25},
+  url =          {http://research.microsoft.com/users/schulte/Papers/UnifyingTablesObjectsAndDocuments(DPCOOL2003).pdf},
+  abstract =     {This paper proposes a number of type system and
+                  language extensions to natively support relational
+                  and hierarchical data within a statically typed
+                  object-oriented setting. In our approach SQL tables
+                  and XML documents become first class citizens that
+                  benefit from the full range of features available in
+                  a modern programming language like C\# or Java. This
+                  allows objects, tables and documents to be
+                  constructed, loaded, passed, transformed, updated,
+                  and queried in a unified and typesafe manner.},
+  comments =     {The first proposal for LINQ, at this point called
+                  Xen.  The proposal contains: streams, including
+                  1-element and maybe zero-element streams, anonymous
+                  structs, indexable by labels or position.
+                  Stream+structs = tables.  A tuple (struct) can be
+                  seen as an stream of union types (called
+                  discriminated unions).  Union types are
+                  automatically tagged by the system.  The definition
+                  allows nested streams, which are flattened.  Some of
+                  this support is designed for XML.  XML literals are
+                  first-class concepts in the language!  The original
+                  syntax was really confusing, LINQ is better.  You
+                  could lift methods, predicates, anonymous methods
+                  over streams with just a stream.method.}
+}
+
+@inproceedings{Meijer-sigmod06,
+  author =	 {Meijer, Erik and Beckman, Brian and Bierman, Gavin},
+  title =	 {{LINQ}: Reconciling Object, Relations and {XML} in
+                  the {.NET} Framework},
+  booktitle =	 {International Conference on Management of Data (SIGMOD '06)},
+  year =	 2006,
+  location =	 {Chicago, IL, USA},
+  pages =	 {706--706},
+  url =		 {http://doi.acm.org/10.1145/1142473.1142552},
+  abstract =	 {Many software applications today need to handle data
+                  from different data models; typically objects from
+                  the host programming language along with the
+                  relational and XML data models. The ROX impedance
+                  mismatch makes programs awkward to write and hard to
+                  maintain.The .NET Language-Integrated Query (LINQ)
+                  framework, proposed for the next release of the .NET
+                  framework, approaches this problem by defining a
+                  pattern of general-purpose standard query operators
+                  for traversal, filter, and projection. Based on this
+                  pattern, any .NET language can define special query
+                  comprehension syntax that is subsequently compiled
+                  into these standard operators (our code examples are
+                  in VB).Besides the general query operators, the LINQ
+                  framework also defines two domain specific APIs that
+                  work over XML (XLinq) and relational data (DLinq)
+                  respectively. The operators over XML use a
+                  lightweight and easy to use in-memory XML
+                  representation to provide XQuery-style
+                  expressiveness in the host programming language. The
+                  operators over relational data provide a simple OR
+                  mapping by leveraging remotable queries that are
+                  executed directly in the back-end relational store.}
+}
+
+@inproceedings{Pfaff-nsdi15,
+  author =	 {Pfaff, Ben and Pettit, Justin and Koponen, Teemu and
+                  Jackson, Ethan J. and Zhou, Andy and Rajahalme,
+                  Jarno and Gross, Jesse and Wang, Alex and Stringer,
+                  Jonathan and Shelar, Pravin and Amidon, Keith and
+                  Casado, Mart\'{\i}n},
+  title =	 {The Design and Implementation of {Open vSwitch}},
+  booktitle =	 {Networked Systems Design and Implementation
+                  (NSDI'15)},
+  year =	 2015,
+  location =	 {Oakland, CA},
+  pages =	 {117--130},
+  numpages =	 14,
+  url =		 {http://dl.acm.org/citation.cfm?id=2789770.2789779},
+  abstract =	 {We describe the design and implementation of Open
+                  vSwitch, a multi-layer, open source virtual switch
+                  for all major hypervisor platforms. Open vSwitch was
+                  designed de novo for networking in virtual
+                  environments, resulting in major design departures
+                  from traditional software switching
+                  architectures. We detail the advanced flow
+                  classification and caching techniques that Open
+                  vSwitch uses to optimize its operations and conserve
+                  hypervisor resources. We evaluate Open vSwitch
+                  performance, drawing from our deployment experiences
+                  over the past seven years of using and improving
+                  Open vSwitch.}
+}
+
+%%%%%%%% Datalog dialects
+
+@inproceedings{Bravenboer-oopsla09,
+  author =	 {Bravenboer, Martin and Smaragdakis, Yannis},
+  title =	 {Strictly Declarative Specification of Sophisticated
+                  Points-to Analyses},
+  booktitle =	 {Conference on Object Oriented Programming
+                  Systems Languages and Applications (OOPSLA '09)},
+  year =	 2009,
+  location =	 {Orlando, Florida, USA},
+  pages =	 {243--262},
+  numpages =	 20,
+  url =		 {http://doi.acm.org/10.1145/1640089.1640108},
+  keywords =	 {DOOP, bdds, datalog, declarative, points-to
+                  analysis},
+  abstract =	 {We present the DOOP framework for points-to
+                  analysis of Java programs. DOOP builds on the idea
+                  of specifying pointer analysis algorithms
+                  declaratively, using Datalog: a logic-based language
+                  for defining (recursive) relations. We carry the
+                  declarative approach further than past work by
+                  describing the full end-to-end analysis in Datalog
+                  and optimizing aggressively using a novel technique
+                  specifically targeting highly recursive Datalog
+                  programs.  \par As a result, DOOP achieves several
+                  benefits, including full order-of-magnitude
+                  improvements in runtime. We compare DOOP with Lhotak
+                  and Hendren's PADDLE, which defines the state of the
+                  art for context-sensitive analyses. For the exact
+                  same logical points-to definitions (and,
+                  consequently, identical precision) DOOP is more than
+                  15x faster than PADDLE for a 1-call-site sensitive
+                  analysis of the DaCapo benchmarks, with lower but
+                  still substantial speedups for other important
+                  analyses. Additionally, DOOP scales to very precise
+                  analyses that are impossible with PADDLE and Whaley
+                  et al.'s bddbddb, directly addressing open problems
+                  in past literature. Finally, our implementation is
+                  modular and can be easily configured to analyses
+                  with a wide range of characteristics, largely due to
+                  its declarativeness.  }
+}
+
+@inproceedings{Aref-sigmod15,
+  author =	 {Aref, Molham and ten Cate, Balder and Green, Todd
+                  J. and Kimelfeld, Benny and Olteanu, Dan and
+                  Pasalic, Emir and Veldhuizen, Todd L. and Washburn,
+                  Geoffrey},
+  title =	 {Design and Implementation of the {LogicBlox} System},
+  booktitle =	 {International Conference on Management of
+                  Data (SIGMOD '15)},
+  year =	 2015,
+  location =	 {Melbourne, Victoria, Australia},
+  pages =	 {1371--1382},
+  numpages =	 12,
+  url =		 {http://doi.acm.org/10.1145/2723372.2742796},
+  keywords =	 {datalog, incremental maintenance, leapfrog triejoin,
+                  live programming, logicblox, logiql, predictive
+                  analytics, transaction repair},
+  abstract =	 {The LogicBlox system aims to reduce the complexity
+                  of software development for modern applications
+                  which enhance and automate decision-making and
+                  enable their users to evolve their capabilities via
+                  a ``self-service'' model. Our perspective in this
+                  area is informed by over twenty years of experience
+                  building dozens of mission-critical enterprise
+                  applications that are in use by hundreds of large
+                  enterprises across industries such as retail,
+                  telecommunications, banking, and government. We
+                  designed and built LogicBlox to be the system we
+                  wished we had when developing those applications.
+                  \par In this paper, we discuss the design
+                  considerations behind the LogicBlox system and give
+                  an overview of its implementation, highlighting
+                  innovative aspects. These include: LogiQL, a unified
+                  and declarative language based on Datalog; the use
+                  of purely functional data structures; novel join
+                  processing strategies; advanced incremental
+                  maintenance and live programming facilities; a novel
+                  concurrency control scheme; and built-in support for
+                  prescriptive and predictive analytics.  }
+}
+
+@article{Yang-vldb17,
+  author =	 {Yang, Mohan and Shkapsky, Alexander and Zaniolo,
+                  Carlo},
+  title =	 {Scaling Up the Performance of More Powerful {Datalog}
+                  Systems on Multicore Machines},
+  journal =	 {The VLDB Journal},
+  volume =	 26,
+  number =	 2,
+  month =	 apr,
+  year =	 2017,
+  issn =	 {1066-8888},
+  pages =	 {229--248},
+  numpages =	 20,
+  url =		 {https://doi.org/10.1007/s00778-016-0448-z},
+  keywords =	 {AND/OR tree, Bottom-up evaluation, Datalog,
+                  Multicore, Parallel},
+  abstract =	 {Extending RDBMS technology to achieve performance
+                  and scalability for queries that are much more
+                  powerful than those of SQL-2 has been the goal of
+                  deductive database research for more than thirty
+                  years. The $$\mathcal {D}e\mathcal {A}\mathcal
+                  {L}\mathcal {S}$$DeALS system has made major
+                  progress toward this goal, by (1) Datalog extensions
+                  that support the more powerful recursive queries
+                  needed in advanced applications, and (2) superior
+                  performance for both traditional recursive queries
+                  and those made possible by the new extensions, while
+                  (3) delivering competitive performance with
+                  commercial RDBMSs on non-recursive queries. In this
+                  paper, we focus on the techniques used to support
+                  the in-memory evaluation of Datalog programs on
+                  multicore machines. In $$\mathcal {D}e\mathcal
+                  {A}\mathcal {L}\mathcal {S}$$DeALS, a Datalog
+                  program is represented as an AND/OR tree, and
+                  multiple copies of the same AND/OR tree are used to
+                  access the tables in the database concurrently
+                  during the parallel evaluation. We describe
+                  compilation techniques that (1) recognize when the
+                  given program is lock-free, (2) transform a locking
+                  program into a lock-free program, and (3) find an
+                  efficient parallel plan that correctly evaluates the
+                  program while minimizing the use of locks and other
+                  overhead required for parallel evaluation. Extensive
+                  experiments demonstrate the effectiveness of the
+                  proposed techniques.}
+}
+
+@inproceedings{Arntzenius-icfp16,
+  author =	 {Arntzenius, Michael and Krishnaswami, Neelakantan
+                  R.},
+  title =	 {{Datafun}: A Functional Datalog},
+  booktitle =	 {Proceedings of the 21st ACM SIGPLAN International
+                  Conference on Functional Programming},
+  series =	 {ICFP 2016},
+  year =	 2016,
+  isbn =	 {978-1-4503-4219-3},
+  location =	 {Nara, Japan},
+  pages =	 {214--227},
+  numpages =	 14,
+  url =		 {http://doi.acm.org/10.1145/2951913.2951948},
+  keywords =	 {Datalog, Prolog, adjoint logic, denotational
+                  semantics, domain-specific languages, functional
+                  programming, logic programming, operational
+                  semantics, type theory},
+  abstract =	 {Datalog may be considered either an unusually
+                  powerful query language or a carefully limited logic
+                  programming language. Datalog is declarative,
+                  expressive, and optimizable, and has been applied
+                  successfully in a wide variety of problem
+                  domains. However, most use-cases require extending
+                  Datalog in an application-specific manner. In this
+                  paper we define Datafun, an analogue of Datalog
+                  supporting higher-order functional programming. The
+                  key idea is to track monotonicity with types. }
+}
+
+@inproceedings{Gupta-sigmod93,
+  author =	 {Gupta, Ashish and Mumick, Inderpal Singh and
+                  Subrahmanian, V. S.},
+  title =	 {Maintaining Views Incrementally},
+  booktitle =	 {International Conference on Management of
+                  Data (SIGMOD '93)},
+  year =	 1993,
+  isbn =	 {0-89791-592-5},
+  location =	 {Washington, D.C., USA},
+  pages =	 {157--166},
+  numpages =	 10,
+  url =		 {http://doi.acm.org/10.1145/170035.170066},
+  comments =	 {We present incremental evaluation algorithms to
+                  compute changes to materialized views in relational
+                  and deductive database systems, in response to
+                  changes (insertions, deletions, and updates) to the
+                  relations. The view definitions can be in SQL or
+                  Datalog, and may use UNION, negation, aggregation
+                  (e.g. SUM, MIN), linear recursion, and general
+                  recursion. We first present a counting algorithm
+                  that tracks the number of alternative derivations
+                  (counts) for each derived tuple in a view. The
+                  algorithm works with both set and duplicate
+                  semantics. We present the algorithm for nonrecursive
+                  views (with negation and aggregation), and show that
+                  the count for a tuple can be computed at little or
+                  no cost above the cost of deriving the tuple. The
+                  algorithm is optimal in that it computes exactly
+                  those view tuples that are inserted or deleted. Note
+                  that we store only the number of derivations, not
+                  the derivations themselves. We then present the
+                  Delete and Rederive algorithm, DRed, for incremental
+                  maintenance of recursive views (negation and
+                  aggregation are permitted). The algorithm works by
+                  first deleting a superset of the tuples that need to
+                  be deleted, and then rederiving some of them. The
+                  algorithm can also be used when the view definition
+                  is itself altered.}
+}
+
+@article{Bellomarini-vldb18,
+  author =	 {Bellomarini, Luigi and Sallinger, Emanuel and
+                  Gottlob, Georg},
+  title =	 {The {Vadalog} System: {Datalog}-based Reasoning for
+                  Knowledge Graphs},
+  journal =	 {Proc. VLDB Endow.},
+  issue_date =	 {May 2018},
+  volume =	 11,
+  number =	 9,
+  month =	 may,
+  year =	 2018,
+  pages =	 {975--987},
+  url =		 {https://doi.org/10.14778/3213880.3213888},
+  abstract =	 {Over the past years, there has been a resurgence of
+                  Datalog-based systems in the database community as
+                  well as in industry. In this context, it has been
+                  recognized that to handle the complex
+                  knowledge-based scenarios encountered today, such as
+                  reasoning over large knowledge graphs, Datalog has
+                  to be extended with features such as existential
+                  quantification. Yet, Datalog-based reasoning in the
+                  presence of existential quantification is in general
+                  undecidable. Many efforts have been made to define
+                  decidable fragments. Warded Datalog+/- is a very
+                  promising one, as it captures PTIME complexity while
+                  allowing ontological reasoning. Yet so far, no
+                  implementation of Warded Datalog+/- was
+                  available. In this paper we present the Vadalog
+                  system, a Datalog-based system for performing
+                  complex logic reasoning tasks, such as those
+                  required in advanced knowledge graphs. The Vadalog
+                  system is Oxford's contribution to the VADA research
+                  programme, a joint effort of the universities of
+                  Oxford, Manchester and Edinburgh and around 20
+                  industrial partners. As the main contribution of
+                  this paper, we illustrate the first implementation
+                  of Warded Datalog+/-, a high-performance Datalog+/-
+                  system utilizing an aggressive termination control
+                  strategy. We also provide a comprehensive
+                  experimental evaluation.}
+}
+
+@incollection{Borraz-Sanchez-dlp18,
+  author =	 {Borraz-S\'{a}nchez, Conrado and Klabjan, Diego and
+                  Pasalic, Emir and Aref, Molham},
+  title =	 {{SolverBlox}: Algebraic Modeling in {Datalog}},
+  booktitle =	 {Declarative Logic Programming},
+  editor =	 {Kifer, Michael and Liu, Yanhong Annie},
+  year =	 2018,
+  isbn =	 {978-1-97000-199-0},
+  pages =	 {331--354},
+  url =		 {https://doi.org/10.1145/3191315.3191322},
+  abstract =	 {Datalog is a deductive query language for relational
+                  databases. We introduce LogiQL, a language based on
+                  Datalog and show how it can be used to specify
+                  mixed integer linear optimization models and solve
+                  them. Unlike pure algebraic modeling languages,
+                  LogiQL allows the user to both specify models, and
+                  manipulate and transform the inputs and outputs of
+                  the models. This is an advantage over conventional
+                  optimization modeling languages that rely on reading
+                  data via plug-in tools or importing data from
+                  external sources via files. In this chapter, we give
+                  a brief overview of LogiQL and describe two mixed
+                  integer programming case studies: a
+                  production-transportation model and a formulation of
+                  the traveling salesman problem.}
+}
+
+@inproceedings{Green-pods15,
+  author =	 {Green, Todd J.},
+  title =	 {{LogiQL}: A Declarative Language for Enterprise
+                  Applications},
+  booktitle =	 {Symposium on Principles of Database Systems (PODS '15)},
+  year =	 2015,
+  isbn =	 {978-1-4503-2757-2},
+  location =	 {Melbourne, Victoria, Australia},
+  pages =	 {59--64},
+  numpages =	 6,
+  url =		 {http://doi.acm.org/10.1145/2745754.2745780},
+  keywords =	 {datalog, incremental maintenance, leapfrog triejoin,
+                  logicblox, logiql, transaction repair},
+  abstract =	 {We give an overview of LogiQL, a declarative,
+                  Datalog based language for data management and
+                  analytics, along with techniques for efficient
+                  evaluation of LogiQL programs, emphasizing
+                  theoretical foundations when possible. These
+                  techniques include: leapfrog triejoin and its
+                  associated incremental maintenance algorithm, which
+                  we measure against appropriate optimality criteria;
+                  purely-functional data structures, which provide
+                  elegant versioning and branching capabilities that
+                  are indispensable for LogiQL; and transaction
+                  repair, a lock-free concurrency control scheme that
+                  uses LogiQL, incremental maintenance, and
+                  purely-functional data structures as essential
+                  ingredients.}
+}
+
+@article{Barany-tods17,
+  author =	 {B\'{a}r\'{a}ny, Vince and Cate, Balder Ten and
+                  Kimelfeld, Benny and Olteanu, Dan and Vagena,
+                  Zografoula},
+  title =	 {Declarative Probabilistic Programming with Datalog},
+  journal =	 {ACM Trans. Database Syst.},
+  issue_date =	 {November 2017},
+  volume =	 42,
+  number =	 4,
+  month =	 oct,
+  year =	 2017,
+  issn =	 {0362-5915},
+  pages =	 {22:1--22:35},
+  articleno =	 22,
+  numpages =	 35,
+  url =		 {http://doi.acm.org/10.1145/3132700},
+  keywords =	 {Chase, Datalog, declarative, probabilistic
+                  programming, probability measure space},
+  abstract =	 { Probabilistic programming languages are used for
+                  developing statistical models. They typically
+                  consist of two components: a specification of a
+                  stochastic process (the prior) and a specification
+                  of observations that restrict the probability space
+                  to a conditional subspace (the posterior). Use cases
+                  of such formalisms include the development of
+                  algorithms in machine learning and artificial
+                  intelligence.  In this article, we establish a
+                  probabilistic-programming extension of Datalog that,
+                  on the one hand, allows for defining a rich family
+                  of statistical models, and on the other hand retains
+                  the fundamental properties of declarativity. Our
+                  proposed extension provides mechanisms to include
+                  common numerical probability functions; in
+                  particular, conclusions of rules may contain values
+                  drawn from such functions. The semantics of a
+                  program is a probability distribution over the
+                  possible outcomes of the input database with respect
+                  to the program. Observations are naturally
+                  incorporated by means of integrity constraints over
+                  the extensional and intensional relations. The
+                  resulting semantics is robust under different chases
+                  and invariant to rewritings that preserve logical
+                  equivalence.}
+}
+
+@article{loo-cacm09,
+  title =	 {Declarative networking},
+  author =	 {Loo, Boon Thau and Condie, Tyson and Garofalakis,
+                  Minos and Gay, David E and Hellerstein, Joseph M and
+                  Maniatis, Petros and Ramakrishnan, Raghu and Roscoe,
+                  Timothy and Stoica, Ion},
+  journal =	 {Communications of the ACM},
+  volume =	 52,
+  number =	 11,
+  pages =	 {87--95},
+  year =	 2009,
+  abstract =	 {Declarative Networking is a programming methodology
+                  that enables developers to concisely specify network
+                  protocols and services, which are directly compiled
+                  to a dataflow framework that executes the
+                  specifications. This paper provides an introduction
+                  to basic issues in declarative networking, including
+                  language design, optimization, and dataflow
+                  execution. We present the intuition behind
+                  declarative programming of networks, including roots
+                  in Datalog, extensions for networked environments,
+                  and the semantics of long-running queries over
+                  network state. We focus on a sublanguage we call
+                  Network Datalog (NDlog), including execution
+                  strategies that provide crisp eventual consistency
+                  semantics with significant flexibility in
+                  execution. We also describe a more general language
+                  called Overlog, which makes some compromises between
+                  expressive richness and semantic guarantees. We
+                  provide an overview of declarative network
+                  protocols, with a focus on routing protocols and
+                  overlay networks. Finally, we highlight related work
+                  in declarative networking, and new declarative
+                  approaches to related problems.}
+}
+
+@article{Seo-vldb13,
+  author =	 {Seo, Jiwon and Park, Jongsoo and Shin, Jaeho and
+                  Lam, Monica S.},
+  title =	 {Distributed {Socialite}: A {Datalog}-based Language
+                  for Large-scale Graph Analysis},
+  journal =	 {Proc. VLDB Endow.},
+  issue_date =	 {September 2013},
+  volume =	 6,
+  number =	 14,
+  month =	 sep,
+  year =	 2013,
+  issn =	 {2150-8097},
+  pages =	 {1906--1917},
+  url =		 {http://dx.doi.org/10.14778/2556549.2556572},
+  abstract =	 { Large-scale graph analysis is becoming important
+                  with the rise of world-wide social network
+                  services. Recently in SociaLite, we proposed
+                  extensions to Datalog to efficiently and succinctly
+                  implement graph analysis programs on sequential
+                  machines. This paper describes novel extensions and
+                  optimizations of SociaLite for parallel and
+                  distributed executions to support large-scale graph
+                  analysis.  With distributed SociaLite, programmers
+                  simply annotate how data are to be distributed, then
+                  the necessary communication is automatically
+                  inferred to generate parallel code for cluster of
+                  multi-core machines. It optimizes the evaluation of
+                  recursive monotone aggregate functions using a delta
+                  stepping technique. In addition, approximate
+                  computation is supported in SociaLite, allowing
+                  programmers to trade off accuracy for less time and
+                  space.  We evaluated SociaLite with six core graph
+                  algorithms used in many social network analyses. Our
+                  experiment with 64 Amazon EC2 8-core instances shows
+                  that SociaLite programs performed within a factor of
+                  two with respect to ideal weak scaling. Compared to
+                  optimized Giraph, an open-source alternative of
+                  Pregel, SociaLite programs are 4 to 12 times faster
+                  across benchmark algorithms, and 22 times more
+                  succinct on average.  As a declarative query
+                  language, SociaLite, with the help of a compiler
+                  that generates efficient parallel and approximate
+                  code, can be used easily to create many social apps
+                  that operate on large-scale distributed graphs.  }
+}
+
+@incollection{Maier-book18,
+  author =	 {Maier, David and Tekle, K. Tuncay and Kifer, Michael
+                  and Warren, David S.},
+  title =	 {Datalog: Concepts, History, and Outlook},
+  booktitle =	 {Declarative Logic Programming},
+  editor =	 {Kifer, Michael and Liu, Yanhong Annie},
+  year =	 2018,
+  isbn =	 {978-1-97000-199-0},
+  pages =	 {3--100},
+  numpages =	 98,
+  url =		 {https://doi.org/10.1145/3191315.3191317},
+  publisher =	 {Association for Computing Machinery and Morgan
+                  \&\#38; Claypool},
+  abstract =	 { This chapter is a survey of the history and the
+                  main concepts of Datalog.We begin with an
+                  introduction to the language and its use for
+                  database definition and querying. We then look back
+                  at the threads from logic languages, databases,
+                  artificial intelligence, and expert systems that led
+                  to the emergence of Datalog and reminiscence about
+                  the origin of the name. We consider the interaction
+                  of recursion with other common data language
+                  features, such as negation and aggregation, and look
+                  at other extensions, such as constraints, updates,
+                  and object-oriented features.We provide an overview
+                  of the main approaches to Datalog evaluation and
+                  their variants, then recount some early
+                  implementations of Datalog and of similar deductive
+                  database systems.We speculate on the reasons for the
+                  decline in the interest in the language in the 1990s
+                  and the causes for its later resurgence in a number
+                  of application areas.We conclude with several
+                  examples of current systems based on or supporting
+                  Datalog and briefly examine the performance of some
+                  of them.  }
+}
+
+%%%% incremental computation
+
+@PhdThesis{acar-05,
+  author =	 {Umut Acar},
+  title =	 {Self-adjusting computation},
+  school =	 {Carnegie Mellon University},
+  year =	 2005,
+}
+
+@inproceedings{Carlsson-icfp02,
+  author =	 {Carlsson, Magnus},
+  title =	 {Monads for Incremental Computing},
+  booktitle =	 {International Conference on Functional Programming
+                  (ICFP '02)},
+  year =	 2002,
+  location =	 {Pittsburgh, PA, USA},
+  pages =	 {26--35},
+  url =		 {http://doi.acm.org/10.1145/581478.581482},
+  abstract =	 {This paper presents a monadic approach to
+                  incremental computation, suitable for purely
+                  functional languages such as Haskell. A program that
+                  uses incremental computation is able to perform an
+                  incremental amount of computation to accommodate for
+                  changes in input data. Recently, Acar, Blelloch and
+                  Harper presented a small Standard ML library that
+                  supports efficient, high-level incremental
+                  computations [1]. Here, we present a monadic variant
+                  of that library, written in Haskell extended with
+                  first-class references. By using monads, not only
+                  are we able to provide a purely functional interface
+                  to the library, the types also enforce "correct
+                  usage" without having to resort to any type-system
+                  extension. We also find optimization opportunities
+                  based on standard monadic combinators.This is an
+                  exercise in putting to work monad transformers with
+                  environments, references, and continuations.}
+}
+
+@inproceedings{Demetrescu-oopsla11,
+  author =	 {Demetrescu, Camil and Finocchi, Irene and Ribichini,
+                  Andrea},
+  title =	 {Reactive Imperative Programming with Dataflow
+                  Constraints},
+  booktitle =	 {International Conference on Object Oriented
+                  Programming Systems Languages and Applications
+                  (OOPSLA '11)},
+  year =	 2011,
+  location =	 {Portland, Oregon, USA},
+  pages =	 {407--426},
+  numpages =	 20,
+  url =		 {http://doi.acm.org/10.1145/2048066.2048100},
+  keywords =	 {constraint solving, data structure repair, dataflow
+                  programming, imperative programming, incremental
+                  computation, observer design pattern, reactive
+                  programming},
+  abstract =	 {Dataflow languages provide natural support for
+                  specifying constraints between objects in dynamic
+                  applications, where programs need to react
+                  efficiently to changes of their
+                  environment. Researchers have long investigated how
+                  to take advantage of dataflow constraints by
+                  embedding them into procedural languages. Previous
+                  mixed imperative/dataflow systems, however, require
+                  syntactic extensions or libraries of ad hoc data
+                  types for binding the imperative program to the
+                  dataflow solver. In this paper we propose a novel
+                  approach that smoothly combines the two paradigms
+                  without placing undue burden on the programmer. In
+                  our framework, programmers can define ordinary
+                  statements of the imperative host language that
+                  enforce constraints between objects stored in
+                  special memory locations designated as
+                  "reactive". Differently from previous approaches,
+                  reactive objects can be of any legal type in the
+                  host language, including primitive data types,
+                  pointers, arrays, and structures. Statements
+                  defining constraints are automatically re-executed
+                  every time their input memory locations change,
+                  letting a program behave like a spreadsheet where
+                  the values of some variables depend upon the values
+                  of other variables. The constraint solving mechanism
+                  is handled transparently by altering the semantics
+                  of elementary operations of the host language for
+                  reading and modifying objects. We provide a formal
+                  semantics and describe a concrete embodiment of our
+                  technique into C/C++, showing how to implement it
+                  efficiently in conventional platforms using
+                  off-the-shelf compilers. We discuss common coding
+                  idioms and relevant applications to reactive
+                  scenarios, including incremental computation,
+                  observer design pattern, and data structure
+                  repair. The performance of our implementation is
+                  compared to ad hoc problem-specific change
+                  propagation algorithms, as well as to
+                  language-centric approaches such as self-adjusting
+                  computation and subject/observer communication
+                  mechanisms, showing that the proposed approach is
+                  efficient in practice.}
+}
+
+@InProceedings{harkes-ecoop16,
+  author =	 {Daco C. Harkes and Danny M. Groenewegen and Eelco
+                  Visser},
+  title =	 {{IceDust}: Incremental and Eventual Computation of
+                  Derived Values in Persistent Object Graphs},
+  booktitle =	 {European Conference on Object-Oriented
+                  Programming (ECOOP 2016)},
+  pages =	 {11:1--11:26},
+  series =	 {Leibniz International Proceedings in Informatics
+                  (LIPIcs)},
+  ISBN =	 {978-3-95977-014-9},
+  ISSN =	 {1868-8969},
+  year =	 2016,
+  volume =	 56,
+  editor =	 {Shriram Krishnamurthi and Benjamin S. Lerner},
+  publisher =	 {Schloss Dagstuhl--Leibniz-Zentrum fuer Informatik},
+  address =	 {Dagstuhl, Germany},
+  URL =		 {http://drops.dagstuhl.de/opus/volltexte/2016/6105},
+  doi =		 {10.4230/LIPIcs.ECOOP.2016.11},
+  annote =	 {Keywords: Incremental Computing, Data Modeling,
+                  Domain Specific Language},
+  abstract =	 {Derived values are values calculated from base
+                  values. They can be expressed in object-oriented
+                  languages by means of getters calculating the
+                  derived value, and in relational or logic databases
+                  by means of (materialized) views. However, switching
+                  to a different calculation strategy (for example
+                  caching) in object-oriented programming requires
+                  invasive code changes, and the databases limit
+                  expressiveness by disallowing recursive
+                  aggregation. In this paper, we present IceDust, a
+                  data modeling language for expressing derived
+                  attribute values without committing to a calculation
+                  strategy. IceDust provides three strategies for
+                  calculating derived values in persistent object
+                  graphs: Calculate-on-Read, Calculate-on-Write, and
+                  Calculate-Eventually. We have developed a path-based
+                  abstract interpretation that provides static
+                  dependency analysis to generate code for these
+                  strategies. Benchmarks show that different
+                  strategies perform better in different scenarios. In
+                  addition we have conducted a case study that
+                  suggests that derived value calculations of systems
+                  used in practice can be expressed in IceDust.}
+}
+
+@article{ahmad-vldb12,
+  title =	 {{DBtoaster}: Higher-order delta processing for
+                  dynamic, frequently fresh views},
+  author =	 {Ahmad, Yanif and Kennedy, Oliver and Koch, Christoph
+                  and Nikolic, Milos},
+  journal =	 {Proceedings of the VLDB Endowment},
+  volume =	 5,
+  number =	 10,
+  pages =	 {968--979},
+  year =	 2012,
+  publisher =	 {VLDB Endowment},
+  abstract =	 {Applications ranging from algorithmic trading to
+                  scientific data analysis require realtime analytics
+                  based on views over databases receiving thousands of
+                  updates each second. Such views have to be kept
+                  fresh at millisecond latencies. At the same time,
+                  these views have to support classical SQL, rather
+                  than window semantics, to enable applications that
+                  combine current with aged or historical data.  In
+                  this article, we present the DBToaster system, which
+                  keeps materialized views of standard SQL queries
+                  continu- ously fresh as data changes very
+                  rapidly. This is achieved by a combination of
+                  aggressive compilation techniques and DBToaster's
+                  original recursive finite differencing technique
+                  which materializes a query and a set of its
+                  higher-order deltas as views. These views support
+                  each other's incremental maintenance, leading to a
+                  reduced overall view maintenance cost. This article
+                  provides a first description of the complete system,
+                  and a thorough experimental evaluation of its
+                  performance. DBToaster supports tens of thousands of
+                  complete view refreshes a second for a wide range of
+                  queries.}
+}
+
+@inproceedings{Hammer-pldi14,
+  author =	 {Hammer, Matthew A. and Phang, Khoo Yit and Hicks,
+                  Michael and Foster, Jeffrey S.},
+  title =	 {{Adapton}: Composable, Demand-driven Incremental
+                  Computation},
+  booktitle =	 {SIGPLAN Conference on Programming Language Design
+                  and Implementation (PLDI '14)},
+  year =	 2014,
+  location =	 {Edinburgh, United Kingdom},
+  pages =	 {156--166},
+  numpages =	 11,
+  url =		 {http://doi.acm.org/10.1145/2594291.2594324},
+  keywords =	 {call-by-push-value (CBPV), demanded computation
+                  graph (DCG) incremental computation, laziness,
+                  self-adjusting computation, thunks},
+  abstract =	 {Many researchers have proposed programming languages
+                  that support incremental computation (IC), which
+                  allows programs to be efficiently re-executed after
+                  a small change to the input. However, existing
+                  implementations of such languages have two important
+                  drawbacks. First, recomputation is oblivious to
+                  specific demands on the program output; that is, if
+                  a program input changes, all dependencies will be
+                  recomputed, even if an observer no longer requires
+                  certain outputs. Second, programs are made
+                  incremental as a unit, with little or no support for
+                  reusing results outside of their original context,
+                  e.g., when reordered.  \par To address these
+                  problems, we present \lambda_{ic}^{cdd}, a core
+                  calculus that applies a demand-driven semantics to
+                  incremental computation, tracking changes in a
+                  hierarchical fashion in a novel demanded computation
+                  graph. \lambda_{ic}^{cdd} also formalizes an
+                  explicit separation between inner, incremental
+                  computations and outer observers. This combination
+                  ensures \lambda_{ic}^{cdd} programs only recompute
+                  computations as demanded by observers, and allows
+                  inner computations to be reused more liberally. We
+                  present Adapton, an OCaml library implementing
+                  \lambda_{ic}^{cdd}. We evaluated Adapton on a range
+                  of benchmarks, and found that it provides reliable
+                  speedups, and in many cases dramatically outperforms
+                  state-of-the-art IC approaches.}
+}
+
+@inproceedings{Szabo-ase016,
+  author =	 {Szab\'{o}, Tam\'{a}s and Erdweg, Sebastian and
+                  Voelter, Markus},
+  title =	 {{IncA}: A {DSL} for the Definition of Incremental
+                  Program Analyses},
+  booktitle =	 {International Conference on Automated Software
+                  Engineering (ASE 2016)},
+  year =	 2016,
+  location =	 {Singapore, Singapore},
+  pages =	 {320--331},
+  numpages =	 12,
+  url =		 {http://doi.acm.org/10.1145/2970276.2970298},
+  keywords =	 {Domain-specific Language, Incremental Computation,
+                  Language Workbench, Static Analysis},
+  abstract =	 {Program analyses support software developers, for
+                  example, through error detection, code-quality
+                  assurance, and by enabling compiler optimizations
+                  and refactorings. To provide real-time feedback to
+                  developers within IDEs, an analysis must run
+                  efficiently even if the analyzed code base is large.
+                  \par To achieve this goal, we present a
+                  domain-specific language called IncA for the
+                  definition of efficient incremental program analyses
+                  that update their result as the program
+                  changes. IncA compiles analyses into graph patterns
+                  and relies on existing incremental matching
+                  algorithms. To scale IncA analyses to large
+                  programs, we describe optimizations that reduce
+                  caching and prune change propagation. Using IncA, we
+                  have developed incremental control flow and
+                  points-to analysis for C, well-formedness checks for
+                  DSLs, and 10 FindBugs checks for Java. Our
+                  evaluation demonstrates significant speedups for all
+                  analyses compared to their non-incremental
+                  counterparts.}
+}
+
+@inproceedings{zhao-icmd17,
+  title =	 {Incremental View Maintenance over Array Data},
+  author =	 {Zhao, Weijie and Rusu, Florin and Dong, Bin and Wu,
+                  Kesheng and Nugent, Peter},
+  booktitle =	 {ACM International Conference on Management of Data
+                  (ICMD '17)},
+  pages =	 {139--154},
+  year =	 2017,
+  organization = {ACM},
+  abstract =	 {Science applications are producing an
+                  ever-increasing volume of multi-dimensional data
+                  that are mainly processed with distributed array
+                  databases. These raw arrays are "cooked" into
+                  derived data products using complex pipelines that
+                  are time-consuming. As a result, derived data
+                  products are released infrequently and become stale
+                  soon thereafter. In this paper, we introduce
+                  materialized array views as a database construct for
+                  scientific datap roducts. We model the "cooking"
+                  process as incremental view maintenance with batch
+                  updates and give a three-stage heuristic that finds
+                  effective update plans. Moreover, the heuristic
+                  repartitions the array and the view continuously
+                  based on a window of past updates as a side-effect
+                  of view maintenance without overhead. We design an
+                  analytical cost model for integrating materialized
+                  array views in queries. A thorough experimental
+                  evaluation confirms that the proposed techniques
+                  are able to incrementally maintain a real
+                  astronomical data product in a production
+                  environment.}
+}
+
+@article{IncA,
+ author = {Szab\'{o}, Tam\'{a}s and Bergmann, G\'{a}bor and Erdweg, Sebastian and Voelter, Markus},
+ title = {Incrementalizing Lattice-based Program Analyses in {Datalog}},
+ journal = {Proceedings of the ACM on Programming Languages},
+ volume = {2},
+ number = {OOPSLA},
+ month = oct,
+ year = {2018},
+ pages = {139:1--139:29}
+} 
+
+

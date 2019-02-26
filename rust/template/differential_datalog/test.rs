@@ -397,7 +397,117 @@ fn test_two_relations_multi() {
     test_two_relations(16)
 }
 
+
+/* Semijoin
+ */
+fn test_semijoin(nthreads: usize) {
+    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel1 = {
+        let relset1 = relset1.clone();
+        Relation {
+            name:         "T1".to_string(),
+            input:        true,
+            distinct:     true,
+            key_func:     None,
+            id:           1,      
+            rules:        Vec::new(),
+            arrangements: Vec::new(),
+            change_cb:    Some(Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))
+        }
+    };
+    fn fmfun1(v: Value) -> Option<Value> {
+        match v {
+            Value::Tuple2(v1,_v2) => Some(*v1),
+            _ => None
+        }
+    }
+    fn afun1(v: Value) -> Option<(Value, Value)> {
+        match v {
+            Value::Tuple2(v1,v2) => Some((*v1, *v2)),
+            _ => None
+        }
+    }
+
+    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel2 = {
+        let relset2 = relset2.clone();
+        Relation {
+            name:         "T2".to_string(),
+            input:        true,
+            distinct:     true,
+            key_func:     None,
+            id:           2,      
+            rules:        Vec::new(),
+            arrangements: vec![Arrangement::Set{
+                name: "arrange2.0".to_string(),
+                fmfun: &(fmfun1 as FilterMapFunc<Value>),
+                distinct: false
+            }],
+            change_cb:    Some(Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))
+        }
+    };
+    fn jfun(_key: &Value, v1: &Value, _v2: &()) -> Option<Value> {
+        Some(Value::Tuple2(Box::new(v1.clone()), Box::new(v1.clone())))
+    }
+
+    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel3 = {
+        let relset3 = relset3.clone();
+        Relation {
+            name:         "T3".to_string(),
+            input:        false,
+            distinct:     true,
+            key_func:     None,
+            id:           3,
+            rules:        vec![Rule{
+                rel: 1, 
+                xforms: vec![XForm::Semijoin{
+                    afun:        &(afun1 as ArrangeFunc<Value>),
+                    arrangement: (2,0),
+                    jfun:        &(jfun as SemijoinFunc<Value>)
+                }]
+            }],
+            arrangements: Vec::new(),
+            change_cb:    Some(Arc::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))
+        }
+    };
+
+    let prog: Program<Value> = Program {
+        nodes: vec![ProgNode::RelNode{rel: rel1},
+                    ProgNode::RelNode{rel: rel2},
+                    ProgNode::RelNode{rel: rel3}],
+        init_data: vec![]
+    };
+
+    let mut running = prog.run(nthreads);
  
+    let vals:Vec<u64> = (0..TEST_SIZE).collect();
+    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
+
+    running.transaction_start().unwrap();
+    for x in &set {
+        running.insert(1, x.clone()).unwrap();
+        running.insert(2, x.clone()).unwrap();
+    };
+    running.transaction_commit().unwrap();
+
+    assert_eq!(*relset3.lock().unwrap(), set);
+
+    running.stop().unwrap();
+
+}
+
+#[test]
+fn test_semijoin_1() {
+    test_semijoin(1)
+}
+
+
+#[test]
+fn test_semijoin_multi() {
+    test_semijoin(16)
+}
+
 /* Inner join
  */
 fn test_join(nthreads: usize) {
@@ -431,7 +541,7 @@ fn test_join(nthreads: usize) {
             key_func:     None,
             id:           2,      
             rules:        Vec::new(),
-            arrangements: vec![Arrangement{
+            arrangements: vec![Arrangement::Map{
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
@@ -555,6 +665,10 @@ fn test_antijoin(nthreads: usize) {
         }
     }
 
+    fn fmnull_fun(v: Value) -> Option<Value> {
+        Some(v)
+    }
+
     let relset21: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel21 = {
         let relset21 = relset21.clone();
@@ -572,14 +686,15 @@ fn test_antijoin(nthreads: usize) {
                             mfun: &(mfun as MapFunc<Value>)
                         }]
                 }],
-            arrangements: vec![],
+            arrangements: vec![
+                Arrangement::Set{
+                    name: "arrange2.1".to_string(),
+                    fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                    distinct: true
+                }],
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T21", &relset21, v, pol)))
         }
     };
-
-    fn fmnull_fun(v: Value) -> Option<Value> {
-        Some(v)
-    }
 
     let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
     let rel3 = {
@@ -594,8 +709,7 @@ fn test_antijoin(nthreads: usize) {
                 rel: 1,
                 xforms: vec![XForm::Antijoin{
                     afun: &(afun1 as ArrangeFunc<Value>),
-                    rel:  21,
-                    fmfun:&(fmnull_fun as FilterMapFunc<Value>)
+                    arrangement: (21,0)
                 }]
             }],
             arrangements: Vec::new(),
@@ -867,9 +981,6 @@ fn test_recursion(nthreads: usize) {
             _ => None
         }
     }
-    fn arrange_by_self(v: Value) -> Option<(Value, Value)> {
-        Some((v.clone(),Value::empty()))
-    }
 
     fn jfun(_parent: &Value, ancestor: &Value, child: &Value) -> Option<Value> {
         Some(Value::Tuple2(Box::new(ancestor.clone()), Box::new(child.clone())))
@@ -893,7 +1004,7 @@ fn test_recursion(nthreads: usize) {
             key_func:     None,
             id:           1,
             rules:        Vec::new(),
-            arrangements: vec![Arrangement{
+            arrangements: vec![Arrangement::Map{
                 name: "arrange_by_parent".to_string(),
                 afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
@@ -924,13 +1035,14 @@ fn test_recursion(nthreads: usize) {
                     }]
                 }],
             arrangements: vec![
-                Arrangement{
+                Arrangement::Map{
                     name: "arrange_by_ancestor".to_string(),
                     afun: &(arrange_by_fst as ArrangeFunc<Value>)
                 },
-                Arrangement{
+                Arrangement::Set{
                     name: "arrange_by_self".to_string(),
-                    afun: &(arrange_by_self as ArrangeFunc<Value>)
+                    fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                    distinct: true
                 }],
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("ancestor", &ancestorset, v, pol)))
         }
@@ -963,13 +1075,11 @@ fn test_recursion(nthreads: usize) {
                         },
                         XForm::Antijoin{
                             afun:        &(anti_arrange1 as ArrangeFunc<Value>),
-                            rel:         2,
-                            fmfun:       &(fmnull_fun as FilterMapFunc<Value>)
+                            arrangement: (2,1)
                         },
                         XForm::Antijoin{
                             afun:        &(anti_arrange2 as ArrangeFunc<Value>),
-                            rel:         2,
-                            fmfun:       &(fmnull_fun as FilterMapFunc<Value>)
+                            arrangement: (2,1)
                         },
                         XForm::Filter{
                             ffun: &(ffun as FilterFunc<Value>)

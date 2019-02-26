@@ -202,16 +202,16 @@ fn record_from_val(v: Value) -> Result<Record, String> {
  * Functions to convert DDlog Records to JSON
  */
 
-pub fn record_into_insert_str(rec: Record) -> Result<String, String> {
-    let (table, opt_uuid_name) = match rec {
-        Record::NamedStruct(ref table, ref fields) => {
-            (table.to_string(), fields.iter().find(|(f,_)| f == "uuid_name").map(|(_,val)|val.clone()))
+pub fn record_into_insert_str(rec: Record, table: &str) -> Result<String, String> {
+    let opt_uuid_name = match rec {
+        Record::NamedStruct(_, ref fields) => {
+            fields.iter().find(|(f,_)| f == "uuid_name").map(|(_,val)|val.clone())
         },
         _ => Err(format!("Cannot convert record to insert command: {:?}", rec))?
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("insert".to_owned()));
-    m.insert("table".to_owned(), Value::String(table));
+    m.insert("table".to_owned(), Value::String(table.to_owned()));
     match opt_uuid_name {
         None => {},
         Some(Record::String(n)) => { m.insert("uuid-name".to_owned(), Value::String(n)); },
@@ -221,32 +221,32 @@ pub fn record_into_insert_str(rec: Record) -> Result<String, String> {
     Ok(Value::Object(m).to_string())
 }
 
-pub fn record_into_delete_str(rec: Record) -> Result<String, String> {
-    let (table, uuid) = match rec {
-        Record::NamedStruct(table, fields) => {
-            (table, fields.into_iter().find(|(f,_)| f == "_uuid")
-                          .ok_or_else(||format!("Record does not have _uuid field"))?.1)
+pub fn record_into_delete_str(rec: Record, table: &str) -> Result<String, String> {
+    let uuid = match rec {
+        Record::NamedStruct(_, fields) => {
+            fields.into_iter().find(|(f,_)| f == "_uuid")
+                  .ok_or_else(||format!("Record does not have _uuid field"))?.1
         },
         _ => Err(format!("Cannot convert record to delete command: {:?}", rec))?
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("delete".to_owned()));
-    m.insert("table".to_owned(), Value::String(table.into_owned()));
+    m.insert("table".to_owned(), Value::String(table.to_owned()));
     m.insert("where".to_owned(), uuid_condition(&uuid)?);
     Ok(Value::Object(m).to_string())
 }
 
-pub fn record_into_update_str(rec: Record) -> Result<String, String> {
-    let (table, uuid) = match rec {
-        Record::NamedStruct(ref table, ref fields) => {
-            (table.to_string(), fields.iter().find(|(f,_)| f == "_uuid")
-                                      .ok_or_else(||format!("Record does not have _uuid field"))?.1.clone())
+pub fn record_into_update_str(rec: Record, table: &str) -> Result<String, String> {
+    let uuid = match rec {
+        Record::NamedStruct(_, ref fields) => {
+            fields.iter().find(|(f,_)| f == "_uuid")
+                  .ok_or_else(||format!("Record does not have _uuid field"))?.1.clone()
         },
         _ => Err(format!("Cannot convert record to insert command: {:?}", rec))?
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("update".to_owned()));
-    m.insert("table".to_owned(), Value::String(table));
+    m.insert("table".to_owned(), Value::String(table.to_owned()));
     m.insert("where".to_owned(), uuid_condition(&uuid)?);
     m.insert("row".to_owned(), record_into_row(rec)?);
     Ok(Value::Object(m).to_string())
@@ -355,5 +355,10 @@ fn uuid_from_int(i: &BigInt) -> Result<String, String> {
 
 // exported to DDlog; hence the funny name
 pub fn ovsdb_uuid2str(i: &u128) -> String {
-    uuid::Uuid::from_u128(*i).to_hyphenated().to_string()
+    uuid::Uuid::from_u128(i.to_be()).to_hyphenated().to_string()
+}
+
+pub fn ovsdb_uuid2name(i: &u128) -> String {
+    let s = uuid::Uuid::from_u128(i.to_be()).to_simple().to_string();
+    format!("u{}_{}_{}_{}_{}", &s[0..8], &s[8..12], &s[12..16], &s[16..20], &s[20..32])
 }

@@ -727,15 +727,6 @@ SanitizedHTTPEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 ```
 
-#### Sets and FlatMap
-
-```
-SanitizedHTTPEndpoint(endpoint) :-
-    ep in Endpoint(.proto = "HTTP"),
-    var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
-    not Blacklisted(endpoint).
-```
-
 #### Container types, FlatMap, and for-loops
 
 DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These

@@ -2,96 +2,99 @@
 
 \subsection{Motivation}
 
+Many real-world applications must update their output in response to input changes.  Consider, for
+example, a cluster management system such as Kubernetes~\cite{kubernetes} that configures cluster
+nodes to execute a user-defined workload.  As the workload changes, e.g., container instances are
+added or removed from the system, the configuration must change accordingly.  In a large cluster,
+computing configuration from scratch is prohibitively expensive.  Instead, modern cluster management
+systems, including Kubernetes, apply changes incrementally, only updating state effected by the
+change.
+
+As another example, program analysis frameworks like Doop~\cite{Bravenboer-oopsla09} evaluate a set
+of rules defined over the abstract syntax tree of the program.  Such an analyzer can be integrated
+into the IDE to alert the developer as soon as a potential bug is introduced in the program.  This
+requires re-evaluating the rules after every few keystrokes.  In order to achieve interactive
+performance when working with very large code bases, the re-evaluation must occur incrementally,
+preserving as much as possible intermediate results computed at earlier iterations.
+
 Incremental algorithms tend to be significantly more complex than
 their non-incremental versions.  In a nutshell, an incremental
 algorithm propagates input changes to the output via all intermediate
 steps.  This, in turn, requires (1) maintaining intermediate
 computation results for each step, and (2) implementing an incremental
 version of each operation, which, given an update to its input,
-computes an update to its output.  Given that incremental computations
-are ubiquitous throughout systems management software stacks, this
-complexity affects the development cost, feature velocity, and,
-performance of the system.
+computes an update to its output.  Incremental computations that
+operate on relational state are ubiquitous throughout systems
+management software stacks.  The complexity of these algorithms
+greatly impacts the development cost, feature velocity,
+maintainability, and the performance of the control systems.
 
 \emph{We argue that, instead of dealing with the complexity of
-  incremental computation on a case-by-case basis, control plane
+  incremental computation on a case-by-case basis,
   developers should embrace programming tools that solve the problem
-  once and for all.}  One such tool is \emph{Differential Datalog
+  once and for all.}  In this paper we present one such tool -- \emph{Differential Datalog
   (DDlog)}~\cite{ddlog} -- a programming language that automates
-incremental computation. A DDlog programmer only has to write an
-algorithm for solving the original (non-incremental) problem.  Given
+incremental computation.  A DDlog programmer only has to write a
+Datalog specification for the original (non-incremental) problem.  Given
 this description, the DDlog compiler generates an efficient
-incremental implementation.
+incremental implementation.  
 
 \subsection{Overview}
 
-DDlog is a bottom-up, incremental, in-memory, typed Datalog engine for
-writing application-integrated deductive database engines. DDlog is
-based on Frank McSherry's excellent differential dataflow
-library~\cite{differential-dataflow}.  DDlog is an open-source
-project, hosted on github~\cite{ddlog}, with a permissive MIT-license.
+DDlog is a \emph{bottom-up}, \emph{incremental}, \emph{in-memory}, \emph{typed} Datalog engine for
+writing \emph{embedded} deductive databases.
 
-\begin{description}
-\item[Bottom-up]: DDlog starts from a set of ground facts (i.e., facts
-  provided by the user) and computes all possible derived facts by
-  following Datalog rules, in a bottom-up fashion. In contrast,
-  top-down engines are optimized to answer individual user queries
-  without computing all possible facts ahead of time. For example,
-  given a Datalog program that computes pairs of connected vertices in
-  a graph, a bottom-up engine maintains the set of all such pairs. A
-  top-down engine, on the other hand, is triggered by a user query to
-  determine whether a pair of vertices is connected and handles the
-  query by searching for a derivation chain back to ground facts. The
-  bottom-up approach is preferable in applications where all derived
-  facts must be computed ahead of time and in applications where the
-  cost of initial computation is amortized across a large number of
-  queries.
+\textbf{Bottom-up:} DDlog starts from a set of ground facts (provided
+by the user) and computes all possible derived facts by following
+Datalog rules, in a bottom-up fashion.  (In contrast, top-down engines
+are optimized to answer individual user queries without computing all
+possible facts ahead of time.)  The bottom-up approach is preferable
+in applications where all derived facts must be computed ahead of time
+and in applications where the cost of initial computation is amortized
+across a large number of queries.
 
-\item[Incremental]: whenever the set of ground facts changes, DDlog
-  only performs the minimum computation necessary to compute all
-  changes in the derived facts. This has significant performance
-  benefits for many queries.
+\textbf{Incremental:} whenever the set of ground facts changes, DDlog
+only performs the minimum computation necessary to compute all changes
+in the derived facts.  This has significant performance benefits, and
+only produces output of minimum size, minimizing communication
+requirements.
 
-\item[In-memory:] DDlog stores and processes data in memory. In a
-  typical use case, a DDlog program is used in conjunction with a
-  persistent database, with database records being fed to DDlog as
-  ground facts and the derived facts computed by DDlog being written
-  back to the database.
+\textbf{In-memory:} DDlog stores and processes data in
+memory\footnote{In a typical use case, a DDlog program is used in
+  conjunction with a persistent database; database records are fed to
+  DDlog as inputs and the derived facts computed by DDlog are written
+  back to the database; DDlog does not include a storage engine.}.  At
+the moment, DDlog keeps all the data in the memory of a single
+machine.  (This may change in the future, as DDlog builds on the
+differential dataflow library~\cite{dd} that supports distributed
+computation over partitioned data).
 
-  At the moment, DDlog can only operate on databases that completely
-  fit the memory of a single machine. (This may change in the future,
-  as DDlog builds on the differential dataflow library that supports
-  distributed computation over partitioned data).
-
-\item[Typed]: Datalog in its classical textbook form it is more of a
-  mathematical formalism than a practical tool for programmers. In
-  particular, pure Datalog does not have concepts like data types,
-  arithmetics, strings or functions.  To facilitate writing of safe,
-  clear, and concise code, DDlog extends pure Datalog with:
-
-  \begin{itemize}
-    \item A powerful type system, including Booleans, unlimited
-      precision integers, bitvectors, strings, tuples, and
-      Haskell-style tagged unions (but with no recursive types).
-
-    \item The ability to store sets and vectors as first-class values.
-      
-    \item Standard integer and bitvector arithmetic.
-
-    \item A simple procedural language that allows expressing many
-      computations natively in DDlog without resorting to external
-      functions.
-
-    \item String operations, including string concatenation and
-      interpolation.
-  \end{itemize}
+\textbf{Typed:} Pure Datalog does not have concepts like data types,
+arithmetics, strings or functions.  To facilitate writing of safe,
+clear, and concise code, DDlog extends Datalog with:
+\begin{itemize}
+\item A powerful type system, including Booleans, unlimited
+  precision integers, bitvectors, strings, tuples, and
+  Haskell-style tagged unions (but without recursive types).
   
-  \item[Integrated]: while DDlog programs can be run interactively via
-    a command line interface, its primary use case is to integrate
-    with other applications that require deductive database
-    functionality. A DDlog program is compiled into a Rust library
-    that can be linked against a Rust, C/C++ or Java program (bindings
-    for other languages can be easily added). This enables good
-    performance, but somewhat limits the flexibility, as changes to
-    the relational schema or rules require re-compilation.
-\end{description}
+\item The ability to store and manipulate sets, vectors, and maps as
+  first-class values in relations, including performing aggregations.
+  
+\item Standard integer and bitvector arithmetic.
+  
+\item A simple procedural language that allows expressing many
+  computations over these datatypes in DDlog without resorting to
+  external functions.
+  
+\item String operations, including string concatenation and
+  interpolation.
+\end{itemize}
+
+\textbf{Embedded:} while DDlog programs can be run interactively via a
+command line interface, the primary use case is to run DDlog in the
+same address space with an application that requires deductive
+database functionality.  A DDlog program is compiled into a Rust
+library that can be linked against a Rust, C/C++ or Java program
+(bindings for other languages can be easily added).
+
+DDlog is an open-source project, hosted on github~\cite{ddlog}, with a permissive MIT-license.

@@ -1,11 +1,11 @@
-CLASS = ddlogapi/DDLogAPI.class ddlogapi/DDLogCommand.class ddlogapi/DDLogRecord.class
+CLASS = ddlogapi/DDlogAPI.class ddlogapi/DDlogCommand.class ddlogapi/DDlogRecord.class
 
 all: $(CLASS)
 
-%.class: %.java ddlogapi_DDLogAPI.h
+%.class: %.java ddlogapi_DDlogAPI.h
 	javac $<
 
-ddlogapi_DDLogAPI.h: ddlogapi/DDLogAPI.java
+ddlogapi_DDlogAPI.h: ddlogapi/DDlogAPI.java
 	javac -h . $<
 
 clean:

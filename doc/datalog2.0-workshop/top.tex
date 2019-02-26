@@ -1,10 +1,15 @@
 \documentclass{svproc}
 
+\usepackage{float}
+\usepackage[T1]{fontenc}
 \usepackage{url}
 \usepackage{graphicx}
 \usepackage{wrapfig}
 \usepackage{listings}
 \usepackage{color}
+
+\renewcommand{\floatpagefraction}{.95}
+\renewcommand{\topfraction}{.95}
 
 \definecolor{blue}{rgb}{0.13,0.13,1}
 \definecolor{green}{rgb}{0,0.5,0}
@@ -20,7 +25,9 @@
 \lstdefinelanguage{ddlog}{
   language=Java, % we base it on Java, just for comments
   morekeywords={input, output, typedef, relation, typedef, bool,
-    string, bit},
+    string, bit, extern, function, var, for, match, skip, in,
+    Aggregate, FlatMap},
+  deletestring=[b]{'}
 }
 
 \newcommand{\LR}[1]{\textbf{\color{red}LR: #1}}
@@ -39,26 +46,40 @@
 
 \section{Abstract}
 
-In distributed systems, the control plane is responsible for
-reconfiguring the system in response to external events.  Due to
-performance and scalability requirements, it is impractical to
-recompute the entire configuration on every update.  Instead,
-developers employ \emph{incremental algorithms} that update their
-outputs in response to input changes.  Such algorithms are notoriously
-hard to develop, leading to complex and inflexible implementations.
+%In distributed systems, the control plane is responsible for
+%reconfiguring the system in response to external events.  Due to
+%performance and scalability requirements, it is impractical to
+%recompute the entire configuration on every update.  Instead,
+%developers employ \emph{incremental algorithms} that update their
+%outputs in response to input changes.  Such algorithms are notoriously
+%hard to develop, leading to complex and inflexible implementations.
+%(This is the classic ``incremental view update''
+%problem~\cite{Gupta-sigmod93}).
 
-To address this complexity, we have developed Differential Datalog
-(DDlog), a dialect of Datalog that automates incremental view updates.
-A DDlog programmer only has to write an algorithm for solving the
+
+Many real-world applications of deductive databases require
+incrementally updating output tables in response to changes to input
+tables.
+To address this need, we have developed Differential Datalog
+(DDlog), a dialect of Datalog that automates incremental computation.
+A DDlog programmer only has to write a specification for the
 original (non-incremental) problem.  Given this description, the DDlog
 compiler generates an efficient incremental implementation.  The DDlog
-runtime automatically maintains the indexes required for efficiently
-computing view updates.
+runtime automatically maintains indexes required to efficiently
+compute output updates.
+
+The DDlog language is targeted for system builders.  In consequence,
+the language emphasizes usability, by providing a rich type system,
+a powerful expression language, including string manipulation, arithmetics,
+and control flow constructs.  Finally, DDlog offers an
+alternative syntax for writing Datalog rules, which has a more
+imperative flavor.
 
 \input{intro}
 \input{ddlog}
 \input{system}
 \input{applications}
+\input{related}
 \input{conclusions}
 
 \bibliographystyle{abbrv}

@@ -60,13 +60,6 @@ relIsRecursive d rel =
     nd = fst $ fromJust $ find ((== rel) . snd) $ G.labNodes g
     scc = fromJust $ find (elem nd) $ G.scc g
     
-exprContainsPHolders :: Expr -> Bool
-exprContainsPHolders e =
-    exprCollect (\case
-                  EPHolder _ -> True
-                  _          -> False)
-                (||) e
-
 -- | Relation only contains records with weight 1 by construction and does not require
 -- distinct() or distinct_total() to convert it to that form.
 relIsDistinctByConstruction :: DatalogProgram -> Relation -> Bool
