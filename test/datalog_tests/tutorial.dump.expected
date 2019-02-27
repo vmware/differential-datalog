@@ -37,11 +37,11 @@ NetHostString:
 NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
 NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 Address:
-Address{IPAddr{168430090}}
-Address{IPAddr{2139062143}}
-Address{IPAddr{3772834016}}
+Address{IPAddr{168430181}}
+Address{IPAddr{2130706433}}
+Address{IPAddr{3758096385}}
 MCastAddress:
-MCastAddress{IPAddr{3772834016}}
+MCastAddress{IPAddr{3758096385}}
 EndpointString
 EndpointString{"170.187.204.221:20"}
 EndpointString{"170.187.204.221:443"}

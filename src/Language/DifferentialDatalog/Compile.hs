@@ -1664,7 +1664,7 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
                     -> case sel3 exprRight of
                             EString _ s -> "string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
                             _           -> "string_append(" <> e1 <> "," <+> ref exprRight <> ")"
-             Concat -> mkConcat (e1, typeWidth t1) (e1, typeWidth t2)
+             Concat -> mkConcat (e1, typeWidth t1) (e2, typeWidth t2)
              Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
              op     -> parens $ e1 <+> mkBinOp op <+> e2
     -- Truncate bitvector result in case the type used to represent it
