@@ -1619,8 +1619,7 @@ mkArrangement d rel (ArrangementSet pattern distinct) = do
 -- arrangement.
 mkArrangementKey :: DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
 mkArrangementKey d rel pattern = do
-    -- extract variables with types from pattern, in the order
-    -- consistent with that returned by 'rename'.
+    -- extract variables with types from pattern.
     let getvars :: Type -> Expr -> [Field]
         getvars t (E EStruct{..}) =
             concatMap (\(e,t) -> getvars t e)
@@ -1635,7 +1634,8 @@ mkArrangementKey d rel pattern = do
             where TOpaque _ rEF_TYPE [t'] = typ' d t
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
-    patvars <- mkVarsTupleValue d $ getvars (relType rel) pattern
+    -- order variables alphabetically: '_0', '_1', ...
+    patvars <- mkVarsTupleValue d $ sortBy (\f1 f2 -> compare (name f1) (name f2)) $ getvars (relType rel) pattern
     constructor <- mkValConstructorName d $ relType rel
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
