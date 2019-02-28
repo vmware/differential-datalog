@@ -23,7 +23,7 @@ SOFTWARE.
 
 {-# LANGUAGE TupleSections, LambdaCase, RecordWildCards #-}
 
-{- | 
+{- |
 Module     : DatalogProgram
 Description: Helper functions for manipulating 'DatalogProgram'.
 -}
@@ -37,14 +37,19 @@ module Language.DifferentialDatalog.DatalogProgram (
     progAtomMapM,
     progAtomMap,
     DepGraph,
-    progDependencyGraph
-) 
+    progDependencyGraph,
+    depGraphToDot
+)
 where
 
-import qualified Data.Graph.Inductive           as G
-import qualified Data.Map as M
+import qualified Data.Graph.Inductive              as G
+import qualified Data.Map                          as M
 import Data.Maybe
 import Control.Monad.Identity
+import qualified Data.Text.Lazy                    as T
+import qualified Data.GraphViz                     as GV
+import qualified Data.GraphViz.Attributes.Complete as GV
+import qualified Data.GraphViz.Printing            as GV
 
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
@@ -63,11 +68,11 @@ progExprMapCtxM d fun = do
                              return f{funcDef = e})
                    $ progFunctions d
     rules' <- mapM (\r -> do lhs <- mapIdxM (\a i -> atomExprMapCtxM d fun (CtxRuleL r i) a) $ ruleLHS r
-                             rhs <- mapIdxM (\x i -> rhsExprMapCtxM d fun r i x) $ ruleRHS r 
+                             rhs <- mapIdxM (\x i -> rhsExprMapCtxM d fun r i x) $ ruleRHS r
                              return r{ruleLHS = lhs, ruleRHS = rhs})
                    $ progRules d
     return d{ progFunctions = funcs'
-            , progRules     = rules'}    
+            , progRules     = rules'}
 
 atomExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
 atomExprMapCtxM d fun ctx a = do
@@ -161,3 +166,11 @@ progDependencyGraph DatalogProgram{..} = G.insEdges edges g0
                                              ruleRHS)
                                   ruleLHS)
                       progRules
+
+depGraphToDot :: DepGraph -> String
+depGraphToDot gr =
+  show $ GV.runDotCode $ GV.toDot $ GV.graphToDot params gr
+  where
+    params = GV.nonClusteredParams {
+        GV.fmtNode = \(_, l) -> [GV.Label $ GV.StrLabel $ T.pack l]
+    }
