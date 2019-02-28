@@ -391,12 +391,12 @@ mkConstructorName tname t c =
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
 compile d specname rs_code toml_code dir crate_types = do
-    -- dump dependency graph to file
-    writeFile (dir </> rustProjectDir specname </> specname <.> "dot")
-              $ depGraphToDot $ progDependencyGraph d
-    let lib = compileLib d specname rs_code
     -- Create dir if it does not exist.
-    createDirectoryIfMissing True dir
+    createDirectoryIfMissing True (dir </> rustProjectDir specname)
+    -- dump dependency graph to file
+    updateFile (dir </> rustProjectDir specname </> specname <.> "dot")
+               (depGraphToDot $ progDependencyGraph d)
+    let lib = compileLib d specname rs_code
     -- Substitute specname template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
