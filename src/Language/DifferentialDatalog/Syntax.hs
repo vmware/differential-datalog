@@ -57,6 +57,9 @@ module Language.DifferentialDatalog.Syntax (
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
+        rhsIsCondition,
+        rhsIsFilterCondition,
+        rhsIsAggregate,
         Atom(..),
         Rule(..),
         ExprNode(..),
@@ -103,7 +106,8 @@ module Language.DifferentialDatalog.Syntax (
         progAddRules,
         progAddTypedef,
         ECtx(..),
-        ctxParent)
+        ctxParent,
+        ctxRuleR)
 where
 
 import Text.PrettyPrint
@@ -437,6 +441,19 @@ instance Show RuleRHS where
 rhsIsLiteral :: RuleRHS -> Bool
 rhsIsLiteral RHSLiteral{} = True
 rhsIsLiteral _            = False
+
+rhsIsAggregate :: RuleRHS -> Bool
+rhsIsAggregate RHSAggregate{} = True
+rhsIsAggregate _              = False
+
+rhsIsCondition :: RuleRHS -> Bool
+rhsIsCondition RHSCondition{} = True
+rhsIsCondition _              = False
+
+rhsIsFilterCondition :: RuleRHS -> Bool
+rhsIsFilterCondition (RHSCondition (E ESet{..})) = False
+rhsIsFilterCondition (RHSCondition _)            = True
+rhsIsFilterCondition _                           = False
 
 data Rule = Rule { rulePos :: Pos
                  , ruleLHS :: [Atom]
@@ -886,3 +903,12 @@ ctxParent CtxRuleRAggregate{} = CtxTop
 ctxParent CtxKey{}            = CtxTop
 ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx
+
+-- Returns context for rht 'i'th clause of a rule
+ctxRuleR :: Rule -> Int -> ECtx
+ctxRuleR rl i =
+    case ruleRHS rl !! i of
+         RHSLiteral{}   -> CtxRuleRAtom rl i
+         RHSCondition{} -> CtxRuleRCond rl i
+         RHSAggregate{} -> CtxRuleRAggregate rl i
+         RHSFlatMap{}   -> CtxRuleRFlatMap rl i
