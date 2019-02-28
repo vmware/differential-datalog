@@ -11,6 +11,7 @@ import java.math.BigInteger;
 
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
+import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
 
 public class SpanTest {
     public static abstract class ParentChild {
@@ -103,7 +104,8 @@ public class SpanTest {
 
         SpanParser() {
             if (localTables) {
-                this.api = new DDlogAPI(1, r -> this.onCommit(r));
+                //this.api = new DDlogAPI(1, r -> this.onCommit(r));
+                this.api = new DDlogAPI(1, r -> this.onCommitDirect(r));
                 this.ruleSpanTableId = this.api.getTableId("RuleSpan");
                 this.containerSpanTableId = this.api.getTableId("ContainerSpan");
                 this.ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
@@ -139,6 +141,32 @@ public class SpanTest {
             } catch (Exception ex) {
                 ex.printStackTrace();
                 throw new RuntimeException(ex);
+            }
+        }
+
+        // Alternative implementation of onCommit which does not use reflection.
+        void onCommitDirect(DDlogCommand command) {
+            DDlogRecord record = command.value;
+            if (command.table == this.ruleSpanTableId) {
+                DDlogRecord entity = record.getStructField(0);
+                DDlogRecord tn = record.getStructField(1);
+                RuleSpan span = new RuleSpan(entity.getU128(), tn.getU128());
+                if (command.kind == DDlogCommand.Kind.Insert)
+                    this.ruleSpan.add(span);
+                else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                    this.ruleSpan.remove(span);
+                else
+                    throw new RuntimeException("Unexpected command " + this.command);
+            } else if (command.table == this.containerSpanTableId) {
+                DDlogRecord entity = record.getStructField(0);
+                DDlogRecord tn = record.getStructField(1);
+                ContainerSpan span = new ContainerSpan(entity.getU128(), tn.getU128());
+                if (command.kind == DDlogCommand.Kind.Insert)
+                    this.containerSpan.add(span);
+                else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                    this.containerSpan.remove(span);
+                else
+                    throw new RuntimeException("Unexpected command " + this.command);
             }
         }
 
@@ -201,6 +229,35 @@ public class SpanTest {
             return new DDlogCommand(kind, id, o);
         }
 
+        // Alternative implementation of createCommand which does not
+        // use reflection and is more efficient.
+        private DDlogCommand createCommandDirect(String commang, String arguments) {
+            Matcher m = argsPattern.matcher(arguments);
+            if (!m.find())
+                throw new RuntimeException("Cannot parse arguments for " + command);
+            String relation = m.group(1);
+            int id = this.api.getTableId(relation);
+            String a = m.group(2);
+            BigInteger[] args = cleanAndSplit(a);
+            DDlogRecord o;
+            if (relation.equals("Container") || relation.equals("FWRule")) {
+                checkSize(args, 1);
+                DDlogRecord s = new DDlogRecord(args[0]);
+                DDlogRecord sa[] = { s };
+                o = DDlogRecord.makeStruct(relation, sa);
+            } else if (relation.equals("Dependency") || relation.equals("Source") || relation.equals("Binding")) {
+                checkSize(args, 2);
+                DDlogRecord s0 = new DDlogRecord(args[0]);
+                DDlogRecord s1 = new DDlogRecord(args[1]);
+                DDlogRecord sa[] = { s0, s1 };
+                o = DDlogRecord.makeStruct(relation, sa);
+            } else {
+                throw new RuntimeException("Unexpected class: " + relation);
+            }
+            DDlogCommand.Kind kind = command.equals("insert") ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            return new DDlogCommand(kind, id, o);
+        }
+
         void parseLine(String line)
                 throws IllegalAccessException, InstantiationException {
             Matcher m = commandPattern.matcher(line);
@@ -229,7 +286,7 @@ public class SpanTest {
                     break;
                 case "insert":
                 case "delete":
-                    DDlogCommand c = this.createCommand(command, rest);
+                    DDlogCommand c = this.createCommandDirect(command, rest);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
                         DDlogCommand[] ca = this.commands.toArray(new DDlogCommand[0]);
