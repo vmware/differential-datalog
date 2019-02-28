@@ -35,6 +35,7 @@ module Language.DifferentialDatalog.Statement (
     convertStatement
 ) where
 
+import Prelude hiding((<>))
 import Data.Maybe
 import Text.PrettyPrint
 

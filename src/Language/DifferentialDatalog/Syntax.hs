@@ -110,6 +110,7 @@ module Language.DifferentialDatalog.Syntax (
         ctxRuleR)
 where
 
+import Prelude hiding((<>))
 import Text.PrettyPrint
 import Data.Maybe
 import Data.List

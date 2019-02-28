@@ -31,6 +31,7 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 module Language.DifferentialDatalog.Module(
     parseDatalogProgram) where
 
+import Prelude hiding((<>))
 import Control.Monad.State.Lazy
 import Control.Monad.Except
 import qualified Data.Map as M

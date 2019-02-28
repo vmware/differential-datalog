@@ -38,6 +38,7 @@ module Language.DifferentialDatalog.Compile (
     rname
 ) where
 
+import Prelude hiding((<>))
 import Control.Monad.State
 import Text.PrettyPrint
 import Data.Tuple
@@ -390,6 +391,9 @@ mkConstructorName tname t c =
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
 compile d specname rs_code toml_code dir crate_types = do
+    -- dump dependency graph to file
+    writeFile (dir </> rustProjectDir specname </> specname <.> "dot")
+              $ depGraphToDot $ progDependencyGraph d
     let lib = compileLib d specname rs_code
     -- Create dir if it does not exist.
     createDirectoryIfMissing True dir
