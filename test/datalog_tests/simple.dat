@@ -389,3 +389,20 @@ dump NewAllocationOpt;
 
 echo Adjusted;
 dump Adjusted;
+
+start;
+
+insert XY(.x = 1, .y = 10),
+insert XY(.x = 2, .y = 20),
+insert XY(.x = 3, .y = 30),
+insert XY(.x = 4, .y = 40),
+insert YZX(.y = 10, .z = 100, .x = 1),
+insert YZX(.y = 20, .z = 200, .x = 2),
+insert YZX(.y = 30, .z = 300, .x = 3),
+insert YZX(.y = 40, .z = 400, .x = 4),
+insert YZX(.y = 50, .z = 500, .x = 5);
+
+commit;
+
+echo YX;
+dump YX;

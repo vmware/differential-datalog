@@ -69,7 +69,10 @@ typedef WithKey = WithKey{key: bit<128>, val: string}
 typedef WithKeyDbg = WithKeyDbg{key: bit<128>, val: string}
 typedef X = X{field: bigint}
 typedef XX = XX{b: bigint, c: R3, d: R1}
+typedef XY = XY{x: bigint, y: bigint}
 typedef Y = Y{b: bigint, e: string}
+typedef YX = YX{y: bigint, x: bigint}
+typedef YZX = YZX{y: bigint, z: bigint, x: bigint}
 typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
@@ -422,7 +425,10 @@ input relation WithKey [WithKey] primary key (x) x.key
 output relation WithKeyDbg [WithKeyDbg]
 input relation X [X]
 input relation XX [XX]
+input relation XY [XY]
 input relation Y [Y]
+output relation YX [YX]
+input relation YZX [YZX]
 output relation Z [Z]
 output relation ZZ [ZZ]
 Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (x != y).
@@ -570,3 +576,4 @@ NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .t
                                                                                                                                                                   };
                                                                                                                                                                   allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val).
 Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val).
+YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).

@@ -290,3 +290,8 @@ Adjusted{18,std_Vec { x: [("x", 4294967293), ("z", 4294967295)] }}
 Adjusted{19,std_Vec { x: [("x", 0), ("z", 2)] }}
 Adjusted{20,std_Vec { x: [("x", 0), ("z", 2)] }}
 Adjusted{21,std_Vec { x: [("x", 0), ("z", 2)] }}
+YX
+YX{10,1}
+YX{20,2}
+YX{30,3}
+YX{40,4}

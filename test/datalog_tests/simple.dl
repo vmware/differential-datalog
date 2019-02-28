@@ -756,3 +756,12 @@ output relation Adjusted(id: bigint, alloc: Vec<(string, bit<32>)>)
 Adjusted(id, alloc) :-
     Alloc(id, allocated, toallocate, min_val, max_val),
     var alloc = adjust_allocation(allocated, toallocate, min_val, max_val).
+
+/* Swap variable order between literals in a rule. */
+
+input relation XY(x: bigint, y: bigint)
+input relation YZX(y: bigint, z: bigint, x: bigint)
+
+output relation YX(y: bigint, x: bigint)
+
+YX(y,x)  :- XY(x,y), YZX(y,z,x).
