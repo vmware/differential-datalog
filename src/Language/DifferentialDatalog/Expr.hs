@@ -1,5 +1,4 @@
 {-
- -
 Copyright (c) 2018 VMware, Inc.
 SPDX-License-Identifier: MIT
 
@@ -48,6 +47,7 @@ module Language.DifferentialDatalog.Expr (
     exprContainsPHolders,
     exprIsDeconstruct,
     exprIsVarOrFieldLVal,
+    exprIsVarOrField,
     exprTypeMapM
     --isLRel
     --exprSplitLHS,
@@ -326,6 +326,16 @@ exprIsVarOrFieldLVal' d ctx (EVar _ v) = isLVar d ctx v
 exprIsVarOrFieldLVal' _ _   (EField _ e _)   = e
 exprIsVarOrFieldLVal' _ _   (ETyped _ e _)   = e
 exprIsVarOrFieldLVal' _ _   _                = False
+
+-- | True if 'e' is a variable or field expression
+exprIsVarOrField :: Expr -> Bool
+exprIsVarOrField e = exprFold exprIsVarOrField' e
+
+exprIsVarOrField' :: ExprNode Bool -> Bool
+exprIsVarOrField' (EVar _ v)       = True
+exprIsVarOrField' (EField _ e _)   = e
+exprIsVarOrField' (ETyped _ e _)   = e
+exprIsVarOrField' _                = False
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
