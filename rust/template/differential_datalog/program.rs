@@ -196,7 +196,7 @@ impl Dep
 /// Transformations, such as maps, flatmaps, filters, joins, etc. are the building blocks of
 /// DDlog rules.  Different kinds of transformations can be applied only to flat collections,
 /// only to arranged collections, or both.  We therefore use separate types to represent
-/// collection and arrangement transormations.
+/// collection and arrangement transformations.
 ///
 /// Note that differential sometimes allows the same kind of transformation to be applied to both
 /// collections and arrangements; however the former is implemented on top of the latter and incurs
