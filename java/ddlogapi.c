@@ -95,17 +95,17 @@ bool commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* r
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
-    JNIEnv *env, jobject obj, jint workers, jstring callback) {
+    JNIEnv *env, jobject obj, jboolean storeData, jint workers, jstring callback) {
     if (workers <= 0)
         workers = 1;
 
     if (callback == NULL)
-        return (jlong)ddlog_run((unsigned)workers, true, NULL, 0, NULL);
+        return (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, NULL);
 
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)Z");
     if (cbinfo == NULL)
         return 0;
-    return (jlong)ddlog_run((unsigned)workers, true, commit_callback, (uintptr_t)cbinfo, NULL);
+    return (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(

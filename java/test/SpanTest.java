@@ -119,7 +119,10 @@ public class SpanTest {
             this.commands = new ArrayList<DDlogCommand>();
         }
 
-        void onCommit(DDlogCommand command) {
+        // Note that this method is synchronized, since it can be invoked concurrently
+        // on multiple background threads.  Alternatively, we could use concurrent
+        // collections for ruleSpan and containerSpan.
+        synchronized void onCommit(DDlogCommand command) {
             try {
                 if (command.table == this.ruleSpanTableId) {
                     RuleSpan span = command.getValue(RuleSpan.class);

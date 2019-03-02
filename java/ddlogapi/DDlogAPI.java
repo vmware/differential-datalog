@@ -15,7 +15,7 @@ public class DDlogAPI {
     /**
      * The C ddlog API
      */
-    native long ddlog_run(int workers, String callbackName);
+    native long ddlog_run(boolean storeData, int workers, String callbackName);
     native int dump_table(long hprog, int table, String callbackMethod);
     static native int  ddlog_stop(long hprog);
     static native int ddlog_transaction_start(long hprog);
@@ -79,11 +79,27 @@ public class DDlogAPI {
     // This callback can be invoked simultaneously from multiple threads.
     private final Consumer<DDlogCommand> commitCallback;
 
-    public DDlogAPI(int workers, Consumer<DDlogCommand> callback) {
+    /**
+     * Create an API to access the DDlog program.
+     * @param workers   number of threads the DDlog program can use
+     * @param storeData If true the DDlog background program will store a copy
+     *                  of all tables, which can be obtained with "dump".
+     * @param callback  A method that is invoked for every tuple added or deleted to
+     *                  an output table.  The command argument indicates the table,
+     *                  whether it is deletion or insertion, and the actual value
+     *                  that is being inserted or deleted.  This callback is invoked
+     *                  many times, on potentially different threads, when the "commit"
+     *                  API function is called.
+     */
+    public DDlogAPI(int workers, Consumer<DDlogCommand> callback, boolean storeData) {
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
-        this.hprog = this.ddlog_run(workers, onCommit);
+        this.hprog = this.ddlog_run(storeData, workers, onCommit);
+    }
+
+    public DDlogAPI(int workers, Consumer<DDlogCommand> callback) {
+        this(workers, callback, callback == null);
     }
 
     /// Callback invoked from commit.
@@ -139,6 +155,11 @@ public class DDlogAPI {
         return true;
     }
 
+    /**
+     * Dump the data in the specified table.
+     * For this to work the DDlogAPI must have been created with a
+     * storeData parameter set to true.
+     */
     public int dump(String table) {
         System.out.println(table + ":");
         int id = this.getTableId(table);
