@@ -346,7 +346,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
 }
 
 fn uuid_from_u128(i: u128) -> String {
-    uuid::Uuid::from_u128(i).to_hyphenated().to_string()
+    uuid::Uuid::from_u128(i.to_be()).to_hyphenated().to_string()
 }
 
 fn uuid_from_int(i: &BigInt) -> Result<String, String> {
