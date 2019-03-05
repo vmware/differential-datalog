@@ -6,7 +6,7 @@ use std::collections::{btree_map, BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::borrow::Cow;
 use std::ptr::{null_mut, null};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use libc::size_t;
 use std::fmt;
@@ -29,6 +29,65 @@ pub enum Record {
     Array(CollectionKind, Vec<Record>),
     PosStruct(Name, Vec<Record>),
     NamedStruct(Name, Vec<(Name, Record)>)
+}
+
+impl fmt::Display for Record {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Record::Bool(true)          => write!(f, "true"),
+            Record::Bool(false)         => write!(f, "false"),
+            Record::Int(i)              => i.fmt(f),
+            Record::String(s)           => write!(f, "{:?}", s),
+            Record::Tuple(recs)         => {
+                write!(f, "(")?;
+                let len = recs.len();
+                for (i, r) in recs.iter().enumerate() {
+                    if i == len - 1 {
+                        write!(f, "{}", r)?;
+                    } else {
+                        write!(f, "{}, ", r)?;
+                    }
+                };
+                write!(f, ")")
+            },
+            Record::Array(_, recs) => {
+                write!(f, "[")?;
+                let len = recs.len();
+                for (i, r) in recs.iter().enumerate() {
+                    if i == len - 1 {
+                        write!(f, "{}", r)?;
+                    } else {
+                        write!(f, "{}, ", r)?;
+                    }
+                };
+                write!(f, "]")
+            },
+            Record::PosStruct(n, recs) => {
+                write!(f, "{}{{", n)?;
+                let len = recs.len();
+                for (i, r) in recs.iter().enumerate() {
+                    if i == len - 1 {
+                        write!(f, "{}", r)?;
+                    } else {
+                        write!(f, "{}, ", r)?;
+                    }
+                };
+                write!(f, "}}")
+            },
+            Record::NamedStruct(n, recs) => {
+                write!(f, "{}{{", n)?;
+                let len = recs.len();
+                for (i, (fname, v)) in recs.iter().enumerate() {
+                    if i == len - 1 {
+                        write!(f, "{}: {}", fname, v)?;
+                    } else {
+                        write!(f, "{}: {}, ", fname, v)?;
+                    }
+                };
+                write!(f, "}}")
+            }
+        }
+    }
 }
 
 #[derive(Debug,PartialEq,Eq,Clone)]
@@ -69,6 +128,15 @@ pub enum UpdCmd {
 /*
  * C API to Record and UpdCmd
  */
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_dump_record(rec: *const Record) -> *mut c_char
+{
+    match rec.as_ref() {
+        Some(rec) => CString::new(format!("{}", rec)).unwrap().into_raw(),
+        _ => null_mut()
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free(rec: *mut Record)

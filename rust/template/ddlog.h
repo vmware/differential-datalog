@@ -327,13 +327,23 @@ extern char* ddlog_profile(ddlog_prog prog);
  */
 
 /*
+ * Dump record into a string for debug printing.
+ *
+ * Returns `NULL` on error.
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ */
+extern char* ddlog_dump_record(const ddlog_record *rec);
+
+/*
  * Deallocate an owned record.
  */
 extern void ddlog_free(ddlog_record *rec);
 
 /*
  * Deallocate a string returned by DDlog
- * (currently only applicable to the string returned by ddlog_profile()).
+ * (currently only applicable to the string returned by `ddlog_profile()` and
+ * `ddlog_dump_record()`).
  */
 extern void ddlog_string_free(char *s);
 
