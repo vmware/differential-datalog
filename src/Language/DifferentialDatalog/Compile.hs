@@ -221,9 +221,33 @@ lval (x, ELVal, _) = x
 lval (x, EReference, _)  = parens $ "*" <> x
 lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
 
+-- The size of the Value type depends on its largest variant.  To avoid wasting memory by padding
+-- everything to the longest type, we place the actual payload in a Box, except when the size of the
+-- payload is <= threshold, in which case it is stored directly in 'Value'
+
+-- Threshold value depends on the smallest granularity at which malloc allocates memory (including
+-- internal fragmentation and malloc metadata) and the number of records of each type allocated by
+-- the program.
+-- FIXME: this value is hard to get right statically.  Make this a configurable parameter
+bOX_THRESHOLD:: Int
+bOX_THRESHOLD = 16
+
+-- Type width is <= pointer size and therefore does not need to be boxed
+typeIsSmall :: DatalogProgram -> Type -> Bool
+typeIsSmall d t = (typeSize d t) <= bOX_THRESHOLD
+
 -- put x in a box
-box :: Doc -> Doc
-box x = "boxed::Box::new(" <> x <> ")"
+box :: DatalogProgram -> Type -> Doc -> Doc
+box d t x | typeIsSmall d t = x
+          | otherwise       = "boxed::Box::new(" <> x <> ")"
+
+boxDeref :: DatalogProgram -> Type -> Doc -> Doc
+boxDeref d t x | typeIsSmall d t = x
+               | otherwise         = "*" <> x
+
+mkBoxType :: (WithType a) => DatalogProgram -> a -> Doc
+mkBoxType d x | typeIsSmall d (typ x) = mkType x
+              | otherwise             = "boxed::Box<" <> mkType x <> ">"
 
 -- Compiled relation: Rust code for the 'struct Relation' plus grounds facts for this relation.
 data ProgRel = ProgRel {
@@ -708,14 +732,14 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                  $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box $ "<" <> mkType t <> ">::from_record(rec)?)") $$
+        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)") $$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
@@ -815,21 +839,21 @@ mkValType d types grp_types =
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
     decl_mutator_entries = commaSep $ map (\t -> consname t <> "(" <> mkType t <> ")") $ S.toList types
     mkValCons :: Type -> Doc
-    mkValCons t = consname t <> (parens $ mkBoxType t)
-    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box "()")
+    mkValCons t = consname t <> (parens $ mkBoxType d t)
+    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
     mkgrptype t =
-        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, isize)] {"                     $$
-        "    fn size(&self) -> u64 {"                                                       $$
-        "        self.len() as u64"                                                         $$
-        "    }"                                                                             $$
-        "    fn ith(&self, i:u64) ->" <+> mkType t <+> "{"                                  $$
-        "        match self[i as usize].0 {"                                                $$
-        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => (**x).clone(),")        $$
-        "            _ => panic!(\"unexpected constructor\")"                               $$
-        "        }"                                                                         $$
-        "    }"                                                                             $$
+        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, isize)] {"                                         $$
+        "    fn size(&self) -> u64 {"                                                                           $$
+        "        self.len() as u64"                                                                             $$
+        "    }"                                                                                                 $$
+        "    fn ith(&self, i:u64) ->" <+> mkType t <+> "{"                                                      $$
+        "        match self[i as usize].0 {"                                                                    $$
+        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => (" <> boxDeref d t "*x" <> ").clone(),")    $$
+        "            _ => panic!(\"unexpected constructor\")"                                                   $$
+        "        }"                                                                                             $$
+        "    }"                                                                                                 $$
         "}"
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
@@ -1177,14 +1201,15 @@ mkAggregate d prefix rl idx vs v fname e = do
 openAtom :: DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> CompilerMonad Doc
 openAtom d var rl idx Atom{..} on_error = do
     let rel = getRelation d atomRelation
-    constructor <- mkValConstructorName d $ relType rel
+    let t = relType rel
+    constructor <- mkValConstructorName d t
     let varnames = map pp $ atomVars atomVal
         vars = tuple varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
     return $
         "let" <+> vars <+> "= match " <> var <> "{"                                    $$
         "    " <> constructor <> parens ("ref" <+> bOX_VAR) <+> "=> {"                 $$
-        "        match **" <> bOX_VAR <+> "{"                                          $$
+        "        match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                      $$
         (nest' $ nest' mtch)                                                           $$
         "        }"                                                                    $$
         "    },"                                                                       $$
@@ -1194,14 +1219,15 @@ openAtom d var rl idx Atom{..} on_error = do
 -- Generate Rust code to open up tuples and bring variables into scope.
 openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vs = do
-    cons <- mkValConstructorName d $ tTuple $ map typ vs
+    let t = tTuple $ map typ vs
+    cons <- mkValConstructorName d t
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     let vars = tuple $ map (pp . name) vs
     -- TODO: use unreachable() instead of panic!()
     return $
         "let" <+> vars <+> "= match" <+> var <+> "{"                                                    $$
         "    " <> cons <> parens ("ref" <+> bOX_VAR) <+> "=> {"                                         $$
-        "        match **" <> bOX_VAR <+> "{"                                                           $$
+        "        match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                                       $$
         "            " <> pattern <+> "=>" <+> vars <> ","                                              $$
         "            _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")," $$
         "        }"                                                                                     $$
@@ -1237,23 +1263,27 @@ mkValConstructorName' d t =
 
 mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue d ctx e = do
-    constructor <- mkValConstructorName d $ exprType d ctx e
-    return $ constructor <> (parens $ box $ mkExpr d ctx e EVal)
+    let t = exprType d ctx e
+    constructor <- mkValConstructorName d t
+    return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal)
 
 mkTupleValue :: DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
 mkTupleValue d es = do
-    constructor <- mkValConstructorName d $ tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
-    return $ constructor <> (parens $ box $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
+    let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
+    constructor <- mkValConstructorName d t
+    return $ constructor <> (parens $ box d t $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
-    constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ box $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
+    let t = tTuple $ map typ vs
+    constructor <- mkValConstructorName d t
+    return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
 mkVarsTuple :: DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTuple d vs = do
-    constructor <- mkValConstructorName d $ tTuple $ map typ vs
-    return $ constructor <> (parens $ box $ tupleStruct $ map (pp . name) vs)
+    let t = tTuple $ map typ vs
+    constructor <- mkValConstructorName d t
+    return $ constructor <> (parens $ box d t $ tupleStruct $ map (pp . name) vs)
 
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
@@ -1634,14 +1664,15 @@ mkArrangementKey d rel pattern = do
             where TOpaque _ rEF_TYPE [t'] = typ' d t
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
+    let t = relType rel
     -- order variables alphabetically: '_0', '_1', ...
-    patvars <- mkVarsTupleValue d $ sortBy (\f1 f2 -> compare (name f1) (name f2)) $ getvars (relType rel) pattern
-    constructor <- mkValConstructorName d $ relType rel
+    patvars <- mkVarsTupleValue d $ sortBy (\f1 f2 -> compare (name f1) (name f2)) $ getvars t pattern
+    constructor <- mkValConstructorName d t
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
     return $ braces' $
              "if let" <+> constructor <> parens bOX_VAR <+> "=" <+> vALUE_VAR <+> "{" $$
-             "    match" <+> "*" <> bOX_VAR <+> "{"                                   $$
+             "    match" <+> boxDeref d t bOX_VAR <+> "{"                             $$
              nest' mtch                                                               $$
              "    }"                                                                  $$
              "} else { None }"
@@ -1910,9 +1941,6 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
                  EInt{} -> True
                  _      -> False
 
-mkBoxType :: (WithType a) => a -> Doc
-mkBoxType x = "boxed::Box<" <> mkType x <> ">"
-
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' $ typ x
 
@@ -1942,6 +1970,71 @@ mkType' TOpaque{..}                = rname typeName <>
                                         else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
 mkType' TVar{..}                   = pp tvarName
 mkType' t                          = error $ "Compile.mkType' " ++ show t
+
+-- Estimate size of the generated Rust type.  The resulting estimate is _not_ guaranteed to
+-- be equal to 'size_of::<T>()' in Rust.
+
+typeSize :: DatalogProgram -> Type -> Int
+typeSize d t = typeSize' d $ typ' d t
+
+typeSize' :: DatalogProgram -> Type -> Int
+typeSize' _ TBool{}    = 1
+typeSize' _ TInt{}     = 32
+typeSize' _ TString{}  = 24
+typeSize' _ TBit{..} | typeWidth <= 8   = 1
+                     | typeWidth <= 16  = 2
+                     | typeWidth <= 32  = 4
+                     | typeWidth <= 64  = 8
+                     | typeWidth <= 128 = 16
+                     | otherwise        = 32
+typeSize' d (TStruct _ [cons]) = consSize d $ consArgs cons
+typeSize' d (TStruct _ cs) =
+    tag_size + (maximum $ 0 : map (consSize d . consArgs) cs)
+    where
+    tag_align = maximum $ 1 : map (consAlignment d . consArgs) cs
+    tag_size = pad 4 tag_align
+typeSize' d (TTuple _ as) = tupleSize d as
+typeSize' _ TOpaque{}     = 0xffffffff -- be conservative
+typeSize' _ t             = error $ "Compiler.typeSize': unexpected type " ++ show t
+
+consSize :: DatalogProgram -> [Field] -> Int
+consSize d args = tupleSize d $ map typ args
+
+tupleSize :: DatalogProgram -> [Type] -> Int
+tupleSize d types =
+    foldIdx (\sz arg i -> let alignment = if i+1 < length types
+                                             then typeAlignment d (types !! (i+1))
+                                             else 1
+                          in sz + pad (typeSize d $ typ arg) alignment) 0 types
+
+typeAlignment :: DatalogProgram -> Type -> Int
+typeAlignment d t = typeAlignment' d $ typ' d t
+
+typeAlignment' :: DatalogProgram -> Type -> Int
+typeAlignment' _ TBool{}    = 1
+typeAlignment' _ TInt{}     = 32
+typeAlignment' _ TString{}  = 16
+typeAlignment' _ TBit{..} | typeWidth <= 8   = 1
+                          | typeWidth <= 16  = 2
+                          | typeWidth <= 32  = 4
+                          | typeWidth <= 64  = 8
+                          | typeWidth <= 128 = 16
+                          | otherwise        = 16
+typeAlignment' d (TStruct _ [cons]) = consAlignment d $ consArgs cons
+typeAlignment' d (TStruct _ cs) = maximum $ 1 : map (consAlignment d . consArgs) cs
+typeAlignment' d (TTuple _ as)  = tupleAlignment d as
+typeAlignment' _ TOpaque{}      = 128 -- be conservative
+typeAlignment' _ t              = error $ "Compiler.typeSize: unexpected type " ++ show t
+
+consAlignment :: DatalogProgram -> [Field] -> Int
+consAlignment d args = tupleAlignment d $ map typ args
+
+tupleAlignment :: DatalogProgram -> [Type] -> Int
+tupleAlignment d types = maximum $ 1 : map (typeAlignment d) types
+
+pad :: Int -> Int -> Int
+pad x padto | (x `rem` padto == 0) = x
+            | otherwise            = x + (padto - (x `rem` padto))
 
 mkBinOp :: BOp -> Doc
 mkBinOp Eq     = "=="
