@@ -233,6 +233,9 @@ extern int ddlog_clear_relation(ddlog_prog prog, table_id table);
  * Dump the content of an output table by invoking `cb` for each value
  * in the table.
  *
+ * `cb` returns `true` to allow enumeration to continue or `false` to
+ * abort the dump.
+ *
  * `cb_arg` is an opaque argument passed to each invocation.
  *
  * Requires that `hprog` was created by calling `ddlog_run()` with

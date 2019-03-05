@@ -25,7 +25,8 @@ use std::sync::mpsc;
 // creating relations
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
-use std::ops::{Mul,Deref};
+use std::ops::{Mul,Deref,Add};
+use num::One;
 
 use timely;
 use timely::communication::initialize::{Configuration};
@@ -35,8 +36,8 @@ use timely::dataflow::operators::probe;
 use timely::dataflow::ProbeHandle;
 use timely::logging::TimelyEvent;
 use timely::worker::Worker;
-use timely::order::{Product,TotalOrder};
-use timely::progress::Timestamp;
+use timely::order::{Product,TotalOrder,PartialOrder};
+use timely::progress::{Timestamp, PathSummary};
 use timely::progress::timestamp::Refines;
 use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
@@ -56,16 +57,72 @@ use variable::*;
 use profile::*;
 use record::Mutator;
 
-type TValAgent<S,V> = TraceAgent<V,V,<S as ScopeParent>::Timestamp,isize,DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,isize>>;
-type TKeyAgent<S,V> = TraceAgent<V,(),<S as ScopeParent>::Timestamp,isize,DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,isize>>;
+type TValAgent<S,V> = TraceAgent<V,V,<S as ScopeParent>::Timestamp,Weight,DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight>>;
+type TKeyAgent<S,V> = TraceAgent<V,(),<S as ScopeParent>::Timestamp,Weight,DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight>>;
 
-type TValEnter<'a,P,T,V> = TraceEnter<V,V,<P as ScopeParent>::Timestamp,isize,TValAgent<P,V>,T>;
-type TKeyEnter<'a,P,T,V> = TraceEnter<V,(),<P as ScopeParent>::Timestamp,isize,TKeyAgent<P,V>,T>;
+type TValEnter<'a,P,T,V> = TraceEnter<V,V,<P as ScopeParent>::Timestamp,Weight,TValAgent<P,V>,T>;
+type TKeyEnter<'a,P,T,V> = TraceEnter<V,(),<P as ScopeParent>::Timestamp,Weight,TKeyAgent<P,V>,T>;
 
-type TS = usize;
+#[derive(PartialOrd, PartialEq, Eq, Debug, Default, Clone, Hash, Ord)]
+pub struct TS16{pub x: u16}
 
-// Use 32-bit timestamps for inner scopes to save memory
-type TSNested = u32;
+unsafe_abomonate!(TS16);
+
+impl Mul for TS16 {
+    type Output = TS16;
+    fn mul(self, rhs: TS16) -> Self::Output {
+        TS16{x: self.x * rhs.x}
+    }
+}
+
+impl Add for TS16 {
+    type Output = TS16;
+
+    fn add(self, rhs: TS16) -> Self::Output {
+        TS16{x: self.x + rhs.x}
+    }
+}
+
+impl One for TS16 {
+    fn one() -> Self {
+        TS16{x: 1}
+    }
+}
+
+impl PartialOrder for TS16 {
+    #[inline(always)] fn less_equal(&self, other: &Self) -> bool { self.x.less_equal(&other.x) }
+    #[inline(always)] fn less_than(&self, other: &Self) -> bool { self.x.less_than(&other.x) }
+}
+impl Lattice for TS16 {
+    #[inline(always)] fn minimum() -> Self { TS16{x: u16::min_value()} }
+    #[inline(always)] fn maximum() -> Self { TS16{x: u16::max_value()} }
+    #[inline(always)] fn join(&self, other: &Self) -> Self { TS16{x: ::std::cmp::max(self.x, other.x)} }
+    #[inline(always)] fn meet(&self, other: &Self) -> Self { TS16{x: ::std::cmp::min(self.x, other.x)} }
+}
+impl Timestamp for TS16 { type Summary = TS16;}
+impl PathSummary<TS16> for TS16 {
+    #[inline]
+    fn results_in(&self, src: &TS16) -> Option<TS16> {
+        match self.x.checked_add(src.x) {
+            None => None,
+            Some(y) => Some(TS16{x: y})
+        }
+    }
+    #[inline]
+    fn followed_by(&self, other: &TS16) -> Option<TS16> {
+        match self.x.checked_add(other.x) {
+            None => None,
+            Some(y) => Some(TS16{x: y})
+        }
+    }
+}
+
+type TS = u64;
+
+pub type Weight = i64;
+
+// Use 16-bit timestamps for inner scopes to save memory
+pub type TSNested = TS16;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
@@ -110,7 +167,7 @@ pub enum ProgNode<V: Val> {
     SCCNode{rels: Vec<Relation<V>>}
 }
 
-pub type UpdateCallback<V> = Arc<Fn(RelId, &V, isize) + Send + Sync>;
+pub type UpdateCallback<V> = Arc<Fn(RelId, &V, Weight) + Send + Sync>;
 
 /// Datalog relation.
 ///
@@ -172,7 +229,7 @@ pub type JoinFunc<V> = fn(&V,&V,&V) -> Option<V>;
 pub type SemijoinFunc<V> = fn(&V,&V, &()) -> Option<V>;
 
 /// Aggregation function: aggregates multiple values into a single value.
-pub type AggFunc<V> = fn(&V, &[(&V, isize)]) -> V;
+pub type AggFunc<V> = fn(&V, &[(&V, Weight)]) -> V;
 
 /// A Datalog relation or rule can depend on other relations and their
 /// arrangements.
@@ -447,11 +504,11 @@ impl<V: Val> Arrangement<V> {
 
 impl<V: Val> Arrangement<V>
 {
-    fn build_arrangement_root<S>(&self, collection: &Collection<S,V,isize>)
+    fn build_arrangement_root<S>(&self, collection: &Collection<S,V,Weight>)
         -> ArrangedCollection<S,V,TValAgent<S,V>,TKeyAgent<S,V>>
     where
         S: Scope,
-        Collection<S,V,isize>: ThresholdTotal<S,V,isize>,
+        Collection<S,V,Weight>: ThresholdTotal<S,V,Weight>,
         S::Timestamp: Lattice+Ord+TotalOrder
     {
         match self {
@@ -461,7 +518,7 @@ impl<V: Val> Arrangement<V>
             Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(filtered.distinct_total().arrange_by_self())
+                    ArrangedCollection::Set(filtered.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }).arrange_by_self())
                 } else {
                     ArrangedCollection::Set(filtered.arrange_by_self())
                 }
@@ -469,7 +526,7 @@ impl<V: Val> Arrangement<V>
         }
     }
 
-    fn build_arrangement<S>(&self, collection: &Collection<S,V,isize>)
+    fn build_arrangement<S>(&self, collection: &Collection<S,V,Weight>)
         -> ArrangedCollection<S,V,TValAgent<S,V>,TKeyAgent<S,V>>
     where
         S: Scope,
@@ -482,7 +539,7 @@ impl<V: Val> Arrangement<V>
             Arrangement::Set{name:_, fmfun, distinct} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(filtered.distinct().arrange_by_self())
+                    ArrangedCollection::Set(filtered.threshold(|_,c| if c.is_zero() { 0 } else { 1 }).arrange_by_self())
                 } else {
                     ArrangedCollection::Set(filtered.arrange_by_self())
                 }
@@ -497,11 +554,11 @@ where
     S:Scope,
     V:Val,
     S::Timestamp: Lattice+Ord,
-    T1: TraceReader<V,V,S::Timestamp,isize> + Clone,
-    T2: TraceReader<V,(),S::Timestamp,isize> + Clone
+    T1: TraceReader<V,V,S::Timestamp,Weight> + Clone,
+    T2: TraceReader<V,(),S::Timestamp,Weight> + Clone
 {
-    Map ( Arranged<S,V,V,isize,T1> ),
-    Set ( Arranged<S,V,(),isize,T2> ),
+    Map ( Arranged<S,V,V,Weight,T1> ),
+    Set ( Arranged<S,V,(),Weight,T2> ),
 }
 
 impl<S,V> ArrangedCollection<S,V,TValAgent<S,V>,TKeyAgent<S,V>>
@@ -739,13 +796,13 @@ impl<V:Val> Program<V>
 
                     let rx = rx.clone();
                     let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| {
-                        let mut sessions : FnvHashMap<RelId, InputSession<TS, V, isize>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,isize>> = FnvHashMap::default();
+                        let mut sessions : FnvHashMap<RelId, InputSession<TS, V, Weight>> = FnvHashMap::default();
+                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
                                 ProgNode::RelNode{rel:r} => {
-                                    let (session, mut collection) = outer.new_collection::<V,isize>();
+                                    let (session, mut collection) = outer.new_collection::<V,Weight>();
                                     sessions.insert(r.id, session);
                                     /* apply rules */
                                     for rule in &r.rules {
@@ -756,7 +813,7 @@ impl<V:Val> Program<V>
                                     /* don't distinct input collections, as this is already done by the set_update logic */
                                     if !r.input && r.distinct {
                                         collection = with_prof_context(&format!("{}.distinct_total", r.name),
-                                                                       ||collection.distinct_total());
+                                                                       ||collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }));
                                     }
                                     /* create arrangements */
                                     for (i,arr) in r.arrangements.iter().enumerate() {
@@ -769,7 +826,7 @@ impl<V:Val> Program<V>
                                     /* create collections; add them to map; we will overwrite them with
                                      * updated collections returned from the inner scope. */
                                     for r in rs.iter() {
-                                        let (session, collection) = outer.new_collection::<V,isize>();
+                                        let (session, collection) = outer.new_collection::<V,Weight>();
                                         if r.input {
                                             panic!("input relation in nested scope: {}", r.name)
                                         }
@@ -878,7 +935,7 @@ impl<V:Val> Program<V>
                     // feed initial data to sessions
                     if worker_index == 0 {
                         for (relid, v) in prog.init_data.iter() {
-                            all_sessions.get_mut(relid).unwrap().insert(v.clone());
+                            all_sessions.get_mut(relid).unwrap().update(v.clone(), 1);
                         }
                         epoch = epoch + 1;
                         Self::advance(&mut all_sessions, epoch);
@@ -886,7 +943,7 @@ impl<V:Val> Program<V>
                     }
 
                     // close session handles for non-input sessions
-                    let mut sessions: FnvHashMap<RelId, InputSession<TS, V, isize>> =
+                    let mut sessions: FnvHashMap<RelId, InputSession<TS, V, Weight>> =
                         all_sessions.drain().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
 
                     /* Only worker 0 receives data */
@@ -905,10 +962,10 @@ impl<V:Val> Program<V>
                                     for update in updates.drain(..) {
                                         match update {
                                             Update::Insert{relid, v} => {
-                                                sessions.get_mut(&relid).unwrap().insert(v);
+                                                sessions.get_mut(&relid).unwrap().update(v, 1);
                                             },
                                             Update::DeleteValue{relid, v} => {
-                                                sessions.get_mut(&relid).unwrap().remove(v);
+                                                sessions.get_mut(&relid).unwrap().update(v, -1);
                                             },
                                             Update::DeleteKey{..} => {
                                                 // workers don't know about keys
@@ -941,7 +998,7 @@ impl<V:Val> Program<V>
                     loop {
                         progress_barrier.wait();
                         let time = *progress_lock.read().unwrap();
-                        if time == 0xffffffffffffffff as TS {
+                        if time == /*0xffffffffffffffff*/TS::maximum() {
                             return
                         };
                         while probe.less_than(&time) {
@@ -1008,7 +1065,7 @@ impl<V:Val> Program<V>
     }
 
     /* Advance the epoch on all input sessions */
-    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, isize>>, epoch : TS) {
+    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>, epoch : TS) {
         for (_,s) in sessions.into_iter() {
             //print!("advance\n");
             s.advance_to(epoch);
@@ -1017,7 +1074,7 @@ impl<V:Val> Program<V>
 
     /* Propagate all changes through the pipeline */
     fn flush(
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, isize>>,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
         probe: &ProbeHandle<TS>,
         worker: &mut Worker<Allocator>,
         progress_lock: &RwLock<TS>,
@@ -1041,7 +1098,7 @@ impl<V:Val> Program<V>
     fn stop_workers(progress_lock: &RwLock<TS>,
                     progress_barrier: &Barrier)
     {
-        *progress_lock.write().unwrap() = 0xffffffffffffffff as TS;
+        *progress_lock.write().unwrap() = TS::maximum();
         progress_barrier.wait();
     }
 
@@ -1127,9 +1184,9 @@ impl<V:Val> Program<V>
         filtered
     }
 
-    fn xform_collection<'a,'b,P,T>(col         : Collection<Child<'a, P, T>,V>,
+    fn xform_collection<'a,'b,P,T>(col         : Collection<Child<'a, P, T>,V,Weight>,
                                    xform       : &Option<XFormCollection<V>>,
-                                   arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a, P,T>,V>
+                                   arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a, P,T>,V,Weight>
     where
         P  : ScopeParent,
         P::Timestamp : Lattice,
@@ -1141,9 +1198,9 @@ impl<V:Val> Program<V>
         }
     }
 
-    fn xform_collection_ref<'a,'b,P,T>(col         : &Collection<Child<'a,P,T>,V>,
+    fn xform_collection_ref<'a,'b,P,T>(col         : &Collection<Child<'a,P,T>,V,Weight>,
                                        xform       : &XFormCollection<V>,
-                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V>
+                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
     where
         P  : ScopeParent,
         P::Timestamp : Lattice,
@@ -1175,14 +1232,14 @@ impl<V:Val> Program<V>
         }
     }
 
-    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,V,V,isize,TR>,
+    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,V,V,Weight,TR>,
                                        xform       : &XFormArrangement<V>,
-                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V>
+                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
     where
         P  : ScopeParent,
         P::Timestamp : Lattice,
         T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
-        TR  : TraceReader<V,V,T,isize> + Clone + 'static,
+        TR  : TraceReader<V,V,T,Weight> + Clone + 'static,
     {
         match xform {
             XFormArrangement::FlatMap{fmfun: &fmfun, next} => {
@@ -1268,12 +1325,12 @@ impl<V:Val> Program<V>
         &self,
         rule: &Rule<V>,
         lookup_collection: F,
-        arrangements: Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V>
+        arrangements: Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
     where
         P: ScopeParent + 'a,
         P::Timestamp : Lattice,
         T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
-        F: Fn(RelId) -> Option<&'b Collection<Child<'a,P,T>,V>>,
+        F: Fn(RelId) -> Option<&'b Collection<Child<'a,P,T>,V,Weight>>,
         'a: 'b
     {
         match rule {

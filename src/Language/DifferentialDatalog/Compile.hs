@@ -844,7 +844,7 @@ mkValType d types grp_types =
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
     mkgrptype t =
-        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, isize)] {"                                         $$
+        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, Weight)] {"                                        $$
         "    fn size(&self) -> u64 {"                                                                           $$
         "        self.len() as u64"                                                                             $$
         "    }"                                                                                                 $$
@@ -1182,13 +1182,13 @@ mkAggregate d prefix rl idx vs v fname e = do
                   result
     next <- compileRule d rl idx False
     return $
-        "XFormCollection::Arrange{"                                                                                                                   $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                                           $$
-        "    next: Box::new("                                                                                                                         $$
-        "        XFormArrangement::Aggregate{"                                                                                                        $$
-        (nest' $ nest' $ nest' $ "aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, isize)]) -> Value" $$ agfun $$ "__f},") $$
-        "            next: Box::new(" <> next <> ")"                                                                                                  $$
-        "        })"                                                                                                                                  $$
+        "XFormCollection::Arrange{"                                                                                                                    $$
+        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                                            $$
+        "    next: Box::new("                                                                                                                          $$
+        "        XFormArrangement::Aggregate{"                                                                                                         $$
+        (nest' $ nest' $ nest' $ "aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, Weight)]) -> Value" $$ agfun $$ "__f},") $$
+        "            next: Box::new(" <> next <> ")"                                                                                                   $$
+        "        })"                                                                                                                                   $$
         "}"
 
 -- Generate Rust code to filter records and bring variables into scope.
