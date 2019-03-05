@@ -3,11 +3,13 @@ use timely::dataflow::*;
 use timely::dataflow::scopes::{Child};
 use timely::dataflow::operators::*;
 use timely::dataflow::operators::feedback::Handle;
-use differential_dataflow::{Data, Collection, Hashable};
+use differential_dataflow::{Data, Collection, Hashable, Diff};
 use differential_dataflow::operators::*;
 use differential_dataflow::lattice::Lattice;
+use num::One;
 
 use profile::*;
+use program::{TSNested, Weight};
 
 /// A collection defined by multiple mutually recursive rules.
 ///
@@ -16,9 +18,9 @@ use profile::*;
 /// addition of collections, and a final `distinct` operator applied before connecting the definition.
 pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
-    feedback: Option<Handle<Product<G::Timestamp, u32>, (D, Product<G::Timestamp, u32>, isize)>>,
-    current: Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>,
-    cycle: Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>,
+    feedback: Option<Handle<Product<G::Timestamp, TSNested>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
+    current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
+    cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
     name: String
 }
 
@@ -31,8 +33,8 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Variable<'a, G, D> where G::Timesta
         result.add(source);
         result
     }*/
-    pub fn from(source: &Collection<Child<'a, G, Product<G::Timestamp, u32>>, D>, name: &str) -> Variable<'a, G, D> {
-        let (feedback, cycle) = source.inner.scope().loop_variable(1);
+    pub fn from(source: &Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>, name: &str) -> Variable<'a, G, D> {
+        let (feedback, cycle) = source.inner.scope().loop_variable(TSNested::one());
         let cycle_col = Collection::new(cycle);
         let mut result = Variable { feedback: Some(feedback), current: cycle_col.clone().filter(|_| false), cycle: cycle_col, name: name.to_string() };
         result.add(source);
@@ -40,13 +42,13 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Variable<'a, G, D> where G::Timesta
     }
 
     /// Adds a new source of data to the `Variable`.
-    pub fn add(&mut self, source: &Collection<Child<'a, G, Product<G::Timestamp,u32>>, D>) {
+    pub fn add(&mut self, source: &Collection<Child<'a, G, Product<G::Timestamp,TSNested>>, D, Weight>) {
         self.current = self.current.concat(source);
     }
 }
 
 impl<'a, G: Scope, D: Default+Data+Hashable> ::std::ops::Deref for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
-    type Target = Collection<Child<'a, G, Product<G::Timestamp,u32>>, D>;
+    type Target = Collection<Child<'a, G, Product<G::Timestamp,TSNested>>, D, Weight>;
     fn deref(&self) -> &Self::Target {
         &self.cycle
     }
@@ -57,9 +59,9 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Drop for Variable<'a, G, D> where G
         if let Some(feedback) = self.feedback.take() {
             with_prof_context(
                 &format!("Variable: {}", self.name),
-                ||self.current.distinct()
+                ||self.current.threshold(|_,c| if c.is_zero() { 0 } else { 1 })
                             .inner
-                            .map(|(x,t,d)| (x, Product::new(t.outer, t.inner+1), d))
+                            .map(|(x,t,d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
                             .connect_loop(feedback));
         }
     }

@@ -197,9 +197,9 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
     }
 }*/
 
-fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: isize)
+fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: Weight)
 {
-    debug_assert!(w == 1 || w == -1); 
+    debug_assert!(w == 1 || w == -1);
     //println!("set_update({}) {:?} {}", rel, *x, insert);
     if w==1 {
         s.lock().unwrap().insert(x.clone());
@@ -221,7 +221,7 @@ fn test_one_relation(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           1,      
+            id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))
@@ -803,7 +803,7 @@ fn test_map(nthreads: usize) {
 
     fn mfun(v: Value) -> Value {
         match &v {
-            Value::u64(uv) => Value::u64(uv * 2), 
+            Value::u64(uv) => Value::u64(uv * 2),
             _ => v.clone()
         }
     }
@@ -812,19 +812,19 @@ fn test_map(nthreads: usize) {
         Some((Value::empty(), v))
     }
 
-    fn agfun3(_key: &Value, src: &[(&Value, isize)]) -> Value {
+    fn agfun3(_key: &Value, src: &[(&Value, Weight)]) -> Value {
         Value::u64(src.len() as u64)
     }
 
     fn gfun4(v: Value) -> Option<(Value, Value)> { Some((v.clone(), v)) }
 
-    fn agfun4(key: &Value, _src: &[(&Value, isize)]) -> Value {
+    fn agfun4(key: &Value, _src: &[(&Value, Weight)]) -> Value {
         key.clone()
     }
 
     fn ffun(v: &Value) -> bool {
         match &v {
-            Value::u64(uv) => *uv > 10, 
+            Value::u64(uv) => *uv > 10,
             _ => false
         }
     }
@@ -835,7 +835,7 @@ fn test_map(nthreads: usize) {
                 if *uv > 12 {
                     Some(Value::u64((*uv) * 2))
                 } else { None }
-            }, 
+            },
             _ => None
         }
     }
