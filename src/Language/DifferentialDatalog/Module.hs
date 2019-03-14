@@ -42,6 +42,7 @@ import Data.List
 import Data.String.Utils
 import Data.Maybe
 import Data.Either
+import Data.Char
 import Debug.Trace
 import Text.PrettyPrint
 import qualified Text.Parsec as Parsec
@@ -126,14 +127,18 @@ parseDatalogProgram roots import_std fdata fname = do
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
 mergeModules mods = do
     let prog = DatalogProgram {
-        progImports    = [],
-        progTypedefs   = M.unions $ map progTypedefs mods,
-        progFunctions  = M.unions $ map progFunctions mods,
-        progRelations  = M.unions $ map progRelations mods,
-        progRules      = concatMap progRules mods
+        progImports      = [],
+        progTypedefs     = M.unions $ map progTypedefs mods,
+        progFunctions    = M.unions $ map progFunctions mods,
+        progTransformers = M.unions $ map progTransformers mods,
+        progRelations    = M.unions $ map progRelations mods,
+        progRules        = concatMap progRules mods,
+        progApplys       = concatMap progApplys mods
     }
     uniq (name2rust . name) (\_ -> "The following function declarations will cause name collision in Rust: ") 
          $ M.elems $ progFunctions prog
+    uniq (name2rust . name) (\_ -> "The following transformer declarations will cause name collision in Rust: ") 
+         $ M.elems $ progTransformers prog
     uniq (name2rust . name) (\_ -> "The following relations will cause name collision in Rust: ") 
          $ M.elems $ progRelations prog
     uniq (name2rust . name) (\_ -> "The following type declarations will cause name collision in Rust: ") 
@@ -193,14 +198,18 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     -- rename typedefs, functions, and relations declared in this module
     let types' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTypedefs moduleDefs)
         funcs' = namedListToMap $ map (namedFlatten mod) (M.elems $ progFunctions moduleDefs)
+        trans' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTransformers moduleDefs)
         rels'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progRelations moduleDefs)
-    let prog1 = moduleDefs { progTypedefs   = types'
-                           , progFunctions  = funcs'
-                           , progRelations  = rels' }
+    let prog1 = moduleDefs { progTypedefs     = types'
+                           , progFunctions    = funcs'
+                           , progTransformers = trans'
+                           , progRelations    = rels' }
     -- flatten relation references
     prog2 <- progAtomMapM prog1 (\a -> setName a <$> flattenRelName mmap mod (pos a) (name a))
+    applys <- mapM (applyFlattenNames mod mmap) $ progApplys prog2
+    let prog2' = prog2 { progApplys = applys }
     -- rename types
-    prog3 <- progTypeMapM prog2 (typeFlatten mmap mod)
+    prog3 <- progTypeMapM prog2' (typeFlatten mmap mod)
     -- rename constructors and functions
     prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
     prog5 <- progRHSMapM prog4 (\case
@@ -209,6 +218,19 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
                                      return $ rhs{rhsAggFunc = f'}
                                  rhs -> return rhs)
     return prog5
+
+applyFlattenNames :: (MonadError String me) => DatalogModule -> MMap -> Apply -> me Apply
+applyFlattenNames mod mmap a@Apply{..} = do
+    trans <- flattenTransName mmap mod (pos a) applyTransformer
+    inputs <- mapM (\i -> if isLower $ head i
+                             then flattenFuncName mmap mod (pos a) i
+                             else flattenRelName mmap mod (pos a) i) applyInputs
+    outputs <- mapM (\o -> if isLower $ head o
+                              then flattenFuncName mmap mod (pos a) o
+                              else flattenRelName mmap mod (pos a) o) applyOutputs
+    return a { applyTransformer = trans
+             , applyInputs      = inputs
+             , applyOutputs     = outputs }
 
 nameScope :: String -> ModuleName
 nameScope n = ModuleName $ init $ split "." n
@@ -240,7 +262,6 @@ flattenName lookup_fun entity mmap mod p c = do
                         " found in the following modules: " ++
                         (intercalate ", " $ map moduleFile cands)
 
-
 flattenConsName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
 flattenConsName = flattenName lookupConstructor "constructor"
 
@@ -252,6 +273,9 @@ flattenFuncName = flattenName lookupFunc "function"
 
 flattenRelName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
 flattenRelName = flattenName lookupRelation "relation"
+
+flattenTransName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenTransName = flattenName lookupTransformer "transformer"
 
 namedFlatten :: (WithName a) => DatalogModule -> a -> a
 namedFlatten mod x = setName x $ scoped (moduleName mod) (name x)

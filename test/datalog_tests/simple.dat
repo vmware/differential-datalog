@@ -406,3 +406,23 @@ commit;
 
 echo YX;
 dump YX;
+
+start;
+
+insert Edge(1,2),
+insert Edge(2,3),
+insert Edge(3,4),
+insert Edge(4,2),
+insert Edge(3,5),
+insert Edge(5,6),
+insert Edge(6,7),
+insert Edge(7,6),
+insert Edge(7,5),
+insert Edge(7,8),
+insert Edge(0,7),
+insert Edge(11,12);
+
+commit;
+
+echo SCCLabel;
+dump SCCLabel;

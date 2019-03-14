@@ -1,0 +1,22 @@
+/* Functions and transformers for use in graph processing */
+
+/* Compute strongly connected components of a directed graph:
+ * 
+ * Type variables:
+ * - `'E` - type that represents graph edge
+ * - `'N` - type that represents graph node
+ *
+ * Arguments:
+ * - `Edges` - relation that stores graph edges
+ * - `from`  - extracts the source node of an edge
+ * - `to`    - extracts the destination node of an edge
+ *
+ * Output:
+ * - `Labels` - partitioning of the graph into strongly
+ *    connected components represented by labeling each graph
+ *    node with SCC id, which is the smallest node in the SCC.
+ */
+extern transformer SCC(Edges:   relation['E],
+                       from:    function(e: 'E): 'N,
+                       to:      function(e: 'E): 'N)
+    -> (SCCLabels: relation [('N, 'N)])

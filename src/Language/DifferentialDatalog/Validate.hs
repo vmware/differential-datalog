@@ -48,6 +48,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.Relation
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
@@ -74,6 +75,10 @@ validate d = do
     mapM_ (relValidate d') $ M.elems $ progRelations d'
     -- Validate rules
     mapM_ (ruleValidate d') $ progRules d'
+    -- Validate transformers
+    mapM_ (transformerValidate d') $ progTransformers d'
+    -- Validate transformer applications
+    mapM_ (applyValidate d') $ progApplys d'
     -- Validate dependency graph
     depGraphValidate d'
     -- Insert string conversion functions
@@ -314,6 +319,93 @@ ruleCheckAggregate d rl idx = do
     funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
 
 
+-- | Validate relation transformer
+-- * input and output argument names must be unique
+-- * all return types must be relations
+-- * relation names are upper-case, function names are lower-case
+-- * validate higher-order types
+transformerValidate :: (MonadError String me) => DatalogProgram -> Transformer -> me ()
+transformerValidate d Transformer{..} = do
+    uniqNames ("Multiple definitions of transformer argument " ++)  $ transInputs ++ transOutputs
+    mapM_ (\o -> check (hotypeIsRelation $ hofType o) (pos o)
+                       "A transformer can only output relations") transOutputs
+    mapM_ (\o -> case hofType o of
+                      HOTypeRelation{} -> check (isUpper $ head $ name o)       (pos o) "Relation name must start with an upper-case letter"
+                      HOTypeFunction{} -> check (not $ isUpper $ head $ name o) (pos o) "Function name may not start with an upper-case letter"
+          ) $ transInputs ++ transOutputs
+    mapM_ (hotypeValidate d . hofType) $ transInputs ++ transOutputs
+
+-- | Validate transformer application
+-- * Transformer exists
+-- * Inputs and outputs refer to valid functions and relations
+-- * Input/output types match transformer declaration
+-- * Outputs cannot be bound to input relations
+-- * Outputs of a transformer cannot be used in the head of a rule
+--   or as output of another transformer
+applyValidate :: (MonadError String me) => DatalogProgram -> Apply -> me ()
+applyValidate d a@Apply{..} = do
+    trans@Transformer{..} <- checkTransformer (pos a) d applyTransformer
+    check (length applyInputs == length transInputs) (pos a)
+          $ "Transformer " ++ name trans ++ " expects " ++ show (length transInputs) ++ " input arguments, but" ++
+            show (length applyInputs) ++ " arguments are specified"
+    check (length applyOutputs == length transOutputs) (pos a)
+          $ "Transformer " ++ name trans ++ " returns " ++ show (length transOutputs) ++ " outputs, but" ++
+            show (length applyOutputs) ++ " outputs are provided"
+    types <- mapM (\(decl, conc) ->
+            case hofType decl of
+                 hot@HOTypeFunction{..} -> do
+                     f@Function{..} <- checkFunc (pos a) d conc
+                     -- FIXME: we don't have a proper unification checker; therefore insist on transformer arguments
+                     -- using no type variables.
+                     -- A proper unification checker should handle constraints of the form
+                     -- '(exists T1 . forall T2 . E(T1,T2))', where 'T1' and 'T2' are lists of type arguments, and 'E' is
+                     -- a conjunction of type congruence expressions.
+                     check (null $ funcTypeVars f) (pos a)
+                           $ "Generic function " ++ conc ++ " cannot be passed as an argument to relation transformer"
+                     check (length hotArgs == length funcArgs) (pos a)
+                           $ "Transformer " ++ name trans ++ " expects a function that takes " ++ show (length hotArgs) ++ " arguments " ++
+                             " but function " ++ name f ++ " takes " ++ show (length funcArgs) ++ " arguments"
+                     mapM_ (\(farg, carg) -> check (argMut farg == argMut carg) (pos a) $
+                                             "Argument " ++ name farg ++ " of formal argument " ++ name decl ++ " of transformer " ++ name trans ++
+                                             " differs in mutability from argument " ++ name carg ++ " of function " ++ name f)
+                           $ zip hotArgs funcArgs
+                     return $ (zip (map typ hotArgs) (map typ funcArgs)) ++ [(hotType, funcType)]
+                 hot@HOTypeRelation{..} -> do
+                     rel <- checkRelation (pos a) d conc
+                     return [(hotType, relType rel)]
+                  ) $ zip (transInputs ++ transOutputs) (applyInputs ++ applyOutputs)
+    bindings <- unifyTypes d (pos a) ("in transformer application " ++ show a) $ concat types
+    mapM_ (\ta -> case M.lookup ta bindings of
+                       Nothing -> err (pos a) $ "Unable to bind type argument '" ++ ta ++
+                                                " to a concrete type in transformer application " ++ show a
+                       Just t  -> return ())
+          $ transformerTypeVars trans
+    mapM_ (\o -> check (relRole (getRelation d o) /= RelInput) (pos a)
+                 $ "Transformer output cannot be bound to input relation " ++ o
+          ) applyOutputs
+    -- Things will break if a relation is assigned by an 'Apply' in the top scope and then occurs inside a
+    -- recursive fragment.  Keep things simple by disallowing this.
+    -- If this proves an important limitation, it can be dropped and replaced with a program
+    -- transformation that introduces a new relation for each 'Apply' output and a rule that
+    -- concatenates it to the original output relation.  But for now it seems like a useful
+    -- restriction
+    mapM_ (\o -> check (null $ relRules d o) (pos a)
+                       $ "Output of a transformer application may not occur in the head of a rule, but relation " ++ o ++
+                          " occurs in the following rules\n" ++ (intercalate "\n" $ map show $ relRules d o))
+          applyOutputs
+    -- Likewise, to relax this, modify 'compileApplyNode' to concatenate transformer output to
+    -- existing relation if it exists.
+    mapM_ (\o -> check (length (relApplys d o) == 1) (pos a)
+                       $ "Relation " ++ o ++ " occurs as output of multiple transformer applications")
+          applyOutputs
+
+hotypeValidate :: (MonadError String me) => DatalogProgram -> HOType -> me ()
+hotypeValidate d HOTypeFunction{..} = do
+    -- FIXME: hacky way to validate function type by converting it into a function.
+    let f = Function hotPos "" hotArgs hotType Nothing
+    funcValidateProto d f
+
+hotypeValidate d HOTypeRelation{..} = typeValidate d (typeTypeVars hotType) hotType
 
 -- | Check the following properties of a Datalog dependency graph:
 --
@@ -324,11 +416,13 @@ depGraphValidate :: (MonadError String me) => DatalogProgram -> me ()
 depGraphValidate d@DatalogProgram{..} = do
     let g = progDependencyGraph d
     -- strongly connected components of the dependency graph
-    let sccs = map (S.fromList . map (fromJust . G.lab g)) $ G.scc g
+    let sccs = map (map (fromJust . G.lab g)) $ G.scc g
     -- maps relation name to SCC that contains this relation
     let sccmap = M.fromList
                  $ concat
-                 $ mapIdx (\scc i -> map (, i) $ S.toList scc)
+                 $ mapIdx (\scc i -> mapMaybe (\case
+                                           DepNodeRel rel -> Just (rel, i)
+                                           _              -> Nothing) scc)
                    sccs
     -- Linearity
     {-mapM_ (\rl@Rule{..} ->
@@ -343,7 +437,10 @@ depGraphValidate d@DatalogProgram{..} = do
                               intercalate ", " (map show rlits))
                   ruleLHS)
           progRules -}
-    -- Stratified negation
+    -- Stratified negation:
+    -- * a relation may not recursively depend on its negation;
+    -- * Apply nodes may not occur in recursive loops, as they are assumed to always introduce
+    --   negative loops
     mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->
                     do let lscc = sccmap M.! (atomRelation a)
@@ -355,6 +452,13 @@ depGraphValidate d@DatalogProgram{..} = do
                              $ filter rhsIsLiteral ruleRHS)
                   ruleLHS)
           progRules
+    mapM_ (\scc -> let anode = find depNodeIsApply scc in
+                   case anode of
+                        Just (DepNodeApply a) -> err (pos a)
+                                                 $ "Transformer application appears in a recursive fragment consisting of the following relations: " ++
+                                                 (show scc)
+                        _ -> return ())
+          $ filter ((> 1) . length) sccs
 
 exprValidate :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> Expr -> me ()
 exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ show ctx) $ -} do

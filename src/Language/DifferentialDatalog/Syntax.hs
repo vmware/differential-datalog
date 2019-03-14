@@ -98,6 +98,14 @@ module Language.DifferentialDatalog.Syntax (
         funcTypeVars,
         ModuleName(..),
         Import(..),
+        HOType(..),
+        hotypeIsFunction,
+        hotypeIsRelation,
+        hotypeTypeVars,
+        HOField(..),
+        Transformer(..),
+        transformerTypeVars,
+        Apply(..),
         DatalogProgram(..),
         emptyDatalogProgram,
         progStructs,
@@ -237,7 +245,7 @@ instance PP Type where
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
-    pp (TTuple _ as)    = parens $ hsep $ punctuate comma $ map pp as
+    pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
                           if null as
                              then empty
@@ -317,7 +325,7 @@ instance WithPos Constructor where
     atPos c p = c{consPos = p}
 
 instance PP Constructor where
-    pp Constructor{..} = pp consName <> (braces $ hsep $ punctuate comma $ map pp consArgs)
+    pp Constructor{..} = pp consName <> (braces $ commaSep $ map pp consArgs)
 
 instance Show Constructor where
     show = render . pp
@@ -352,7 +360,7 @@ instance PP KeyExpr where
 instance Show KeyExpr where
     show = render . pp
 
-data RelationRole = RelInput 
+data RelationRole = RelInput
                   | RelOutput
                   | RelInternal
                   deriving(Eq, Ord)
@@ -410,7 +418,7 @@ instance WithPos Atom where
 
 instance PP Atom where
     pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons
-                = pp rel <> (parens $ hsep $ punctuate comma $
+                = pp rel <> (parens $ commaSep $
                              map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) as)
     pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
 
@@ -432,7 +440,7 @@ instance PP RuleRHS where
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
     pp (RHSAggregate v g f e) = "var" <+> pp v <+> "=" <+> "Aggregate" <> "(" <>
-                                (parens $ vcat $ punctuate comma $ map pp g) <> comma <+>
+                                (parens $ vcommaSep $ map pp g) <> comma <+>
                                 pp f <> (parens $ pp e) <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
 
@@ -470,10 +478,10 @@ instance WithPos Rule where
     atPos r p = r{rulePos = p}
 
 instance PP Rule where
-    pp Rule{..} = (vcat $ punctuate "," $ map pp ruleLHS) <+>
+    pp Rule{..} = (vcommaSep $ map pp ruleLHS) <+>
                   (if null ruleRHS
                       then empty
-                      else ":-" <+> (hsep $ punctuate comma $ map pp ruleRHS)) <> "."
+                      else ":-" <+> (commaSep $ map pp ruleRHS)) <> "."
 
 instance Show Rule where
     show = render . pp
@@ -532,7 +540,7 @@ instance WithPos (ExprNode e) where
 
 instance PP e => PP (ExprNode e) where
     pp (EVar _ v)            = pp v
-    pp (EApply _ f as)       = pp f <> (parens $ hsep $ punctuate comma $ map pp as)
+    pp (EApply _ f as)       = pp f <> (parens $ commaSep $ map pp as)
     pp (EField _ s f)        = pp s <> char '.' <> pp f
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
@@ -542,15 +550,13 @@ instance PP e => PP (ExprNode e) where
                      | otherwise
                              = pp $ show s
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
-    pp (EStruct _ s fs)      = pp s <> (braces $ hsep $ punctuate comma
+    pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
-    pp (ETuple _ fs)         = parens $ hsep $ punctuate comma $ map pp fs
+    pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
     pp (ESlice _ e h l)      = pp e <> (brackets $ pp h <> colon <> pp l)
     pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"
                                $$
-                               (nest' $ vcat
-                                      $ punctuate comma
-                                      $ (map (\(c,v) -> pp c <+> "->" <+> pp v) cs))
+                               (nest' $ vcommaSep $ (map (\(c,v) -> pp c <+> "->" <+> pp v) cs))
                                $$
                                "}"
     pp (EVarDecl _ v)        = "var" <+> pp v
@@ -668,7 +674,7 @@ instance WithName Function where
 instance PP Function where
     pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
                       ("function" <+> pp funcName
-                       <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
+                       <+> (parens $ commaSep $ map pp funcArgs)
                        <> colon <+> pp funcType
                        <+> (maybe empty (\_ -> "=") funcDef))
                       $$
@@ -680,7 +686,7 @@ instance Show Function where
 funcShowProto :: Function -> String
 funcShowProto Function{..} = render $
     "function" <+> pp funcName
-    <+> (parens $ hsep $ punctuate comma $ map pp funcArgs)
+    <+> (parens $ commaSep $ map pp funcArgs)
     <> colon <+> pp funcType
 
 -- | Type variables used in function declaration in the order they appear in the declaration
@@ -695,6 +701,117 @@ instance PP ModuleName where
     pp (ModuleName p) = hcat $ punctuate "." $ map pp p
 
 instance Show ModuleName where
+    show = render . pp
+
+
+-- | Higher-order type (function or relation).
+data HOType = HOTypeRelation { hotPos :: Pos, hotType :: Type }
+            | HOTypeFunction { hotPos :: Pos, hotArgs :: [FuncArg], hotType :: Type }
+
+instance Eq HOType where
+    (==) (HOTypeRelation _ t1)     (HOTypeRelation _ t2)     = t1 == t2
+    (==) (HOTypeFunction _ as1 t1) (HOTypeFunction _ as2 t2) = (as1, t1) == (as2, t2)
+    (==) _                         _                         = False
+
+instance WithPos HOType where
+    pos = hotPos
+    atPos t p = t{hotPos = p}
+
+instance PP HOType where
+    pp (HOTypeRelation _ t)     = "relation[" <> pp t <> "]"
+    pp (HOTypeFunction _ as t)  = "function(" <> (commaSep $ map pp as) <> "): " <> pp t
+
+instance Show HOType where
+    show = render . pp
+
+hotypeIsRelation :: HOType -> Bool
+hotypeIsRelation HOTypeRelation{} = True
+hotypeIsRelation _                = True
+
+hotypeIsFunction :: HOType -> Bool
+hotypeIsFunction HOTypeFunction{} = True
+hotypeIsFunction _                = True
+
+-- | Type variables used in transformer declaration in the order they appear in the declaration
+hotypeTypeVars :: HOType -> [String]
+hotypeTypeVars HOTypeRelation{..} = typeTypeVars hotType
+hotypeTypeVars HOTypeFunction{..} = nub $
+    concatMap (typeTypeVars . argType) hotArgs ++
+    typeTypeVars hotType
+
+-- | Argument or field of a higher-order type
+data HOField = HOField { hofPos  :: Pos
+                       , hofName :: String
+                       , hofType :: HOType
+                       }
+
+instance Eq HOField where
+    (==) (HOField _ n1 t1) (HOField _ n2 t2) = (n1, t1) == (n2, t2)
+
+instance WithPos HOField where
+    pos = hofPos
+    atPos f p = f{hofPos = p}
+
+instance WithName HOField where
+    name = hofName
+    setName f n = f { hofName = n }
+
+instance PP HOField where
+    pp (HOField _ n t) = pp n <> ":" <+> pp t
+
+instance Show HOField where
+    show = render . pp
+
+-- | Relation transformer
+data Transformer = Transformer{ transPos     :: Pos
+                              , transExtern  :: Bool
+                              , transName    :: String
+                              , transInputs  :: [HOField]
+                              , transOutputs :: [HOField]
+                              }
+
+instance Eq Transformer where
+    (==) (Transformer _ e1 n1 in1 out1) (Transformer _ e2 n2 in2 out2) = (e1, n1, in1, out1) == (e2, n2, in2, out2)
+
+instance WithPos Transformer where
+    pos = transPos
+    atPos t p = t{transPos = p}
+
+instance WithName Transformer where
+    name = transName
+    setName t n = t { transName = n }
+
+instance PP Transformer where
+    pp (Transformer _ e n inp outp) = (if e then "extern" else empty) <+> "transformer" <+> pp n <>
+                                      (parens $ commaSep $ map pp inp) <+> "->" <+>
+                                      (parens $ commaSep $ map pp outp)
+
+instance Show Transformer where
+    show = render . pp
+
+-- | Type variables used in transformer declaration in the order they appear in the declaration
+transformerTypeVars :: Transformer -> [String]
+transformerTypeVars Transformer{..} = nub $
+    concatMap (hotypeTypeVars . hofType) $ transInputs ++ transOutputs
+
+-- | Relation transformer instantiation
+data Apply = Apply { applyPos         :: Pos
+                   , applyTransformer :: String
+                   , applyInputs      :: [String]
+                   , applyOutputs     :: [String]
+                   }
+
+instance Eq Apply where
+    (==) (Apply _ t1 i1 o1) (Apply _ t2 i2 o2) = (t1, i1, o1) == (t2, i2, o2)
+
+instance WithPos Apply where
+    pos = applyPos
+    atPos a p = a{applyPos = p}
+
+instance PP Apply where
+    pp (Apply _ t i o) = "apply" <+> pp t <> (parens $ commaSep $ map pp i) <+> "->" <+> (parens $ commaSep $ map pp o)
+
+instance Show Apply where
     show = render . pp
 
 -- | Import statement
@@ -717,11 +834,13 @@ instance Show Import where
 instance Eq Import where
     (==) (Import _ p1 a1) (Import _ p2 a2) = p1 == p2 && a1 == a2
 
-data DatalogProgram = DatalogProgram { progImports   :: [Import]
-                                     , progTypedefs  :: M.Map String TypeDef
-                                     , progFunctions :: M.Map String Function
-                                     , progRelations :: M.Map String Relation
-                                     , progRules     :: [Rule]
+data DatalogProgram = DatalogProgram { progImports      :: [Import]
+                                     , progTypedefs     :: M.Map String TypeDef
+                                     , progFunctions    :: M.Map String Function
+                                     , progTransformers :: M.Map String Transformer
+                                     , progRelations    :: M.Map String Relation
+                                     , progRules        :: [Rule]
+                                     , progApplys       :: [Apply]
                                      }
                       deriving (Eq)
 
@@ -733,9 +852,13 @@ instance PP DatalogProgram where
                              ++
                              (map pp $ M.elems progFunctions)
                              ++
+                             (map pp $ M.elems progTransformers)
+                             ++
                              (map pp $ M.elems progRelations)
                              ++
-                             (map pp progRules))
+                             (map pp progRules)
+                             ++
+                             (map pp progApplys))
 
 instance Show DatalogProgram where
     show = render . pp
@@ -751,11 +874,14 @@ progConstructors :: DatalogProgram -> [Constructor]
 progConstructors = concatMap (typeCons . fromJust . tdefType) . M.elems . progStructs
 
 emptyDatalogProgram :: DatalogProgram
-emptyDatalogProgram = DatalogProgram { progImports    = []
-                                     , progTypedefs   = M.empty
-                                     , progFunctions  = M.empty
-                                     , progRelations  = M.empty
-                                     , progRules      = [] }
+emptyDatalogProgram = DatalogProgram { progImports       = []
+                                     , progTypedefs      = M.empty
+                                     , progFunctions     = M.empty
+                                     , progTransformers  = M.empty
+                                     , progRelations     = M.empty
+                                     , progRules         = []
+                                     , progApplys        = []
+                                     }
 
 progAddTypedef :: TypeDef -> DatalogProgram -> DatalogProgram
 progAddTypedef tdef prog = prog{progTypedefs = M.insert (name tdef) tdef (progTypedefs prog)}

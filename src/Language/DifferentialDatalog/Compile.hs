@@ -48,6 +48,7 @@ import Data.List
 import Data.Int
 import Data.Word
 import Data.Bits
+import Data.Char
 import Data.FileEmbed
 import Data.String.Utils
 import System.FilePath
@@ -249,7 +250,7 @@ mkBoxType :: (WithType a) => DatalogProgram -> a -> Doc
 mkBoxType d x | typeIsSmall d (typ x) = mkType x
               | otherwise             = "boxed::Box<" <> mkType x <> ">"
 
--- Compiled relation: Rust code for the 'struct Relation' plus grounds facts for this relation.
+-- Compiled relation: Rust code for the 'struct Relation' plus ground facts for this relation.
 data ProgRel = ProgRel {
     prelName    :: String,
     prelCode    :: Doc,
@@ -257,12 +258,14 @@ data ProgRel = ProgRel {
 }
 
 -- Compiled program node: individual relation or a recursive fragment
-data ProgNode = SCCNode [ProgRel]
-              | RelNode ProgRel
+data ProgNode = SCCNode   [ProgRel]
+              | ApplyNode Doc
+              | RelNode   ProgRel
 
 nodeRels :: ProgNode -> [ProgRel]
 nodeRels (SCCNode rels) = rels
 nodeRels (RelNode rel)  = [rel]
+nodeRels (ApplyNode _)  = []
 
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
@@ -474,7 +477,7 @@ compileLib d specname rs_code =
     depgraph = progDependencyGraph d'
     sccs = G.topsort' $ G.condensation depgraph
     -- Initialize arrangements map
-    arrs = M.fromList $ map ((, []) . snd) $ G.labNodes depgraph
+    arrs = M.fromList $ map (, []) $ M.keys $ progRelations d'
     -- Initialize types
     -- Make sure that empty tuple is always in Value, so it can be
     -- used to implement Value::default()
@@ -485,8 +488,8 @@ compileLib d specname rs_code =
                                   -- Second pass: compile relations
                                   nodes <- mapM (compileSCC d' depgraph) sccs
                                   mkProg d' nodes)
-                              $ emptyCompilerState{cArrangements = arrs,
-                                                   cTypes        = types}
+                              $ emptyCompilerState { cArrangements = arrs
+                                                   , cTypes        = types }
     -- Type declarations
     typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
     -- Functions
@@ -892,15 +895,79 @@ createRuleArrangement d rule idx = do
 -- Generate Rust struct for ProgNode
 compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
 compileSCC d dep nodes | recursive = compileSCCNode d relnames
-                       | otherwise = compileRelNode d (head relnames)
+                       | otherwise = case depnode of
+                                          DepNodeRel rel -> compileRelNode d rel
+                                          DepNodeApply a -> return $ compileApplyNode d a
     where
     recursive = any (\(from, to) -> elem from nodes && elem to nodes) $ G.edges dep
-    relnames = map (fromJust . G.lab dep) nodes
+    relnames = map ((\(DepNodeRel rel) -> rel) . fromJust . G.lab dep) nodes
+    depnode = fromJust $ G.lab dep $ head nodes
 
 compileRelNode :: DatalogProgram -> String -> CompilerMonad ProgNode
 compileRelNode d relname = do
     rel <- compileRelation d relname
     return $ RelNode rel
+
+{-
+Generates a call to transformer function.  Assumes the following calling convention illustrated by
+the example below:
+
+* Every input relation corresponds to an argument of type &Collection<>
+* This argument must be followed by an extra argument of closure type that extracts a typed record
+  from 'Value'.
+* Input functions correspond to input argument of corresponding function type
+* There is an additional input argument per output relation that wraps an instance of the
+  corresponding record type into a value.
+* The function returns a tuple of one or more computed collections
+
+DDlog declaration:
+
+extern transformer SCC(Edges:   relation['E],
+                       from:    function(e: 'E): 'N,
+                       to:      function(e: 'E): 'N)
+    -> (SCCLabels: relation [('N, 'N)])
+
+Corresponding Rust declaration:
+pub fn graph_SCC<S,V,E,N,EF,LF>(edges: &Collection<S,V,Weight>, _edges: EF,
+                                from: fn(&E) -> N,
+                                to:   fn(&E) -> N,
+                                _scclabels: LF) -> (Collection<S,V,Weight>)
+where
+     S: Scope,
+     S::Timestamp: Lattice + Ord,
+     V: Val,
+     N: Val,
+     E: Val,
+     EF: Fn(V) -> E + 'static,
+     LF: Fn((N,N)) -> V + 'static
+-}
+compileApplyNode :: DatalogProgram -> Apply -> ProgNode
+compileApplyNode d Apply{..} = ApplyNode $
+    "{fn transformer() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,Value,Weight>>)> {" $$
+    "    Box::new(|collections| {"                                                                                                                             $$
+    "        let (" <> commaSep outputs <> ") =" <+> rname applyTransformer <> (parens $ commaSep inputs) <> ";"                                               $$
+    (nest' $ nest' $ vcat update_collections)                                                                                                                  $$
+    "    })"                                                                                                                                                   $$
+    "}; transformer}"
+  where
+    inputs = concatMap (\i ->
+                         if isLower $ head i
+                            then [rname i]
+                            else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
+                       applyInputs
+             ++
+             map (\o -> parens $ "|v|" <> mkValue' d "v" (relType $ getRelation d o)) applyOutputs
+    outputs = map rname applyOutputs
+    update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rname o <> ");") applyOutputs
+
+extractValue :: DatalogProgram -> Type -> Doc
+extractValue d t = parens $
+        "|" <> vALUE_VAR <> ": Value| {"                                                              $$
+        "match" <+> vALUE_VAR <+> "{"                                                                 $$
+        "    Value::" <> mkValConstructorName' d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"      $$
+        "    _ => panic!(\"unexpected constructor\")"                                                 $$
+        "}}"
+    where t' = typeNormalize d t
 
 compileSCCNode :: DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
@@ -1267,6 +1334,9 @@ mkValue d ctx e = do
     constructor <- mkValConstructorName d t
     return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal)
 
+mkValue' :: DatalogProgram -> Doc -> Type -> Doc
+mkValue' d v t = "Value::" <> mkValConstructorName' d (typeNormalize d t) <> (parens $ box d t v)
+
 mkTupleValue :: DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
 mkTupleValue d es = do
     let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
@@ -1614,9 +1684,11 @@ mkProg d nodes = do
 
 mkNode :: ProgNode -> Doc
 mkNode (RelNode (ProgRel rel _ _)) =
-    "ProgNode::RelNode{rel:" <+> rname rel <> "}"
-mkNode (SCCNode rels)    =
-    "ProgNode::SCCNode{rels: vec![" <> (commaSep $ map (rname . prelName) rels) <> "]}"
+    "ProgNode::Rel{rel:" <+> rname rel <> "}"
+mkNode (SCCNode rels) =
+    "ProgNode::SCC{rels: vec![" <> (commaSep $ map (rname . prelName) rels) <> "]}"
+mkNode (ApplyNode fun) =
+    "ProgNode::Apply{tfun:" <+> fun <> "}"
 
 mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (ArrangementMap pattern) = do

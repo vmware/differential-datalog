@@ -5,8 +5,13 @@ use uint::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
-use fnv::FnvHashSet;
+use fnv::{FnvHashSet, FnvHashMap};
 use std::iter::FromIterator;
+use differential_dataflow::Collection;
+use differential_dataflow::operators::Join;
+use timely::dataflow::scopes::*;
+use timely::communication::Allocator;
+use timely::worker::Worker;
 
 const TEST_SIZE: u64 = 1000;
 
@@ -95,8 +100,8 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
         let q = s.f1();
         (*q) > 0
         //q == Q{f1: false, f2: "buzz".to_string()}
-    } { 
-        return None; 
+    } {
+        return None;
     };
     if {
         let ref mut p = P{f1: Q{f1: true, f2: "x".to_string()}, f2: true};
@@ -229,7 +234,7 @@ fn test_one_relation(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel}],
+        nodes: vec![ProgNode::Rel{rel}],
         init_data: vec![]
     };
 
@@ -264,7 +269,7 @@ fn test_one_relation(nthreads: usize) {
     running.insert(1, Value::u64(1)).unwrap();
     running.delete_value(1, Value::u64(1)).unwrap();
     running.transaction_commit().unwrap();
- 
+
     assert_eq!(relset.lock().unwrap().len(), 0);
 
     /* 4. Set semantics: delete before insert */
@@ -272,7 +277,7 @@ fn test_one_relation(nthreads: usize) {
     running.delete_value(1, Value::u64(1)).unwrap();
     running.insert(1, Value::u64(1)).unwrap();
     running.transaction_commit().unwrap();
- 
+
     assert_eq!(relset.lock().unwrap().len(), 1);
 
     /* 5. Rollback */
@@ -314,7 +319,7 @@ fn test_two_relations(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           1,      
+            id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))
@@ -328,7 +333,7 @@ fn test_two_relations(nthreads: usize) {
             input:        false,
             distinct:     true,
             key_func:     None,
-            id:           2,      
+            id:           2,
             rules:        vec![Rule::CollectionRule{rel: 1, xform: None}],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))
@@ -337,13 +342,13 @@ fn test_two_relations(nthreads: usize) {
 
     let prog: Program<Value> = Program {
         nodes: vec![
-            ProgNode::RelNode{rel: rel1},
-            ProgNode::RelNode{rel: rel2}],
+            ProgNode::Rel{rel: rel1},
+            ProgNode::Rel{rel: rel2}],
         init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
- 
+
     /* 1. Populate T1 */
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
@@ -351,7 +356,7 @@ fn test_two_relations(nthreads: usize) {
     running.transaction_start().unwrap();
     for x in &set {
         running.insert(1, x.clone()).unwrap();
-        //assert_eq!(running.relation_clone_content(1).unwrap(), 
+        //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     };
     running.transaction_commit().unwrap();
@@ -363,7 +368,7 @@ fn test_two_relations(nthreads: usize) {
     running.transaction_start().unwrap();
     for x in &set {
         running.delete_value(1, x.clone()).unwrap();
-//        assert_eq!(running.relation_clone_content(1).unwrap(), 
+//        assert_eq!(running.relation_clone_content(1).unwrap(),
 //                   running.relation_clone_content(2).unwrap());
     };
     running.transaction_commit().unwrap();
@@ -375,7 +380,7 @@ fn test_two_relations(nthreads: usize) {
     running.transaction_start().unwrap();
     for x in &set {
         running.insert(1, x.clone()).unwrap();
-        //assert_eq!(running.relation_clone_content(1).unwrap(), 
+        //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     };
     running.transaction_rollback().unwrap();
@@ -390,7 +395,7 @@ fn test_two_relations(nthreads: usize) {
 fn test_two_relations_1() {
     test_two_relations(1)
 }
- 
+
 
 #[test]
 fn test_two_relations_multi() {
@@ -409,7 +414,7 @@ fn test_semijoin(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           1,      
+            id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))
@@ -436,7 +441,7 @@ fn test_semijoin(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           2,      
+            id:           2,
             rules:        Vec::new(),
             arrangements: vec![Arrangement::Set{
                 name: "arrange2.0".to_string(),
@@ -461,7 +466,7 @@ fn test_semijoin(nthreads: usize) {
             id:           3,
             rules:        vec![
                 Rule::CollectionRule{
-                    rel: 1, 
+                    rel: 1,
                     xform: Some(
                         XFormCollection::Arrange{
                             afun: &(afun1 as ArrangeFunc<Value>),
@@ -479,14 +484,14 @@ fn test_semijoin(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: rel1},
-                    ProgNode::RelNode{rel: rel2},
-                    ProgNode::RelNode{rel: rel3}],
+        nodes: vec![ProgNode::Rel{rel: rel1},
+                    ProgNode::Rel{rel: rel2},
+                    ProgNode::Rel{rel: rel3}],
         init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
- 
+
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
 
@@ -525,7 +530,7 @@ fn test_join(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           1,      
+            id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))
@@ -545,7 +550,7 @@ fn test_join(nthreads: usize) {
             input:        true,
             distinct:     true,
             key_func:     None,
-            id:           2,      
+            id:           2,
             rules:        Vec::new(),
             arrangements: vec![Arrangement::Map{
                 name: "arrange2.0".to_string(),
@@ -586,15 +591,47 @@ fn test_join(nthreads: usize) {
         }
     };
 
+    let relset4: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let rel4 = {
+        let relset4 = relset4.clone();
+        Relation {
+            name:         "T4".to_string(),
+            input:        false,
+            distinct:     true,
+            key_func:     None,
+            id:           4,
+            rules:        Vec::new(),
+            arrangements: Vec::new(),
+            change_cb:    Some(Arc::new(move |_,v,pol| set_update("T4", &relset4, v, pol)))
+        }
+    };
+
+    fn join_transformer() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,Value,Weight>>)> {
+        Box::new(|collections| {
+            let rel4 = {
+                let rel1 = collections.get(&1).unwrap();
+                let rel1_kv = rel1.flat_map(afun1);
+                let rel2 = collections.get(&2).unwrap();
+                let rel2_kv = rel2.flat_map(afun1);
+                rel1_kv.join(&rel2_kv).map(|(_,(v1,v2))| Value::Tuple2(Box::new(v1), Box::new(v2)))
+            };
+            collections.insert(4, rel4);
+        })
+    }
+
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: rel1},
-                    ProgNode::RelNode{rel: rel2},
-                    ProgNode::RelNode{rel: rel3}],
+        nodes: vec![ProgNode::Rel{rel: rel1},
+                    ProgNode::Rel{rel: rel2},
+                    ProgNode::Rel{rel: rel3},
+                    ProgNode::Apply{tfun: join_transformer},
+                    ProgNode::Rel{rel: rel4}
+                    ],
         init_data: vec![]
     };
 
+
     let mut running = prog.run(nthreads);
- 
+
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
 
@@ -606,6 +643,7 @@ fn test_join(nthreads: usize) {
     running.transaction_commit().unwrap();
 
     assert_eq!(*relset3.lock().unwrap(), set);
+    assert_eq!(*relset4.lock().unwrap(), set);
 
     running.stop().unwrap();
 
@@ -739,10 +777,10 @@ fn test_antijoin(nthreads: usize) {
 
     let prog: Program<Value> = Program {
         nodes: vec![
-            ProgNode::RelNode{rel: rel1},
-            ProgNode::RelNode{rel: rel2},
-            ProgNode::RelNode{rel: rel21},
-            ProgNode::RelNode{rel: rel3}],
+            ProgNode::Rel{rel: rel1},
+            ProgNode::Rel{rel: rel2},
+            ProgNode::Rel{rel: rel21},
+            ProgNode::Rel{rel: rel3}],
         init_data: vec![]
     };
 
@@ -782,7 +820,7 @@ fn test_antijoin_1() {
 fn test_antijoin_multi() {
     test_antijoin(16)
 }
- 
+
 /* Maps and filters
  */
 fn test_map(nthreads: usize) {
@@ -846,7 +884,7 @@ fn test_map(nthreads: usize) {
                 if *i > 12 {
                     Some(Box::new(vec![Value::i64(-(*i as i64)), Value::i64(-(2*(*i as i64)))].into_iter()))
                 } else { None }
-            }, 
+            },
             _ => None
         }
     }
@@ -936,10 +974,10 @@ fn test_map(nthreads: usize) {
 
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: rel1},
-                    ProgNode::RelNode{rel: rel2},
-                    ProgNode::RelNode{rel: rel3},
-                    ProgNode::RelNode{rel: rel4}],
+        nodes: vec![ProgNode::Rel{rel: rel1},
+                    ProgNode::Rel{rel: rel2},
+                    ProgNode::Rel{rel: rel3},
+                    ProgNode::Rel{rel: rel4}],
         init_data: vec![]
     };
 
@@ -1104,7 +1142,7 @@ fn test_recursion(nthreads: usize) {
                         ffun:        None,
                         arrangement: (2,0),
                         jfun: &(jfun2 as JoinFunc<Value>),
-                        next: Box::new(Some(XFormCollection::Arrange{      
+                        next: Box::new(Some(XFormCollection::Arrange{
                             afun:        &(anti_arrange1 as ArrangeFunc<Value>),
                             next: Box::new(XFormArrangement::Antijoin {
                                 ffun: None,
@@ -1130,9 +1168,9 @@ fn test_recursion(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![ProgNode::RelNode{rel: parent},
-                    ProgNode::SCCNode{rels: vec![ancestor]},
-                    ProgNode::RelNode{rel: common_ancestor}],
+        nodes: vec![ProgNode::Rel{rel: parent},
+                    ProgNode::SCC{rels: vec![ancestor]},
+                    ProgNode::Rel{rel: common_ancestor}],
         init_data: vec![]
     };
 

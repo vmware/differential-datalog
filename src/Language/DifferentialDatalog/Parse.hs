@@ -91,6 +91,7 @@ reservedNames = ["as",
                  "relation",
                  "skip",
                  "string",
+                 "transformer",
                  "true",
                  "typedef",
                  "var"] ++ rustKeywords
@@ -141,12 +142,14 @@ stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
 varIdent     = lcIdentifier <?> "variable name"
+targIdent    = identifier   <?> "transformer argument name"
 typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
 
 consIdent    = ucScopedIdentifier <?> "constructor name"
 relIdent     = ucScopedIdentifier <?> "relation name"
 funcIdent    = lcScopedIdentifier <?> "function name"
+transIdent   = ucScopedIdentifier <?> "transformer name"
 typeIdent    = scopedIdentifier   <?> "type name"
 
 scopedIdentifier = do
@@ -168,23 +171,29 @@ removeTabs = do s <- getInput
                 let s' = map (\c -> if c == '\t' then ' ' else c ) s
                 setInput s'
 
-data SpecItem = SpImport    Import
-              | SpType      TypeDef
-              | SpRelation  Relation
-              | SpRule      Rule
-              | SpFunc      Function
+data SpecItem = SpImport      Import
+              | SpType        TypeDef
+              | SpRelation    Relation
+              | SpRule        Rule
+              | SpApply       Apply
+              | SpFunc        Function
+              | SpTransformer Transformer
 
 instance WithPos SpecItem where
     pos   (SpType         t)   = pos t
     pos   (SpRelation     r)   = pos r
     pos   (SpRule         r)   = pos r
+    pos   (SpApply        a)   = pos a
     pos   (SpFunc         f)   = pos f
     pos   (SpImport       i)   = pos i
-    atPos (SpType         t) p = SpType      $ atPos t p
-    atPos (SpRelation     r) p = SpRelation  $ atPos r p
-    atPos (SpRule         r) p = SpRule      $ atPos r p
-    atPos (SpFunc         f) p = SpFunc      $ atPos f p
-    atPos (SpImport       i) p = SpImport    $ atPos i p
+    pos   (SpTransformer  t)   = pos t
+    atPos (SpType         t) p = SpType        $ atPos t p
+    atPos (SpRelation     r) p = SpRelation    $ atPos r p
+    atPos (SpRule         r) p = SpRule        $ atPos r p
+    atPos (SpApply        a) p = SpApply       $ atPos a p
+    atPos (SpFunc         f) p = SpFunc        $ atPos f p
+    atPos (SpImport       i) p = SpImport      $ atPos i p
+    atPos (SpTransformer  t) p = SpTransformer $ atPos t p
 
 
 datalogGrammar = removeTabs *> ((optional whiteSpace) *> spec <* eof)
@@ -204,19 +213,28 @@ spec = do
     let funcs = mapMaybe (\case
                            SpFunc f -> Just (name f, f)
                            _        -> Nothing) items
+    let transformers = mapMaybe (\case
+                                 SpTransformer t -> Just (name t, t)
+                                 _               -> Nothing) items
     let rules = mapMaybe (\case
                            SpRule r -> Just r
                            _        -> Nothing) items
-    let res = do uniqNames ("Multiple definitions of type " ++) $ map snd $ types
-                 uniqNames ("Multiple definitions of function " ++) $ map snd $ funcs
-                 uniqNames ("Multiple definitions of relation " ++) $ map snd $ relations
+    let applys = mapMaybe (\case
+                           SpApply a -> Just a
+                           _         -> Nothing) items
+    let res = do uniqNames ("Multiple definitions of type " ++) $ map snd types
+                 uniqNames ("Multiple definitions of function " ++) $ map snd funcs
+                 uniqNames ("Multiple definitions of relation " ++) $ map snd relations
+                 uniqNames ("Multiple definitions of transformer " ++) $ map snd transformers
                  --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
                  uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
-                 return $ DatalogProgram { progImports    = imports
-                                         , progTypedefs   = M.fromList types
-                                         , progFunctions  = M.fromList funcs
-                                         , progRelations  = M.fromList relations
-                                         , progRules      = rules }
+                 return $ DatalogProgram { progImports      = imports
+                                         , progTypedefs     = M.fromList types
+                                         , progFunctions    = M.fromList funcs
+                                         , progTransformers = M.fromList transformers
+                                         , progRelations    = M.fromList relations
+                                         , progRules        = rules
+                                         , progApplys       = applys}
     case res of
          Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
@@ -226,7 +244,9 @@ decl = (withPosMany $
          <|> (return . SpType)           <$> typeDef
          <|> relation
          <|> (return . SpFunc)           <$> func
-         <|> (return . SpRule)           <$> rule)
+         <|> (return . SpTransformer)    <$> transformer
+         <|> (return . SpRule)           <$> rule
+         <|> (return . SpApply)          <$> apply)
    <|> (map SpRule . convertStatement) <$> parseForStatement
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -253,8 +273,20 @@ func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> (colon *> typeSpecSimple)
                        <*> (Just <$ reservedOp "=" <*> expr))
 
-
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
+
+transformer = (Transformer nopos True <$  (reserved "extern" *> reserved "transformer")
+                                      <*> transIdent
+                                      <*> (parens $ commaSep targ)
+                                      <*> (reservedOp "->" *> (parens $ commaSep targ)))
+              <|>
+              (reserved "transformer" *> fail "Only extern trasformers are currently supported")
+
+targ = withPos $ HOField nopos <$> targIdent <*> (colon *> hotypeSpec)
+
+hotypeSpec = withPos $ (HOTypeRelation nopos <$ reserved "relation" <*> (brackets typeSpecSimple))
+                       <|>
+                       (HOTypeFunction nopos <$ reserved "function" <*> (parens $ commaSep farg) <*> (colon *> typeSpecSimple))
 
 relation = do
     role <-  RelInput    <$ reserved "input" <* reserved "relation"
@@ -320,6 +352,10 @@ parseAssignStatement = do e <- try $ do e <- expr
                           return $ AssignStatement nopos e s
 
 parseInsertStatement = InsertStatement nopos <$> try (atom True)
+
+apply = Apply nopos <$  reserved "apply" <*> transIdent
+                    <*> (parens $ commaSep (relIdent <|> funcIdent))
+                    <*> (reservedOp "->" *> (parens $ commaSep relIdent))
 
 rule = Rule nopos <$>
        (commaSep1 $ atom True) <*>

@@ -26,6 +26,7 @@ SOFTWARE.
 module Language.DifferentialDatalog.NS(
     lookupType, checkType, getType,
     lookupFunc, checkFunc, getFunc,
+    lookupTransformer, checkTransformer, getTransformer,
     lookupVar, checkVar, getVar,
     lookupConstructor, checkConstructor, getConstructor,
     lookupRelation, checkRelation, getRelation,
@@ -73,6 +74,16 @@ checkFunc p d n = case lookupFunc d n of
 getFunc :: DatalogProgram -> String -> Function
 getFunc d n = fromJust $ lookupFunc d n
 
+lookupTransformer :: DatalogProgram -> String -> Maybe Transformer
+lookupTransformer DatalogProgram{..} n = M.lookup n progTransformers
+
+checkTransformer :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Transformer
+checkTransformer p d n = case lookupTransformer d n of
+                              Nothing -> err p $ "Unknown transformer: " ++ n
+                              Just t  -> return t
+
+getTransformer :: DatalogProgram -> String -> Transformer
+getTransformer d n = fromJust $ lookupTransformer d n
 
 lookupVar :: DatalogProgram -> ECtx -> String -> Maybe Field
 lookupVar d ctx n = find ((==n) . name) $ ctxAllVars d ctx

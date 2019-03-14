@@ -1,6 +1,6 @@
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 2, column 23):
 unexpected '{'
-expecting "import", "typedef", "extern", "input", "output", "relation", "function", variable name, "&", relation name, "for" or end of input
+expecting "import", "typedef", "extern", "input", "output", "relation", "function", "transformer", variable name, "&", relation name, "apply", "for" or end of input
 
 error: ./test/datalog_tests/constr.fail.dl:4:13-4:29: Multiple definitions of constructor C at the following locations:
   ./test/datalog_tests/constr.fail.dl:4:13-4:29

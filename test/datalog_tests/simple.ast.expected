@@ -13,6 +13,7 @@ typedef Answer = Answer{x: station}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
+typedef Edge = Edge{from: bigint, to: bigint}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
 typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
 typedef Filtered = Filtered{r: std.Ref<Referenced>}
@@ -139,6 +140,10 @@ function c0 (a: bit<32>, b: bit<16>): bit<16> =
      b)
 function dummy (x: string): string =
     (x ++ " dummy")
+function edge_from (e: Edge): bigint =
+    e.from
+function edge_to (e: Edge): bigint =
+    e.to
 extern function f (): bigint
 function f1 (x: T1, y: T2, q: T3): bool =
     (match (x) {
@@ -364,6 +369,7 @@ function vars (): () =
           C{.f1=var c, .f2=var d} = y))))))
 function x (): Alt =
     C0{.x=32'd5}
+extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
 input relation Address [Address]
 output relation Adjusted [Adjusted]
 output relation Aggregate1 [Aggregate1]
@@ -377,6 +383,7 @@ output relation Allocation [Allocation]
 output relation Answer [Answer]
 input relation Blacklist [Blacklist]
 output relation Disaggregate [Disaggregate]
+input relation Edge [Edge]
 output relation ExternalId [ExternalId]
 input relation ExternalIds [ExternalIds]
 output relation Filtered [Filtered]
@@ -411,6 +418,7 @@ input relation Rel2 [Rel2]
 output relation Rel3 [Rel3]
 output relation Rel4 [Rel4]
 input relation Request [Request]
+output relation SCCLabel [(bigint, bigint)]
 output relation Sib [Sib]
 input relation Strings [Strings]
 input relation Suspect [Suspect]
@@ -577,3 +585,4 @@ NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .t
                                                                                                                                                                   allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val).
 Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val).
 YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).
+apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
