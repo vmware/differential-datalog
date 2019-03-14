@@ -765,3 +765,16 @@ input relation YZX(y: bigint, z: bigint, x: bigint)
 output relation YX(y: bigint, x: bigint)
 
 YX(y,x)  :- XY(x,y), YZX(y,z,x).
+
+/* Strongly connected components */
+
+import graph
+
+input relation Edge(from: bigint, to: bigint)
+
+function edge_from(e: Edge): bigint = e.from
+function edge_to(e: Edge): bigint = e.to
+
+output relation SCCLabel[(bigint, bigint)]
+
+apply SCC(Edge, edge_from, edge_to) -> (SCCLabel)

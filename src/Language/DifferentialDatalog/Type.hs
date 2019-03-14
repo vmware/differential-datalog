@@ -117,7 +117,7 @@ typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 -- derives
 -- > 'A = q<'B>
 --
--- Returns mapping from type variables to concrete types or 'Nothing'
+-- Returns mapping from type variables to concrete types or an error
 -- if no such mapping was found due to a conflict, e.g.:
 -- > [(t<'A>, t<q<'B>>), ('A, int)] // conflict
 --

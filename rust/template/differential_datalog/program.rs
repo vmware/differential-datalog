@@ -117,9 +117,9 @@ impl PathSummary<TS16> for TS16 {
     }
 }
 
-type TS = u64;
+pub type TS = u64;
 
-pub type Weight = i64;
+pub type Weight = isize;
 
 // Use 16-bit timestamps for inner scopes to save memory
 pub type TSNested = TS16;
@@ -159,12 +159,20 @@ pub struct Program<V: Val> {
     pub init_data: Vec<(RelId, V)>
 }
 
-/// Program node is either an individual non-recursive relation or
+/// Represents a dataflow fragment implemented outside of DDlog directly in
+/// differential-dataflow.  Takes the set of already constructed collections and modifies this
+/// set, adding new collections.  Note that the transformer can only be applied in the top scope
+/// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
+/// transformer in monotonic and thus it may not converge if used in a nested scope.
+pub type TransformerFunc<V> = fn() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,V,Weight>>)>;
+
+/// Program node is either an individual non-recursive relation, a transformer application or
 /// a vector of one or more mutually recursive relations.
 #[derive(Clone)]
 pub enum ProgNode<V: Val> {
-    RelNode{rel: Relation<V>},
-    SCCNode{rels: Vec<Relation<V>>}
+    Rel{rel: Relation<V>},
+    Apply{tfun: TransformerFunc<V>},
+    SCC{rels: Vec<Relation<V>>}
 }
 
 pub type UpdateCallback<V> = Arc<Fn(RelId, &V, Weight) + Send + Sync>;
@@ -801,31 +809,41 @@ impl<V:Val> Program<V>
                         let mut arrangements = FnvHashMap::default();
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
-                                ProgNode::RelNode{rel:r} => {
-                                    let (session, mut collection) = outer.new_collection::<V,Weight>();
-                                    sessions.insert(r.id, session);
+                                ProgNode::Rel{rel} => {
+                                    /* Relation may already be in the map if it was created by an `Apply` node */
+                                    let mut collection = match collections.remove(&rel.id) {
+                                        None => {
+                                            let (session, mut collection) = outer.new_collection::<V,Weight>();
+                                            sessions.insert(rel.id, session);
+                                            collection
+                                        },
+                                        Some(c) => c
+                                    };
                                     /* apply rules */
-                                    for rule in &r.rules {
+                                    for rule in &rel.rules {
                                         collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid),
                                                                                      Arrangements{arrangements1: &arrangements,
                                                                                                   arrangements2: &FnvHashMap::default()}));
                                     };
                                     /* don't distinct input collections, as this is already done by the set_update logic */
-                                    if !r.input && r.distinct {
-                                        collection = with_prof_context(&format!("{}.distinct_total", r.name),
+                                    if !rel.input && rel.distinct {
+                                        collection = with_prof_context(&format!("{}.distinct_total", rel.name),
                                                                        ||collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }));
                                     }
                                     /* create arrangements */
-                                    for (i,arr) in r.arrangements.iter().enumerate() {
+                                    for (i,arr) in rel.arrangements.iter().enumerate() {
                                         with_prof_context(&arr.name(),
-                                                          ||arrangements.insert((r.id, i), arr.build_arrangement_root(&collection)));
+                                                          ||arrangements.insert((rel.id, i), arr.build_arrangement_root(&collection)));
                                     };
-                                    collections.insert(r.id, collection);
+                                    collections.insert(rel.id, collection);
                                 },
-                                ProgNode::SCCNode{rels:rs} => {
+                                ProgNode::Apply{tfun} => {
+                                    tfun()(&mut collections);
+                                },
+                                ProgNode::SCC{rels} => {
                                     /* create collections; add them to map; we will overwrite them with
                                      * updated collections returned from the inner scope. */
-                                    for r in rs.iter() {
+                                    for r in rels.iter() {
                                         let (session, collection) = outer.new_collection::<V,Weight>();
                                         if r.input {
                                             panic!("input relation in nested scope: {}", r.name)
@@ -843,11 +861,11 @@ impl<V:Val> Program<V>
                                         let mut inner_arrangements = FnvHashMap::default();
                                         /* collections entered from global scope */
                                         let mut inner_collections = FnvHashMap::default();
-                                        for r in rs.iter() {
+                                        for r in rels.iter() {
                                             vars.insert(r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
                                         };
                                         /* create arrangements */
-                                        for rel in rs {
+                                        for rel in rels {
                                             for (i, arr) in rel.arrangements.iter().enumerate() {
                                                 /* check if arrangement is actually used inside this node */
                                                 if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n == nodeid) {
@@ -858,7 +876,7 @@ impl<V:Val> Program<V>
                                                 }
                                             }
                                         };
-                                        for dep in Self::dependencies(&rs) {
+                                        for dep in Self::dependencies(&rels) {
                                             match dep {
                                                 Dep::Rel(relid) => {
                                                     assert!(!vars.contains_key(&relid));
@@ -877,7 +895,7 @@ impl<V:Val> Program<V>
                                             }
                                         };
                                         /* apply rules to variables */
-                                        for rel in rs {
+                                        for rel in rels {
                                             for rule in &rel.rules {
                                                 let c = prog.mk_rule(
                                                     rule,
@@ -890,7 +908,7 @@ impl<V:Val> Program<V>
                                         };
                                         /* bring new relations back to the outer scope */
                                         let mut new_collections = FnvHashMap::default();
-                                        for rel in rs {
+                                        for rel in rels {
                                             new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
                                         };
                                         new_collections
@@ -898,7 +916,7 @@ impl<V:Val> Program<V>
                                     /* add new collections to the map */
                                     collections.extend(new_collections);
                                     /* create arrangements */
-                                    for rel in rs {
+                                    for rel in rels {
                                         for (i, arr) in rel.arrangements.iter().enumerate() {
                                             /* only if the arrangement is used outside of this node */
                                             if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n != nodeid) {
@@ -1107,10 +1125,11 @@ impl<V:Val> Program<V>
     fn get_relation(&self, relid: RelId) -> &Relation<V> {
         for node in &self.nodes {
             match node {
-                ProgNode::RelNode{rel:r} => {
+                ProgNode::Rel{rel:r} => {
                     if r.id == relid {return r;};
                 },
-                ProgNode::SCCNode{rels:rs} => {
+                ProgNode::Apply{..} => {},
+                ProgNode::SCC{rels:rs} => {
                     for r in rs {
                         if r.id == relid {return r;};
                     };
@@ -1134,10 +1153,11 @@ impl<V:Val> Program<V>
     fn node_uses_arrangement(n: &ProgNode<V>, arrid: ArrId) -> bool
     {
         match n {
-            ProgNode::RelNode{rel} => {
+            ProgNode::Rel{rel} => {
                 Self::rel_uses_arrangement(rel, arrid)
             },
-            ProgNode::SCCNode{rels} => {
+            ProgNode::Apply{..} => { false },
+            ProgNode::SCC{rels} => {
                 rels.iter().any(|rel|Self::rel_uses_arrangement(rel, arrid))
             }
         }
@@ -1158,12 +1178,13 @@ impl<V:Val> Program<V>
     {
         self.nodes.iter().flat_map(|node| {
             match node {
-                ProgNode::RelNode{rel:r} => {
+                ProgNode::Rel{rel:r} => {
                     if r.input {vec![r.id]} else {vec![]}
                 },
-                ProgNode::SCCNode{rels:rs} => {
+                ProgNode::Apply{..} => { vec![] },
+                ProgNode::SCC{rels:rs} => {
                     for r in rs {
-                        if r.input { panic!("input relation in SCCNode"); };
+                        if r.input { panic!("input relation in SCC"); };
                     };
                     vec![]
                 }

@@ -1,6 +1,8 @@
 #![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
 
 extern crate fnv;
+extern crate differential_dataflow;
+extern crate timely;
 
 #[macro_use]
 extern crate serde_derive;
@@ -14,6 +16,11 @@ extern crate differential_datalog;
 #[macro_use]
 extern crate abomonation;
 extern crate ddlog_ovsdb_adapter;
+
+use differential_dataflow::collection;
+use timely::dataflow::scopes;
+use timely::worker;
+use timely::communication;
 
 use differential_datalog::program::*;
 use differential_datalog::uint::*;

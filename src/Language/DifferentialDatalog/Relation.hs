@@ -29,6 +29,7 @@ Description: Helper functions for manipulating Relations.
 -}
 module Language.DifferentialDatalog.Relation (
     relRules,
+    relApplys,
     relIsRecursive,
     relIsDistinctByConstruction,
     relIsDistinct
@@ -52,12 +53,19 @@ relRules :: DatalogProgram -> String -> [Rule]
 relRules d rname = filter ((== rname) . atomRelation . head . ruleLHS)
                    $ progRules d
 
+-- | Transformer applications that contain given relation in their heads.
+relApplys :: DatalogProgram -> String -> [Apply]
+relApplys d rname = filter (elem rname . applyOutputs)
+                    $ progApplys d
+
 relIsRecursive :: DatalogProgram -> String -> Bool
 relIsRecursive d rel =
     any (\(from, to) -> elem from scc && elem to scc) $ G.edges g
     where
     g = progDependencyGraph d
-    nd = fst $ fromJust $ find ((== rel) . snd) $ G.labNodes g
+    nd = fst $ fromJust $ find ((\case
+                                  DepNodeRel r -> r == rel
+                                  _            -> False) . snd) $ G.labNodes g
     scc = fromJust $ find (elem nd) $ G.scc g
     
 -- | Relation only contains records with weight 1 by construction and does not require
