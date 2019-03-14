@@ -12,9 +12,11 @@
  * - `to`    - extracts the destination node of an edge
  *
  * Output:
- * - `Labels` - partitioning of the graph into strongly
- *    connected components represented by labeling each graph
- *    node with SCC id, which is the smallest node in the SCC.
+ * - `Labels` - partitions a subset of graph nodes into strongly
+ *    connected components represented by labeling these nodes
+ *    with SCC ids.  An SCC is is the smallest node in the SCC.
+ *    A node not covered by the partitioning belongs to an SCC
+ *    with a single element (itself).
  */
 extern transformer SCC(Edges:   relation['E],
                        from:    function(e: 'E): 'N,
