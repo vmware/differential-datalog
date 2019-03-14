@@ -6,6 +6,7 @@ use differential_dataflow::collection::Collection;
 use differential_dataflow::operators::consolidate::Consolidate;
 use differential_dataflow::lattice::Lattice;
 use timely::dataflow::scopes::Scope;
+use std::mem;
 
 pub fn graph_SCC<S,V,E,N,EF,LF>(edges: &Collection<S,V,Weight>, _edges: EF,
                                 from: fn(&E) -> N,
@@ -24,9 +25,15 @@ where
         let e = _edges(v);
         (from(&e), to(&e))
     });
-    let trimmed = scc::trim(&pairs);
-    let nodes  = trimmed.map_in_place(|x| x.0 = x.1.clone()).consolidate();
+
+    /* Recursively trim nodes without incoming and outgoing edges */
+    let trimmed = scc::trim(&scc::trim(&pairs).map_in_place(|x| mem::swap(&mut x.0, &mut x.1)))
+                  .map_in_place(|x| mem::swap(&mut x.0, &mut x.1));
+    /* Edges that form cycles */
     let cycles = scc::strongly_connected(&trimmed);
+    /* Initially each node is labeled by its own id */
+    let nodes  = cycles.map_in_place(|x| x.0 = x.1.clone()).consolidate();
+    /* Propagate smallest ID within SCC */
     let scclabels = propagate::propagate(&cycles, &nodes);
     scclabels.map(_scclabels)
 }
