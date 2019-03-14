@@ -1,7 +1,7 @@
 /* Functions and transformers for use in graph processing */
 
 /* Compute strongly connected components of a directed graph:
- * 
+ *
  * Type variables:
  * - `'E` - type that represents graph edge
  * - `'N` - type that represents graph node
@@ -14,7 +14,7 @@
  * Output:
  * - `Labels` - partitions a subset of graph nodes into strongly
  *    connected components represented by labeling these nodes
- *    with SCC ids.  An SCC is is the smallest node in the SCC.
+ *    with SCC ids.  An SCC id is id of the smallest node in the SCC.
  *    A node not covered by the partitioning belongs to an SCC
  *    with a single element (itself).
  */
