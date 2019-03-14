@@ -34,7 +34,7 @@ env:
    - TEST_SUITE='-p modules'
    - TEST_SUITE='-p span_string'
 
-addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
+#addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
 os:
   - osx
@@ -65,7 +65,8 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
-- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
+#- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
+- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"
 - if [ $JAVA = 1 ]; then stack install && cd java/test && ./span.sh; fi
 
 before_deploy:
