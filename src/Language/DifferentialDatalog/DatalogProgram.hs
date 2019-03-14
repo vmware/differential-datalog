@@ -185,10 +185,10 @@ type DepGraph = G.Gr DepGraphNode Bool
 -- and Rel2 in the left-hand-side.  Edge label is equal to the
 -- polarity with which Rel1 occurs in the rule.
 --
--- In addition, we conservitively add both a positive and a negative edge
+-- In addition, we conservatively add both a positive and a negative edge
 -- from Rel1 to Rel2 if they appear respectively as input and output of a
 -- transformer application (since we currently don't have a way of knowing
--- if the transformer).
+-- if the transformer is monotonic).
 --
 -- Assumes that rules and relations have been validated before calling
 -- this function.

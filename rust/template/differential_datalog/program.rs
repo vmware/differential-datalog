@@ -63,6 +63,10 @@ type TKeyAgent<S,V> = TraceAgent<V,(),<S as ScopeParent>::Timestamp,Weight,Defau
 type TValEnter<'a,P,T,V> = TraceEnter<V,V,<P as ScopeParent>::Timestamp,Weight,TValAgent<P,V>,T>;
 type TKeyEnter<'a,P,T,V> = TraceEnter<V,(),<P as ScopeParent>::Timestamp,Weight,TKeyAgent<P,V>,T>;
 
+/* 16-bit timestamp.
+ * TODO: get rid of this and use `u16` directly when/if differential implements
+ * `Lattice`, `Timestamp`, `PathSummary` traits for `u16`.
+ */
 #[derive(PartialOrd, PartialEq, Eq, Debug, Default, Clone, Hash, Ord)]
 pub struct TS16{pub x: u16}
 
@@ -117,12 +121,16 @@ impl PathSummary<TS16> for TS16 {
     }
 }
 
+/* Outer timestamp */
 pub type TS = u64;
 
-pub type Weight = isize;
-
-// Use 16-bit timestamps for inner scopes to save memory
+/* Timestamp for the nested scope
+ * Use 16-bit timestamps for inner scopes to save memory
+ */
 pub type TSNested = TS16;
+
+// Diff associated with records in differential dataflow
+pub type Weight = isize;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
