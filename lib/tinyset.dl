@@ -1,0 +1,26 @@
+/* `tinyset` (https://docs.rs/tinyset/0.2.2/tinyset/) is a Rust crate that
+ * implements several space-efficient sparse collections.  This library is a
+ * wrapper around `tinyset` that so far only supports one of these types --
+ * `Set64`, which is a set of values that fit in 64 bits and can be cloned by
+ * copying (e.g., 8, 16, 32, or 64-bit integers). */
+
+extern type Set64<'X>
+
+extern function size(s: Set64<'X>): bit<64>
+extern function empty(): Set64<'X>
+extern function singleton(x: 'X): Set64<'X>
+extern function insert(s: mut Set64<'X>, v: 'X): ()
+extern function insert_imm(s: Set64<'X>, v: 'X): Set64<'X>
+extern function contains(s: Set64<'X>, v: 'X): bool
+extern function is_empty(s: Set64<'X>): bool
+extern function nth(s: Set64<'X>, n: bit<64>): Option<bit<64>>
+extern function union(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
+extern function unions(sets: Vec<Set64<'X>>): Set64<'X>
+
+/* Aggregates */
+extern function group2set(g: Group<'A>): Set64<'A>
+extern function group_set_unions(g: Group<Set64<'A>>): Set64<'A>
+
+/* Optimized version of group_set_unions that, when the group consits of
+ * a single set, simply returns the reference to this set. */
+extern function group_setref_unions(g: Group<Ref<Set64<'A>>>): Ref<Set64<'A>>
