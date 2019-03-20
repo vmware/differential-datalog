@@ -4,15 +4,31 @@ use self::tinyset::u64set;
 use std::vec;
 use std::iter;
 use std::cmp;
+use std::fmt;
 use serde;
 use differential_datalog::record::*;
 use std::iter::FromIterator;
 use __std::option2std;
 use std::ops::BitOr;
 
-#[derive(Eq, Clone, Hash, PartialEq, Debug)]
+#[derive(Eq, Clone, Hash, PartialEq)]
 pub struct tinyset_Set64<T: u64set::Fits64 + Ord> {
     pub x: u64set::Set64<T>
+}
+
+impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[")?;
+        let len = self.x.len();
+        for (i, x) in self.x.iter().enumerate() {
+            if i == len - 1 {
+                write!(f, "{:?}", x)?;
+            } else {
+                write!(f, "{:?}, ", x)?;
+            }
+        };
+        write!(f, "]")
+    }
 }
 
 impl<T: u64set::Fits64 + Ord> Ord for tinyset_Set64<T> {
