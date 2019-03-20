@@ -1,0 +1,91 @@
+import tinyset as TS
+import graph
+
+/* entity id */
+typedef entid_t = bit<32>
+
+/* transport node id */
+typedef tnid_t = bit<16>
+
+input relation DdlogNode(id: entid_t)
+input relation DdlogBinding(tn: tnid_t, entity: entid_t)
+input relation DdlogDependency(parent: entid_t, child: entid_t)
+
+/* Bi-directional edges.
+ */
+relation BiEdge(parent: entid_t, child: entid_t)
+BiEdge(parent, child) :- DdlogDependency(parent, child), DdlogDependency(child, parent).
+
+/* Compute connected components by propagating node id's along biditectional edges.
+ */
+function edge_parent(e: BiEdge): entid_t = e.parent
+function edge_child(e: BiEdge): entid_t = e.child
+relation SCCLabel[(entid_t, entid_t)]
+apply PropagateNodeID(BiEdge, edge_child, edge_parent) -> (SCCLabel)
+
+/* Label all nodes that don't belong to an SCC with their own ids
+ */
+relation LabeledNode(node: entid_t, scc: entid_t)
+LabeledNode(node, scc) :- SCCLabel[(node, scc)].
+LabeledNode(node, node) :- DdlogNode(node), not SCCLabel[(node, _)].
+
+/* Lift the DdlogDependency relation to SCCs:
+ * Two SCCs are connected by an edge iff there is there exists a pair
+ * of nodes that belong to the first and the second SCC respectively,
+ * connected by a DdlogDependency edge.
+ */
+relation SCCEdge(parent: entid_t, child: entid_t)
+SCCEdge(parentscc,childscc) :-
+    DdlogDependency(parent, child),
+    LabeledNode(parent, parentscc),
+    LabeledNode(child, childscc),
+    childscc != parentscc.
+
+/* Lift the DdlogBinding relation to SCCs:
+ * An SCC is bound to a TN iff at least one of its nodes is bound to this TN.
+ */
+relation SCCBinding(scc: entid_t, bindings: Ref<TS.Set64<tnid_t>>)
+SCCBinding(scc, ref_new(bindings)) :-
+    DdlogBinding(tn, entity),
+    LabeledNode(entity, scc),
+    var bindings = Aggregate((scc), TS.group2set(tn)).
+
+/* Compute SCC span.
+ */
+relation SCCSpan(scc: entid_t, span: Ref<TS.Set64<tnid_t>>)
+/* Base case */
+SCCSpan(scc, bindings) :- SCCBinding(scc, bindings).
+/* Recursive step: propagate span along graph edges */
+SCCSpan(parent, tns) :-
+    SCCEdge(child, parent),
+    SCCSpan(child, child_tns),
+    var tns = Aggregate((parent), TS.group_setref_unions(child_tns)).
+
+/* Flatten the span relation: for each node in an SCC, the node's span is the
+ * same as the SCC span.
+ */
+output relation Span(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+Span(node, span) :- SCCSpan(scc, span), LabeledNode(node, scc).
+
+/* The following is validation code to check that the span computation is equivalent to a simple
+ * two-line reachability computation.
+ */
+/*
+output relation FlatSpan(entity: entid_t, tn: tnid_t)
+FlatSpan(entity, tn) :-
+    Span(entity, &span),
+    var tn = FlatMap(span).
+
+relation SimpleSpan(entity: entid_t, tn: tnid_t)
+SimpleSpan(entity, tn) :- DdlogBinding(tn, entity).
+SimpleSpan(parent, tn) :- DdlogDependency(child, parent), SimpleSpan(child, tn).
+
+output relation Error(entity: entid_t, tn: tnid_t)
+Error(entity, tn) :-
+    FlatSpan(entity, tn),
+    not SimpleSpan(entity, tn).
+
+Error(entity, tn) :-
+    SimpleSpan(entity, tn),
+    not FlatSpan(entity, tn).
+*/
