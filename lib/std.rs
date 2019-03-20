@@ -48,7 +48,7 @@ pub fn std_min<A: Ord + Clone>(x: &A, y: &A) -> A {
 }
 
 // Option
-fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
+pub fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
     match x {
         None => std_Option::std_None,
         Some(v) => std_Option::std_Some{x: v}
@@ -468,6 +468,14 @@ pub fn std_group2set<A: Ord, G: Group<A>+?Sized>(g: &G) -> std_Set<A> {
     let mut res = std_Set::new();
     for i in 0..g.size() {
         res.insert(g.ith(i));
+    };
+    res
+}
+
+pub fn std_group_set_unions<A: Ord+Clone, G: Group<std_Set<A>>+?Sized>(g: &G) -> std_Set<A> {
+    let mut res = std_Set::new();
+    for i in 0..g.size() {
+        res.x.append(&mut g.ith(i).x.clone());
     };
     res
 }
