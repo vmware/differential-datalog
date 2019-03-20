@@ -72,7 +72,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
 
-sET_TYPES = ["std.Set", "std.Vec"]
+sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
 gROUP_TYPE = "std.Group"
 
 rEF_TYPE = "std.Ref"

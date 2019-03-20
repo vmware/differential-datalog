@@ -48,6 +48,11 @@ impl<T:Abomonation> Abomonation for ArcVal<T> {
 
 pub type DDString = ArcVal<String>;
 
+impl<T> ArcVal<T> {
+    pub fn get_mut(this: &mut Self) -> Option<&mut T> {
+        Arc::get_mut(&mut this.x)
+    }
+}
 
 impl ArcVal<String> {
     pub fn from_str(s: &str) -> Self {
