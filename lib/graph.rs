@@ -37,3 +37,27 @@ where
     let scclabels = propagate::propagate(&cycles, &nodes);
     scclabels.map(_scclabels)
 }
+
+pub fn graph_PropagateNodeID<S,V,E,N,EF,LF>(edges: &Collection<S,V,Weight>, _edges: EF,
+                                            from: fn(&E) -> N,
+                                            to:   fn(&E) -> N,
+                                            _scclabels: LF) -> (Collection<S,V,Weight>)
+where
+     S: Scope,
+     S::Timestamp: Lattice + Ord,
+     V: Val,
+     N: Val,
+     E: Val,
+     EF: Fn(V) -> E + 'static,
+     LF: Fn((N,N)) -> V + 'static
+{
+    let pairs = edges.map(move |v| {
+        let e = _edges(v);
+        (from(&e), to(&e))
+    });
+
+    /* Initially each node is labeled by its own id */
+    let nodes  = pairs.map_in_place(|x| x.0 = x.1.clone()).consolidate();
+    let labels = propagate::propagate(&pairs, &nodes);
+    labels.map(_scclabels)
+}
