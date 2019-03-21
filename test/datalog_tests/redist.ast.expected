@@ -98,7 +98,7 @@ extern function tinyset.singleton (x: 'X): tinyset.Set64<'X>
 extern function tinyset.size (s: tinyset.Set64<'X>): bit<64>
 extern function tinyset.union (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
 extern function tinyset.unions (sets: std.Vec<tinyset.Set64<'X>>): tinyset.Set64<'X>
-extern transformer graph.PropagateNodeID(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (Labels: relation[('N, 'N)])
+extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
 relation BiEdge [BiEdge]
 input relation DdlogBinding [DdlogBinding]
@@ -118,4 +118,4 @@ SCCBinding(.scc=scc, .bindings=std.ref_new(bindings)) :- DdlogBinding(.tn=tn, .e
 SCCSpan(.scc=scc, .span=bindings) :- SCCBinding(.scc=scc, .bindings=bindings).
 SCCSpan(.scc=parent, .span=tns) :- SCCEdge(.parent=child, .child=parent), SCCSpan(.scc=child, .span=child_tns), var tns = Aggregate((parent), tinyset.group_setref_unions(child_tns)).
 Span(.entity=node, .tns=span) :- SCCSpan(.scc=scc, .span=span), LabeledNode(.node=node, .scc=scc).
-apply graph.PropagateNodeID(BiEdge, edge_child, edge_parent) -> (SCCLabel)
+apply graph.ConnectedComponents(BiEdge, edge_child, edge_parent) -> (SCCLabel)

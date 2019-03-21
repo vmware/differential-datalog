@@ -370,7 +370,7 @@ function vars (): () =
           C{.f1=var c, .f2=var d} = y))))))
 function x (): Alt =
     C0{.x=32'd5}
-extern transformer graph.PropagateNodeID(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (Labels: relation[('N, 'N)])
+extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
 input relation Address [Address]
 output relation Adjusted [Adjusted]
