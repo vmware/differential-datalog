@@ -1,5 +1,5 @@
 import tinyset as TS
-import graph
+import graph as graph
 
 /* entity id */
 typedef entid_t = bit<32>
@@ -21,7 +21,7 @@ BiEdge(parent, child) :- DdlogDependency(parent, child), DdlogDependency(child, 
 function edge_parent(e: BiEdge): entid_t = e.parent
 function edge_child(e: BiEdge): entid_t = e.child
 relation SCCLabel[(entid_t, entid_t)]
-apply PropagateNodeID(BiEdge, edge_child, edge_parent) -> (SCCLabel)
+apply graph.ConnectedComponents(BiEdge, edge_child, edge_parent) -> (SCCLabel)
 
 /* Label all nodes that don't belong to an SCC with their own ids
  */

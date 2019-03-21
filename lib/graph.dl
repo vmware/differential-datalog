@@ -23,9 +23,8 @@ extern transformer SCC(Edges:   relation['E],
                        to:      function(e: 'E): 'N)
     -> (SCCLabels: relation [('N, 'N)])
 
-/* Propagates node IDs forward, retaining the minimum ID.
- * This is more efficient than the SCC transformer and is equivalent to it
- * if the input graph only contains edges that form SCCs.
+/* Compute connected components of a graph
+ * (by propagating node IDs forward, retaining the minimum ID)
  *
  * Type variables:
  * - `'E`  - graph edge
@@ -40,7 +39,7 @@ extern transformer SCC(Edges:   relation['E],
  * - `Labels` - Final labeling of node `n` with the smallest node
  *    id `l` such that `n` is reachable from `l`.
  */
-extern transformer PropagateNodeID(Edges:   relation['E],
-                                   from:    function(e: 'E): 'N,
-                                   to:      function(e: 'E): 'N)
-    -> (Labels: relation [('N, 'N)])
+extern transformer ConnectedComponents(Edges:   relation['E],
+                                       from:    function(e: 'E): 'N,
+                                       to:      function(e: 'E): 'N)
+    -> (CCLabels: relation [('N, 'N)])

@@ -38,10 +38,10 @@ where
     scclabels.map(_scclabels)
 }
 
-pub fn graph_PropagateNodeID<S,V,E,N,EF,LF>(edges: &Collection<S,V,Weight>, _edges: EF,
-                                            from: fn(&E) -> N,
-                                            to:   fn(&E) -> N,
-                                            _scclabels: LF) -> (Collection<S,V,Weight>)
+pub fn graph_ConnectedComponents<S,V,E,N,EF,LF>(edges: &Collection<S,V,Weight>, _edges: EF,
+                                                from: fn(&E) -> N,
+                                                to:   fn(&E) -> N,
+                                                _cclabels: LF) -> (Collection<S,V,Weight>)
 where
      S: Scope,
      S::Timestamp: Lattice + Ord,
@@ -59,5 +59,5 @@ where
     /* Initially each node is labeled by its own id */
     let nodes  = pairs.map_in_place(|x| x.0 = x.1.clone()).consolidate();
     let labels = propagate::propagate(&pairs, &nodes);
-    labels.map(_scclabels)
+    labels.map(_cclabels)
 }
