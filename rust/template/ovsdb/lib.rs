@@ -296,7 +296,13 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
         Record::String(s) => Ok(Value::String(s)),
         Record::Int(i) => {
             if i.is_positive() {
-                i.to_u64().ok_or_else(||format!("Cannot convert BigInt {} to u64", i)).map(|x|Value::Number(Number::from(x)))
+                match i.to_u64() {
+                    Some(v) => Ok(Value::Number(Number::from(v))),
+                    None => {
+                        let uuid = uuid_from_int(&i)?;
+                        Ok(Value::Array(vec![Value::String("uuid".to_owned()), Value::String(uuid)]))
+                    }
+                }
             } else {
                 i.to_i64().ok_or_else(||format!("Cannot convert BigInt {} to i64", i)).map(|x|Value::Number(Number::from(x)))
             }
