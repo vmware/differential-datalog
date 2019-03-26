@@ -435,7 +435,7 @@ public class DDlogRecord {
 
         if (DDlogAPI.ddlog_is_set(this.handle)) {
             int fields = DDlogAPI.ddlog_get_set_size(this.handle);
-            builder.append("{");
+            builder.append("[");
             for (int i = 0; i < fields; i++) {
                 if (i > 0)
                     builder.append(", ");
@@ -443,7 +443,7 @@ public class DDlogRecord {
                 DDlogRecord field = DDlogRecord.fromSharedHandle(handle);
                 builder.append(field.toString());
             }
-            builder.append("}");
+            builder.append("]");
             return builder.toString();
         }
 
