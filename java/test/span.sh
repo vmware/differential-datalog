@@ -1,5 +1,6 @@
 #!/bin/bash
 # Shell script to build and run the span program in Java
+# The java program is tied to the span_uuid.dl program
 
 set -ex
 
