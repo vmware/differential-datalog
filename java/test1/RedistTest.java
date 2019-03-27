@@ -11,11 +11,14 @@ import java.math.BigInteger;
 
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
-import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
+import ddlogapi.DDlogRecord;
 
 public class RedistTest {
     static class Span {
         final int entity;
+        // This list represents a set in DDlog.  We use a list because
+        // we want to preserve the ordering from DDlog.  Moreover, we never
+        // compare this list for equality.
         final List<Integer> tns;
 
         public Span(int entity, List<Integer> tns) {
@@ -44,6 +47,7 @@ public class RedistTest {
     public static class SpanComparator implements Comparator<Span> {
         @Override
         public int compare(Span left, Span right) {
+            // Yes, we only compare the entity in Spans, and we ignore the list.
             return Integer.compare(left.entity, right.entity);
         }
     }
@@ -82,10 +86,8 @@ public class RedistTest {
             this.commands = new ArrayList<DDlogCommand>();
         }
 
-        // Alternative implementation of onCommit which does not use reflection.
         void onCommit(DDlogCommand command) {
             DDlogRecord record = command.value;
-            //System.err.println(command);
             if (command.table == this.spanTableId) {
                 DDlogRecord entity = record.getStructField(0);
                 DDlogRecord tn = record.getStructField(1);
@@ -96,10 +98,6 @@ public class RedistTest {
                     set.add((int)f.getLong());
                 }
                 Span s = new Span((int)entity.getLong(), set);
-                /*
-                if (s.entity == 1)
-                    System.err.println(command);
-                */
                 if (command.kind == DDlogCommand.Kind.Insert)
                     this.span.add(s);
                 else if (command.kind == DDlogCommand.Kind.DeleteVal)
@@ -125,7 +123,7 @@ public class RedistTest {
                 throw new RuntimeException("Expected " + size + " arguments, got " + array.length);
         }
 
-        private DDlogCommand createCommandDirect(String commang, String arguments) {
+        private DDlogCommand createCommand(String commang, String arguments) {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
                 throw new RuntimeException("Cannot parse arguments for " + command);
@@ -206,7 +204,7 @@ public class RedistTest {
                     break;
                 case "insert":
                 case "delete":
-                    DDlogCommand c = this.createCommandDirect(command, rest);
+                    DDlogCommand c = this.createCommand(command, rest);
                     this.commands.add(c);
                     if (this.terminator.equals(";"))
                         this.runCommands();

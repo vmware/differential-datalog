@@ -1,6 +1,8 @@
 #!/bin/bash
 # Shell script to build and run the redist.dl program in Java
-# This test is tied to the redist.dl program
+# This test is tied to the redist.dl program.  Note that
+# the data files are not part of the repository, since they are too large;
+# this test cannot run properly without these data files.
 
 set -ex
 
