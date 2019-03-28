@@ -45,4 +45,4 @@ java -Djava.library.path=. -jar redist.jar ../../test/datalog_tests/redist.dat >
 diff -q redist.java.dump ../../test/datalog_tests/redist.dump
 
 # Cleanup
-rm -rf META-INF *.class
+rm -rf META-INF *.class # redist.java.dump

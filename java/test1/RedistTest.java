@@ -14,17 +14,15 @@ import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;
 
 public class RedistTest {
-    static class Span {
-        final int entity;
-        // This list represents a set in DDlog.  We use a list because
-        // we want to preserve the ordering from DDlog.  Moreover, we never
-        // compare this list for equality.
-        final List<Integer> tns;
+    static abstract class SpanBase {
+        public final int entity;
 
-        public Span(int entity, List<Integer> tns) {
+        protected SpanBase(int entity) {
             this.entity = entity;
-            this.tns = tns;
         }
+
+        public abstract Iterable<Integer> getTNs();
+        public abstract int size();
 
         @Override
         public String toString() {
@@ -33,7 +31,7 @@ public class RedistTest {
             result.append(this.entity);
             result.append(",[");
             boolean first = true;
-            for (int s : this.tns) {
+            for (int s : this.getTNs()) {
                 if (!first)
                     result.append(", ");
                 first = false;
@@ -44,11 +42,134 @@ public class RedistTest {
         }
     }
 
-    public static class SpanComparator implements Comparator<Span> {
+    static class Span extends SpanBase {
+        private final List<Integer> tns;
+
+        public Span(int entity, List<Integer> tns) {
+            super(entity);
+            this.tns = tns;
+        }
+
         @Override
-        public int compare(Span left, Span right) {
-            // Yes, we only compare the entity in Spans, and we ignore the list.
-            return Integer.compare(left.entity, right.entity);
+        public Iterable<Integer> getTNs() {
+            return this.tns;
+        }
+
+        @Override
+        public int size() {
+            return this.tns.size();
+        }
+    }
+
+    /**
+     * A Span implementation that refers to the data in a DeltaSpan
+     */
+    static class SpanFromDelta extends SpanBase {
+        private final DeltaSpan delta;
+
+        public SpanFromDelta(int entity, DeltaSpan delta) {
+            super(entity);
+            this.delta = delta;
+        }
+
+        @Override
+        public Iterable<Integer> getTNs() {
+            Map<Integer, Short> values = this.delta.map.get(this.entity);
+            if (values == null)
+                return Collections.<Integer>emptyList();
+            // Check that all values are 1
+            for (Integer i : values.keySet())  {
+                short s = values.get(i);
+                if (s != 1)
+                    System.err.println("Entity " + this.entity + " tn " + i + " has value " + s);
+            }
+            return values.keySet();
+        }
+
+        @Override
+        public int size() {
+            Map<Integer, Short> values = this.delta.map.get(this.entity);
+            if (values == null)
+                return 0;
+            return values.size();
+        }
+    }
+
+    /**
+     * Represents a change to the span.
+     */
+    static class DeltaSpan {
+        public final Map<Integer, Map<Integer, Short>> map;
+
+        public DeltaSpan() {
+            this.map = new TreeMap<Integer, Map<Integer, Short>>();
+        }
+
+        /**
+         * Add or subtract a span from this delta
+         */
+        public void add(Span span, boolean add) {
+            Map<Integer, Short> v = this.map.get(span.entity);
+            if (v == null) {
+                v = new TreeMap<Integer, Short>();
+                this.map.put(span.entity, v);
+            }
+            for (int tn : span.tns) {
+                Short s = v.get(tn);
+                short s0;
+                if (s == null) {
+                    s0 = 0;
+                } else {
+                    s0 = s;
+                }
+                if (add)
+                    s0 += (short)1;
+                else
+                    s0 -= (short)1;
+                if (s0 == 0)
+                    v.remove(tn);
+                else
+                    v.put(tn, s0);
+            }
+        }
+
+        /**
+         * Add another DeltaSpan to this Delta.
+         */
+        public void add(DeltaSpan other) {
+            for (Integer i : other.map.keySet()) {
+                Map<Integer, Short> ov = other.map.get(i);
+                Map<Integer, Short> v = this.map.get(i);
+                if (v == null) {
+                    v = new TreeMap<Integer, Short>();
+                    this.map.put(i, v);
+                }
+                for (Integer tn : ov.keySet()) {
+                    short so = ov.get(tn);
+                    Short s = v.get(tn);
+                    short s0;
+                    if (s == null)
+                        s0 = so;
+                    else
+                        s0 = (short)(s + so);
+                    if (s0 == 0)
+                        v.remove(tn);
+                    else
+                        v.put(tn, s0);
+                }
+            }
+        }
+
+        public void clear() {
+            this.map.clear();
+        }
+
+        public SpanBase getSpan(int entity) {
+            return new SpanFromDelta(entity, this);
+        }
+
+        public int size() {
+            return this.map.size();
         }
     }
 
@@ -68,15 +189,20 @@ public class RedistTest {
         private final DDlogAPI api;
         private static boolean debug = true;
         private int spanTableId;
-        private boolean localTables = false;
-        private Set<Span> span;
+        /// If localTables is true we maintain the Span table
+        /// contents in Java; otherwise it is maintained by DDlog.
+        private boolean localTables = true;
+        // The whole Span relation is also represented as a delta (from an empty table).
+        private DeltaSpan span;
+        // The delta that is being returned by the transaction that is
+        // currently committing.
+        private DeltaSpan currentDelta;
 
         SpanParser() {
             if (localTables) {
                 this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.spanTableId = this.api.getTableId("Span");
                 System.err.println("Span table id " + this.spanTableId);
-                this.span = new TreeSet<Span>(new SpanComparator());
             } else {
                 this.api = new DDlogAPI(1, null);
             }
@@ -84,6 +210,8 @@ public class RedistTest {
             this.exitCode = -1;
             this.terminator = "";
             this.commands = new ArrayList<DDlogCommand>();
+            this.span = new DeltaSpan();
+            this.currentDelta = new DeltaSpan();
         }
 
         void onCommit(DDlogCommand command) {
@@ -98,12 +226,13 @@ public class RedistTest {
                     set.add((int)f.getLong());
                 }
                 Span s = new Span((int)entity.getLong(), set);
-                if (command.kind == DDlogCommand.Kind.Insert)
-                    this.span.add(s);
-                else if (command.kind == DDlogCommand.Kind.DeleteVal)
-                    this.span.remove(s);
-                else
+                if (command.kind == DDlogCommand.Kind.Insert) {
+                    this.currentDelta.add(s, true);
+                } else if (command.kind == DDlogCommand.Kind.DeleteVal) {
+                    this.currentDelta.add(s, false);
+                } else {
                     throw new RuntimeException("Unexpected command " + this.command);
+                }
             }
         }
 
@@ -186,6 +315,7 @@ public class RedistTest {
             switch (command) {
                 case "timestamp":
                     // TODO
+                    System.out.println("Timestamp: "  + System.currentTimeMillis());
                     this.checkSemicolon();
                     break;
                 case "echo":
@@ -198,7 +328,13 @@ public class RedistTest {
                     this.checkSemicolon();
                     break;
                 case "commit":
+                    // Prepare to commit Start with an empty delta;
+                    // the commit will insert changes in the delta.
+                    this.currentDelta.clear();
                     this.exitCode = this.api.commit();
+                    // Once the commit has returned the delta is completed.
+                    // We can add it to the span.
+                    this.span.add(this.currentDelta);
                     this.checkExitCode();
                     this.checkSemicolon();
                     break;
@@ -218,8 +354,10 @@ public class RedistTest {
                     // Hardwired output relation name
                     if (this.localTables) {
                         System.out.println("Span:");
-                        for (Span s: this.span)
+                        for (int entity: this.span.map.keySet()) {
+                            SpanBase s = this.span.getSpan(entity);
                             System.out.println(s);
+                        }
                     } else {
                         this.api.dump("Span");
                     }
