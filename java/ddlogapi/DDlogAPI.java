@@ -151,7 +151,8 @@ public class DDlogAPI {
     /// Callback invoked from dump.
     boolean dumpCallback(long handle) {
         DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-        System.out.println(record.toString());
+        String s = record.toString();
+        System.out.println(s);
         return true;
     }
 
