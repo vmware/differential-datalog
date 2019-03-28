@@ -14,6 +14,23 @@ extern function allocate(
     min_val: 'N,
     max_val: 'N): Vec<('B, 'N)>
 
+/* Allocate a unique identifier in the range `min_val..max_val` for each element in `toallocate`;
+ * use optional hint as starting point to search for available identifier.
+ * `allocated` stores already allocated ids that must not be re-used.
+ *
+ * Returns new allocations.  May only assign a subset of values if the address space has been
+ * exhausted.
+ *
+ * `N` must be a numeric type, i.e., its Rust representation must have `Num`, `Add`, `Ord`, and
+ * `Copy` traits.  However, as DDlog does not have traits, it will happily compile programs with
+ * any `N` type, leaving it to the Rust compiler to detect the unsatisfied trait.
+ */
+extern function allocate_with_hint(
+    allocated: Set<'N>,
+    toallocate: Vec<('B, Option<'N>)>,
+    min_val: 'N,
+    max_val: 'N): Vec<('B, 'N)>
+
 /* Allocate a unique identifier in the range `min_val..max_val` for each element in `toallocate`.
  * `allocated` stores already allocated ids that must not be re-used.
  *
