@@ -428,7 +428,7 @@ pub fn std_string_contains(s1: &String, s2: &String) -> bool {
     s1.contains(s2.as_str())
 }
 
-pub fn std_string_slice(s: &String, start: &u64, end: &u64) -> String {
+pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
     let len = s.len();
     let from = cmp::min(*start as usize, len-1);
     let to = cmp::max(from, cmp::min(*end as usize, len));
