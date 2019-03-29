@@ -147,7 +147,7 @@ public class RedistTest {
                         short so = ov.get(tn);
                         v.put(tn, so);
                     }
-                    return;
+                    continue;
                 }
                 for (int tn : ov.keySet()) {
                     short so = ov.get(tn);
