@@ -81,6 +81,7 @@ before_deploy:
     - cp "$BIN" "$DIST_DIR/bin/"
     - cp -r lib "$DIST_DIR/"
     - cp -r java "$DIST_DIR/"
+    - cp -r doc "$DIST_DIR/"
     - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
 
 deploy:
