@@ -13,6 +13,8 @@ import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;
 
+import it.unimi.dsi.fastutil.ints.*;
+
 public class RedistTest {
     static abstract class SpanBase {
         public final int entity;
@@ -74,7 +76,7 @@ public class RedistTest {
 
         @Override
         public Iterable<Integer> getTNs() {
-            Map<Integer, Short> values = this.delta.map.get(this.entity);
+            Int2ShortMap values = this.delta.map.get(this.entity);
             if (values == null)
                 return Collections.<Integer>emptyList();
             // Check that all values are 1
@@ -88,7 +90,7 @@ public class RedistTest {
 
         @Override
         public int size() {
-            Map<Integer, Short> values = this.delta.map.get(this.entity);
+            Int2ShortMap values = this.delta.map.get(this.entity);
             if (values == null)
                 return 0;
             return values.size();
@@ -99,37 +101,35 @@ public class RedistTest {
      * Represents a change to the span.
      */
     static class DeltaSpan {
-        public final Map<Integer, Map<Integer, Short>> map;
+        public final Map<Integer, Int2ShortMap> map;
 
         public DeltaSpan() {
-            this.map = new TreeMap<Integer, Map<Integer, Short>>();
+            this.map = new TreeMap<Integer, Int2ShortMap>();
         }
 
         /**
          * Add or subtract a span from this delta
          */
         public void add(Span span, boolean add) {
-            Map<Integer, Short> v = this.map.get(span.entity);
+            short inc = (short)(add ? 1 : -1);
+            Int2ShortMap v = this.map.get(span.entity);
             if (v == null) {
-                v = new TreeMap<Integer, Short>();
+                v = new Int2ShortRBTreeMap();
                 this.map.put(span.entity, v);
+                for (int tn : span.tns)
+                    v.put(tn, inc);
+                return;
             }
             for (int tn : span.tns) {
-                Short s = v.get(tn);
-                short s0;
-                if (s == null) {
-                    s0 = 0;
+                if (!v.containsKey(tn)) {
+                    v.put(tn, inc);
                 } else {
-                    s0 = s;
+                    short s = (short)(v.get(tn) + inc);
+                    if (s == 0)
+                        v.remove(tn);
+                    else
+                        v.put(tn, s);
                 }
-                if (add)
-                    s0 += (short)1;
-                else
-                    s0 -= (short)1;
-                if (s0 == 0)
-                    v.remove(tn);
-                else
-                    v.put(tn, s0);
             }
         }
 
@@ -138,24 +138,28 @@ public class RedistTest {
          */
         public void add(DeltaSpan other) {
             for (Integer i : other.map.keySet()) {
-                Map<Integer, Short> ov = other.map.get(i);
-                Map<Integer, Short> v = this.map.get(i);
+                Int2ShortMap ov = other.map.get(i);
+                Int2ShortMap v = this.map.get(i);
                 if (v == null) {
-                    v = new TreeMap<Integer, Short>();
+                    v = new Int2ShortRBTreeMap();
                     this.map.put(i, v);
+                    for (int tn : ov.keySet()) {
+                        short so = ov.get(tn);
+                        v.put(tn, so);
+                    }
+                    return;
                 }
-                for (Integer tn : ov.keySet()) {
+                for (int tn : ov.keySet()) {
                     short so = ov.get(tn);
-                    Short s = v.get(tn);
-                    short s0;
-                    if (s == null)
-                        s0 = so;
-                    else
-                        s0 = (short)(s + so);
-                    if (s0 == 0)
-                        v.remove(tn);
-                    else
-                        v.put(tn, s0);
+                    if (!v.containsKey(tn)) {
+                        v.put(tn, so);
+                    } else {
+                        short s = (short)(v.get(tn) + so);
+                        if (so == 0)
+                            v.remove(tn);
+                        else
+                            v.put(tn, s);
+                    }
                 }
             }
         }
