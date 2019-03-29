@@ -16,6 +16,9 @@ import ddlogapi.DDlogRecord;
 import it.unimi.dsi.fastutil.ints.*;
 
 public class RedistTest {
+    // If set to false the program is faster
+    static final boolean testing = false;
+
     static abstract class SpanBase {
         public final int entity;
 
@@ -80,10 +83,12 @@ public class RedistTest {
             if (values == null)
                 return Collections.<Integer>emptyList();
             // Check that all values are 1
-            for (Integer i : values.keySet())  {
-                short s = values.get(i);
-                if (s != 1)
-                    System.err.println("Entity " + this.entity + " tn " + i + " has value " + s);
+            if (testing) {
+                for (Integer i : values.keySet())  {
+                    short s = values.get(i);
+                    if (s != 1)
+                        System.err.println("Entity " + this.entity + " tn " + i + " has value " + s);
+                }
             }
             return values.keySet();
         }
@@ -101,34 +106,49 @@ public class RedistTest {
      * Represents a change to the span.
      */
     static class DeltaSpan {
-        public final Map<Integer, Int2ShortMap> map;
+        public final Int2ObjectMap<Int2ShortMap> map;
 
         public DeltaSpan() {
-            this.map = new TreeMap<Integer, Int2ShortMap>();
+            // The RBTree map should be used only for testing
+            if (testing)
+                this.map = new Int2ObjectRBTreeMap<Int2ShortMap>();
+            else
+                // The hashmap is faster.
+                this.map = new Int2ObjectOpenHashMap<Int2ShortMap>();
         }
 
         /**
          * Add or subtract a span from this delta
          */
-        public void add(Span span, boolean add) {
+        synchronized public void add(Span span, boolean add) {
             short inc = (short)(add ? 1 : -1);
             Int2ShortMap v = this.map.get(span.entity);
             if (v == null) {
-                v = new Int2ShortRBTreeMap();
+                if (testing)
+                    // The RBTree is used for testing, the HashMap is faster
+                    v = new Int2ShortRBTreeMap();
+                else
+                    v = new Int2ShortOpenHashMap();
                 this.map.put(span.entity, v);
                 for (int tn : span.tns)
                     v.put(tn, inc);
                 return;
             }
             for (int tn : span.tns) {
-                if (!v.containsKey(tn)) {
-                    v.put(tn, inc);
+                if (testing) {
+                    if (!v.containsKey(tn)) {
+                        v.put(tn, inc);
+                    } else {
+                        short s = (short)(v.get(tn) + inc);
+                        if (s == 0)
+                            v.remove(tn);
+                        else
+                            v.put(tn, s);
+                    }
                 } else {
-                    short s = (short)(v.get(tn) + inc);
-                    if (s == 0)
+                    short old = ((Int2ShortOpenHashMap)v).addTo(tn, inc);
+                    if (old == -inc)
                         v.remove(tn);
-                    else
-                        v.put(tn, s);
                 }
             }
         }
@@ -136,35 +156,43 @@ public class RedistTest {
         /**
          * Add another DeltaSpan to this Delta.
          */
-        public void add(DeltaSpan other) {
+        synchronized public void add(DeltaSpan other) {
             for (Integer i : other.map.keySet()) {
                 Int2ShortMap ov = other.map.get(i);
                 Int2ShortMap v = this.map.get(i);
                 if (v == null) {
-                    v = new Int2ShortRBTreeMap();
-                    this.map.put(i, v);
-                    for (int tn : ov.keySet()) {
-                        short so = ov.get(tn);
-                        v.put(tn, so);
+                    if (testing) {
+                        v = new Int2ShortRBTreeMap();
+                        this.map.put(i, v);
+                        for (int tn : ov.keySet())
+                            v.put(tn, ov.get(tn));
+                    } else {
+                        this.map.put(i, ((Int2ShortOpenHashMap)ov).clone());
                     }
                     continue;
                 }
                 for (int tn : ov.keySet()) {
                     short so = ov.get(tn);
-                    if (!v.containsKey(tn)) {
-                        v.put(tn, so);
+                    if (testing) {
+                        if (!v.containsKey(tn)) {
+                            v.put(tn, so);
+                        } else {
+                            short s = (short)(v.get(tn) + so);
+                            if (so == 0)
+                                v.remove(tn);
+                            else
+                                v.put(tn, s);
+                        }
                     } else {
-                        short s = (short)(v.get(tn) + so);
-                        if (so == 0)
+                        short old = ((Int2ShortOpenHashMap)v).addTo(tn, so);
+                        if (old == -so)
                             v.remove(tn);
-                        else
-                            v.put(tn, s);
                     }
                 }
             }
         }
 
-        public void clear() {
+        synchronized public void clear() {
             this.map.clear();
         }
 
@@ -341,6 +369,8 @@ public class RedistTest {
                     this.span.add(this.currentDelta);
                     this.checkExitCode();
                     this.checkSemicolon();
+                    System.err.println("CurrentDelta:" + this.currentDelta.size() +
+                                       " Span:" + this.span.size());
                     break;
                 case "insert":
                 case "delete":
