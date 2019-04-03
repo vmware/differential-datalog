@@ -47,6 +47,7 @@ use differential_dataflow::trace::TraceReader;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
 use differential_dataflow::Data;
+use differential_dataflow::difference::Monoid;
 use differential_dataflow::difference::Diff;
 use differential_dataflow::hashable::Hashable;
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
@@ -93,16 +94,22 @@ impl One for TS16 {
     }
 }
 
+impl TS16 {
+     pub const fn max_value() -> TS16 {
+         TS16{x: 0xffff}
+     }
+}
+
 impl PartialOrder for TS16 {
     #[inline(always)] fn less_equal(&self, other: &Self) -> bool { self.x.less_equal(&other.x) }
     #[inline(always)] fn less_than(&self, other: &Self) -> bool { self.x.less_than(&other.x) }
 }
 impl Lattice for TS16 {
     #[inline(always)] fn minimum() -> Self { TS16{x: u16::min_value()} }
-    #[inline(always)] fn maximum() -> Self { TS16{x: u16::max_value()} }
     #[inline(always)] fn join(&self, other: &Self) -> Self { TS16{x: ::std::cmp::max(self.x, other.x)} }
     #[inline(always)] fn meet(&self, other: &Self) -> Self { TS16{x: ::std::cmp::min(self.x, other.x)} }
 }
+
 impl Timestamp for TS16 { type Summary = TS16;}
 impl PathSummary<TS16> for TS16 {
     #[inline]
@@ -1024,7 +1031,7 @@ impl<V:Val> Program<V>
                     loop {
                         progress_barrier.wait();
                         let time = *progress_lock.read().unwrap();
-                        if time == /*0xffffffffffffffff*/TS::maximum() {
+                        if time == /*0xffffffffffffffff*/TS::max_value() {
                             return
                         };
                         while probe.less_than(&time) {
@@ -1124,7 +1131,7 @@ impl<V:Val> Program<V>
     fn stop_workers(progress_lock: &RwLock<TS>,
                     progress_barrier: &Barrier)
     {
-        *progress_lock.write().unwrap() = TS::maximum();
+        *progress_lock.write().unwrap() = TS::max_value();
         progress_barrier.wait();
     }
 
@@ -1284,7 +1291,7 @@ impl<V:Val> Program<V>
             XFormArrangement::Aggregate{aggfun: &aggfun, next} => {
                 let col = with_prof_context(
                     "group",
-                    ||arr.group(move |key, src, dst| dst.push((aggfun(key, src),1)))
+                    ||arr.reduce(move |key, src, dst| dst.push((aggfun(key, src),1)))
                          .map(|(_,v)|v));
                 Self::xform_collection(col, &*next, arrangements)
             },

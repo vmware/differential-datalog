@@ -3,9 +3,10 @@ use timely::dataflow::*;
 use timely::dataflow::scopes::{Child};
 use timely::dataflow::operators::*;
 use timely::dataflow::operators::feedback::Handle;
-use differential_dataflow::{Data, Collection, Hashable, Diff};
+use differential_dataflow::{Data, Collection, Hashable};
 use differential_dataflow::operators::*;
 use differential_dataflow::lattice::Lattice;
+use differential_dataflow::difference::Monoid;
 use num::One;
 
 use profile::*;
@@ -18,9 +19,9 @@ use program::{TSNested, Weight};
 /// addition of collections, and a final `distinct` operator applied before connecting the definition.
 pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
-    feedback: Option<Handle<Product<G::Timestamp, TSNested>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
-    current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
-    cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
+    feedback: Option<Handle<Child<'a, G, Product<G::Timestamp, TSNested>>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
+    current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D>,
+    cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D>,
     name: String
 }
 

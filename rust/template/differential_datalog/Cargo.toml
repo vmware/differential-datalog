@@ -5,10 +5,6 @@ version = "0.1.0"
 [dependencies.graph_map]
 git="https://github.com/frankmcsherry/graph-map.git"
 
-#[dependencies.differential-dataflow]
-#git="https://github.com/frankmcsherry/differential-dataflow.git"
-#tag="v0.8.0"
-
 [dev-dependencies]
 getopts="0.2.14"
 rand="0.3.13"
@@ -16,9 +12,9 @@ byteorder="0.4.2"
 itertools="^0.6"
 
 [dependencies]
-differential-dataflow = "0.8"
+differential-dataflow = "0.9"
 abomonation = "0.7"
-timely = "0.8"
+timely = "0.9"
 fnv="1.0.2"
 num = "0.2"
 serde = "1.0"
