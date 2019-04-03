@@ -72,7 +72,7 @@ To download stack (if you don't already have it) use:
 wget -qO- https://get.haskellstack.org/ | sh
 ```
 
-You will also need to install the Rust toolchain v1.29 or later:
+You will also need to install the Rust toolchain v1.32 or later:
 
 ```
 curl https://sh.rustup.rs -sSf | sh
