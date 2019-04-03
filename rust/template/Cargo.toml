@@ -17,8 +17,8 @@ path = "./cmd_parser"
 path = "./ovsdb"
 
 [dependencies]
-differential-dataflow = "0.8"
-timely = "0.8"
+differential-dataflow = "0.9"
+timely = "0.9"
 abomonation= "0.7"
 serde = "1.0"
 serde_derive = "1.0"
