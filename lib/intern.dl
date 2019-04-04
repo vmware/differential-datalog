@@ -1,0 +1,21 @@
+/* Object interning library.
+ * Generates a unique ID for an object, which can be converted back to the original value.
+ */
+
+/* Interned object of type `'A`.
+ * While this type is defined for any `'A`, interning is only supported for strings.
+ * There is simply no way to obtain an interned object of a different type.
+ */
+extern type IObj<'A>
+
+/* Interned string
+ */
+typedef IString = IObj<string>
+
+/* Intern a string
+ */
+extern function string_intern(s: string): IString
+
+/* Extract the value of an interned string
+ */
+extern function istring_str(s: IString): string

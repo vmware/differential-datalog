@@ -427,3 +427,16 @@ commit;
 
 echo SCCLabel;
 dump SCCLabel;
+
+start;
+
+insert IString1("Hello, "),
+insert IString1("Foo "),
+
+insert String2("world"),
+insert String2("bar");
+
+commit;
+
+echo ConcatString;
+dump ConcatString;

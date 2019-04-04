@@ -778,3 +778,22 @@ function edge_to(e: Edge): bigint = e.to
 output relation SCCLabel[(bigint, bigint)]
 
 apply SCC(Edge, edge_from, edge_to) -> (SCCLabel)
+
+/* String interning */
+
+import intern
+
+input relation IString1(s: IString)
+
+input relation String2(s: string)
+
+relation IConcatString(s: IString)
+
+IConcatString(string_intern(istring_str(s1) ++ s2)) :-
+    IString1(s1), String2(s2).
+
+// We want test output to be deterministic;
+// hence convert IString's back to string
+output relation ConcatString(s: string)
+
+ConcatString(istring_str(s)) :- IConcatString(s).

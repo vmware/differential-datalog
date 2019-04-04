@@ -27,9 +27,10 @@ class Files(object):
         self.logFile = open(logName, 'w')
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
-        self.output("typedef number = Ref<string>")
-        self.output("typedef symbol = Ref<string>")
-        self.output("function cat(s: Ref<string>, t: Ref<string>): Ref<string> = ref_new(deref(s) ++ deref(t))")
+        self.output("import intern")
+        self.output("typedef number = IString")
+        self.output("typedef symbol = IString")
+        self.output("function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))")
         self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
         #self.outputData("timestamp", ";")
@@ -199,7 +200,7 @@ def convert_arg(clauseArg):
     varName = getOptField(clauseArg, "VarName")
     string = getOptField(clauseArg, "String")
     if string != None:
-        return "ref_new(" + string.value + ")"
+        return "string_intern(" + string.value + ")"
     if varName != None:
         return var_name(get_qidentifier(varName))
     raise Exception("Unexpected clause argument " + clauseArg.tree_str())
@@ -244,7 +245,7 @@ def convert_assignment(assign):
     strg = getOptField(assign, "String")
     prefix = "var " + var_name(id0) + " = ";
     if strg != None:
-        return prefix + "ref_new(" + strg.value + ")"
+        return prefix + "string_intern(" + strg.value + ")"
     if func != None:
         return prefix + convert_function(func)
     id1 = idents[1].value
@@ -266,7 +267,7 @@ def convert_expression(expr):
         if strg == None:
             id1 = var_name(getIdentifier(idents[1]))
         else:
-            id1 = "ref_new(" + strg.value + ")"
+            id1 = "string_intern(" + strg.value + ")"
         return "not (" + id0 + " == " + id1 + ")"
     raise Exception("Unexpected expression" + expr.tree_str())
 
@@ -347,7 +348,7 @@ def process_decl(decl, files, preprocess):
         if preprocess:
             return
         id = getField(typedecl, "Identifier")
-        files.output("typedef " + id.value + " = Ref<string>")
+        files.output("typedef " + id.value + " = IString")
         return
     relationdecl = getOptField(decl, "RelationDecl")
     if relationdecl != None:
