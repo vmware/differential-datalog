@@ -302,3 +302,8 @@ SCCLabel
 (5, 5)
 (6, 5)
 (7, 5)
+ConcatString
+ConcatString{"Foo bar"}
+ConcatString{"Foo world"}
+ConcatString{"Hello, bar"}
+ConcatString{"Hello, world"}

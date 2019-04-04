@@ -1,0 +1,2 @@
+[dependencies.lazy_static]
+version = "1.3"
