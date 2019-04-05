@@ -1,6 +1,10 @@
+JAR=ddlogapi.jar
 CLASS = ddlogapi/DDlogAPI.class ddlogapi/DDlogCommand.class ddlogapi/DDlogRecord.class
 
-all: $(CLASS)
+all: ${JAR}
+
+${JAR}: ${CLASS}
+	jar cvf ${JAR} ddlogapi/*.class
 
 %.class: %.java ddlogapi_DDlogAPI.h
 	javac $<
