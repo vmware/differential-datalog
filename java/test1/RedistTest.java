@@ -234,7 +234,8 @@ public class RedistTest {
             if (localTables) {
                 this.api = new DDlogAPI(2, r -> this.onCommit(r));
                 this.spanTableId = this.api.getTableId("Span");
-                System.err.println("Span table id " + this.spanTableId);
+                if (debug)
+                    System.err.println("Span table id " + this.spanTableId);
             } else {
                 this.api = new DDlogAPI(2, null);
             }
@@ -369,8 +370,9 @@ public class RedistTest {
                     this.span.add(this.currentDelta);
                     this.checkExitCode();
                     this.checkSemicolon();
-                    System.err.println("CurrentDelta:" + this.currentDelta.size() +
-                                       " Span:" + this.span.size());
+                    if (debug)
+                        System.err.println("CurrentDelta:" + this.currentDelta.size() +
+                                           " Span:" + this.span.size());
                     break;
                 case "insert":
                 case "delete":
