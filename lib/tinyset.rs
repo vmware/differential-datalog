@@ -185,7 +185,10 @@ pub fn tinyset_union<X: u64set::Fits64 + Ord + Clone>(s1: &tinyset_Set64<X>, s2:
 pub fn std_set_unions<X: u64set::Fits64 + Ord + Clone>(sets: &std_Vec<tinyset_Set64<X>>) -> tinyset_Set64<X> {
     let mut s = u64set::Set64::new();
     for si in sets.x.iter() {
-        s.extend(si.x.iter());
+        for v in si.x.iter() {
+            s.insert(v);
+        }
+
     };
     tinyset_Set64{x: s}
 }

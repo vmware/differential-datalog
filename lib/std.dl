@@ -84,6 +84,10 @@ extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
 
 extern function group_set_unions(g: Group<Set<'A>>): Set<'A>
 
+/* Optimized version of group_set_unions that, when the group consits of
+ * a single set, simply returns the reference to this set. */
+extern function group_setref_unions(g: Group<Ref<Set<'A>>>): Ref<Set<'A>>
+
 /* Returns the first element of the group.
  * It always exists, as aggregation cannot return an empty group. */
 extern function group_first(g: Group<'A>): 'A
