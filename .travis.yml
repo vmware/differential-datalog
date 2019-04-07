@@ -67,7 +67,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"
-- if [ $JAVA = 1 ]; then stack install && cd java/test && ./span.sh; fi
+- if [ $JAVA = 1 ]; then stack install && cd java/test && ./run.sh; fi
 
 before_deploy:
     # add date and OS name to the tag
@@ -80,7 +80,12 @@ before_deploy:
     - export BIN="$(stack path --local-install-root)/bin/ddlog"
     - cp "$BIN" "$DIST_DIR/bin/"
     - cp -r lib "$DIST_DIR/"
+    # First copy Java sources only, then build and copy the .jar
     - cp -r java "$DIST_DIR/"
+    - cd java
+    - make
+    - cd ..
+    - cp java/ddlogapi.jar "$DIST_DIR/java/"
     - cp -r doc "$DIST_DIR/"
     - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
 
