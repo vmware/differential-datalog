@@ -483,9 +483,30 @@ pub fn std_group2set<A: Ord, G: Group<A>+?Sized>(g: &G) -> std_Set<A> {
 pub fn std_group_set_unions<A: Ord+Clone, G: Group<std_Set<A>>+?Sized>(g: &G) -> std_Set<A> {
     let mut res = std_Set::new();
     for i in 0..g.size() {
-        res.x.append(&mut g.ith(i).x.clone());
+        for v in g.ith(i).x.iter() {
+           res.insert(v.clone());
+        }
     };
     res
+}
+
+pub fn std_group_setref_unions<A: Ord+Clone, G: Group<std_Ref<std_Set<A>>>+?Sized>(g: &G)
+    -> std_Ref<std_Set<A>>
+{
+    if g.size() == 1 {
+        g.ith(0)
+    } else {
+        let mut res: std_Ref<std_Set<A>> = std_ref_new(&std_Set::new());
+        {
+            let rres = std_Ref::get_mut(&mut res).unwrap();
+            for i in 0..g.size() {
+                for v in g.ith(i).x.iter() {
+                    rres.insert(v.clone());
+                }
+            };
+        }
+        res
+    }
 }
 
 pub fn std_group2vec<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Vec<A> {
