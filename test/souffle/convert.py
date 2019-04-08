@@ -122,7 +122,7 @@ def process_input(inputdecl, files, preprocess):
     #global total
     for line in data:
         fields = line.rstrip('\n').split(separator)
-        fields = map(lambda a: json.dumps(a), fields)
+        fields = map(lambda a: json.dumps(a, ensure_ascii = False), fields)
         files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")", ",")
         #counter = counter + 1
         #total = total + 1
