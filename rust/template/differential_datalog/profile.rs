@@ -6,8 +6,7 @@ use std::fmt;
 use std::cell::RefCell;
 use std::cmp::max;
 use differential_dataflow::logging::DifferentialEvent;
-use timely::logging::TimelyEvent;
-use timely::logging::OperatesEvent;
+use timely::logging::{TimelyEvent, OperatesEvent, ScheduleEvent, StartStop};
 
 thread_local! {
     pub static PROF_CONTEXT: RefCell<String> = RefCell::new("".to_string());
@@ -38,22 +37,46 @@ pub enum ProfMsg {
 
 #[derive(Clone)]
 pub struct Profile {
-    names: FnvHashMap<usize, String>,
-    sizes: FnvHashMap<usize, isize>,
-    peak_sizes: FnvHashMap<usize, isize>
+    names:      FnvHashMap<usize, String>,
+    sizes:      FnvHashMap<usize, isize>,
+    peak_sizes: FnvHashMap<usize, isize>,
+    starts:     FnvHashMap<(usize,usize), Duration>,
+    durations:  FnvHashMap<usize, Duration>
 }
 
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let res1: Result<(), fmt::Error> = self.sizes.iter().map(|(operator, size)| {
+        write!(f, "\nArrangement size profile\n")?;
+        let mut sizes: Vec<(usize, isize)> = self.sizes.clone().into_iter().collect();
+        sizes.sort_by(|a,b| a.1.cmp(&b.1).reverse());
+        let current: Result<(), fmt::Error> = sizes.iter().map(|(operator, size)| {
             let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-            write!(f, "current size of {} {}: {}\n", name, operator, size)
+            let msg = format!("{} {}:", name, operator);
+            write!(f, "{: <80} {}\n", msg, size)
         }).collect();
-        res1.and(
-            self.peak_sizes.iter().map(|(operator, size)| {
-                let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-                write!(f, "peak size of {} {}: {}\n", name, operator, size)
-            }).collect())
+        current?;
+
+        write!(f, "\nArrangement peak sizes\n")?;
+        let mut peak_sizes: Vec<(usize, isize)> = self.peak_sizes.clone().into_iter().collect();
+        peak_sizes.sort_by(|a,b| a.1.cmp(&b.1).reverse());
+        let peak: Result<(), fmt::Error> = peak_sizes.iter().map(|(operator, size)| {
+            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
+            let msg = format!("{} {}:", name, operator);
+            write!(f, "{: <80} {}\n", msg, size)
+        }).collect();
+        peak?;
+
+        write!(f, "\nCPU profile\n")?;
+        let mut durations: Vec<(usize, Duration)> = self.durations.clone().into_iter().collect();
+        durations.sort_by(|a,b| a.1.cmp(&b.1).reverse());
+        let dur_strs: Result<(), fmt::Error> = durations.iter().map(|(operator, duration)| {
+            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
+            let msg = format!("{} {}:", name, operator);
+            write!(f, "{: <80} {}s {}us\n", msg, duration.as_secs(), duration.subsec_micros())
+        }).collect();
+        dur_strs?;
+
+        Ok(())
     }
 }
 
@@ -62,7 +85,9 @@ impl Profile {
         Profile{
             names:      FnvHashMap::default(),
             sizes:      FnvHashMap::default(),
-            peak_sizes:  FnvHashMap::default()
+            peak_sizes: FnvHashMap::default(),
+            starts:     FnvHashMap::default(),
+            durations:  FnvHashMap::default()
         }
     }
 
@@ -74,10 +99,25 @@ impl Profile {
     }
 
     fn handle_timely(&mut self, msg: &Vec<((Duration, usize, TimelyEvent), String)>) {
-        for ((_, _, event), ctx) in msg.iter() {
+        for ((ts, worker, event), ctx) in msg.iter() {
             match event {
                 TimelyEvent::Operates(OperatesEvent{id, addr:_, name}) => {
                     self.names.insert(*id, ctx.clone() + "." + name);
+                },
+                TimelyEvent::Schedule(ScheduleEvent{id, start_stop}) => {
+                    match start_stop {
+                        StartStop::Start => {
+                            self.starts.insert((*id,*worker), *ts);
+                        },
+                        StartStop::Stop => {
+                            let total = self.durations.entry(*id).or_insert(Duration::new(0,0));
+                            let start = self.starts.get(&(*id,*worker)).cloned().unwrap_or_else(||{
+                                eprintln!("TimelyEvent::Stop without a start for operator {}, worker {}", *id, *worker);
+                                Duration::new(0,0)
+                            });
+                            *total += *ts - start;
+                        }
+                    }
                 },
                 _ => ()
             }
