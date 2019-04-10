@@ -2,25 +2,36 @@
 
 \subsection{Compiling DDlog to Differential Dataflow}
 
-Figure~\ref{fig:compiler-flow} shows how DDlog programs are compiled
-into native code.  The DDlog compiler is written in Haskell.  The
-compiler performs parsing, type inference, validation, and several
-optimization steps; it generates Rust code (as text files); the Rust
-code is compiled and linked with the Differential Dataflow (DD)
-library~\cite{differential-dataflow} to produce a static or dynamic
-native code library.  DD is an independent open-source
-project~\cite{differential-dataflow}, described in a series of
+\paragraph{Differential Dataflow}
+The core execution engine of DDlog is Differential Dataflow (DD).
+Differential Dataflow~\cite{differential-dataflow-paper} is a
+streaming big-data processing system which provides incremental
+(differential) computation.  DD is an \emph{incremental}
+map-reduce-like system, but supporting a wide set of relational
+operators, including recursion (fixed-point) and joins.  Section 4.3
+in~\cite{differential-dataflow-paper} describes the core relational
+operators that are used by our compiler to implement DDlog operators.
+DD is described in several
 publications~\cite{timely-dataflow,differential-dataflow-paper} and
 online documents~\cite{dd-mdbook,dd-reference}.  DD can be executed
 using multiple cores or even multiple shared-nothing machines, but we
 currently only support a single machine.
 
+\paragraph{Compilation}
+Figure~\ref{fig:compiler-flow} shows how DDlog programs are compiled.
+The DDlog compiler is written in Haskell.  The compiler performs
+parsing, type inference, validation, and several optimization steps;
+it generates Rust code (as text files); the Rust code is compiled and
+linked with the open-source Rust version of the DD
+library~\cite{differential-dataflow}.
+
 \begin{figure}
-    \includegraphics[width=\columnwidth,clip=true,trim=0in 4in 4in
+\begin{center}
+    \includegraphics[width=.7\columnwidth,clip=true,trim=0in 4in 4in
       0in]{compiler-flow.pdf}
+\end{center}
     \caption{DDlog compilation flow.\label{fig:compiler-flow}}
 \end{figure}
-
 
 The output of the DDlog compiler, and the input to the DD library is a
 dataflow graph, which may contain cycles (introduced by
@@ -35,8 +46,9 @@ The DD library is responsible for executing the emitted
 dataflow graph across many cores.  The
 DD runtime can be configured with one or more worker threads.
 
-\subsection{Transactional API}
+\subsection{Interacting with DDlog programs}
 
+\paragraph{Transactional API}
 The interaction with a running DDlog program is done through a
 transactional API.  At any time only one transaction can be
 outstanding.  After \texttt{start}ing a transaction the user can
@@ -50,44 +62,39 @@ can register an upcall to be notified of these changes.
 Figure~\ref{fig:javaapi}
 shows an example Java program that interacts with a DDlog program.
 
-\subsection{The command-line interface}
-
+\paragraph{The command-line interface}
 For every DDlog program the compiler generates a static or dynamic library
 (depending on user-provided compiler flags), that exports the transactional API
-to the DDlog program, which can be 
-invoked from from Rust or other languages, and a
-command-line interface prograam (CLI) that allows users to interact
-with the DDlog program directly via a command line or a command file. 
+to the DDlog program, which can be
+invoked from Rust or other languages, and a
+command-line interface program (CLI) that allows users to interact
+with the DDlog program directly via a command line or a command file.
 The CLI allows users to start
 transactions, insert or delete tuples in input relations, commit
 transactions, dump the contents of relations, and get statistics
 about resource consumption.  The CLI is used for regression testing
 and debugging.
 
-\subsection{C and Java interfaces}
-
+\paragraph{C and Java interfaces}
 The DDlog API is natively
 implemented in Rust, with bindings available for other languages,
 currently C and Java.
-%The Java API is program-independent, but the
-%native executable needs to be regenerated every time the DDlog program
-%is changed.
 We illustrate the Java API to a simple DDlog program with a
 skeleton example in Figure~\ref{fig:javaapi}.
 
 \begin{figure}
   \footnotesize
   \begin{lstlisting}[language=ddlog]
-// DDlog program    
+// DDlog program
 input relation Parent(parent: string, child: string)
 output relation Ancestor(ancestor: string, descendant: string)
 Ancestor(ancestor, descendant) :- Parent(ancestor, descendant).
 Ancestor(ancestor, descendant) :- Ancestor(ancestor0, ancestor1),
                                   Parent(ancestor1, descendant).
   \end{lstlisting}
-  
+
   \begin{lstlisting}[language=Java]
-// Java program interfacing with DDlog program    
+// Java program interfacing with DDlog program
 static class Parent {
   String parent;
   String child; }
@@ -110,7 +117,7 @@ static void main() {
   DDlogCommand[] commands = new DDlogCommands[1];
   commands[0] = command;
   exitcode = api.applyUpdates(commands);
-  /* commit transaction; causes the callback to be 
+  /* commit transaction; causes the callback to be
    * invoked for each new or deleted output record.
    * commit blocks until all upcalls have been invoked. */
   exitcode = api.commit();
@@ -122,9 +129,9 @@ static void main() {
 static void onCommit(DDlogCommand command) {
   int outputRelation = command.tableId;
   Ancestor value = command.getObject<Ancestor>();
-  if (command.kind == DDlogCommand.Kind.Insert) 
+  if (command.kind == DDlogCommand.Kind.Insert)
     // ancestor inserted
-  else 
+  else
     // ancestor deleted
 }
 \end{lstlisting}

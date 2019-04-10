@@ -3,28 +3,23 @@
   howpublished = {\url{https://github.com/ryzhyk/differential-datalog}},
   note = 	 {Retrieved December 2018}}
 
-@Manual{ddlog-manual,
+@Misc{ddlog-manual,
   title = 	 {Differential Datalog ({DDLog}) Language Reference},
   author = 	 {Leonid Ryzhyk and Mihai Budiu},
   note = 	 {Retrieved December 2018},
-  url = {https://github.com/ryzhyk/differential-datalog/blob/master/doc/language_reference/language_reference.md}
+  howpublished = {\url{https://github.com/ryzhyk/differential-datalog/blob/master/doc/language_reference/language_reference.md}}
 }
 
-@Manual{ddlog-tutorial,
+@Misc{ddlog-tutorial,
   title = 	 {A Differential Datalog ({DDLog}) Tutorial},
   author = 	 {Leonid Ryzhyk and Mihai Budiu},
   note = 	 {Retrieved December 2018},
-  url = {https://github.com/ryzhyk/differential-datalog/blob/master/doc/tutorial/tutorial.md}
+  howpublished = {\url{https://github.com/ryzhyk/differential-datalog/blob/master/doc/tutorial/tutorial.md}}
 }
 
 @Misc{datalog,
   title = 	 {Datalog},
   howpublished = {\url{https://en.wikipedia.org/wiki/Datalog}},
-  year = 	 {Retrieved January 2019}}
-
-@Misc{dd,
-  title = 	 {Differential Dataflow},
-  howpublished = {\url{https://github.com/TimelyDataflow/differential-dataflow}},
   year = 	 {Retrieved January 2019}}
 
 @Misc{jni,
@@ -37,20 +32,21 @@
 @Misc{differential-dataflow,
   author = 	 {Frank McSherry},
   title = 	 {Differential Dataflow},
-  url =          {\url{https://github.com/TimelyDataflow/differential-dataflow}}
+  howpublished = {\url{https://github.com/TimelyDataflow/differential-dataflow}},
+  year = 	 {Retrieved January 2019}}
 }
 
 @Misc{kubernetes,
   author = 	 {Kubernetes},
   title = 	 {Production-Grade Container Orchestration},
-  url =      {\url{https://kubernetes.io/}}
+  howpublished = {\url{https://kubernetes.io/}}
 }
 
 @Inproceedings{differential-dataflow-paper,
   author =	 {McSherry, Frank and Murray, Derek and Isaacs,
                   Rebecca and Isard, Michael},
   title =	 {Differential Dataflow},
-  booktitle =	 {Proceedings of CIDR 2013},
+  booktitle =	 {Conference on Innovative Data Systems Research (CIDR)},
   year =	 2013,
   month =	 {January}
 }
@@ -69,19 +65,22 @@
 @Misc{dd-mdbook,
   author =	 {McSherry, Frank},
   title =	 {{Differential Dataflow} Documentation},
-  url =          {\url{https://timelydataflow.github.io/differential-dataflow/}}
+  howpublished = {\url{https://timelydataflow.github.io/differential-dataflow/}},
+  year =         {Retrieved March 2019}
 }
 
 @Misc{dd-reference,
   author =	 {McSherry, Frank},
   title =	 {{Differential Dataflow} {API} reference},
-  url =          {\url{https://docs.rs/differential-dataflow/0.8.0/differential_dataflow/}}
+  howpublished = {\url{https://docs.rs/differential-dataflow/0.8.0/differential_dataflow/}},
+  year =         {Retrieved March 2019}
 }
 
 @Misc{ovn,
   author =	 {{OVN}},
   title =	 {{Open Virtual Network} architecture},
-  url =          {\url{http://www.openvswitch.org/support/dist-docs/ovn-architecture.7.html}}
+  year =         {Retrieved March 2019},
+  howpublished = {\url{http://www.openvswitch.org/support/dist-docs/ovn-architecture.7.html}}
 }
 
 @inproceedings{scholz-cc16,
@@ -115,7 +114,7 @@
                   introduce a new program synthesis methodology for
                   Datalog specifications to produce highly efficient
                   monolithic C++ analyzers. The synthesis technique
-                  requires the re-interpretation of the semi-na�ve
+                  requires the re-interpretation of the semi-naïve
                   evaluation as a scaffolding for translation using
                   partial evaluation. To achieve high-performance, we
                   employ staged- compilation techniques and specialize
@@ -958,7 +957,7 @@
   author =	 {Zhao, Weijie and Rusu, Florin and Dong, Bin and Wu,
                   Kesheng and Nugent, Peter},
   booktitle =	 {ACM International Conference on Management of Data
-                  (ICMD '17)},
+                  (ICMD)},
   pages =	 {139--154},
   year =	 2017,
   organization = {ACM},
@@ -987,14 +986,122 @@
 }
 
 @article{IncA,
- author = {Szab\'{o}, Tam\'{a}s and Bergmann, G\'{a}bor and Erdweg, Sebastian and Voelter, Markus},
- title = {Incrementalizing Lattice-based Program Analyses in {Datalog}},
- journal = {Proceedings of the ACM on Programming Languages},
- volume = {2},
- number = {OOPSLA},
- month = oct,
- year = {2018},
- pages = {139:1--139:29}
-} 
+  author =       {Szab\'{o}, Tam\'{a}s and Bergmann, G\'{a}bor and
+                  Erdweg, Sebastian and Voelter, Markus},
+  title =        {Incrementalizing Lattice-based Program Analyses in
+                  {Datalog}},
+  journal =      {Proceedings of the ACM on Programming Languages},
+  volume =       2,
+  number =       {OOPSLA},
+  month =        oct,
+  year =         2018,
+  pages =        {139:1--139:29}
+}
 
+@inproceedings{saha-iclp03,
+  title =        {Incremental evaluation of tabled logic programs},
+  author =       {Saha, Diptikalyan and Ramakrishnan, C. R.},
+  booktitle =    {International Conference on Logic Programming (ICLP)},
+  pages =        {392--406},
+  year =         2003,
+  abstract =     {Tabling has emerged as an important evaluation
+                  technique in logic programming. Currently, changes
+                  to a program (due to addition/deletion of
+                  rules/facts) after query evaluation compromise the
+                  completeness and soundness of the answers in the
+                  tables. This paper presents incremental algorithms
+                  for maintaining the freshness of tables upon
+                  addition or deletion of facts. Our algorithms
+                  improve on existing materialized view maintenance
+                  algorithms and can be easily extended to handle
+                  changes to rules as well. We describe an
+                  implementation of our algorithms in the XSB tabled
+                  logic programming system. Preliminary experimental
+                  results indicate that our incremental algorithms are
+                  efficient. Our implementation represents a first
+                  step towards building a practical system for
+                  incremental evaluation of tabled logic programs.}
+}
 
+@incollection{dong-dbpl94,
+  title =        {First-order incremental evaluation of datalog
+                  queries},
+  author =       {Dong, Guozhu and Su, Jianwen},
+  booktitle =    {Database Programming Languages (DBPL)},
+  pages =        {295--308},
+  year =         1994,
+  publisher =    {Springer},
+  address =      {London, UK},
+  abstract =     {We consider the problem of repeatedly evaluating the
+                  same (computationally expensive) query to a database
+                  that is being updated between successive query
+                  requests. In this situation, it should be possible
+                  to use the difference between successive database
+                  states and the answer to the query in one state to
+                  reduce the cost of evaluating the query in the next
+                  state. We use first-order (i.e., nonrecursive)
+                  queries to compute the differences, and call this
+                  process first-order incremental query
+                  evaluation. \par After formalizing the notion of a
+                  first-order incremental query evaluation system
+                  (FOIES), we present an earlier result that every
+                  regular chain query (which are associated with chain
+                  Datalog programs) has a FOIES. We then extend this
+                  result to the situations (1) where regular chain
+                  queries are augmented with binary conjunctive
+                  queries with unions, defining nonrecursive
+                  predicates, that have “cartesian-closed increment”
+                  (CCI), and (2) where insertions for regular queries
+                  are unbounded but “cartesian-closed” sets. The
+                  notion of CCI is essential in proving (1). We also
+                  studied the decision problem for CCI. It is shown
+                  that the CCI property is decidable for binary
+                  conjunctive queries with unions but undecidable for
+                  recursive queries and for relational calculus
+                  queries. We also consider a subclass of FOIES,
+                  “space-free” FOIES, which use no additional facts in
+                  the incremental evaluation. We show that there are
+                  queries which have FOIES but not space-free FOIES
+                  and that it is undecidable if a Datalog query has a
+                  space-free FOIES. Finally, many questions remain
+                  open. For example, does there exist a Datalog query
+                  which does not have any FOIES?}
+}
+
+@misc{boag-xquery02,
+  title =        {{XQuery} 1.0: An {XML} query language},
+  author =       {Boag, Scott and Chamberlin, Don and Fern{\'a}ndez,
+                  Mary F and Florescu, Daniela and Robie, Jonathan and
+                  Sim{\'e}on, J{\'e}r{\^o}me and Stefanescu, Mugur},
+  year =         2002,
+  howpublished = {\url{http://www.w3.org/TR/xquery/}},
+  note =         {Retrieved March 2019}
+}
+
+@inproceedings{fegaras-sigmod95,
+  title =        {Towards an effective calculus for object query
+                  languages},
+  author =       {Fegaras, Leonidas and Maier, David},
+  booktitle =    {ACM SIGMOD Record},
+  volume =       24,
+  number =       2,
+  pages =        {47--58},
+  year =         1995,
+  organization = {ACM},
+  abstract =     {We define a standard of effectiveness for a database
+                  calculus relative to a query language. Effectiveness
+                  judges suitability to serve as a processing
+                  framework for the query language, and comprises
+                  aspects of coverage, manipulability and efficient
+                  evaluation. We present the monoid calculus, and
+                  argue its effectiveness for object-oriented query
+                  languages, exemplified by OQL of ODMG-93. The monoid
+                  calculus readily captures such features as multiple
+                  collection types, aggregations, arbitrary
+                  composition of type constructors and nested query
+                  expressions. We also show how to extend the monoid
+                  calculus to deal with vectors and arrays in more
+                  expressive ways than current query languages do, and
+                  illustrate how it can handle identity and updates.},
+  url =          {https://dl.acm.org/citation.cfm?id=223789}
+}

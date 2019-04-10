@@ -44,36 +44,29 @@
 \begin{document}
 \maketitle
 
-\section{Abstract}
+\begin{abstract}
 
-%In distributed systems, the control plane is responsible for
-%reconfiguring the system in response to external events.  Due to
-%performance and scalability requirements, it is impractical to
-%recompute the entire configuration on every update.  Instead,
-%developers employ \emph{incremental algorithms} that update their
-%outputs in response to input changes.  Such algorithms are notoriously
-%hard to develop, leading to complex and inflexible implementations.
-%(This is the classic ``incremental view update''
-%problem~\cite{Gupta-sigmod93}).
-
-
-Many real-world applications of deductive databases require
+Many real-world applications based on deductive databases require
 incrementally updating output tables in response to changes to input
-tables.
-To address this need, we have developed Differential Datalog
+tables.  To address this need, we have developed Differential Datalog
 (DDlog), a dialect of Datalog that automates incremental computation.
-A DDlog programmer only has to write a specification for the
-original (non-incremental) problem.  Given this description, the DDlog
-compiler generates an efficient incremental implementation.  The DDlog
-runtime automatically maintains indexes required to efficiently
-compute output updates.
+A DDlog programmer writes traditional, non-incremental Datalog
+programs.  The execution model of DDlog is however fully incremental:
+at runtime DDlog programs receive streams of changes to the input
+relations (insertions or deletions) and produce streams of matching
+changes to all derived relations.
+
+The DDlog compiler translates DDlog programs to Differential Dataflow
+(DD)~\cite{differential-dataflow-paper}; DD provides an incremental
+execution engine supporting all the relational operators, including
+fixed-point.  The DDlog runtime automatically maintains the indexes
+required to efficiently compute output updates.
 
 The DDlog language is targeted for system builders.  In consequence,
-the language emphasizes usability, by providing a rich type system,
-a powerful expression language, including string manipulation, arithmetics,
-and control flow constructs.  Finally, DDlog offers an
-alternative syntax for writing Datalog rules, which has a more
-imperative flavor.
+the language emphasizes usability, by providing a rich type system, a
+powerful expression language, including string manipulation,
+arithmetic, and control flow constructs.
+\end{abstract}
 
 \input{intro}
 \input{ddlog}
