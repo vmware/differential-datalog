@@ -143,7 +143,7 @@ pub type Weight = isize;
 const MSG_BUF_SIZE: usize = 500;
 
 /* Message buffer for profiling messages */
-const PROF_MSD_BUF_SIZE: usize = 1000;
+const PROF_MSD_BUF_SIZE: usize = 10000;
 
 /// Result type returned by this library
 pub type Response<X> = Result<X, String>;
@@ -799,8 +799,11 @@ impl<V:Val> Program<V>
                     let progress_barrier = progress_barrier.clone();
 
                     worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
+                        /* Filter out events we don't care about to avoid the overhead of sending
+                         * the event around just to drop it eventually. */
                         let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
                             TimelyEvent::Operates(_) => true,
+                            TimelyEvent::Schedule(_) => true,
                             _ => false
                         }).map(|x|(x, get_prof_context())).collect();
                         if filtered.len() > 0 {
