@@ -14,9 +14,8 @@ output relations (expressed also as insertions or deletions).
 \end{figure}
 
 Here we give a brief overview of the language; the DDlog language
-reference~\cite{ddlog-manual} and the DDlog
-tutorial~\cite{ddlog-tutorial} provide a detailed presentation of
-language features.
+reference~\cite{ddlog-manual} and tutorial~\cite{ddlog-tutorial}
+provide a detailed presentation of language features.
 
 \subsection{Type system}
 
@@ -58,14 +57,16 @@ typedef OptionalIPAddress = Option<IPAddress>
 Relations are strongly typed; the value in each column must have a
 statically-determined type.  There are three kinds of relations in
 DDlog:
-\begin{description}
-\item[Input relations:] the content of these relations is provided by
-  the environment.
-\item[Output relations:] these must be computed by the DDlog program, and the
-  DDlog runtime will inform the environment of changes in these relations.
-\item[Intermediate results:] these are also computed by the DDlog
-  program, but they are hidden from the environment.
-\end{description}
+
+\noindent \textbf{Input relations:} the content of these relations is provided by
+the environment.
+
+\noindent \textbf{Output relations:} these must be computed by the DDlog
+program, and the DDlog runtime will inform the environment of changes
+in these relations.
+
+\noindent \textbf{Intermediate results:} these are also computed by
+the DDlog program, but they are hidden from the environment.
 
 Figure~\ref{fig:relations-rules} shows two relation declarations.  An
 input relation may declare an optional primary key --- which is a set
@@ -179,9 +180,6 @@ example, the rule from Figure~\ref{fig:function} extracts only IPv6
 addresses from the \texttt{Host} relation and binds their value to the
 \texttt{addr} variable, which is used in the left-hand side of the
 rule defining \texttt{IPv6Addr} rule.
-
-Programmers can use \texttt{for} loops to iterate over elements of
-collections, as explained in Section~\ref{sec:collections} below.
 
 \paragraph{Functions}
 

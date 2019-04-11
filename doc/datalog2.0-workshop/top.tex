@@ -47,25 +47,26 @@
 \begin{abstract}
 
 Many real-world applications based on deductive databases require
-incrementally updating output tables in response to changes to input
-tables.  To address this need, we have developed Differential Datalog
-(DDlog), a dialect of Datalog that automates incremental computation.
-A DDlog programmer writes traditional, non-incremental Datalog
-programs.  The execution model of DDlog is however fully incremental:
-at runtime DDlog programs receive streams of changes to the input
-relations (insertions or deletions) and produce streams of matching
-changes to all derived relations.
-
-The DDlog compiler translates DDlog programs to Differential Dataflow
-(DD)~\cite{differential-dataflow-paper}; DD provides an incremental
-execution engine supporting all the relational operators, including
-fixed-point.  The DDlog runtime automatically maintains the indexes
-required to efficiently compute output updates.
+incrementally updating output relations (tables) in response to
+changes to input relations.  To make such applications easier to
+implement we have created Differential Datalog (DDlog), a dialect of
+Datalog that automates incremental computation.  A DDlog programmer
+writes traditional, non-incremental Datalog programs.  The execution
+model of DDlog is however fully incremental: at runtime DDlog programs
+receive streams of changes to the input relations (insertions or
+deletions) and produce streams of corresponding changes to all derived
+relations.  The DDlog compiler translates DDlog programs to
+Differential Dataflow (DD)~\cite{differential-dataflow-paper}
+programs; DD provides an incremental execution engine supporting all
+the relational operators, including fixed-point.  The DDlog runtime
+automatically maintains the indexes required to efficiently compute
+output updates.
 
 The DDlog language is targeted for system builders.  In consequence,
 the language emphasizes usability, by providing a rich type system, a
-powerful expression language, including string manipulation,
-arithmetic, and control flow constructs.
+powerful expression language, a module system, including string
+manipulation, arithmetic, and control flow constructs, and integration
+with C, Rust, and Java.
 \end{abstract}
 
 \input{intro}
