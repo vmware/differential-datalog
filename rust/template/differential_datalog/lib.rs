@@ -12,6 +12,7 @@ extern crate timely;
 //extern crate timely_communication;
 extern crate differential_dataflow;
 extern crate fnv;
+extern crate sequence_trie;
 
 mod profile;
 mod variable;
