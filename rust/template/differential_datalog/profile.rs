@@ -4,9 +4,10 @@ use fnv::FnvHashMap;
 use std::time::Duration;
 use std::fmt;
 use std::cell::RefCell;
-use std::cmp::max;
+use std::cmp::{max,min};
 use differential_dataflow::logging::DifferentialEvent;
 use timely::logging::{TimelyEvent, OperatesEvent, ScheduleEvent, StartStop};
+use sequence_trie::SequenceTrie;
 
 thread_local! {
     pub static PROF_CONTEXT: RefCell<String> = RefCell::new("".to_string());
@@ -37,6 +38,7 @@ pub enum ProfMsg {
 
 #[derive(Clone)]
 pub struct Profile {
+    addresses:  SequenceTrie<usize, usize>,
     names:      FnvHashMap<usize, String>,
     sizes:      FnvHashMap<usize, isize>,
     peak_sizes: FnvHashMap<usize, isize>,
@@ -67,14 +69,7 @@ impl fmt::Display for Profile {
         peak?;
 
         write!(f, "\nCPU profile\n")?;
-        let mut durations: Vec<(usize, Duration)> = self.durations.clone().into_iter().collect();
-        durations.sort_by(|a,b| a.1.cmp(&b.1).reverse());
-        let dur_strs: Result<(), fmt::Error> = durations.iter().map(|(operator, duration)| {
-            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-            let msg = format!("{} {}:", name, operator);
-            write!(f, "{: <80} {}s {}us\n", msg, duration.as_secs(), duration.subsec_micros())
-        }).collect();
-        dur_strs?;
+        self.fmt_durations(0, &self.addresses, f)?;
 
         Ok(())
     }
@@ -83,12 +78,50 @@ impl fmt::Display for Profile {
 impl Profile {
     pub fn new() -> Profile {
         Profile{
+            addresses:  SequenceTrie::new(),
             names:      FnvHashMap::default(),
             sizes:      FnvHashMap::default(),
             peak_sizes: FnvHashMap::default(),
             starts:     FnvHashMap::default(),
             durations:  FnvHashMap::default()
         }
+    }
+
+    pub fn fmt_durations(&self,
+                         depth: usize,
+                         addrs: &SequenceTrie<usize, usize>,
+                         f: &mut fmt::Formatter)
+        -> Result<(), fmt::Error>
+    {
+        /* Sort children in the order of decreasing duration */
+        let mut children = addrs.children();
+        children.sort_by(|child1, child2| {
+            let dur1 = child1.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default())
+                .unwrap_or(Duration::default());
+            let dur2 = child2.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default())
+                .unwrap_or(Duration::default());
+            dur1.cmp(&dur2).reverse()
+        });
+
+        for child in children.iter() {
+            /* Print the duration of the child before calling the function recursively on it */
+            match child.value() {
+                None => {
+                    write!(f, "Unknown operator\n")?;
+                },
+                Some(opid) => {
+                    let name = self.names.get(opid).map(|s|s.as_ref()).unwrap_or("???");
+                    let duration = self.durations.get(opid).cloned().unwrap_or_default();
+                    let msg = format!("{} {}:", name, opid);
+                    let offset = (0..depth*2).map(|_|" ").collect::<String>();
+                    let padding = (0..80 - min(80, msg.len() + offset.len())).map(|_|" ").collect::<String>();
+                    write!(f, "{}{}{} {}s{}us\n",
+                           offset, msg, padding, duration.as_secs(), duration.subsec_micros())?;
+                }
+            }
+            self.fmt_durations(depth + 1, child, f)?;
+        };
+        Ok(())
     }
 
     pub fn update(&mut self, msg: &ProfMsg) {
@@ -101,7 +134,8 @@ impl Profile {
     fn handle_timely(&mut self, msg: &Vec<((Duration, usize, TimelyEvent), String)>) {
         for ((ts, worker, event), ctx) in msg.iter() {
             match event {
-                TimelyEvent::Operates(OperatesEvent{id, addr:_, name}) => {
+                TimelyEvent::Operates(OperatesEvent{id, addr, name}) => {
+                    self.addresses.insert(addr, *id);
                     self.names.insert(*id, ctx.clone() + "." + name);
                 },
                 TimelyEvent::Schedule(ScheduleEvent{id, start_stop}) => {
