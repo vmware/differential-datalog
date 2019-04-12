@@ -54,7 +54,7 @@ Datalog that automates incremental computation.  A DDlog programmer
 writes traditional, non-incremental Datalog programs.  The execution
 model of DDlog is however fully incremental: at runtime DDlog programs
 receive streams of changes to the input relations (insertions or
-deletions) and produce streams of corresponding changes to all derived
+deletions) and produce streams of corresponding changes to derived
 relations.  The DDlog compiler translates DDlog programs to
 Differential Dataflow (DD)~\cite{differential-dataflow-paper}
 programs; DD provides an incremental execution engine supporting all
@@ -65,8 +65,8 @@ output updates.
 The DDlog language is targeted for system builders.  In consequence,
 the language emphasizes usability, by providing a rich type system, a
 powerful expression language, a module system, including string
-manipulation, arithmetic, and control flow constructs, and integration
-with C, Rust, and Java.
+manipulation, arithmetic, and integration with C, Rust, and Java.  The
+code is open-source, available using an MIT permissive license~\cite{ddlog}.
 \end{abstract}
 
 \input{intro}

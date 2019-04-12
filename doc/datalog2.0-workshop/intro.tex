@@ -2,9 +2,9 @@
 
 \paragraph{Motivation.}
 Many real-world applications must update their output in response to input changes.  Consider, for
-example, a cluster management system such as Kubernetes~\cite{kubernetes} that configures cluster
+example, a cluster management system such as Kubernetes~\cite{kubernetes}, that configures cluster
 nodes to execute a user-defined workload.  As the workload changes, e.g., container instances are
-added or removed from the system, the configuration must change accordingly.  In a large cluster,
+added or removed from the system, the configuration must change accordingly.  In a large cluster
 computing configuration from scratch is prohibitively expensive.  Instead, modern cluster management
 systems, including Kubernetes, apply changes incrementally, only updating state effected by the
 change.
@@ -18,7 +18,7 @@ preserving as much as possible intermediate results computed at earlier iteratio
 
 Incremental algorithms tend to be significantly more complex than
 their non-incremental versions.  An incremental algorithm must
-propagates input changes to the output via all intermediate
+propagate input changes to the output via all intermediate
 computation steps.  This, in turn, requires (1) maintaining
 intermediate computation results for each step, and (2) implementing
 an incremental version of each operation, which, given an update to
@@ -26,20 +26,21 @@ its input, computes an update to its output.  Incremental computations
 that operate on relational state are ubiquitous throughout systems
 management software stacks.  The complexity of the incremental algorithms
 greatly impacts the development cost, feature velocity,
-maintainability, and the performance of the control systems.
+maintainability, and performance of the control systems.
 
 We argue that, instead of dealing with the complexity of incremental
 computation on a case-by-case basis, developers should embrace
 programming tools that solve the problem once and for all.  In this
-paper we present one such tool --- \emph{Differential Datalog (DDlog)}
+paper we present one such tool --- Differential Datalog (DDlog)
 --- a programming language that automates incremental computation.  A
 DDlog programmer only has to write a Datalog specification for the
-original (non-incremental) problem.  Given this description, the DDlog
+original (non-incremental) problem.  From this description the DDlog
 compiler generates an efficient incremental implementation.
 
 \paragraph{Overview.}
-DDlog is a \emph{bottom-up}, \emph{incremental}, \emph{in-memory}, \emph{typed} Datalog engine for
-writing \emph{embedded} deductive databases.
+DDlog is a \emph{bottom-up}, \emph{incremental}, \emph{in-memory},
+\emph{typed} Datalog engine for building \emph{embedded} deductive
+databases.
 
 \textbf{Bottom-up:} DDlog starts from a set of ground facts (provided
 by the user) and computes all possible derived facts by following
@@ -51,7 +52,9 @@ possible facts ahead of time.)
 facts, DDlog only performs the minimum computation necessary to
 compute all changes in the derived facts.  This has significant
 performance benefits, and only produces output of minimum size,
-reducing communication requirements.
+reducing communication requirements.  DDlog evaluation is \emph{always
+  incremental}; non-incremental (traditional) evaluation can be
+implemented as a special case, starting form empty relations.
 
 \textbf{In-memory:} DDlog stores and processes data in
 memory\footnote{In a typical use case, a DDlog program is used in
@@ -59,29 +62,30 @@ memory\footnote{In a typical use case, a DDlog program is used in
   DDlog as inputs and the derived facts computed by DDlog are written
   back to the database; DDlog does not include a storage engine.}.  At
 the moment, DDlog keeps all the data in the memory of a single
-machine\footnote{This may change, since the core engine of DDlog is
-  differential dataflow~\cite{dd} supports distributed
-  computation over partitioned data.}.
+machine\footnote{The core engine of DDlog is differential
+  dataflow~\cite{differential-dataflow}, which supports distributed
+  computation over partitioned data; we may add this capability in the
+  future.}.
 
 \textbf{Typed:} Pure Datalog does not have concepts like data types,
-arithmetics, strings or functions.  To facilitate writing of safe,
-clear, and concise code, DDlog extends Datalog with:
+arithmetic, strings or functions.  To facilitate writing of safe,
+maintainable, and concise code, DDlog extends Datalog with:
 \begin{itemize}
 \item A powerful type system, including Booleans, unlimited
-  precision integers, bitvectors, strings, tuples, and
+  precision integers, bit-vectors, strings, tuples, and
   Haskell-style tagged unions (but without recursive types).
 
-\item The ability to store and manipulate sets, vectors, and maps as
-  first-class values in relations, including performing aggregations.
-
-\item Standard integer and bitvector arithmetic.
+\item Standard integer and bit-vector arithmetic.
 
 \item A simple functional language containing functions that allows
-  expressing many computations over these datatypes in DDlog without
+  expressing many computations over these data-types in DDlog without
   resorting to external functions.
 
 \item String operations, including string concatenation and
   interpolation.
+
+\item The ability to store and manipulate sets, vectors, and maps as
+  first-class values in relations, including performing aggregations.
 \end{itemize}
 
 \textbf{Embedded:} while DDlog programs can be run interactively via a
