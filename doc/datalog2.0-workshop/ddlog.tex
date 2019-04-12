@@ -20,22 +20,24 @@ provide a detailed presentation of language features.
 \subsection{Type system}
 
 DDlog is a statically-checked, strongly-typed language; users specify
-types, but often DDlog can infer types from the context.  The type
-system is inspired by Haskell, and supports a rich set of types.  Base
-types include Booleans, bit-strings, e.g., \texttt{bit<32>},
-infinite-precision integers \texttt{bigint}, UTF-8 strings.  Derived
-types are tuples, structures, and tagged unions (which generalize
-enumerated types).  We do not allow defining recursive types like
-lists or trees; however DDlog contains three built-in collection
-types: maps, sets, and arrays (described in
-Section~\ref{sec:collections}).  Figure~\ref{fig:types} shows several type declarations.
+types for collections, variables, functions, but often DDlog can infer
+types from the context.  The type system is inspired by Haskell, and
+supports a rich set of types.  Base types include Booleans,
+bit-strings (e.g., \texttt{bit<32>}), infinite-precision integers
+(\texttt{bigint}), and UTF-8 strings.  Derived types are tuples,
+structures, and tagged unions (which generalize enumerated types).  We
+do not allow defining recursive types like lists or trees; however
+DDlog contains three built-in collection types: maps, sets, and arrays
+(described in Section~\ref{sec:collections}).  Figure~\ref{fig:types}
+shows several type declarations.
 
-Generic types are supported; type variables are preceded by a tick:
-\texttt{'A}.  The language contains a built-in reference type
-\texttt{Ref<'T>}.  Unlike other languages, two references are equal if
-the objects referred are equal; thus references do not alter the
-nature of Datalog.  References can be used to reduce memory
-consumption when complex objects are stored in multiple relations.
+Generic types are supported; type variables are syntactically
+distinguished by a tick: \texttt{'A}.  The language
+contains a built-in reference type \texttt{Ref<'T>}.  Unlike other
+languages, two references are equal if the objects referred are equal;
+thus references do not alter the nature of Datalog.  References can be
+used to reduce memory consumption when complex objects are stored in
+multiple relations.
 
 \begin{figure}[t]
   \footnotesize
@@ -48,7 +50,7 @@ typedef Option<'A> = None
                    | Some{value: 'A}
 typedef OptionalIPAddress = Option<IPAddress>
 \end{lstlisting}
-\caption{Some type declarations in DDlog.  \texttt{None}, \texttt{Some},
+\caption{Type declarations in DDlog.  \texttt{None}, \texttt{Some},
 \texttt{IPv6Address} are \emph{pattern constructors}.\label{fig:types}}
 \end{figure}
 
@@ -59,18 +61,18 @@ statically-determined type.  There are three kinds of relations in
 DDlog:
 
 \noindent \textbf{Input relations:} the content of these relations is provided by
-the environment.
+the environment, in an incremental way.
 
-\noindent \textbf{Output relations:} these must be computed by the DDlog
+\noindent \textbf{Output relations:} these are computed by the DDlog
 program, and the DDlog runtime will inform the environment of changes
 in these relations.
 
 \noindent \textbf{Intermediate results:} these are also computed by
 the DDlog program, but they are hidden from the environment.
 
-Figure~\ref{fig:relations-rules} shows two relation declarations.  An
-input relation may declare an optional primary key --- which is a set
-of columns that can be used to delete entries efficiently by
+Figure~\ref{fig:relations-rules} shows three relation declarations.
+An input relation may declare an optional primary key --- which is a
+set of columns that can be used to delete entries efficiently by
 specifying only the key.
 
 \begin{figure}[t]
@@ -80,13 +82,11 @@ input relation Edge(from: node_t, to: node_t)
                     primary key (e) e.from
 input relation Exclude(node: node_t)
 output relation Path(src: node_t, dst: node_t)
-
 /* The Path relation is computed as a union of two rules */
 // Rule 1: base case
 Path(x, y) :- Edge(x,y).
 // Rule 2: recursive step: join Path relation with Edge
-// followed by an antijoin with Exclude to ignore nodes
-// in the Exclude relation.
+// followed by an antijoin with Exclude.
 Path(x, z) :- Path(x, w), Edge(w, z), not Exclude(z).
   \end{lstlisting}
   \caption{A graph described by two relations and a rule to compute
@@ -99,12 +99,13 @@ well as aggregation, and flatmap, discussed in Section~\ref{sec:collections}.
 DDlog allows recursive rules with stratified negation: intuitively, a DDlog
 relation cannot recursively depend on its own negation.
 
-\subsection{Expressions}
+\subsection{Computations in rules}
 
-Much of DDlog's power stems from its ability to perform complex computation
-inside rules.  For example, the rule in Figure~\ref{fig:area} computes
-an inner join of height and width tables using the object id column and
-then computes the area of the object as the product of its height and width.
+Much of DDlog's power stems from its ability to perform complex
+computation inside rules.  For example, the rule in
+Figure~\ref{fig:area} computes an inner join of height and width
+tables on the object id column, and then computes the area of the
+object as the product of its height and width.
 
 \begin{figure}[t]
   \footnotesize
@@ -116,9 +117,16 @@ output relation Area(object_id: int, area: int)
 // its height and width.
 Area(oid, area) :- Height(oid, h), Width(oid, w),
                    var area = w * h.
+
+// Alternative syntax for defining the same relation.
+for o in Height // o is a tuple with fields (object_id, height)
+   for o1 in Width if o1.oid = o.oid
+       Area(o.oid, o1.width * o.height)
   \end{lstlisting}
-  \caption{Using expressions in a rule.  \texttt{var} introduces a
-    \emph{variable binding}.\label{fig:area}}
+  \caption{Rule examples.  The first rules uses expressions and
+    variables --- \texttt{var} introduces a \emph{variable binding}.
+    The second rule is equivalent with the first one, but is written
+    using an imperative-style syntax.\label{fig:area}}
 \end{figure}
 
 The DDlog expression language supports arithmetic, string
@@ -127,13 +135,26 @@ manipulation, control flow constructs and function calls.
 \paragraph{Local variables}
 Local variables are used to store intermediate results of
 computations.  In DDlog, local variables can be introduced in three
-different contexts.  First, variables can be defined directly in the
-body of a rule, e.g., the \texttt{area} variable in
-Figure~\ref{fig:area}.  Second, a variable can be defined in a
-\texttt{match} pattern, as in Figure~\ref{fig:function}.  Finally, a
-variable can be defined inside an expression, e.g., the \texttt{res}
-variable in Figure~\ref{fig:collections}.  A local variable is visible
-within the syntactic scope where it was defined.
+different contexts: (1) variables can be defined directly in the body
+of a rule, e.g., the \texttt{area} variable in Figure~\ref{fig:area};
+(2) a variable can be defined in a \texttt{match} pattern, as in
+Figure~\ref{fig:function}; and (3) finally, a variable can be defined
+inside an expression, e.g., the \texttt{res} variable in
+Figure~\ref{fig:collections}.  A variable is visible within the
+syntactic scope where it was defined.
+
+\paragraph{``Imperative'' rule syntax}
+We have also defined an alternative syntax for rules, inspired by the
+FLWOR syntax of XQuery expressions~\cite{boag-xquery02}.  The
+``imperative'' fragment offers several statements: \texttt{skip} (does
+nothing), \texttt{for}, \texttt{if}, \texttt{match}, block statements
+(enclosed in braces), and variable definitions \texttt{var...in}.  An
+example is shown in Figure~\ref{fig:area}.  This language is
+essentially a language of monoid
+comprehensions~\cite{fegaras-sigmod95}, so it is easily converted to a
+traditional Datalog representation using a syntax-directed translation
+in the compiler front-end.  Recursive relations cannot be expressed
+using this syntax.
 
 \paragraph{Integers} The integer types (\texttt{bigint} and \texttt{bit<N>}) provide the
 standard arithmetic operations, as well as bit-wise operations, bit
@@ -141,7 +162,7 @@ selection \texttt{v[15:8]}, shifting, and concatenation.
 
 \paragraph{Strings} All primitive types contain built-in conversions to strings, and users
 can implement string conversion functions for user-defined types (like
-Java's toString() method).  Expressions enclosed within
+Java's \texttt{toString()} method).  Expressions enclosed within
 \texttt{\$\{...\}} in a string literal are \emph{interpolated}: they
 are evaluated at run-time, converted to strings and substituted; this
 is a feature inspired by JavaScript; for example
@@ -166,26 +187,27 @@ IPv6Addr(addr) :- Host(.address=Some{IPv6Address{addr}}).
 \end{figure}
 
 \paragraph{Pattern matching}  DDlog borrows
-the \texttt{match} expression from ML, Haskell, and C\# 7.0; a
-\texttt{match} expression simultaneously performs pattern-matching
-against type constructors or values, and also can bind values.
+the \texttt{match} expression from ML and Haskell; a \texttt{match}
+expression simultaneously performs pattern-matching against type
+constructors or values, and also can bind values.
 Figure~\ref{fig:function} shows a \texttt{match} expression that uses
 a nested pattern to extract a byte from a value of type
 \texttt{OptionalIPAddress} (this type was defined in
 Figure~\ref{fig:types}).  For example, the last case binds the
 \texttt{addr} variable to the value of the \texttt{ipv6addr} field.
 
-Pattern matching can also be used directly in the body of a rule.  For
-example, the rule from Figure~\ref{fig:function} extracts only IPv6
-addresses from the \texttt{Host} relation and binds their value to the
-\texttt{addr} variable, which is used in the left-hand side of the
-rule defining \texttt{IPv6Addr} rule.
+Pattern matching can also be used directly in the body of a rule, as
+in the last rule from Figure~\ref{fig:function}, which extracts only
+IPv6 addresses from the \texttt{Host} relation and binds their value
+to the \texttt{addr} variable, which in turn is used in the left-hand side of
+the rule defining \texttt{IPv6Addr} rule.
 
 \paragraph{Functions}
 
 DDlog functions encapsulate pure (side-effect-free) computations.
-An example function is shown in
-Figure~\ref{fig:function}.  Recursive functions are not supported.
+Example functions are \texttt{lastByte} from
+Figure~\ref{fig:function}, and \texttt{concat} from
+Figure~\ref{fig:collections}.  Recursive functions are not supported.
 Users and libraries can declare prototypes of \texttt{extern}
 functions, which must be implemented outside of DDlog (e.g., in Rust),
 and linked against the DDlog program at link time.  The compiler
@@ -195,17 +217,16 @@ assumes that extern functions are pure.
 
 The DDlog standard library contains three built-in generic collection
 types (implemented natively in Rust): \texttt{Vec<'T>},
-\texttt{Set<'T>} and \texttt{Map<'T>}.  Values of these types can be
-stored as first-class values within relations.  Equality for values
-of these types is defined as expected, element-wise.  In theory such
-types are not necessary, since collections within relations can be
-represented using separate relations.  We have
-introduced them into the language because many practical applications
-have data models that contain nested collections; by supporting
-collection-valued columns natively in DDlog we can more easily
-interface with such applications, without the need to write glue code
-to convert collections back and forth into separate relations using
-foreign keys.
+\texttt{Set<'T>} and \texttt{Map<'K, 'V>}.  Values of these types can
+be stored as first-class values within relations.  Equality for values
+of these types is defined element-wise.  In theory such types are not
+necessary, since collections within relations can be represented using
+separate relations.  We have introduced them into the language because
+many practical applications have data models that contain nested
+collections; by supporting collection-valued columns natively in DDlog
+we can more easily interface with such applications, without the need
+to write glue code to convert collections back and forth into separate
+relations using foreign keys.
 
 Figure~\ref{fig:collections} shows the declaration in DDlog of an
 external function which splits a string into substrings using a
@@ -220,8 +241,7 @@ extern function split(s: string, sep: string): Vec<string>
 function concat(s: Vec<string>, sep: string): string = {
   var res = "";
   for (e in s) {
-    res = if (res != "") res + sep else res;
-    res = res + e
+    res = (if (res != "") (res + sep) else res) + e
   };
   res   // last value is function evaluation result
 }
@@ -243,8 +263,8 @@ ShortestPath(x, y, min_cost) :- Path(x, y, cost),
 
 \texttt{for} loops can be used to iterate over elements in
 collections.  Figure~\ref{fig:collections} shows an implementation of
-the function \texttt{concat}, the inverse of \texttt{split} using a
-loop.
+the function \texttt{concat}, the inverse of \texttt{split}, which
+uses a loop.
 
 The \texttt{FlatMap} operator can be used to flatten
 a collection into a set of DDlog records, as illustrated in the definition of
@@ -264,7 +284,7 @@ DDlog offers a simple module system, inspired by Haskell and Python,
 which allows importing definitions (types, functions, relations) from
 multiple files.  The user can add imported definitions directly into the
 name space of the importing module or keep them in a separate name space to
-prevent name clashes.  Similar to Java packages, module names are
+prevent name collisions.  Similar to Java packages, module names are
 hierarchical and the module name hierarchy must match the paths on the
 the filesystem where modules are stored.  The directive \texttt{import
   library.module} will load the module from file
@@ -276,29 +296,4 @@ functions and data-types, such as \texttt{min}, string manipulation
 and conversion to strings, functions to manipulate vectors, sets, maps
 (insertion, deletion, lookup, etc.).
 
-\subsection{``Imperative'' relation definitions}
-
-We have also defined an alternative syntax for rules, inspired by the
-FLWOR syntax of XQuery expressions~\cite{boag-xquery02};
-Figure~\ref{fig:imperative} rewrites the \texttt{Area} relation from
-Figure~\ref{fig:area} using this syntax.  The ``imperative'' fragment
-offers several statements: \texttt{skip} (does nothing), \texttt{for},
-\texttt{if}, \texttt{match}, block statements (enclosed in braces),
-and variable definitions \texttt{var...in}; this language is
-essentially a language of monoid
-comprehensions~\cite{fegaras-sigmod95}, so it is easily converted to a
-traditional Datalog representation using a syntax-directed
-translation.  Recursive relations cannot be expressed using this
-syntax.
-
-\begin{figure}[t]
-  \footnotesize
-  \begin{lstlisting}[language=ddlog]
-for o in Height
-   for o1 in Width if o1.oid = o.oid
-       Area(o.oid, o.width * o.height)
-  \end{lstlisting}
-  \caption{Imperative-style code defining relation \texttt{Area} from
-    Figure~\ref{fig:area}.
-    \label{fig:imperative}}
-\end{figure}
+%\subsection{``Imperative'' relation definitions}
