@@ -92,6 +92,10 @@ extern function group_setref_unions(g: Group<Ref<Set<'A>>>): Ref<Set<'A>>
  * It always exists, as aggregation cannot return an empty group. */
 extern function group_first(g: Group<'A>): 'A
 
+/* Smallest and largest group elements. */
+extern function group_min(g: Group<'A>): 'A
+extern function group_max(g: Group<'A>): 'A
+
 /*
  * Vec
  */

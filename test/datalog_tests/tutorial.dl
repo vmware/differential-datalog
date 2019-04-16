@@ -208,6 +208,35 @@ Sum(x,y,x+y),
 Product(x,y,x*y) :- X(x), X(y).
 
 /*
+ * Example: aggregation
+ */
+
+input relation Price(item: string, vendor: string, price: bit<64>)
+output relation BestPrice(item: string, price: bit<64>)
+
+BestPrice(item, best_price) :-
+    Price(.item = item, .price = price),
+    var best_price = Aggregate((item), group_min(price)).
+
+output relation BestVendor(item: string, vendor: string, price: bit<64>)
+
+BestVendor(item, best_vendor, best_price) :-
+    Price(item, vendor, price),
+    var vendor_price_vec = Aggregate((item), group2vec((vendor, price))),
+    (var best_vendor, var best_price) = {
+        var min_vendor = "";
+        var min_price = 'hffffffffffffffff: bit<64>;
+        for (vendor_price in vendor_price_vec) {
+            (var vendor, var price) = vendor_price;
+            if (price < min_price) {
+                min_vendor = vendor;
+                min_price = price
+            } else ()
+        };
+        (min_vendor, min_price)
+    }.
+
+/*
  * Example: tagged unions
  */
 

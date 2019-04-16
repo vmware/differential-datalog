@@ -146,6 +146,23 @@ dump Product;
 
 start;
 
+insert Price("A", "Overpriced Inc", 120),
+insert Price("A", "Scrooge Ltd", 110),
+insert Price("A", "Discount Corp", 100),
+insert Price("B", "Overpriced Inc", 123),
+insert Price("B", "Scrooge Ltd", 150),
+insert Price("B", "Discount Corp", 111);
+
+commit;
+
+echo BestPrice:;
+dump BestPrice;
+
+echo BestVendor:;
+dump BestVendor;
+
+start;
+
 insert Packet(EthPacket{
     0xaabbccddeeff,
     0x112233445566,
