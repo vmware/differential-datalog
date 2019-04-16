@@ -229,8 +229,13 @@ def convert_function_argument(arg):
     id = getOptField(arg, "QIdentifier")
     if id != None:
         return var_name(getIdentifier(id))
-    str = getField(arg, "String")
-    return str.value
+    if arg.children[0].symbol.name == "FunctionCall":
+        func = getOptField(arg, "FunctionCall")
+        str_cf = convert_function(func)
+        return str_cf
+    else:
+        str = getField(arg, "String")
+        return "string_intern(" + str.value + ")"
 
 def convert_function(function):
     id = getField(function, "Identifier")
