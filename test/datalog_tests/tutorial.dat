@@ -158,6 +158,9 @@ commit;
 echo BestPrice:;
 dump BestPrice;
 
+echo WorstPrice:;
+dump WorstPrice;
+
 echo BestVendor:;
 dump BestVendor;
 

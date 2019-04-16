@@ -40,6 +40,7 @@ typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
+typedef WorstPrice = WorstPrice{item: string, price: bit<64>}
 typedef X = X{x: bit<16>}
 typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} | EthIP6{ip6: ip6_pkt_t} | EthOther{}
 typedef eth_pkt_t = EthPacket{src: bit<48>, dst: bit<48>, payload: eth_payload_t}
@@ -227,6 +228,7 @@ output relation UDPDstPort [UDPDstPort]
 output relation UDPDstPort2 [UDPDstPort2]
 input relation Word1 [Word1]
 input relation Word2 [Word2]
+output relation WorstPrice [WorstPrice]
 input relation X [X]
 Phrases(.phrase=((w1 ++ " ") ++ w2)) :- Word1(.word=w1, .cat=cat), Word2(.word=w2, .cat=cat).
 Word1(.word="Hello,", .cat=CategoryOther{}).
@@ -244,6 +246,7 @@ HostIPVSep(.host=host, .addrs=vaddrs) :- HostAddress(.host=host, .addrs=addrs), 
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 BestPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_min(price)).
+WorstPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_max(price)).
 BestVendor(.item=item, .vendor=best_vendor, .price=best_price) :- Price(.item=item, .vendor=vendor, .price=price), var vendor_price_vec = Aggregate((item), std.group2vec((vendor, price))), (var best_vendor, var best_price) = (var min_vendor = "";
                                                                                                                                                                                                                                   (var min_price = (64'd18446744073709551615: bit<64>);
                                                                                                                                                                                                                                    (for (vendor_price in vendor_price_vec) {

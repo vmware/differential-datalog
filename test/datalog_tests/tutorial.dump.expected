@@ -104,6 +104,9 @@ Product{150,150,22500}
 BestPrice:
 BestPrice{"A",100}
 BestPrice{"B",111}
+WorstPrice:
+WorstPrice{"A",120}
+WorstPrice{"B",150}
 BestVendor:
 BestVendor{"A","Discount Corp",100}
 BestVendor{"B","Discount Corp",111}
