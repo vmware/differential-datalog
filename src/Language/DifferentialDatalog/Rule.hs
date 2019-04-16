@@ -24,6 +24,7 @@ SOFTWARE.
 {-# LANGUAGE RecordWildCards, LambdaCase, FlexibleContexts #-}
 
 module Language.DifferentialDatalog.Rule (
+    rulePPPrefix,
     ruleRHSVars,
     ruleRHSNewVars,
     ruleVars,
@@ -41,8 +42,10 @@ import qualified Data.Map as M
 import Data.List
 import Control.Monad.Except
 import Debug.Trace
+import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -50,6 +53,10 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Validate
+
+-- | Pretty-print the first 'len' literals of a rule. 
+rulePPPrefix :: Rule -> Int -> Doc
+rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS rl
 
 -- | New variables declared in the 'i'th conjunct in the right-hand
 -- side of a rule.

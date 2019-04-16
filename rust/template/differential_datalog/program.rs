@@ -290,12 +290,14 @@ pub enum XFormArrangement<V: Val>
 {
     /// FlatMap arrangement into a collection
     FlatMap {
+        description: String,
         fmfun: &'static FlatMapFunc<V>,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
         next: Box<Option<XFormCollection<V>>>,
     },
     FilterMap {
+        description: String,
         fmfun: &'static FilterMapFunc<V>,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
@@ -303,6 +305,7 @@ pub enum XFormArrangement<V: Val>
     },
     /// Aggregate
     Aggregate {
+        description: String,
         /// Aggregation to apply to each group.
         aggfun: &'static AggFunc<V>,
         /// Apply transformation to the resulting collection.
@@ -310,6 +313,7 @@ pub enum XFormArrangement<V: Val>
     },
     /// Join
     Join {
+        description: String,
         /// Filter arrangement before joining
         ffun: Option<&'static FilterFunc<V>>,
         /// Arrangement to join with.
@@ -321,6 +325,7 @@ pub enum XFormArrangement<V: Val>
     },
     /// Semijoin
     Semijoin {
+        description: String,
         /// Filter arrangement before joining
         ffun: Option<&'static FilterFunc<V>>,
         /// Arrangement to semijoin with.
@@ -332,6 +337,7 @@ pub enum XFormArrangement<V: Val>
     },
     /// Return a subset of values that correspond to keys not present in `arrangement`.
     Antijoin {
+        description: String,
         /// Filter arrangement before joining
         ffun: Option<&'static FilterFunc<V>>,
         /// Arrangement to antijoin with
@@ -343,28 +349,39 @@ pub enum XFormArrangement<V: Val>
 
 impl<V: Val> XFormArrangement<V>
 {
+    pub fn description(&self) -> &str {
+        match self {
+            XFormArrangement::FlatMap   {description, ..} => &description,
+            XFormArrangement::FilterMap {description, ..} => &description,
+            XFormArrangement::Aggregate {description, ..} => &description,
+            XFormArrangement::Join      {description, ..} => &description,
+            XFormArrangement::Semijoin  {description, ..} => &description,
+            XFormArrangement::Antijoin  {description, ..} => &description
+        }
+    }
+
     fn dependencies(&self) -> FnvHashSet<Dep>
     {
         match self {
-            XFormArrangement::FlatMap{fmfun: _, next} => {
+            XFormArrangement::FlatMap{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormArrangement::FilterMap{fmfun: _, next} => {
+            XFormArrangement::FilterMap{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormArrangement::Aggregate{aggfun: _, next} => {
+            XFormArrangement::Aggregate{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormArrangement::Join{ffun: _, arrangement, jfun: _, next} => {
+            XFormArrangement::Join{arrangement, next, ..} => {
                 let mut deps = match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
@@ -372,7 +389,7 @@ impl<V: Val> XFormArrangement<V>
                 deps.insert(Dep::Arr(*arrangement));
                 deps
             }
-            XFormArrangement::Semijoin{ffun: _, arrangement, jfun: _, next} => {
+            XFormArrangement::Semijoin{arrangement, next, ..} => {
                 let mut deps = match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
@@ -380,7 +397,7 @@ impl<V: Val> XFormArrangement<V>
                 deps.insert(Dep::Arr(*arrangement));
                 deps
             }
-            XFormArrangement::Antijoin{ffun: _, arrangement, next} => {
+            XFormArrangement::Antijoin{arrangement, next, ..} => {
                 let mut deps = match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
@@ -398,58 +415,73 @@ pub enum XFormCollection<V: Val>
 {
     /// Arrange the collection, apply `next` transformation to the resulting collection.
     Arrange {
-        afun: &'static ArrangeFunc<V>,
-        next: Box<XFormArrangement<V>>
+        description: String,
+        afun:        &'static ArrangeFunc<V>,
+        next:        Box<XFormArrangement<V>>
     },
     /// Apply `mfun` to each element in the collection
     Map {
-        mfun: &'static MapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>
+        description: String,
+        mfun:        &'static MapFunc<V>,
+        next:        Box<Option<XFormCollection<V>>>
     },
     /// FlatMap
     FlatMap {
-        fmfun: &'static FlatMapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>
+        description: String,
+        fmfun:       &'static FlatMapFunc<V>,
+        next:        Box<Option<XFormCollection<V>>>
     },
     /// Filter collection
     Filter {
-        ffun: &'static FilterFunc<V>,
-        next: Box<Option<XFormCollection<V>>>
+        description: String,
+        ffun:        &'static FilterFunc<V>,
+        next:        Box<Option<XFormCollection<V>>>
     },
     /// Map and filter
     FilterMap {
-        fmfun: &'static FilterMapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>
+        description: String,
+        fmfun:       &'static FilterMapFunc<V>,
+        next:        Box<Option<XFormCollection<V>>>
     }
 }
 
 impl<V: Val> XFormCollection<V>
 {
-    fn dependencies(&self) -> FnvHashSet<Dep>
+    pub fn description(&self) -> &str {
+        match self {
+            XFormCollection::Arrange   {description,..} => &description,
+            XFormCollection::Map       {description,..} => &description,
+            XFormCollection::FlatMap   {description,..} => &description,
+            XFormCollection::Filter    {description,..} => &description,
+            XFormCollection::FilterMap {description,..} => &description
+        }
+    }
+
+    pub fn dependencies(&self) -> FnvHashSet<Dep>
     {
         match self {
-            XFormCollection::Arrange{afun: _, next} => {
+            XFormCollection::Arrange{next, ..} => {
                 next.dependencies()
             },
-            XFormCollection::Map{mfun: _, next} => {
+            XFormCollection::Map{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormCollection::FlatMap{fmfun: _, next} => {
+            XFormCollection::FlatMap{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormCollection::Filter{ffun: _, next} => {
+            XFormCollection::Filter{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
                 }
             },
-            XFormCollection::FilterMap{fmfun: _, next} => {
+            XFormCollection::FilterMap{next, ..} => {
                 match **next {
                     None => FnvHashSet::default(),
                     Some(ref n) => n.dependencies()
@@ -464,20 +496,29 @@ impl<V: Val> XFormCollection<V>
 #[derive(Clone)]
 pub enum Rule<V: Val> {
     CollectionRule {
+        description: String,
         rel: RelId,
         xform: Option<XFormCollection<V>>
     },
     ArrangementRule {
+        description: String,
         arr: ArrId,
         xform: XFormArrangement<V>
     }
 }
 
 impl<V:Val> Rule<V> {
+    fn description(&self) -> &str {
+        match self {
+            Rule::CollectionRule{description,..}  => description.as_ref(),
+            Rule::ArrangementRule{description,..} => description.as_ref()
+        }
+    }
+
     fn dependencies(&self) -> FnvHashSet<Dep>
     {
         match self {
-            Rule::CollectionRule{rel,xform} => {
+            Rule::CollectionRule{rel,xform,..} => {
                 let mut deps = match xform {
                     None => FnvHashSet::default(),
                     Some(ref x) => x.dependencies()
@@ -485,7 +526,7 @@ impl<V:Val> Rule<V> {
                 deps.insert(Dep::Rel(*rel));
                 deps
             },
-            Rule::ArrangementRule{arr,xform} => {
+            Rule::ArrangementRule{arr,xform,..} => {
                 let mut deps = xform.dependencies();
                 deps.insert(Dep::Arr(*arr));
                 deps
@@ -839,9 +880,11 @@ impl<V:Val> Program<V>
                                     };
                                     /* apply rules */
                                     for rule in &rel.rules {
-                                        collection = collection.concat(&prog.mk_rule(rule, |rid| collections.get(&rid),
-                                                                                     Arrangements{arrangements1: &arrangements,
-                                                                                                  arrangements2: &FnvHashMap::default()}));
+                                        let rule_collection = prog.mk_rule(rule, |rid| collections.get(&rid),
+                                                                           Arrangements{arrangements1: &arrangements,
+                                                                           arrangements2: &FnvHashMap::default()});
+                                        collection = with_prof_context(&format!("{}", rule.description()),
+                                                                       || collection.concat(&rule_collection));
                                     };
                                     /* don't distinct input collections, as this is already done by the set_update logic */
                                     if !rel.input && rel.distinct {
@@ -1246,27 +1289,38 @@ impl<V:Val> Program<V>
         T: Refines<P::Timestamp>+Lattice+Timestamp+Ord
     {
         match xform {
-            XFormCollection::Arrange{afun, ref next} => {
+            XFormCollection::Arrange{description, afun, ref next} => {
                 let arr = with_prof_context(
-                    "arrange",
+                    &description,
                     ||col.flat_map(*afun).arrange_by_key());
                 Self::xform_arrangement(&arr, &*next, arrangements)
             },
-            XFormCollection::Map{mfun, ref next} => {
-                Self::xform_collection(col.map(*mfun), &*next, arrangements)
+            XFormCollection::Map{description, mfun, ref next} => {
+                let mapped = with_prof_context(
+                    &description,
+                    ||col.map(*mfun));
+                Self::xform_collection(mapped, &*next, arrangements)
             },
-            XFormCollection::FlatMap{fmfun: &fmfun, ref next} => {
-                let flattened = col.flat_map(move |x|
-                    /* TODO: replace this with f(x).into_iter().flatten() when the
-                     * iterator_flatten feature makes it out of experimental API. */
-                    match fmfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())});
+            XFormCollection::FlatMap{description, fmfun: &fmfun, ref next} => {
+                let flattened = with_prof_context(
+                    &description,
+                    ||col.flat_map(move |x|
+                                   /* TODO: replace this with f(x).into_iter().flatten() when the
+                                    * iterator_flatten feature makes it out of experimental API. */
+                                   match fmfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())}));
                 Self::xform_collection(flattened, &*next, arrangements)
             },
-            XFormCollection::Filter{ffun: &ffun, ref next} => {
-                Self::xform_collection(col.filter(ffun), &*next, arrangements)
+            XFormCollection::Filter{description, ffun: &ffun, ref next} => {
+                let filtered = with_prof_context(
+                    &description,
+                    ||col.filter(ffun));
+                Self::xform_collection(filtered, &*next, arrangements)
             },
-            XFormCollection::FilterMap{fmfun: &fmfun, ref next} => {
-                Self::xform_collection(col.flat_map(fmfun), &*next, arrangements)
+            XFormCollection::FilterMap{description, fmfun: &fmfun, ref next} => {
+                let flattened = with_prof_context(
+                    &description,
+                    ||col.flat_map(fmfun));
+                Self::xform_collection(flattened, &*next, arrangements)
             }
         }
     }
@@ -1281,35 +1335,39 @@ impl<V:Val> Program<V>
         TR  : TraceReader<V,V,T,Weight> + Clone + 'static,
     {
         match xform {
-            XFormArrangement::FlatMap{fmfun: &fmfun, next} => {
-                Self::xform_collection(
-                    arr.flat_map_ref(move |_,v|match fmfun(v.clone()) {Some(iter) => iter, None => Box::new(None.into_iter())}),
-                    &*next, arrangements)
+            XFormArrangement::FlatMap{description, fmfun: &fmfun, next} => {
+                with_prof_context(
+                    &description,
+                    ||Self::xform_collection(
+                        arr.flat_map_ref(move |_,v|match fmfun(v.clone()) {Some(iter) => iter, None => Box::new(None.into_iter())}),
+                        &*next, arrangements))
             },
-            XFormArrangement::FilterMap{fmfun: &fmfun, next} => {
-                Self::xform_collection(
-                    arr.flat_map_ref(move |_,v|fmfun(v.clone())),
-                    &*next, arrangements)
+            XFormArrangement::FilterMap{description, fmfun: &fmfun, next} => {
+                with_prof_context(
+                    &description,
+                    ||Self::xform_collection(
+                        arr.flat_map_ref(move |_,v|fmfun(v.clone())),
+                        &*next, arrangements))
             },
-            XFormArrangement::Aggregate{aggfun: &aggfun, next} => {
+            XFormArrangement::Aggregate{description, aggfun: &aggfun, next} => {
                 let col = with_prof_context(
-                    "group",
+                    &description,
                     ||arr.reduce(move |key, src, dst| dst.push((aggfun(key, src),1)))
                          .map(|(_,v)|v));
                 Self::xform_collection(col, &*next, arrangements)
             },
-            XFormArrangement::Join{ffun, arrangement, jfun: &jfun, next} => {
+            XFormArrangement::Join{description, ffun, arrangement, jfun: &jfun, next} => {
                 match arrangements.lookup_arr(*arrangement) {
                     A::Arrangement1(ArrangedCollection::Map(arranged)) => {
                         let col = with_prof_context(
-                            "rule (local join)",
+                            &description,
                             ||ffun.map_or_else(||arr.join_core(arranged, jfun),
                                                |f|arr.filter(move |_,v|f(v)).join_core(arranged, jfun)));
                         Self::xform_collection(col, &*next, arrangements)
                     },
                     A::Arrangement2(ArrangedCollection::Map(arranged)) => {
                         let col = with_prof_context(
-                            "rule (global join)",
+                            &description,
                             ||ffun.map_or_else(||arr.join_core(arranged, jfun),
                                                |f|arr.filter(move |_,v|f(v)).join_core(arranged, jfun)));
                         Self::xform_collection(col, &*next, arrangements)
@@ -1318,18 +1376,18 @@ impl<V:Val> Program<V>
                     _ => panic!("Join: not a map arrangement {:?}", arrangement)
                 }
             },
-            XFormArrangement::Semijoin{ffun, arrangement, jfun: &jfun, next} => {
+            XFormArrangement::Semijoin{description, ffun, arrangement, jfun: &jfun, next} => {
                 match arrangements.lookup_arr(*arrangement) {
                     A::Arrangement1(ArrangedCollection::Set(arranged)) => {
                         let col = with_prof_context(
-                            "rule (local semijoin)",
+                            &description,
                             ||ffun.map_or_else(||arr.join_core(arranged, jfun),
                                                |f|arr.filter(move |_,v|f(v)).join_core(arranged, jfun)));
                         Self::xform_collection(col, &*next, arrangements)
                     },
                     A::Arrangement2(ArrangedCollection::Set(arranged)) => {
                         let col = with_prof_context(
-                            "rule (global semijoin)",
+                            &description,
                             ||ffun.map_or_else(||arr.join_core(arranged, jfun),
                                                |f|arr.filter(move |_,v|f(v)).join_core(arranged, jfun)));
                         Self::xform_collection(col, &*next, arrangements)
@@ -1337,18 +1395,18 @@ impl<V:Val> Program<V>
                     _ => panic!("Semijoin: not a set arrangement {:?}", arrangement)
                 }
             },
-            XFormArrangement::Antijoin{ffun, arrangement, next} => {
+            XFormArrangement::Antijoin{description, ffun, arrangement, next} => {
                 match arrangements.lookup_arr(*arrangement) {
                     A::Arrangement1(ArrangedCollection::Set(arranged)) => {
                         let col = with_prof_context(
-                            "antijoin (global)",
+                            &description,
                             ||ffun.map_or_else(||antijoin_arranged(&arr,arranged).map(|(_,v)|v),
                                                |f|antijoin_arranged(&arr.filter(move |_,v|f(v)),arranged).map(|(_,v)|v)));
                         Self::xform_collection(col, &*next, arrangements)
                     },
                     A::Arrangement2(ArrangedCollection::Set(arranged)) => {
                         let col = with_prof_context(
-                            "antijoin (child)",
+                            &description,
                             ||ffun.map_or_else(||antijoin_arranged(&arr,arranged).map(|(_,v)|v),
                                                |f|antijoin_arranged(&arr.filter(move |_,v|f(v)),arranged).map(|(_,v)|v)));
                         Self::xform_collection(col, &*next, arrangements)
@@ -1373,14 +1431,19 @@ impl<V:Val> Program<V>
         'a: 'b
     {
         match rule {
-            Rule::CollectionRule{rel, xform: None} => {
-                lookup_collection(*rel).expect(&format!("mk_rule: unknown relation {:?}", rel)).map(|x|x)
+            Rule::CollectionRule{rel, xform: None, ..} => {
+                let collection = lookup_collection(*rel).expect(&format!("mk_rule: unknown relation {:?}", rel));
+                let rel_name = &self.get_relation(*rel).name;
+                with_prof_context(
+                    format!("{} clone", rel_name).as_ref(),
+                    ||collection.map(|x|x))
+
             },
-            Rule::CollectionRule{rel, xform: Some(x)} => {
+            Rule::CollectionRule{rel, xform: Some(x), ..} => {
                 Self::xform_collection_ref(lookup_collection(*rel).expect(&format!("mk_rule: unknown relation {:?}", rel)),
                                            x, &arrangements)
             },
-            Rule::ArrangementRule{arr, xform} => {
+            Rule::ArrangementRule{arr, xform, ..} => {
                 match arrangements.lookup_arr(*arr) {
                     A::Arrangement1(ArrangedCollection::Map(arranged)) => {
                         Self::xform_arrangement(arranged, xform, &arrangements)

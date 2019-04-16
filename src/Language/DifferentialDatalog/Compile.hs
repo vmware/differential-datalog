@@ -1161,6 +1161,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"                                                    $$
                      "Rule::ArrangementRule {"                                                  $$
+                     "    description:" <+> pp (show $ show rl) <> ".to_string(),"              $$
                      "    arr: (" <+> relId (atomRelation fstatom) <> "," <+> pp arid <> "),"   $$
                      "    xform:" <+> xform                                                     $$
                      "}"
@@ -1169,23 +1170,27 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                         then do let post_join_vars = (rhsVarsAfter d rl (rhs_idx - 1)) `intersect`
                                                      (rhsVarsAfter d rl rhs_idx)
                                 -- Evaluate arrange_input_by in the context of 'rhs'
+                                let key_str = parens $ commaSep $ map (pp . fst) $ fromJust arrange_input_by
                                 akey <- mkTupleValue d $ fromJust arrange_input_by
                                 aval <- mkVarsTupleValue d post_join_vars
                                 let afun = braces'
                                            $ prefix $$
                                              "Some((" <> akey <> "," <+> aval <> "))"
                                 xform' <- mkArrangedOperator [] False
-                                return $ "XFormCollection::Arrange {"                                                                       $$
-                                         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},") $$
-                                         "    next: Box::new(" <> xform' <> ")"                                                             $$
+                                return $ "XFormCollection::Arrange {"                                                                                    $$
+                                         "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+>
+                                              ".to_string(),"                                                                                            $$
+                                         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")              $$
+                                         "    next: Box::new(" <> xform' <> ")"                                                                          $$
                                          "}"
                         else mkCollectionOperator
             return $
                 if last_rhs_idx == 0
-                   then "/*" <+> pp rl <+> "*/"                            $$
-                        "Rule::CollectionRule {"                           $$
-                        "    rel:" <+> relId (atomRelation fstatom) <> "," $$
-                        "    xform: Some(" <> xform <> ")"                 $$
+                   then "/*" <+> pp rl <+> "*/"                                         $$
+                        "Rule::CollectionRule {"                                        $$
+                        "    description:" <+> pp (show $ show rl) <> ".to_string(),"   $$
+                        "    rel:" <+> relId (atomRelation fstatom) <> ","              $$
+                        "    xform: Some(" <> xform <> ")"                              $$
                         "}"
                    else "Some(" <> xform <> ")"
 
@@ -1218,9 +1223,10 @@ mkFlatMap d prefix rl idx v e = do
                   "Some(Box::new(" <> set <> ".into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
     next <- compileRule d rl idx False
     return $
-        "XFormCollection::FlatMap{"                                                                                      $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},") $$
-        "    next: Box::new(" <> next <> ")" $$
+        "XFormCollection::FlatMap{"                                                                                        $$
+        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                          $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},")   $$
+        "    next: Box::new(" <> next <> ")"                                                                               $$
         "}"
 
 mkAggregate :: DatalogProgram -> Doc -> Rule -> Int -> [String] -> String -> String -> Expr -> CompilerMonad Doc
@@ -1228,6 +1234,7 @@ mkAggregate d prefix rl idx vs v fname e = do
     -- Group function: extract vs from input tuple
     let ctx = CtxRuleRAggregate rl idx
     let key_vars = map (getVar d (CtxRuleRAggregate rl idx)) vs
+    let key_str = parens $ commaSep $ map (pp . name) key_vars
     key <- mkVarsTupleValue d key_vars
     val <- mkValue d ctx e
     addGroupType $ typeNormalize d $ exprType d ctx e
@@ -1250,9 +1257,11 @@ mkAggregate d prefix rl idx vs v fname e = do
     next <- compileRule d rl idx False
     return $
         "XFormCollection::Arrange{"                                                                                                                    $$
+        "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl idx <+> "by" <+> key_str) <> ".to_string(),"                          $$
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                                            $$
         "    next: Box::new("                                                                                                                          $$
         "        XFormArrangement::Aggregate{"                                                                                                         $$
+        "            description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                               $$
         (nest' $ nest' $ nest' $ "aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, Weight)]) -> Value" $$ agfun $$ "__f},") $$
         "            next: Box::new(" <> next <> ")"                                                                                                   $$
         "        })"                                                                                                                                   $$
@@ -1461,6 +1470,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     return $
         if is_semi
            then "XFormArrangement::Semijoin{"                                                                                   $$
+                "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
                 "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value,_" <> vALUE_VAR2 <> ": &()) -> Option<Value>"       $$
@@ -1469,6 +1479,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    next: Box::new(" <> next  <> ")"                                                                           $$
                 "}"
            else "XFormArrangement::Join{"                                                                                       $$
+                "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
                 "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>"     $$
@@ -1488,12 +1499,12 @@ mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
     ffun <- mkFFun d rl input_filters
     Just aid <- getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
-    return $ "XFormArrangement::Antijoin {"                                         $$
-             "    ffun:" <+> ffun <> ","                                            $$
-             "    arrangement: (" <> relId atomRelation <> "," <> pp aid <> "),"    $$
-             "    next: Box::new(" <> next <> ")"                                   $$
+    return $ "XFormArrangement::Antijoin {"                                                                   $$
+             "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> ".to_string(),"   $$
+             "    ffun:" <+> ffun <> ","                                                                      $$
+             "    arrangement: (" <> relId atomRelation <> "," <> pp aid <> "),"                              $$
+             "    next: Box::new(" <> next <> ")"                                                             $$
              "}"
-
 
 -- Normalized representation of an arrangement.  In general, an arrangement is characterized
 -- by its key function 'key: Value->Option<Value>' that filters the input collection and computes
@@ -1649,9 +1660,10 @@ mkHead d prefix rl = do
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     return $
-        "XFormCollection::FilterMap{"                                                              $$
-        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},") $$
-        "    next: Box::new(None)"                                                                 $$
+        "XFormCollection::FilterMap{"                                                               $$
+        "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
+        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")  $$
+        "    next: Box::new(None)"                                                                  $$
         "}"
 
 -- Variables in the RHS of the rule declared before or in i'th term

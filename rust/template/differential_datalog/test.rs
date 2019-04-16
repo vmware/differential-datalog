@@ -334,7 +334,7 @@ fn test_two_relations(nthreads: usize) {
             distinct:     true,
             key_func:     None,
             id:           2,
-            rules:        vec![Rule::CollectionRule{rel: 1, xform: None}],
+            rules:        vec![Rule::CollectionRule{description: "T2.R1".to_string(), rel: 1, xform: None}],
             arrangements: Vec::new(),
             change_cb:    Some(Arc::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))
         }
@@ -466,11 +466,14 @@ fn test_semijoin(nthreads: usize) {
             id:           3,
             rules:        vec![
                 Rule::CollectionRule{
+                    description: "T3.R1".to_string(),
                     rel: 1,
                     xform: Some(
                         XFormCollection::Arrange{
+                            description: "arrange by .0".to_string(),
                             afun: &(afun1 as ArrangeFunc<Value>),
                             next: Box::new(XFormArrangement::Semijoin{
+                                description: "1.semijoin (2,0)".to_string(),
                                 ffun:        None,
                                 arrangement: (2,0),
                                 jfun:        &(jfun as SemijoinFunc<Value>),
@@ -574,11 +577,14 @@ fn test_join(nthreads: usize) {
             id:           3,
             rules:        vec![
                 Rule::CollectionRule{
+                    description: "T3.R1".to_string(),
                     rel: 1,
                     xform: Some(
-                        XFormCollection::Arrange{
+                        XFormCollection::Arrange {
+                            description: "arrange by .0".to_string(),
                             afun: &(afun1 as ArrangeFunc<Value>),
                             next: Box::new(XFormArrangement::Join{
+                                description: "1.semijoin (2,0)".to_string(),
                                 ffun:        None,
                                 arrangement: (2,0),
                                 jfun:        &(jfun as JoinFunc<Value>),
@@ -730,9 +736,11 @@ fn test_antijoin(nthreads: usize) {
             id:           21,
             rules:        vec![
                 Rule::CollectionRule{
+                    description: "T21.R1".to_string(),
                     rel: 2,
                     xform: Some(
                         XFormCollection::Map{
+                            description: "map by .0".to_string(),
                             mfun: &(mfun as MapFunc<Value>),
                             next: Box::new(None)
                         })
@@ -758,12 +766,15 @@ fn test_antijoin(nthreads: usize) {
             id:           3,
             rules:        vec![
                 Rule::CollectionRule {
+                    description: "T3.R1".to_string(),
                     rel: 1,
                     xform: Some(
                         XFormCollection::Arrange{
+                            description: "arrange by .0".to_string(),
                             afun: &(afun1 as ArrangeFunc<Value>),
                             next: Box::new(
                                 XFormArrangement::Antijoin{
+                                    description: "1.antijoin (21,0)".to_string(),
                                     ffun: None,
                                     arrangement: (21,0),
                                     next: Box::new(None)
@@ -899,18 +910,23 @@ fn test_map(nthreads: usize) {
             key_func:     None,
             id:           2,
             rules:        vec![Rule::CollectionRule{
+                description: "T2.R1".to_string(),
                 rel: 1,
                 xform: Some(
                     XFormCollection::Map{
+                        description: "map x2".to_string(),
                         mfun: &(mfun as MapFunc<Value>),
                         next: Box::new(Some(
                                 XFormCollection::Filter{
+                                    description: "filter >10".to_string(),
                                     ffun: &(ffun as FilterFunc<Value>),
                                     next: Box::new(Some(
                                             XFormCollection::FilterMap{
+                                                description: "filter >12 map x2".to_string(),
                                                 fmfun: &(fmfun as FilterMapFunc<Value>),
                                                 next: Box::new(Some(
                                                         XFormCollection::FlatMap{
+                                                            description: "flat-map >12 [-x,-2x]".to_string(),
                                                             fmfun: &(flatmapfun as FlatMapFunc<Value>),
                                                             next: Box::new(None)
                                                         }))
@@ -932,11 +948,14 @@ fn test_map(nthreads: usize) {
             key_func:     None,
             id:           3,
             rules:        vec![Rule::CollectionRule{
+                description: "T3.R1".to_string(),
                 rel: 2,
                 xform: Some(
                     XFormCollection::Arrange {
+                        description: "arrange by ()".to_string(),
                         afun: &(gfun3 as ArrangeFunc<Value>),
                         next: Box::new(XFormArrangement::Aggregate{
+                            description: "2.aggregate".to_string(),
                             aggfun: &(agfun3 as AggFunc<Value>),
                             next: Box::new(None)
                         })
@@ -957,11 +976,14 @@ fn test_map(nthreads: usize) {
             key_func:     None,
             id:           4,
             rules:        vec![Rule::CollectionRule{
+                description: "T4.R1".to_string(),
                 rel: 2,
                 xform: Some(
                     XFormCollection::Arrange {
+                        description: "arrange by self".to_string(),
                         afun: &(gfun4 as ArrangeFunc<Value>),
                         next: Box::new(XFormArrangement::Aggregate {
+                            description: "2.aggregate".to_string(),
                             aggfun: &(agfun4 as AggFunc<Value>),
                             next: Box::new(None)
                         })
@@ -1088,12 +1110,15 @@ fn test_recursion(nthreads: usize) {
             id:           2,
             rules:        vec![
                 Rule::CollectionRule{
+                    description: "ancestor.R1".to_string(),
                     rel: 1,
                     xform: None
                 },
                 Rule::ArrangementRule{
+                    description: "ancestor.R2".to_string(),
                     arr: (2,2),
                     xform: XFormArrangement::Join{
+                        description: "(2,2).join (1,0)".to_string(),
                         ffun:        None,
                         arrangement: (1,0),
                         jfun: &(jfun as JoinFunc<Value>),
@@ -1137,22 +1162,29 @@ fn test_recursion(nthreads: usize) {
             id:           3,
             rules:        vec![
                 Rule::ArrangementRule{
+                    description: "common_ancestor.R1".to_string(),
                     arr: (2,0),
                     xform: XFormArrangement::Join{
+                        description: "(2,0).join (2,0)".to_string(),
                         ffun:        None,
                         arrangement: (2,0),
                         jfun: &(jfun2 as JoinFunc<Value>),
                         next: Box::new(Some(XFormCollection::Arrange{
+                            description: "arrange by self".to_string(),
                             afun:        &(anti_arrange1 as ArrangeFunc<Value>),
                             next: Box::new(XFormArrangement::Antijoin {
+                                description: "(2,0).antijoin (2,1)".to_string(),
                                 ffun: None,
                                 arrangement: (2,1),
                                 next: Box::new(Some(XFormCollection::Arrange{
+                                    description: "arrange by .1".to_string(),
                                     afun:        &(anti_arrange2 as ArrangeFunc<Value>),
                                     next: Box::new(XFormArrangement::Antijoin{
+                                        description: "...join (2,1)".to_string(),
                                         ffun: None,
                                         arrangement: (2,1),
                                         next: Box::new(Some(XFormCollection::Filter{
+                                            description: "filter .0 != .1".to_string(),
                                             ffun: &(ffun as FilterFunc<Value>),
                                             next: Box::new(None)
                                         }))
