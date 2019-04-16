@@ -46,27 +46,25 @@ pub struct Profile {
     durations:  FnvHashMap<usize, Duration>
 }
 
+impl Profile {
+    fn fmt_sizes(&self, sizes: &FnvHashMap<usize, isize>, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
+        size_vec.sort_by(|a,b| a.1.cmp(&b.1).reverse());
+        size_vec.iter().map(|(operator, size)| {
+            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
+            let msg = format!("{} {}:", name, operator);
+            write!(f, "{: <80} {}\n", msg, size)
+        }).collect()
+    }
+}
+
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "\nArrangement size profile\n")?;
-        let mut sizes: Vec<(usize, isize)> = self.sizes.clone().into_iter().collect();
-        sizes.sort_by(|a,b| a.1.cmp(&b.1).reverse());
-        let current: Result<(), fmt::Error> = sizes.iter().map(|(operator, size)| {
-            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-            let msg = format!("{} {}:", name, operator);
-            write!(f, "{: <80} {}\n", msg, size)
-        }).collect();
-        current?;
+        self.fmt_sizes(&self.sizes, f)?;
 
         write!(f, "\nArrangement peak sizes\n")?;
-        let mut peak_sizes: Vec<(usize, isize)> = self.peak_sizes.clone().into_iter().collect();
-        peak_sizes.sort_by(|a,b| a.1.cmp(&b.1).reverse());
-        let peak: Result<(), fmt::Error> = peak_sizes.iter().map(|(operator, size)| {
-            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-            let msg = format!("{} {}:", name, operator);
-            write!(f, "{: <80} {}\n", msg, size)
-        }).collect();
-        peak?;
+        self.fmt_sizes(&self.peak_sizes, f)?;
 
         write!(f, "\nCPU profile\n")?;
         self.fmt_durations(0, &self.addresses, f)?;
