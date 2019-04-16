@@ -307,3 +307,10 @@ ConcatString{"Foo bar"}
 ConcatString{"Foo world"}
 ConcatString{"Hello, bar"}
 ConcatString{"Hello, world"}
+StringOrd
+StringOrd{"Foo ",1}
+StringOrd{"Foo bar",4}
+StringOrd{"Foo world",5}
+StringOrd{"Hello, ",0}
+StringOrd{"Hello, bar",2}
+StringOrd{"Hello, world",3}

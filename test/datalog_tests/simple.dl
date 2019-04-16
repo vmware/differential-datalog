@@ -797,3 +797,8 @@ IConcatString(string_intern(istring_str(s1) ++ s2)) :-
 output relation ConcatString(s: string)
 
 ConcatString(istring_str(s)) :- IConcatString(s).
+
+output relation StringOrd(s: string, ord: bit<32>)
+
+StringOrd(istring_str(s), istring_ord(s)) :- IString1(s).
+StringOrd(istring_str(s), istring_ord(s)) :- IConcatString(s).

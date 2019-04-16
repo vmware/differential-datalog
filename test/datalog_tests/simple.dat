@@ -440,3 +440,6 @@ commit;
 
 echo ConcatString;
 dump ConcatString;
+
+echo StringOrd;
+dump StringOrd;

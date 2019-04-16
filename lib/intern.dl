@@ -19,3 +19,8 @@ extern function string_intern(s: string): IString
 /* Extract the value of an interned string
  */
 extern function istring_str(s: IString): string
+
+/* Returns unique integer identifier of an interned string.
+ * Identifiers are assigned in the order strings are fed to the interner.
+ */
+extern function istring_ord(s: IString): bit<32>

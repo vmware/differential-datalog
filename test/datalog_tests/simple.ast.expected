@@ -56,6 +56,7 @@ typedef Request = Request{name: string, id: string}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef String2 = String2{s: string}
+typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
 typedef Suspect = Suspect{name: string}
 typedef T = T{x: bigint, y: string}
@@ -234,6 +235,7 @@ function foo (): bool =
              })))))))))
 extern function g (a: bigint): bigint
 extern function h (a: (bigint, bigint)): (bigint, bigint)
+extern function intern.istring_ord (s: intern.IString): bit<32>
 extern function intern.istring_str (s: intern.IString): string
 extern function intern.string_intern (s: string): intern.IString
 extern function parameterized (x: 'A, y: 'A): 'A
@@ -439,6 +441,7 @@ input relation Request [Request]
 output relation SCCLabel [(bigint, bigint)]
 output relation Sib [Sib]
 input relation String2 [String2]
+output relation StringOrd [StringOrd]
 input relation Strings [Strings]
 input relation Suspect [Suspect]
 output relation T [T]
@@ -606,4 +609,6 @@ Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocat
 YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).
 IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1(.s=s1), String2(.s=s2).
 ConcatString(.s=intern.istring_str(s)) :- IConcatString(.s=s).
+StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IString1(.s=s).
+StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IConcatString(.s=s).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
