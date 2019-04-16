@@ -218,6 +218,12 @@ BestPrice(item, best_price) :-
     Price(.item = item, .price = price),
     var best_price = Aggregate((item), group_min(price)).
 
+output relation WorstPrice(item: string, price: bit<64>)
+
+WorstPrice(item, best_price) :-
+    Price(.item = item, .price = price),
+    var best_price = Aggregate((item), group_max(price)).
+
 output relation BestVendor(item: string, vendor: string, price: bit<64>)
 
 BestVendor(item, best_vendor, best_price) :-
