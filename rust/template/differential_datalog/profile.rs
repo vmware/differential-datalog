@@ -110,11 +110,10 @@ impl Profile {
                 Some(opid) => {
                     let name = self.names.get(opid).map(|s|s.as_ref()).unwrap_or("???");
                     let duration = self.durations.get(opid).cloned().unwrap_or_default();
-                    let msg = format!("{} {}:", name, opid);
+                    let msg = format!("{} {}", name, opid);
                     let offset = (0..depth*2).map(|_|" ").collect::<String>();
-                    let padding = (0..80 - min(80, msg.len() + offset.len())).map(|_|" ").collect::<String>();
-                    write!(f, "{}{}{} {}s{}us\n",
-                           offset, msg, padding, duration.as_secs(), duration.subsec_micros())?;
+                    write!(f, "{}{: >6}s{:0>6}us      {}\n",
+                           offset, duration.as_secs(), duration.subsec_micros(), msg)?;
                 }
             }
             self.fmt_durations(depth + 1, child, f)?;
