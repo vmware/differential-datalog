@@ -62,6 +62,12 @@ pub fn intern_istring_str(s: &intern_IString) -> String {
     STRING_INTERNER.with(|si| si.lock().unwrap().get(s.x).clone())
 }
 
+pub fn intern_istring_ord(s: &intern_IString) -> u32 {
+    s.x
+}
+
+
+
 impl fmt::Display for intern_IString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&intern_istring_str(self), f)
