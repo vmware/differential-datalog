@@ -101,6 +101,12 @@ Product{150,10,1500}
 Product{150,20,3000}
 Product{150,100,15000}
 Product{150,150,22500}
+BestPrice:
+BestPrice{"A",100}
+BestPrice{"B",111}
+BestVendor:
+BestVendor{"A","Discount Corp",100}
+BestVendor{"B","Discount Corp",111}
 TCPDstPort:
 TCPDstPort{80}
 TCPDstPort{8080}

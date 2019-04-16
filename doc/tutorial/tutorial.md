@@ -635,11 +635,9 @@ be used.  DDlog currently does not allow recursive functions.
 
 ### Extern functions
 
-DDlog is not a Turing-complete programming language.  (In particular,
-it lacks loops, recursion, and inductive data types.)  If needed, such
-computations must be implemented as *extern* functions.  Currently
-these must be written in Rust; the Rust implementation may in turn
-invoke implementations in C or any other language.
+Functions that cannot be easily expressed in DDlog can be implemented as
+*extern* functions.  Currently these must be written in Rust; the Rust
+implementation may in turn invoke implementations in C or any other language.
 
 For instance, DDlog does not provide a substring function.  We can
 declare such a function as `extern`:
@@ -843,7 +841,49 @@ describes constraints on the recursive programs accepted by DDlog.
 
 #### Aggregation
 
-**TODO**
+The `Aggregate` operator groups records that have the same values of a subset of
+variables and applies an aggregation function to each group.
+The following program groups the `Price` relation by `item` and selects the minimal
+price for each item:
+
+```
+input relation Price(item: string, vendor: string, price: bit<64>)
+output relation BestPrice(item: string, price: bit<64>)
+
+BestPrice(item, best_price) :-
+    Price(.item = item, .price = price),
+    var best_price = Aggregate((item), group_min(price)).
+```
+
+What if we wanted to return the name of the vendor along with the lowest price for each item?
+Ideally, we would like to write a new aggregation function that takes `(vendor, price)` tuples and
+pick one with the smallest price. DDlog does allow one to define new aggregate functions, but
+currently they must be implemented in Rust (see, e.g., `groupXXX()` functions in `lib/std.rs` and
+`lib/std.dl`).
+
+The following solution is implemented completely in DDlog.  It first collects all `(vendor,
+price)` pairs for each item in the vector and then scans the vector for a pair with the smallest
+price:
+
+```
+output relation BestVendor(item: string, vendor: string, price: bit<64>)
+
+BestVendor(item, best_vendor, best_price) :-
+    Price(item, vendor, price),
+    var vendor_price_vec = Aggregate((item), group2vec((vendor, price))),
+    (var best_vendor, var best_price) = {
+        var min_vendor = "";
+        var min_price = 'hffffffffffffffff: bit<64>;
+        for (vendor_price in vendor_price_vec) {
+            (var vendor, var price) = vendor_price;
+            if (price < min_price) {
+                min_vendor = vendor;
+                min_price = price
+            } else ()
+        };
+        (min_vendor, min_price)
+    }.
+```
 
 ## Advanced types
 

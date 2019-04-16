@@ -1,4 +1,6 @@
 typedef Address = Address{addr: ip_addr_t}
+typedef BestPrice = BestPrice{item: string, price: bit<64>}
+typedef BestVendor = BestVendor{item: string, vendor: string, price: bit<64>}
 typedef Blacklisted = Blacklisted{ep: string}
 typedef Bytes = Bytes{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef Category = CategoryStarWars{} | CategoryOther{}
@@ -27,6 +29,7 @@ typedef Packet = Packet{pkt: eth_pkt_t}
 typedef Person = Person{name: string, nationality: string, occupation: string}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
+typedef Price = Price{item: string, vendor: string, price: bit<64>}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
 typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
@@ -115,6 +118,8 @@ extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
 extern function std.group_first (g: std.Group<'A>): 'A
+extern function std.group_max (g: std.Group<'A>): 'A
+extern function std.group_min (g: std.Group<'A>): 'A
 extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
 extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
@@ -184,6 +189,8 @@ function vsep (strs: std.Vec<string>): string =
       };
       res))
 output relation Address [Address]
+output relation BestPrice [BestPrice]
+output relation BestVendor [BestVendor]
 input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
 input relation Endpoint [Endpoint]
@@ -209,6 +216,7 @@ input relation Packet [Packet]
 input relation Person [Person]
 output relation Phrases [Phrases]
 output relation Pow2 [Pow2]
+input relation Price [Price]
 output relation Product [Product]
 output relation SanitizedEndpoint [SanitizedEndpoint]
 input relation Subnet [Subnet]
@@ -235,6 +243,19 @@ HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), var add
 HostIPVSep(.host=host, .addrs=vaddrs) :- HostAddress(.host=host, .addrs=addrs), var vaddrs = vsep(split_ip_list(addrs)).
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
+BestPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_min(price)).
+BestVendor(.item=item, .vendor=best_vendor, .price=best_price) :- Price(.item=item, .vendor=vendor, .price=price), var vendor_price_vec = Aggregate((item), std.group2vec((vendor, price))), (var best_vendor, var best_price) = (var min_vendor = "";
+                                                                                                                                                                                                                                  (var min_price = (64'd18446744073709551615: bit<64>);
+                                                                                                                                                                                                                                   (for (vendor_price in vendor_price_vec) {
+                                                                                                                                                                                                                                        ((var vendor, var price) = vendor_price;
+                                                                                                                                                                                                                                         if (price < min_price) {
+                                                                                                                                                                                                                                             (min_vendor = vendor;
+                                                                                                                                                                                                                                              min_price = price)
+                                                                                                                                                                                                                                         } else {
+                                                                                                                                                                                                                                               ()
+                                                                                                                                                                                                                                           })
+                                                                                                                                                                                                                                    };
+                                                                                                                                                                                                                                    (min_vendor, min_price)))).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).

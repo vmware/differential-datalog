@@ -541,6 +541,14 @@ pub fn std_group_first<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
     g.ith(0)
 }
 
+pub fn std_group_min<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
+    g.ith(0)
+}
+
+pub fn std_group_max<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
+    g.ith(g.size() - 1)
+}
+
 /* Tuples */
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct tuple0;
