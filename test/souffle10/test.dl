@@ -1,0 +1,31 @@
+.comp Reachability<T> {
+    .init graph = T
+
+    .decl reach(a:number,b:number)
+    reach(X,Y) :- graph.edge(X,Y).
+    reach(X,Z) :- reach(X,Y),graph.edge(Y,Z).
+}
+
+.comp Graph1 {
+    .decl edge(u:number,v:number)
+    edge(1,2).
+    edge(2,3).
+    edge(3,4).
+}
+
+.comp Graph2 {
+    .decl edge(u:number,v:number)
+    edge(1,2).
+    edge(3,4).
+}
+
+.init reach1 = Reachability<Graph1>
+.init reach2 = Reachability<Graph2>
+
+.decl res1(a:number,b:number)
+.output res1
+res1(X,Y) :- reach1.reach(X,Y). // output (1,2), (2,3), (3,4), (1,3), (1,4), (2,4)
+
+.decl res2(a:number,b:number)
+.output res2
+res2(X,Y) :- reach2.reach(X,Y). // output (1,2), (3,4)

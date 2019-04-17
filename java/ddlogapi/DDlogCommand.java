@@ -20,7 +20,7 @@ public class DDlogCommand {
     }
 
     public DDlogCommand(final Kind kind, final int table, final Object value)
-            throws IllegalAccessException, InstantiationException, IllegalAccessException {
+            throws IllegalAccessException {
         this.kind = kind;
         this.table = table;
         this.value = DDlogRecord.convertObject(value);

@@ -89,27 +89,34 @@ goldenTests progress = do
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
 
-sOUFFLE_DIR = "./test/souffle"
+sOUFFLE_BASE = "./test"
+-- These should be all directories, but currently many tests do not work with
+-- the Souffle translator
+sOUFFLE_DIRS = ["souffle0", "souffle14"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
-  testGroup "souffle tests" $
-        [ goldenVsFiles "doop"
-          [sOUFFLE_DIR </> "souffle.dump.expected.gz"]
-          [sOUFFLE_DIR </> "souffle.dump"]
-          $ do {convertSouffle progress; compilerTest progress (sOUFFLE_DIR </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
+  testGroup "souffle tests" $ map (\t -> souffleTest (sOUFFLE_BASE </> t) progress) sOUFFLE_DIRS
 
-convertSouffle :: Bool -> IO ()
-convertSouffle progress = do
-    dir <- makeAbsolute $ sOUFFLE_DIR
-    let inputDl = dir </> "self-contained.dl"
-        outputDl = dir </> "souffle.dl"
-        outputDat = dir </> "souffle.dat"
-        log = dir </> "souffle.log"
-        convert_proc = (proc (dir </> "convert.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
+souffleTest :: String -> Bool -> TestTree
+souffleTest testdir progress =
+  testGroup "souffle test" $
+        [ goldenVsFiles "doop"
+          [testdir </> "souffle.dump.expected.gz"]
+          [testdir </> "souffle.dump"]
+          $ do {convertSouffle testdir progress; compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
+
+convertSouffle :: String -> Bool -> IO ()
+convertSouffle testdir progress = do
+    dir <- makeAbsolute $ testdir
+    let inputDl = dir </> "test.dl"  -- input file always called test.dl
+        outputDl = dir </> "souffle.dl"  -- DDlog file produced
+        outputDat = dir </> "souffle.dat"  -- input data file
+        log = dir </> "souffle.log"  -- conversion log
+        convert_proc = (proc (dir </> "../tools/souffle-converter.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "convert.py failed with exit code " ++ show code ++
+        errorWithoutStackTrace $ "souffle-converter.py failed with exit code " ++ show code ++
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
 

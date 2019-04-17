@@ -13,6 +13,10 @@ current_namespace = None
 relations = dict()  # Maps relation to bool indicating whether the relation is an input
 outrelations = dict()  # Maps relation to bool indicating whether the relation is an output
 path_rename = dict()
+lhs_variables = set()   # variables that show up on the lhs of the rule
+bound_variables = set() # variables that have been bound
+converting_head = False # True if we are converting a head clause
+converting_tail = False # True if we are converting a tail clause
 
 total = 0
 
@@ -28,9 +32,9 @@ class Files(object):
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
         self.output("import intern")
+        self.output("import souffle_lib")
         self.output("typedef number = IString")
         self.output("typedef symbol = IString")
-        self.output("function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))")
         self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
         #self.outputData("timestamp", ";")
@@ -62,9 +66,11 @@ class Files(object):
 
 # The next few functions manipulate Parglare Parse Trees
 def getOptField(node, field):
+    """Returns the first field named 'field' from 'node', or None if it does not exist"""
     return next((x for x in node.children if x.symbol.name == field), None)
 
 def getField(node, field):
+    """Returns the first field named 'field' from 'node'"""
     return next(x for x in node.children if x.symbol.name == field)
 
 def getList(node, field, fields):
@@ -88,9 +94,12 @@ def getListField(node, field, fields):
     return getList(list, field, fields)
 
 def getParser():
-    fileName = "convert.pg"
-    g = parglare.Grammar.from_file(fileName)
+    fileName = "souffle-grammar.pg"
+    directory = os.path.dirname(os.path.abspath(__file__))
+    g = parglare.Grammar.from_file(directory + "/" + fileName)
     return parglare.Parser(g, build_tree=True)
+
+##############################################################
 
 def parse(parser, text):
     return parser.parse(text)
@@ -99,18 +108,22 @@ def strip_quotes(string):
     return string[1:-1].decode('string_escape')
 
 def process_input(inputdecl, files, preprocess):
-    rel = getField(inputdecl, "Identifier")
+    rel = getIdentifier(inputdecl)
     strings = getArray(inputdecl, "String")
-    filename = strip_quotes(strings[0].value)
-    separator = strip_quotes(strings[1].value)
+    if len(strings) == 0:
+        filename = rel + ".facts"
+        separator = ','
+    else:
+        filename = strip_quotes(strings[0].value)
+        separator = strip_quotes(strings[1].value)
 
-    relationname = relation_name(rel.value)
+    relationname = relation_name(rel)
     relations[relationname] = True  # Input relation
 
     if skip_files or preprocess:
         return
 
-    print "Reading", rel.value, "from", filename
+    print "Reading", rel, "from", filename
     if os.path.isfile(filename):
         data = open(filename, "r")
     elif os.path.isfile(filename + ".gz"):
@@ -136,9 +149,8 @@ def process_input(inputdecl, files, preprocess):
     data.close()
 
 def process_output(outputdecl, files, preprocess):
-    rel = getField(outputdecl, "Identifier")
-
-    relationname = relation_name(rel.value)
+    rel = getIdentifier(outputdecl)
+    relationname = relation_name(rel)
     outrelations[relationname] = True  # Output relation
 
     if skip_files or preprocess:
@@ -187,29 +199,40 @@ def is_output_relation(identifier):
     name = relation_name(identifier)
     return outrelations[name]
 
-def get_qidentifier(node):
-    q = getField(node, "QIdentifier")
-    return getIdentifier(q)
-
 def var_name(id):
     if id == "_":
         return id
+    if id.startswith("?"):
+        id = id[1:]
     return "_" + id
 
 def convert_arg(clauseArg):
     varName = getOptField(clauseArg, "VarName")
     string = getOptField(clauseArg, "String")
+    func = getOptField(clauseArg, "FunctionCall")
     if string != None:
         return "string_intern(" + string.value + ")"
     if varName != None:
-        return var_name(get_qidentifier(varName))
+        v = var_name(getIdentifier(varName))
+        print("variable " + v + " ch " + str(converting_head) + " ct " + str(converting_tail))
+        if converting_head and v != "_":
+            lhs_variables.add(v)
+        if converting_tail and v != "_":
+            bound_variables.add(v)
+        return v
+    if func != None:
+        return convert_function_call(func)
+    # TODO: handle functor call
     raise Exception("Unexpected clause argument " + clauseArg.tree_str())
 
 def convert_head_clause(clause):
-    name = getField(clause, "Identifier")
+    global converting_head
+    converting_head = True
+    name = getIdentifier(clause)
     args = getListField(clause, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
-    return relation_name(name.value) + "(" + ", ".join(args_strings) + ")"
+    converting_head = False
+    return relation_name(name) + "(" + ", ".join(args_strings) + ")"
 
 def convert_path(path):
     components = getList(path, "Identifier", "Path")
@@ -218,43 +241,76 @@ def convert_path(path):
 
 def convert_relation(relation, negated):
     path = getField(relation, "Path")
-    cp = relation_name(convert_path(path))
+    cp = convert_path(path)
+    rn = relation_name(cp)
+    if not rn in relations:
+        rn = cp
     args = getListField(relation, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
     if negated:
-        cp = "not " + cp
-    return cp + "(" + ", ".join(args_strings) + ")"
+        rn = "not " + rn
+    return rn + "(" + ", ".join(args_strings) + ")"
 
 def convert_function_argument(arg):
-    id = getOptField(arg, "QIdentifier")
+    id = getOptField(arg, "Identifier")
     if id != None:
-        return var_name(getIdentifier(id))
-    if arg.children[0].symbol.name == "FunctionCall":
+        return var_name(id.value)
+
+    str = getField(arg, "String")
+    if str != None:
+        return str.value
+
+    fc = getField(arg, "FunctionCall")
+    if fc != None:
         func = getOptField(arg, "FunctionCall")
         str_cf = convert_function(func)
         return str_cf
-    else:
-        str = getField(arg, "String")
-        return "string_intern(" + str.value + ")"
+    raise Exception("Unexpected function argument" + arg.tree_str())
 
-def convert_function(function):
-    id = getField(function, "Identifier")
+def convert_function_call(function):
+    id = getIdentifierField(function)
     args = getListField(function, "FunctionArgument", "FunctionArgumentList")
     argStrings = map(convert_function_argument, args)
-    return id.value + "(" + ", ".join(argStrings) + ")"
+    return id + "(" + ", ".join(argStrings) + ")"
+
+def convert_aggregate(agg):
+    """Convert an aggregate call; returns a list with two elements:
+       A set of expressions to evaluate before aggregation, and the
+       aggregation proper"""
+    # Must process the bound variables before the expression
+    result = "Aggregate(("
+    result += ", ".join(bound_variables)
+    result += "), ";
+
+    call = convert_expression(getField(agg, "Expression"))
+    id = getIdentifier(agg)
+    func = getField(agg, "AggregateFunction")
+    result += "group_" + func.children[0].value + "(" + var_name(id) + "))"
+    return [call, result]
 
 def convert_assignment(assign):
-    idents = getArray(assign, "QIdentifier")
-    id0 = getIdentifier(idents[0])
-    func = getOptField(assign, "FunctionCall")
-    strg = getOptField(assign, "String")
+    idents = getArray(assign, "Identifier")
+    id0 = idents[0].value
     prefix = "var " + var_name(id0) + " = ";
+
+    strg = getOptField(assign, "String")
     if strg != None:
         return prefix + "string_intern(" + strg.value + ")"
+
+    func = getOptField(assign, "FunctionCall")
     if func != None:
-        return prefix + convert_function(func)
-    id1 = idents[1].value
-    return prefix + id1
+        return prefix + convert_function_call(func)
+
+    agg = getOptField(assign, "Aggregate")
+    if agg != None:
+        [before, after] = convert_aggregate(agg)
+        return before + ", " + prefix + after
+
+    if len(idents) == 2:
+        id1 = idents[1].value
+        return prefix + id1
+
+    raise Exception("Unexpected assignment" + assign.tree_str())
 
 def convert_expression(expr):
     assign = getOptField(expr, "Assignment")
@@ -266,11 +322,11 @@ def convert_expression(expr):
         return convert_relation(relation, negation != None)
     ne = getOptField(expr, "NE")
     if ne != None:
-        idents = getArray(expr, "QIdentifier")
-        id0 = var_name(getIdentifier(idents[0]))
+        idents = getArray(expr, "Identifier")
+        id0 = var_name(idents[0].value)
         strg = getOptField(expr, "String")
         if strg == None:
-            id1 = var_name(getIdentifier(idents[1]))
+            id1 = var_name(idents[1].value)
         else:
             id1 = "string_intern(" + strg.value + ")"
         return "not (" + id0 + " == " + id1 + ")"
@@ -283,7 +339,7 @@ def convert_conjunction(conj):
         return convert_expression(expr)
     children = getArray(conj, "ConjunctionsOrDisjunctions")
     operator = getOptField(conj, "OR")
-    assert operator == None
+    assert operator == None, "Disjunction not yet implemented"
     rec = map(convert_conjunction, children)
     return ", ".join(rec)
 
@@ -308,8 +364,12 @@ def has_relations(conj):
 
 def process_rule(rule, files, preprocess):
     """Convert a rule and emit the output"""
+    global converting_tail
+    global lhs_variables
+
     head = getField(rule, "Head")
     tail = getField(rule, "Tail")
+    lhs_variables.clear()
     headClauses = getListField(head, "Clause", "ClauseList")
     tails = normalize_tail(tail)
 
@@ -317,43 +377,71 @@ def process_rule(rule, files, preprocess):
         # If there are no clauses in the tail we
         # mark all input relations as input relations
         for clause in headClauses:
-            name = getField(clause, "Identifier")
-            relations[relation_name(name.value)] = True
-        # TODO: we should also emit the facts as data...
+            name = getIdentifier(clause)
+            relations[relation_name(name)] = True
     else:
         heads = map(convert_head_clause, headClauses)
+        converting_tail = True
         convertedTails = map(convert_conjunction, tails)
+        converting_tail = False
         for ct in convertedTails:
             files.output(",\n\t".join(heads) + " :- " + ct + ".")
 
 def convert_decl_param(param):
     """Convert a declaration parameter and return the corresponding string"""
-    type = getField(param, "Identifier")
-    return var_name(get_qidentifier(param)) + ": " + type.value
+    arr = getArray(param, "Identifier");
+    arg = arr[0].value
+    type = arr[1].value
+    return var_name(arg) + ": " + type
 
 def process_relation_decl(relationdecl, files, preprocess):
     """Process a relation declaration and emit output to files"""
-    id = getField(relationdecl, "Identifier")
+    id = getIdentifier(relationdecl)
     params = getListField(relationdecl, "Parameter", "ParameterList")
     if preprocess:
-        relname = register_relation(id.value)
+        relname = register_relation(id)
         return
-    relname = relation_name(id.value)
+    relname = relation_name(id)
     paramdecls = map(convert_decl_param, params)
     role = "input " if relations[relname] else ""
-    print(relationdecl.tree_str())
+    #print(relationdecl.tree_str())
     if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED") != None or outrelations[relname]:
         role = "output "
     files.output(role + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
 
+def process_fact_decl(factdecl, files, preprocess):
+    """Process a fact"""
+    if preprocess:
+        return
+    clause = getField(factdecl, "Clause")
+    head = convert_head_clause(clause)
+    files.output(head + ".")
+
+def process_type(typedecl, files, preprocess):
+    if preprocess:
+        return
+    id = getIdentifier(typedecl)
+    list = getOptField(typedecl, "TypeList")
+    type = "IString"
+    if list != None:
+        # If we have a list (a union type) we expect all members of
+        # the list to be really equivalent types.
+        typeValue = getIdentifier(list)
+        if typeValue == "number":
+            type = "bit<32>"
+    files.output("typedef " + id + " = " + type)
+    return
+
 def process_decl(decl, files, preprocess):
+    """Process a declaration; dispatches on declaration kind"""
     files.log(decl.tree_str())
     typedecl = getOptField(decl, "TypeDecl")
     if typedecl != None:
-        if preprocess:
-            return
-        id = getField(typedecl, "Identifier")
-        files.output("typedef " + id.value + " = IString")
+        process_type(typedecl, files, preprocess)
+        return
+    fact_decl = getOptField(decl, "Fact")
+    if fact_decl != None:
+        process_fact_decl(fact_decl, files, preprocess)
         return
     relationdecl = getOptField(decl, "RelationDecl")
     if relationdecl != None:
@@ -382,6 +470,7 @@ def process_decl(decl, files, preprocess):
         ids = getArray(init, "Identifier")
         path_rename[ids[0].value] = ids[1].value
         return
+    # TODO: handle functor
     raise Exception("Unexpected node " + decl.tree_str())
 
 def process(tree, files, preprocess):
@@ -390,7 +479,7 @@ def process(tree, files, preprocess):
         process_decl(decl, files, preprocess)
 
 def main():
-    parser = argparse.ArgumentParser("convert.py")
+    parser = argparse.ArgumentParser("souffle-converter.py")
     parser.add_argument("input", help="input Souffle program", type=str)
     parser.add_argument("outdl", help="output DDlog program", type=str)
     parser.add_argument("outdat", help="output DDlog data file", type=str)

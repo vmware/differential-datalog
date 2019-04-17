@@ -1,0 +1,9 @@
+.type String
+.decl inputData(t:String)
+.decl outputData(t:String)
+.output outputData
+outputData(x) :- inputData(x), match("a.*",x).
+inputData("aaaa").
+inputData("abba").
+inputData("bcab").
+inputData("bdab").

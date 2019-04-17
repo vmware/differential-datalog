@@ -1,0 +1,13 @@
+.type String
+.decl stringTable(t:String)
+.decl substringTable(t:String)
+.decl outputData(substr:String, str:String)
+.output outputData
+outputData(x,y) :- substringTable(x), stringTable(y), contains(x,y).
+stringTable("aaaa").
+stringTable("abba").
+stringTable("bcab").
+stringTable("bdab").
+substringTable("a").
+substringTable("ab").
+substringTable("cab").

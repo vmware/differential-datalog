@@ -1,0 +1,24 @@
+.symbol_type Letter
+.type Seq = [ l : Letter, r : Seq ]
+
+.decl letter( l : Letter )
+letter("a").
+letter("b").
+
+.decl seq ( s : Seq )
+seq(nil).
+seq([l,s]) :- letter(l), seq(s), len(s,n), n<5.
+
+.decl len ( s : Seq, n:number )
+len(nil,0).
+len(s,n+1) :- seq(s), s = [l,r], len(r,n).
+
+.decl res( s : symbol )
+.output res
+res("-") :- seq(nil).
+res("a") :- seq(["a", nil ]).
+res("b") :- seq(["b", nil ]).
+res("c") :- seq(["c", nil ]).
+res("ab") :- seq(["a", ["b", nil ]]).
+res("aba") :- seq(["a", ["b", ["a", nil ]]]).
+res("abc") :- seq(["a", ["b", ["c", nil ]]]).

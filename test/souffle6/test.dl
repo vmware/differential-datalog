@@ -1,0 +1,25 @@
+.symbol_type Instr
+.symbol_type Context
+.type ProgPoint = [
+    i : Instr,
+    c : Context
+]
+
+.decl succ( a : ProgPoint , b : ProgPoint )
+
+succ( [ "w1", "c1" ] , [ "w2" , "c1" ] ).
+succ( [ "w2", "c1" ] , [ "r1" , "c1" ] ).
+succ( [ "r1", "c1" ] , [ "r2" , "c1" ] ).
+
+succ( [ "w1", "c2" ] , [ "w2" , "c2" ] ).
+succ( [ "w2", "c2" ] , [ "r1" , "c2" ] ).
+succ( [ "r1", "c2" ] , [ "r2" , "c2" ] ).
+
+.decl flow ( a : ProgPoint , b : ProgPoint )
+flow(a,b) :- succ(a,b).
+flow(a,c) :- flow(a,b), flow(b,c).
+
+.decl res( a : symbol )
+.output res
+res("OK")  :- flow(["w1","c1"],["r2","c1"]).
+res("ERR") :- flow(["w1","c1"],["r2","c2"]).
