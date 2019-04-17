@@ -32,7 +32,6 @@ class Files(object):
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
         self.output("import intern")
-        self.output("import std")
         self.output("import souffle_lib")
         self.output("typedef number = IString")
         self.output("typedef symbol = IString")
@@ -285,7 +284,7 @@ def convert_aggregate(agg):
     call = convert_expression(getField(agg, "Expression"))
     id = getIdentifier(agg)
     func = getField(agg, "AggregateFunction")
-    result += "std_group_" + func.children[0].value + "(" + var_name(id) + "))"
+    result += "group_" + func.children[0].value + "(" + var_name(id) + "))"
     return [call, result]
 
 def convert_assignment(assign):
