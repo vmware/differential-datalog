@@ -214,7 +214,6 @@ def convert_arg(clauseArg):
         return "string_intern(" + string.value + ")"
     if varName != None:
         v = var_name(getIdentifier(varName))
-        print("variable " + v + " ch " + str(converting_head) + " ct " + str(converting_tail))
         if converting_head and v != "_":
             lhs_variables.add(v)
         if converting_tail and v != "_":

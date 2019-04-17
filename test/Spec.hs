@@ -92,7 +92,7 @@ goldenTests progress = do
 sOUFFLE_BASE = "./test"
 -- These should be all directories, but currently many tests do not work with
 -- the Souffle translator
-sOUFFLE_DIRS = ["souffle0", "souffle14"]
+sOUFFLE_DIRS = ["souffle1", "souffle14"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
@@ -113,7 +113,7 @@ convertSouffle testdir progress = do
         outputDl = dir </> "souffle.dl"  -- DDlog file produced
         outputDat = dir </> "souffle.dat"  -- input data file
         log = dir </> "souffle.log"  -- conversion log
-        convert_proc = (proc (dir </> "../tools/souffle-converter.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
+        convert_proc = (proc (dir </> "../../tools/souffle-converter.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "souffle-converter.py failed with exit code " ++ show code ++
