@@ -1,0 +1,4 @@
+.decl res(s: number, t: number)
+.decl a(a: number, t: number)
+
+res(X,Y) :- a(X,_), Y = min Z : { a(X,Z) }.
