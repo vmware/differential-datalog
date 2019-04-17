@@ -8,7 +8,7 @@ function strlen(s: IString): bit<32> = string_len(s)
 function ord(s: IStsring): bit<32> = string_ord(s)
 function substr(s: IString, i: bit<32>, l: bit<32>): IString = string_substr(s, i, i + l)
 function contains(s: IString, i: IString): bool = string_contains(s, i)
-function match(pattern: IString, s: IString): bool
+//extern function match(pattern: IString, s: IString): bool
 function to_number(s: IString): bit<64> = {
     match (parse_dec_u64(istring_str(s))) {
         None -> 0,
