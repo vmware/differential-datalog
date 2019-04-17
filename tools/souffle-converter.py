@@ -9,10 +9,123 @@ import os
 import argparse
 import parglare # parser generator
 
-skip_files = False
 current_namespace = None
-relations = dict()  # Maps relation to bool indicating whether the relation is an input
-outrelations = dict()  # Maps relation to bool indicating whether the relation is an output
+
+def var_name(ident):
+    if ident == "_":
+        return ident
+    if ident.startswith("?"):
+        ident = ident[1:]
+    return "_" + ident
+
+class Type(object):
+    types = dict() # All types in the program
+
+    """Information about a type"""
+    def __init__(self, name, outputName):
+        assert name is not None
+        self.name = name
+        self.outputName = outputName
+        self.equivalentTo = None
+        self.isnumber = None  # unknown
+
+    @classmethod
+    def create(cls, name, equivalentTo):
+        if name != equivalentTo:
+            typ = Type(name, "T" + name)
+        else:
+            typ  = Type(name, name)
+        cls.types[name] = typ
+        if equivalentTo is None:
+            equivalentTo = "IString"
+        else:
+            assert isinstance(equivalentTo, basestring)
+        assert equivalentTo is not None
+        typ.equivalentTo = equivalentTo
+        # print "Created " + typ.name + " same as " + typ.equivalentTo
+        return typ
+
+    @classmethod
+    def get(cls, name):
+        result = cls.types[name]
+        assert isinstance(result, cls)
+        return result
+
+    def declaration(self):
+        e = Type.get(self.equivalentTo)
+        return "typedef " + self.outputName + " = " + e.outputName
+
+    def isNumber(self):
+        if self.isnumber is not None:
+            return self.isnumber
+        if self.name == "Tnumber" or self.name == "bit<32>":
+            self.isnumber = True
+            return True
+        if self.name == "IString":
+            self.isnumber = False
+            return False
+        typ = Type.get(self.equivalentTo)
+        result = typ.isNumber()
+        self.isnumber = result
+        return result
+
+class Parameter(object):
+    """Information about a parameter (of a relation or function)"""
+    def __init__(self, name, typeName):
+        self.name = name
+        self.typeName = typeName
+
+    def declaration(self):
+        typ = Type.get(self.typeName)
+        return var_name(self.name) + ":" + typ.outputName
+
+class RelationInfo(object):
+    """Represents information about a relation"""
+
+    relations = dict() # All relations in program
+
+    def __init__(self, name):
+        self.name = "R" + name
+        self.parameters = []  # list of Parameter
+        # Default values
+        self.isinput = False
+        self.isoutput = False
+
+    def addColumn(self, colinfo):
+        self.columns.add(colinfo.name, colinfo)
+
+    def addParameter(self, name, type):
+        param = Parameter(name, type)
+        self.parameters.append(param)
+
+    @classmethod
+    def get(cls, name):
+        if name in cls.relations:
+            return cls.relations.get(name)
+        prefix = current_namespace + "_" if current_namespace != None else ""
+        return cls.relations.get(prefix + name)
+
+    @classmethod
+    def create(cls, name):
+        prefix = current_namespace + "_" if current_namespace != None else ""
+        name = prefix + name
+        if name in cls.relations:
+            raise Exception("duplicate relation name " + name)
+        ri = RelationInfo(name)
+        cls.relations[name] = ri
+        # print "Registered relation " + name
+        return ri
+
+    def declaration(self):
+        result = ""
+        if self.isinput:
+            result = "input "
+        if self.isoutput:
+            result = "output "
+        result += "relation " + self.name + "(" + ", ".join(map(lambda a: a.declaration(), self.parameters)) + ")"
+        return result
+
+skip_files = False
 path_rename = dict()
 lhs_variables = set()   # variables that show up on the lhs of the rule
 bound_variables = set() # variables that have been bound
@@ -32,8 +145,13 @@ class Files(object):
         self.outFile = open(outputName, 'w')
         self.output("import intern")
         self.output("import souffle_lib")
-        self.output("typedef Tnumber = bit<32>")
-        self.output("typedef Tsymbol = IString")
+        Type.create("IString", "IString")
+        Type.create("bit<32>", "bit<32>")
+
+        t = Type.create("number", "bit<32>")
+        self.output(t.declaration())
+        t = Type.create("symbol", "IString")
+        self.output(t.declaration())
         self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
         #self.outputData("timestamp", ";")
@@ -88,15 +206,21 @@ def getArray(node, field):
     return [x for x in node.children if x.symbol.name == field]
 
 def getListField(node, field, fields):
-    """Given a Parse tree node node this gets all the children named field form the child list fields"""
+    """Given a Parse tree node this gets all the children named field form the child list fields"""
     l = getField(node, fields)
     return getList(l, field, fields)
 
 def getParser():
+    """Parse the Parglare Souffle grammar and get the parser"""
     fileName = "souffle-grammar.pg"
     directory = os.path.dirname(os.path.abspath(__file__))
     g = parglare.Grammar.from_file(directory + "/" + fileName)
     return parglare.Parser(g, build_tree=True)
+
+def getIdentifier(node):
+    """Get a field named "Identifier" from a parglare parse tree node"""
+    ident = getField(node, "Identifier")
+    return ident.value
 
 ##############################################################
 
@@ -116,12 +240,22 @@ def process_input(inputdecl, files, preprocess):
         filename = strip_quotes(strings[0].value)
         separator = strip_quotes(strings[1].value)
 
-    relationname = relation_name(rel)
-    global relations
-    relations[relationname] = True  # Input relation
+    ri = RelationInfo.get(rel)
+    ri.isinput = True
 
     if skip_files or preprocess:
         return
+
+    params = ri.parameters
+    converter = []
+    for p in params:
+        t = p.typeName
+        typ = Type.get(t)
+        assert isinstance(typ, Type)
+        if typ.isNumber():
+            converter.append(lambda a: str(a))
+        else:
+            converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
     print "Reading", rel, "from", filename
     if os.path.isfile(filename):
@@ -133,14 +267,19 @@ def process_input(inputdecl, files, preprocess):
 
     for line in data:
         fields = line.rstrip('\n').split(separator)
-        fields = map(lambda a: json.dumps(a, ensure_ascii=False), fields)
-        files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")", ",")
+        result = "insert " + ri.name + "("
+        for i in range(len(fields)):
+            if i > 0:
+                result += ", "
+            result += converter[i](fields[i])
+        result += ")"
+        files.outputData(result, ",")
     data.close()
 
 def process_output(outputdecl, files, preprocess):
     rel = getIdentifier(outputdecl)
-    relationname = relation_name(rel)
-    outrelations[relationname] = True  # Output relation
+    ri = RelationInfo.get(rel)
+    ri.isoutput = True
 
     if skip_files or preprocess:
         return
@@ -153,50 +292,7 @@ def process_namespace(namespace, files, preprocess):
     process(namespace, files, preprocess)
     current_namespace = None
 
-def getIdentifier(node):
-    ident = getField(node, "Identifier")
-    return ident.value
-
-def register_relation(identifier):
-    global relations
-    prefix = current_namespace + "_" if current_namespace != None else ""
-    name = "R" + prefix + identifier
-    if name in relations:
-        raise Exception("duplicate relation name " + name)
-    relations[name] = False
-    outrelations[name] = False
-    # print "Registered relation " + name
-    return name
-
-def relation_name(identifier):
-    global relations
-    name = "R" + identifier
-    if name in relations:
-        return name
-    prefix = current_namespace + "_" if current_namespace != None else ""
-    name = "R" + prefix + identifier
-    if name in relations:
-        return name
-    # Declarations can be out of order
-    return name
-
-def is_input_relation(identifier):
-    name = relation_name(identifier)
-    return relations[name]
-
-def is_output_relation(identifier):
-    name = relation_name(identifier)
-    return outrelations[name]
-
-def type_name(ident):
-    return "T" + ident
-
-def var_name(ident):
-    if ident == "_":
-        return ident
-    if ident.startswith("?"):
-        ident = ident[1:]
-    return "_" + ident
+###########################
 
 def convert_arg(clauseArg):
     varName = getOptField(clauseArg, "VarName")
@@ -223,7 +319,8 @@ def convert_head_clause(clause):
     args = getListField(clause, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
     converting_head = False
-    return relation_name(name) + "(" + ", ".join(args_strings) + ")"
+    rel = RelationInfo.get(name)
+    return rel.name + "(" + ", ".join(args_strings) + ")"
 
 def convert_path(path):
     components = getList(path, "Identifier", "Path")
@@ -233,13 +330,15 @@ def convert_path(path):
 def convert_relation(relation, negated):
     path = getField(relation, "Path")
     cp = convert_path(path)
-    rn = relation_name(cp)
-    if rn not in relations:
-        # This is actually a function call
+    rel = RelationInfo.get(cp)
+    if rel is None:
         rn = cp
+        # This is actually a function call
         if rn == "match":
             # Match is reserved keyword in DDlog
             rn = "re_match"
+    else:
+        rn = rel.name
     args = getListField(relation, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
     if negated:
@@ -384,7 +483,8 @@ def process_rule(rule, files, preprocess):
         # mark all input relations as input relations
         for clause in headClauses:
             name = getIdentifier(clause)
-            relations[relation_name(name)] = True
+            ri = RelationInfo.get(name)
+            ri.isInput = True
     else:
         heads = map(convert_head_clause, headClauses)
         converting_tail = True
@@ -393,28 +493,21 @@ def process_rule(rule, files, preprocess):
         for ct in convertedTails:
             files.output(",\n\t".join(heads) + " :- " + ct + ".")
 
-def convert_decl_param(param):
-    """Convert a declaration parameter and return the corresponding string"""
-    arr = getArray(param, "Identifier")
-    arg = arr[0].value
-    type_ = arr[1].value
-    return var_name(arg) + ": " + type_name(type_)
-
 def process_relation_decl(relationdecl, files, preprocess):
     """Process a relation declaration and emit output to files"""
     ident = getIdentifier(relationdecl)
     params = getListField(relationdecl, "Parameter", "ParameterList")
     if preprocess:
-        relname = register_relation(ident)
-        return
-    relname = relation_name(ident)
-    paramdecls = map(convert_decl_param, params)
-    role = "input " if relations[relname] else ""
-    #print(relationdecl.tree_str())
-    if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED") \
-           != None or outrelations[relname]:
-        role = "output "
-    files.output(role + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
+        rel = RelationInfo.create(ident)
+        if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED"):
+            rel.isoutput = True
+        for param in params:
+            arr = getArray(param, "Identifier")
+            rel.addParameter(arr[0].value, arr[1].value)
+        return rel
+
+    rel = RelationInfo.get(ident)
+    files.output(rel.declaration())
 
 def process_fact_decl(factdecl, files, preprocess):
     """Process a fact"""
@@ -425,16 +518,19 @@ def process_fact_decl(factdecl, files, preprocess):
     files.output(head + ".")
 
 def process_type(typedecl, files, preprocess):
-    if preprocess:
-        return
     ident = getIdentifier(typedecl)
-    l = getOptField(typedecl, "TypeList")
-    typeValue = "IString"
-    if l != None:
-        # If we have a list (a union type) we expect all members of
-        # the list to be really equivalent types.
-        typeValue = type_name(getIdentifier(l))
-    files.output("typedef " + type_name(ident) + " = " + typeValue)
+    if preprocess:
+        l = getOptField(typedecl, "TypeList")
+        equiv = None
+        if l is not None:
+            # If we have a list (a union type) we expect all members
+            # of the list to be really equivalent types, so we only
+            # get the first one.
+            equiv = getIdentifier(l)
+        type = Type.create(ident, equiv)
+        return
+    typ = Type.get(ident)
+    files.output(typ.declaration())
     return
 
 def process_decl(decl, files, preprocess):
