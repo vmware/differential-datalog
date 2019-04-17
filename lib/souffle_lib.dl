@@ -7,7 +7,8 @@ function strlen(s: IString): bit<64> = string_len(istring_str(s))
 function ord(s: IString): bit<32> = istring_ord(s)
 function substr(s: IString, i: bit<64>, l: bit<64>): IString = string_intern(string_substr(istring_str(s), i, i + l))
 function contains(s: IString, i: IString): bool = string_contains(istring_str(s), istring_str(i))
-//extern function match(pattern: IString, s: IString): bool
+// Corresponds to Souffle match function.  TODO
+// extern function re_match(pattern: IString, s: IString): bool
 function to_number(s: IString): bit<64> = {
     match (parse_dec_u64(istring_str(s))) {
         None -> 0,
