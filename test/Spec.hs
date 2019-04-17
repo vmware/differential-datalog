@@ -100,7 +100,9 @@ sOUFFLE_DIRS = ["souffle0", -- large Doop example
                  -- "souffle9", -- uses generic component
                  -- "souffle10", -- generic component
                  -- "souffle11", -- uses disjunction
-                 "souffle12", "souffle13", "souffle14"]
+                 "souffle12",
+                 -- "souffle13", -- unimplemented re_match
+                 "souffle14"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =

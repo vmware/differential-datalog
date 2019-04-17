@@ -32,8 +32,8 @@ class Files(object):
         self.outFile = open(outputName, 'w')
         self.output("import intern")
         self.output("import souffle_lib")
-        self.output("typedef number = IString")
-        self.output("typedef symbol = IString")
+        self.output("typedef Tnumber = bit<32>")
+        self.output("typedef Tsymbol = IString")
         self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
         #self.outputData("timestamp", ";")
@@ -188,6 +188,9 @@ def is_output_relation(identifier):
     name = relation_name(identifier)
     return outrelations[name]
 
+def type_name(ident):
+    return "T" + ident
+
 def var_name(ident):
     if ident == "_":
         return ident
@@ -232,7 +235,11 @@ def convert_relation(relation, negated):
     cp = convert_path(path)
     rn = relation_name(cp)
     if rn not in relations:
+        # This is actually a function call
         rn = cp
+        if rn == "match":
+            # Match is reserved keyword in DDlog
+            rn = "re_match"
     args = getListField(relation, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
     if negated:
@@ -383,7 +390,7 @@ def convert_decl_param(param):
     arr = getArray(param, "Identifier")
     arg = arr[0].value
     type_ = arr[1].value
-    return var_name(arg) + ": " + type_
+    return var_name(arg) + ": " + type_name(type_)
 
 def process_relation_decl(relationdecl, files, preprocess):
     """Process a relation declaration and emit output to files"""
@@ -414,14 +421,12 @@ def process_type(typedecl, files, preprocess):
         return
     ident = getIdentifier(typedecl)
     l = getOptField(typedecl, "TypeList")
-    t = "IString"
+    typeValue = "IString"
     if l != None:
         # If we have a list (a union type) we expect all members of
         # the list to be really equivalent types.
-        typeValue = getIdentifier(l)
-        if typeValue == "number":
-            t = "bit<32>"
-    files.output("typedef " + ident + " = " + t)
+        typeValue = type_name(getIdentifier(l))
+    files.output("typedef " + type_name(ident) + " = " + typeValue)
     return
 
 def process_decl(decl, files, preprocess):
