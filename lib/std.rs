@@ -435,6 +435,10 @@ pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
     s[from..to].to_string()
 }
 
+pub fn std_string_len(s: &String) -> u64 {
+    s.len() as u64
+}
+
 pub fn std_str_to_lower(s: &String) -> String {
     s.to_lowercase()
 }

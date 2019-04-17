@@ -1,0 +1,7 @@
+.decl Name(n: symbol)
+Name("Hans").
+Name("Gretl").
+
+.decl Translate(n: symbol , o: number)
+.output Translate
+Translate(x,ord(x)) :- Name(x).

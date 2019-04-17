@@ -1,0 +1,36 @@
+.comp DiGraph<N> {
+    .decl node(a:N)
+    .decl edge(a:N,b:N)
+
+    node(X) :- edge(X,_).
+    node(X) :- edge(_,X).
+
+    .decl reach(a:N,b:N)
+    reach(X,Y) :- edge(X,Y).
+    reach(X,Z) :- reach(X,Y),reach(Y,Z).
+
+    .decl clique(a:N,b:N)
+    clique(X,Y) :- reach(X,Y),reach(Y,X).
+}
+
+.comp Graph<N> : DiGraph<N> {
+    edge(X,Y) :- edge(Y,X).
+}
+
+
+.init NetA = Graph<symbol>
+.init NetB = Graph<number>
+
+NetA.edge("A","B").
+NetA.edge("B","C").
+
+.decl resA(a:symbol,b:symbol) output
+resA(X,Y) :- NetA.reach(X,Y).
+
+
+NetB.edge(1,2).
+NetB.edge(2,3).
+
+.decl resB(a:number,b:number)
+.output resB
+resB(X,Y) :- NetB.reach(X,Y).

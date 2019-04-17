@@ -23,6 +23,16 @@ test/datalog_tests/*.ast
 test/datalog_tests/*.err
 test/datalog_tests/*.dump
 test/datalog_tests/*.c
+test/datalog_tests/*_ddlog
+test/ovn
+*.dump
+# These files are generated
+test/souffle*/*.err
+test/souffle*/*.dump
+test/souffle*/*_ddlog
+test/souffle*/*.log
+test/souffle*/souffle.dl
+test/souffle*/souffle.dat
 .idea/
 out/
 *.cabal

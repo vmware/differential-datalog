@@ -1,0 +1,33 @@
+.symbol_type Var
+.symbol_type Read
+.symbol_type Write
+.symbol_type Jump
+
+.type Instr = Read | Write | Jump
+
+// -- facts --
+.decl read( i : Read, x : Var )
+.decl write( w : Write, x : Var )
+.decl succ( a : Instr, b : Instr )
+
+read("r1","v1").
+read("r2","v1").
+read("r3","v2").
+write("w1","v1").
+write("w2","v2").
+write("w3","v2").
+
+succ("w1","o1").
+succ("o1","r1").
+succ("o1","r2").
+succ("r2","r3").
+succ("r3","w2").
+
+// -- analysis --
+.decl flow( a : Instr, b : Instr )
+flow(X,Y) :- succ(X,Y).
+flow(X,Z) :- flow(X,Y), flow(Y,Z).
+
+.decl defUse( w : Write , r : Read )
+.output defUse
+defUse(W,R) :- write(W,X), flow(W,R), read(R,X).

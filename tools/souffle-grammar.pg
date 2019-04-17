@@ -1,4 +1,6 @@
-// Grammar for parsing Souffle Datalog written in the syntax of the Python Parglare parser generator.
+// Grammar for parsing programs written in (a subset of the) Souffle Datalog language.
+// https://souffle-lang.github.io
+// This grammar is written in the syntax of the Python Parglare parser generator.
 
 Program: DeclarationList EOF
        ;
@@ -13,23 +15,36 @@ Declaration: TypeDecl
            | RelationDecl
            | Rule
            | Init
+           | Fact
            | Namespace
+           | Functor
            ;
+
+Functor: FUNCTOR Identifier "(" IdentifierList ")" ":" Identifier
+    ;
 
 Init: INIT Identifier "=" Identifier
     ;
 
+// TODO: handle inheritance and type parameters
 Namespace: COMP Identifier "{" DeclarationList "}"
          ;
 
+// TODO: handle records
 TypeDecl: TYPE Identifier
-        | TYPE Identifier "=" Identifier
+        | TYPE Identifier "=" TypeList
+        | SYMBOL_TYPE Identifier
+        ;
+
+TypeList: Identifier
+        | Identifier "|" TypeList
         ;
 
 RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT_DEPRECATED?
             ;
 
 InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITER "=" String ")"
+         | INPUT Identifier
          ;
 
 OutputDecl: OUTPUT Identifier // TODO does not handle arguments
@@ -39,8 +54,12 @@ ParameterList: Parameter "," ParameterList
              | Parameter
              ;
 
-Parameter: QIdentifier ":" Identifier
+Parameter: Identifier ":" Identifier
          ;
+
+IdentifierList: EMPTY
+              | Identifier "," IdentifierList
+              ;
 
 ArgumentList: Argument
             | Argument "," ArgumentList
@@ -50,6 +69,9 @@ Argument: Identifier "=" String
         ;
 
 Rule: Head ":-" Tail DOT
+    ;
+
+Fact: Clause DOT
     ;
 
 Head: ClauseList
@@ -68,9 +90,11 @@ ClauseArgList: ClauseArg
 
 ClauseArg: VarName
          | String
+         | FunctionCall
+         | FunctorCall
          ;
 
-VarName: QIdentifier
+VarName: Identifier
        ;
 
 Tail: ConjunctionsOrDisjunctions
@@ -85,9 +109,20 @@ ConjunctionsOrDisjunctions: Expression
 Expression: Assignment
           | "!" Relation
           | Relation
-          | QIdentifier NE QIdentifier
-          | QIdentifier NE String
+          | Identifier NE Identifier
+          | Identifier NE String
+          | Expression ARITHMOP Expression
           ;
+
+// TODO: Allow aggregates over expressions
+Aggregate : AggregateFunction Identifier ":" Expression
+// TODO   | AggregateFunction Identifier ":" "{" ConjunctionsOrDisjunctions "}"
+          ;
+
+AggregateFunction : MIN
+                  | MAX
+                  | COUNT
+                  ;
 
 Relation: Path "(" ClauseArgList ")"
         ;
@@ -96,22 +131,23 @@ Path: Identifier
     | Identifier DOT Path
     ;
 
-Assignment: QIdentifier "=" FunctionCall
-          | QIdentifier "=" QIdentifier
-          | QIdentifier "=" String
+Assignment: Identifier "=" FunctionCall
+          | Identifier "=" Identifier
+          | Identifier "=" String
+          | Identifier "=" Aggregate
           ;
 
 FunctionCall: Identifier "(" FunctionArgumentList ")"
             ;
 
-QIdentifier: "?"? Identifier
+FunctorCall: "@" FunctionCall
            ;
 
 FunctionArgumentList: FunctionArgument
                     | FunctionArgument "," FunctionArgumentList
                     ;
 
-FunctionArgument: QIdentifier
+FunctionArgument: Identifier
                 | String
                 | FunctionCall
                 ;
@@ -135,6 +171,8 @@ FILENAME: "filename" ;
 DELIMITER: "delimiter" ;
 NE: "!=" ;
 TYPE: ".type" ;
+SYMBOL_TYPE: ".symbol_type" ;
+FUNCTOR: ".functor" ;
 INIT: ".init" ;
 COMP: ".comp" ;
 DECL: ".decl" ;
@@ -146,4 +184,8 @@ KEYWORD: /[\w-]+/ ;
 WS: /\s+/ ;
 LineComment: /\/\/.*/ ;
 String: /\"[^"]*\"/ ;
-Identifier: /[_\w][_\d\w]*/ ;
+Identifier: /[_\w\?][_\d\w]*/ ;
+MIN: "min" ;
+MAX: "max" ;
+COUNT: "count" ;
+ARITHMOP: /[\+\-\/\^\%]/ ;

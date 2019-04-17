@@ -1,0 +1,21 @@
+.symbol_type Instr
+.symbol_type Context
+
+.decl succ( i1:Instr, c1:Context, i2:Instr, c2:Context )
+
+succ( "w1", "c1" , "w2" , "c1" ).
+succ( "w2", "c1" , "r1" , "c1" ).
+succ( "r1", "c1" , "r2" , "c1" ).
+
+succ( "w1", "c2" , "w2" , "c2" ).
+succ( "w2", "c2" , "r1" , "c2" ).
+succ( "r1", "c2" , "r2" , "c2" ).
+
+.decl flow ( i1:Instr, c1:Context, i2:Instr, c2:Context )
+flow(I1,C1,I2,C2) :- succ(I1,C1,I2,C2).
+flow(I1,C1,I3,C3) :- flow(I1,C1,I2,C2), flow(I2,C2,I3,C3).
+
+.decl res( a : symbol )
+.output res
+res("OK")  :- flow("w1","c1","r2","c1").
+res("ERR") :- flow("w1","c1","r2","c2").

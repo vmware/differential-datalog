@@ -1,0 +1,10 @@
+.symbol_type City
+.symbol_type Town
+.symbol_type Village
+.type Place = City | Town | Village
+.decl Data(c:City, t:Town, v:Village)
+Data("Sydney", "Ballina", "Glenrowan").
+
+.decl Location(p:Place)
+.output Location
+Location(p) :- Data(p,_,_); Data(_,p,_); Data(_,_,p).
