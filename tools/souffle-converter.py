@@ -280,7 +280,15 @@ def convert_aggregate(agg):
     result += ", ".join(bound_variables)
     result += "), "
 
-    call = convert_expression(getField(agg, "Expression"))
+    expr = getOptField(agg, "Expression")
+    call = None
+    if expr is not None:
+        call = convert_expression(expr)
+    else:
+        rules = getField(agg, "ConjunctionsOrDisjunctions")
+        # TODO: this only supports conjunction
+        call = convert_conjunction(rules)
+
     ident = getIdentifier(agg)
     func = getField(agg, "AggregateFunction")
     result += "group_" + func.children[0].value + "(" + var_name(ident) + "))"

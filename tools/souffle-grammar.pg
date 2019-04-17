@@ -116,7 +116,7 @@ Expression: Assignment
 
 // TODO: Allow aggregates over expressions
 Aggregate : AggregateFunction Identifier ":" Expression
-// TODO   | AggregateFunction Identifier ":" "{" ConjunctionsOrDisjunctions "}"
+          | AggregateFunction Identifier ":" "{" ConjunctionsOrDisjunctions "}"
           ;
 
 AggregateFunction : MIN
