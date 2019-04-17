@@ -2,11 +2,12 @@
 """This program converts Datalog programs written in the Souffle dialect to
    Datalog programs written in the Differential Datalog dialect"""
 
-import parglare # parser generator
+# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long
 import json
 import gzip
 import os
 import argparse
+import parglare # parser generator
 
 skip_files = False
 current_namespace = None
@@ -17,8 +18,6 @@ lhs_variables = set()   # variables that show up on the lhs of the rule
 bound_variables = set() # variables that have been bound
 converting_head = False # True if we are converting a head clause
 converting_tail = False # True if we are converting a tail clause
-
-total = 0
 
 class Files(object):
     """Represents the files that are used for input and output"""
@@ -79,7 +78,7 @@ def getList(node, field, fields):
     else:
         f = getField(node, field)
         tail = getOptField(node, fields)
-        if tail == None:
+        if tail is None:
             return [f]
         else:
             fs = getList(tail, field, fields)
@@ -90,8 +89,8 @@ def getArray(node, field):
 
 def getListField(node, field, fields):
     """Given a Parse tree node node this gets all the children named field form the child list fields"""
-    list = getField(node, fields)
-    return getList(list, field, fields)
+    l = getField(node, fields)
+    return getList(l, field, fields)
 
 def getParser():
     fileName = "souffle-grammar.pg"
@@ -118,6 +117,7 @@ def process_input(inputdecl, files, preprocess):
         separator = strip_quotes(strings[1].value)
 
     relationname = relation_name(rel)
+    global relations
     relations[relationname] = True  # Input relation
 
     if skip_files or preprocess:
@@ -131,21 +131,10 @@ def process_input(inputdecl, files, preprocess):
     else:
         raise Exception("Cannot find file " + filename)
 
-    #counter = 0
-    #global total
     for line in data:
         fields = line.rstrip('\n').split(separator)
-        fields = map(lambda a: json.dumps(a, ensure_ascii = False), fields)
+        fields = map(lambda a: json.dumps(a, ensure_ascii=False), fields)
         files.outputData("insert " + relationname + "(" + ", ".join(fields) + ")", ",")
-        #counter = counter + 1
-        #total = total + 1
-        #if counter == 1000:
-            #files.outputData("commit")
-            #files.outputData("profile")
-            #files.outputData("echo total: " + str(total))
-            #files.outputData("start")
-        #    counter = 0
-
     data.close()
 
 def process_output(outputdecl, files, preprocess):
@@ -165,13 +154,13 @@ def process_namespace(namespace, files, preprocess):
     current_namespace = None
 
 def getIdentifier(node):
-    id = getField(node, "Identifier")
-    return id.value
+    ident = getField(node, "Identifier")
+    return ident.value
 
 def register_relation(identifier):
     global relations
     prefix = current_namespace + "_" if current_namespace != None else ""
-    name = "R" + prefix + identifier;
+    name = "R" + prefix + identifier
     if name in relations:
         raise Exception("duplicate relation name " + name)
     relations[name] = False
@@ -199,12 +188,12 @@ def is_output_relation(identifier):
     name = relation_name(identifier)
     return outrelations[name]
 
-def var_name(id):
-    if id == "_":
-        return id
-    if id.startswith("?"):
-        id = id[1:]
-    return "_" + id
+def var_name(ident):
+    if ident == "_":
+        return ident
+    if ident.startswith("?"):
+        ident = ident[1:]
+    return "_" + ident
 
 def convert_arg(clauseArg):
     varName = getOptField(clauseArg, "VarName")
@@ -242,7 +231,7 @@ def convert_relation(relation, negated):
     path = getField(relation, "Path")
     cp = convert_path(path)
     rn = relation_name(cp)
-    if not rn in relations:
+    if rn not in relations:
         rn = cp
     args = getListField(relation, "ClauseArg", "ClauseArgList")
     args_strings = map(convert_arg, args)
@@ -251,26 +240,29 @@ def convert_relation(relation, negated):
     return rn + "(" + ", ".join(args_strings) + ")"
 
 def convert_function_argument(arg):
-    id = getOptField(arg, "Identifier")
-    if id != None:
-        return var_name(id.value)
+    ident = getOptField(arg, "Identifier")
+    if ident != None:
+        return var_name(ident.value)
 
-    str = getField(arg, "String")
-    if str != None:
-        return str.value
+    s = getField(arg, "String")
+    if s != None:
+        return s.value
 
     fc = getField(arg, "FunctionCall")
     if fc != None:
         func = getOptField(arg, "FunctionCall")
-        str_cf = convert_function(func)
+        str_cf = convert_function_call(func)
         return str_cf
     raise Exception("Unexpected function argument" + arg.tree_str())
 
 def convert_function_call(function):
-    id = getIdentifierField(function)
+    ident = getIdentifier(function)
     args = getListField(function, "FunctionArgument", "FunctionArgumentList")
     argStrings = map(convert_function_argument, args)
-    return id + "(" + ", ".join(argStrings) + ")"
+    if ident == "match":
+        # Match is reserved keyword in DDlog
+        ident = "re_match"
+    return ident + "(" + ", ".join(argStrings) + ")"
 
 def convert_aggregate(agg):
     """Convert an aggregate call; returns a list with two elements:
@@ -279,18 +271,18 @@ def convert_aggregate(agg):
     # Must process the bound variables before the expression
     result = "Aggregate(("
     result += ", ".join(bound_variables)
-    result += "), ";
+    result += "), "
 
     call = convert_expression(getField(agg, "Expression"))
-    id = getIdentifier(agg)
+    ident = getIdentifier(agg)
     func = getField(agg, "AggregateFunction")
-    result += "group_" + func.children[0].value + "(" + var_name(id) + "))"
+    result += "group_" + func.children[0].value + "(" + var_name(ident) + "))"
     return [call, result]
 
 def convert_assignment(assign):
     idents = getArray(assign, "Identifier")
     id0 = idents[0].value
-    prefix = "var " + var_name(id0) + " = ";
+    prefix = "var " + var_name(id0) + " = "
 
     strg = getOptField(assign, "String")
     if strg != None:
@@ -324,7 +316,7 @@ def convert_expression(expr):
         idents = getArray(expr, "Identifier")
         id0 = var_name(idents[0].value)
         strg = getOptField(expr, "String")
-        if strg == None:
+        if strg is None:
             id1 = var_name(idents[1].value)
         else:
             id1 = "string_intern(" + strg.value + ")"
@@ -338,7 +330,7 @@ def convert_conjunction(conj):
         return convert_expression(expr)
     children = getArray(conj, "ConjunctionsOrDisjunctions")
     operator = getOptField(conj, "OR")
-    assert operator == None, "Disjunction not yet implemented"
+    assert operator is None, "Disjunction not yet implemented"
     rec = map(convert_conjunction, children)
     return ", ".join(rec)
 
@@ -359,7 +351,7 @@ def has_relations(conj):
         return expression_has_relations(expr)
     children = getArray(conj, "ConjunctionsOrDisjunctions")
     rec = map(has_relations, children)
-    return reduce(lambda a,b: a or b, rec, False)
+    return reduce(lambda a, b: a or b, rec, False)
 
 def process_rule(rule, files, preprocess):
     """Convert a rule and emit the output"""
@@ -388,23 +380,24 @@ def process_rule(rule, files, preprocess):
 
 def convert_decl_param(param):
     """Convert a declaration parameter and return the corresponding string"""
-    arr = getArray(param, "Identifier");
+    arr = getArray(param, "Identifier")
     arg = arr[0].value
-    type = arr[1].value
-    return var_name(arg) + ": " + type
+    type_ = arr[1].value
+    return var_name(arg) + ": " + type_
 
 def process_relation_decl(relationdecl, files, preprocess):
     """Process a relation declaration and emit output to files"""
-    id = getIdentifier(relationdecl)
+    ident = getIdentifier(relationdecl)
     params = getListField(relationdecl, "Parameter", "ParameterList")
     if preprocess:
-        relname = register_relation(id)
+        relname = register_relation(ident)
         return
-    relname = relation_name(id)
+    relname = relation_name(ident)
     paramdecls = map(convert_decl_param, params)
     role = "input " if relations[relname] else ""
     #print(relationdecl.tree_str())
-    if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED") != None or outrelations[relname]:
+    if getOptField(getField(relationdecl, "OUTPUT_DEPRECATED_opt"), "OUTPUT_DEPRECATED") \
+           != None or outrelations[relname]:
         role = "output "
     files.output(role + "relation " + relname + "(" + ", ".join(paramdecls) + ")")
 
@@ -419,16 +412,16 @@ def process_fact_decl(factdecl, files, preprocess):
 def process_type(typedecl, files, preprocess):
     if preprocess:
         return
-    id = getIdentifier(typedecl)
-    list = getOptField(typedecl, "TypeList")
-    type = "IString"
-    if list != None:
+    ident = getIdentifier(typedecl)
+    l = getOptField(typedecl, "TypeList")
+    t = "IString"
+    if l != None:
         # If we have a list (a union type) we expect all members of
         # the list to be really equivalent types.
-        typeValue = getIdentifier(list)
+        typeValue = getIdentifier(l)
         if typeValue == "number":
-            type = "bit<32>"
-    files.output("typedef " + id + " = " + type)
+            t = "bit<32>"
+    files.output("typedef " + ident + " = " + t)
     return
 
 def process_decl(decl, files, preprocess):
@@ -478,16 +471,15 @@ def process(tree, files, preprocess):
         process_decl(decl, files, preprocess)
 
 def main():
-    parser = argparse.ArgumentParser("souffle-converter.py")
-    parser.add_argument("input", help="input Souffle program", type=str)
-    parser.add_argument("outdl", help="output DDlog program", type=str)
-    parser.add_argument("outdat", help="output DDlog data file", type=str)
-    parser.add_argument("log", help="output log file", type=str)
-    args = parser.parse_args()
+    argParser = argparse.ArgumentParser("souffle-converter.py")
+    argParser.add_argument("input", help="input Souffle program", type=str)
+    argParser.add_argument("outdl", help="output DDlog program", type=str)
+    argParser.add_argument("outdat", help="output DDlog data file", type=str)
+    argParser.add_argument("log", help="output log file", type=str)
+    args = argParser.parse_args()
     inputName, outputName, outputDataName, logName = args.input, args.outdl, args.outdat, args.log
     files = Files(inputName, outputName, outputDataName, logName)
     parser = getParser()
-    input = ""
     tree = parser.parse(files.inputFile.read())
     process(tree, files, True)
     process(tree, files, False)

@@ -92,7 +92,15 @@ goldenTests progress = do
 sOUFFLE_BASE = "./test"
 -- These should be all directories, but currently many tests do not work with
 -- the Souffle translator
-sOUFFLE_DIRS = ["souffle1", "souffle14"]
+sOUFFLE_DIRS = ["souffle0", -- large Doop example
+                "souffle1", "souffle2", "souffle3", "souffle4", "souffle5",
+                 -- "souffle6", -- uses structs
+                 -- "souffle7", -- uses a recursive type
+                 -- "souffle8", -- uses component inheritance
+                 -- "souffle9", -- uses generic component
+                 -- "souffle10", -- generic component
+                 -- "souffle11", -- uses disjunction
+                 "souffle12", "souffle13", "souffle14"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
@@ -100,8 +108,8 @@ souffleTests progress =
 
 souffleTest :: String -> Bool -> TestTree
 souffleTest testdir progress =
-  testGroup "souffle test" $
-        [ goldenVsFiles "doop"
+  testGroup "souffle tests" $
+        [ goldenVsFiles testdir
           [testdir </> "souffle.dump.expected.gz"]
           [testdir </> "souffle.dump"]
           $ do {convertSouffle testdir progress; compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
