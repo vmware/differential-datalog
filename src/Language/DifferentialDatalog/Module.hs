@@ -80,12 +80,13 @@ stdimp = Import nopos stdname (ModuleName [])
 -- to each module.
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc, Doc)
 parseDatalogProgram roots import_std fdata fname = do
+    roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
-    let prog' = if import_std 
+    let prog' = if import_std
                    then prog { progImports = stdimp : progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
-    imports <- evalStateT (parseImports roots main_mod) []
+    imports <- evalStateT (parseImports roots' main_mod) []
     let all_modules = main_mod : imports
     prog'' <- flattenNamespace all_modules
     -- collect Rust files associated with each module and place it in a separate Rust module
@@ -102,12 +103,12 @@ parseDatalogProgram roots import_std fdata fname = do
                                -- Extract lines of the form '#[macro_use] extern crate ...'
                                -- and place them in the root of the crate, as Rust does not allow
                                -- macro_use exports in a submodule
-                               let (macro_lines, rs_lines) = partition (isPrefixOf "#[macro_use] extern crate") 
+                               let (macro_lines, rs_lines) = partition (isPrefixOf "#[macro_use] extern crate")
                                                              $ lines rs_code
                                let rs_code' = vcat $ map pp rs_lines
                                return $ Just ( map pp macro_lines
                                              , "pub use" <+> mname <> "::*;"   $$
-                                               "mod" <+> mname <+> "{"         $$ 
+                                               "mod" <+> mname <+> "{"         $$
                                                (nest' $ "use super::*;")       $$
                                                (nest' rs_code')                $$
                                                "}")
@@ -135,19 +136,19 @@ mergeModules mods = do
         progRules        = concatMap progRules mods,
         progApplys       = concatMap progApplys mods
     }
-    uniq (name2rust . name) (\_ -> "The following function declarations will cause name collision in Rust: ") 
+    uniq (name2rust . name) (\_ -> "The following function declarations will cause name collision in Rust: ")
          $ M.elems $ progFunctions prog
-    uniq (name2rust . name) (\_ -> "The following transformer declarations will cause name collision in Rust: ") 
+    uniq (name2rust . name) (\_ -> "The following transformer declarations will cause name collision in Rust: ")
          $ M.elems $ progTransformers prog
-    uniq (name2rust . name) (\_ -> "The following relations will cause name collision in Rust: ") 
+    uniq (name2rust . name) (\_ -> "The following relations will cause name collision in Rust: ")
          $ M.elems $ progRelations prog
-    uniq (name2rust . name) (\_ -> "The following type declarations will cause name collision in Rust: ") 
+    uniq (name2rust . name) (\_ -> "The following type declarations will cause name collision in Rust: ")
          $ M.elems $ progTypedefs prog
     return prog
 
 parseImports :: [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
-parseImports roots mod = concat <$> 
-    mapM (\imp@Import{..} -> do 
+parseImports roots mod = concat <$>
+    mapM (\imp@Import{..} -> do
            exists <- gets $ elem importModule
            if exists
               then return []
@@ -156,7 +157,7 @@ parseImports roots mod = concat <$>
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod Import{..} = do
-    when (importModule == moduleName mod) 
+    when (importModule == moduleName mod)
          $ errorWithoutStackTrace $ "Module " ++ show (moduleName mod) ++ " is trying to import self"
     modify (importModule:)
     fname <- lift $ findModule roots mod importModule
@@ -180,14 +181,14 @@ findModule roots mod imp = do
                      (intercalate "\n" candidates)
          _     -> errorWithoutStackTrace $
                     "Found multiple candidates for module " ++ show imp ++ " imported by " ++ moduleFile mod ++ ":\n" ++
-                    (intercalate "\n" candidates)
+                    (intercalate "\n" mods)
 
 type MMap = M.Map ModuleName DatalogModule
 
 flattenNamespace :: [DatalogModule] -> IO DatalogProgram
 flattenNamespace mods = do
     let mmap = M.fromList $ map (\m -> (moduleName m, m)) mods
-    let prog = do mods' <- mapM (flattenNamespace1 mmap) mods 
+    let prog = do mods' <- mapM (flattenNamespace1 mmap) mods
                   mergeModules mods'
     case prog of
          Left e  -> errorWithoutStackTrace e
@@ -213,7 +214,7 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     -- rename constructors and functions
     prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
     prog5 <- progRHSMapM prog4 (\case
-                                 rhs@RHSAggregate{..} -> do 
+                                 rhs@RHSAggregate{..} -> do
                                      f' <- flattenFuncName mmap mod (pos rhsAggExpr) rhsAggFunc
                                      return $ rhs{rhsAggFunc = f'}
                                  rhs -> return rhs)
@@ -246,7 +247,7 @@ candidates DatalogModule{..} pos n = do
     let mod = nameScope n
     let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++
                (if mod == ModuleName [] then [moduleName] else [])
-    when (null mods) $ 
+    when (null mods) $
         err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
     return mods
 
@@ -298,7 +299,7 @@ exprFlatten mmap mod e@EApply{..} = do
 exprFlatten mmap mod e@EStruct{..} = do
     c <- flattenConsName mmap mod (pos e) exprConstructor
     return $ E $ e { exprConstructor = c }
-exprFlatten _    _   e = return $ E e 
+exprFlatten _    _   e = return $ E e
 
 name2rust :: String -> String
 name2rust = replace "." "_"
