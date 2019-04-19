@@ -10,6 +10,14 @@ import argparse
 import parglare # parser generator
 
 current_namespace = None
+skip_files = False
+path_rename = dict()
+lhs_variables = set()   # variables that show up on the lhs of the rule
+relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
+                    # This makes it possible to concatenate multiple .dat files together
+bound_variables = set() # variables that have been bound
+converting_head = False # True if we are converting a head clause
+converting_tail = False # True if we are converting a tail clause
 
 def var_name(ident):
     if ident == "_":
@@ -34,7 +42,7 @@ class Type(object):
         if name != equivalentTo:
             typ = Type(name, "T" + name)
         else:
-            typ  = Type(name, name)
+            typ = Type(name, name)
         cls.types[name] = typ
         if equivalentTo is None:
             equivalentTo = "IString"
@@ -91,11 +99,8 @@ class RelationInfo(object):
         self.isinput = False
         self.isoutput = False
 
-    def addColumn(self, colinfo):
-        self.columns.add(colinfo.name, colinfo)
-
-    def addParameter(self, name, type):
-        param = Parameter(name, type)
+    def addParameter(self, name, typ):
+        param = Parameter(name, typ)
         self.parameters.append(param)
 
     @classmethod
@@ -124,13 +129,6 @@ class RelationInfo(object):
             result = "output "
         result += "relation " + self.name + "(" + ", ".join(map(lambda a: a.declaration(), self.parameters)) + ")"
         return result
-
-skip_files = False
-path_rename = dict()
-lhs_variables = set()   # variables that show up on the lhs of the rule
-bound_variables = set() # variables that have been bound
-converting_head = False # True if we are converting a head clause
-converting_tail = False # True if we are converting a tail clause
 
 class Files(object):
     """Represents the files that are used for input and output"""
@@ -253,7 +251,7 @@ def process_input(inputdecl, files, preprocess):
         typ = Type.get(t)
         assert isinstance(typ, Type)
         if typ.isNumber():
-            converter.append(lambda a: str(a))
+            converter.append(str)
         else:
             converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
@@ -265,9 +263,10 @@ def process_input(inputdecl, files, preprocess):
     else:
         raise Exception("Cannot find file " + filename)
 
+    relname = relationPrefix + ri.name
     for line in data:
         fields = line.rstrip('\n').split(separator)
-        result = "insert " + ri.name + "("
+        result = "insert " + relname + "("
         for i in range(len(fields)):
             if i > 0:
                 result += ", "
@@ -527,11 +526,11 @@ def process_type(typedecl, files, preprocess):
             # of the list to be really equivalent types, so we only
             # get the first one.
             equiv = getIdentifier(l)
-        type = Type.create(ident, equiv)
-        return
+        typ = Type.create(ident, equiv)
+        return typ
     typ = Type.get(ident)
     files.output(typ.declaration())
-    return
+    return typ
 
 def process_decl(decl, files, preprocess):
     """Process a declaration; dispatches on declaration kind"""
@@ -580,13 +579,17 @@ def process(tree, files, preprocess):
         process_decl(decl, files, preprocess)
 
 def main():
-    argParser = argparse.ArgumentParser("souffle-converter.py")
+    argParser = argparse.ArgumentParser("souffle-converter.py",
+                                        description="Converts programs from Souffle Datalog into DDlog")
+    argParser.add_argument("-p", "--prefix", help="Prefix to add to relations written in .dat files")
     argParser.add_argument("input", help="input Souffle program", type=str)
     argParser.add_argument("outdl", help="output DDlog program", type=str)
     argParser.add_argument("outdat", help="output DDlog data file", type=str)
-    argParser.add_argument("log", help="output log file", type=str)
+    argParser.add_argument("log", nargs="?", default="/dev/null", help="output log file", type=str)
     args = argParser.parse_args()
     inputName, outputName, outputDataName, logName = args.input, args.outdl, args.outdat, args.log
+    global relationPrefix
+    relationPrefix = args.prefix if args.prefix else ""
     files = Files(inputName, outputName, outputDataName, logName)
     parser = getParser()
     tree = parser.parse(files.inputFile.read())
