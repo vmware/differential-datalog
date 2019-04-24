@@ -27,12 +27,11 @@ test/datalog_tests/*_ddlog
 test/ovn
 *.dump
 # These files are generated
-test/souffle*/*.err
-test/souffle*/*.dump
-test/souffle*/*_ddlog
-test/souffle*/*.log
-test/souffle*/souffle.dl
-test/souffle*/souffle.dat
+test/*/souffle.dump
+test/*/souffle.dump.expected
+test/*/souffle_ddlog
+test/*/souffle.dl
+test/*/souffle.dat
 .idea/
 out/
 *.cabal

@@ -45,9 +45,10 @@ RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT_DEPRECATED?
 
 InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITER "=" String ")"
          | INPUT Identifier
+         | INPUT Identifier "(" ")"
          ;
 
-OutputDecl: OUTPUT Identifier // TODO does not handle arguments
+OutputDecl: OUTPUT Identifier "(" ")" // TODO does not handle arguments
          ;
 
 ParameterList: Parameter "," ParameterList

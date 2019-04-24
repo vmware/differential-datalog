@@ -1,0 +1,29 @@
+.decl Low(src: number, dest:number, port:number)
+.output Low()
+.decl Medium(src: number, dest:number, port:number)
+.output Medium()
+.decl High(src: number, dest:number, port:number)
+.output High()
+
+.decl In(src: number, dest:number, port:number)
+.input In()
+.decl BL(src: number, dest:number, port:number)
+.input BL()
+.decl Trusted(src: number, dest:number, port:number)
+.input Trusted()
+
+
+Low(src, dest, port) :- In(src, dest, port),
+       Trusted(src, dest, port).
+
+Medium(src, dest, port) :- In(src, dest, port),
+       !Low(src, dest, port),
+       Trusted(src, _, port),
+       Trusted(_, dest, port),
+       !BL(src, dest, port).
+
+High(src, dest, port) :- In(src, dest, port),
+       !Low(src, dest, port),
+       !Medium(src, dest, port),
+       Trusted(_,_, port),
+       !BL(src, dest, _).

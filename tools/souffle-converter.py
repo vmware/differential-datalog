@@ -91,6 +91,7 @@ class RelationInfo(object):
     """Represents information about a relation"""
 
     relations = dict() # All relations in program
+    dumpOrder = []  # order in which we dump the relations
 
     def __init__(self, name):
         self.name = "R" + name
@@ -133,14 +134,18 @@ class RelationInfo(object):
 class Files(object):
     """Represents the files that are used for input and output"""
 
-    def __init__(self, inputDl, outputDl, outputDat, log):
+    def __init__(self, inputDl, outputPrefix, log):
         inputName = inputDl
-        outputName = outputDl
-        outputDataName = outputDat
+        outputName = outputPrefix + ".dl"
+        outputDataName = outputPrefix + ".dat"
+        outputDumpName = outputPrefix + ".dump.expected"
         logName = log
         self.logFile = open(logName, 'w')
         self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
+        self.outputDataFile = open(outputDataName, 'w')
+        self.dumpFile = open(outputDumpName, 'w')
+
         self.output("import intern")
         self.output("import souffle_lib")
         Type.create("IString", "IString")
@@ -150,9 +155,7 @@ class Files(object):
         self.output(t.declaration())
         t = Type.create("symbol", "IString")
         self.output(t.declaration())
-        self.outputDataFile = open(outputDataName, 'w')
         self.outputData("echo Reading data", ";")
-        #self.outputData("timestamp", ";")
         self.outputData("start", ";")
         print "Reading from", inputName, "writing output to", outputName, "writing data to", outputDataName
 
@@ -165,19 +168,21 @@ class Files(object):
     def outputData(self, text, terminator):
         self.outputDataFile.write(text + terminator + "\n")
 
-    def done(self):
+    def done(self, dumporder):
         self.outputData("echo Finished adding data, committing", ";")
-        #self.outputData("timestamp", ";")
         self.outputData("commit", ";")
-        #self.outputData("timestamp", ";")
-        #self.outputData("profile", ";")
-        self.outputData("dump", ";")
+        if len(dumporder) == 0:
+            self.outputData("dump", ";")
+        else:
+            for r in dumporder:
+                self.outputData("dump " + r, ";")
         self.outputData("echo done", ";")
         self.outputData("exit", ";")
         self.logFile.close()
         self.inputFile.close()
         self.outFile.close()
         self.outputDataFile.close()
+        self.dumpFile.close()
 
 # The next few functions manipulate Parglare Parse Trees
 def getOptField(node, field):
@@ -228,22 +233,15 @@ def parse(parser, text):
 def strip_quotes(string):
     return string[1:-1].decode('string_escape')
 
-def process_input(inputdecl, files, preprocess):
-    rel = getIdentifier(inputdecl)
-    strings = getArray(inputdecl, "String")
-    if len(strings) == 0:
-        filename = rel + ".facts"
-        separator = ','
-    else:
-        filename = strip_quotes(strings[0].value)
-        separator = strip_quotes(strings[1].value)
-
+def process_file(rel, inFileName, inSeparator, outputEmitter):
+    """Process an INPUT or OUTPUT with name inFileName; dump its contents into outfile
+       rel is the relation name that is being processed
+       inFileName is the file which contains the data
+       inSeparator is the input record separator
+       outputEmitter is a lambda which does the output.  It takes two arguments: a relation
+       name and an array of string values to output.
+    """
     ri = RelationInfo.get(rel)
-    ri.isinput = True
-
-    if skip_files or preprocess:
-        return
-
     params = ri.parameters
     converter = []
     for p in params:
@@ -255,33 +253,68 @@ def process_input(inputdecl, files, preprocess):
         else:
             converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
-    print "Reading", rel, "from", filename
-    if os.path.isfile(filename):
-        data = open(filename, "r")
-    elif os.path.isfile(filename + ".gz"):
-        data = gzip.open(filename + ".gz", "r")
+    if inFileName.endswith(".gz"):
+        data = gzip.open(inFileName, "r")
     else:
-        raise Exception("Cannot find file " + filename)
-
-    relname = relationPrefix + ri.name
+        data = open(inFileName, "r")
     for line in data:
-        fields = line.rstrip('\n').split(separator)
-        result = "insert " + relname + "("
+        fields = line.rstrip('\n').split(inSeparator)
+        result = []
         for i in range(len(fields)):
-            if i > 0:
-                result += ", "
-            result += converter[i](fields[i])
-        result += ")"
-        files.outputData(result, ",")
+            result.append(converter[i](fields[i]))
+        outputEmitter(rel, result)
     data.close()
+
+def process_input(inputdecl, files, preprocess):
+    rel = getIdentifier(inputdecl)
+    strings = getArray(inputdecl, "String")
+    if len(strings) == 0:
+        filename = rel + ".facts"
+        separator = '\t'
+    else:
+        filename = strip_quotes(strings[0].value)
+        separator = strip_quotes(strings[1].value)
+
+    ri = RelationInfo.get(rel)
+    ri.isinput = True
+
+    if skip_files or preprocess:
+        return
+
+    print "Reading", rel, "from", filename
+    data = None
+    for directory in ["./", "./facts/"]:
+        for suffix in ["", ".gz"]:
+            tryFile = directory + filename + suffix
+            if os.path.isfile(tryFile):
+                data = tryFile
+                break
+    if data is None:
+        raise Exception("Cannot find file " + filename)
+    process_file(rel, data, separator,
+                 lambda r, tpl: files.outputData("input " + r + "(" + ",".join(tpl) + ")", ","))
 
 def process_output(outputdecl, files, preprocess):
     rel = getIdentifier(outputdecl)
     ri = RelationInfo.get(rel)
     ri.isoutput = True
-
     if skip_files or preprocess:
+        RelationInfo.dumpOrder.append(rel)
         return
+
+    filename = rel
+    print "Reading output", rel, "from", filename
+    data = None
+    for suffix in ["", ".csv"]:
+        tryFile = filename + suffix
+        if os.path.isfile(tryFile):
+            data = tryFile
+            break
+    if data is None:
+        raise Exception("Cannot find file " + filename)
+    files.dumpFile.write(rel + ":\n")
+    process_file(rel, data, "\t",
+                 lambda r, tpl: files.dumpFile.write(r + "{" + ",".join(tpl) + "}\n"))
 
 def process_namespace(namespace, files, preprocess):
     global current_namespace
@@ -583,19 +616,18 @@ def main():
                                         description="Converts programs from Souffle Datalog into DDlog")
     argParser.add_argument("-p", "--prefix", help="Prefix to add to relations written in .dat files")
     argParser.add_argument("input", help="input Souffle program", type=str)
-    argParser.add_argument("outdl", help="output DDlog program", type=str)
-    argParser.add_argument("outdat", help="output DDlog data file", type=str)
+    argParser.add_argument("out", help="output file prefix", type=str)
     argParser.add_argument("log", nargs="?", default="/dev/null", help="output log file", type=str)
     args = argParser.parse_args()
-    inputName, outputName, outputDataName, logName = args.input, args.outdl, args.outdat, args.log
+    inputName, outputPrefix, logName = args.input, args.out, args.log
     global relationPrefix
     relationPrefix = args.prefix if args.prefix else ""
-    files = Files(inputName, outputName, outputDataName, logName)
+    files = Files(inputName, outputPrefix, logName)
     parser = getParser()
     tree = parser.parse(files.inputFile.read())
     process(tree, files, True)
     process(tree, files, False)
-    files.done()
+    files.done(RelationInfo.dumpOrder)
 
 if __name__ == "__main__":
     main()

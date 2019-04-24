@@ -3,10 +3,21 @@
 
 set -e
 
-for i in souffle*; do
+#TESTS=souffle*
+for i in $TESTS; do
     echo "Running $i"
     cd $i
-    ../../tools/souffle-converter.py test.dl souffle.dl souffle.dat && ddlog -i souffle.dl -L ../../lib
+    ../../tools/souffle-converter.py test.dl souffle && ddlog -i souffle.dl -L ../../lib
+    rm -f log
+    cd ..
+done
+
+# Tests imported from the souffle source tree
+TESTS=access1
+for i in $TESTS; do
+    echo "Running $i"
+    cd $i
+    ../../tools/souffle-converter.py $i.dl souffle && ddlog -i souffle.dl -L ../../lib
     rm -f log
     cd ..
 done

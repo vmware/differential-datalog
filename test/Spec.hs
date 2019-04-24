@@ -102,7 +102,8 @@ sOUFFLE_DIRS = ["souffle0", -- large Doop example
                  -- "souffle11", -- uses disjunction
                  "souffle12",
                  -- "souffle13", -- unimplemented re_match
-                 "souffle14"]
+                 "souffle14",
+                 "access1"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
@@ -120,10 +121,8 @@ convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
     dir <- makeAbsolute $ testdir
     let inputDl = dir </> "test.dl"  -- input file always called test.dl
-        outputDl = dir </> "souffle.dl"  -- DDlog file produced
-        outputDat = dir </> "souffle.dat"  -- input data file
-        log = dir </> "souffle.log"  -- conversion log
-        convert_proc = (proc (dir </> "../../tools/souffle-converter.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
+        outputPrefix = dir </> "souffle"  -- output filename prefix
+        convert_proc = (proc (dir </> "../../tools/souffle-converter.py") [inputDl, outputPrefix]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "souffle-converter.py failed with exit code " ++ show code ++
