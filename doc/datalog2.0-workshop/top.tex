@@ -51,16 +51,14 @@ incrementally updating output relations (tables) in response to
 changes to input relations.  To make such applications easier to
 implement we have created Differential Datalog (DDlog), a dialect of
 Datalog that automates incremental computation.  A DDlog programmer
-writes traditional, non-incremental Datalog programs.  The execution
-model of DDlog is however fully incremental: at runtime DDlog programs
+writes traditional, non-incremental Datalog programs.  However, the execution
+model of DDlog is \emph{fully incremental}: at runtime DDlog programs
 receive streams of changes to the input relations (insertions or
 deletions) and produce streams of corresponding changes to derived
 relations.  The DDlog compiler translates DDlog programs to
 Differential Dataflow (DD)~\cite{differential-dataflow-paper}
 programs; DD provides an incremental execution engine supporting all
-the relational operators, including fixed-point.  The DDlog runtime
-automatically maintains the indexes required to efficiently compute
-output updates.
+the relational operators, including fixed-point.
 
 The DDlog language is targeted for system builders.  In consequence,
 the language emphasizes usability, by providing a rich type system, a

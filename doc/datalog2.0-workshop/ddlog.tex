@@ -17,16 +17,16 @@ Here we give a brief overview of the language; the DDlog language
 reference~\cite{ddlog-manual} and tutorial~\cite{ddlog-tutorial}
 provide a detailed presentation of language features.
 
-\subsection{Type system}
+\subsection{Type system.}
 
 DDlog is a statically-checked, strongly-typed language; users specify
-types for collections, variables, functions, but often DDlog can infer
+types for relations, variables, functions, but often DDlog can infer
 types from the context.  The type system is inspired by Haskell, and
 supports a rich set of types.  Base types include Booleans,
 bit-strings (e.g., \texttt{bit<32>}), infinite-precision integers
 (\texttt{bigint}), and UTF-8 strings.  Derived types are tuples,
 structures, and tagged unions (which generalize enumerated types).  We
-do not allow defining recursive types like lists or trees; however
+currently do not allow defining recursive types like lists or trees; however
 DDlog contains three built-in collection types: maps, sets, and arrays
 (described in Section~\ref{sec:collections}).  Figure~\ref{fig:types}
 shows several type declarations.
@@ -54,7 +54,7 @@ typedef OptionalIPAddress = Option<IPAddress>
 \texttt{IPv6Address} are \emph{pattern constructors}.\label{fig:types}}
 \end{figure}
 
-\subsection{Relations and Rules}
+\subsection{Relations and Rules.}
 
 Relations are strongly typed; the value in each column must have a
 statically-determined type.  There are three kinds of relations in
@@ -99,7 +99,7 @@ well as aggregation, and flatmap, discussed in Section~\ref{sec:collections}.
 DDlog allows recursive rules with stratified negation: intuitively, a DDlog
 relation cannot recursively depend on its own negation.
 
-\subsection{Computations in rules}
+\subsection{Computations in rules.}
 
 Much of DDlog's power stems from its ability to perform complex
 computation inside rules.  For example, the rule in
@@ -120,7 +120,7 @@ Area(oid, area) :- Height(oid, h), Width(oid, w),
 
 // Alternative syntax for defining the same relation.
 for o in Height // o is a tuple with fields (object_id, height)
-   for o1 in Width if o1.oid = o.oid
+   for o1 in Width if o1.oid == o.oid
        Area(o.oid, o1.width * o.height)
   \end{lstlisting}
   \caption{Rule examples.  The first rule uses expressions and
@@ -132,7 +132,7 @@ for o in Height // o is a tuple with fields (object_id, height)
 The DDlog expression language supports arithmetic, string
 manipulation, control flow constructs and function calls.
 
-\paragraph{Local variables}
+\paragraph{Local variables.}
 Local variables are used to store intermediate results of
 computations.  In DDlog, local variables can be introduced in three
 different contexts: (1) variables can be defined directly in the body
@@ -143,7 +143,7 @@ inside an expression, e.g., the \texttt{res} variable in
 Figure~\ref{fig:collections}.  A variable is visible within the
 syntactic scope where it was defined.
 
-\paragraph{``Imperative'' rule syntax}
+\paragraph{``Imperative'' rule syntax.}
 We have also defined an alternative syntax for rules, inspired by the
 FLWOR syntax of XQuery expressions~\cite{boag-xquery02}.  The
 ``imperative'' fragment offers several statements: \texttt{skip} (does
@@ -156,7 +156,7 @@ traditional Datalog representation using a syntax-directed translation
 in the compiler front-end.  Recursive relations cannot be expressed
 using this syntax.
 
-\paragraph{Integers} The integer types (\texttt{bigint} and \texttt{bit<N>}) provide the
+\paragraph{Integers.} The integer types (\texttt{bigint} and \texttt{bit<N>}) provide the
 standard arithmetic operations, as well as bit-wise operations, bit
 selection \texttt{v[15:8]}, shifting, and concatenation.
 
@@ -182,27 +182,26 @@ relation Host(address: OptionalIPAddress)
 // Rule that performs matching on address structure
 IPv6Addr(addr) :- Host(.address=Some{IPv6Address{addr}}).
   \end{lstlisting}
-\caption{A DDlog function and a rule using pattern
-  matching.\label{fig:function}}
+\caption{Pattern matching used in a DDlog function and in a rule.\label{fig:function}}
 \end{figure}
 
-\paragraph{Pattern matching}  DDlog borrows
+\paragraph{Pattern matching.}  DDlog borrows
 the \texttt{match} expression from ML and Haskell; a \texttt{match}
 expression simultaneously performs pattern-matching against type
 constructors or values, and also can bind values.
 Figure~\ref{fig:function} shows a \texttt{match} expression that uses
-a nested pattern to extract a byte from a value of type
+a nested pattern to extract a byte from a value \texttt{a} with type
 \texttt{OptionalIPAddress} (this type was defined in
 Figure~\ref{fig:types}).  For example, the last case binds the
 \texttt{addr} variable to the value of the \texttt{ipv6addr} field.
 
 Pattern matching can also be used directly in the body of a rule, as
-in the last rule from Figure~\ref{fig:function}, which extracts only
+in the last line from Figure~\ref{fig:function}, which extracts only
 IPv6 addresses from the \texttt{Host} relation and binds their value
 to the \texttt{addr} variable, which in turn is used in the left-hand side of
-the rule defining \texttt{IPv6Addr} rule.
+the rule defining \texttt{IPv6Addr} relation.
 
-\paragraph{Functions}
+\paragraph{Functions.}
 
 DDlog functions encapsulate pure (side-effect-free) computations.
 Example functions are \texttt{lastByte} from

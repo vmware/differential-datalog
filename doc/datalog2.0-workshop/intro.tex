@@ -52,7 +52,7 @@ possible facts ahead of time.)
 facts, DDlog only performs the minimum computation necessary to
 compute all changes in the derived facts.  This has significant
 performance benefits, and only produces output of minimum size,
-reducing communication requirements.  DDlog evaluation is \emph{always
+also reducing communication requirements.  DDlog evaluation is \emph{always
   incremental}; non-incremental (traditional) evaluation can be
 implemented as a special case, starting from empty relations.
 
@@ -73,7 +73,7 @@ maintainable, and concise code, DDlog extends Datalog with:
 \begin{itemize}
 \item A powerful type system, including Booleans, unlimited
   precision integers, bit-vectors, strings, tuples, and
-  Haskell-style tagged unions (but without recursive types).
+  Haskell-style tagged unions.
 
 \item Standard integer and bit-vector arithmetic.
 

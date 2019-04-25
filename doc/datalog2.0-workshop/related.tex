@@ -6,14 +6,14 @@ is~\cite{gupta-deb95}.  Notable algorithms include
 Delete-Rederive~\cite{Gupta-sigmod93}, FOIES~\cite{dong-dbpl94}.
 Saha~\cite{saha-iclp03} provides an algorithm for tabled logic
 programs.  The Backward-Forward algorithm~\cite{motik-aaai15} improves
-DRed under some circumstances.  Another class of algorithms use
+DRed under some circumstances.  IncA~\cite{IncA,Szabo-ase016} is a
+Datalog dialect for incremental program analysis; it introduces the
+DRed$_{\mbox{L}}$ algorithm.  Another class of algorithms use
 provenance to perform incremental computation~\cite{liu-icde09}.
 Several recent paper describe systems that use incremental evaluation
 for relational computation models:~\cite{ahmad-vldb12,zhao-icmd17}.
-IncA~\cite{IncA,Szabo-ase016} is a Datalog-based domain-specific
-language for incremental program analysis.
 
-The only other supported incremental Datalog engine that we are aware
+The only other incremental Datalog engine that we are aware
 of is a LogiQL~\cite{Green-pods15}, a commercial product of
 LogicBlox~\cite{Aref-sigmod15}.  Unfortunately there is no published
 data about the performance of the LogicBlox incremental engine.

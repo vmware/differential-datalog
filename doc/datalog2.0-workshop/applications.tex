@@ -58,11 +58,10 @@ thousands lines of code.  The graphs are synthetic network topologies;
 the average node degree is 2.
 
 Figure~\ref{fig:performance} shows execution time and memory
-consumption.  On the X axis we always have the graph size in nodes,
-and on the Y axis performance.  Memory consumption is the same for
-incremental and non-incremental cases.  You will note that the DDlog
-program performs several times better than the hand-optimized Java
-implementation.
+consumption of the two implementations.  On the X axis we always have
+the graph size in nodes, and on the Y axis performance.  You will note
+that the DDlog program performs several times better than the
+hand-optimized Java implementation.
 
 \begin{figure}
   \begin{center}
@@ -73,10 +72,10 @@ implementation.
       \includegraphics[width=.5\columnwidth]{deletion.pdf} \\
     \end{tabular}
   \end{center}
-    \caption{DDlog performance.  (1) the time taken to execute the
-      non-incremental reachability computation (inserting all nodes
-      and edges in a single transaction); (2) the peak memory
-      consumption; (3) the time to insert an additional 12\% edges
-      into the graph for various graphs sizes, and (4) the time to
-      delete 3\% of the edges.\label{fig:performance}}
+    \caption{DDlog performance as a function of the graph size.  (1)
+      the time taken to execute the non-incremental reachability
+      computation (inserting all nodes and edges in a single
+      transaction); (2) the peak memory consumption; (3) the time to
+      insert an additional 12\% edges into the graph, and (4) the time
+      to delete 3\% of the edges.\label{fig:performance}}
 \end{figure}
