@@ -67,7 +67,7 @@ the environment, in an incremental way.
 program, and the DDlog runtime will inform the environment of changes
 in these relations.
 
-\noindent \textbf{Intermediate results:} these are also computed by
+\noindent \textbf{Intermediate relations:} these are also computed by
 the DDlog program, but they are hidden from the environment.
 
 Figure~\ref{fig:relations-rules} shows three relation declarations.
@@ -123,7 +123,7 @@ for o in Height // o is a tuple with fields (object_id, height)
    for o1 in Width if o1.oid = o.oid
        Area(o.oid, o1.width * o.height)
   \end{lstlisting}
-  \caption{Rule examples.  The first rules uses expressions and
+  \caption{Rule examples.  The first rule uses expressions and
     variables --- \texttt{var} introduces a \emph{variable binding}.
     The second rule is equivalent with the first one, but is written
     using an imperative-style syntax.\label{fig:area}}
