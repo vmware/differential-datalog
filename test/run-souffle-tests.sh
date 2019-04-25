@@ -3,7 +3,7 @@
 
 set -e
 
-#TESTS=souffle*
+TESTS=souffle*
 for i in $TESTS; do
     echo "Running $i"
     cd $i
@@ -13,7 +13,7 @@ for i in $TESTS; do
 done
 
 # Tests imported from the souffle source tree
-TESTS=access1
+TESTS=access*
 for i in $TESTS; do
     echo "Running $i"
     cd $i

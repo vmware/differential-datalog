@@ -49,6 +49,7 @@ InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITE
          ;
 
 OutputDecl: OUTPUT Identifier "(" ")" // TODO does not handle arguments
+         | OUTPUT Identifier
          ;
 
 ParameterList: Parameter "," ParameterList

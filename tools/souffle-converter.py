@@ -7,6 +7,7 @@ import json
 import gzip
 import os
 import argparse
+import sys
 import parglare # parser generator
 
 current_namespace = None
@@ -311,7 +312,8 @@ def process_output(outputdecl, files, preprocess):
             data = tryFile
             break
     if data is None:
-        raise Exception("Cannot find file " + filename)
+        sys.stderr.write("*** Cannot find output file " + filename + "; the reference output will be incomplete\n")
+        return
     files.dumpFile.write(rel + ":\n")
     process_file(rel, data, "\t",
                  lambda tpl: files.dumpFile.write(ri.name + "{" + ",".join(tpl) + "}\n"))
@@ -427,8 +429,12 @@ def convert_aggregate(agg):
 
 def convert_assignment(assign):
     idents = getArray(assign, "Identifier")
-    id0 = idents[0].value
-    prefix = "var " + var_name(id0) + " = "
+    id0 = var_name(idents[0].value)
+    prefix = ""
+    if id0 not in bound_variables:
+        prefix = "var " + id0 + " = "
+    else:
+        prefix = id0 + " == "
 
     strg = getOptField(assign, "String")
     if strg != None:
