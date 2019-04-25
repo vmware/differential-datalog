@@ -299,7 +299,7 @@ def process_output(outputdecl, files, preprocess):
     ri = RelationInfo.get(rel)
     ri.isoutput = True
     if skip_files or preprocess:
-        RelationInfo.dumpOrder.append(rel)
+        RelationInfo.dumpOrder.append(ri.name)
         return
 
     filename = rel
