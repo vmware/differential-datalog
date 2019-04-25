@@ -292,7 +292,7 @@ def process_input(inputdecl, files, preprocess):
     if data is None:
         raise Exception("Cannot find file " + filename)
     process_file(rel, data, separator,
-                 lambda tpl: files.outputData("input " + ri.name + "(" + ",".join(tpl) + ")", ","))
+                 lambda tpl: files.outputData("insert " + ri.name + "(" + ",".join(tpl) + ")", ","))
 
 def process_output(outputdecl, files, preprocess):
     rel = getIdentifier(outputdecl)
