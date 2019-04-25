@@ -13,7 +13,7 @@ for i in $TESTS; do
 done
 
 # Tests imported from the souffle source tree
-TESTS=access*
+TESTS=access0
 for i in $TESTS; do
     echo "Running $i"
     cd $i
