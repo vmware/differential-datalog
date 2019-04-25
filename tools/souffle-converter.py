@@ -11,7 +11,7 @@ import sys
 import parglare # parser generator
 
 current_namespace = None
-skip_files = False
+skip_files = True
 path_rename = dict()
 lhs_variables = set()   # variables that show up on the lhs of the rule
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
@@ -525,6 +525,7 @@ def process_rule(rule, files, preprocess):
             ri.isInput = True
     else:
         heads = map(convert_head_clause, headClauses)
+        bound_variables.clear()
         converting_tail = True
         convertedTails = map(convert_conjunction, tails)
         converting_tail = False
