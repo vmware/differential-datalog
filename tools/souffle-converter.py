@@ -238,8 +238,8 @@ def process_file(rel, inFileName, inSeparator, outputEmitter):
        rel is the relation name that is being processed
        inFileName is the file which contains the data
        inSeparator is the input record separator
-       outputEmitter is a lambda which does the output.  It takes two arguments: a relation
-       name and an array of string values to output.
+       outputEmitter is a lambda which does the output.  It takes argument
+       an array of string arguments for the relation.
     """
     ri = RelationInfo.get(rel)
     params = ri.parameters
@@ -262,7 +262,7 @@ def process_file(rel, inFileName, inSeparator, outputEmitter):
         result = []
         for i in range(len(fields)):
             result.append(converter[i](fields[i]))
-        outputEmitter(rel, result)
+        outputEmitter(result)
     data.close()
 
 def process_input(inputdecl, files, preprocess):
@@ -292,7 +292,7 @@ def process_input(inputdecl, files, preprocess):
     if data is None:
         raise Exception("Cannot find file " + filename)
     process_file(rel, data, separator,
-                 lambda r, tpl: files.outputData("input " + r + "(" + ",".join(tpl) + ")", ","))
+                 lambda tpl: files.outputData("input " + ri.name + "(" + ",".join(tpl) + ")", ","))
 
 def process_output(outputdecl, files, preprocess):
     rel = getIdentifier(outputdecl)
@@ -314,7 +314,7 @@ def process_output(outputdecl, files, preprocess):
         raise Exception("Cannot find file " + filename)
     files.dumpFile.write(rel + ":\n")
     process_file(rel, data, "\t",
-                 lambda r, tpl: files.dumpFile.write(r + "{" + ",".join(tpl) + "}\n"))
+                 lambda tpl: files.dumpFile.write(ri.name + "{" + ",".join(tpl) + "}\n"))
 
 def process_namespace(namespace, files, preprocess):
     global current_namespace

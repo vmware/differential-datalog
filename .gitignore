@@ -32,6 +32,7 @@ test/*/souffle.dump.expected
 test/*/souffle_ddlog
 test/*/souffle.dl
 test/*/souffle.dat
+test/*/souffle.err
 .idea/
 out/
 *.cabal
