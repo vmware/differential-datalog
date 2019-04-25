@@ -24,12 +24,12 @@ open-source Rust version of the DD
 library~\cite{differential-dataflow}.  The DD engine operates on
 multisets, where elements can have positive or negative cardinalities;
 to get a set semantics we need to apply \texttt{distinct} operators on
-some multisets, in particular, outputs collections.
+some multisets, in particular, output collections.
 
 The DDLog compiler performs parsing, type inference, validation, and
 several optimization steps.  In order to compute incremental results
 the DD runtime has to maintain temporal indexes (indexed by logical
-time), containing previous versions of relations.  Many of the our
+time), containing previous versions of relations.  Many of our
 optimizations are geared towards reducing memory consumption; for
 example, we attempt to share indexes between multiple collections and
 operators.  We use reference counting for large values, but
@@ -49,14 +49,14 @@ disjoint rules.
 The output of the DDlog compiler is a dataflow graph, which may
 contain cycles (introduced by recursion).  The nodes of the graph
 represent relations; the relations are computed by dataflow relational
-operators.  Edges connect each operators to their input and output
+operators.  Edges connect each operator to its input and output
 relations.  DD natively implements the following operators: map,
 filter, distinct, join, antijoin, groupby, union, aggregation, and
 flatmap.  Each operator has a highly optimized implementation,
 incorporating temporal indexes that track updates to each relation
 over time and allow efficient incremental evaluation.  The DD library
 is responsible for executing the emitted dataflow graph across many
-cores.  The DD runtime can use one or more worker threads.
+cores by running a user-defined number of worker threads.
 
 \subsection{Interacting with DDlog programs}
 
