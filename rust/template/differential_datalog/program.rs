@@ -32,7 +32,7 @@ use timely;
 use timely::communication::initialize::{Configuration};
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
-use timely::dataflow::operators::probe;
+use timely::dataflow::operators::*;
 use timely::dataflow::ProbeHandle;
 use timely::logging::TimelyEvent;
 use timely::worker::Worker;
@@ -53,6 +53,7 @@ use differential_dataflow::hashable::Hashable;
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKeyTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
+use differential_dataflow::AsCollection;
 
 use variable::*;
 use profile::*;
@@ -508,7 +509,7 @@ pub enum Rule<V: Val> {
 }
 
 impl<V:Val> Rule<V> {
-    fn description(&self) -> &str {
+    pub fn description(&self) -> &str {
         match self {
             Rule::CollectionRule{description,..}  => description.as_ref(),
             Rule::ArrangementRule{description,..} => description.as_ref()
@@ -879,13 +880,15 @@ impl<V:Val> Program<V>
                                         Some(c) => c
                                     };
                                     /* apply rules */
-                                    for rule in &rel.rules {
-                                        let rule_collection = prog.mk_rule(rule, |rid| collections.get(&rid),
-                                                                           Arrangements{arrangements1: &arrangements,
-                                                                           arrangements2: &FnvHashMap::default()});
-                                        collection = with_prof_context(&format!("{}", rule.description()),
-                                                                       || collection.concat(&rule_collection));
-                                    };
+                                    let mut rule_collections: Vec<_> = rel.rules.iter().map(|rule| {
+                                        prog.mk_rule(rule, |rid| collections.get(&rid),
+                                                     Arrangements{arrangements1: &arrangements,
+                                                     arrangements2: &FnvHashMap::default()})
+
+                                    }).collect();
+                                    rule_collections.push(collection);
+                                    collection = with_prof_context(&format!("concatenate rules for {}", rel.name),
+                                                                   || concatenate_collections(outer, rule_collections.into_iter()));
                                     /* don't distinct input collections, as this is already done by the set_update logic */
                                     if !rel.input && rel.distinct {
                                         collection = with_prof_context(&format!("{}.distinct_total", rel.name),
@@ -1900,4 +1903,18 @@ where
     R1: Diff + Mul<R2, Output=R1>
 {
     arranged.as_collection(|k,v|(k.clone(), v.clone())).concat(&semijoin_arranged(arranged, other).negate())
+}
+
+
+// TODO: remove when `fn concatenate()` in `collection.rs` makes it to a released version of DD
+pub fn concatenate_collections<G, D, R, I>(scope: &mut G, iterator: I) -> Collection<G, D, R>
+where
+    G: Scope,
+    D: Data,
+    R: Monoid,
+    I: IntoIterator<Item=Collection<G, D, R>>,
+{
+    scope
+        .concatenate(iterator.into_iter().map(|x| x.inner))
+        .as_collection()
 }

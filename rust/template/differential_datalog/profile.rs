@@ -4,7 +4,7 @@ use fnv::FnvHashMap;
 use std::time::Duration;
 use std::fmt;
 use std::cell::RefCell;
-use std::cmp::{max,min};
+use std::cmp::{max};
 use differential_dataflow::logging::DifferentialEvent;
 use timely::logging::{TimelyEvent, OperatesEvent, ScheduleEvent, StartStop};
 use sequence_trie::SequenceTrie;
@@ -46,18 +46,6 @@ pub struct Profile {
     durations:  FnvHashMap<usize, Duration>
 }
 
-impl Profile {
-    fn fmt_sizes(&self, sizes: &FnvHashMap<usize, isize>, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
-        size_vec.sort_by(|a,b| a.1.cmp(&b.1).reverse());
-        size_vec.iter().map(|(operator, size)| {
-            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
-            let msg = format!("{} {}:", name, operator);
-            write!(f, "{: <80} {}\n", msg, size)
-        }).collect()
-    }
-}
-
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "\nArrangement size profile\n")?;
@@ -83,6 +71,16 @@ impl Profile {
             starts:     FnvHashMap::default(),
             durations:  FnvHashMap::default()
         }
+    }
+
+    pub fn fmt_sizes(&self, sizes: &FnvHashMap<usize, isize>, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
+        size_vec.sort_by(|a,b| a.1.cmp(&b.1).reverse());
+        size_vec.iter().map(|(operator, size)| {
+            let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
+            let msg = format!("{} {}", name, operator);
+            write!(f, "{}      {}\n", size, msg)
+        }).collect()
     }
 
     pub fn fmt_durations(&self,
@@ -133,7 +131,7 @@ impl Profile {
             match event {
                 TimelyEvent::Operates(OperatesEvent{id, addr, name}) => {
                     self.addresses.insert(addr, *id);
-                    self.names.insert(*id, ctx.clone() + "." + name);
+                    self.names.insert(*id, name.clone() + ": " + &ctx.replace('\n', " "));
                 },
                 TimelyEvent::Schedule(ScheduleEvent{id, start_stop}) => {
                     match start_stop {
