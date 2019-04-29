@@ -96,16 +96,16 @@ The following diagram illustrates dependencies among the various kinds of relati
 
 
       (user-defined rules)                                  (user-defined rules)
-Input--------------------> Output---------------->Swizzled------------------------>OutputProxy-------> Delta+ <---------|
-                                                    ^                                   |                               |
-                                                    |                                   |                               |
-                                                    |                                   |                               |
-Realized----------------> UUIDMap <------------------                                   |------------> Delta- <---------|
+Input--------------------> Output---------------->Swizzled------------------------>OutputProxy-------> Delta+ <---------+
+                             |                      ^                                   |                               |
+                             |                      |                                   |                               |
+                             v                      |                                   |                               |
+Realized----------------> UUIDMap <-----------------+                                   |------------> Delta- <---------|
   |                                                                                     |                               |
   |                                                                                     |                               |
-  |                                                                                     |------------> DeltaUpdate <-----
+  |                                                                                     +----------> DeltaUpdate <------|
   |                                                                                                                     |
-  |----------------------------------------------------------------------------------------------------------------------
+  +---------------------------------------------------------------------------------------------------------------------+
 
 -}
 
@@ -461,8 +461,13 @@ mkSwizzleRules t@Table{..} = do
         (nest' $ mkTableName t TableOutput <> "(" <> commaSep outcols <> "),")      $$
         (nest' $ vcommaSep swizzles) <> "."
 
--- UUIDMap(name, Left(uuid)) :- Output(name, key), Realized(uuid, key).
--- UUIDMap(name, Right(name)) :- Output(name, key), not Realized(_, key).
+-- UUIDMap_Meter_Band("", Right{""}).
+-- UUIDMap_Meter_Band(__name, Left{__uuid}) :-
+--     Out_Meter_Band(__name, action, rate, burst_size),
+--     Meter_Band(__uuid, action, rate, burst_size).
+-- UUIDMap_Meter_Band(__name, Right{__name}) :-
+--    Out_Meter_Band(__name, action, rate, burst_size),
+--    not Meter_Band(_, action, rate, burst_size).
 mkUUIDMapRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
 mkUUIDMapRules t@Table{..} mkeys =
     if referenced
