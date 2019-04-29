@@ -43,7 +43,7 @@ pub struct Profile {
     sizes:      FnvHashMap<usize, isize>,
     peak_sizes: FnvHashMap<usize, isize>,
     starts:     FnvHashMap<(usize,usize), Duration>,
-    durations:  FnvHashMap<usize, Duration>
+    durations:  FnvHashMap<usize, (Duration,usize)>
 }
 
 impl fmt::Display for Profile {
@@ -92,9 +92,9 @@ impl Profile {
         /* Sort children in the order of decreasing duration */
         let mut children = addrs.children();
         children.sort_by(|child1, child2| {
-            let dur1 = child1.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default())
+            let dur1 = child1.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default().0)
                 .unwrap_or(Duration::default());
-            let dur2 = child2.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default())
+            let dur2 = child2.value().map(|opid| self.durations.get(opid).cloned().unwrap_or_default().0)
                 .unwrap_or(Duration::default());
             dur1.cmp(&dur2).reverse()
         });
@@ -110,8 +110,8 @@ impl Profile {
                     let duration = self.durations.get(opid).cloned().unwrap_or_default();
                     let msg = format!("{} {}", name, opid);
                     let offset = (0..depth*2).map(|_|" ").collect::<String>();
-                    write!(f, "{}{: >6}s{:0>6}us      {}\n",
-                           offset, duration.as_secs(), duration.subsec_micros(), msg)?;
+                    write!(f, "{}{: >6}s{:0>6}us ({: >9}calls)     {}\n",
+                           offset, duration.0.as_secs(), duration.0.subsec_micros(), duration.1, msg)?;
                 }
             }
             self.fmt_durations(depth + 1, child, f)?;
@@ -139,12 +139,13 @@ impl Profile {
                             self.starts.insert((*id,*worker), *ts);
                         },
                         StartStop::Stop => {
-                            let total = self.durations.entry(*id).or_insert(Duration::new(0,0));
+                            let (total,ncalls) = self.durations.entry(*id).or_insert((Duration::new(0,0), 0));
                             let start = self.starts.get(&(*id,*worker)).cloned().unwrap_or_else(||{
                                 eprintln!("TimelyEvent::Stop without a start for operator {}, worker {}", *id, *worker);
                                 Duration::new(0,0)
                             });
                             *total += *ts - start;
+                            *ncalls = *ncalls+1;
                         }
                     }
                 },
