@@ -9,15 +9,16 @@ import os
 import argparse
 import parglare # parser generator
 
+<<<<<<< Updated upstream
 current_namespace = None
 skip_files = False
 path_rename = dict()
 lhs_variables = set()   # variables that show up on the lhs of the rule
+=======
+skip_files = True
+>>>>>>> Stashed changes
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
                     # This makes it possible to concatenate multiple .dat files together
-bound_variables = set() # variables that have been bound
-converting_head = False # True if we are converting a head clause
-converting_tail = False # True if we are converting a tail clause
 
 def var_name(ident):
     if ident == "_":
@@ -25,6 +26,12 @@ def var_name(ident):
     if ident.startswith("?"):
         ident = ident[1:]
     return "_" + ident
+
+def parse(parser, text):
+    return parser.parse(text)
+
+def strip_quotes(string):
+    return string[1:-1].decode('string_escape')
 
 class Type(object):
     types = dict() # All types in the program
@@ -104,15 +111,16 @@ class RelationInfo(object):
         self.parameters.append(param)
 
     @classmethod
-    def get(cls, name):
+    def get(cls, name, component):
         if name in cls.relations:
             return cls.relations.get(name)
-        prefix = current_namespace + "_" if current_namespace != None else ""
+        prefix = component + "_" if component != None else ""
         return cls.relations.get(prefix + name)
 
     @classmethod
-    def create(cls, name):
-        prefix = current_namespace + "_" if current_namespace != None else ""
+    def create(cls, name, component):
+        assert isinstance(name, basestring)
+        prefix = component + "_" if component != None else ""
         name = prefix + name
         if name in cls.relations:
             raise Exception("duplicate relation name " + name)
@@ -127,19 +135,26 @@ class RelationInfo(object):
             result = "input "
         if self.isoutput:
             result = "output "
-        result += "relation " + self.name + "(" + ", ".join(map(lambda a: a.declaration(), self.parameters)) + ")"
+        result += "relation " + self.name + "(" + ", ".join([a.declaration() for a in self.parameters]) + ")"
         return result
 
 class Files(object):
     """Represents the files that are used for input and output"""
 
+<<<<<<< Updated upstream
     def __init__(self, inputDl, outputDl, outputDat, log):
         inputName = inputDl
         outputName = outputDl
         outputDataName = outputDat
+=======
+    def __init__(self, inputDl, outputPrefix, log):
+        self.inputName = inputDl
+        outputName = outputPrefix + ".dl"
+        outputDataName = outputPrefix + ".dat"
+        outputDumpName = outputPrefix + ".dump.expected"
+>>>>>>> Stashed changes
         logName = log
         self.logFile = open(logName, 'w')
-        self.inputFile = open(inputName, 'r')
         self.outFile = open(outputName, 'w')
         self.output("import intern")
         self.output("import souffle_lib")
@@ -154,7 +169,7 @@ class Files(object):
         self.outputData("echo Reading data", ";")
         #self.outputData("timestamp", ";")
         self.outputData("start", ";")
-        print "Reading from", inputName, "writing output to", outputName, "writing data to", outputDataName
+        print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
 
     def log(self, text):
         self.logFile.write(text + "\n")
@@ -175,7 +190,6 @@ class Files(object):
         self.outputData("echo done", ";")
         self.outputData("exit", ";")
         self.logFile.close()
-        self.inputFile.close()
         self.outFile.close()
         self.outputDataFile.close()
 
@@ -213,7 +227,7 @@ def getParser():
     fileName = "souffle-grammar.pg"
     directory = os.path.dirname(os.path.abspath(__file__))
     g = parglare.Grammar.from_file(directory + "/" + fileName)
-    return parglare.Parser(g, build_tree=True)
+    return parglare.Parser(g, build_tree=True, debug=False)
 
 def getIdentifier(node):
     """Get a field named "Identifier" from a parglare parse tree node"""
@@ -222,12 +236,97 @@ def getIdentifier(node):
 
 ##############################################################
 
-def parse(parser, text):
-    return parser.parse(text)
+class SouffleConverter(object):
+    def __init__(self, files, tree):
+        assert isinstance(files, Files)
+        self.tree = tree
+        self.files = files
+        self.preprocess = False
+        self.current_component = None
+        self.bound_variables = set() # variables that have been bound
+        self.converting_head = False # True if we are converting a head clause
+        self.converting_tail = False # True if we are converting a tail clause
+        self.lhs_variables = set()   # variables that show up on the lhs of the rule
+        self.path_rename = dict()
 
-def strip_quotes(string):
-    return string[1:-1].decode('string_escape')
+    @staticmethod
+    def process_file(rel, inFileName, inSeparator, outputEmitter):
+        """Process an INPUT or OUTPUT with name inFileName; dump its contents into outfile
+        rel is the relation name that is being processed
+        inFileName is the file which contains the data
+        inSeparator is the input record separator
+        outputEmitter is a lambda which does the output.  It takes argument
+        an array of string arguments for the relation.
+        """
+        ri = RelationInfo.get(rel, self.current_component)
+        params = ri.parameters
+        converter = []
+        for p in params:
+            t = p.typeName
+            typ = Type.get(t)
+            assert isinstance(typ, Type)
+            if typ.isNumber():
+                converter.append(str)
+            else:
+                converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
+            if inFileName.endswith(".gz"):
+                data = gzip.open(inFileName, "r")
+            else:
+                data = open(inFileName, "r")
+            for line in data:
+                fields = line.rstrip('\n').split(inSeparator)
+                result = []
+                for i in range(len(fields)):
+                    result.append(converter[i](fields[i]))
+        outputEmitter(result)
+        data.close()
+
+    @staticmethod
+    def get_KVValue(KVValue):
+        string = getOptField(KVValue, "String")
+        if string is not None:
+            return string.value
+
+        ident = getOptField(KVValue, "Identifier")
+        if ident is not None:
+            return ident.value
+        return "true"
+
+    @staticmethod
+    def get_kvp(keyValuePairs):
+        empty = getField(keyValuePairs, "EMPTY")
+        if empty is not None:
+            return dict()
+        ne = getField(keyValuePairs, "NonEmptyKeyValuePairs")
+        ident = getIdentifier(ne)
+        kvvalue = getKVValue(ne)
+        rec = getOptField(ne, "KeyValuePairs")
+        if rec is not None:
+            result = get_kvp(rec)
+        else:
+            result = dict()
+        result[ident] = kvvalue
+        return result
+
+    @staticmethod
+    def get_relid(decl):
+        # print decl.tree_str()
+        l = getListField(decl, "Identifier", "RelId")
+        values = [e.value for e in l]
+        return ".".join(values)
+
+    def process_input(self, inputdecl):
+        directives = getField(inputdecl, "IodirectiveList")
+        body = getField(directives, "IodirectiveBody")
+        rel = self.get_relid(body)
+        kvpf = getOptField(body, "KeyValuePairs")
+        if kvpf is not None:
+            kvp = get_kvp(kvpf)
+        else:
+            kvp = dict()
+
+<<<<<<< Updated upstream
 def process_input(inputdecl, files, preprocess):
     rel = getIdentifier(inputdecl)
     strings = getArray(inputdecl, "String")
@@ -237,13 +336,51 @@ def process_input(inputdecl, files, preprocess):
     else:
         filename = strip_quotes(strings[0].value)
         separator = strip_quotes(strings[1].value)
+=======
+        if "IO" in kvp and kvp["IO"] is not "file":
+            raise Exception("Unexpected IO source " + kvp["IO"])
 
-    ri = RelationInfo.get(rel)
-    ri.isinput = True
+        if "filename" not in kvp:
+            filename = rel + ".facts"
+        else:
+            filename = strip_quotes(kvp["filename"])
 
-    if skip_files or preprocess:
-        return
+        if "separator" not in kvp:
+            separator = '\t'
+        else:
+            separator = strip_quotes(kvp["separator"])
+>>>>>>> Stashed changes
 
+        ri = RelationInfo.get(rel, self.current_component)
+        ri.isinput = True
+
+        if skip_files or self.preprocess:
+            return
+
+        print "Reading", rel, "from", filename
+        data = None
+        for directory in ["./", "./facts/"]:
+            for suffix in ["", ".gz"]:
+                tryFile = directory + filename + suffix
+                if os.path.isfile(tryFile):
+                    data = tryFile
+                    break
+        if data is None:
+            raise Exception("Cannot find file " + filename)
+        self.process_file(rel, data, separator,
+                     lambda tpl: self.files.outputData("insert " + ri.name + "(" + ",".join(tpl) + ")", ","))
+
+    def process_output(self, outputdecl):
+        directives = getField(outputdecl, "IodirectiveList")
+        body = getField(directives, "IodirectiveBody")
+        rel = self.get_relid(body)
+        kvpf = getOptField(body, "KeyValuePairs")
+        if kvpf is not None:
+            kvp = get_kvp(kvpf)
+        else:
+            kvp = dict()
+
+<<<<<<< Updated upstream
     params = ri.parameters
     converter = []
     for p in params:
@@ -427,11 +564,170 @@ def convert_expression(expr):
     ne = getOptField(expr, "NE")
     if ne != None:
         idents = getArray(expr, "Identifier")
-        id0 = var_name(idents[0].value)
-        strg = getOptField(expr, "String")
-        if strg is None:
-            id1 = var_name(idents[1].value)
+=======
+        ri = RelationInfo.get(rel, self.current_component)
+        ri.isoutput = True
+        if skip_files or self.preprocess:
+            RelationInfo.dumpOrder.append(ri.name)
+            return
+
+        filename = rel
+        print "Reading output", rel, "from", filename
+        data = None
+        for suffix in ["", ".csv"]:
+            tryFile = filename + suffix
+            if os.path.isfile(tryFile):
+                data = tryFile
+                break
+        if data is None:
+            sys.stderr.write("*** Cannot find output file " + filename + "; the reference output will be incomplete\n")
+            return
+        self.files.dumpFile.write(rel + ":\n")
+        self.process_file(rel, data, "\t",
+                     lambda tpl: self.files.dumpFile.write(ri.name + "{" + ",".join(tpl) + "}\n"))
+
+    def process_component(self, component):
+        if self.current_component != None:
+            raise Exception("Nested components: " + self.current_component + "." + component)
+        self.current_component = getIdentifier(component)
+        self.process(component)
+        self.current_component = None
+
+    def convert_arg(self, arg):
+        # print arg.tree_str()
+        string = getOptField(arg, "String")
+        if string is not None:
+            return "string_intern(" + string.value + ")"
+
+        us = getOptField(arg, "_")
+        if us is not None:
+            return "_"
+
+        dlr = getOptField(arg, "$")
+        if dlr is not None:
+            raise Exception("$ not handled")
+
+        at = getOptField(arg, "@")
+        if at is not None:
+            raise Exception("Functor call not handled")
+
+        asv = getOptField(arg, "AS")
+        if asv is not None:
+            raise Exception("AS not handled")
+
+        bk = getOptField(arg, "[")
+        if bk is not None:
+            raise Exception("[ not handled")
+
+        paren = getOptField(arg, "(")
+        if paren is not None:
+            rec = self.convert_arg(getField(arg, "Arg"))
+            return "(" + rec + ")"
+
+        unop = getOptField(arg, "Unop")
+        if unop is not None:
+            rec = self.convert_arg(getField(arg, "Arg"))
+            return unop + rec
+
+        ident = getOptField(arg, "Identifier")
+        if ident != None:
+            v = var_name(ident.value)
+            if self.converting_head and v != "_":
+                self.lhs_variables.add(v)
+            if self.converting_tail and v != "_":
+                self.bound_variables.add(v)
+            return v
+
+        num = getOptField(arg, "NUMBER")
+        if num != None:
+            return num
+
+        binop = getOptField(arg, "Binop")
+        if binop is not None:
+            args = getArray(arg, "Arg")
+            assert len(args) == 2
+            l = self.convert_arg(args[0])
+            r = self.convert_arg(args[1])
+            return l + binop + r
+
+        func = getOptField(arg, "FunctionCall")
+        if func != None:
+            return self.convert_function_call(func)
+
+        raise Exception("Unexpected argument " + arg.tree_str())
+
+    def convert_atom(self, atom):
+        name = self.get_relid(atom)
+        args = getListField(atom, "Arg", "ArgList")
+        args_strings = [self.convert_arg(arg) for arg in args]
+        rel = RelationInfo.get(name, self.current_component)
+        return rel.name + "(" + ", ".join(args_strings) + ")"
+
+    def convert_path(self, path):
+        components = getList(path, "Identifier", "Path")
+        names = [self.path_rename[x.value] if x.value in self.path_rename else x.value for x in components]
+        return "_".join(names)
+
+    def convert_relation(self, relation, negated):
+        path = getField(relation, "Path")
+        cp = convert_path(path)
+        rel = RelationInfo.get(cp, self.current_component)
+        if rel is None:
+            rn = cp
+            # This is actually a function call
+            if rn == "match":
+                # Match is reserved keyword in DDlog
+                rn = "re_match"
         else:
+            rn = rel.name
+        args = getListField(relation, "ClauseArg", "ClauseArgList")
+        args_strings = [self.convert_arg(arg) for arg in args]
+        if negated:
+            rn = "not " + rn
+        return rn + "(" + ", ".join(args_strings) + ")"
+
+    def convert_function_call(self, function):
+        # print function.tree_str()
+        func = getField(function, "FUNCTIONNAME").value
+        args = getListField(function, "Arg", "FunctionArgumentList")
+        argStrings = [self.convert_arg(arg) for arg in args]
+        if func == "match":
+            # Match is reserved keyword in DDlog
+            ident = "re_match"
+        return func + "(" + ", ".join(argStrings) + ")"
+
+    def convert_aggregate(self, agg):
+        """Convert an aggregate call; returns a list with two elements:
+        A set of expressions to evaluate before aggregation, and the
+        aggregation proper"""
+        # Must process the bound variables before the expression
+        result = "Aggregate(("
+        result += ", ".join(bound_variables)
+        result += "), "
+
+        expr = getOptField(agg, "Expression")
+        call = None
+        if expr is not None:
+            call = self.convert_expression(expr)
+        else:
+            rules = getField(agg, "ConjunctionsOrDisjunctions")
+            # TODO: this only supports conjunction
+            call = self.convert_conjunction(rules)
+
+        ident = getIdentifier(agg)
+        func = getField(agg, "AggregateFunction")
+        result += "group_" + func.children[0].value + "(" + var_name(ident) + "))"
+        return [call, result]
+
+    def convert_assignment(self, assign):
+        idents = getArray(assign, "Identifier")
+>>>>>>> Stashed changes
+        id0 = var_name(idents[0].value)
+        prefix = ""
+        if id0 not in self.bound_variables:
+            prefix = "var " + id0 + " = "
+        else:
+<<<<<<< Updated upstream
             id1 = "string_intern(" + strg.value + ")"
         return "not (" + id0 + " == " + id1 + ")"
     raise Exception("Unexpected expression" + expr.tree_str())
@@ -527,56 +823,199 @@ def process_type(typedecl, files, preprocess):
             # get the first one.
             equiv = getIdentifier(l)
         typ = Type.create(ident, equiv)
-        return typ
-    typ = Type.get(ident)
-    files.output(typ.declaration())
-    return typ
+=======
+            prefix = id0 + " == "
 
-def process_decl(decl, files, preprocess):
-    """Process a declaration; dispatches on declaration kind"""
-    files.log(decl.tree_str())
-    typedecl = getOptField(decl, "TypeDecl")
-    if typedecl != None:
-        process_type(typedecl, files, preprocess)
-        return
-    fact_decl = getOptField(decl, "Fact")
-    if fact_decl != None:
-        process_fact_decl(fact_decl, files, preprocess)
-        return
-    relationdecl = getOptField(decl, "RelationDecl")
-    if relationdecl != None:
-        process_relation_decl(relationdecl, files, preprocess)
-        return
-    inputdecl = getOptField(decl, "InputDecl")
-    if inputdecl != None:
-        process_input(inputdecl, files, preprocess)
-        return
-    outputdecl = getOptField(decl, "OutputDecl")
-    if outputdecl != None:
-        process_output(outputdecl, files, preprocess)
-        return
-    rule = getOptField(decl, "Rule")
-    if rule != None:
-        if preprocess:
+        strg = getOptField(assign, "String")
+        if strg != None:
+            return prefix + "string_intern(" + strg.value + ")"
+
+        func = getOptField(assign, "FunctionCall")
+        if func != None:
+            return prefix + self.convert_function_call(func)
+
+        agg = getOptField(assign, "Aggregate")
+        if agg != None:
+            [before, after] = self.convert_aggregate(agg)
+            return before + ", " + prefix + after
+
+        if len(idents) == 2:
+            id1 = idents[1].value
+            return prefix + id1
+
+        raise Exception("Unexpected assignment" + assign.tree_str())
+
+    def convert_literal(self, lit):
+        t = getOptField(lit, "TRUE")
+        if t is not None:
+            return "true"
+
+        f = getOptField(lit, "False")
+        if f != None:
+            return "false"
+
+        relop = getOptField(lit, "Relop")
+        if relop is not None:
+            args = getArray(lit, "Arg")
+            assert len(args) == 2
+            l = self.convert_arg(args[0])
+            r = self.convert_arg(args[1])
+            return l + relop.value + r
+
+        atom = getOptField(lit, "Atom")
+        if atom is not None:
+            return self.convert_atom(atom)
+        raise Exception("Unexpected lit" + litexpr.tree_str())
+
+    @staticmethod
+    def has_relation(term):
+        # TODO
+        return True
+
+    def convert_term(self, term):
+        # print term.tree_str()
+        lit = getOptField(term, "Literal")
+        if lit is not None:
+            return self.convert_literal(lit)
+        term = getOptField(term, "Term")
+        if term is not None:
+            return "!" + self.convert_term(term)
+        raise Exception("Unpexpected term " + term.tree_str())
+
+    def has_relations(self, terms):
+        """True if a conjunction contains any relations"""
+        flat = reduce(lambda a, b: a + b, terms, [])
+        flags = [self.has_relation(x) for x in flat]
+        return reduce(lambda a, b: a or b, flags, False)
+
+    def convert_terms(self, terms):
+        return [self.convert_term(t) for t in terms]
+
+    def process_rule(self, rule):
+        """Convert a rule and emit the output"""
+        # print rule.tree_str()
+        head = getField(rule, "Head")
+        tail = getField(rule, "Body")
+        self.lhs_variables.clear()
+        headAtoms = getList(head, "Atom", "Head")
+        disjunctions = getList(tail, "Disjunction", "Conjunction")
+        # print [d.tree_str() for d in disjunctions]
+        terms = [getListField(l, "Term", "Conjunction") for l in disjunctions]
+
+        if not self.has_relations(terms) and self.preprocess:
+            # If there are no clauses in the tail we
+            # mark all input relations as input relations
+            for atom in headAtoms:
+                name = self.get_relid(atom)
+                ri = RelationInfo.get(name, self.current_component)
+                ri.isInput = True
+        else:
+            self.converting_head = True
+            heads = [self.convert_atom(x) for x in headAtoms]
+            self.converting_head = False
+            self.bound_variables.clear()
+            self.converting_tail = True
+            convertedDisjunctions = [self.convert_terms(x) for x in terms]
+            converting_tail = False
+            for d in convertedDisjunctions:
+                for c in d:
+                    self.files.output(",\n\t".join(heads) + " :- " + c + ".")
+
+    def process_relation_decl(self, relationdecl):
+        """Process a relation declaration and emit output to files"""
+        idents = getListField(relationdecl, "Identifier", "RelationList")
+        body = getField(relationdecl, "RelationBody")
+        params = getListField(body, "Parameter", "ParameterList")
+        qualifiers = getListField(relationdecl, "Qualifier", "Qualifiers")
+        if self.preprocess:
+            for ident in idents:
+                # print "Decl", ident.value
+                rel = RelationInfo.create(ident.value, self.current_component)
+                if "output" in qualifiers:
+                    rel.isoutput = True
+                if "input" in qualifiers:
+                    rel.isinput = True
+                for param in params:
+                    arr = getArray(param, "Identifier")
+                    rel.addParameter(arr[0].value, arr[1].value)
             return
-        process_rule(rule, files, preprocess)
-        return
-    namespace = getOptField(decl, "Namespace")
-    if namespace != None:
-        process_namespace(namespace, files, preprocess)
-        return
-    init = getOptField(decl, "Init")
-    if init != None:
-        ids = getArray(init, "Identifier")
-        path_rename[ids[0].value] = ids[1].value
-        return
-    # TODO: handle functor
-    raise Exception("Unexpected node " + decl.tree_str())
 
-def process(tree, files, preprocess):
-    decls = getListField(tree, "Declaration", "DeclarationList")
-    for decl in decls:
-        process_decl(decl, files, preprocess)
+        for ident in idents:
+            rel = RelationInfo.get(ident.value, self.current_component)
+            self.files.output(rel.declaration())
+
+    def process_fact_decl(self, fact):
+        """Process a fact"""
+        if self.preprocess:
+            return
+        atom = getField(fact, "Atom")
+        head = self.convert_atom(atom)
+        self.files.output(head + ".")
+
+    def process_type(self, typedecl):
+        ident = getIdentifier(typedecl)
+        if self.preprocess:
+            l = getOptField(typedecl, "UnionType")
+            equiv = None
+            if l is not None:
+                # If we have a union type we expect all members
+                # of the list to be really equivalent types, so we only
+                # get the first one.
+                tid = getListField(l, "TypeId", "UnionType")[0]
+                idlist = getList(tid, "Identifier", "TypeId")
+                equiv = ".".join([i.value for i in idlist])
+            typ = Type.create(ident, equiv)
+            return typ
+        typ = Type.get(ident)
+        self.files.output(typ.declaration())
+>>>>>>> Stashed changes
+        return typ
+
+    def process_decl(self, decl):
+        """Process a declaration; dispatches on declaration kind"""
+        typedecl = getOptField(decl, "TypeDecl")
+        if typedecl != None:
+            self.process_type(typedecl)
+            return
+        fact_decl = getOptField(decl, "Fact")
+        if fact_decl != None:
+            self.process_fact_decl(fact_decl)
+            return
+        relationdecl = getOptField(decl, "RelationDecl")
+        if relationdecl != None:
+            self.process_relation_decl(relationdecl)
+            return
+        inputdecl = getOptField(decl, "InputDecl")
+        if inputdecl != None:
+            self.process_input(inputdecl)
+            return
+        outputdecl = getOptField(decl, "OutputDecl")
+        if outputdecl != None:
+            self.process_output(outputdecl)
+            return
+        rule = getOptField(decl, "Rule")
+        if rule != None:
+            if self.preprocess:
+                return
+            self.process_rule(rule)
+            return
+        component = getOptField(decl, "Component")
+        if component != None:
+            self.process_component(component)
+            return
+        init = getOptField(decl, "Init")
+        if init != None:
+            ids = getArray(init, "Identifier")
+            self.path_rename[ids[0].value] = ids[1].value
+            return
+        # TODO: handle functor
+        raise Exception("Unexpected node " + decl.tree_str())
+
+    def process(self, preprocess):
+        self.preprocess = preprocess
+        decls = getListField(self.tree, "Declaration", "DeclarationList")
+        for decl in decls:
+            self.process_decl(decl)
 
 def main():
     argParser = argparse.ArgumentParser("souffle-converter.py",
@@ -592,10 +1031,18 @@ def main():
     relationPrefix = args.prefix if args.prefix else ""
     files = Files(inputName, outputName, outputDataName, logName)
     parser = getParser()
+<<<<<<< Updated upstream
     tree = parser.parse(files.inputFile.read())
     process(tree, files, True)
     process(tree, files, False)
     files.done()
+=======
+    tree = parser.parse_file(files.inputName)
+    converter = SouffleConverter(files, tree)
+    converter.process(True)
+    converter.process(False)
+    files.done(RelationInfo.dumpOrder)
+>>>>>>> Stashed changes
 
 if __name__ == "__main__":
     main()

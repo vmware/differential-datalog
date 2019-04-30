@@ -33,6 +33,7 @@ test/souffle*/*_ddlog
 test/souffle*/*.log
 test/souffle*/souffle.dl
 test/souffle*/souffle.dat
+test/*/souffle.dump.expected
 .idea/
 out/
 *.cabal
