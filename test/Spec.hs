@@ -99,7 +99,7 @@ sOUFFLE_DIRS = ["souffle0", -- large Doop example
                  -- "souffle8", -- uses component inheritance
                  -- "souffle9", -- uses generic component
                  -- "souffle10", -- generic component
-                 -- "souffle11", -- uses disjunction
+                 "souffle11",
                  "souffle12",
                  -- "souffle13", -- unimplemented re_match
                  "souffle14"]

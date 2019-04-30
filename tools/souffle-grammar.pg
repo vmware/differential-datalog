@@ -16,39 +16,113 @@ Declaration: TypeDecl
            | Rule
            | Init
            | Fact
-           | Namespace
-           | Functor
+           | Component
+           | FunctorDecl
+           | CompInit
+           | Pragma
            ;
 
-Functor: FUNCTOR Identifier "(" IdentifierList ")" ":" Identifier
+FunctorDecl: FUNCTOR Identifier "(" IdentifierList ")" ":" Identifier
     ;
 
 Init: INIT Identifier "=" Identifier
     ;
 
+CompInit: INSTANTIATE Identifier "=" CompType
+        ;
+
+CompType: Identifier TypeParameters
+        ;
+
+TypeParameters: EMPTY
+              | "<" TypeParameterList ">"
+              ;
+
+TypeParameterList: Identifier
+                 | TypeParameterList "," TypeId
+                 ;
+
+TypeId: Identifier
+      | TypeId DOT Identifier
+      ;
+
+Pragma: PRAGMA String String
+      | PRAGMA String
+      ;
+
 // TODO: handle inheritance and type parameters
-Namespace: COMP Identifier "{" DeclarationList "}"
+Component: COMP Identifier "{" DeclarationList "}"
          ;
 
-// TODO: handle records
 TypeDecl: TYPE Identifier
-        | TYPE Identifier "=" TypeList
+        | TYPE Identifier "=" UnionType
+        | TYPE Identifier "=" "[" "]"
+        | TYPE Identifier "=" "[" RecordType "]"
         | SYMBOL_TYPE Identifier
+        | NUMBER_TYPE Identifier
         ;
 
-TypeList: Identifier
-        | Identifier "|" TypeList
-        ;
+UnionType : TypeId
+          | UnionType "|" TypeId
+          ;
 
-RelationDecl: DECL Identifier "(" ParameterList ")" OUTPUT_DEPRECATED?
+RecordType: Identifier ":" TypeId
+          | RecordType "," Identifier ":" TypeId
+          ;
+
+RelationDecl: DECL RelationList RelationBody Qualifiers
             ;
 
-InputDecl: INPUT Identifier "(" IO "=" FILE "," FILENAME "=" String "," DELIMITER "=" String ")"
-         | INPUT Identifier
+RelationList: Identifier
+            | Identifier "," RelationList
+            ;
+
+RelationBody: "(" ParameterList ")"
+            ;
+
+Qualifiers: EMPTY
+          | Qualifier Qualifiers
+          ;
+
+Qualifier: OUTPUT_QUALIFIER
+         | INPUT_QUALIFIER
+         | PRINTSIZE_QUALIFIER
+         | OVERRIDABLE_QUALIFIER
+         | INLINE_QUALIFIER
+         | BRIE_QUALIFIER
+         | BTREE_QUALIFIER
+         | EQREL_QUALIFIER
          ;
 
-OutputDecl: OUTPUT Identifier // TODO does not handle arguments
+NonEmptyKeyValuePairs : Identifier "=" KVValue
+                      | KeyValuePairs "," Identifier "=" KVValue
+                      ;
+
+KVValue : String
+        | "True"
+        | Identifier
+        ;
+
+KeyValuePairs : EMPTY
+              | NonEmptyKeyValuePairs
+              ;
+
+// load_head in the souffle grammar
+InputDecl: INPUT IodirectiveList
          ;
+
+// store_head in the souffle grammar
+OutputDecl: OUTPUT IodirectiveList
+          | PRINTSIZE IodirectiveList
+          ;
+
+IodirectiveList : IodirectiveBody
+                | Identifier "," IodirectiveList
+                ;
+
+IodirectiveBody : RelId
+                | RelId "(" KeyValuePairs ")"
+                ;
 
 ParameterList: Parameter "," ParameterList
              | Parameter
@@ -68,89 +142,108 @@ ArgumentList: Argument
 Argument: Identifier "=" String
         ;
 
-Rule: Head ":-" Tail DOT
+Fact: Atom DOT
     ;
 
-Fact: Clause DOT
+Head: Atom
+    | Head "," Atom
     ;
 
-Head: ClauseList
+Term: Literal
+    | "!" Term
+//    | "(" Disjunction ")" // TODO
     ;
 
-ClauseList: Clause
-          | ClauseList "," Clause
-          ;
-
-Clause: Identifier "(" ClauseArgList ")"
-      ;
-
-ClauseArgList: ClauseArg
-             | ClauseArg "," ClauseArgList
-             ;
-
-ClauseArg: VarName
-         | String
-         | FunctionCall
-         | FunctorCall
-         ;
-
-VarName: Identifier
-       ;
-
-Tail: ConjunctionsOrDisjunctions
+Conjunction: Term
+    | Conjunction "," Term
     ;
 
-ConjunctionsOrDisjunctions: Expression
-                          | ConjunctionsOrDisjunctions "," ConjunctionsOrDisjunctions {left,1}
-                          | ConjunctionsOrDisjunctions OR ConjunctionsOrDisjunctions {left,2}
-                          | "(" ConjunctionsOrDisjunctions ")"
-                          ;
-
-Expression: Assignment
-          | "!" Relation
-          | Relation
-          | Identifier NE Identifier
-          | Identifier NE String
-          | Expression ARITHMOP Expression
-          ;
-
-// TODO: Allow aggregates over expressions
-Aggregate : AggregateFunction Identifier ":" Expression
-          | AggregateFunction Identifier ":" "{" ConjunctionsOrDisjunctions "}"
-          ;
-
-AggregateFunction : MIN
-                  | MAX
-                  | COUNT
-                  ;
-
-Relation: Path "(" ClauseArgList ")"
-        ;
-
-Path: Identifier
-    | Identifier DOT Path
-    ;
-
-Assignment: Identifier "=" FunctionCall
-          | Identifier "=" Identifier
-          | Identifier "=" String
-          | Identifier "=" Aggregate
-          ;
-
-FunctionCall: Identifier "(" FunctionArgumentList ")"
-            ;
-
-FunctorCall: "@" FunctionCall
+Disjunction: Conjunction
+           | Disjunction OR Conjunction
            ;
 
-FunctionArgumentList: FunctionArgument
-                    | FunctionArgument "," FunctionArgumentList
+Body: Disjunction
+    ;
+
+Arg: String
+   | "_"
+   | "$"
+   | "@" Identifier FunctorList
+   | Identifier
+   | NUMBER
+   | "(" Arg ")"
+   | Arg Binop Arg
+   | FunctionCall
+   | Arg AS Identifier
+   | Unop Arg
+   | "[" "]"
+   | "[" RecordList "]"
+   | NIL
+   ;
+
+FunctorList : "(" ")"
+            | "(" FunctorArgs ")"
+            ;
+
+FunctorArgs : Arg
+            | FunctorArgs Arg
+            ;
+
+RecordList : Arg
+           | RecordList "," Arg
+           ;
+
+ArgList : EMPTY
+        | Arg
+        | ArgList "," Arg
+        ;
+
+Atom : RelId "(" ArgList ")"
+     ;
+
+RelId : Identifier
+      | RelId DOT Identifier
+      ;
+
+NonEmptyAttributes : Identifier ":" TypeId
+                   | Attributes "," Identifier ":" TypeId
+                   ;
+
+Attributes : NonEmptyAttributes
+           | EMPTY
+           ;
+
+Literal : Arg Relop Arg
+        | Atom
+        | TRUE
+        | FALSE
+        ;
+
+Binop: "|" | "^" | "&" | "||" | "&&" | "+" | "-" | "*" | "/" | "%" ;
+Unop: "~" | "!" | "-" ;
+Relop: "<" | ">" | "=" | "!=" | ">=" | "<=" ;
+
+// TODO: Allow aggregates over expressions
+Aggregate : AGGREGATEARG Arg ":" AggregateBody
+          | COUNT ":" AggregateBody
+          ;
+
+AggregateBody :  Atom
+               | "{" Body "}"
+               ;
+
+FunctionCall: FUNCTIONNAME "(" FunctionArgumentList ")"
+            ;
+
+FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
+           ;
+
+FunctionArgumentList: Arg
+                    | Arg "," FunctionArgumentList
                     ;
 
-FunctionArgument: Identifier
-                | String
-                | FunctionCall
-                ;
+Rule : Head ":-" Body DOT
+     ;
 
 ////// Special stuff
 
@@ -169,23 +262,48 @@ IO: "IO" ;
 FILE: "\"file\"" ;
 FILENAME: "filename" ;
 DELIMITER: "delimiter" ;
-NE: "!=" ;
 TYPE: ".type" ;
 SYMBOL_TYPE: ".symbol_type" ;
+NUMBER_TYPE: ".number_type" ;
 FUNCTOR: ".functor" ;
 INIT: ".init" ;
 COMP: ".comp" ;
 DECL: ".decl" ;
 INPUT: ".input" ;
 OUTPUT: ".output" ;
-OUTPUT_DEPRECATED: "output" ;
+OUTPUT_QUALIFIER: "output" ;
+INPUT_QUALIFIER: "input" ;
+PRINTSIZE_QUALIFIER: "printsize" ;
+OVERRIDABLE_QUALIFIER: "overridable" ;
+INLINE_QUALIFIER: "inline" ;
+BRIE_QUALIFIER: "brie" ;
+BTREE_QUALIFIER: "btree" ;
+EQREL_QUALIFIER: "eqrel" ;
 OR: ";" ;
 KEYWORD: /[\w-]+/ ;
 WS: /\s+/ ;
 LineComment: /\/\/.*/ ;
 String: /\"[^"]*\"/ ;
-Identifier: /[_\w\?][_\d\w]*/ ;
+INSTANTIATE: "instantiate" ;
+PRAGMA: "pragma" ;
+PRINTSIZE: ".printsize" ;
+AS: "as" ;
+NIL: "nil" ;
+TRUE: "true" ;
+FALSE: "false" ;
+NUMBER: /0|([1-9][0-9]*)/ ;
 MIN: "min" ;
 MAX: "max" ;
-COUNT: "count" ;
-ARITHMOP: /[\+\-\/\^\%]/ ;
+CAT: "cat" ;
+ORD: "ord" ;
+STRLEN: "strlen" ;
+TONUMBER: "tonumber" ;
+TOSTRING: "tostring" ;
+SUBSTR: "substr" ;
+MATCH: "match" ;
+CONTAINS: "contains" ;
+SUM: "sum";
+FUNCTIONNAME : /min|max|cat|ord|strlen|tonumber|tostring|substr|match|contains/ {2} ;
+AGGREGATEARG : /min|max|sum/ {2} ;
+COUNT: "count" {2} ;
+Identifier: /[_\w\?][_\d\w]*/ {1} ;
