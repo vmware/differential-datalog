@@ -16,6 +16,7 @@ typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
 typedef ConcatString = ConcatString{s: string}
+typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef Edge = Edge{from: bigint, to: bigint}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
@@ -432,6 +433,7 @@ input relation BMethod [BMethod]
 input relation Blacklist [Blacklist]
 output relation CMethod [CMethod]
 output relation ConcatString [ConcatString]
+output relation DMethod [DMethod]
 output relation Disaggregate [Disaggregate]
 input relation Edge [Edge]
 output relation ExternalId [ExternalId]
@@ -648,4 +650,5 @@ StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IConcatString
 Ris_true(._s=intern.string_intern("true")).
 Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
 CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).
+DMethod(.c1=a, .c2=b) :- AMethod(.a1=b, .a2=a), BMethod(.b1=intern.string_intern("c"), .b2=b).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
