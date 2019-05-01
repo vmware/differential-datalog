@@ -516,9 +516,9 @@ ctxExpectType d (CtxBinOpL e ctx)                    =
          Impl   -> Just tBool
          Plus   -> trhs
          Minus  -> trhs
-         ShiftR -> Nothing
-         ShiftL -> Nothing
-         Mod    -> Nothing
+         ShiftR -> ctxExpectType d ctx
+         ShiftL -> ctxExpectType d ctx
+         Mod    -> trhs
          Times  -> trhs
          Div    -> trhs
          BAnd   -> trhs
@@ -541,7 +541,7 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
          Minus  -> tlhs
          ShiftR -> Nothing
          ShiftL -> Nothing
-         Mod    -> Nothing
+         Mod    -> tlhs
          Times  -> tlhs
          Div    -> tlhs
          BAnd   -> tlhs
