@@ -1,7 +1,7 @@
 //! OVSDB JSON interface to RunningProgram
 
 use differential_datalog::program::*;
-use differential_datalog::record::IntoRecord;
+use differential_datalog::record::{IntoRecord, UpdCmd};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use super::{Value, updcmd2upd, relname2id};
@@ -9,7 +9,8 @@ use ddlog_ovsdb_adapter::*;
 use super::valmap;
 use std::sync;
 use std::ptr;
-use super::{HDDlog, output_relname_to_id};
+use std::io::Write;
+use super::{HDDlog, output_relname_to_id, record_update};
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -33,7 +34,7 @@ pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = apply_updates(&mut prog.prog.lock().unwrap(), prefix, updates).map(|_|0).unwrap_or_else(|e|{
+    let res = apply_updates(&prog, prefix, updates).map(|_|0).unwrap_or_else(|e|{
         prog.eprintln(&format!("ddlog_apply_ovsdb_updates(): error: {}", e));
         -1
     });
@@ -41,17 +42,32 @@ pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(
     res
 }
 
-fn apply_updates(prog: &mut RunningProgram<Value>, prefix: *const c_char, updates_str: *const c_char) -> Result<(), String>
+fn apply_updates(prog: &sync::Arc<HDDlog>, prefix: *const c_char, updates_str: *const c_char) -> Result<(), String>
 {
     let prefix: &str = unsafe{ CStr::from_ptr(prefix) }.to_str()
         .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
     let updates_str: &str = unsafe{ CStr::from_ptr(updates_str) }.to_str()
         .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
     let commands = cmds_from_table_updates_str(prefix, updates_str)?;
+
+    record_updatecmds(prog, &commands);
+
     let updates: Result<Vec<Update<Value>>, String> = commands.iter().map(|c|updcmd2upd(c)).collect();
-    prog.apply_updates(updates?)
+    prog.prog.lock().unwrap().apply_updates(updates?)
 }
 
+fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
+{
+    if let Some(ref f) = prog.replay_file {
+        let mut file = f.lock().unwrap();
+        let n = upds.len();
+        for (i, upd) in upds.iter().enumerate() {
+            let sep = if i == n - 1 { ";" } else { "," };
+            record_update(&mut *file, upd);
+            write!(&mut *file, "{}\n", sep);
+        }
+    }
+}
 
 /// Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in JSON format.
 ///

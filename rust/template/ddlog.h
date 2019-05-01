@@ -121,6 +121,19 @@ extern ddlog_prog ddlog_run(unsigned int workers,
 			    void (*print_err_msg)(const char *msg));
 
 /*
+ * Record commands issued to DDlog via this API in a file.
+ *
+ * This is a debugging feature used to record DDlog commands issued through
+ * functions in this file in a DDlog command file that can later be replayed
+ * throught the CLI interface.
+ *
+ * `fd` - file descriptor.  Passing 0 in this argument instructs DDlog to stop
+ * recording. The caller is responsible for opening and closing the file.  They
+ * can inject additional commands, e.g., `echo` to the file.
+ */
+extern int ddlog_record_commands(ddlog_prog hprog, int fd);
+
+/*
  * Stops the program; deallocates all resources, invalidates the handle.
  *
  * All concurrent calls using the handle must complete before calling this
@@ -254,6 +267,17 @@ extern int ddlog_dump_table(ddlog_prog prog, table_id table,
 /***********************************************************************
  * Profiling
  ***********************************************************************/
+
+/*
+ * Controls recording of differential operator runtimes.  When enabled,
+ * DDlog records each activation of every operator and prints the
+ * per-operator CPU usage summary in the profile.  When disabled, the
+ * recording stops, but the previously accumulated profile is preserved.
+ *
+ * Recording CPU events can be expensive in large dataflows and is
+ * therefore disabled by default.
+ */
+extern int ddlog_enable_cpu_profiling(ddlog_prog prog, bool enable);
 
 /*
  * Returns DDlog program runtime profile as a C string.

@@ -16,6 +16,7 @@ use abomonation::Abomonation;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex, RwLock, Barrier};
+use std::sync::atomic::{Ordering, AtomicBool};
 use std::result::Result;
 use std::collections::hash_map;
 use std::thread;
@@ -709,6 +710,8 @@ pub struct RunningProgram<V: Val> {
     thread_handle: thread::JoinHandle<Result<(), String>>,
     transaction_in_progress: bool,
     need_to_flush: bool,
+    /* CPU profiling enabled (can be expensive) */
+    profile_cpu: Arc<AtomicBool>,
     /* profiling thread */
     prof_thread_handle: thread::JoinHandle<()>,
     /* profiling statistics */
@@ -825,6 +828,9 @@ impl<V:Val> Program<V>
         /* Thread to collect profiling data */
         let prof_thread = thread::spawn(move||Self::prof_thread_func(prof_recv, profile2));
 
+        let profile_cpu = Arc::new(AtomicBool::new(false));
+        let profile_cpu2 = profile_cpu.clone();
+
         /* Shared timestamp managed by worker 0 and read by all other workers */
         let progress_lock = Arc::new(RwLock::new(0));
         let progress_barrier = Arc::new(Barrier::new(nworkers));
@@ -836,16 +842,18 @@ impl<V:Val> Program<V>
                 let probe = probe::Handle::new();
                 {
                     let mut probe1 = probe.clone();
+                    let profile_cpu3 = profile_cpu2.clone();
                     let prof_send1 = prof_send.clone();
                     let prof_send2 = prof_send.clone();
                     let progress_barrier = progress_barrier.clone();
 
                     worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
+                        let profcpu: &AtomicBool = &*profile_cpu3;
                         /* Filter out events we don't care about to avoid the overhead of sending
                          * the event around just to drop it eventually. */
                         let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
                             TimelyEvent::Operates(_) => true,
-                            TimelyEvent::Schedule(_) => true,
+                            TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire),
                             _ => false
                         }).map(|x|(x, get_prof_context())).collect();
                         if filtered.len() > 0 {
@@ -1128,8 +1136,9 @@ impl<V:Val> Program<V>
             thread_handle: h,
             transaction_in_progress: false,
             need_to_flush: false,
+            profile_cpu: profile_cpu,
             prof_thread_handle: prof_thread,
-            profile: profile
+            profile: profile,
         }
     }
 
@@ -1466,6 +1475,14 @@ impl<V:Val> Program<V>
 /* This should not panic, so that the client has a chance to recover from failures */
 // TODO: error messages
 impl<V:Val> RunningProgram<V> {
+    /// Controls forwarding of `TimelyEvent::Schedule` event to the CPU
+    /// profiling thread.
+    /// `enable = true`  - enables forwarding. This can be expensive in large dataflows.
+    /// `enable = false` - disables forwarding.
+    pub fn enable_cpu_profiling(&self, enable: bool) {
+        self.profile_cpu.store(enable, Ordering::SeqCst);
+    }
+
     /// Terminate program, kill worker threads.
     pub fn stop(mut self) -> Response<()> {
         self.flush()
