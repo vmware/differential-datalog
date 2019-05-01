@@ -41,7 +41,12 @@ use std::borrow;
 use std::ptr;
 use std::ffi;
 use std::boxed;
+use std::fs;
 use std::ops::Deref;
+use std::io::Write;
+use std::os::unix;
+use std::os::unix::io::{IntoRawFd, FromRawFd};
+use std::mem;
 use libc::size_t;
 
 pub mod valmap;
@@ -50,7 +55,10 @@ pub mod ovsdb;
 pub struct HDDlog {
     prog: sync::Mutex<RunningProgram<Value>>,
     db: Option<sync::Arc<sync::Mutex<valmap::ValMap>>>,
-    print_err: Option<extern "C" fn(msg: *const raw::c_char)>
+    print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
+    /* When set, all commands sent to the program are recorded in
+     * the specified `.dat` file so that they can be replayed later. */
+    replay_file: Option<sync::Mutex<fs::File>>
 }
 
 impl HDDlog {
@@ -112,6 +120,14 @@ fn relident2id(r: &record::RelIdentifier) -> Option<Relations> {
     }
 }
 
+fn relident2name(r: &record::RelIdentifier) -> Option<&str> {
+    match r {
+        record::RelIdentifier::RelName(rname) => Some(rname.as_ref()),
+        record::RelIdentifier::RelId(id)      => relid2name(*id)
+    }
+}
+
+
 
 fn __null_cb(_relid: RelId, _v: &Value, _w: isize) {}
 
@@ -161,9 +177,10 @@ pub extern "C" fn ddlog_run(
                     upd_cb(&db, relid, v, w == 1)
                 }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
-                                                          db: Some(db2),
-                                                          print_err: print_err}))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
+                                                          db:          Some(db2),
+                                                          print_err:   print_err,
+                                                          replay_file: None}))
             },
             Some(cb) => {
                 let program = prog(sync::Arc::new(move |relid,v,w| {
@@ -172,9 +189,10 @@ pub extern "C" fn ddlog_run(
                     cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
                 }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
-                                                          db: Some(db2),
-                                                          print_err: print_err}))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
+                                                          db:          Some(db2),
+                                                          print_err:   print_err,
+                                                          replay_file: None}))
             }
         }
     } else {
@@ -182,9 +200,10 @@ pub extern "C" fn ddlog_run(
             None => {
                 let program = prog(sync::Arc::new(|_,_,_| {}));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:sync::Mutex::new(prog),
-                                                          db: None,
-                                                          print_err: print_err}))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
+                                                          db:          None,
+                                                          print_err:   print_err,
+                                                          replay_file: None}))
             },
             Some(cb) => {
                 let program = prog(sync::Arc::new(move |relid,v,w| {
@@ -192,12 +211,45 @@ pub extern "C" fn ddlog_run(
                         cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
                     }));
                 let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog: sync::Mutex::new(prog),
-                                                          db: None,
-                                                          print_err: print_err}))
+                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
+                                                          db:          None,
+                                                          print_err:   print_err,
+                                                          replay_file: None}))
             }
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: unix::io::RawFd) -> raw::c_int
+{
+    if prog.is_null() {
+        return -1;
+    };
+    let mut prog = sync::Arc::from_raw(prog);
+    let res = match sync::Arc::get_mut(&mut prog) {
+        Some(prog) => {
+            /* Swap out the old file and convert it into FD to prevent
+             * the file from closing on destruction (it is the caller's
+             * responsibility to close the file when they're done with it). */
+            let mut old_file = if fd == 0 {
+                None
+            } else {
+                Some(sync::Mutex::new(fs::File::from_raw_fd(fd)))
+            };
+            mem::swap(&mut prog.replay_file, &mut old_file);
+            match old_file {
+                None => (),
+                Some(m) => {
+                    m.into_inner().unwrap().into_raw_fd();
+                }
+            };
+            0
+        },
+        None => -1
+    };
+    sync::Arc::into_raw(prog);
+    res
 }
 
 #[no_mangle]
@@ -206,9 +258,12 @@ pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int
     if prog.is_null() {
         return -1;
     };
+    /* Prevents closing of the old descriptor. */
+    ddlog_record_commands(prog, 0);
+
     let prog = sync::Arc::from_raw(prog);
     match sync::Arc::try_unwrap(prog) {
-        Ok(HDDlog{prog, db, print_err}) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
+        Ok(HDDlog{prog, print_err, ..}) => prog.into_inner().map(|p|{p.stop(); 0}).unwrap_or_else(|e|{
             HDDlog::print_err(print_err, &format!("ddlog_stop(): error acquiring lock: {}", e));
             -1
         }),
@@ -226,12 +281,23 @@ pub unsafe extern "C" fn ddlog_transaction_start(prog: *const HDDlog) -> raw::c_
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
+
+    record_transaction_start(&prog);
+
     let res = prog.prog.lock().unwrap().transaction_start().map(|_|0).unwrap_or_else(|e|{
         prog.eprintln(&format!("ddlog_transaction_start(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
     res
+}
+
+unsafe fn record_transaction_start(prog: &sync::Arc<HDDlog>) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "start;\n").is_err() {
+            prog.eprintln("ddlog_transaction_start(): failed to record invocation in replay file");
+        }
+    }
 }
 
 #[no_mangle]
@@ -241,12 +307,23 @@ pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
+
+    record_transaction_commit(&prog);
+
     let res = prog.prog.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
         prog.eprintln(&format!("ddlog_transaction_commit(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
     res
+}
+
+unsafe fn record_transaction_commit(prog: &sync::Arc<HDDlog>) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "commit;\n").is_err() {
+            prog.eprintln("ddlog_transaction_commit(): failed to record invocation in replay file");
+        }
+    }
 }
 
 #[no_mangle]
@@ -256,12 +333,23 @@ pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw:
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
+
+    record_transaction_rollback(&prog);
+
     let res = prog.prog.lock().unwrap().transaction_rollback().map(|_|0).unwrap_or_else(|e|{
         prog.eprintln(&format!("ddlog_transaction_rollback(): error: {}", e));
         -1
     });
     sync::Arc::into_raw(prog);
     res
+}
+
+unsafe fn record_transaction_rollback(prog: &sync::Arc<HDDlog>) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "rollback;\n").is_err() {
+            prog.eprintln("ddlog_transaction_rollback(): failed to record invocation in replay file");
+        }
+    }
 }
 
 #[no_mangle]
@@ -271,6 +359,9 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
+
+    record_updates(&prog, upds, n);
+
     let mut upds_vec = Vec::with_capacity(n as usize);
     for i in 0..n {
         let upd = match updcmd2upd(Box::from_raw(*upds.offset(i as isize)).as_ref()) {
@@ -290,6 +381,36 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
     res
 }
 
+unsafe fn record_updates(prog: &sync::Arc<HDDlog>, upds: *const *mut record::UpdCmd, n: size_t)
+{
+    if let Some(ref f) = prog.replay_file {
+        let mut file = f.lock().unwrap();
+        for i in 0..n {
+            let sep = if i == n - 1 { ";" } else { "," };
+            record_update(&mut *file, &(**upds.offset(i as isize)));
+            let _ = write!(file, "{}\n", sep);
+        }
+    }
+}
+
+pub fn record_update(file: &mut fs::File, upd: &record::UpdCmd)
+{
+    match upd {
+        record::UpdCmd::Insert(rel, record) => {
+            let _ = write!(file, "insert {}[{}]", relident2name(rel).unwrap_or(&"???"), record);
+        },
+        record::UpdCmd::Delete(rel, record) => {
+            let _ = write!(file, "delete {}[{}]", relident2name(rel).unwrap_or(&"???"), record);
+        },
+        record::UpdCmd::DeleteKey(rel, record) => {
+            let _ = write!(file, "delete_key {} {}", relident2name(rel).unwrap_or(&"???"), record);
+        },
+        record::UpdCmd::Modify(rel, key, mutator) => {
+            let _ = write!(file, "modify {} {} <- {}", relident2name(rel).unwrap_or(&"???"), key, mutator);
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_clear_relation(
     prog: *const HDDlog,
@@ -299,6 +420,9 @@ pub unsafe extern "C" fn ddlog_clear_relation(
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
+
+    record_clear_relation(&prog, table);
+
     let res = match clear_relation(&prog, table) {
         Ok(()) => { 0 },
         Err(e) => {
@@ -310,12 +434,20 @@ pub unsafe extern "C" fn ddlog_clear_relation(
     res
 }
 
+unsafe fn record_clear_relation(prog: &sync::Arc<HDDlog>, table: libc::size_t) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "clear {};\n", relid2name(table).unwrap_or(&"???")).is_err() {
+            prog.eprintln("ddlog_clear_relation(): failed to record invocation in replay file");
+        }
+    }
+}
+
 unsafe fn clear_relation(prog: &HDDlog, table: libc::size_t) -> Result<(), String> {
     prog.prog.lock().unwrap().clear_relation(table)
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_dump_table(
+pub unsafe extern "C" fn ddlog_dump_table(
     prog:    *const HDDlog,
     table:   libc::size_t,
     cb:      extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
@@ -324,7 +456,10 @@ pub extern "C" fn ddlog_dump_table(
     if prog.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
+
+    record_dump_table(&prog, table);
+
     let res = if let Some(ref db) = prog.db {
         match dump_table(&mut db.lock().unwrap(), table, cb, cb_arg) {
             Ok(recs) => {
@@ -343,6 +478,14 @@ pub extern "C" fn ddlog_dump_table(
     res
 }
 
+unsafe fn record_dump_table(prog: &sync::Arc<HDDlog>, table: libc::size_t) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "dump {};\n", relid2name(table).unwrap_or(&"???")).is_err() {
+            prog.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
+        }
+    }
+}
+
 fn dump_table(db: &mut valmap::ValMap,
               table: libc::size_t,
               cb: extern "C" fn(arg: *mut raw::c_void, rec: *const record::Record) -> bool,
@@ -357,12 +500,38 @@ fn dump_table(db: &mut valmap::ValMap,
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
+pub unsafe extern "C" fn ddlog_enable_cpu_profiling(prog: *const HDDlog, enable: bool) -> raw::c_int
+{
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = sync::Arc::from_raw(prog);
+
+    record_enable_cpu_profiling(&prog, enable);
+
+    prog.prog.lock().unwrap().enable_cpu_profiling(enable);
+    sync::Arc::into_raw(prog);
+    0
+}
+
+fn record_enable_cpu_profiling(prog: &sync::Arc<HDDlog>, enable: bool) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "profile cpu {};\n", if enable { "on" } else { "off" }).is_err() {
+            prog.eprintln("ddlog_cpu_profiling_enable(): failed to record invocation in replay file");
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
 {
     if prog.is_null() {
         return ptr::null();
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
+
+    record_profile(&prog);
+
     let res = {
         let rprog = prog.prog.lock().unwrap();
         let profile = format!("{}", rprog.profile.lock().unwrap());
@@ -370,6 +539,14 @@ pub extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char
     };
     sync::Arc::into_raw(prog);
     res
+}
+
+unsafe fn record_profile(prog: &sync::Arc<HDDlog>) {
+    if let Some(ref f) = prog.replay_file {
+        if write!(f.lock().unwrap(), "profile;\n").is_err() {
+            prog.eprintln("ddlog_profile(): failed to record invocation in replay file");
+        }
+    }
 }
 
 #[no_mangle]

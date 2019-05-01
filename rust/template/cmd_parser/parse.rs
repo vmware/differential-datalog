@@ -7,13 +7,19 @@ use nom::*;
 use differential_datalog::record::*;
 use std::borrow::Cow;
 
+
+#[derive(Debug,PartialEq,Eq,Clone)]
+pub enum ProfileCmd {
+    CPU(bool)
+}
+
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Command {
     Start,
     Commit,
     Rollback,
     Timestamp,
-    Profile,
+    Profile(Option<ProfileCmd>),
     Dump(Option<String>),
     Clear(String),
     Exit,
@@ -43,6 +49,12 @@ named!(identifier<&[u8], String>,
 );
 
 
+named!(pub profile_cmd<&[u8], ProfileCmd>,
+       do_parse!(apply!(sym,"cpu") >>
+                 enable: alt!(do_parse!(apply!(sym,"on") >> (true)) |
+                              do_parse!(apply!(sym,"off") >> (false))) >>
+                 (ProfileCmd::CPU(enable)))
+);
 
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
@@ -50,7 +62,10 @@ named!(pub parse_command<&[u8], Command>,
         upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
                   do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
                   do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
-                  do_parse!(apply!(sym,"profile")   >> apply!(sym,";") >> (Command::Profile))   |
+                  do_parse!(apply!(sym,"profile")   >>
+                            cmd: opt!(profile_cmd)  >>
+                            apply!(sym,";")         >>
+                            (Command::Profile(cmd)))                                            |
                   do_parse!(apply!(sym,"dump")      >>
                             rel: opt!(identifier)   >>
                             apply!(sym,";")         >>
@@ -77,7 +92,9 @@ fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
     assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
-    assert_eq!(parse_command(br"profile;")  , Ok((&br""[..], Command::Profile)));
+    assert_eq!(parse_command(br"profile cpu on;") , Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true))))));
+    assert_eq!(parse_command(br"profile cpu off;"), Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(false))))));
+    assert_eq!(parse_command(br"profile;")  , Ok((&br""[..], Command::Profile(None))));
     assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
     assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
     assert_eq!(parse_command(br"clear Tab;"), Ok((&br""[..], Command::Clear("Tab".to_string()))));
@@ -102,6 +119,12 @@ fn test_command() {
                Ok((&br""[..], Command::Update(
                    UpdCmd::DeleteKey(RelIdentifier::RelName(Cow::from("Rel1")), Record::Bool(true)), true
                ))));
+    assert_eq!(parse_command(br"modify Rel1 true <- Rel1{.f1 = 5};"),
+               Ok((&br""[..], Command::Update(
+                   UpdCmd::Modify(RelIdentifier::RelName(Cow::from("Rel1")), Record::Bool(true),
+                                  Record::NamedStruct(Cow::from("Rel1"),
+                                  vec![(Cow::from("f1"), Record::Int(5.to_bigint().unwrap()))])), true
+               ))));
     assert_eq!(parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
                Ok((&br""[..], Command::Update(
                    UpdCmd::Delete(RelIdentifier::RelName(Cow::from("NB.Logical_Router")),
@@ -114,9 +137,15 @@ fn test_command() {
 }
 
 named!(update<&[u8], UpdCmd>,
-    alt!(do_parse!(apply!(sym,"insert")     >> rec: rel_record >> (UpdCmd::Insert(RelIdentifier::RelName(rec.0), rec.1)))  |
-         do_parse!(apply!(sym,"delete")     >> rec: rel_record >> (UpdCmd::Delete(RelIdentifier::RelName(rec.0), rec.1)))  |
-         do_parse!(apply!(sym,"delete_key") >> rec: rel_key    >> (UpdCmd::DeleteKey(RelIdentifier::RelName(rec.0), rec.1))))
+    alt!(do_parse!(apply!(sym,"insert")     >> rec: rel_record >> (UpdCmd::Insert(RelIdentifier::RelName(rec.0), rec.1)))    |
+         do_parse!(apply!(sym,"delete")     >> rec: rel_record >> (UpdCmd::Delete(RelIdentifier::RelName(rec.0), rec.1)))    |
+         do_parse!(apply!(sym,"delete_key") >> rec: rel_key    >> (UpdCmd::DeleteKey(RelIdentifier::RelName(rec.0), rec.1))) |
+         do_parse!(apply!(sym,"modify") >>
+                   rec: rel_key         >>
+                   apply!(sym, "<-")    >>
+                   mutator: record      >>
+                   (UpdCmd::Modify(RelIdentifier::RelName(rec.0), rec.1, mutator)))
+         )
 );
 
 named!(rel_record<&[u8], (Name, Record)>,

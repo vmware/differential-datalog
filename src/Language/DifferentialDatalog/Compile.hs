@@ -719,6 +719,7 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkOutputRelname2Id d                                                                            $$
     mkInputRelname2Id d                                                                             $$
     mkRelId2Relations d                                                                             $$
+    mkRelId2Name d                                                                                  $$
     "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                                $$
@@ -788,7 +789,7 @@ mkInputRelname2Id d =
 
 
 
--- Convert string to RelId
+-- Convert string to enum Relations
 mkRelId2Relations :: DatalogProgram -> Doc
 mkRelId2Relations d =
     "pub fn relid2rel(rid: RelId) -> Option<Relations> {"   $$
@@ -801,6 +802,19 @@ mkRelId2Relations d =
     entries = mapIdx mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Int -> Doc
     mkrel rel i = pp i <+> "=> Some(Relations::" <> rname (name rel) <> "),"
+
+mkRelId2Name :: DatalogProgram -> Doc
+mkRelId2Name d =
+    "pub fn relid2name(rid: RelId) -> Option<&'static str> {" $$
+    "   match rid {"                                          $$
+    (nest' $ nest' $ vcat $ entries)                          $$
+    "       _  => None"                                       $$
+    "   }"                                                    $$
+    "}"
+    where
+    entries = mapIdx mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Int -> Doc
+    mkrel rel i = pp i <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =

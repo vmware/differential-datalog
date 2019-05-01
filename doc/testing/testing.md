@@ -1,13 +1,10 @@
 # Creating Datalog Tests
 
-**Thank you for contributing to the differential datalog project!**
+**Thank you for contributing to the DDlog project!**
 
-Follow these steps, detailed below, to create a datalog test.  Note 
-that this testing method is primarily suitable for testing correctness 
-of the datalog engine.  It is not suitable for performance or memory 
-testing, which requires feeding a large number of records to datalog.
+Follow these steps, detailed below, to create a DDlog test.
 
-1. Write a test datalog program
+1. Write a test DDlog program
 1. Create test workload
 1. Create a pull request
 
@@ -15,7 +12,7 @@ testing, which requires feeding a large number of records to datalog.
 
 Test files are located in the `test/datalog_tests` directory.  The
 test script will automatically test all files with `*.dl`
-extension.  
+extension.
 
 1. Create a file named `test/datalog_tests/<test>.dl`, where `<test>` is
    the name of your test.
@@ -29,7 +26,7 @@ this means that the datalog compiler produced invalid Rust code.  Please
 *Note: compilation will take a minute or two the first time as cargo pulls and compiles Rust dependencies*.
 Once compilation succeeds, it will create
 `test/datalog_test/<test>.ast` file and a golden test file `test/datalog_test/<test>.ast.expected`.
-Remove this file whenever you change the datalog program to re-generate it.  
+Remove this file whenever you change the datalog program to re-generate it.
 
 ### Example datalog program `path.dl`
 
@@ -57,8 +54,8 @@ outputs.
 1. Run `stack test` again.  This should create a file named
    `test/datalog_tests/<test>.dump` containing the output of all `dump` and `echo` commands in the script
    and `test/datalog_tests/<test>.dump.expected`.
-1. Inspect the dump file; make sure that the output of the tool is correct. If it's not, 
-   please [submit a bug report](https://github.com/ryzhyk/differential-datalog/issues) 
+1. Inspect the dump file; make sure that the output of the tool is correct. If it's not,
+   please [submit a bug report](https://github.com/ryzhyk/differential-datalog/issues)
    including `.dl` and `.dat` files.
 1. Make sure that you delete the `.expected` file whenever the datalog
    program or the test workload changed; otherwise the test will fail.
@@ -81,7 +78,10 @@ outputs.
 |                                | insert Rel2(.x=10, .y=Constructor{.f1="foo", .f2=true}); | type constructor arguments can also be passed by name          |
 | `delete <record>;`             | delete Rel1(1,true,"foo");                       | delete record from Rel1 (using argument syntax identical to `insert`)  |
 | `delete_key <relation> <key>;` | delete Rel1 1;                                   | delete record by key; only valid for relations with primary key        |
+| `modify <relation> <key> <- <record>;` | modify Rel1 1 <- Rel1{.f1 = 5};          | modify record; `<record>` specifies just the fields to be modified; only valid for relations with primary key        |
 | comma-separated updates        | insert Foo(1), delete Bar("buzz");               | a sequence of insert and delete commands can be applied in one update  |
+| `profile`|                     |                                                  | print CPU and memory profile of the DDlog program                      |
+| `profile cpu "on"|"off"`|      |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
 | `exit;`                        |                                                  | terminates execution                                                   |
 
 **Note**: Placing a semicolon after an `insert` or `delete` operation tells DDlog to apply the

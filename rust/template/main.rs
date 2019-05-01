@@ -70,9 +70,13 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             println!("Timestamp: {}", precise_time_ns());
             Ok(())
         },
-        Command::Profile => {
+        Command::Profile(None) => {
             let profile = (*p.profile.lock().unwrap()).clone();
             println!("Profile:\n{}", profile);
+            Ok(())
+        },
+        Command::Profile(Some(ProfileCmd::CPU(enable))) => {
+            p.enable_cpu_profiling(enable);
             Ok(())
         },
         Command::Dump(None) => {
