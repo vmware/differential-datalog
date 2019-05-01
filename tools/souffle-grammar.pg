@@ -38,8 +38,8 @@ TypeParameters: EMPTY
               | "<" TypeParameterList ">"
               ;
 
-TypeParameterList: Identifier
-                 | TypeParameterList "," TypeId
+TypeParameterList: TypeId
+                 | TypeId "," TypeParameterList
                  ;
 
 TypeId: Identifier
@@ -50,7 +50,6 @@ Pragma: PRAGMA String String
       | PRAGMA String
       ;
 
-// TODO: handle inheritance and type parameters
 Component: COMP Identifier "{" DeclarationList "}"
          ;
 
@@ -63,11 +62,11 @@ TypeDecl: TYPE Identifier
         ;
 
 UnionType : TypeId
-          | UnionType "|" TypeId
+          | TypeId "|" UnionType
           ;
 
 RecordType: Identifier ":" TypeId
-          | RecordType "," Identifier ":" TypeId
+          | Identifier ":" TypeId "," RecordType
           ;
 
 RelationDecl: DECL RelationList RelationBody Qualifiers
@@ -94,17 +93,14 @@ Qualifier: OUTPUT_QUALIFIER
          | EQREL_QUALIFIER
          ;
 
-NonEmptyKeyValuePairs : Identifier "=" KVValue
-                      | KeyValuePairs "," Identifier "=" KVValue
-                      ;
-
 KVValue : String
         | "True"
         | Identifier
         ;
 
 KeyValuePairs : EMPTY
-              | NonEmptyKeyValuePairs
+              | Identifier "=" KVValue
+              | Identifier "=" KVValue "," KeyValuePairs
               ;
 
 // load_head in the souffle grammar
@@ -132,7 +128,7 @@ Parameter: Identifier ":" Identifier
          ;
 
 IdentifierList: EMPTY
-              | Identifier "," IdentifierList
+              | IdentifierList "," Identifier
               ;
 
 ArgumentList: Argument
@@ -151,19 +147,12 @@ Head: Atom
 
 Term: Literal
     | "!" Term
-//    | "(" Disjunction ")" // TODO
+//    | "(" Body ")" // TODO
     ;
 
 Conjunction: Term
-    | Conjunction "," Term
-    ;
-
-Disjunction: Conjunction
-           | Disjunction OR Conjunction
+           | Term "," Conjunction
            ;
-
-Body: Disjunction
-    ;
 
 Arg: String
    | "_"
@@ -171,13 +160,14 @@ Arg: String
    | "@" Identifier FunctorList
    | Identifier
    | NUMBER
-   | "(" Arg ")"
+   // | "(" Arg ")"  // ?
    | Arg Binop Arg
    | FunctionCall
    | Arg AS Identifier
    | Unop Arg
    | "[" "]"
    | "[" RecordList "]"
+   | Aggregate
    | NIL
    ;
 
@@ -186,35 +176,33 @@ FunctorList : "(" ")"
             ;
 
 FunctorArgs : Arg
-            | FunctorArgs Arg
+            | Arg "," FunctorArgs
             ;
 
 RecordList : Arg
-           | RecordList "," Arg
+           | Arg "," RecordList
            ;
 
 ArgList : EMPTY
         | Arg
-        | ArgList "," Arg
+        | Arg "," ArgList
         ;
 
 Atom : RelId "(" ArgList ")"
      ;
 
 RelId : Identifier
-      | RelId DOT Identifier
+      | Identifier DOT RelId
       ;
 
-NonEmptyAttributes : Identifier ":" TypeId
-                   | Attributes "," Identifier ":" TypeId
-                   ;
-
-Attributes : NonEmptyAttributes
-           | EMPTY
+Attributes : EMPTY
+           | Identifier ":" TypeId
+           | Identifier ":" TypeId "," Attributes
            ;
 
 Literal : Arg Relop Arg
         | Atom
+        | FunctionCall
         | TRUE
         | FALSE
         ;
@@ -223,16 +211,30 @@ Binop: "|" | "^" | "&" | "||" | "&&" | "+" | "-" | "*" | "/" | "%" ;
 Unop: "~" | "!" | "-" ;
 Relop: "<" | ">" | "=" | "!=" | ">=" | "<=" ;
 
-// TODO: Allow aggregates over expressions
-Aggregate : AGGREGATEARG Arg ":" AggregateBody
-          | COUNT ":" AggregateBody
+Aggregate : "min" Arg ":" AggregateBody
+          | "max" Arg ":" AggregateBody
+          | "sum" Arg ":" AggregateBody
+          | "count" ":" AggregateBody
           ;
 
 AggregateBody :  Atom
-               | "{" Body "}"
-               ;
+              // | "{" Body "}" // TODO
+              | "{" Conjunction "}"
+              ;
 
-FunctionCall: FUNCTIONNAME "(" FunctionArgumentList ")"
+Body : Conjunction
+     | Conjunction OR Body;
+
+FunctionCall: "min" "(" FunctionArgumentList ")"
+            | "max" "(" FunctionArgumentList ")"
+            | "cat" "(" FunctionArgumentList ")"
+            | "ord" "(" FunctionArgumentList ")"
+            | "strlen" "(" FunctionArgumentList ")"
+            | "tonumber" "(" FunctionArgumentList ")"
+            | "tostring" "(" FunctionArgumentList ")"
+            | "substr" "(" FunctionArgumentList ")"
+            | "match" "(" FunctionArgumentList ")"
+            | "contains" "(" FunctionArgumentList ")"
             ;
 
 FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
@@ -253,8 +255,13 @@ LAYOUT: LayoutItem
 
 LayoutItem: WS
           | LineComment
+          | Comment
           | EMPTY
           ;
+
+CorNCs: CorNC | CorNCs CorNC | EMPTY;
+CorNC: Comment | NotComment | WS;
+Comment: "/*" CorNCs "*/" ;
 
 terminals
 DOT: "." ;
@@ -280,7 +287,6 @@ BRIE_QUALIFIER: "brie" ;
 BTREE_QUALIFIER: "btree" ;
 EQREL_QUALIFIER: "eqrel" ;
 OR: ";" ;
-KEYWORD: /[\w-]+/ ;
 WS: /\s+/ ;
 LineComment: /\/\/.*/ ;
 String: /\"[^"]*\"/ ;
@@ -292,18 +298,5 @@ NIL: "nil" ;
 TRUE: "true" ;
 FALSE: "false" ;
 NUMBER: /0|([1-9][0-9]*)/ ;
-MIN: "min" ;
-MAX: "max" ;
-CAT: "cat" ;
-ORD: "ord" ;
-STRLEN: "strlen" ;
-TONUMBER: "tonumber" ;
-TOSTRING: "tostring" ;
-SUBSTR: "substr" ;
-MATCH: "match" ;
-CONTAINS: "contains" ;
-SUM: "sum";
-FUNCTIONNAME : /min|max|cat|ord|strlen|tonumber|tostring|substr|match|contains/ {2} ;
-AGGREGATEARG : /min|max|sum/ {2} ;
-COUNT: "count" {2} ;
-Identifier: /[_\w\?][_\d\w]*/ {1} ;
+Identifier: /[_a-zA-Z\?][_\d\w]*/;
+NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;

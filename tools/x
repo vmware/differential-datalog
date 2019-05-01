@@ -1,0 +1,134 @@
+************* Module souffle-converter
+I:  5, 0: Locally disabling invalid-name (C0103) (locally-disabled)
+I:  5, 0: Locally disabling missing-docstring (C0111) (locally-disabled)
+I:  5, 0: Locally disabling global-variable-not-assigned (W0602) (locally-disabled)
+I:  5, 0: Locally disabling line-too-long (C0301) (locally-disabled)
+R: 83, 0: Too few public methods (1/2) (too-few-public-methods)
+R:239, 0: Too many instance attributes (9/7) (too-many-instance-attributes)
+R:252, 4: Too many local variables (16/15) (too-many-locals)
+C:282,12: Consider using enumerate instead of iterating with range and len (consider-using-enumerate)
+R:397, 4: Method could be a function (no-self-use)
+R:412, 4: Too many local variables (20/15) (too-many-locals)
+R:412, 4: Too many return statements (9/6) (too-many-return-statements)
+R:412, 4: Too many branches (15/12) (too-many-branches)
+W:527,12: Unused variable 'ident' (unused-variable)
+R:575, 4: Method could be a function (no-self-use)
+R:608, 4: Too many local variables (16/15) (too-many-locals)
+W:632,12: Unused variable 'converting_tail' (unused-variable)
+R:668, 4: Method could be a function (no-self-use)
+R:690, 4: Too many return statements (9/6) (too-many-return-statements)
+R:239, 0: Too many public methods (26/20) (too-many-public-methods)
+W:743, 4: Using the global statement (global-statement)
+
+
+Report
+======
+581 statements analysed.
+
+Statistics by type
+------------------
+
++---------+-------+-----------+-----------+------------+---------+
+|type     |number |old number |difference |%documented |%badname |
++=========+=======+===========+===========+============+=========+
+|module   |1      |1          |=          |100.00      |100.00   |
++---------+-------+-----------+-----------+------------+---------+
+|class    |5      |5          |=          |60.00       |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|method   |43     |43         |=          |30.23       |9.30     |
++---------+-------+-----------+-----------+------------+---------+
+|function |11     |11         |=          |54.55       |63.64    |
++---------+-------+-----------+-----------+------------+---------+
+
+
+
+External dependencies
+---------------------
+::
+
+    parglare (souffle-converter)
+
+
+
+Raw metrics
+-----------
+
++----------+-------+------+---------+-----------+
+|type      |number |%     |previous |difference |
++==========+=======+======+=========+===========+
+|code      |606    |80.05 |610      |-4.00      |
++----------+-------+------+---------+-----------+
+|docstring |30     |3.96  |29       |+1.00      |
++----------+-------+------+---------+-----------+
+|comment   |25     |3.30  |25       |=          |
++----------+-------+------+---------+-----------+
+|empty     |96     |12.68 |97       |-1.00      |
++----------+-------+------+---------+-----------+
+
+
+
+Duplication
+-----------
+
++-------------------------+------+---------+-----------+
+|                         |now   |previous |difference |
++=========================+======+=========+===========+
+|nb duplicated lines      |0     |0        |=          |
++-------------------------+------+---------+-----------+
+|percent duplicated lines |0.000 |0.000    |=          |
++-------------------------+------+---------+-----------+
+
+
+
+Messages by category
+--------------------
+
++-----------+-------+---------+-----------+
+|type       |number |previous |difference |
++===========+=======+=========+===========+
+|convention |1      |4        |-3.00      |
++-----------+-------+---------+-----------+
+|refactor   |12     |13       |-1.00      |
++-----------+-------+---------+-----------+
+|warning    |3      |5        |-2.00      |
++-----------+-------+---------+-----------+
+|error      |0      |0        |=          |
++-----------+-------+---------+-----------+
+
+
+
+Messages
+--------
+
++-----------------------------+------------+
+|message id                   |occurrences |
++=============================+============+
+|locally-disabled             |4           |
++-----------------------------+------------+
+|too-many-locals              |3           |
++-----------------------------+------------+
+|no-self-use                  |3           |
++-----------------------------+------------+
+|unused-variable              |2           |
++-----------------------------+------------+
+|too-many-return-statements   |2           |
++-----------------------------+------------+
+|too-many-public-methods      |1           |
++-----------------------------+------------+
+|too-many-instance-attributes |1           |
++-----------------------------+------------+
+|too-many-branches            |1           |
++-----------------------------+------------+
+|too-few-public-methods       |1           |
++-----------------------------+------------+
+|global-statement             |1           |
++-----------------------------+------------+
+|consider-using-enumerate     |1           |
++-----------------------------+------------+
+
+
+
+Global evaluation
+-----------------
+Your code has been rated at 9.72/10 (previous run: 9.62/10, +0.10)
+
