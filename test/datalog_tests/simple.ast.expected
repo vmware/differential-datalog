@@ -1,3 +1,4 @@
+typedef AMethod = AMethod{a1: Symbol, a2: Symbol}
 typedef Address = Address{addr: ip_addr_t}
 typedef Adjusted = Adjusted{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
@@ -10,8 +11,10 @@ typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
 typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
+typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
+typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
 typedef ConcatString = ConcatString{s: string}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef Edge = Edge{from: bigint, to: bigint}
@@ -43,6 +46,7 @@ typedef R3_nl = R3_nl{a3: string, b3: string}
 typedef R4_nl = R4_nl{a4: string, b4: string}
 typedef R6 = R6{f: bigint}
 typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
+typedef Re = Re{_x: Tnumber, _t: Ttxt, _y: Tnumber}
 typedef Reach = Reach{s1: station, s2: station}
 typedef Realized = Realized{name: string, id: string, x: bit<32>}
 typedef Referee = Referee{r: std.Ref<Referenced>}
@@ -53,22 +57,28 @@ typedef Rel2 = Rel2{x: bigint, z: FooStruct}
 typedef Rel3 = Rel3{x: bigint, y: IPAddr, z: FooStruct}
 typedef Rel4 = Rel4{x: bigint, y: IPAddr, b: bool}
 typedef Request = Request{name: string, id: string}
+typedef Ris_true = Ris_true{_s: TB}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef String2 = String2{s: string}
 typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
 typedef Suspect = Suspect{name: string}
+typedef Symbol = intern.IString
 typedef T = T{x: bigint, y: string}
 typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T16 = t15
 typedef T17 = bigint
 typedef T2 = C21{f1: T1, f2: bigint} | C22{f3: (bool, T1)}
 typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} | C32{f3: ((bool, (bool, bool, bool)), T1)}
+typedef TB = intern.IString
 typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
+typedef Tnumber = bit<32>
 typedef ToAllocate = ToAllocate{name: string, ids: std.Vec<string>}
+typedef Tsymbol = intern.IString
+typedef Ttxt = intern.IString
 typedef ValidDestination = ValidDestination{addr: ip_addr_t}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef WithKey = WithKey{key: bit<128>, val: string}
@@ -270,6 +280,24 @@ function shadow (): string =
           std.Some{.x=var v} -> v,
           std.None{} -> ""
       }))
+function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString =
+    intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
+function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
+    std.string_contains(intern.istring_str(s), intern.istring_str(i))
+function souffle_lib.ord (s: intern.IString): bit<32> =
+    intern.istring_ord(s)
+extern function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool
+function souffle_lib.strlen (s: intern.IString): bit<64> =
+    std.string_len(intern.istring_str(s))
+function souffle_lib.substr (s: intern.IString, i: bit<64>, l: bit<64>): intern.IString =
+    intern.string_intern(std.string_substr(intern.istring_str(s), i, (i + l)))
+function souffle_lib.to_number (s: intern.IString): bit<64> =
+    match (std.parse_dec_u64(intern.istring_str(s))) {
+        std.None{} -> 64'd0,
+        std.Some{.x=var x} -> x
+    }
+function souffle_lib.to_string (n: bit<32>): intern.IString =
+    intern.string_intern(std.__builtin_2string(n))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.count (g: std.Group<'A>): bit<64>
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -388,6 +416,7 @@ function x (): Alt =
     C0{.x=32'd5}
 extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
+input relation AMethod [AMethod]
 input relation Address [Address]
 output relation Adjusted [Adjusted]
 output relation Aggregate1 [Aggregate1]
@@ -399,7 +428,9 @@ input relation Alloc [Alloc]
 relation Allocated [Allocated]
 output relation Allocation [Allocation]
 output relation Answer [Answer]
+input relation BMethod [BMethod]
 input relation Blacklist [Blacklist]
+output relation CMethod [CMethod]
 output relation ConcatString [ConcatString]
 output relation Disaggregate [Disaggregate]
 input relation Edge [Edge]
@@ -429,6 +460,7 @@ relation R4_nl [R4_nl]
 output relation R5 [bigint]
 output relation R6 [R6]
 output relation R7 [R7]
+relation Re [Re]
 output relation Reach [Reach]
 input relation Realized [Realized]
 output relation Referee [Referee]
@@ -439,6 +471,7 @@ input relation Rel2 [Rel2]
 output relation Rel3 [Rel3]
 output relation Rel4 [Rel4]
 input relation Request [Request]
+relation Ris_true [Ris_true]
 output relation SCCLabel [(bigint, bigint)]
 output relation Sib [Sib]
 input relation String2 [String2]
@@ -612,4 +645,7 @@ IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IStrin
 ConcatString(.s=intern.istring_str(s)) :- IConcatString(.s=s).
 StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IString1(.s=s).
 StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IConcatString(.s=s).
+Ris_true(._s=intern.string_intern("true")).
+Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
+CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

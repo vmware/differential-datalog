@@ -308,9 +308,13 @@ ConcatString{"Foo world"}
 ConcatString{"Hello, bar"}
 ConcatString{"Hello, world"}
 StringOrd
-StringOrd{"Foo ",1}
-StringOrd{"Foo bar",4}
-StringOrd{"Foo world",5}
-StringOrd{"Hello, ",0}
-StringOrd{"Hello, bar",2}
-StringOrd{"Hello, world",3}
+StringOrd{"Foo ",3}
+StringOrd{"Foo bar",6}
+StringOrd{"Foo world",7}
+StringOrd{"Hello, ",2}
+StringOrd{"Hello, bar",4}
+StringOrd{"Hello, world",5}
+CMethod
+CMethod{"bar","foo"}
+CMethod{"buzz","foo"}
+CMethod{"hello","world"}

@@ -443,3 +443,20 @@ dump ConcatString;
 
 echo StringOrd;
 dump StringOrd;
+
+start;
+
+insert BMethod("d", "???"),
+insert AMethod("d", "!!!"),
+
+insert BMethod("c", "foo"),
+insert AMethod("foo", "bar"),
+insert AMethod("foo", "buzz"),
+
+insert BMethod("c", "world"),
+insert AMethod("world", "hello"),
+
+commit;
+
+echo CMethod;
+dump CMethod;

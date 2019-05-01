@@ -801,3 +801,22 @@ output relation StringOrd(s: string, ord: bit<32>)
 
 StringOrd(istring_str(s), istring_ord(s)) :- IString1(s).
 StringOrd(istring_str(s), istring_ord(s)) :- IConcatString(s).
+
+import souffle_lib
+typedef Tnumber = bit<32>
+typedef Tsymbol = IString
+typedef TB = IString
+relation Ris_true(_s:TB)
+Ris_true(string_intern("true")).
+typedef Ttxt = IString
+relation Re(_x:Tnumber, _t:Ttxt, _y:Tnumber)
+Re(10 % 3, string_intern("10%3"), 1) :- Ris_true(_).
+
+// Constant interned string in the head of a rule.
+typedef Symbol = IString
+
+input relation BMethod(b1:Symbol, b2:Symbol)
+input relation AMethod(a1:Symbol, a2:Symbol)
+output relation CMethod(c1:Symbol, c2:Symbol)
+
+CMethod(a, b) :- BMethod(string_intern("c"), b), AMethod(b, a).
