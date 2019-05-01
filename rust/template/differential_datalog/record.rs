@@ -79,9 +79,9 @@ impl fmt::Display for Record {
                 let len = recs.len();
                 for (i, (fname, v)) in recs.iter().enumerate() {
                     if i == len - 1 {
-                        write!(f, "{}: {}", fname, v)?;
+                        write!(f, ".{} = {}", fname, v)?;
                     } else {
-                        write!(f, "{}: {}, ", fname, v)?;
+                        write!(f, ".{} = {}, ", fname, v)?;
                     }
                 };
                 write!(f, "}}")
