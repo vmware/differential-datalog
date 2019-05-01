@@ -39,6 +39,7 @@ module Language.DifferentialDatalog.Expr (
     exprCollect,
     exprVarOccurrences,
     exprVars,
+    exprIsConst,
     exprVarDecls,
     exprFuncs,
     exprFuncsRec,
@@ -49,22 +50,6 @@ module Language.DifferentialDatalog.Expr (
     exprIsVarOrFieldLVal,
     exprIsVarOrField,
     exprTypeMapM
-    --isLRel
-    --exprSplitLHS,
-    --exprSplitVDecl,
-    --exprInline,
-    --expr2Statement,
-    --exprModifyResult,
-    --ctxExpectsStat,
-    --ctxMustReturn,
-    --exprIsStatement,
-    --exprVarSubst,
-    --exprVarRename,
-    --exprMutatorsNonRec
-    --exprScalars
-    --exprDeps
-    --exprSubst
-    --combineCascades
     ) where
 
 import Data.List
@@ -225,6 +210,13 @@ exprVars e = nub $ exprCollect (\case
                                 EVar _ v -> [v]
                                 _        -> [])
                                (++) e
+
+-- True if expression evaluates to a constant
+-- Note: this does not guarantee that the expression can be evaluated at compile
+-- time.  It may contain a call to an external function, which cannot be
+-- evaluated in Haskell.
+exprIsConst :: Expr -> Bool
+exprIsConst = null . exprVars
 
 -- Variables declared inside expression, visible in the code that follows the expression
 exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]

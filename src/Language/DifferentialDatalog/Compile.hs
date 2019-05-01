@@ -1580,7 +1580,7 @@ normalizePattern d ctx e =
 
 -- 'fstatom' is the first atom in the body of a rule.
 -- 'arrange_input_by' - list of expressions to arrange by that correspond to
--- '_0', '_1', ..., e.g.  Returns normalized arrangement of 'Nothing' if
+-- '_0', '_1', ...   Returns normalized arrangement or 'Nothing' if
 -- the arrangement cannot be represented in a normalized form
 --
 -- 'arrangeInput A(y, _, x) [x.f, y] = Just A(_1, _, C{.f=_0})'
@@ -1620,6 +1620,8 @@ arrangeInput d rl fstatom arrange_input_by = do
     subst' e@EBit{}     _  _ = return $ E e
     subst' e@EPHolder{} _  _ = return $ E e
     subst' e@ETyped{}   _  _ = return $ E e
+    subst' e            _  _ | exprIsConst (E e)
+                             = return $ E e
     subst' e            _  _ = error $ "Unexpected expression " ++ show e ++ " in Compile.arrangeInput.subst'"
 
     fieldExprVar (E EVar{..})   = exprVar
