@@ -309,7 +309,7 @@ relation = do
          return [SpType tdef, SpRelation rel])
       <|>
        (do rel <- (\tspec p2 -> let t = if isref then TUser (p1,p2) "Ref" [tspec] else tspec
-                                in Relation nopos role relName t) 
+                                in Relation nopos role relName t)
                   <$> (brackets typeSpecSimple) <*> getPosition <*>
                       (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))
@@ -365,7 +365,7 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
               RHSAggregate <$> (reserved "var" *> varIdent) <*>
-                               (reserved "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
+                               (reservedOp "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
                                (comma *> funcIdent) <*>
                                (parens expr <* symbol ")")
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
