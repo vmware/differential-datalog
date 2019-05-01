@@ -460,3 +460,6 @@ commit;
 
 echo CMethod;
 dump CMethod;
+
+echo DMethod;
+dump DMethod;

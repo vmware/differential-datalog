@@ -818,5 +818,7 @@ typedef Symbol = IString
 input relation BMethod(b1:Symbol, b2:Symbol)
 input relation AMethod(a1:Symbol, a2:Symbol)
 output relation CMethod(c1:Symbol, c2:Symbol)
+output relation DMethod(c1:Symbol, c2:Symbol)
 
 CMethod(a, b) :- BMethod(string_intern("c"), b), AMethod(b, a).
+DMethod(a, b) :- AMethod(b, a), BMethod(string_intern("c"), b).

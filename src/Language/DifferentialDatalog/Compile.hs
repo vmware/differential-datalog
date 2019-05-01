@@ -1554,6 +1554,7 @@ normalizeArrangement d rel ctx pat = (renamed, vmap)
              ERef{..}                -> do
                 e' <- rename (CtxRef e ctx) exprPattern
                 return $ E e{exprPattern = e'}
+             e | exprIsConst (E e)   -> return $ E e
              _                       -> do
                 vid <- gets fst
                 let vname = "_" ++ show vid
