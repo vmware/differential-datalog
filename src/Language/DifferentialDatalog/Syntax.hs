@@ -33,6 +33,8 @@ SOFTWARE.
 -- WithPos: manipulating position information
 
 module Language.DifferentialDatalog.Syntax (
+        Attribute(..),
+        ppAttributes,
         Type(..),
         typeTypeVars,
         tBool,
@@ -49,6 +51,8 @@ module Language.DifferentialDatalog.Syntax (
         structFieldGuarded,
         Field(..),
         TypeDef(..),
+        tdefCheckSizeAttr,
+        tdefGetSizeAttr,
         Constructor(..),
         consType,
         consIsUnique,
@@ -123,12 +127,41 @@ import Text.PrettyPrint
 import Data.Maybe
 import Data.List
 import Data.String.Utils
+import Control.Monad.Except
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
+
+-- | Meta-attributes associated with DDlog declarations
+data Attribute = Attribute { attrPos  :: Pos
+                           , attrName :: String
+                           , attrVal  :: Expr
+                           }
+
+instance Eq Attribute where
+    (==) (Attribute _ n1 v1) (Attribute _ n2 v2) = n1 == n2 && v1 == v2
+
+instance WithPos Attribute where
+    pos = attrPos
+    atPos a p = a{attrPos = p}
+
+instance WithName Attribute where
+    name = attrName
+    setName a n = a{attrName = n}
+
+instance PP Attribute where
+    pp (Attribute _ n v) = pp n <+> "=" <+> pp v
+
+instance Show Attribute where
+    show = render . pp
+
+ppAttributes :: [Attribute] -> Doc
+ppAttributes [] = empty
+ppAttributes attrs = "#[" <> (commaSep $ map pp attrs) <> "]"
 
 data Field = Field { fieldPos  :: Pos
                    , fieldName :: String
@@ -273,10 +306,11 @@ typeTypeVars TUser{..}   = nub $ concatMap typeTypeVars typeArgs
 typeTypeVars TVar{..}    = [tvarName]
 typeTypeVars TOpaque{..} = nub $ concatMap typeTypeVars typeArgs
 
-data TypeDef = TypeDef { tdefPos  :: Pos
-                       , tdefName :: String
-                       , tdefArgs :: [String]
-                       , tdefType :: Maybe Type
+data TypeDef = TypeDef { tdefPos   :: Pos
+                       , tdefAttrs :: [Attribute]
+                       , tdefName  :: String
+                       , tdefArgs  :: [String]
+                       , tdefType  :: Maybe Type
                        }
 
 instance WithPos TypeDef where
@@ -289,21 +323,37 @@ instance WithName TypeDef where
 
 instance PP TypeDef where
     pp TypeDef{..} | isJust tdefType
-                   = "typedef" <+> pp tdefName <>
-                     (if null tdefArgs
-                         then empty
-                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
-                     "=" <+> (pp $ fromJust tdefType)
-    pp TypeDef{..} = "extern type" <+> pp tdefName <>
-                     (if null tdefArgs
-                         then empty
-                         else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">")
+                   = ppAttributes tdefAttrs $$
+                     ("typedef" <+> pp tdefName <>
+                      (if null tdefArgs
+                          then empty
+                          else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
+                      "=" <+> (pp $ fromJust tdefType))
+    pp TypeDef{..} = ppAttributes tdefAttrs $$   
+                     ("extern type" <+> pp tdefName <>
+                      (if null tdefArgs
+                          then empty
+                          else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">"))
 
 instance Show TypeDef where
     show = render . pp
 
 instance Eq TypeDef where
-    (==) t1 t2 = name t1 == name t2 && tdefType t1 == tdefType t2
+    (==) t1 t2 = (name t1, tdefAttrs t1, tdefAttrs t1, tdefType t1) == (name t2, tdefAttrs t2, tdefAttrs t2, tdefType t2)
+
+tdefCheckSizeAttr :: (MonadError String me) => TypeDef -> me (Maybe Int)
+tdefCheckSizeAttr TypeDef{..} =
+    case find ((== "size") . name) tdefAttrs of
+         Nothing            -> return Nothing
+         Just Attribute{attrVal = E (EInt _ nbytes)} | nbytes <= toInteger (maxBound::Int)
+                            -> return $ Just $ fromInteger nbytes
+         Just Attribute{..} -> err attrPos $ "Invalid size attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
+
+tdefGetSizeAttr :: TypeDef -> Maybe Int
+tdefGetSizeAttr tdef =
+    case tdefCheckSizeAttr tdef of
+         Left e   -> error e
+         Right sz -> sz
 
 data Constructor = Constructor { consPos :: Pos
                                , consName :: String

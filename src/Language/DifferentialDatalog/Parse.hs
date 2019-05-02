@@ -64,7 +64,7 @@ parseDatalogString program file = do
 rustKeywords = ["type", "match"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
-                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@"]
+                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"]
 reservedNames = ["as",
                  "apply",
                  "_",
@@ -145,6 +145,7 @@ varIdent     = lcIdentifier <?> "variable name"
 targIdent    = identifier   <?> "transformer argument name"
 typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
+attrIdent    = identifier   <?> "attribute name"
 
 consIdent    = ucScopedIdentifier <?> "constructor name"
 relIdent     = ucScopedIdentifier <?> "relation name"
@@ -239,27 +240,36 @@ spec = do
          Left err   -> errorWithoutStackTrace err
          Right prog -> return prog
 
-decl = (withPosMany $
-             (return . SpImport)         <$> imprt
-         <|> (return . SpType)           <$> typeDef
-         <|> relation
-         <|> (return . SpFunc)           <$> func
-         <|> (return . SpTransformer)    <$> transformer
-         <|> (return . SpRule)           <$> rule
-         <|> (return . SpApply)          <$> apply)
-   <|> (map SpRule . convertStatement) <$> parseForStatement
+attributes = reservedOp "#" *> (brackets $ many attribute)
+attribute = withPos $ Attribute nopos <$> attrIdent <*> (reservedOp "=" *>  expr)
+
+decl =  do attributes <- optionMaybe attributes
+           items <- (withPosMany $
+                         (return . SpImport)         <$> imprt
+                     <|> (return . SpType)           <$> typeDef
+                     <|> relation
+                     <|> (return . SpFunc)           <$> func
+                     <|> (return . SpTransformer)    <$> transformer
+                     <|> (return . SpRule)           <$> rule
+                     <|> (return . SpApply)          <$> apply)
+                   <|> (map SpRule . convertStatement) <$> parseForStatement
+           case items of
+                [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attributes}]
+                _          -> do
+                    when (isJust attributes) $ fail "#-attributes are currently only supported for type declarations"
+                    return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
 
 modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
 
-typeDef = (TypeDef nopos) <$ reserved "typedef" <*> typeIdent <*>
-                             (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
-                             (Just <$ reservedOp "=" <*> typeSpec)
+typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
+                                (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                                (Just <$ reservedOp "=" <*> typeSpec)
        <|>
-          (TypeDef nopos) <$ (try $ reserved "extern" *> reserved "type") <*> typeIdent <*>
-                             (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
-                             (return Nothing)
+          (TypeDef nopos []) <$ (try $ reserved "extern" *> reserved "type") <*> typeIdent <*>
+                                (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                                (return Nothing)
 
 func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> funcIdent
@@ -301,7 +311,7 @@ relation = do
          end <- getPosition
          let p = (start, end)
          let tspec = TStruct p [Constructor p relName fields]
-         let tdef = TypeDef nopos relName [] $ Just tspec
+         let tdef = TypeDef nopos [] relName [] $ Just tspec
          let t = if isref
                     then TUser p "Ref" [TUser p relName []]
                     else TUser p relName []

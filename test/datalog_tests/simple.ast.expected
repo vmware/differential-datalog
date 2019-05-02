@@ -92,6 +92,7 @@ typedef YX = YX{y: bigint, x: bigint}
 typedef YZX = YZX{y: bigint, z: bigint, x: bigint}
 typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
+#[size = 4]
 extern type intern.IObj<'A>
 typedef intern.IString = intern.IObj<string>
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
