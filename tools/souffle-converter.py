@@ -3,6 +3,7 @@
    Datalog programs written in the Differential Datalog dialect"""
 
 # pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long
+from __future__ import unicode_literals
 import json
 import gzip
 import os
@@ -90,7 +91,7 @@ class Parameter(object):
         typ = Type.get(self.typeName)
         return var_name(self.name) + ":" + typ.outputName
 
-class RelationInfo(object):
+class Relation(object):
     """Represents information about a relation"""
 
     relations = dict() # All relations in program
@@ -123,7 +124,7 @@ class RelationInfo(object):
         name = prefix + name
         if name in cls.relations:
             raise Exception("duplicate relation name " + name)
-        ri = RelationInfo(name)
+        ri = Relation(name)
         cls.relations[name] = ri
         # print "Registered relation " + name
         return ri
@@ -249,6 +250,17 @@ class SouffleConverter(object):
         self.lhs_variables = set()   # variables that show up on the lhs of the rule
         self.path_rename = dict()
         self.aggregate_prefix = ""   # Expression evaluated before an aggregate
+        self.dummyRelation = None    # Relation used to convert clauses that start with a negative term
+        self.opdict = {
+            "band": "&",
+            "bor": "|",
+            "bxor": "^",
+            "bnot": "~",
+            "land": "&&",
+            "lor": "||",
+            "lnot": "!"
+        }
+
 
     def fresh_variable(self, prefix):
         """Return a variable whose name does not yet occur in the program"""
@@ -268,7 +280,7 @@ class SouffleConverter(object):
         outputEmitter is a lambda which does the output.  It takes argument
         an array of string arguments for the relation.
         """
-        ri = RelationInfo.get(rel, self.current_component)
+        ri = Relation.get(rel, self.current_component)
         params = ri.parameters
         converter = []
         for p in params:
@@ -284,15 +296,21 @@ class SouffleConverter(object):
             data = gzip.open(inFileName, "r")
         else:
             data = open(inFileName, "r")
+        lineno = 0
         for line in data:
             fields = line.rstrip('\n').split(inSeparator)
             result = []
-            if len(fields) != len(converter):
-                raise Exception("Line does not match schema (expected " + str(len(converter)) + \
+            # Special handling for the empty tuple, which seems
+            # to be written as () in Souffle, instead of the emtpy string
+            if len(converter) == 0 and len(fields) == 1 and fields[0] == "()":
+                fields = []
+            elif len(fields) != len(converter):
+                raise Exception("Line " + lineno + " does not match schema (expected " + str(len(converter)) + \
                                 " parameters):" + line)
             for i in range(len(fields)):
                 result.append(converter[i](fields[i]))
             outputEmitter(result)
+            lineno = lineno + 1
         data.close()
 
     @staticmethod
@@ -350,7 +368,7 @@ class SouffleConverter(object):
         else:
             separator = kvp["separator"]
 
-        ri = RelationInfo.get(rel, self.current_component)
+        ri = Relation.get(rel, self.current_component)
         ri.isinput = True
 
         if skip_files or self.preprocess:
@@ -375,10 +393,10 @@ class SouffleConverter(object):
         body = getField(directives, "IodirectiveBody")
         rel = self.get_relid(body)
 
-        ri = RelationInfo.get(rel, self.current_component)
+        ri = Relation.get(rel, self.current_component)
         ri.isoutput = True
         if skip_files or self.preprocess:
-            RelationInfo.dumpOrder.append(ri.name)
+            Relation.dumpOrder.append(ri.name)
             return
 
         filename = rel
@@ -421,6 +439,12 @@ class SouffleConverter(object):
 
         return var_name(ident.value)
 
+    def convert_op(self, binop):
+        op = binop.value
+        if op in self.opdict:
+            return self.opdict[op]
+        return op
+
     def convert_arg(self, arg):
         # print arg.tree_str()
         string = getOptField(arg, "String")
@@ -433,12 +457,13 @@ class SouffleConverter(object):
 
         dlr = getOptField(arg, "$")
         if dlr is not None:
-            raise Exception("$ not handled")
+            return "random()"
 
         at = getOptField(arg, "@")
         if at is not None:
             raise Exception("Functor call not handled")
 
+        args = getArray(arg, "Arg")
         asv = getOptField(arg, "AS")
         if asv is not None:
             raise Exception("AS not handled")
@@ -447,15 +472,16 @@ class SouffleConverter(object):
         if bk is not None:
             raise Exception("[ not handled")
 
-        paren = getOptField(arg, "(")
-        if paren is not None:
-            rec = self.convert_arg(getField(arg, "Arg"))
-            return "(" + rec + ")"
+        args = getArray(arg, "Arg")
+        if len(args) == 1:
+            paren = getOptField(arg, "(")
+            if paren is not None:
+                rec = self.convert_arg(args[0])
+                return "(" + rec + ")"
 
-        unop = getOptField(arg, "Unop")
-        if unop is not None:
-            rec = self.convert_arg(getField(arg, "Arg"))
-            op = unop.children[0].value
+            # Unary operator
+            rec = self.convert_arg(args[0])
+            op = self.convert_op(arg.children[0])
             if op == "-":
                 return "( 0 " + op + " " + rec + ")"
             return op + " " + rec
@@ -472,15 +498,18 @@ class SouffleConverter(object):
 
         num = getOptField(arg, "NUMBER")
         if num != None:
+            # TODO: convert various literals
             return num.value
 
-        binop = getOptField(arg, "Binop")
-        if binop is not None:
-            args = getArray(arg, "Arg")
-            assert len(args) == 2
+        if len(args) == 2:
+            # Binary operator
             l = self.convert_arg(args[0])
             r = self.convert_arg(args[1])
-            return l + " " + binop.children[0].value + " " + r
+            binop = arg.children[1]
+            op = self.convert_op(binop)
+            if op == "^":
+                return "exp(" + l + ", " + r + ")"
+            return l + " " + op + " " + r
 
         func = getOptField(arg, "FunctionCall")
         if func != None:
@@ -529,7 +558,7 @@ class SouffleConverter(object):
         name = self.get_relid(atom)
         args = getListField(atom, "Arg", "ArgList")
         args_strings = [self.convert_arg(arg) for arg in args]
-        rel = RelationInfo.get(name, self.current_component)
+        rel = Relation.get(name, self.current_component)
         return rel.name + "(" + ", ".join(args_strings) + ")"
 
     @staticmethod
@@ -647,7 +676,7 @@ class SouffleConverter(object):
             # mark all input relations as input relations
             for atom in headAtoms:
                 name = self.get_relid(atom)
-                ri = RelationInfo.get(name, self.current_component)
+                ri = Relation.get(name, self.current_component)
                 ri.isInput = True
         else:
             self.converting_head = True
@@ -656,6 +685,12 @@ class SouffleConverter(object):
             self.bound_variables.clear()
             self.converting_tail = True
             convertedDisjunctions = [self.convert_terms(x) for x in terms]
+            if len(convertedDisjunctions) > 0 and \
+               len(convertedDisjunctions[0]) > 0 and \
+               convertedDisjunctions[0][0].startswith("not"):
+                # DDlog does not support rules that start with a negation.
+                # Insert a reference to a dummy non-empty relation before.
+                convertedDisjunctions[0].insert(0, self.dummyRelation + "(0)")
             self.converting_tail = False
             for d in convertedDisjunctions:
                 self.files.output(",\n\t".join(heads) + " :- " + ", ".join(d) + ".")
@@ -670,7 +705,7 @@ class SouffleConverter(object):
         if self.preprocess:
             for ident in idents:
                 # print "Decl", ident.value, qualifiers
-                rel = RelationInfo.create(ident.value, self.current_component)
+                rel = Relation.create(ident.value, self.current_component)
                 if "output" in qualifiers:
                     rel.isoutput = True
                 if "input" in qualifiers:
@@ -681,7 +716,7 @@ class SouffleConverter(object):
             return
 
         for ident in idents:
-            rel = RelationInfo.get(ident.value, self.current_component)
+            rel = Relation.get(ident.value, self.current_component)
             self.files.output(rel.declaration())
 
     def process_fact_decl(self, fact):
@@ -701,6 +736,7 @@ class SouffleConverter(object):
         ident = getIdentifier(typedecl)
         if self.preprocess:
             l = getOptField(typedecl, "UnionType")
+            numtype = getOptField(typedecl, "NUMBER_TYPE")
             equiv = None
             if l is not None:
                 # If we have a union type we expect all members
@@ -708,6 +744,8 @@ class SouffleConverter(object):
                 # get the first one.
                 tid = getField(l, "TypeId")
                 equiv = self.convert_typeid(tid)
+            elif numtype is not None:
+                equiv = "number"
             typ = Type.create(ident, equiv)
             return typ
         typ = Type.get(ident)
@@ -754,6 +792,11 @@ class SouffleConverter(object):
         raise Exception("Unexpected node " + decl.tree_str())
 
     def process(self, tree):
+        if not self.preprocess:
+            # Create a dummy relation with one variable
+            self.dummyRelation = self.fresh_variable("Rdummy")
+            self.files.output("relation " + self.dummyRelation + "(x: Tnumber)")
+            self.files.output(self.dummyRelation + "(0).")
         decls = getListField(tree, "Declaration", "DeclarationList")
         for decl in decls:
             self.process_decl(decl)
@@ -777,7 +820,7 @@ def main():
     converter.process(tree)
     converter.preprocess = False
     converter.process(tree)
-    files.done(RelationInfo.dumpOrder)
+    files.done(Relation.dumpOrder)
 
 if __name__ == "__main__":
     main()

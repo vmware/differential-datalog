@@ -16,3 +16,5 @@ function to_number(s: IString): bit<64> = {
     }
 }
 function to_string(n: bit<32>): IString = string_intern(__builtin_2string(n))
+function random(): bit<32> = 0
+extern function exp(base: bit<32>, exp: bit<32>): bit<32>
