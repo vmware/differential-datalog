@@ -10,6 +10,7 @@ typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+#[size = 8]
 extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
