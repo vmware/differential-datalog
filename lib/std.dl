@@ -3,6 +3,7 @@
 /*
  * Ref
  */
+#[size=8]
 extern type Ref<'A>
 
 extern function ref_new(x: 'A): Ref<'A>
