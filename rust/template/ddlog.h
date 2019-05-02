@@ -127,7 +127,7 @@ extern ddlog_prog ddlog_run(unsigned int workers,
  * functions in this file in a DDlog command file that can later be replayed
  * throught the CLI interface.
  *
- * `fd` - file descriptor.  Passing 0 in this argument instructs DDlog to stop
+ * `fd` - file descriptor.  Passing -1 in this argument instructs DDlog to stop
  * recording. The caller is responsible for opening and closing the file.  They
  * can inject additional commands, e.g., `echo` to the file.
  */

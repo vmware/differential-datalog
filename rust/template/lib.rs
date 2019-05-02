@@ -232,7 +232,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: unix::io
             /* Swap out the old file and convert it into FD to prevent
              * the file from closing on destruction (it is the caller's
              * responsibility to close the file when they're done with it). */
-            let mut old_file = if fd == 0 {
+            let mut old_file = if fd == -1 {
                 None
             } else {
                 Some(sync::Mutex::new(fs::File::from_raw_fd(fd)))
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int
         return -1;
     };
     /* Prevents closing of the old descriptor. */
-    ddlog_record_commands(prog, 0);
+    ddlog_record_commands(prog, -1);
 
     let prog = sync::Arc::from_raw(prog);
     match sync::Arc::try_unwrap(prog) {
