@@ -18,10 +18,21 @@ xfail = [
     "souffle10", # generic component
     "souffle13", # unimplemented re_match
     "access2",   # input relation modified
-    "access3",   # "
+    "access3",   # same
     "aggregates",  # issue 192
     "aggregates2", # max in relation argument
-    "aliases",     # tuples
+    "average",   # issue #193
+    "aliases",   # uses records (tuples?)
+    "comp-override1", # component inheritance
+    "comp-override2", # same
+    "comp-override3", # same
+    "components",     # same
+    "components3",    # same
+    "components1",    # component instantiation
+    "components_generic", # generic component
+    "count",     # uses records
+    "functor_arity",  # uses min, max, cat with more than 2 arguments
+    "grammar",        # uses funny unicode char in a comment
 ]
 
 def run_command(command):
@@ -37,9 +48,6 @@ def run_command(command):
 
 def compile_example(directory, f):
     """Run the Souffle example in directory 'directory'"""
-    if directory in xfail:
-        print "Expected to fail", directory
-        return 1
     print "Testing " + directory
     global tests_run, tests_passed
     tests_run = tests_run + 1
@@ -62,6 +70,9 @@ def run_examples():
             continue
         if "souffle" not in d:
             continue
+        if d in xfail:
+            print "Expected to fail", d
+            return 1
         compile_example(d, "test.dl")
 
 def run_remote_tests():
@@ -70,6 +81,11 @@ def run_remote_tests():
     if code != 0:
         return
     for directory in dirs.split("/\n"):
+        if directory in xfail:
+            print "Expected to fail", directory
+            continue
+        if directory[0] < 'g':
+            continue
         if not os.path.isdir(directory):
             code, _ = run_command(["svn", "export", url + "/" + directory])
             if code != 0:
@@ -77,8 +93,6 @@ def run_remote_tests():
         code = compile_example(directory, directory + ".dl")
         if code == 0:
             shutil.rmtree(directory)
-        if tests_run == 10:
-            break
 
 def main():
 #    run_examples()

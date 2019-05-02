@@ -122,6 +122,7 @@ IodirectiveBody : RelId
 
 ParameterList: Parameter "," ParameterList
              | Parameter
+             | EMPTY
              ;
 
 Parameter: Identifier ":" Identifier
@@ -160,11 +161,23 @@ Arg: String
    | "@" Identifier FunctorList
    | Identifier
    | NUMBER
-   // | "(" Arg ")"  // ?
-   | Arg Binop Arg
+   | "(" Arg ")"
+   | Arg "lor" Arg  {0, left}
+   | Arg "land" Arg {1, left}
+   | Arg "bor" Arg  {2, left}
+   | Arg "bxor" Arg {3, left}
+   | Arg "band" Arg {4, left}
+   | Arg "+" Arg    {5, left}
+   | Arg "-" Arg    {5, left}
+   | Arg "*" Arg    {6, left}
+   | Arg "/" Arg    {6, left}
+   | Arg "%" Arg    {6, left}
+   | Arg "^" Arg    {9, right}
    | FunctionCall
    | Arg AS Identifier
-   | Unop Arg
+   | "bnot" Arg     {7}
+   | "lnot" Arg     {7}
+   | "-" Arg        {8}
    | "[" "]"
    | "[" RecordList "]"
    | Aggregate
@@ -207,8 +220,6 @@ Literal : Arg Relop Arg
         | FALSE
         ;
 
-Binop: "|" | "^" | "&" | "||" | "&&" | "+" | "-" | "*" | "/" | "%" ;
-Unop: "~" | "!" | "-" ;
 Relop: "<" | ">" | "=" | "!=" | ">=" | "<=" ;
 
 Aggregate : "min" Arg ":" AggregateBody
@@ -235,6 +246,7 @@ FunctionCall: "min" "(" FunctionArgumentList ")"
             | "substr" "(" FunctionArgumentList ")"
             | "match" "(" FunctionArgumentList ")"
             | "contains" "(" FunctionArgumentList ")"
+            | "to_string" "(" FunctionArgumentList ")"
             ;
 
 FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
@@ -297,6 +309,7 @@ AS: "as" ;
 NIL: "nil" ;
 TRUE: "true" ;
 FALSE: "false" ;
-NUMBER: /0|([1-9][0-9]*)/ ;
+NUMBER: /([1-9][0-9]*)|(0x[a-fA-F0-9]+)|(0b[0-1][0-1]*)|(0)/ ;
 Identifier: /[_a-zA-Z\?][_\d\w]*/;
 NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;
+KEYWORD: /\w+/ ;  // special Parglare rule: match keywords entirely
