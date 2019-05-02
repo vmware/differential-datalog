@@ -6,6 +6,7 @@
  * While this type is defined for any `'A`, interning is only supported for strings.
  * There is simply no way to obtain an interned object of a different type.
  */
+#[size=4]
 extern type IObj<'A>
 
 /* Interned string

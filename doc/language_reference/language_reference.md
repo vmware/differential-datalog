@@ -39,16 +39,24 @@ is defined in the local scope).
 
 A Datalog program is a list of type definitions, functions, relations, and rules.
 The ordering of declarations does not matter, e.g., a type can be used
-before being defined.
+before being defined.  Declarations can be optionally annotated by
+meta-attributes.
 
 ```EBNF
-datalog ::= decl*
+datalog ::= annotated_decl*
+
+annotated_decl ::= [attributes] decl
 
 decl ::= import
        | typedef
        | function
        | relation
        | rule
+
+attributes ::= "#[" attribute ["," attribute]* "]"
+
+attribute ::= name "=" expr
+
 ```
 
 ### Constraints on top-level declarations
@@ -722,4 +730,16 @@ insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 blockStatement ::= "{" statement ( ";" statement )* "}"
 
 emptyStatement ::= "skip"
+```
+
+# Supported meta-attributes
+
+Only one attribute is supported at the moment, namely the `size` attribute,
+applicable to `extern type` declarations.  It specifies the size of the
+corresponding Rust data type in bytes and serves as a hint to compiler
+to optimize data structures layout.
+
+```
+#[size=4]
+extern type IObj<'A>
 ```

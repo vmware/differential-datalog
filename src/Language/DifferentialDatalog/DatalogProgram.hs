@@ -104,7 +104,7 @@ progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun 
 -- | Apply function to all types referenced in the program
 progTypeMapM :: (Monad m) => DatalogProgram -> (Type -> m Type) -> m DatalogProgram
 progTypeMapM d@DatalogProgram{..} fun = do
-    ts <- M.traverseWithKey (\_ (TypeDef p n a t) -> TypeDef p n a <$> mapM (typeMapM fun) t) progTypedefs
+    ts <- M.traverseWithKey (\_ (TypeDef p atrs n a t) -> TypeDef p atrs n a <$> mapM (typeMapM fun) t) progTypedefs
     fs <- M.traverseWithKey (\_ f -> do ret <- typeMapM fun $ funcType f
                                         as  <- mapM (\f -> setType f <$> (typeMapM fun $ typ f)) $ funcArgs f
                                         d   <- mapM (exprTypeMapM fun) $ funcDef f

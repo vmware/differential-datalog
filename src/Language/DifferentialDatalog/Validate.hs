@@ -152,7 +152,7 @@ exprDesugar d _ e =
          _              -> return $ E e
 
 typedefValidate :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
-typedefValidate d@DatalogProgram{..} TypeDef{..} = do
+typedefValidate d@DatalogProgram{..} tdef@TypeDef{..} = do
     uniq' (\_ -> tdefPos) id ("Multiple definitions of type argument " ++) tdefArgs
     mapM_ (\a -> check (M.notMember a progTypedefs) tdefPos
                         $ "Type argument " ++ a ++ " conflicts with user-defined type name")
@@ -164,6 +164,18 @@ typedefValidate d@DatalogProgram{..} TypeDef{..} = do
              let dif = tdefArgs \\ typeTypeVars t
              check (null dif) tdefPos
                     $ "The following type variables are not used in type definition: " ++ intercalate "," dif
+    uniqNames ("Multiple definitions of attribute " ++) tdefAttrs
+    mapM_ (typedefValidateAttr d tdef) tdefAttrs
+
+typedefValidateAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> Attribute -> me ()
+typedefValidateAttr d tdef@TypeDef{..} attr = do
+    case name attr of
+         "size" -> do
+            check (isNothing tdefType) (pos attr)
+                $ "Only extern types can have a \"size\" attribute"
+            _ <- tdefCheckSizeAttr tdef
+            return ()
+         n -> err (pos attr) $ "Unknown attribute " ++ n
 
 typeValidate :: (MonadError String me) => DatalogProgram -> [String] -> Type -> me ()
 typeValidate _ _     TString{}        = return ()

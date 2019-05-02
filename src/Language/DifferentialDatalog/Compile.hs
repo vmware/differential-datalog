@@ -2081,7 +2081,10 @@ typeSize' d (TStruct _ cs) =
     tag_align = maximum $ 1 : map (consAlignment d . consArgs) cs
     tag_size = pad 4 tag_align
 typeSize' d (TTuple _ as) = tupleSize d as
-typeSize' _ TOpaque{}     = 0xffffffff -- be conservative
+typeSize' d TOpaque{..}     =
+    case tdefGetSizeAttr (getType d typeName) of
+         Nothing     -> 0xffffffff -- be conservative
+         Just nbytes -> nbytes
 typeSize' _ t             = error $ "Compiler.typeSize': unexpected type " ++ show t
 
 consSize :: DatalogProgram -> [Field] -> Int
@@ -2110,7 +2113,10 @@ typeAlignment' _ TBit{..} | typeWidth <= 8   = 1
 typeAlignment' d (TStruct _ [cons]) = consAlignment d $ consArgs cons
 typeAlignment' d (TStruct _ cs) = maximum $ 1 : map (consAlignment d . consArgs) cs
 typeAlignment' d (TTuple _ as)  = tupleAlignment d as
-typeAlignment' _ TOpaque{}      = 128 -- be conservative
+typeAlignment' d TOpaque{..}    =
+    case tdefGetSizeAttr (getType d typeName) of
+         Nothing     -> 128 -- be conservative
+         Just nbytes -> nbytes
 typeAlignment' _ t              = error $ "Compiler.typeSize: unexpected type " ++ show t
 
 consAlignment :: DatalogProgram -> [Field] -> Int
