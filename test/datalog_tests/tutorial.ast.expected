@@ -124,6 +124,7 @@ extern function std.group_max (g: std.Group<'A>): 'A
 extern function std.group_min (g: std.Group<'A>): 'A
 extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'A>): 'A
 extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>

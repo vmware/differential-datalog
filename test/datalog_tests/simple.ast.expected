@@ -6,6 +6,7 @@ typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
 typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
+typedef AggregateMeInts = AggregateMeInts{x: string, y: bit<32>}
 typedef Alloc = Alloc{id: bigint, allocated: std.Map<string,bit<32>>, toallocate: std.Vec<string>, min_val: bit<32>, max_val: bit<32>}
 typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
 typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
@@ -64,6 +65,7 @@ typedef Sib = Sib{s1: person, s2: person}
 typedef String2 = String2{s: string}
 typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
+typedef Sum = Sum{x: string, sum: bit<32>}
 typedef Suspect = Suspect{name: string}
 typedef Symbol = intern.IString
 typedef T = T{x: bigint, y: string}
@@ -312,6 +314,7 @@ extern function std.group_max (g: std.Group<'A>): 'A
 extern function std.group_min (g: std.Group<'A>): 'A
 extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'A>): 'A
 extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
@@ -427,6 +430,7 @@ output relation Aggregate2 [Aggregate2]
 output relation Aggregate3 [Aggregate3]
 output relation Aggregate4 [Aggregate4]
 input relation AggregateMe1 [AggregateMe1]
+input relation AggregateMeInts [AggregateMeInts]
 input relation Alloc [Alloc]
 relation Allocated [Allocated]
 output relation Allocation [Allocation]
@@ -481,6 +485,7 @@ output relation Sib [Sib]
 input relation String2 [String2]
 output relation StringOrd [StringOrd]
 input relation Strings [Strings]
+output relation Sum [Sum]
 input relation Suspect [Suspect]
 output relation T [T]
 input relation Table1 [Table1]
@@ -618,6 +623,7 @@ Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x),
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), var vec = Aggregate((x), std.group2vec(y)).
 Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), var map = Aggregate((x), std.group2map((x, y))).
 Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)), var y = FlatMap(set).
+Sum(.x=x, .sum=sum) :- AggregateMeInts(.x=x, .y=y), var sum = Aggregate((x), std.group_sum(y)).
 WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
 Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
 ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).

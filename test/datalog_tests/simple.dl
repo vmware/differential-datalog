@@ -629,6 +629,12 @@ Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group2map((x,y
 output relation Disaggregate(x: string, y: string)
 Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)), var y = FlatMap(set).
 
+
+input relation AggregateMeInts(x: string, y: bit<32>)
+
+output relation Sum(x: string, sum: bit<32>)
+Sum(x, sum) :- AggregateMeInts(x, y), var sum = Aggregate((x), group_sum(y)).
+
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)
 primary key (x) x.key

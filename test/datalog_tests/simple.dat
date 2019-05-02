@@ -77,6 +77,21 @@ dump Disaggregate;
 
 start;
 
+insert AggregateMeInts("a", 100),
+insert AggregateMeInts("a", 10),
+insert AggregateMeInts("a", 1),
+insert AggregateMeInts("b", 10),
+insert AggregateMeInts("b", 20),
+insert AggregateMeInts("b", 30);
+
+commit;
+
+echo Sum;
+dump Sum;
+
+
+start;
+
 insert WithKey(0, "foo"),
 insert WithKey(1, "bar"),
 insert WithKey(2, "buzz");
