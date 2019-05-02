@@ -243,11 +243,22 @@ class SouffleConverter(object):
         self.preprocess = False
         self.current_component = None
         self.bound_variables = set() # variables that have been bound
+        self.all_variables = set()   # all variable names that appear in the program
         self.converting_head = False # True if we are converting a head clause
         self.converting_tail = False # True if we are converting a tail clause
         self.lhs_variables = set()   # variables that show up on the lhs of the rule
         self.path_rename = dict()
         self.aggregate_prefix = ""   # Expression evaluated before an aggregate
+
+    def fresh_variable(self, prefix):
+        """Return a variable whose name does not yet occur in the program"""
+        name = prefix
+        suffix = 0
+        while name in self.all_variables:
+            name = prefix + "_" + str(suffix)
+            suffix = suffix + 1
+        self.all_variables.add(name)
+        return name
 
     def process_file(self, rel, inFileName, inSeparator, outputEmitter):
         """Process an INPUT or OUTPUT with name inFileName; dump its contents into outfile
@@ -452,6 +463,7 @@ class SouffleConverter(object):
         ident = getOptField(arg, "Identifier")
         if ident != None:
             v = var_name(ident.value)
+            self.all_variables.add(v)
             if self.converting_head and v != "_":
                 self.lhs_variables.add(v)
             if self.converting_tail and v != "_":
@@ -507,7 +519,10 @@ class SouffleConverter(object):
 
         self.aggregate_prefix += ", "
         func = agg.children[0].value
-        result += "group_" + func + "(" + call + "))"
+        if func == "count":
+            result += "count(()))"
+        else:
+            result += "group_" + func + "(" + call + "))"
         return result
 
     def convert_atom(self, atom):
@@ -560,10 +575,17 @@ class SouffleConverter(object):
             l = self.convert_arg(args[0])
             if varname is not None and op == "=":
                 self.bound_variables.remove(varname)
-            # This call may convert an aggregate, setting aggregate_prefix
+            # This call may convert an aggregate, setting aggregate_prefix in the process
             r = self.convert_arg(args[1])
-            result = self.aggregate_prefix + prefix + l + " " + op + " " + r
-            self.aggregate_prefix = ""
+            if self.aggregate_prefix != "":
+                assert varname is not None, "Could not find variable assigned by aggregate computation"
+                fresh = self.fresh_variable("tmp")
+                # This works because all aggregate functions return numeric types where we can apply bit slices
+                # For aggregates over strings this is not correct.
+                result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = " + fresh + "[31:0]"
+                self.aggregate_prefix = ""
+            else:
+                result = prefix + l + " " + op + " " + r
             return result
 
         atom = getOptField(lit, "Atom")
