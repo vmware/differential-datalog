@@ -19,11 +19,9 @@ xfail = [
     "souffle13", # unimplemented re_match
     "access2",   # input relation modified
     "access3",   # "
-    "aggregates", # No group_count
+    "aggregates",  # issue 192
     "aggregates2", # max in relation argument
-    "aliases",    # tuples
-    "arithm",     # issue 183
-    "average",    # group_count
+    "aliases",     # tuples
 ]
 
 def run_command(command):
