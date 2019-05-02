@@ -82,6 +82,7 @@ extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
 extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
+extern function group_sum(g: Group<'A>): 'A
 
 extern function group_set_unions(g: Group<Set<'A>>): Set<'A>
 

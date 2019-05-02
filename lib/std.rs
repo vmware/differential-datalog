@@ -553,6 +553,14 @@ pub fn std_group_max<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
     g.ith(g.size() - 1)
 }
 
+pub fn std_group_sum<A: ops::Add + ops::AddAssign + Clone, G: Group<A>+?Sized>(g: &G) -> A {
+    let mut res = g.ith(0).clone();
+    for i in 1..g.size() {
+        res += g.ith(i).clone();
+    };
+    res
+}
+
 /* Tuples */
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct tuple0;
