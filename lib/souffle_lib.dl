@@ -3,16 +3,18 @@
 import intern
 import regex
 
+function castTo32(i: bit<64>): bit<32> = i[31:0]
+function castTo64(i: bit<32>): bit<64> = 32'd0 ++ i
 function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))
-function strlen(s: IString): bit<64> = string_len(istring_str(s))
+function strlen(s: IString): bit<32> = castTo32(string_len(istring_str(s)))
 function ord(s: IString): bit<32> = istring_ord(s)
-function substr(s: IString, i: bit<64>, l: bit<64>): IString = string_intern(string_substr(istring_str(s), i, i + l))
+function substr(s: IString, i: bit<32>, l: bit<32>): IString = string_intern(string_substr(istring_str(s), castTo64(i), castTo64(i + l)))
 function contains(s: IString, i: IString): bool = string_contains(istring_str(s), istring_str(i))
 function re_match(pattern: IString, s: IString): bool = regex_match(istring_str(pattern), istring_str(s))
-function to_number(s: IString): bit<64> = {
+function to_number(s: IString): bit<32> = {
     match (parse_dec_u64(istring_str(s))) {
         None -> 0,
-        Some{x} -> x
+        Some{x} -> castTo32(x)
     }
 }
 function to_string(n: bit<32>): IString = string_intern(__builtin_2string(n))
