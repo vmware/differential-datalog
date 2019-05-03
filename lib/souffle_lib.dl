@@ -1,14 +1,14 @@
 // Library of Souffle functions
 
 import intern
+import regex
 
 function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))
 function strlen(s: IString): bit<64> = string_len(istring_str(s))
 function ord(s: IString): bit<32> = istring_ord(s)
 function substr(s: IString, i: bit<64>, l: bit<64>): IString = string_intern(string_substr(istring_str(s), i, i + l))
 function contains(s: IString, i: IString): bool = string_contains(istring_str(s), istring_str(i))
-// Corresponds to Souffle match function.  TODO: implement in Rust
-extern function re_match(pattern: IString, s: IString): bool
+function re_match(pattern: IString, s: IString): bool = regex_match(istring_str(pattern), istring_str(s))
 function to_number(s: IString): bit<64> = {
     match (parse_dec_u64(istring_str(s))) {
         None -> 0,
@@ -17,4 +17,6 @@ function to_number(s: IString): bit<64> = {
 }
 function to_string(n: bit<32>): IString = string_intern(__builtin_2string(n))
 function random(): bit<32> = 0
-extern function exp(base: bit<32>, exp: bit<32>): bit<32>
+function land(l: bit<32>, r: bit<32>): bit<32> = if (l != 0 and r != 0) 1 else 0
+function lor(l: bit<32>, r: bit<32>): bit<32> = if (l == 0 and r == 0) 0 else 1
+function lnot(l: bit<32>): bit<32> = if (l != 0) 0 else 1
