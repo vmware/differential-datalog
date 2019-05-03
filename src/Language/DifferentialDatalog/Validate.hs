@@ -138,7 +138,7 @@ exprDesugar d _ e =
                     uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
                     mapM (\(n,e) -> check (isJust $ find ((==n) . name) consArgs) (pos e)
                                            $ "Unknown field " ++ n) as
-                    return $ map (\f -> (name f, maybe ePHolder id $ lookup (name f) as)) consArgs
+                    return $ map (\f -> (name f, maybe (E $ EPHolder p) id $ lookup (name f) as)) consArgs
             as' <- case as of
                         [] | null consArgs
                            -> return as
