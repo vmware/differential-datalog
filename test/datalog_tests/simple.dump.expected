@@ -325,3 +325,9 @@ DMethod
 DMethod{"bar","foo"}
 DMethod{"buzz","foo"}
 DMethod{"hello","world"}
+Power3
+Power3{0}
+Power3{1}
+Power3{8}
+Power3{27}
+Power3{64}

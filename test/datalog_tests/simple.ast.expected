@@ -39,7 +39,9 @@ typedef Innocent = Innocent{name: string}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef NewAllocationOpt = NewAllocationOpt{id: bigint, alloc: std.Vec<(string, std.Option<bit<32>>)>}
+typedef Numbers = Numbers{x: bigint}
 typedef Parent = Parent{child: person, parent: person}
+typedef Power3 = Power3{y: bigint}
 typedef R1 = bigint
 typedef R1_nl = R1_nl{a1: string}
 typedef R2_nl = R2_nl{a2: string}
@@ -345,6 +347,7 @@ extern function std.min (x: 'A, y: 'A): 'A
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.pow32 (base: 'A, exp: bit<32>): 'A
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
@@ -456,7 +459,9 @@ output relation Innocent [Innocent]
 input relation Links [Links]
 output relation NewAllocation [NewAllocation]
 output relation NewAllocationOpt [NewAllocationOpt]
+input relation Numbers [Numbers]
 input relation Parent [Parent]
+output relation Power3 [Power3]
 input relation R1 [R1]
 input relation R1_nl [R1_nl]
 input relation R2 [(bigint, bigint)]
@@ -659,4 +664,5 @@ Ris_true(._s=intern.string_intern("true")).
 Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
 CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).
 DMethod(.c1=a, .c2=b) :- AMethod(.a1=b, .a2=a), BMethod(.b1=intern.string_intern("c"), .b2=b).
+Power3(.y=std.pow32(x, 32'd3)) :- Numbers(.x=x).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

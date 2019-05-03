@@ -16,6 +16,11 @@ extern function max(x: 'A, y: 'A): 'A
 extern function min(x: 'A, y: 'A): 'A
 
 /*
+ * Arithmetic functions
+ */
+extern function pow32(base:'A, exp: bit<32>): 'A
+
+/*
  * Option
  */
 

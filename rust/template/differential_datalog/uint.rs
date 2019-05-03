@@ -176,3 +176,19 @@ forward_binop!(impl Rem for Uint, rem);
 forward_binop!(impl Mul for Uint, mul);
 forward_binop!(impl BitAnd for Uint, bitand);
 forward_binop!(impl BitOr for Uint, bitor);
+
+impl num::One for Uint {
+    fn one() -> Uint {
+        Uint { x: BigUint::one() }
+    }
+}
+
+impl num::Zero for Uint {
+    fn zero() -> Uint {
+        Uint{ x: BigUint::zero() }
+    }
+
+    fn is_zero(&self) -> bool {
+        self.x == BigUint::zero()
+    }
+}

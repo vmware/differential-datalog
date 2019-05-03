@@ -828,3 +828,10 @@ output relation DMethod(c1:Symbol, c2:Symbol)
 
 CMethod(a, b) :- BMethod(string_intern("c"), b), AMethod(b, a).
 DMethod(a, b) :- AMethod(b, a), BMethod(string_intern("c"), b).
+
+/* Arithmetics */
+
+input relation Numbers(x: bigint)
+output relation Power3(y: bigint)
+
+Power3(pow32(x, 3)) :- Numbers(x).

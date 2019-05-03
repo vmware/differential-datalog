@@ -1,5 +1,7 @@
 /// Rust implementation of DDlog standard library functions and types.
 
+extern crate num;
+
 use differential_datalog::arcval;
 use differential_datalog::record::*;
 
@@ -46,6 +48,11 @@ pub fn std_min<A: Ord + Clone>(x: &A, y: &A) -> A {
     } else {
         y.clone()
     }
+}
+
+// Arithmetic functions
+pub fn std_pow32<T: num::One + ops::Mul + Clone>(base: &T, exp: &u32) -> T {
+    num::pow::pow(base.clone(), *exp as usize)
 }
 
 // Option
