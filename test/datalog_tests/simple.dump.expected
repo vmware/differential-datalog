@@ -331,3 +331,12 @@ Power3{1}
 Power3{8}
 Power3{27}
 Power3{64}
+RegexMatch
+RegexMatch{"(?i)a+(?-i)b+","AaAaAbbBBBb",true}
+RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-333",false}
+RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-3333",true}
+RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","phone: 111-222-3333",true}
+RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-01-01",true}
+RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-0101",false}
+RegexMatch{"a+b+","AaAaAbbBBBb",false}
+RegexMatch{"a+b+","aaaaabbbbbb",true}
