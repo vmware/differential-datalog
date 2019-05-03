@@ -1,0 +1,14 @@
+/* Bindings for the Rust regular expressions library.
+ *
+ * See regex crate documentation for description of the regex syntax supported
+ * by this library.
+ */
+
+/*
+ * Check if string matches regular expression.
+ *
+ * Returns true if the regex matches the string given.
+ * Returns false if `regex` is not a valid regular expression or if no match was
+ * found.
+ */
+extern function regex_match(regex: string, str: string): bool

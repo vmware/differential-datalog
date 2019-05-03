@@ -491,3 +491,21 @@ commit;
 
 echo Power3;
 dump Power3;
+
+start;
+
+insert Regex("[0-9]{3}-[0-9]{3}-[0-9]{4}", "phone: 111-222-3333"),
+insert Regex("[0-9]{3}-[0-9]{3}-[0-9]{4}", "111-222-3333"),
+insert Regex("[0-9]{3}-[0-9]{3}-[0-9]{4}", "111-222-333"),
+insert Regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "2014-01-01"),
+insert Regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "2014-0101"),
+insert Regex("(?i)a+(?-i)b+", "AaAaAbbBBBb"),
+insert Regex("a+b+", "aaaaabbbbbb"),
+insert Regex("a+b+", "AaAaAbbBBBb"),
+
+commit;
+
+echo RegexMatch;
+dump RegexMatch;
+
+

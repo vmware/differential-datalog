@@ -56,6 +56,8 @@ typedef Realized = Realized{name: string, id: string, x: bit<32>}
 typedef Referee = Referee{r: std.Ref<Referenced>}
 typedef Referee2 = Referee2{r: Referenced}
 typedef Referenced = Referenced{x: bool, y: std.Option<string>}
+typedef Regex = Regex{regex: string, text: string}
+typedef RegexMatch = RegexMatch{regex: string, text: string, m: bool}
 typedef Rel1 = Rel1{x: bigint, y: IPAddr}
 typedef Rel2 = Rel2{x: bigint, z: FooStruct}
 typedef Rel3 = Rel3{x: bigint, y: IPAddr, z: FooStruct}
@@ -267,6 +269,7 @@ function patterns (): () =
                              C0{.x=var v} -> v,
                              C1{.x=var v} -> v
                          }))
+extern function regex.regex_match (regex: string, str: string): bool
 function s0 (): string =
     "Some string"
 function s1 (): string =
@@ -478,6 +481,8 @@ input relation Realized [Realized]
 output relation Referee [Referee]
 output relation Referee2 [std.Ref<Referee2>]
 input relation Referenced [Referenced]
+input relation Regex [Regex]
+output relation RegexMatch [RegexMatch]
 input relation Rel1 [Rel1]
 input relation Rel2 [Rel2]
 output relation Rel3 [Rel3]
@@ -664,4 +669,5 @@ Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_tru
 CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).
 DMethod(.c1=a, .c2=b) :- AMethod(.a1=b, .a2=a), BMethod(.b1=intern.string_intern("c"), .b2=b).
 Power3(.y=std.pow32(x, 32'd3)) :- Numbers(.x=x).
+RegexMatch(.regex=regex, .text=text, .m=regex.regex_match(regex, text)) :- Regex(.regex=regex, .text=text).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

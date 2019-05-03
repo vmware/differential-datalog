@@ -835,3 +835,11 @@ input relation Numbers(x: bigint)
 output relation Power3(y: bigint)
 
 Power3(pow32(x, 3)) :- Numbers(x).
+
+/* Regular expressions */
+import regex
+
+input relation Regex(regex: string, text: string)
+output relation RegexMatch(regex: string, text: string, m: bool)
+
+RegexMatch(regex, text, regex_match(regex, text)) :- Regex(regex, text).
