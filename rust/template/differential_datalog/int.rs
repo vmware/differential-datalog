@@ -131,7 +131,6 @@ impl Mutator<Int> for Record {
 }
 
 
-
 #[test]
 fn test_fromrecord() {
     let v = (-25_i64).to_bigint().unwrap();
@@ -175,3 +174,19 @@ forward_binop!(impl Sub for Int, sub);
 forward_binop!(impl Div for Int, div);
 forward_binop!(impl Rem for Int, rem);
 forward_binop!(impl Mul for Int, mul);
+
+impl num::One for Int {
+    fn one() -> Int {
+        Int { x: BigInt::one() }
+    }
+}
+
+impl num::Zero for Int {
+    fn zero() -> Int {
+        Int{ x: BigInt::zero() }
+    }
+
+    fn is_zero(&self) -> bool {
+        self.x == BigInt::zero()
+    }
+}

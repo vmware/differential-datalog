@@ -59,6 +59,7 @@ extern function std.min (x: 'A, y: 'A): 'A
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.pow32 (base: 'A, exp: bit<32>): 'A
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>

@@ -478,3 +478,16 @@ dump CMethod;
 
 echo DMethod;
 dump DMethod;
+
+start;
+
+insert Numbers(0),
+insert Numbers(1),
+insert Numbers(2),
+insert Numbers(3),
+insert Numbers(4);
+
+commit;
+
+echo Power3;
+dump Power3;
