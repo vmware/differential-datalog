@@ -39,7 +39,15 @@ class Type(object):
         self.name = name
         self.outputName = outputName
         self.equivalentTo = None
+        self.components = None
         self.isnumber = None  # unknown
+
+    @classmethod
+    def create_tuple(cls, name, components):
+        typ = Type(name, "T" + name)
+        typ.components = components
+        cls.types[name] = typ
+        return typ
 
     @classmethod
     def create(cls, name, equivalentTo):
@@ -64,6 +72,10 @@ class Type(object):
         return result
 
     def declaration(self):
+        if self.components is not None:
+            # Convert records to tuples
+            names = [c.outputName for c in self.components]
+            return "typedef " + self.outputName + " = " + "Option<(" + ", ".join(names) + ")>"
         e = Type.get(self.equivalentTo)
         return "typedef " + self.outputName + " = " + e.outputName
 
@@ -156,10 +168,10 @@ class Files(object):
         self.output(t.declaration())
         t = Type.create("symbol", "IString")
         self.output(t.declaration())
+        self.output("typedef TEmpty = ()")
         self.outputDataFile = open(outputDataName, 'w')
         self.dumpFile = open(outputDumpName, 'w')
         self.outputData("echo Reading data", ";")
-        #self.outputData("timestamp", ";")
         self.outputData("start", ";")
         print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
 
@@ -256,9 +268,6 @@ class SouffleConverter(object):
             "bor": "|",
             "bxor": "^",
             "bnot": "~",
-            "land": "&&",
-            "lor": "||",
-            "lnot": "!"
         }
 
 
@@ -451,6 +460,10 @@ class SouffleConverter(object):
         if string is not None:
             return "string_intern(" + string.value + ")"
 
+        nil = getOptField(arg, "NIL")
+        if nil is not None:
+            return "None";
+
         us = getOptField(arg, "_")
         if us is not None:
             return "_"
@@ -470,7 +483,9 @@ class SouffleConverter(object):
 
         bk = getOptField(arg, "[")
         if bk is not None:
-            raise Exception("[ not handled")
+            fields = getListField(arg, "Arg", "RecordList")
+            converted = [self.convert_arg(a) for a in fields]
+            return "Some{(" + ", ".join(converted) + ")}"
 
         args = getArray(arg, "Arg")
         if len(args) == 1:
@@ -483,8 +498,10 @@ class SouffleConverter(object):
             rec = self.convert_arg(args[0])
             op = self.convert_op(arg.children[0])
             if op == "-":
-                return "( 0 " + op + " " + rec + ")"
-            return op + " " + rec
+                return "(0 - " + rec + ")"
+            elif op == "lnot":
+                return "lnot(" + rec + ")"
+            return "(" + op + " " + rec + ")"
 
         ident = getOptField(arg, "Identifier")
         if ident != None:
@@ -498,8 +515,12 @@ class SouffleConverter(object):
 
         num = getOptField(arg, "NUMBER")
         if num != None:
-            # TODO: convert various literals
-            return num.value
+            val = num.value
+            if val.startswith("0x"):
+                val = "32'h" + val[2:]
+            elif val.startswith("0b"):
+                val = "32'b" + val[2:]
+            return "(" + val + ":bit<32>)"
 
         if len(args) == 2:
             # Binary operator
@@ -508,8 +529,10 @@ class SouffleConverter(object):
             binop = arg.children[1]
             op = self.convert_op(binop)
             if op == "^":
-                return "exp(" + l + ", " + r + ")"
-            return l + " " + op + " " + r
+                return "pow32(" + l + ", " + r + ")"
+            elif (op == "land") or (op == "lor"):
+                return op + "(" + l + ", " + r + ")"
+            return "(" + l + " " + op + " " + r + ")"
 
         func = getOptField(arg, "FunctionCall")
         if func != None:
@@ -589,32 +612,54 @@ class SouffleConverter(object):
             args = getArray(lit, "Arg")
             assert len(args) == 2
             op = relop.children[0].value
-            prefix = ""
+            prefix = "("
+            suffix = ")"
             # This could be translated as equality test or assignment,
             # depending on whether the lhs variable is bound
-            varname = None
+            lvarname = None
             if op == "=":
-                varname = self.arg_is_varname(args[0])
-                if varname is not None:
-                    if varname in self.bound_variables:
-                        op = "=="
-                    else:
-                        op = "="
-                        prefix = "var "
+                # TODO: this does not handle the case of assigning to a tuple containing some unbound variables
+                lvarname = self.arg_is_varname(args[0])
+                rvarname = self.arg_is_varname(args[1])
+                if (lvarname is not None) and (rvarname is not None) and \
+                   (lvarname not in self.bound_variables) and (rvarname not in self.bound_variables):
+                    raise Exception("Comparison between two unbound variables " + lvarname + op + rvarname)
+                if (rvarname is not None) and (not rvarname in self.bound_variables):
+                    # swap arguments: this is an assignment to args[1]
+                    tmp = args[0]
+                    args[0] = args[1]
+                    args[1] = tmp
+                    lvarname = rvarname
+                if (lvarname is not None) and (not lvarname in self.bound_variables):
+                    suffix = ""
+                    prefix = "var "
+                else:
+                    op = "=="
+
             l = self.convert_arg(args[0])
-            if varname is not None and op == "=":
-                self.bound_variables.remove(varname)
+            variableBound = False
+            # In case we are converting an aggregate we will pretend this is not bound yet
+            if (lvarname is not None) and (lvarname in self.bound_variables):
+                variableBound = True
+                self.bound_variables.remove(lvarname)
             # This call may convert an aggregate, setting aggregate_prefix in the process
             r = self.convert_arg(args[1])
+            # The variable is in fact bound
+            if lvarname is not None and op == "=":
+                self.bound_variables.add(lvarname)
             if self.aggregate_prefix != "":
-                assert varname is not None, "Could not find variable assigned by aggregate computation"
+                assert lvarname is not None, "Could not find variable assigned by aggregate computation"
                 fresh = self.fresh_variable("tmp")
-                # This works because all aggregate functions return numeric types where we can apply bit slices
+                # The slice [31:0] works because all aggregate functions return numeric types where we can apply bit slices
                 # For aggregates over strings this is not correct.
-                result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = " + fresh + "[31:0]"
+                if variableBound:
+                    # The variable was bound, so we generate an equality test instead of an assignment
+                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", " + l + " == " + fresh + "[31:0]"
+                else:
+                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = " + fresh + "[31:0]"
                 self.aggregate_prefix = ""
             else:
-                result = prefix + l + " " + op + " " + r
+                result = prefix + l + " " + op + " " + r + suffix
             return result
 
         atom = getOptField(lit, "Atom")
@@ -735,8 +780,21 @@ class SouffleConverter(object):
     def process_type(self, typedecl):
         ident = getIdentifier(typedecl)
         if self.preprocess:
+            print "Creating type", ident
             l = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
+            recordType = getOptField(typedecl, "RecordType")
+            sqbrace = getOptField(typedecl, "[")
+
+            if recordType is not None:
+                fields = getList(recordType, "TypeId", "RecordType")
+                components = [Type.get(self.convert_typeid(f)) for f in fields]
+                typ = Type.create_tuple(ident, components)
+                return typ
+            if sqbrace is not None:
+                typ = Type.create(ident, "TEmpty")
+                return typ
+
             equiv = None
             if l is not None:
                 # If we have a union type we expect all members
@@ -788,6 +846,9 @@ class SouffleConverter(object):
         if init != None:
             ids = getArray(init, "Identifier")
             self.path_rename[ids[0].value] = ids[1].value
+            return
+        pragma = getOptField(decl, "Pragma")
+        if pragma is not None:
             return
         raise Exception("Unexpected node " + decl.tree_str())
 

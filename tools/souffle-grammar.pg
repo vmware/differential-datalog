@@ -303,7 +303,7 @@ WS: /\s+/ ;
 LineComment: /\/\/.*/ ;
 String: /\"[^"]*\"/ ;
 INSTANTIATE: "instantiate" ;
-PRAGMA: "pragma" ;
+PRAGMA: ".pragma" ;
 PRINTSIZE: ".printsize" ;
 AS: "as" ;
 NIL: "nil" ;

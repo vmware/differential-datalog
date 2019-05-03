@@ -11,18 +11,15 @@ tests_passed = 0
 
 # expected to fail
 xfail = [
-    "souffle6",  # uses structs
-    "souffle7",  # uses a recursive type
-    "souffle8",  # uses component inheritance
-    "souffle9",  # uses generic component
+    "souffle7",  # recursive type
+    "souffle8",  # component inheritance
+    "souffle9",  # generic component
     "souffle10", # generic component
-    "souffle13", # unimplemented re_match
     "access2",   # input relation modified
     "access3",   # same
     "aggregates",  # issue 192
     "aggregates2", # max in relation argument
-    "average",   # issue #193
-    "aliases",   # uses records (tuples?)
+    "aliases",   # assignments to tuples containing variables
     "comp-override1", # component inheritance
     "comp-override2", # same
     "comp-override3", # same
@@ -30,9 +27,19 @@ xfail = [
     "components3",    # same
     "components1",    # component instantiation
     "components_generic", # generic component
-    "count",     # uses records
-    "functor_arity",  # uses min, max, cat with more than 2 arguments
-    "grammar",        # uses funny unicode char in a comment
+    "functor_arity",  # min, max, cat with more than 2 arguments
+    "grammar",        # funny unicode char in a comment
+    "independent_body2", # not in DNF form
+    "inline_nqueens", # recursive type
+    "magic_2sat",     # issue 197
+    "magic_aggregates", # two aggregates in a rule
+    "magic_centroids", # input relation modified
+    "magic_components", # component inheritance
+    "magic_dfa",        # same
+    "magic_dominance",  # same
+    "magic_nqueens",    # recursive type
+    "magic_perfect_numbers", # aggregate with strange semantics
+    "magic_strategies", # component inheritance
 ]
 
 def run_command(command):
@@ -84,7 +91,7 @@ def run_remote_tests():
         if directory in xfail:
             print "Expected to fail", directory
             continue
-        if directory[0] < 'g':
+        if directory[0] < 'm':
             continue
         if not os.path.isdir(directory):
             code, _ = run_command(["svn", "export", url + "/" + directory])
