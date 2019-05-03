@@ -40,6 +40,7 @@ xfail = [
     "magic_nqueens",    # recursive type
     "magic_perfect_numbers", # aggregate with strange semantics
     "magic_strategies", # component inheritance
+    "magic_turing1",    # issue 198
 ]
 
 def run_command(command):
@@ -83,23 +84,25 @@ def run_examples():
         compile_example(d, "test.dl")
 
 def run_remote_tests():
-    url = "https://github.com/souffle-lang/souffle/trunk/tests/evaluation"
-    code, dirs = run_command(["svn", "ls", url])
-    if code != 0:
-        return
-    for directory in dirs.split("/\n"):
-        if directory in xfail:
-            print "Expected to fail", directory
-            continue
-        if directory[0] < 'm':
-            continue
-        if not os.path.isdir(directory):
-            code, _ = run_command(["svn", "export", url + "/" + directory])
-            if code != 0:
+    testgroups = ["evaluation", "example"]
+    url = "https://github.com/souffle-lang/souffle/trunk/tests/"
+    for tg in testgroups:
+        code, dirs = run_command(["svn", "ls", url + tg])
+        if code != 0:
+            return
+        for directory in dirs.split("/\n"):
+            if directory in xfail:
+                print "Expected to fail", directory
                 continue
-        code = compile_example(directory, directory + ".dl")
-        if code == 0:
-            shutil.rmtree(directory)
+            if directory[0] < 'm':
+                continue
+            if not os.path.isdir(directory):
+                code, _ = run_command(["svn", "export", url + tg + "/" + directory])
+                if code != 0:
+                    continue
+                code = compile_example(directory, directory + ".dl")
+            if code == 0:
+                shutil.rmtree(directory)
 
 def main():
 #    run_examples()

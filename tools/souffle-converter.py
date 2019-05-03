@@ -650,13 +650,11 @@ class SouffleConverter(object):
             if self.aggregate_prefix != "":
                 assert lvarname is not None, "Could not find variable assigned by aggregate computation"
                 fresh = self.fresh_variable("tmp")
-                # The slice [31:0] works because all aggregate functions return numeric types where we can apply bit slices
-                # For aggregates over strings this is not correct.
                 if variableBound:
                     # The variable was bound, so we generate an equality test instead of an assignment
-                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", " + l + " == " + fresh + "[31:0]"
+                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", " + l + " == castTo32(" + fresh + ")"
                 else:
-                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = " + fresh + "[31:0]"
+                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = castTo32(" + fresh + ")"
                 self.aggregate_prefix = ""
             else:
                 result = prefix + l + " " + op + " " + r + suffix
