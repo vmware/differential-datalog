@@ -30,6 +30,23 @@ def strip_quotes(string):
     assert string[len(string) - 1] == "\"", "String is not quoted"
     return string[1:-1].decode('string_escape')
 
+def dict_intersection(dict1, dict2):
+    """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
+    keys = dict1.viewkeys() & dict2.viewkeys()
+    return { x : dict1[x] for x in keys }
+
+def dict_subtract(dict1, dict2):
+    """Remove from dict1 all the keys from dict2"""
+    for k in dict2:
+        if k in dict1:
+            del dict1[k]
+
+def join_dict(separator, kvseparator, dictionary):
+    """Transform a dictionary to string.  separator is used between items,
+    and kvseparator between each key-value"""
+    l = [x + kvseparator + dictionary[x] for x in dictionary]
+    return separator.join(l)
+
 class Type(object):
     types = dict() # All types in the program
 
@@ -100,8 +117,11 @@ class Parameter(object):
         self.typeName = typeName
 
     def declaration(self):
-        typ = Type.get(self.typeName)
+        typ = self.getType()
         return var_name(self.name) + ":" + typ.outputName
+
+    def getType(self):
+        return Type.get(self.typeName)
 
 class Relation(object):
     """Represents information about a relation"""
@@ -255,13 +275,12 @@ class SouffleConverter(object):
         self.files = files
         self.preprocess = False
         self.current_component = None
-        self.bound_variables = set() # variables that have been bound
+        self.bound_variables = dict() # variables that have been bound, each with an inferred type
         self.all_variables = set()   # all variable names that appear in the program
         self.converting_head = False # True if we are converting a head clause
         self.converting_tail = False # True if we are converting a tail clause
-        self.lhs_variables = set()   # variables that show up on the lhs of the rule
         self.path_rename = dict()
-        self.aggregate_prefix = ""   # Expression evaluated before an aggregate
+        self.aggregates = ""         # Relations created by evaluating aggregates
         self.dummyRelation = None    # Relation used to convert clauses that start with a negative term
         self.opdict = {
             "band": "&",
@@ -269,7 +288,7 @@ class SouffleConverter(object):
             "bxor": "^",
             "bnot": "~",
         }
-
+        self.currentType = None      # Used to guess types for variables
 
     def fresh_variable(self, prefix):
         """Return a variable whose name does not yet occur in the program"""
@@ -293,8 +312,7 @@ class SouffleConverter(object):
         params = ri.parameters
         converter = []
         for p in params:
-            t = p.typeName
-            typ = Type.get(t)
+            typ = p.getType()
             assert isinstance(typ, Type)
             if typ.isNumber():
                 converter.append(str)
@@ -392,7 +410,8 @@ class SouffleConverter(object):
                     data = tryFile
                     break
         if data is None:
-            raise Exception("Cannot find file " + filename)
+            print "** Cannot find input file " + filename
+            return
         self.process_file(rel, data, separator,
                           lambda tpl: self.files.outputData( \
                               "insert " + ri.name + "(" + ",".join(tpl) + ")", ","))
@@ -497,6 +516,7 @@ class SouffleConverter(object):
             # Unary operator
             rec = self.convert_arg(args[0])
             op = self.convert_op(arg.children[0])
+            self.currentType = "Tnumber"
             if op == "-":
                 return "(0 - " + rec + ")"
             elif op == "lnot":
@@ -507,10 +527,8 @@ class SouffleConverter(object):
         if ident != None:
             v = var_name(ident.value)
             self.all_variables.add(v)
-            if self.converting_head and v != "_":
-                self.lhs_variables.add(v)
             if self.converting_tail and v != "_":
-                self.bound_variables.add(v)
+                self.bound_variables[v] = self.currentType
             return v
 
         num = getOptField(arg, "NUMBER")
@@ -524,10 +542,11 @@ class SouffleConverter(object):
 
         if len(args) == 2:
             # Binary operator
-            l = self.convert_arg(args[0])
-            r = self.convert_arg(args[1])
+            self.currentType = "Tnumber"
             binop = arg.children[1]
             op = self.convert_op(binop)
+            l = self.convert_arg(args[0])
+            r = self.convert_arg(args[1])
             if op == "^":
                 return "pow32(" + l + ", " + r + ")"
             elif (op == "land") or (op == "lor"):
@@ -538,57 +557,91 @@ class SouffleConverter(object):
         if func != None:
             return self.convert_function_call(func)
 
-        agg = getOptField(arg, "Aggregate")
-        if agg != None:
-            return self.convert_aggregate(agg)
-
         raise Exception("Unexpected argument " + arg.tree_str())
 
-    def convert_aggregate(self, agg):
-        """Converts an aggregate call.  Sets 'self.aggregate_prefix' to a set of
-        expressions that are evaluated before the aggregation"""
+    def arg_contains_aggregate(self, arg):
+        """True if the arg contains an aggregate"""
+        agg = getOptField(arg, "Aggregate")
+        return agg is not None
 
-        # Must process the bound variables before the expression
-        result = "Aggregate(("
-        result += ", ".join(self.bound_variables)
-        result += "), "
+    def lit_contains_aggregate(self, literal):
+        """True if the literal contains an aggregate"""
+        relop = getOptField(literal, "Relop")
+        if relop is None:
+            return False
+        args = getArray(literal, "Arg")
+        for arg in args:
+            if self.arg_contains_aggregate(arg):
+                return True
+        return False
 
-        arg = getOptField(agg, "Arg")
-        call = ""
-        if arg is not None:
-            call = self.convert_arg(arg)
+    def convert_aggregate(self, variable, right):
+        """Convert an aggregate call that assigns to a variable.  This will
+           create a temporary relation and insert its declaration in self.aggregates."""
+        relname = self.fresh_variable("Ragg")
+        agg = getOptField(right, "Aggregate")
+        assert agg is not None, "Expected an aggregate" + str(right)
+        # Save the bound variables
+        save = self.bound_variables
+        self.bound_variables.clear()
+
         body = getField(agg, "AggregateBody")
         atom = getOptField(body, "Atom")
-        assert self.aggregate_prefix == "", "Nested aggregate calls: " + self.aggregate_prefix
         if atom is not None:
-            self.aggregate_prefix = self.convert_atom(atom)
+            result = self.convert_atom(atom) + ", "
         elif body is not None:
             terms = getListField(body, "Term", "Conjunction")
             terms = [self.convert_term(t) for t in terms]
-            self.aggregate_prefix = ", ".join(terms)
+            result = ", ".join(terms) + ", "
         else:
             raise Exception("Unhandled aggregate " + agg.tree_str())
+        bodyBoundVariables = self.bound_variables
 
-        self.aggregate_prefix += ", "
+        self.bound_variables.clear()
+        arg = getOptField(agg, "Arg")
+        call = "()"  # used when there is no argument to aggregate, e.g., count
+        if arg is not None:
+            call = self.convert_arg(arg)
+        argVariables = self.bound_variables
+
+        common = dict_intersection(bodyBoundVariables, save)
+        dict_subtract(common, argVariables)
+
+        result += "var " + variable + " = Aggregate(("
+        result += ", ".join(common.keys())
+        result += "), "
+
         func = agg.children[0].value
-        if func == "count":
-            result += "count(()))"
-        else:
-            result += "group_" + func + "(" + call + "))"
-        return result
+        result += "group_" + func + "(" + call + "))"
+
+        # Restore the bound variables
+        self.bound_variables = save
+        args = common
+        args[variable] = "Tnumber"
+
+        self.aggregates += "relation " + relname + "(" + join_dict(", ", ":", args) + ")\n"
+        self.aggregates += relname + "(" + ", ".join(args.keys()) + ") :- " + result + ".\n"
+        # Return an invocation of the temporary relation we have created
+        return relname + "(" + ", ".join(args.keys()) + ")"
 
     def convert_atom(self, atom):
         name = self.get_relid(atom)
-        args = getListField(atom, "Arg", "ArgList")
-        args_strings = [self.convert_arg(arg) for arg in args]
         rel = Relation.get(name, self.current_component)
-        return rel.name + "(" + ", ".join(args_strings) + ")"
+        args = getListField(atom, "Arg", "ArgList")
+        arg_strings = []
+        index = 0
+        for arg in args:
+            self.currentType = rel.parameters[index].getType().outputName
+            index = index + 1
+            arg_strings.append(self.convert_arg(arg))
+        return rel.name + "(" + ", ".join(arg_strings) + ")"
 
     @staticmethod
     def get_function_name(fn):
         return fn.children[0].value
 
     def convert_function_call(self, function):
+        """Convert a call to a function"""
         # print function.tree_str()
         func = self.get_function_name(function)
         args = getListField(function, "Arg", "FunctionArgumentList")
@@ -599,6 +652,7 @@ class SouffleConverter(object):
         return func + "(" + ", ".join(argStrings) + ")"
 
     def convert_literal(self, lit):
+        """Convert a literal from the Souffle grammar"""
         t = getOptField(lit, "TRUE")
         if t is not None:
             return "true"
@@ -612,11 +666,14 @@ class SouffleConverter(object):
             args = getArray(lit, "Arg")
             assert len(args) == 2
             op = relop.children[0].value
+            if op != "=" and op != "!=":
+                self.currentType = "Tnumber"
             prefix = "("
             suffix = ")"
             # This could be translated as equality test or assignment,
-            # depending on whether the lhs variable is bound
+            # depending on whether the variables that appear are bound or not.
             lvarname = None
+
             if op == "=":
                 # TODO: this does not handle the case of assigning to a tuple containing some unbound variables
                 lvarname = self.arg_is_varname(args[0])
@@ -636,28 +693,22 @@ class SouffleConverter(object):
                 else:
                     op = "=="
 
+            if self.lit_contains_aggregate(lit):
+                originalVar = None
+                if op == "==":
+                    # we have to generate an equality test; we use a temporary variable
+                    originalVar = lvarname
+                    lvarname = self.fresh_variable("tmp")
+                assert lvarname is not None, "Expected aggregate to assign to variable" + str(arg[0])
+                result = self.convert_aggregate(lvarname, args[1])
+                if originalVar is not None:
+                    result += ", " + lvarname + " == " + originalVar
+                return result
+
+            # Not an aggregate
             l = self.convert_arg(args[0])
-            variableBound = False
-            # In case we are converting an aggregate we will pretend this is not bound yet
-            if (lvarname is not None) and (lvarname in self.bound_variables):
-                variableBound = True
-                self.bound_variables.remove(lvarname)
-            # This call may convert an aggregate, setting aggregate_prefix in the process
             r = self.convert_arg(args[1])
-            # The variable is in fact bound
-            if lvarname is not None and op == "=":
-                self.bound_variables.add(lvarname)
-            if self.aggregate_prefix != "":
-                assert lvarname is not None, "Could not find variable assigned by aggregate computation"
-                fresh = self.fresh_variable("tmp")
-                if variableBound:
-                    # The variable was bound, so we generate an equality test instead of an assignment
-                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", " + l + " == castTo32(" + fresh + ")"
-                else:
-                    result = self.aggregate_prefix + "var " + fresh + " = " + r + ", var " + l + " = castTo32(" + fresh + ")"
-                self.aggregate_prefix = ""
-            else:
-                result = prefix + l + " " + op + " " + r + suffix
+            result = prefix + l + " " + op + " " + r + suffix
             return result
 
         atom = getOptField(lit, "Atom")
@@ -709,7 +760,6 @@ class SouffleConverter(object):
         # print rule.tree_str()
         head = getField(rule, "Head")
         tail = getField(rule, "Body")
-        self.lhs_variables.clear()
         headAtoms = getList(head, "Atom", "Head")
         disjunctions = getList(tail, "Conjunction", "Body")
         terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
@@ -737,6 +787,8 @@ class SouffleConverter(object):
             self.converting_tail = False
             for d in convertedDisjunctions:
                 self.files.output(",\n\t".join(heads) + " :- " + ", ".join(d) + ".")
+            self.files.output(self.aggregates)
+            self.aggregates = ""
 
     def process_relation_decl(self, relationdecl):
         """Process a relation declaration and emit output to files"""
@@ -778,7 +830,7 @@ class SouffleConverter(object):
     def process_type(self, typedecl):
         ident = getIdentifier(typedecl)
         if self.preprocess:
-            print "Creating type", ident
+            # print "Creating type", ident
             l = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
             recordType = getOptField(typedecl, "RecordType")
@@ -859,6 +911,7 @@ class SouffleConverter(object):
         decls = getListField(tree, "Declaration", "DeclarationList")
         for decl in decls:
             self.process_decl(decl)
+        self.files.output(self.aggregates)
 
 def main():
     argParser = argparse.ArgumentParser("souffle-converter.py",
