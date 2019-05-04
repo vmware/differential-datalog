@@ -14,7 +14,6 @@ extern function deref(x: Ref<'A>): 'A
  */
 extern function max(x: 'A, y: 'A): 'A
 extern function min(x: 'A, y: 'A): 'A
-extern function pow32(base: 'A, exp: bit<32>): 'A
 
 /*
  * Arithmetic functions
@@ -125,7 +124,6 @@ extern function group_setref_unions(g: Group<Ref<Set<'A>>>): Ref<Set<'A>>
 /* Smallest and largest group elements. */
 extern function group_min(g: Group<'A>): 'A
 extern function group_max(g: Group<'A>): 'A
-extern function group_sum(g: Group<'A>): 'A
 
 /*
  * Vec
