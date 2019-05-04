@@ -104,7 +104,7 @@ def run_remote_tests():
 
 def main():
     run_examples()
-#    run_remote_tests()
+    run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed"
 
 if __name__ == "__main__":
