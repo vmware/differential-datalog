@@ -17,7 +17,6 @@ xfail = [
     "souffle10", # generic component
     "access2",   # input relation modified
     "access3",   # same
-    "aggregates",  # issue 192
     "aggregates2", # max in relation argument
     "aliases",   # assignments to tuples containing variables
     "comp-override1", # component inheritance
@@ -32,15 +31,14 @@ xfail = [
     "independent_body2", # not in DNF form
     "inline_nqueens", # recursive type
     "magic_2sat",     # issue 197
-    "magic_aggregates", # two aggregates in a rule
     "magic_centroids", # input relation modified
     "magic_components", # component inheritance
     "magic_dfa",        # same
     "magic_dominance",  # same
     "magic_nqueens",    # recursive type
-    "magic_perfect_numbers", # aggregate with strange semantics
     "magic_strategies", # component inheritance
     "magic_turing1",    # issue 198
+    "math",             # Trigonometric functions and FP types
 ]
 
 def run_command(command):
@@ -80,7 +78,7 @@ def run_examples():
             continue
         if d in xfail:
             print "Expected to fail", d
-            return 1
+            continue
         compile_example(d, "test.dl")
 
 def run_remote_tests():
@@ -94,7 +92,7 @@ def run_remote_tests():
             if directory in xfail:
                 print "Expected to fail", directory
                 continue
-            if directory[0] < 'm':
+            if directory[0] < 'a':
                 continue
             if not os.path.isdir(directory):
                 code, _ = run_command(["svn", "export", url + tg + "/" + directory])
@@ -105,8 +103,8 @@ def run_remote_tests():
                 shutil.rmtree(directory)
 
 def main():
-#    run_examples()
-    run_remote_tests()
+    run_examples()
+#    run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed"
 
 if __name__ == "__main__":
