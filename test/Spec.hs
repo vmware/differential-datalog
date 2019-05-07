@@ -93,16 +93,12 @@ sOUFFLE_BASE = "./test"
 -- These should be all directories, but currently many tests do not work with
 -- the Souffle translator
 sOUFFLE_DIRS = ["souffle0", -- large Doop example
-                "souffle1", "souffle2", "souffle3", "souffle4", "souffle5",
-                 -- "souffle6", -- uses structs
+                "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
                  -- "souffle7", -- uses a recursive type
                  -- "souffle8", -- uses component inheritance
                  -- "souffle9", -- uses generic component
                  -- "souffle10", -- generic component
-                 "souffle11",
-                 "souffle12",
-                 -- "souffle13", -- unimplemented re_match
-                 "souffle14"]
+                 "souffle11", "souffle12", "souffle13", "souffle14", "souffle15", "souffle16"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
@@ -120,10 +116,7 @@ convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
     dir <- makeAbsolute $ testdir
     let inputDl = dir </> "test.dl"  -- input file always called test.dl
-        outputDl = dir </> "souffle.dl"  -- DDlog file produced
-        outputDat = dir </> "souffle.dat"  -- input data file
-        log = dir </> "souffle.log"  -- conversion log
-        convert_proc = (proc (dir </> "../../tools/souffle-converter.py") [inputDl, outputDl, outputDat, log]) { cwd = Just dir }
+        convert_proc = (proc (dir </> "../../tools/souffle-converter.py") [inputDl, dir]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "souffle-converter.py failed with exit code " ++ show code ++

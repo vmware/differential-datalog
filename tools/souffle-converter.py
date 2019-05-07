@@ -10,7 +10,6 @@ import os
 import argparse
 import parglare # parser generator
 
-debug = False
 skip_files = False  # If true do not process .input and .output declarations
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
                     # This makes it possible to concatenate multiple .dat files together
@@ -34,6 +33,11 @@ def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
     keys = dict1.viewkeys() & dict2.viewkeys()
     return { x : dict1[x] for x in keys }
+
+def dict_append(dict1, dict2):
+    """Add everything on dict2 on top of dict1"""
+    for k, v in dict2.items():
+        dict1[k] = v
 
 def dict_subtract(dict1, dict2):
     """Remove from dict1 all the keys from dict2"""
@@ -68,6 +72,10 @@ class Type(object):
 
     @classmethod
     def create(cls, name, equivalentTo):
+        if name in cls.types:
+            prev = cls.types[name]
+            print "Warning: redefinition of type " + name + " ignored"
+            return None
         if name != equivalentTo:
             typ = Type(name, "T" + name)
         else:
@@ -230,22 +238,19 @@ def getField(node, field):
 
 def getList(node, field, fields):
     """Returns a list produced by a parglare *right-recursive* rule"""
-    global debug
-    if debug:
-        print node
-        for c in node.children:
-            print "\t", c
-        print "----"
     if len(node.children) == 0:
         return []
     else:
-        f = getField(node, field)
-        tail = getOptField(node, fields)
-        if tail is None:
-            return [f]
-        else:
-            fs = getList(tail, field, fields)
-            return [f] + fs
+        result = []
+        while True:
+            f = getOptField(node, field)
+            if f is not None:
+                result.append(f)
+            tail = getOptField(node, fields)
+            if tail is None:
+                return result
+            else:
+                node = tail
 
 def getArray(node, field):
     return [x for x in node.children if x.symbol.name == field]
@@ -618,6 +623,7 @@ class SouffleConverter(object):
         self.bound_variables = save
         args = common
         args[variable] = "Tnumber"
+        dict_append(self.bound_variables, args)
 
         self.aggregates += "relation " + relname + "(" + join_dict(", ", ":", args) + ")\n"
         self.aggregates += relname + "(" + ", ".join(args.keys()) + ") :- " + result + ".\n"
@@ -663,6 +669,7 @@ class SouffleConverter(object):
 
         relop = getOptField(lit, "Relop")
         if relop is not None:
+            print self.bound_variables
             args = getArray(lit, "Arg")
             assert len(args) == 2
             op = relop.children[0].value
@@ -831,7 +838,7 @@ class SouffleConverter(object):
         ident = getIdentifier(typedecl)
         if self.preprocess:
             # print "Creating type", ident
-            l = getOptField(typedecl, "UnionType")
+            union = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
             recordType = getOptField(typedecl, "RecordType")
             sqbrace = getOptField(typedecl, "[")
@@ -840,25 +847,27 @@ class SouffleConverter(object):
                 fields = getList(recordType, "TypeId", "RecordType")
                 components = [Type.get(self.convert_typeid(f)) for f in fields]
                 typ = Type.create_tuple(ident, components)
-                return typ
+                return
             if sqbrace is not None:
                 typ = Type.create(ident, "TEmpty")
-                return typ
+                return
 
             equiv = None
-            if l is not None:
+            if union is not None:
                 # If we have a union type we expect all members
                 # of the list to be really equivalent types, so we only
                 # get the first one.
-                tid = getField(l, "TypeId")
+                tid = getField(union, "TypeId")
                 equiv = self.convert_typeid(tid)
             elif numtype is not None:
                 equiv = "number"
-            typ = Type.create(ident, equiv)
-            return typ
+            Type.create(ident, equiv)
+            return
+        if ident == "number":
+            # already declared
+            return
         typ = Type.get(ident)
         self.files.output(typ.declaration())
-        return typ
 
     def process_decl(self, decl):
         """Process a declaration; dispatches on declaration kind"""
