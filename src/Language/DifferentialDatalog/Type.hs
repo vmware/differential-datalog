@@ -47,8 +47,10 @@ module Language.DifferentialDatalog.Type(
     consTreeAbduct,
     typeMapM,
     funcTypeArgSubsts,
+    funcGroupArgTypes,
     sET_TYPES,
     gROUP_TYPE,
+    isGroup,
     rEF_TYPE,
     checkIterable,
     typeIterType
@@ -192,6 +194,13 @@ exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMa
 funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
 funcTypeArgSubsts d p f@Function{..} argtypes =
     unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
+
+-- | Functions that take an argument of type `Group<>` are treated in a special
+-- way in Compile.hs. This function returns the list of `Group` types passed as
+-- arguments to the function.
+funcGroupArgTypes :: DatalogProgram -> Function -> [Type]
+funcGroupArgTypes d Function{..} =
+    nub $ filter (isGroup d) $ map typ funcArgs
 
 structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
 structTypeArgs d p ctx cname argtypes = do
@@ -392,6 +401,11 @@ isTuple :: (WithType a) => DatalogProgram -> a -> Bool
 isTuple d a = case typ' d a of
                    TTuple _ _ -> True
                    _          -> False
+
+isGroup :: (WithType a) => DatalogProgram -> a -> Bool
+isGroup d a = case typ' d a of
+                   TOpaque _ t _ | t == gROUP_TYPE -> True
+                   _                               -> False
 
 -- | Check if 'a' and 'b' have idential types up to type aliasing;
 -- throw exception if they don't.
@@ -686,6 +700,7 @@ typeIterType d t =
     case typ' d t of
          TOpaque _ tname [t'] | elem tname sET_TYPES -> Just t'
          TOpaque _ "std.Map" [k,v]                   -> Just $ tTuple [k,v]
+         TOpaque _ tname [t'] | tname == gROUP_TYPE  -> Just $ t'
          _                                           -> Nothing
 
 typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
@@ -693,6 +708,7 @@ typeIsIterable d x =
     case typ' d x of
          TOpaque _ tname [_] | elem tname sET_TYPES -> True
          TOpaque _ "std.Map" [_,_]                  -> True
+         TOpaque _ tname _   | tname == gROUP_TYPE  -> True
          _                                          -> False
 
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> ECtx -> a -> me ()

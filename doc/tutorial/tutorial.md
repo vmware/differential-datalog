@@ -855,34 +855,34 @@ BestPrice(item, best_price) :-
     var best_price = Aggregate((item), group_min(price)).
 ```
 
-What if we wanted to return the name of the vendor along with the lowest price for each item?
-Ideally, we would like to write a new aggregation function that takes `(vendor, price)` tuples and
-pick one with the smallest price. DDlog does allow one to define new aggregate functions, but
-currently they must be implemented in Rust (see, e.g., `groupXXX()` functions in `lib/std.rs` and
-`lib/std.dl`).
+Here `group_min()` is one of several aggregation functions defined in
+`lib/std.rs`.  What if we wanted to return the name of the vendor along with the
+lowest price for each item?  This requires an aggregation function that takes a
+group of `(vendor, price)` tuples and picks one with the smallest price.  To
+enable such use cases, DDlog allows users to implement their own custom
+aggregation functions:
 
-The following solution is implemented completely in DDlog.  It first collects all `(vendor,
-price)` pairs for each item in the vector and then scans the vector for a pair with the smallest
-price:
 
 ```
-output relation BestVendor(item: string, vendor: string, price: bit<64>)
+/* User-defined aggregate that picks a tuple with the smallest price */
+function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
+{
+    var min_vendor = "";
+    var min_price: bit<64> = 'hffffffffffffffff;
+    for (vendor_price in g) {
+        (var vendor, var price) = vendor_price;
+        if (price < min_price) {
+            min_vendor = vendor;
+            min_price = price
+        } else ()
+    };
+    (min_vendor, min_price)
+}
 
 BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
-    var vendor_price_vec = Aggregate((item), group2vec((vendor, price))),
-    (var best_vendor, var best_price) = {
-        var min_vendor = "";
-        var min_price = 'hffffffffffffffff: bit<64>;
-        for (vendor_price in vendor_price_vec) {
-            (var vendor, var price) = vendor_price;
-            if (price < min_price) {
-                min_vendor = vendor;
-                min_price = price
-            } else ()
-        };
-        (min_vendor, min_price)
-    }.
+    var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
+    (var best_vendor, var best_price) = best_vendor_price.
 ```
 
 ## Advanced types

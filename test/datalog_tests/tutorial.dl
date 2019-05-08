@@ -226,21 +226,25 @@ WorstPrice(item, best_price) :-
 
 output relation BestVendor(item: string, vendor: string, price: bit<64>)
 
+// TODO: this can really benefit from the ability to access tuple fields by number
+function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
+{
+    var min_vendor = "";
+    var min_price: bit<64> = 'hffffffffffffffff;
+    for (vendor_price in g) {
+        (var vendor, var price) = vendor_price;
+        if (price < min_price) {
+            min_vendor = vendor;
+            min_price = price
+        } else ()
+    };
+    (min_vendor, min_price)
+}
+
 BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
-    var vendor_price_vec = Aggregate((item), group2vec((vendor, price))),
-    (var best_vendor, var best_price) = {
-        var min_vendor = "";
-        var min_price = 'hffffffffffffffff: bit<64>;
-        for (vendor_price in vendor_price_vec) {
-            (var vendor, var price) = vendor_price;
-            if (price < min_price) {
-                min_vendor = vendor;
-                min_price = price
-            } else ()
-        };
-        (min_vendor, min_price)
-    }.
+    var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
+    (var best_vendor, var best_price) = best_vendor_price.
 
 /*
  * Example: tagged unions

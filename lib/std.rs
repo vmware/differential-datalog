@@ -18,6 +18,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::ops;
 use std::cmp;
+use std::marker;
+use std::slice;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -79,6 +81,36 @@ pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, t
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
 pub struct std_Vec<T> {
     pub x: Vec<T>
+}
+
+/* This is needed so we can support for-loops over `Vec`'s
+ */
+pub struct VecIter<'a, X> {
+    iter: slice::Iter<'a, X>
+}
+
+impl<'a, X> VecIter<'a, X> {
+    pub fn new(vec: &'a std_Vec<X>) -> VecIter<'a, X> {
+        VecIter{iter: vec.x.iter()}
+    }
+}
+
+impl<'a, X> Iterator for VecIter<'a, X> {
+    type Item = &'a X;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl <'a, T> std_Vec<T> {
+    pub fn iter(&'a self) -> VecIter<'a, T> {
+        VecIter::new(self)
+    }
 }
 
 impl <T: Ord> std_Vec<T> {
@@ -178,6 +210,36 @@ pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
 pub struct std_Set<T: Ord> {
     pub x: BTreeSet<T>
+}
+
+/* This is needed so we can support for-loops over `Set`'s
+ */
+pub struct SetIter<'a, X> {
+    iter: btree_set::Iter<'a, X>
+}
+
+impl<'a, X: Ord> SetIter<'a, X> {
+    pub fn new(set: &'a std_Set<X>) -> SetIter<'a, X> {
+        SetIter{iter: set.x.iter()}
+    }
+}
+
+impl<'a, X> Iterator for SetIter<'a, X> {
+    type Item = &'a X;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl <'a, T: Ord> std_Set<T> {
+    pub fn iter(&'a self) -> SetIter<'a, T> {
+        SetIter::new(self)
+    }
 }
 
 impl <T: Ord> std_Set<T> {
@@ -302,6 +364,36 @@ pub struct std_Map<K: Ord,V> {
     pub x: BTreeMap<K,V>
 }
 
+/* This is needed so we can support for-loops over `Map`'s
+ */
+pub struct MapIter<'a, K, V> {
+    iter: btree_map::Iter<'a, K, V>
+}
+
+impl<'a, K: Ord, V> MapIter<'a, K, V> {
+    pub fn new(map: &'a std_Map<K, V>) -> MapIter<'a, K, V> {
+        MapIter{iter: map.x.iter()}
+    }
+}
+
+impl<'a, K, V> Iterator for MapIter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl <'a, K: Ord, V> std_Map<K, V> {
+    pub fn iter(&'a self) -> MapIter<'a, K, V> {
+        MapIter::new(self)
+    }
+}
+
 impl <K: Ord, V> std_Map<K,V> {
     pub fn new() -> Self {
         std_Map{x: BTreeMap::new()}
@@ -385,8 +477,6 @@ pub fn std_map_insert_imm<K: Ord+Clone, V: Clone>(m: &std_Map<K,V>, k: &K, v: &V
     m2
 }
 
-
-
 pub fn std_map_get<K: Ord, V: Clone>(m: &std_Map<K,V>, k: &K) -> std_Option<V> {
     option2std(m.x.get(k).cloned())
 }
@@ -399,14 +489,11 @@ pub fn std_map_is_empty<K: Ord, V: Clone>(m: &std_Map<K,V>) -> bool {
     m.x.is_empty()
 }
 
-
-
 pub fn std_map_union<K: Ord + Clone,V: Clone>(m1: &std_Map<K,V>, m2: &std_Map<K,V>) -> std_Map<K, V> {
     let mut m = m1.clone();
     m.x.append(&mut m2.x.clone());
     m
 }
-
 
 
 // strings
@@ -469,50 +556,122 @@ pub fn std_hash128<T: Hash>(x: &T) -> u128 {
 }
 
 /*
- * Group trait (used in aggregation operators)
+ * Group type (used in aggregation operators)
  */
-pub trait Group<X> {
-    fn size(&self) -> u64;
-    fn ith(&self, i: u64) -> X;
+pub struct std_Group<'a, X: FromValue> {
+    _phantom: marker::PhantomData<X>,
+    /* TODO: remove "pub" */
+    pub group: &'a [(&'a Value, Weight)]
+}
+
+/* This is needed so we can support for-loops over `Group`'s
+ */
+pub struct GroupIter<'a, X> {
+    _phantom: marker::PhantomData<X>,
+    iter: slice::Iter<'a, (&'a Value, Weight)>
+}
+
+impl<'a, X: FromValue> GroupIter<'a, X> {
+    pub fn new(grp: &'a[(&'a Value, Weight)]) -> GroupIter<'a, X> {
+        GroupIter{_phantom: marker::PhantomData, iter: grp.iter()}
+    }
+}
+
+impl<'a, X: 'a + FromValue> Iterator for GroupIter<'a, X> {
+    type Item = &'a X;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            None => None,
+            Some((x,_)) => Some(X::from_value(x))
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a, X: FromValue> std_Group<'a, X> {
+    pub fn new(group: &'a[(&'a Value, Weight)]) -> std_Group<'a, X> {
+        std_Group{_phantom: marker::PhantomData, group: group}
+    }
+
+    fn size(&self) -> u64 {
+        self.group.len() as u64
+    }
+
+    fn first(&'a self) -> &'a X {
+        X::from_value(self.group[0].0)
+    }
+
+    fn nth_unchecked(&'a self, n: u64) -> &'a X {
+        X::from_value(self.group[n as usize].0)
+    }
+
+    pub fn iter(&'a self) -> GroupIter<'a, X> {
+        GroupIter::new(self.group)
+    }
+}
+
+impl<'a, X: FromValue + Clone> std_Group<'a, X> {
+    fn nth(&'a self, n: u64) -> std_Option<X> {
+        if self.size() > n {
+            std_Option::std_Some{x: X::from_value(self.group[n as usize].0).clone()}
+        } else {
+            std_Option::std_None
+        }
+    }
 }
 
 /*
  * Standard aggregation function
  */
-pub fn std_count<A, G:Group<A>+?Sized>(g: &G) -> u64 {
+pub fn std_group_count<A: FromValue>(g: &std_Group<A>) -> u64 {
     g.size()
 }
 
-pub fn std_group2set<A: Ord, G: Group<A>+?Sized>(g: &G) -> std_Set<A> {
+pub fn std_group_first<A: FromValue + Clone>(g: &std_Group<A>) -> A {
+    (*g.first()).clone()
+}
+
+pub fn std_group_nth<A: FromValue + Clone>(g: &std_Group<A>, n: &u64) -> std_Option<A> {
+    g.nth(*n)
+}
+
+pub fn std_group2set<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> std_Set<A> {
     let mut res = std_Set::new();
-    for i in 0..g.size() {
-        res.insert(g.ith(i));
+    for v in g.iter() {
+        std_set_insert(&mut res, v);
     };
     res
 }
 
-pub fn std_group_set_unions<A: Ord+Clone, G: Group<std_Set<A>>+?Sized>(g: &G) -> std_Set<A> {
+pub fn std_group_set_unions<A: Ord+Clone>(g: &std_Group<std_Set<A>>) -> std_Set<A>
+where std_Set<A>: FromValue
+{
     let mut res = std_Set::new();
-    for i in 0..g.size() {
-        for v in g.ith(i).x.iter() {
-           res.insert(v.clone());
+    for gr in g.iter() {
+        for v in gr.iter() {
+           std_set_insert(&mut res, v);
         }
     };
     res
 }
 
-pub fn std_group_setref_unions<A: Ord+Clone, G: Group<std_Ref<std_Set<A>>>+?Sized>(g: &G)
+pub fn std_group_setref_unions<A: Ord+Clone>(g: &std_Group<std_Ref<std_Set<A>>>)
     -> std_Ref<std_Set<A>>
+where std_Ref<std_Set<A>>: FromValue
 {
     if g.size() == 1 {
-        g.ith(0)
+        g.first().clone()
     } else {
         let mut res: std_Ref<std_Set<A>> = std_ref_new(&std_Set::new());
         {
-            let rres = std_Ref::get_mut(&mut res).unwrap();
-            for i in 0..g.size() {
-                for v in g.ith(i).x.iter() {
-                    rres.insert(v.clone());
+            let mut rres = std_Ref::get_mut(&mut res).unwrap();
+            for gr in g.iter() {
+                for v in gr.iter() {
+                    std_set_insert(&mut rres, v);
                 }
             };
         }
@@ -520,50 +679,38 @@ pub fn std_group_setref_unions<A: Ord+Clone, G: Group<std_Ref<std_Set<A>>>+?Size
     }
 }
 
-pub fn std_group2vec<A: Ord, G:Group<A>+?Sized>(g: &G) -> std_Vec<A> {
+pub fn std_group2vec<A: Ord+FromValue+Clone>(g: &std_Group<A>) -> std_Vec<A>
+{
     let mut res = std_Vec::new();
-    for i in 0..g.size() {
-        res.push(g.ith(i));
+    for v in g.iter() {
+        std_vec_push(&mut res, v);
     };
     res
 }
 
-pub fn std_group2map<K: Ord, V, G:Group<(K,V)>+?Sized>(g: &G) -> std_Map<K,V> {
+pub fn std_group2map<K: Ord+Clone, V: Clone>(g: &std_Group<(K,V)>) -> std_Map<K,V>
+where (K,V): FromValue
+{
     let mut res = std_Map::new();
-    for i in 0..g.size() {
-        let (k,v) = g.ith(i);
-        res.insert(k, v);
+    for v in g.iter() {
+        let (k,v) = v;
+        std_map_insert(&mut res, k, v);
     };
     res
 }
 
-pub fn std_group_unzip<X: Ord, Y: Ord, G: Group<(X,Y)>+?Sized>(g: &G) -> (std_Vec<X>, std_Vec<Y>) {
-    let mut xs = std_Vec::new();
-    let mut ys = std_Vec::new();
-    for i in 0..g.size() {
-        let (x,y) = g.ith(i);
-        xs.push(x);
-        ys.push(y);
-    };
-    (xs,ys)
+pub fn std_group_min<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> A {
+    g.first().clone()
 }
 
-pub fn std_group_first<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
-    g.ith(0)
+pub fn std_group_max<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> A {
+    g.nth_unchecked(g.size() - 1).clone()
 }
 
-pub fn std_group_min<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
-    g.ith(0)
-}
-
-pub fn std_group_max<A: Ord, G: Group<A>+?Sized>(g: &G) -> A {
-    g.ith(g.size() - 1)
-}
-
-pub fn std_group_sum<A: ops::Add + ops::AddAssign + Clone, G: Group<A>+?Sized>(g: &G) -> A {
-    let mut res = g.ith(0).clone();
-    for i in 1..g.size() {
-        res += g.ith(i).clone();
+pub fn std_group_sum<A: ops::Add + ops::AddAssign + Clone + FromValue>(g: &std_Group<A>) -> A {
+    let mut res = std_group_first(g);
+    for v in g.iter().skip(1) {
+        res += v.clone();
     };
     res
 }
@@ -583,7 +730,6 @@ impl IntoRecord for tuple0 {
         ().into_record()
     }
 }
-
 
 macro_rules! decl_tuple {
     ( $name:ident, $( $t:tt ),+ ) => {

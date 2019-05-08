@@ -17,6 +17,36 @@ pub struct tinyset_Set64<T: u64set::Fits64 + Ord> {
     pub x: u64set::Set64<T>
 }
 
+/* This is needed so we can support for-loops over `Set64`'s
+ */
+pub struct Set64Iter<'a, X:u64set::Fits64 + Ord> {
+    iter: u64set::Iter64<'a, X>
+}
+
+impl<'a, X: u64set::Fits64 + Ord> Set64Iter<'a, X> {
+    pub fn new(set: &'a tinyset_Set64<X>) -> Set64Iter<'a, X> {
+        Set64Iter{iter: set.x.iter()}
+    }
+}
+
+impl<'a, X:u64set::Fits64 + Ord + 'a> Iterator for Set64Iter<'a, X> {
+    type Item = X;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl <'a, T: tinyset::Fits64 + Ord> tinyset_Set64<T> {
+    pub fn iter(&'a self) -> Set64Iter<'a, T> {
+        Set64Iter::new(self)
+    }
+}
+
 impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sorted: collections::BTreeSet<T> = self.x.iter().collect();
@@ -193,19 +223,21 @@ pub fn std_set_unions<X: u64set::Fits64 + Ord + Clone>(sets: &std_Vec<tinyset_Se
     tinyset_Set64{x: s}
 }
 
-pub fn tinyset_group2set<X: u64set::Fits64 + Ord, G: Group<X>+?Sized>(g: &G) -> tinyset_Set64<X> {
+pub fn tinyset_group2set<X: u64set::Fits64 + Ord + FromValue>(g: &std_Group<X>) -> tinyset_Set64<X> {
     let mut res = tinyset_Set64::new();
-    for i in 0..g.size() {
-        res.insert(g.ith(i));
+    for v in g.iter() {
+        tinyset_insert(&mut res, v);
     };
     res
 }
 
-pub fn tinyset_group_set_unions<X: u64set::Fits64 + Ord + Clone, G: Group<tinyset_Set64<X>>+?Sized>(g: &G) -> tinyset_Set64<X> {
+pub fn tinyset_group_set_unions<X: u64set::Fits64 + Ord + Clone>(g: &std_Group<tinyset_Set64<X>>) -> tinyset_Set64<X>
+where tinyset_Set64<X>: FromValue
+{
     let mut res = u64set::Set64::new();
-    for i in 0..g.size() {
-        for v in g.ith(i).x.iter() {
-            res.insert(v);
+    for gr in g.iter() {
+        for v in gr.iter() {
+            res.insert(v.clone());
         }
         //`extend` should be more efficient, but is not yet implemented in the tinyset library
         //res.extend(&mut g.ith(i).x.iter());
@@ -213,18 +245,19 @@ pub fn tinyset_group_set_unions<X: u64set::Fits64 + Ord + Clone, G: Group<tinyse
     tinyset_Set64{x: res}
 }
 
-pub fn tinyset_group_setref_unions<X: u64set::Fits64 + Ord + Clone, G: Group<std_Ref<tinyset_Set64<X>>>+?Sized>(g: &G)
+pub fn tinyset_group_setref_unions<X: u64set::Fits64 + Ord + Clone>(g: &std_Group<std_Ref<tinyset_Set64<X>>>)
     -> std_Ref<tinyset_Set64<X>> 
+where std_Ref<tinyset_Set64<X>>: FromValue
 {
-    if g.size() == 1 {
-        g.ith(0)
+    if std_group_count(g) == 1 {
+        std_group_first(g)
     } else {
         let mut res = std_ref_new(&tinyset_Set64{x: u64set::Set64::new()});
         {
             let rres = std_Ref::get_mut(&mut res).unwrap();
-            for i in 0..g.size() {
-                for v in g.ith(i).x.iter() {
-                    rres.insert(v);
+            for gr in g.iter() {
+                for v in gr.iter() {
+                    rres.insert(v.clone());
                 }
                 //not implemented
                 //res.extend(&mut g.ith(i).x.iter());

@@ -76,6 +76,19 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
      ((("" ++ ip_addr_t2string(ip)) ++ ":") ++ std.__builtin_2string(port)))
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) =
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
+function best_vendor (g: std.Group<(string, bit<64>)>): (string, bit<64>) =
+    (var min_vendor = "";
+     ((var min_price: bit<64>) = 64'd18446744073709551615;
+      (for (vendor_price in g) {
+           ((var vendor, var price) = vendor_price;
+            if (price < min_price) {
+                (min_vendor = vendor;
+                 min_price = price)
+            } else {
+                  ()
+              })
+       };
+       (min_vendor, min_price))))
 function ip_addr_t2string (ip: ip_addr_t): string =
     ((((((("" ++ std.__builtin_2string(ip.addr[31:24])) ++ ".") ++ std.__builtin_2string(ip.addr[23:16])) ++ ".") ++ std.__builtin_2string(ip.addr[15:8])) ++ ".") ++ std.__builtin_2string(ip.addr[7:0]))
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t =
@@ -114,18 +127,27 @@ extern function split (s: string, sep: string): std.Vec<string>
 function split_ip_list (x: string): std.Vec<string> =
     split(x, " ")
 extern function std.__builtin_2string (x: 'X): string
-extern function std.count (g: std.Group<'A>): bit<64>
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
 extern function std.group2set (g: std.Group<'A>): std.Set<'A>
 extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_count (g: std.Group<'A>): bit<64>
 extern function std.group_first (g: std.Group<'A>): 'A
 extern function std.group_max (g: std.Group<'A>): 'A
 extern function std.group_min (g: std.Group<'A>): 'A
+extern function std.group_nth (g: std.Group<'A>, n: bit<64>): std.Option<'A>
 extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
 extern function std.group_sum (g: std.Group<'A>): 'A
-extern function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+    ((var xs: std.Vec<'X>) = std.vec_empty();
+     ((var ys: std.Vec<'Y>) = std.vec_empty();
+      (for (v in g) {
+           ((var x, var y) = v;
+            (std.vec_push(xs, x);
+             std.vec_push(ys, y)))
+       };
+       (xs, ys))))
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
@@ -251,18 +273,7 @@ Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 BestPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_min(price)).
 WorstPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_max(price)).
-BestVendor(.item=item, .vendor=best_vendor, .price=best_price) :- Price(.item=item, .vendor=vendor, .price=price), var vendor_price_vec = Aggregate((item), std.group2vec((vendor, price))), (var best_vendor, var best_price) = (var min_vendor = "";
-                                                                                                                                                                                                                                  (var min_price = (64'd18446744073709551615: bit<64>);
-                                                                                                                                                                                                                                   (for (vendor_price in vendor_price_vec) {
-                                                                                                                                                                                                                                        ((var vendor, var price) = vendor_price;
-                                                                                                                                                                                                                                         if (price < min_price) {
-                                                                                                                                                                                                                                             (min_vendor = vendor;
-                                                                                                                                                                                                                                              min_price = price)
-                                                                                                                                                                                                                                         } else {
-                                                                                                                                                                                                                                               ()
-                                                                                                                                                                                                                                           })
-                                                                                                                                                                                                                                    };
-                                                                                                                                                                                                                                    (min_vendor, min_price)))).
+BestVendor(.item=item, .vendor=best_vendor, .price=best_price) :- Price(.item=item, .vendor=vendor, .price=price), var best_vendor_price = Aggregate((item), best_vendor((vendor, price))), (var best_vendor, var best_price) = best_vendor_price.
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP4{.ip4=IP4Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 TCPDstPort(.port=port) :- Packet(.pkt=EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPTCP{.tcp=TCPPkt{.src=_, .dst=port, .flags=_}}}}}).
 UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port != 16'd0).
