@@ -614,7 +614,7 @@ Rel4(x,y,b) :- Rel1(x,y),
 input relation AggregateMe1(x: string, y: string)
 
 output relation Aggregate1(x: string, cnt: bit<64>)
-Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), count(y)).
+Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), group_count(y)).
 
 output relation Aggregate2(x: string, set: Set<string>)
 Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)).

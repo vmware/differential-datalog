@@ -244,7 +244,7 @@ box d t x | typeIsSmall d t = x
 
 boxDeref :: DatalogProgram -> Type -> Doc -> Doc
 boxDeref d t x | typeIsSmall d t = x
-               | otherwise         = "*" <> x
+               | otherwise       = "*" <> x
 
 mkBoxType :: (WithType a) => DatalogProgram -> a -> Doc
 mkBoxType d x | typeIsSmall d (typ x) = mkType x
@@ -818,7 +818,9 @@ mkRelId2Name d =
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "{"  $$
+    "fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType          $$
+    where_clause                                                                                                                     $$
+    "{"                                                                                                                              $$
     (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                           $$
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
@@ -829,6 +831,10 @@ mkFunc d f@Function{..} | isJust funcDef =
     tvars = case funcTypeVars f of
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Eq + Ord + Clone + Hash + PartialEq + PartialOrd") . pp) tvs) <> ">"
+    where_clause = case funcGroupArgTypes d f of
+                        []     -> empty
+                        gtypes -> "where" $$
+                                  (nest' $ vcommaSep $ map (\t -> mkType (head $ typeArgs $ typ' d t) <> ": FromValue") gtypes)
 
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: DatalogProgram -> S.Set Type -> S.Set Type -> Doc
@@ -850,7 +856,7 @@ mkValType d types grp_types =
     "}"                                                                                     $$
     "decl_val_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                   $$
     "decl_record_mutator_val_enum!(Value, <>," <+> decl_mutator_entries <> ");"             $$
-    (vcat $ map mkgrptype $ S.toList grp_types)
+    (vcat $ map mkfromval $ S.toList grp_types)
     where
     consname t = mkValConstructorName' d t
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
@@ -860,14 +866,11 @@ mkValType d types grp_types =
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
-    mkgrptype t =
-        "impl<'a> Group<" <> mkType t <> "> for [(&'a Value, Weight)] {"                                        $$
-        "    fn size(&self) -> u64 {"                                                                           $$
-        "        self.len() as u64"                                                                             $$
-        "    }"                                                                                                 $$
-        "    fn ith(&self, i:u64) ->" <+> mkType t <+> "{"                                                      $$
-        "        match self[i as usize].0 {"                                                                    $$
-        (nest' $ nest' $ nest' $ "Value::" <> consname t <> "(x) => (" <> boxDeref d t "*x" <> ").clone(),")    $$
+    mkfromval t =
+        "impl FromValue for " <> mkType t <> " {"                                                               $$
+        "    fn from_value(v: &Value) -> &Self {"                                                               $$
+        "        match v {"                                                                                     $$
+        "            Value::" <> consname t <> "(x) => &" <> boxDeref d t "*x" <> ","                           $$
         "            _ => panic!(\"unexpected constructor\")"                                                   $$
         "        }"                                                                                             $$
         "    }"                                                                                                 $$
@@ -1261,8 +1264,9 @@ mkAggregate d prefix rl idx vs v fname e = do
     -- - return variables still in scope after this term
     open <- openTuple d ("*" <> kEY_VAR) key_vars
     let tmap = ruleAggregateTypeParams d rl idx
-    let tparams = hcat $ map (\tvar -> mkType (tmap M.! tvar) <> ",") $ funcTypeVars $ getFunc d fname
-    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <> "::<" <> tparams <> "_>(" <> gROUP_VAR <> ");"
+    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars $ getFunc d fname
+    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <>
+                    "::<" <> tparams <> ">(&std_Group::new(" <> gROUP_VAR <> "));"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
     let agfun = braces'
                 $ open $$
@@ -1986,9 +1990,10 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
 
 mkExpr' _ _ EFor{..} = (doc, EVal)
     where
-    doc = ("for" <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".x.iter() {") $$
-          (nest' $ val exprBody)                                                 $$
+    doc = ("for" <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
+          (nest' $ val exprBody)                                               $$
           "}"
+
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments
 -- are compiled into normal assignments.  Note: assignments in rule
 -- atoms are handled by a different code path.

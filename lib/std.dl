@@ -77,28 +77,49 @@ extern function str_to_lower(s: string): string
 extern function hash64(x: 'X): bit<64>
 extern function hash128(x: 'X): bit<128>
 
+/* The `Group` type is used exclusively in aggregation operations.  It
+ * represents a non-empty list of objects sorted in ascending order.
+ */ 
+extern type Group<'A>
+
 /*
  * Standard aggregates
  */
 
-extern type Group<'A>
+/* Returns the number of elements in the group, which is guaranteed
+ * to be >0. */
+extern function group_count(g: Group<'A>): bit<64>
 
-extern function count(g: Group<'A>): bit<64>
+/* Returns the first element of the group.
+ * It always exists, as aggregation cannot return an empty group. */
+extern function group_first(g: Group<'A>): 'A
+
+/* Returns `n`th element of the group if the group is large enough
+ * or `None` otherwise.
+ */
+extern function group_nth(g: Group<'A>, n: bit<64>): Option<'A>
+
 extern function group2set(g: Group<'A>): Set<'A>
 extern function group2vec(g: Group<'A>): Vec<'A>
 extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
-extern function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>)
 extern function group_sum(g: Group<'A>): 'A
+
+function group_unzip(g: Group<('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
+    var xs: Vec<'X> = vec_empty();
+    var ys: Vec<'Y> = vec_empty();
+    for (v in g) {
+        (var x, var y) = v;
+        vec_push(xs, x);
+        vec_push(ys, y)
+    };
+    (xs,ys)
+}
 
 extern function group_set_unions(g: Group<Set<'A>>): Set<'A>
 
 /* Optimized version of group_set_unions that, when the group consits of
  * a single set, simply returns the reference to this set. */
 extern function group_setref_unions(g: Group<Ref<Set<'A>>>): Ref<Set<'A>>
-
-/* Returns the first element of the group.
- * It always exists, as aggregation cannot return an empty group. */
-extern function group_first(g: Group<'A>): 'A
 
 /* Smallest and largest group elements. */
 extern function group_min(g: Group<'A>): 'A
