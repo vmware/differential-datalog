@@ -226,14 +226,14 @@ class Files(object):
         self.outputDataFile.write(text + terminator + "\n")
 
     def done(self, dumporder):
+        global relationPrefix
         self.outputData("echo Finished adding data, committing", ";")
         self.outputData("commit", ";")
         if len(dumporder) == 0:
             self.outputData("dump", ";")
         else:
             for r in dumporder:
-                self.outputData("dump " + r, ";")
-        self.outputData("dump", ";")
+                self.outputData("dump " + relationPrefix + r, ";")
         self.outputData("echo done", ";")
         self.outputData("exit", ";")
         self.outFile.close()
@@ -635,6 +635,8 @@ class SouffleConverter(object):
         result += "), "
 
         func = agg.children[0].value
+        if func == "count":
+            func = "count32"
         result += "group_" + func + "(" + call + "))"
 
         # Restore the bound variables

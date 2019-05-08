@@ -22,4 +22,4 @@ function random(): bit<32> = 0
 function land(l: bit<32>, r: bit<32>): bit<32> = if (l != 0 and r != 0) 1 else 0
 function lor(l: bit<32>, r: bit<32>): bit<32> = if (l == 0 and r == 0) 0 else 1
 function lnot(l: bit<32>): bit<32> = if (l != 0) 0 else 1
-function group_count(g: Group<'A>): bit<32> = castTo32(count(g))
+function group_count32(g: Group<'A>): bit<32> = castTo32(group_count(g))
