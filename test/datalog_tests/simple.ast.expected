@@ -290,21 +290,48 @@ function shadow (): string =
           std.Some{.x=var v} -> v,
           std.None{} -> ""
       }))
+function souffle_lib.castTo32 (i: bit<64>): bit<32> =
+    i[31:0]
+function souffle_lib.castTo64 (i: bit<32>): bit<64> =
+    (32'd0 ++ i)
 function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString =
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
 function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
     std.string_contains(intern.istring_str(s), intern.istring_str(i))
+function souffle_lib.group_count32 (g: std.Group<'A>): bit<32> =
+    souffle_lib.castTo32(std.group_count(g))
+function souffle_lib.land (l: bit<32>, r: bit<32>): bit<32> =
+    if ((l != 32'd0) and (r != 32'd0)) {
+        32'd1
+    } else {
+          32'd0
+      }
+function souffle_lib.lnot (l: bit<32>): bit<32> =
+    if (l != 32'd0) {
+        32'd0
+    } else {
+          32'd1
+      }
+function souffle_lib.lor (l: bit<32>, r: bit<32>): bit<32> =
+    if ((l == 32'd0) and (r == 32'd0)) {
+        32'd0
+    } else {
+          32'd1
+      }
 function souffle_lib.ord (s: intern.IString): bit<32> =
     intern.istring_ord(s)
-extern function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool
-function souffle_lib.strlen (s: intern.IString): bit<64> =
-    std.string_len(intern.istring_str(s))
-function souffle_lib.substr (s: intern.IString, i: bit<64>, l: bit<64>): intern.IString =
-    intern.string_intern(std.string_substr(intern.istring_str(s), i, (i + l)))
-function souffle_lib.to_number (s: intern.IString): bit<64> =
+function souffle_lib.random (): bit<32> =
+    32'd0
+function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool =
+    regex.regex_match(intern.istring_str(pattern), intern.istring_str(s))
+function souffle_lib.strlen (s: intern.IString): bit<32> =
+    souffle_lib.castTo32(std.string_len(intern.istring_str(s)))
+function souffle_lib.substr (s: intern.IString, i: bit<32>, l: bit<32>): intern.IString =
+    intern.string_intern(std.string_substr(intern.istring_str(s), souffle_lib.castTo64(i), souffle_lib.castTo64((i + l))))
+function souffle_lib.to_number (s: intern.IString): bit<32> =
     match (std.parse_dec_u64(intern.istring_str(s))) {
-        std.None{} -> 64'd0,
-        std.Some{.x=var x} -> x
+        std.None{} -> 32'd0,
+        std.Some{.x=var x} -> souffle_lib.castTo32(x)
     }
 function souffle_lib.to_string (n: bit<32>): intern.IString =
     intern.string_intern(std.__builtin_2string(n))
