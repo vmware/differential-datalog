@@ -1030,6 +1030,7 @@ impl<V:Val> Program<V>
                         epoch = epoch + 1;
                         Self::advance(&mut all_sessions, epoch);
                         Self::flush(&mut all_sessions, &probe, worker, &*progress_lock, &progress_barrier);
+                        flush_ack_send.send(()).unwrap();
                     }
 
                     // close session handles for non-input sessions
@@ -1128,6 +1129,8 @@ impl<V:Val> Program<V>
                 };
             }
         };
+        /* Wait for the initial transaction to complete */
+        flush_ack_recv.recv().unwrap();
 
         RunningProgram{
             sender: tx,
