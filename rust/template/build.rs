@@ -19,7 +19,7 @@ fn main() {
     let target_dir = format!("{}/target/{}", topdir, profile);
     let libs_dir = format!("{}/.libs", target_dir);
     let new_lib_path = PathBuf::from(format!("{}/{}.a", libs_dir, lib));
-    fs::remove_file(&new_lib_path);
+    let _ = fs::remove_file(&new_lib_path);
     /* End: fixup */
 
     libtool::generate_convenience_lib(lib).unwrap();
