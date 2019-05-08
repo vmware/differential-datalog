@@ -143,6 +143,7 @@ class Relation(object):
         # Default values
         self.isinput = False
         self.isoutput = False
+        self.shadow = None
 
     def addParameter(self, name, typ):
         param = Parameter(name, typ)
@@ -154,7 +155,6 @@ class Relation(object):
             return cls.relations.get(name)
         prefix = component + "_" if component != None else ""
         result = cls.relations.get(prefix + name)
-        assert result is not None, "Could not locate relation " + name
         return result
 
     @classmethod
@@ -166,8 +166,20 @@ class Relation(object):
             raise Exception("duplicate relation name " + name)
         ri = Relation(name)
         cls.relations[name] = ri
-        # print "Registered relation " + name
+        print "Registered relation " + name
         return ri
+
+    def mark_as_input(self):
+        # For an input relation generate another shadow relation.
+        # This is required since Souffle can modify input relations,
+        # while DDlog cannot.  The shadow relation will be the
+        # read-only one.
+        if self.shadow is not None:
+            return
+        rel = Relation.create(self.name[1:] + "_shadow", None)
+        rel.isinput = True
+        self.shadow = rel
+        self.shadow.parameters = self.parameters
 
     def declaration(self):
         result = ""
@@ -176,6 +188,10 @@ class Relation(object):
         if self.isoutput:
             result = "output "
         result += "relation " + self.name + "(" + ", ".join([a.declaration() for a in self.parameters]) + ")"
+        if self.shadow is not None:
+            result += "\n" + self.shadow.declaration()
+            result += "\n" + self.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ") :- " + \
+                      self.shadow.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ")."
         return result
 
 class Files(object):
@@ -401,12 +417,13 @@ class SouffleConverter(object):
             separator = kvp["separator"]
 
         ri = Relation.get(rel, self.current_component)
-        ri.isinput = True
+        ri.mark_as_input()
 
         if skip_files or self.preprocess:
             return
 
-        print "Reading", rel, "from", filename
+        global relationPrefix
+        print "Reading", rel + "_shadow", "from", filename
         data = None
         for directory in ["./", "./facts/"]:
             for suffix in ["", ".gz"]:
@@ -418,8 +435,9 @@ class SouffleConverter(object):
             print "** Cannot find input file " + filename
             return
         self.process_file(rel, data, separator,
-                          lambda tpl: self.files.outputData( \
-                              "insert " + ri.name + "(" + ",".join(tpl) + ")", ","))
+                          lambda tpl: self.files.outputData(
+                              "insert " + relationPrefix + "." + ri.name + \
+                              "_shadow(" + ",".join(tpl) + ")", ","))
 
     def process_output(self, outputdecl):
         directives = getField(outputdecl, "IodirectiveList")
@@ -433,7 +451,7 @@ class SouffleConverter(object):
             return
 
         filename = rel
-        print "Reading output", rel, "from", filename
+        print "Reading output relation", rel, "from", filename
         data = None
         for suffix in ["", ".csv"]:
             tryFile = filename + suffix
@@ -808,13 +826,14 @@ class SouffleConverter(object):
             for ident in idents:
                 # print "Decl", ident.value, qualifiers
                 rel = Relation.create(ident.value, self.current_component)
-                if "output" in qualifiers:
-                    rel.isoutput = True
-                if "input" in qualifiers:
-                    rel.isinput = True
                 for param in params:
                     arr = getArray(param, "Identifier")
                     rel.addParameter(arr[0].value, arr[1].value)
+
+                if "input" in qualifiers:
+                    rel.mark_as_input()
+                if "output" in qualifiers:
+                    rel.isoutput = True
             return
 
         for ident in idents:

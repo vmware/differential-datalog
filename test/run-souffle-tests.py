@@ -15,8 +15,6 @@ xfail = [
     "souffle8",  # component inheritance
     "souffle9",  # generic component
     "souffle10", # generic component
-    "access2",   # input relation modified
-    "access3",   # same
     "aggregates2", # max in relation argument
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
@@ -32,7 +30,6 @@ xfail = [
     "independent_body2", # not in DNF form
     "inline_nqueens", # recursive type
     "magic_2sat",     # issue 197
-    "magic_centroids", # input relation modified
     "magic_components", # component inheritance
     "magic_dfa",        # same
     "magic_dominance",  # same
@@ -44,8 +41,8 @@ xfail = [
     "neg2",             # same
     "neg3",             # same
     "range",            # same
-    "rec_list",         # recursive type
-    "rec_list2",        # same
+    "rec_lists",        # recursive type
+    "rec_lists2",       # same
     "subsumption",      # recursive type
     "subtype",          # issue 197
     "turing1",          # issue 198
@@ -54,7 +51,6 @@ xfail = [
     "amicable",         # same
     "array",            # same
     "catalan",          # same
-    "centroids",        # modifies input relation
     "circuit_eval",     # issue 198
     "circuit_records",  # recursive type
     "comp-parametrized", # generic component
@@ -67,16 +63,14 @@ xfail = [
     "dfa_summary_function", # generic component
     "dnf",              # not in dnf form
     "dominance",        # generic component
-    "double_tree",      # modifies input relation
     "edit_distance",    # issue 197
     "euclid",           # not in DNF form
     "inline_nats",      # issue 198
-    "input_output",     # input relation modified
     "josephus",         # issue 197
     "longest_path",     # issue 198
     "magic_access-policy", # issue 197
     "nfsa2fsa",         # generic component
-    "nqueens",          # recursive type"
+    "nqueens",          # recursive type
     "puzzle",           # issue 197
     "shortest_path",    # issue 197
     "sort",             # recursive type
@@ -129,7 +123,7 @@ def run_examples():
         compile_example(d, "test.dl")
 
 def run_remote_tests():
-    testgroups = ["example", "evaluation"]
+    testgroups = ["provenance", "profile", "example", "evaluation"]
     url = "https://github.com/souffle-lang/souffle/trunk/tests/"
     for tg in testgroups:
         code, dirs = run_command(["svn", "ls", url + tg])
@@ -141,13 +135,13 @@ def run_remote_tests():
             if directory in xfail:
                 print "Expected to fail", directory
                 continue
-            if directory[0] < 'a':
-                continue
+            #if not directory in todo:
+            #    continue
             if not os.path.isdir(directory):
                 code, _ = run_command(["svn", "export", url + tg + "/" + directory])
                 if code != 0:
                     continue
-                code = compile_example(directory, directory + ".dl")
+            code = compile_example(directory, directory + ".dl")
             if code == 0:
                 shutil.rmtree(directory)
 
