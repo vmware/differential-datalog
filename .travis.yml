@@ -28,7 +28,6 @@ env:
    - TEST_SUITE='-p tutorial' BUILD_BINARY=1
    - TEST_SUITE='-p span_uuid' JAVA=1
    - TEST_SUITE='-p souffle0'
-   - TEST_SUITE='-p souffle1'
    - TEST_SUITE='-p simple'
    - TEST_SUITE='-p path'
    - TEST_SUITE='-p ovn'
