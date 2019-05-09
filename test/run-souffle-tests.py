@@ -90,9 +90,10 @@ def run_command(command, indata=None):
     """Runs a command in a shell; returns the stdout; on error prints stderr"""
     print "Running", command
     p = subprocess.Popen(command,
+                         stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
-    stdout, stderr = p.communicate(input=indata)
+    stdout, stderr = p.communicate(indata)
     if p.returncode != 0 and stderr is not None:
         sys.stderr.write("{}".format(stderr))
     return p.returncode, "{}".format(stdout)
@@ -157,7 +158,7 @@ def run_remote_tests():
                 continue;
             if not os.path.isdir(directory):
                 os.chdir(tg)
-                code, _ = run_command(["svn", "export", url + tg + "/" + directory])
+                code, _ = run_command(["svn", "export", url + tg + "/" + test])
                 os.chdir("..")
                 if code != 0:
                     continue
@@ -181,7 +182,14 @@ def run_merged_test(file):
     os.chdir("..")
     with open(file + ".dat") as f:
         lines = f.read()
-    code, _ = run_command(["./" + file + "_ddlog/target/release/" + file + "_cli"], lines)
+    code, result = run_command(["./" + file + "_ddlog/target/release/" + file + "_cli", "--no-print"], lines)
+    if code != 0:
+        print "Error running ddlog program", code
+    with open(file + ".dump", "w") as dump:
+        dump.write(result)
+    code, _ = run_command(["diff", "-q", file + ".dump", file + ".dump.expected"])
+    if code != 0:
+        print "Output differs"
 
 def main():
     global todo, tests_skipped, converter, libpath
@@ -200,6 +208,8 @@ def main():
     file = "souffle_tests"
     with open(file + ".dl", "w") as testfile:
         testfile.writelines("\n".join(imports))
+
+    # Create input script by concatenating the other input scripts
     with open(file + ".dat", "w") as testinputfile:
         for m in modules:
             cli_file_name = m.replace(".", "/") + "/souffle.dat"
@@ -208,6 +218,14 @@ def main():
                     if line.startswith("exit"):
                         continue;
                     testinputfile.write(line)
+    # Create expected output by concatenating the other expected outputs
+    with open(file + ".dump.expected", "w") as testoutputfile:
+        for m in modules:
+            dump_file_name = m.replace(".", "/") + "/souffle.dump.expected"
+            with open(dump_file_name, "r") as dump_file:
+                for line in dump_file:
+                    testoutputfile.write(line)
+
     run_merged_test(file)
 
 if __name__ == "__main__":
