@@ -1,0 +1,8 @@
+.decl Example1(n: symbol)
+.output Example1
+.decl Example2(n: symbol)
+.decl Example3(n: symbol)
+.decl Example4(n: symbol)
+
+Example1(x) :- Example2(x), Example4(x), Example3(x).
+.plan 1:(2, 3, 1), 2:(1, 3, 2)
