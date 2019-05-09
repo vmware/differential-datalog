@@ -13,6 +13,7 @@ import parglare # parser generator
 skip_files = False  # If true do not process .input and .output declarations
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
                     # This makes it possible to concatenate multiple .dat files together
+                    # This should end in a dot.
 
 def var_name(ident):
     if ident == "_":
@@ -215,7 +216,6 @@ class Files(object):
         self.output("typedef TEmpty = ()")
         self.outputDataFile = open(outputDataName, 'w')
         self.dumpFile = open(outputDumpName, 'w')
-        self.outputData("echo Reading data", ";")
         self.outputData("start", ";")
         print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
 
@@ -227,14 +227,12 @@ class Files(object):
 
     def done(self, dumporder):
         global relationPrefix
-        self.outputData("echo Finished adding data, committing", ";")
         self.outputData("commit", ";")
         if len(dumporder) == 0:
             self.outputData("dump", ";")
         else:
             for r in dumporder:
                 self.outputData("dump " + relationPrefix + r, ";")
-        self.outputData("echo done", ";")
         self.outputData("exit", ";")
         self.outFile.close()
         self.outputDataFile.close()
@@ -290,6 +288,22 @@ def getIdentifier(node):
 
 ##############################################################
 
+def compare(list1, list2, isString):
+    """Custom lexicographic comparator for 2 lists.  Each element is compared
+    either as a string or as number."""
+    assert len(list1) == len(list2) and len(list1) == len(isString), "Lists with different length"
+    for i in range(0, len(list1)):
+        e1 = list1[i]
+        e2 = list2[i]
+        if not isString[i]:
+            e1 = int(e1)
+            e2 = int(e2)
+        if e1 < e2:
+            return -1
+        elif e1 > e2:
+            return 1
+    return 0
+
 class SouffleConverter(object):
     def __init__(self, files):
         assert isinstance(files, Files)
@@ -321,23 +335,28 @@ class SouffleConverter(object):
         self.all_variables.add(name)
         return name
 
-    def process_file(self, rel, inFileName, inSeparator, outputEmitter):
-        """Process an INPUT or OUTPUT with name inFileName; dump its contents into outfile
+    def process_file(self, rel, inFileName, inSeparator, sort):
+        """Process an INPUT or OUTPUT with name inFileName.
         rel is the relation name that is being processed
         inFileName is the file which contains the data
         inSeparator is the input record separator
-        outputEmitter is a lambda which does the output.  It takes argument
-        an array of string arguments for the relation.
+        sort is a Boolean indicating whether the records in the output
+        should be lexicographically sorted.
+        Returns the data in the file as a list of lists.
+
         """
         ri = Relation.get(rel, self.current_component)
         params = ri.parameters
         converter = []
+        isString = []
         for p in params:
             typ = p.getType()
             assert isinstance(typ, Type)
             if typ.isNumber():
+                isString.append(False)
                 converter.append(str)
             else:
+                isString.append(True)
                 converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
         if inFileName.endswith(".gz"):
@@ -345,6 +364,8 @@ class SouffleConverter(object):
         else:
             data = open(inFileName, "r")
         lineno = 0
+
+        output = []
         for line in data:
             fields = line.rstrip('\n').split(inSeparator)
             result = []
@@ -357,9 +378,14 @@ class SouffleConverter(object):
                                 " parameters):" + line)
             for i in range(len(fields)):
                 result.append(converter[i](fields[i]))
-            outputEmitter(result)
+            output.append(result)
             lineno = lineno + 1
         data.close()
+
+        if sort:
+            global compare
+            output = sorted(output, cmp=lambda x, y: compare(x, y, isString))
+        return output
 
     @staticmethod
     def get_KVValue(KVValue):
@@ -434,10 +460,10 @@ class SouffleConverter(object):
         if data is None:
             print "** Cannot find input file " + filename
             return
-        self.process_file(rel, data, separator,
-                          lambda tpl: self.files.outputData(
-                              "insert " + relationPrefix + "." + ri.name + \
-                              "_shadow(" + ",".join(tpl) + ")", ","))
+        output = self.process_file(rel, data, separator, False)
+        for row in output:
+            self.files.outputData(
+                "insert " + relationPrefix + ri.name + "_shadow(" + ",".join(row) + ")", ",")
 
     def process_output(self, outputdecl):
         directives = getField(outputdecl, "IodirectiveList")
@@ -461,10 +487,10 @@ class SouffleConverter(object):
         if data is None:
             print "*** Cannot find output file " + filename + "; the reference output will be incomplete"
             return
-        self.files.dumpFile.write(rel + ":\n")
-        self.process_file(rel, data, "\t",
-                          lambda tpl: self.files.dumpFile.write( \
-                              ri.name + "{" + ",".join(tpl) + "}\n"))
+        output = self.process_file(rel, data, "\t", True)
+        for row in output:
+            self.files.dumpFile.write(
+                relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
 
     def process_component(self, component):
         ident = getIdentifier(component)
@@ -954,6 +980,8 @@ def main():
     inputName, outputPrefix = args.input, args.out
     global relationPrefix
     relationPrefix = args.prefix if args.prefix else ""
+    if relationPrefix != "":
+        assert relationPrefix.endswith("."), "prefix is expected to end with a dot"
     files = Files(inputName, outputPrefix)
     parser = getParser(args.d)
     tree = parser.parse_file(files.inputName)
