@@ -68,11 +68,29 @@ ArgumentList: Argument
 Argument: Identifier "=" String
         ;
 
-Rule: Head ":-" Tail DOT
+Rule: Head ":-" Tail DOT Plan_or_Empty
     ;
 
 Fact: Clause DOT
     ;
+
+Plan_or_Empty: EMPTY
+             | Plan
+             ;
+
+Plan: PLAN PlanList
+    ;
+
+PlanList: PlanNumList
+        | PlanNumList "," PlanList
+        ;
+
+PlanNumList: Integer ":" "(" IntegerList ")"
+           ;
+
+IntegerList: Integer
+           | Integer "," IntegerList
+           ;
 
 Head: ClauseList
     ;
@@ -180,6 +198,7 @@ INPUT: ".input" ;
 OUTPUT: ".output" ;
 OUTPUT_DEPRECATED: "output" ;
 OR: ";" ;
+PLAN: ".plan" ;
 KEYWORD: /[\w-]+/ ;
 WS: /\s+/ ;
 LineComment: /\/\/.*/ ;
@@ -189,3 +208,4 @@ MIN: "min" ;
 MAX: "max" ;
 COUNT: "count" ;
 ARITHMOP: /[\+\-\/\^\%]/ ;
+Integer: /\d+/ ;

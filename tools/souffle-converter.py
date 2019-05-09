@@ -477,6 +477,11 @@ def process_rule(rule, files, preprocess):
     headClauses = getListField(head, "Clause", "ClauseList")
     tails = normalize_tail(tail)
 
+    plan = getField(rule, "Plan_or_Empty")
+    bool_plan = plan_exists(plan)
+    #if bool_plan:
+        #do nothing
+
     if not has_relations(tail) and preprocess:
         # If there are no clauses in the tail we
         # mark all input relations as input relations
@@ -491,6 +496,14 @@ def process_rule(rule, files, preprocess):
         converting_tail = False
         for ct in convertedTails:
             files.output(",\n\t".join(heads) + " :- " + ct + ".")
+
+def plan_exists(plan):
+    """Check if a plan exists and ignore it (for now)"""
+    empty = getOptField(plan, "Plan")
+    if empty != None:
+        return True
+    else:
+        return False
 
 def process_relation_decl(relationdecl, files, preprocess):
     """Process a relation declaration and emit output to files"""
