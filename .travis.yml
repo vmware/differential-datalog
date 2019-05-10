@@ -67,7 +67,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"
-- if [ $JAVA = 1 ]; then stack install && cd java/test && ./run.sh; fi
+- if [ x${JAVA} = x1 ]; then stack install && cd java/test && ./run.sh; fi
 
 before_deploy:
     # add date and OS name to the tag

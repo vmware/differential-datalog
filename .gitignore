@@ -50,3 +50,4 @@ tags
 *.facts
 *.jar
 java/test/span_uuid.java.dump
+*.pyc

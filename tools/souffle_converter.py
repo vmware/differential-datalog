@@ -15,6 +15,7 @@ skip_logic = False  # If true do not produce file .dl
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
                     # This makes it possible to concatenate multiple .dat files together
                     # This should end in a dot.
+parglareParser = None # Cache here the Parglare parser
 
 def var_name(ident):
     if ident == "_":
@@ -34,7 +35,7 @@ def strip_quotes(string):
 def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
     keys = dict1.viewkeys() & dict2.viewkeys()
-    return { x : dict1[x] for x in keys }
+    return {x : dict1[x] for x in keys}
 
 def dict_append(dict1, dict2):
     """Add everything on dict2 on top of dict1"""
@@ -66,6 +67,10 @@ class Type(object):
         self.isnumber = None  # unknown
 
     @classmethod
+    def clear(cls):
+        cls.types.clear()
+
+    @classmethod
     def create_tuple(cls, name, components):
         typ = Type(name, "T" + name)
         typ.components = components
@@ -75,7 +80,6 @@ class Type(object):
     @classmethod
     def create(cls, name, equivalentTo):
         if name in cls.types:
-            prev = cls.types[name]
             print "Warning: redefinition of type " + name + " ignored"
             return None
         if name != equivalentTo:
@@ -147,6 +151,11 @@ class Relation(object):
         self.isoutput = False
         self.shadow = None
 
+    @classmethod
+    def clear(cls):
+        cls.relations.clear()
+        cls.dumpOrder = []
+
     def addParameter(self, name, typ):
         param = Parameter(name, typ)
         self.parameters.append(param)
@@ -168,7 +177,7 @@ class Relation(object):
             raise Exception("duplicate relation name " + name)
         ri = Relation(name)
         cls.relations[name] = ri
-        print "Registered relation " + name
+        # print "Registered relation " + name
         return ri
 
     def mark_as_input(self):
@@ -282,10 +291,13 @@ def getListField(node, field, fields):
 
 def getParser(debugParser):
     """Parse the Parglare Souffle grammar and get the parser"""
-    fileName = "souffle-grammar.pg"
-    directory = os.path.dirname(os.path.abspath(__file__))
-    g = parglare.Grammar.from_file(directory + "/" + fileName)
-    return parglare.Parser(g, build_tree=True, debug=debugParser)
+    global parglareParser
+    if parglareParser is None:
+        fileName = "souffle-grammar.pg"
+        directory = os.path.dirname(os.path.abspath(__file__))
+        g = parglare.Grammar.from_file(directory + "/" + fileName)
+        parglareParser = parglare.Parser(g, build_tree=True, debug=debugParser)
+    return parglareParser
 
 def getIdentifier(node):
     """Get a field named "Identifier" from a parglare parse tree node"""
@@ -389,7 +401,6 @@ class SouffleConverter(object):
         data.close()
 
         if sort:
-            global compare
             output = sorted(output, cmp=lambda x, y: compare(x, y, isString))
         return output
 
@@ -472,6 +483,8 @@ class SouffleConverter(object):
                 "insert " + relationPrefix + ri.name + "_shadow(" + ",".join(row) + ")", ",")
 
     def process_output(self, outputdecl):
+        if getOptField(outputdecl, "OUTPUT") is None:
+            return
         directives = getField(outputdecl, "IodirectiveList")
         body = getField(directives, "IodirectiveBody")
         rel = self.get_relid(body)
@@ -536,7 +549,7 @@ class SouffleConverter(object):
 
         nil = getOptField(arg, "NIL")
         if nil is not None:
-            return "None";
+            return "None"
 
         us = getOptField(arg, "_")
         if us is not None:
@@ -721,7 +734,6 @@ class SouffleConverter(object):
 
         relop = getOptField(lit, "Relop")
         if relop is not None:
-            print self.bound_variables
             args = getArray(lit, "Arg")
             assert len(args) == 2
             op = relop.children[0].value
@@ -740,13 +752,13 @@ class SouffleConverter(object):
                 if (lvarname is not None) and (rvarname is not None) and \
                    (lvarname not in self.bound_variables) and (rvarname not in self.bound_variables):
                     raise Exception("Comparison between two unbound variables " + lvarname + op + rvarname)
-                if (rvarname is not None) and (not rvarname in self.bound_variables):
+                if (rvarname is not None) and (rvarname not in self.bound_variables):
                     # swap arguments: this is an assignment to args[1]
                     tmp = args[0]
                     args[0] = args[1]
                     args[1] = tmp
                     lvarname = rvarname
-                if (lvarname is not None) and (not lvarname in self.bound_variables):
+                if (lvarname is not None) and (lvarname not in self.bound_variables):
                     suffix = ""
                     prefix = "var "
                 else:
@@ -758,7 +770,7 @@ class SouffleConverter(object):
                     # we have to generate an equality test; we use a temporary variable
                     originalVar = lvarname
                     lvarname = self.fresh_variable("tmp")
-                assert lvarname is not None, "Expected aggregate to assign to variable" + str(arg[0])
+                assert lvarname is not None, "Expected aggregate to assign to variable" + str(args[0])
                 result = self.convert_aggregate(lvarname, args[1])
                 if originalVar is not None:
                     result += ", " + lvarname + " == " + originalVar
@@ -996,8 +1008,25 @@ class SouffleConverter(object):
                 self.process_decl(decl)
         self.files.output(self.aggregates)
 
+def convert(inputName, outputPrefix, relPrefix, debug=False):
+    Type.clear()
+    Relation.clear()
+    global relationPrefix
+    relationPrefix = relPrefix if relPrefix else ""
+    if relationPrefix != "":
+        assert relationPrefix.endswith("."), "prefix is expected to end with a dot"
+    files = Files(inputName, outputPrefix)
+    parser = getParser(debug)
+    tree = parser.parse_file(files.inputName)
+    converter = SouffleConverter(files)
+    converter.preprocess = True
+    converter.process(tree)
+    converter.preprocess = False
+    converter.process(tree)
+    files.done(Relation.dumpOrder)
+
 def main():
-    argParser = argparse.ArgumentParser("souffle-converter.py",
+    argParser = argparse.ArgumentParser("souffle_converter.py",
                                         description="Converts programs from Souffle Datalog into DDlog")
     argParser.add_argument("-p", "--prefix", help="Prefix to add to relations written in .dat files")
     argParser.add_argument("input", help="input Souffle program", type=str)
@@ -1007,10 +1036,6 @@ def main():
     argParser.add_argument("--logic-only", "--logic_only", action='store_true', help="produces only logic")
     args = argParser.parse_args()
     inputName, outputPrefix = args.input, args.out
-    global relationPrefix
-    relationPrefix = args.prefix if args.prefix else ""
-    if relationPrefix != "":
-        assert relationPrefix.endswith("."), "prefix is expected to end with a dot"
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
     global skip_files, skip_logic
@@ -1018,15 +1043,7 @@ def main():
         skip_files = True
     if args.facts_only:
         skip_logic = True
-    files = Files(inputName, outputPrefix)
-    parser = getParser(args.d)
-    tree = parser.parse_file(files.inputName)
-    converter = SouffleConverter(files)
-    converter.preprocess = True
-    converter.process(tree)
-    converter.preprocess = False
-    converter.process(tree)
-    files.done(Relation.dumpOrder)
+    convert(args.input, args.out, args.prefix, args.d)
 
 if __name__ == "__main__":
     main()

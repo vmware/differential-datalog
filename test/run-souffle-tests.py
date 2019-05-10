@@ -5,12 +5,13 @@ import os
 import subprocess
 import sys
 import shutil
+sys.path.append(os.getcwd() + "/../tools")
+from souffle_converter import convert
 
 tests_run = 0
 tests_passed = 0
 tests_skipped = 0
 todo = []  # if not empty only the tests in this list are run
-converter = ""
 libpath = ""
 
 # expected to fail
@@ -34,6 +35,7 @@ xfail = [
     "grammar",        # funny unicode char in a comment
     "independent_body2", # not in DNF form
     "inline_nqueens", # recursive type
+    "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # issue 197
     "magic_components", # component inheritance
     "magic_dfa",        # same
@@ -101,15 +103,18 @@ def run_command(command, indata=None):
 def compile_example(directory, f):
     """Run the Souffle example in directory 'directory'.  The test file is named f."""
     print "Testing " + directory
-    global tests_run, tests_passed, converter, libpath
+    global tests_run, tests_passed, libpath
     tests_run = tests_run + 1
     savedir = os.getcwd()
     os.chdir(directory)
     code, _ = run_command(["cpp", "-P", "-undef", "-nostdinc++", f, "-o", f + ".tmp"])
     if code != 0:
-        raise Exception("Error " + code + " running cpp")
-    code, _ = run_command([converter, "-p", directory.replace("/", ".") + ".souffle.", f + ".tmp", "souffle"])
-    run_command(["rm", f + ".tmp"])
+        raise Exception("Error " + str(code) + " running cpp")
+    try:
+        convert(f + ".tmp", "souffle", directory.replace("/", ".") + ".souffle.")
+    finally:
+        run_command(["rm", f + ".tmp"])
+
     if code == 0:
         code, _ = run_command(["ddlog", "-i", "souffle.dl", "-L", libpath])
     if code == 0:
@@ -127,7 +132,7 @@ def should_run(d):
         tests_skipped = tests_skipped + 1
         print "Expected to fail", d
         return False
-    if (len(todo) > 0):
+    if len(todo) > 0:
         return d in todo
     return True
 
@@ -139,6 +144,19 @@ def run_examples():
             continue
         if should_run(d):
             compile_example(d, "test.dl")
+
+def normalize_name(name):
+    reserved = ["match"]
+    if "-" in name:
+        return name.replace("-", "_")
+    for r in reserved:
+        if name.startswith(r + "/"):
+            return name.replace(r + "/", r + "_/")
+        if name.endswith("/" + r):
+            return name.replace("/" + r, "/" + r + "_")
+        if ("/" + r + "/") in name:
+            return name.replace("/" + r + "/", "/" + r + "_/")
+    return name
 
 def run_remote_tests():
     """Run a set of tests, returns the list of the ones successfully run"""
@@ -155,51 +173,58 @@ def run_remote_tests():
         for test in dirs.split("/\n"):
             directory = tg + "/" + test
             if not should_run(test):
-                continue;
-            if not os.path.isdir(directory):
+                continue
+            newName = normalize_name(directory)
+            print directory
+            if newName != directory:
+                print "Using", newName, "for", directory
+            if not os.path.isdir(newName):
                 os.chdir(tg)
                 code, _ = run_command(["svn", "export", url + tg + "/" + test])
                 os.chdir("..")
                 if code != 0:
                     continue
+                if newName != directory:
+                    os.rename(directory, newName)
+            directory = newName
             code = compile_example(directory, test + ".dl")
             if code == 0:
                 result.append(directory)
             #    shutil.rmtree(directory)
     return result
 
-def run_merged_test(file):
+def run_merged_test(filename):
     """Runs a test that encompasses multiple other tests.
     This is created in a file called souffle_tests.dl, which
     imports multiple other tests"""
-    code, _ = run_command(["ddlog", "-i", file + ".dl", "-L", "../lib"])
+    shutil.rmtree(filename + "_ddlog")
+    code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib"])
     if code != 0:
         return
-    os.chdir(file + "_ddlog")
+    os.chdir(filename + "_ddlog")
     code, _ = run_command(["cargo", "build", "--release"])
     if code != 0:
         return
     os.chdir("..")
-    with open(file + ".dat") as f:
+    with open(filename + ".dat") as f:
         lines = f.read()
-    code, result = run_command(["./" + file + "_ddlog/target/release/" + file + "_cli", "--no-print"], lines)
+    code, result = run_command(["./" + filename + "_ddlog/target/release/" + filename + "_cli", "--no-print"], lines)
     if code != 0:
         print "Error running ddlog program", code
-    with open(file + ".dump", "w") as dump:
+    with open(filename + ".dump", "w") as dump:
         dump.write(result)
-    code, _ = run_command(["diff", "-q", file + ".dump", file + ".dump.expected"])
+    code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
         print "Output differs"
 
 def main():
-    global todo, tests_skipped, converter, libpath
+    global todo, tests_skipped, libpath
 
     path = os.getcwd()
-    converter = path + "/../tools/souffle-converter.py"
     libpath = path + "/../lib"
 
     todo = sys.argv[1:]
-    run_examples()
+    #run_examples()
     modules = run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed, skipped", tests_skipped
     imports = ["import " + m + ".souffle as " + m for m in modules]
@@ -216,7 +241,7 @@ def main():
             with open(cli_file_name, "r") as cli_file:
                 for line in cli_file:
                     if line.startswith("exit"):
-                        continue;
+                        continue
                     testinputfile.write(line)
     # Create expected output by concatenating the other expected outputs
     with open(file + ".dump.expected", "w") as testoutputfile:
