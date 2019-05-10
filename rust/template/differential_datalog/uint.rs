@@ -29,6 +29,15 @@ impl Uint {
     pub fn from_bigint(v: BigInt) -> Uint {
         Uint{x: v.to_biguint().unwrap()}
     }
+    pub fn from_u8(v: u8) -> Uint {
+        Uint{x: BigUint::from(v)}
+    }
+    pub fn from_u16(v: u16) -> Uint {
+        Uint{x: BigUint::from(v)}
+    }
+    pub fn from_u32(v: u32) -> Uint {
+        Uint{x: BigUint::from(v)}
+    }
     pub fn from_u64(v: u64) -> Uint {
         Uint{x: BigUint::from(v)}
     }
@@ -137,21 +146,22 @@ impl Uint {
 }
 */
 
-impl Shr<usize> for Uint {
+/* DDlog supports 32-bit shifts */
+impl Shr<u32> for Uint {
     type Output = Uint;
 
     #[inline]
-    fn shr(self, rhs: usize) -> Uint {
-        Uint{x: self.x.shr(rhs)}
+    fn shr(self, rhs: u32) -> Uint {
+        Uint{x: self.x.shr(rhs as usize)}
     }
 }
 
-impl Shl<usize> for Uint {
+impl Shl<u32> for Uint {
     type Output = Uint;
 
     #[inline]
-    fn shl(self, rhs: usize) -> Uint {
-        Uint{x: self.x.shl(rhs)}
+    fn shl(self, rhs: u32) -> Uint {
+        Uint{x: self.x.shl(rhs as usize)}
     }
 }
 
