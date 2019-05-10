@@ -553,8 +553,8 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
          Impl   -> Just tBool
          Plus   -> tlhs
          Minus  -> tlhs
-         ShiftR -> Nothing
-         ShiftL -> Nothing
+         ShiftR -> Just $ tBit 32
+         ShiftL -> Just $ tBit 32
          Mod    -> tlhs
          Times  -> tlhs
          Div    -> tlhs

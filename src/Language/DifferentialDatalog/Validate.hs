@@ -594,11 +594,11 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Impl   -> do {m; isbool}
         Plus   -> do {m; isint1}
         Minus  -> do {m; isint1}
-        ShiftR -> do {isint1; isint2}
-        ShiftL -> do {isint1; isint2}
-        Mod    -> do {isint1; isint2}
-        Times  -> do {isint1; isint2}
-        Div    -> do {isint1; isint2}
+        ShiftR -> do isint1
+        ShiftL -> do isint1
+        Mod    -> do {m; isint1; isint2}
+        Times  -> do {m; isint1; isint2}
+        Div    -> do {m; isint1; isint2}
         BAnd   -> do {m; isbit1}
         BOr    -> do {m; isbit1}
         BXor   -> do {m; isbit1}

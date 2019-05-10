@@ -2018,9 +2018,8 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
                     -> case sel3 exprRight of
                             EString _ s -> "string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
                             _           -> "string_append(" <> e1 <> "," <+> ref exprRight <> ")"
-             Concat -> mkConcat (e1, typeWidth t1) (e2, typeWidth t2)
-             Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
-             op     -> parens $ e1 <+> mkBinOp op <+> e2
+             op     -> mkBinOp d op (e1, t1) (e2, t2)
+
     -- Truncate bitvector result in case the type used to represent it
     -- in Rust is larger than the bitvector width.
     v' = if elem exprBOp bopsRequireTruncation
@@ -2148,25 +2147,52 @@ pad :: Int -> Int -> Int
 pad x padto | (x `rem` padto == 0) = x
             | otherwise            = x + (padto - (x `rem` padto))
 
-mkBinOp :: BOp -> Doc
-mkBinOp Eq     = "=="
-mkBinOp Neq    = "!="
-mkBinOp Lt     = "<"
-mkBinOp Gt     = ">"
-mkBinOp Lte    = "<="
-mkBinOp Gte    = ">="
-mkBinOp And    = "&&"
-mkBinOp Or     = "||"
-mkBinOp Mod    = "%"
-mkBinOp Div    = "/"
-mkBinOp ShiftR = ">>"
-mkBinOp BAnd   = "&"
-mkBinOp BOr    = "|"
-mkBinOp BXor   = "^"
-mkBinOp ShiftL = "<<"
-mkBinOp Plus   = "+"
-mkBinOp Minus  = "-"
-mkBinOp Times  = "*"
+mkBinOp :: DatalogProgram -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
+mkBinOp d op (e1, t1) (e2, t2) =
+    case op of
+        Eq     -> parens $ e1 <+> "==" <+> e2
+        Neq    -> parens $ e1 <+> "!=" <+> e2
+        Lt     -> parens $ e1 <+> "<"  <+> e2
+        Gt     -> parens $ e1 <+> ">"  <+> e2
+        Lte    -> parens $ e1 <+> "<=" <+> e2
+        Gte    -> parens $ e1 <+> ">=" <+> e2
+        And    -> parens $ e1 <+> "&&" <+> e2
+        Or     -> parens $ e1 <+> "||" <+> e2
+        Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
+        Mod    | uint
+               -> parens $ e1 <> ".wrapping_rem(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "%" <+> e2
+        Div    | uint
+               -> parens $ e1 <> ".wrapping_div(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "/" <+> e2
+        ShiftR | uint
+               -> parens $ e1 <> ".wrapping_shr(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> ">>" <+> e2
+        ShiftL | uint
+               -> parens $ e1 <> ".wrapping_shl(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "<<" <+> e2
+        BAnd   -> parens $ e1 <+> "&"  <+> e2
+        BOr    -> parens $ e1 <+> "|"  <+> e2
+        BXor   -> parens $ e1 <+> "^"  <+> e2
+        Plus   | uint
+               -> parens $ e1 <> ".wrapping_add(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "+" <+> e2
+        Minus  | uint
+               -> parens $ e1 <> ".wrapping_sub(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "-" <+> e2
+        Times  | uint
+               -> parens $ e1 <> ".wrapping_mul(" <> e2 <> ")"
+               | otherwise
+               -> parens $ e1 <+> "*" <+> e2
+        Concat -> mkConcat (e1, typeWidth t1) (e2, typeWidth t2)
+    where
+    uint = (not $ isInt d t1) && (typeWidth (typ' d t1) <= 128)
 
 -- These operators require truncating the output value to correct
 -- width.
@@ -2180,7 +2206,7 @@ castBV e w1 w2 | t1 == t2
                | w1 <= 128 && w2 <= 128
                = parens $ e <+> "as" <+> t2
                | w2 > 128
-               = "Uint::from_u128(" <> e <> ")"
+               = "Uint::from_" <> t1 <> "(" <> e <> ")"
                | otherwise
                = e <> "to_" <> t2 <> "().unwrap()"
     where
