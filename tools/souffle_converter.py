@@ -17,15 +17,15 @@ relationPrefix = "" # Prefix to prepend to all relation names when they are writ
                     # This should end in a dot.
 parglareParser = None # Cache here the Parglare parser
 
+### Various utilities
+
 def var_name(ident):
+    """Convert a Souffle identifier to one suitable for use as a variable name in DDlog"""
     if ident == "_":
         return ident
     if ident.startswith("?"):
         ident = ident[1:]
     return "_" + ident
-
-def parse(parser, text):
-    return parser.parse(text)
 
 def strip_quotes(string):
     assert string[0] == "\"", "String is not quoted"
@@ -54,205 +54,7 @@ def join_dict(separator, kvseparator, dictionary):
     l = [x + kvseparator + dictionary[x] for x in dictionary]
     return separator.join(l)
 
-class Type(object):
-    types = dict() # All types in the program
-
-    """Information about a type"""
-    def __init__(self, name, outputName):
-        assert name is not None
-        self.name = name
-        self.outputName = outputName
-        self.equivalentTo = None
-        self.components = None
-        self.isnumber = None  # unknown
-
-    @classmethod
-    def clear(cls):
-        cls.types.clear()
-
-    @classmethod
-    def create_tuple(cls, name, components):
-        typ = Type(name, "T" + name)
-        typ.components = components
-        cls.types[name] = typ
-        return typ
-
-    @classmethod
-    def create(cls, name, equivalentTo):
-        if name in cls.types:
-            print "Warning: redefinition of type " + name + " ignored"
-            return None
-        if name != equivalentTo:
-            typ = Type(name, "T" + name)
-        else:
-            typ = Type(name, name)
-        cls.types[name] = typ
-        if equivalentTo is None:
-            equivalentTo = "IString"
-        else:
-            assert isinstance(equivalentTo, basestring)
-        assert equivalentTo is not None
-        typ.equivalentTo = equivalentTo
-        # print "Created " + typ.name + " same as " + typ.equivalentTo
-        return typ
-
-    @classmethod
-    def get(cls, name):
-        result = cls.types[name]
-        assert isinstance(result, cls)
-        return result
-
-    def declaration(self):
-        if self.components is not None:
-            # Convert records to tuples
-            names = [c.outputName for c in self.components]
-            return "typedef " + self.outputName + " = " + "Option<(" + ", ".join(names) + ")>"
-        e = Type.get(self.equivalentTo)
-        return "typedef " + self.outputName + " = " + e.outputName
-
-    def isNumber(self):
-        if self.isnumber is not None:
-            return self.isnumber
-        if self.name == "Tnumber" or self.name == "bit<32>":
-            self.isnumber = True
-            return True
-        if self.name == "IString":
-            self.isnumber = False
-            return False
-        typ = Type.get(self.equivalentTo)
-        result = typ.isNumber()
-        self.isnumber = result
-        return result
-
-class Parameter(object):
-    """Information about a parameter (of a relation or function)"""
-    def __init__(self, name, typeName):
-        self.name = name
-        self.typeName = typeName
-
-    def declaration(self):
-        typ = self.getType()
-        return var_name(self.name) + ":" + typ.outputName
-
-    def getType(self):
-        return Type.get(self.typeName)
-
-class Relation(object):
-    """Represents information about a relation"""
-
-    relations = dict() # All relations in program
-    dumpOrder = []  # order in which we dump the relations
-
-    def __init__(self, name):
-        self.name = "R" + name
-        self.parameters = []  # list of Parameter
-        # Default values
-        self.isinput = False
-        self.isoutput = False
-        self.shadow = None
-
-    @classmethod
-    def clear(cls):
-        cls.relations.clear()
-        cls.dumpOrder = []
-
-    def addParameter(self, name, typ):
-        param = Parameter(name, typ)
-        self.parameters.append(param)
-
-    @classmethod
-    def get(cls, name, component):
-        if name in cls.relations:
-            return cls.relations.get(name)
-        prefix = component + "_" if component != None else ""
-        result = cls.relations.get(prefix + name)
-        return result
-
-    @classmethod
-    def create(cls, name, component):
-        assert isinstance(name, basestring)
-        prefix = component + "_" if component != None else ""
-        name = prefix + name
-        if name in cls.relations:
-            raise Exception("duplicate relation name " + name)
-        ri = Relation(name)
-        cls.relations[name] = ri
-        # print "Registered relation " + name
-        return ri
-
-    def mark_as_input(self):
-        # For an input relation generate another shadow relation.
-        # This is required since Souffle can modify input relations,
-        # while DDlog cannot.  The shadow relation will be the
-        # read-only one.
-        if self.shadow is not None:
-            return
-        rel = Relation.create(self.name[1:] + "_shadow", None)
-        rel.isinput = True
-        self.shadow = rel
-        self.shadow.parameters = self.parameters
-
-    def declaration(self):
-        result = ""
-        if self.isinput:
-            result = "input "
-        if self.isoutput:
-            result = "output "
-        result += "relation " + self.name + "(" + ", ".join([a.declaration() for a in self.parameters]) + ")"
-        if self.shadow is not None:
-            result += "\n" + self.shadow.declaration()
-            result += "\n" + self.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ") :- " + \
-                      self.shadow.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ")."
-        return result
-
-class Files(object):
-    """Represents the files that are used for input and output"""
-
-    def __init__(self, inputDl, outputPrefix):
-        self.inputName = inputDl
-        outputName = outputPrefix + ".dl"
-        outputDataName = outputPrefix + ".dat"
-        outputDumpName = outputPrefix + ".dump.expected"
-        if not skip_logic:
-            self.outFile = open(outputName, 'w')
-        self.output("import intern")
-        self.output("import souffle_lib")
-        Type.create("IString", "IString")
-        Type.create("bit<32>", "bit<32>")
-
-        t = Type.create("number", "bit<32>")
-        self.output(t.declaration())
-        t = Type.create("symbol", "IString")
-        self.output(t.declaration())
-        self.output("typedef TEmpty = ()")
-        if not skip_files:
-            self.outputDataFile = open(outputDataName, 'w')
-            self.dumpFile = open(outputDumpName, 'w')
-            self.outputData("start", ";")
-        print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
-
-    def output(self, text):
-        if not skip_logic:
-            self.outFile.write(text + "\n")
-
-    def outputData(self, text, terminator):
-        self.outputDataFile.write(text + terminator + "\n")
-
-    def done(self, dumporder):
-        global relationPrefix
-        if not skip_files:
-            self.outputData("commit", ";")
-            if len(dumporder) == 0:
-                self.outputData("dump", ";")
-            else:
-                for r in dumporder:
-                    self.outputData("dump " + relationPrefix + r, ";")
-            self.outputData("exit", ";")
-            self.outputDataFile.close()
-            self.dumpFile.close()
-        if not skip_logic:
-            self.outFile.close()
-
+#################################
 # The next few functions manipulate Parglare Parse Trees
 def getOptField(node, field):
     """Returns the first field named 'field' from 'node', or None if it does not exist"""
@@ -293,16 +95,290 @@ def getParser(debugParser):
     """Parse the Parglare Souffle grammar and get the parser"""
     global parglareParser
     if parglareParser is None:
+        print "Creating parser"
         fileName = "souffle-grammar.pg"
         directory = os.path.dirname(os.path.abspath(__file__))
         g = parglare.Grammar.from_file(directory + "/" + fileName)
         parglareParser = parglare.Parser(g, build_tree=True, debug=debugParser)
+        print "Parser constructed"
     return parglareParser
 
 def getIdentifier(node):
     """Get a field named "Identifier" from a parglare parse tree node"""
     ident = getField(node, "Identifier")
     return ident.value
+
+################################################33
+
+class Type(object):
+    """Information about a type"""
+    types = dict() # All types in the program
+
+    def __init__(self, name, outputName):
+        assert name is not None
+        self.name = name
+        self.outputName = outputName
+        self.equivalentTo = None
+        self.components = None
+        self.isnumber = None  # unknown
+
+    @classmethod
+    def clear(cls):
+        """Delete all existing types"""
+        cls.types.clear()
+
+    @classmethod
+    def create_tuple(cls, name, components):
+        """Create a type that represents a tuple, coming from a record in Souffle"""
+        typ = Type(name, "T" + name)
+        typ.components = components
+        cls.types[name] = typ
+        return typ
+
+    @classmethod
+    def create(cls, name, equivalentTo):
+        """Create a type that is equivalent to another one"""
+        if name in cls.types:
+            print "Warning: redefinition of type " + name + " ignored"
+            return None
+        if name != equivalentTo:
+            typ = Type(name, "T" + name)
+        else:
+            typ = Type(name, name)
+        cls.types[name] = typ
+        if equivalentTo is None:
+            equivalentTo = "IString"
+        else:
+            assert isinstance(equivalentTo, basestring)
+        assert equivalentTo is not None
+        typ.equivalentTo = equivalentTo
+        # print "Created " + typ.name + " same as " + typ.equivalentTo
+        return typ
+
+    @classmethod
+    def get(cls, name):
+        """get the type with the specified name.  The name is the original Souffle name"""
+        result = cls.types[name]
+        assert isinstance(result, cls)
+        return result
+
+    def declaration(self):
+        """Return a string that is a DDlog declaration for this type"""
+        if self.components is not None:
+            # Convert records to tuples
+            names = [c.outputName for c in self.components]
+            return "typedef " + self.outputName + " = " + "Option<(" + ", ".join(names) + ")>"
+        e = Type.get(self.equivalentTo)
+        return "typedef " + self.outputName + " = " + e.outputName
+
+    def isNumber(self):
+        """True if this type is equivalent to number."""
+        if self.isnumber is not None:
+            return self.isnumber
+        if self.name == "Tnumber" or self.name == "bit<32>":
+            self.isnumber = True
+            return True
+        if self.name == "IString":
+            self.isnumber = False
+            return False
+        typ = Type.get(self.equivalentTo)
+        result = typ.isNumber()
+        self.isnumber = result
+        return result
+
+class Parameter(object):
+    """Information about a parameter (of a relation or function)"""
+    def __init__(self, name, typeName):
+        self.name = name
+        self.typeName = typeName
+
+    def declaration(self):
+        """Return a string that is a DDlogo declaration of this parameter."""
+        typ = self.getType()
+        return var_name(self.name) + ":" + typ.outputName
+
+    def getType(self):
+        """Get the parameter's type"""
+        return Type.get(self.typeName)
+
+class Relation(object):
+    """Represents information about a relation"""
+
+    relations = dict() # All relations in program
+    dumpOrder = []  # order in which we dump the relations
+
+    def __init__(self, name):
+        self.name = "R" + name
+        self.parameters = []  # list of Parameter
+        # Default values
+        self.isinput = False
+        self.isoutput = False
+        self.shadow = None
+
+    @classmethod
+    def clear(cls):
+        """Relete all relations"""
+        cls.relations.clear()
+        cls.dumpOrder = []
+
+    def addParameter(self, name, typ):
+        """Add a parameter to the specified relation, with the given name and type."""
+        param = Parameter(name, typ)
+        self.parameters.append(param)
+
+    @staticmethod
+    def relative_relation_name(component, name):
+        """Name of a Souffle relation within a component"""
+        assert component is not None
+        if component == "":
+            return name
+        return component + "_" + name
+
+    @classmethod
+    def get(cls, name, component):
+        """Get the relation with the specified name"""
+        if name in cls.relations:
+            return cls.relations.get(name)
+        result = cls.relations.get(Relation.relative_relation_name(component, name))
+        assert result is not None, "Relation " + Relation.relative_relation_name(component, name) + " not found"
+        return result
+
+    @classmethod
+    def create(cls, name, component):
+        assert isinstance(name, basestring)
+        name = Relation.relative_relation_name(component, name)
+        if name in cls.relations:
+            raise Exception("duplicate relation name " + name)
+        ri = Relation(name)
+        cls.relations[name] = ri
+        # print "Registered relation " + name
+        return ri
+
+    def mark_as_input(self):
+        # For an input relation generate another shadow relation.
+        # This is required since Souffle can modify input relations,
+        # while DDlog cannot.  The shadow relation will be the
+        # read-only one.
+        if self.shadow is not None:
+            return
+        rel = Relation.create(self.name[1:] + "_shadow", "")
+        rel.isinput = True
+        self.shadow = rel
+        self.shadow.parameters = self.parameters
+
+    def declaration(self):
+        result = ""
+        if self.isinput:
+            result = "input "
+        if self.isoutput:
+            result = "output "
+        result += "relation " + self.name + "(" + ", ".join([a.declaration() for a in self.parameters]) + ")"
+        if self.shadow is not None:
+            result += "\n" + self.shadow.declaration()
+            result += "\n" + self.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ") :- " + \
+                      self.shadow.name + "(" + ", ".join([var_name(a.name) for a in self.parameters]) + ")."
+        return result
+
+class Component(object):
+    """Represents a souffle component."""
+
+    def __init__(self, name, declTree, inherits, typeParameters, inheritedParams):
+        print "Created component", name, typeParameters
+        assert isinstance(typeParameters, list)
+        self.name = name
+        self.declarations = declTree
+        self.inherits = inherits # May be None
+        self.overrides = set()   # List of relation names that this component overrides
+        self.parameters = typeParameters
+        self.inheritedParams = inheritedParams # TODO: not yet used
+
+    def add_declaration(self, decl):
+        self.declarations.append(decl)
+
+    def instantiate(self, newName, typeArgs, converter):
+        """Instantiate this components with the specified newName and type arguments"""
+        # print "Instantiating", self.name, "as", newName, ("preprocessing" if converter.preprocessing else "")
+        assert isinstance(converter, SouffleConverter)
+        if converter.current_component != "":
+            raise Exception("Nested component? " + newName + " in " + converter.current_component)
+        if typeArgs is not None:
+            if len(typeArgs) != len(self.parameters):
+                raise Exception("Cannot instantiate " + self.name + " with " + str(len(typeArgs)) + \
+                                " it expects " + str(len(self.parameters)) + " type parameters.")
+            saveSubstitution = converter.typeSubstitution
+            converter.addTypeSubstitution(self.parameters, typeArgs)
+        converter.current_component = newName
+        inh = self.inherits
+        parent = self
+        save = converter.overridden
+        converter.instantiating.append(self)
+        while inh is not None:
+            if not converter.preprocessing:
+                # print "Adding overrides of", parent.name, parent.overrides
+                converter.overridden = converter.overridden.union(parent.overrides)
+            # print "Instantiating parent component", inh.name
+            converter.instantiating.append(inh)
+            converter.process(inh.declarations)
+            converter.instantiating.pop()
+            parent = inh
+            inh = inh.inherits
+        converter.overridden = save
+        converter.process(self.declarations)
+        converter.current_component = ""
+        converter.instantiating.pop()
+        if typeArgs is not None:
+            converter.typeSubstitution = saveSubstitution
+
+class Files(object):
+    """Represents the files that are used for input and output"""
+
+    def __init__(self, inputDl, outputPrefix):
+        self.inputName = inputDl
+        outputName = outputPrefix + ".dl"
+        outputDataName = outputPrefix + ".dat"
+        outputDumpName = outputPrefix + ".dump.expected"
+        if not skip_logic:
+            self.outFile = open(outputName, 'w')
+        self.output("import intern")
+        self.output("import souffle_lib")
+        self.output("import souffle_types")
+        Type.create("IString", "IString")
+        Type.create("bit<32>", "bit<32>")
+
+        # The following are in souffle_types
+        t = Type.create("number", "bit<32>")
+        t = Type.create("symbol", "IString")
+        Type.create("empty", "()")
+        if not skip_files:
+            self.outputDataFile = open(outputDataName, 'w')
+            self.dumpFile = open(outputDumpName, 'w')
+            self.outputData("start", ";")
+        print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
+
+    def output(self, text):
+        if text == "":
+            return
+        if not skip_logic:
+            self.outFile.write(text + "\n")
+        self.outFile.write(text + "\n")
+
+    def outputData(self, text, terminator):
+        self.outputDataFile.write(text + terminator + "\n")
+
+    def done(self, dumporder):
+        global relationPrefix
+        if not skip_files:
+            self.outputData("commit", ";")
+            if len(dumporder) == 0:
+                self.outputData("dump", ";")
+            else:
+                for r in dumporder:
+                    self.outputData("dump " + relationPrefix + r, ";")
+            self.outputData("exit", ";")
+            self.outputDataFile.close()
+            self.dumpFile.close()
+        if not skip_logic:
+            self.outFile.close()
 
 ##############################################################
 
@@ -323,25 +399,41 @@ def compare(list1, list2, isString):
     return 0
 
 class SouffleConverter(object):
+    """Translates a Souffle Datalog program into a DDlog datalog program.
+       This class is probably used only as a singleton pattern."""
+    # This class is very closely tied to the souffle-grammar.pg grammar.
+
     def __init__(self, files):
         assert isinstance(files, Files)
         self.files = files
-        self.preprocess = False
-        self.current_component = None
+        # During preprocessing we traverse the entire AST and construct various objects.
+        # During postprocessing we traverse the AST again and we emit the output to files.
+        self.preprocessing = False
+        self.current_component = ""  # instance name of the component currently being instantiated
         self.bound_variables = dict() # variables that have been bound, each with an inferred type
         self.all_variables = set()   # all variable names that appear in the program
         self.converting_head = False # True if we are converting a head clause
         self.converting_tail = False # True if we are converting a tail clause
-        self.path_rename = dict()
         self.aggregates = ""         # Relations created by evaluating aggregates
         self.dummyRelation = None    # Relation used to convert clauses that start with a negative term
-        self.opdict = {
+        self.opdict = {              # Translation of some Souffle operators
             "band": "&",
             "bor": "|",
             "bxor": "^",
             "bnot": "~",
         }
         self.currentType = None      # Used to guess types for variables
+        self.components = {}         # Indexed by name
+        self.overridden = set()      # set of relation names that are overridden and should not
+                                     # be emitted
+        self.instantiating = []      # stack of Component objects that are being instantiated
+        self.typeSubstitution = dict() # maps old type name to new type name
+
+    def addTypeSubstitution(self, parameters, values):
+        """The specified parameters should be substituted with the specified values"""
+        assert len(parameters) == len(values)
+        for i in range(0, len(parameters)):
+            self.typeSubstitution[parameters[i]] = values[i]
 
     def fresh_variable(self, prefix):
         """Return a variable whose name does not yet occur in the program"""
@@ -355,14 +447,15 @@ class SouffleConverter(object):
 
     def process_file(self, rel, inFileName, inSeparator, sort):
         """Process an INPUT or OUTPUT with name inFileName.
-        rel is the relation name that is being processed
-        inFileName is the file which contains the data
-        inSeparator is the input record separator
-        sort is a Boolean indicating whether the records in the output
+        rel: is the relation name that is being processed
+        inFileName: is the file which contains the data
+        inSeparator: is the input record separator
+        sort: is a Boolean indicating whether the records in the output
         should be lexicographically sorted.
-        Returns the data in the file as a list of lists.
+        Returns the data in the file as a list of lists of strings.
 
         """
+        assert not self.preprocessing
         ri = Relation.get(rel, self.current_component)
         params = ri.parameters
         converter = []
@@ -392,8 +485,8 @@ class SouffleConverter(object):
             if len(converter) == 0 and len(fields) == 1 and fields[0] == "()":
                 fields = []
             elif len(fields) != len(converter):
-                raise Exception("Line " + lineno + " does not match schema (expected " + str(len(converter)) + \
-                                " parameters):" + line)
+                raise Exception(inFileName + ":" + str(lineno) + " does not match schema (expected " + \
+                                str(len(converter)) + " parameters):" + line)
             for i in range(len(fields)):
                 result.append(converter[i](fields[i]))
             output.append(result)
@@ -433,13 +526,23 @@ class SouffleConverter(object):
         # print decl.tree_str()
         l = getListField(decl, "Identifier", "RelId")
         values = [e.value for e in l]
-        renamed = [self.path_rename[x] if x in self.path_rename else x for x in values]
-        return "_".join(renamed)
+        return "_".join(values)
+
+    def filename(self, rel):
+        if self.current_component == "":
+            return rel
+        return self.current_component + "." + rel
 
     def process_input(self, inputdecl):
         directives = getField(inputdecl, "IodirectiveList")
         body = getField(directives, "IodirectiveBody")
         rel = self.get_relid(body)
+        ri = Relation.get(rel, self.current_component)
+        ri.mark_as_input()
+
+        if skip_files or self.preprocessing:
+            return
+
         kvpf = getOptField(body, "KeyValuePairs")
         if kvpf is not None:
             kvp = self.get_kvp(kvpf)
@@ -450,7 +553,7 @@ class SouffleConverter(object):
             raise Exception("Unexpected IO source " + kvp["IO"])
 
         if "filename" not in kvp:
-            filename = rel + ".facts"
+            filename = self.filename(rel) + ".facts"
         else:
             filename = kvp["filename"]
 
@@ -458,12 +561,6 @@ class SouffleConverter(object):
             separator = '\t'
         else:
             separator = kvp["separator"]
-
-        ri = Relation.get(rel, self.current_component)
-        ri.mark_as_input()
-
-        if skip_files or self.preprocess:
-            return
 
         global relationPrefix
         print "Reading", rel + "_shadow", "from", filename
@@ -491,11 +588,11 @@ class SouffleConverter(object):
 
         ri = Relation.get(rel, self.current_component)
         ri.isoutput = True
-        if skip_files or self.preprocess:
+        if skip_files or self.preprocessing:
             Relation.dumpOrder.append(ri.name)
             return
 
-        filename = rel
+        filename = self.filename(rel)
         print "Reading output relation", rel, "from", filename
         data = None
         for suffix in ["", ".csv"]:
@@ -511,13 +608,32 @@ class SouffleConverter(object):
             self.files.dumpFile.write(
                 relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
 
+    def get_type_parameters(self, typeParameters):
+        """Returns the type parameters as a list or None if there are no type parameters
+           The same grammar production is used for type arguments."""
+        print typeParameters.tree_str()
+        tps = getField(typeParameters, "TypeParameters")
+        if getOptField(tps, "TypeParameterList") is not None:
+            plist = getListField(tps, "TypeId", "TypeParameterList")
+            return [self.convert_typeid(t) for t in plist]
+        return []
+
     def process_component(self, component):
-        ident = getIdentifier(component)
-        if self.current_component != None:
-            raise Exception("Nested components: " + self.current_component + "." + ident)
-        self.current_component = ident
-        self.process(component)
-        self.current_component = None
+        types = getArray(component, "ComponentType")
+        assert len(types) > 0
+        ident0 = getIdentifier(types[0])
+        body = getField(component, "ComponentBody")
+        inherits = None
+        typeParams = self.get_type_parameters(types[0])
+        inheritedParams = []
+        if len(types) > 1:
+            ident1 = getIdentifier(types[1])
+            inherits = self.components[ident1]
+            inheritedParams = self.get_type_parameters(types[1])
+        if self.preprocessing:
+            if ident0 in self.components:
+                raise Exception("Duplicate component name: " + ident0)
+            self.components[ident0] = Component(ident0, body, inherits, typeParams, inheritedParams)
 
     @staticmethod
     def arg_is_varname(arg):
@@ -532,7 +648,6 @@ class SouffleConverter(object):
         asopt = getOptField(arg, "as")
         if asopt is not None:
             return None
-
         return var_name(ident.value)
 
     def convert_op(self, binop):
@@ -834,17 +949,28 @@ class SouffleConverter(object):
         headAtoms = getList(head, "Atom", "Head")
         disjunctions = getList(tail, "Conjunction", "Body")
         terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
+        nonOverridden = []
+        # print "Overridden:", self.overridden
+        for atom in headAtoms:
+            rel = self.get_relid(atom)
+            if rel in self.overridden:
+                # print "Skipping", rel, "overridden"
+                pass
+            else:
+                nonOverridden.append(atom)
+        if len(nonOverridden) == 0:
+            return
 
-        if not self.terms_have_relations(terms) and self.preprocess:
+        if not self.terms_have_relations(terms) and self.preprocessing:
             # If there are no clauses in the tail we
-            # mark all input relations as input relations
-            for atom in headAtoms:
+            # mark all heads as input relations
+            for atom in nonOverridden:
                 name = self.get_relid(atom)
                 ri = Relation.get(name, self.current_component)
                 ri.isInput = True
         else:
             self.converting_head = True
-            heads = [self.convert_atom(x) for x in headAtoms]
+            heads = [self.convert_atom(x) for x in nonOverridden]
             self.converting_head = False
             self.bound_variables.clear()
             self.converting_tail = True
@@ -862,19 +988,23 @@ class SouffleConverter(object):
             self.aggregates = ""
 
     def process_relation_decl(self, relationdecl):
-        """Process a relation declaration and emit output to files"""
         idents = getListField(relationdecl, "Identifier", "RelationList")
         body = getField(relationdecl, "RelationBody")
         params = getListField(body, "Parameter", "ParameterList")
         q = getListField(relationdecl, "Qualifier", "Qualifiers")
         qualifiers = [qual.children[0].value for qual in q]
-        if self.preprocess:
+        if self.preprocessing:
             for ident in idents:
                 # print "Decl", ident.value, qualifiers
                 rel = Relation.create(ident.value, self.current_component)
+                # print "Type substitution", self.typeSubstitution
                 for param in params:
                     arr = getArray(param, "Identifier")
-                    rel.addParameter(arr[0].value, arr[1].value)
+                    typeName = arr[1].value
+                    while typeName in self.typeSubstitution:
+                        typeName = self.typeSubstitution[typeName]
+                    # print "Adding relation parameter", arr[0].value, typeName
+                    rel.addParameter(arr[0].value, typeName)
 
                 if "input" in qualifiers:
                     rel.mark_as_input()
@@ -888,9 +1018,13 @@ class SouffleConverter(object):
 
     def process_fact_decl(self, fact):
         """Process a fact"""
-        if self.preprocess:
+        if self.preprocessing:
             return
         atom = getField(fact, "Atom")
+        rel = self.get_relid(atom)
+        if rel in self.overridden:
+            # print "Skipping", rel, "overridden"
+            return
         head = self.convert_atom(atom)
         self.files.output(head + ".")
 
@@ -901,7 +1035,7 @@ class SouffleConverter(object):
 
     def process_type(self, typedecl):
         ident = getIdentifier(typedecl)
-        if self.preprocess:
+        if self.preprocessing:
             # print "Creating type", ident
             union = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
@@ -958,7 +1092,7 @@ class SouffleConverter(object):
             return
         rule = getOptField(decl, "Rule")
         if rule != None:
-            if self.preprocess:
+            if self.preprocessing:
                 return
             self.process_rule(rule)
             return
@@ -968,11 +1102,25 @@ class SouffleConverter(object):
             return
         init = getOptField(decl, "Init")
         if init != None:
-            ids = getArray(init, "Identifier")
-            self.path_rename[ids[0].value] = ids[1].value
+            ident = getIdentifier(init)
+            ctype = getField(init, "CompType")
+            compName = getIdentifier(ctype)
+            comp = self.components[compName]
+            typeArgs = self.get_type_parameters(ctype)
+            print typeArgs
+            comp.instantiate(ident, typeArgs, self)
             return
         pragma = getOptField(decl, "Pragma")
         if pragma is not None:
+            return
+        override = getOptField(decl, "Override")
+        if override is not None:
+            if len(self.instantiating) == 0:
+                raise Exception(".override not within a component")
+            if not self.preprocessing:
+                return
+            comp = self.instantiating[-1]
+            comp.overrides.add(getIdentifier(override))
             return
         raise Exception("Unexpected node " + decl.tree_str())
 
@@ -995,11 +1143,6 @@ class SouffleConverter(object):
             return
 
     def process(self, tree):
-        if not self.preprocess:
-            # Create a dummy relation with one variable
-            self.dummyRelation = self.fresh_variable("Rdummy")
-            self.files.output("relation " + self.dummyRelation + "(x: Tnumber)")
-            self.files.output(self.dummyRelation + "(0).")
         decls = getListField(tree, "Declaration", "DeclarationList")
         for decl in decls:
             if skip_logic:
@@ -1019,9 +1162,16 @@ def convert(inputName, outputPrefix, relPrefix, debug=False):
     parser = getParser(debug)
     tree = parser.parse_file(files.inputName)
     converter = SouffleConverter(files)
-    converter.preprocess = True
+    converter.preprocessing = True
     converter.process(tree)
-    converter.preprocess = False
+
+    # Create a dummy relation with one variable.  This is used
+    # to handle rules that have only negated terms
+    converter.dummyRelation = converter.fresh_variable("Rdummy")
+    files.output("relation " + converter.dummyRelation + "(x: Tnumber)")
+    files.output(converter.dummyRelation + "(0).")
+
+    converter.preprocessing = False
     converter.process(tree)
     files.done(Relation.dumpOrder)
 

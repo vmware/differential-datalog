@@ -16,32 +16,28 @@ libpath = ""
 
 # expected to fail
 xfail = [
+    "souffle_tests_ddlog", # auto-generated
     "souffle7",  # recursive type
-    "souffle8",  # component inheritance
-    "souffle9",  # generic component
-    "souffle10", # generic component
     "aggregates2", # max in relation argument
     "2sat",      # issue 197
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
-    "comp-override1", # component inheritance
-    "comp-override2", # same
-    "comp-override3", # same
-    "components",     # same
-    "components3",    # same
-    "components1",    # component instantiation
-    "components_generic", # generic component
+    "components",     # nested component
+    "components3",    # nested component
+    "comp-override3", # nested component
+    "comp-override2", # nested component
+    "components1",    # nested component
+    "components_generic", # nested component
     "functor_arity",  # min, max, cat with more than 2 arguments
     "grammar",        # funny unicode char in a comment
     "independent_body2", # not in DNF form
     "inline_nqueens", # recursive type
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # issue 197
-    "magic_components", # component inheritance
-    "magic_dfa",        # same
+    "magic_components", # nested component instantiation
+    "magic_dfa",        # multiple inheritance
     "magic_dominance",  # same
     "magic_nqueens",    # recursive type
-    "magic_strategies", # component inheritance
     "magic_turing1",    # issue 198
     "math",             # Trigonometric functions and FP types
     "minesweeper",      # issue 198
@@ -82,7 +78,6 @@ xfail = [
     "puzzle",           # issue 197
     "shortest_path",    # issue 197
     "sort",             # recursive type
-    "strategies",       # component inheritance
     "tak",              # issue 197
     "tic-tac-toe",      # issue 197
     "weighted_distances" # issue 197
@@ -197,7 +192,8 @@ def run_merged_test(filename):
     """Runs a test that encompasses multiple other tests.
     This is created in a file called souffle_tests.dl, which
     imports multiple other tests"""
-    shutil.rmtree(filename + "_ddlog")
+    if os.path.isdir(filename + "_ddlog"):
+        shutil.rmtree(filename + "_ddlog")
     code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib"])
     if code != 0:
         return
@@ -222,13 +218,15 @@ def main():
 
     path = os.getcwd()
     libpath = path + "/../lib"
-
     todo = sys.argv[1:]
-    #run_examples()
+#    run_examples()
     modules = run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed, skipped", tests_skipped
     imports = ["import " + m + ".souffle as " + m for m in modules]
     imports = [s.replace("/", ".") for s in imports]
+
+    if len(modules) == 0:
+        return
 
     file = "souffle_tests"
     with open(file + ".dl", "w") as testfile:

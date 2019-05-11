@@ -1,0 +1,7 @@
+// Library of Souffle types
+
+import intern
+
+typedef Tnumber = bit<32>
+typedef Tsymbol = IString
+typedef TEmtpy = ()

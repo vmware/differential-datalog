@@ -20,12 +20,16 @@ Declaration: TypeDecl
            | FunctorDecl
            | CompInit
            | Pragma
+           | Override
            ;
+
+Override: OVERRIDE Identifier
+        ;
 
 FunctorDecl: FUNCTOR Identifier "(" IdentifierList ")" ":" Identifier
     ;
 
-Init: INIT Identifier "=" Identifier
+Init: INIT Identifier "=" CompType
     ;
 
 CompInit: INSTANTIATE Identifier "=" CompType
@@ -50,8 +54,15 @@ Pragma: PRAGMA String String
       | PRAGMA String
       ;
 
-Component: COMP Identifier "{" DeclarationList "}"
+ComponentType: Identifier TypeParameters
+             ;
+
+Component: COMP ComponentType ComponentBody
+         | COMP ComponentType ":" ComponentType ComponentBody
          ;
+
+ComponentBody: "{" DeclarationList "}"
+             ;
 
 TypeDecl: TYPE Identifier
         | TYPE Identifier "=" UnionType
@@ -332,3 +343,4 @@ Identifier: /[_a-zA-Z\?][_\d\w]*/;
 NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;
 PLAN: ".plan" ;
 KEYWORD: /\w+/ ;  // special Parglare rule: match keywords entirely
+OVERRIDE: ".override" ;
