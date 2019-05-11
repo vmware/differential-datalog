@@ -1701,14 +1701,18 @@ mkProg d nodes = do
                map (\ProgRel{..} -> "let" <+> rname prelName <+> "=" <+> prelCode <> ";")
                    (concatMap nodeRels nodes)
     let facts = concatMap prelFacts $ concatMap nodeRels nodes
+    -- For some weird reason, rustc runs out of memory if we declare 'init_data'
+    -- using the 'vec![]' macro (given enough facts), so push them one by one
+    -- instead.
+    let init_facts = "let mut init_data = Vec::with_capacity(" <> pp (length facts) <> ");" $$
+                     (vcat $ map (\f -> "init_data.push(" <> f <> ");") facts)
     let pnodes = map mkNode nodes
-        prog = "Program {"                                      $$
+        prog = init_facts                                       $$
+               "Program {"                                      $$
                "    nodes: vec!["                               $$
                (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
                "    ],"                                         $$
-               "    init_data: vec!["                           $$
-               (nest' $ nest' $ vcat $ punctuate comma facts)   $$
-               "    ]"                                          $$
+               "    init_data: init_data"                       $$
                "}"
     return $
         "pub fn prog(__update_cb: UpdateCallback<Value>) -> Program<Value> {"  $$
