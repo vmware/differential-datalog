@@ -81,7 +81,7 @@ outputs.
 | `modify <relation> <key> <- <record>;` | modify Rel1 1 <- Rel1{.f1 = 5};          | modify record; `<record>` specifies just the fields to be modified; only valid for relations with primary key        |
 | comma-separated updates        | insert Foo(1), delete Bar("buzz");               | a sequence of insert and delete commands can be applied in one update  |
 | `profile`|                     |                                                  | print CPU and memory profile of the DDlog program                      |
-| `profile cpu "on"|"off"`|      |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
+| `profile cpu "on"/"off"`|      |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
 | `exit;`                        |                                                  | terminates execution                                                   |
 
 **Note**: Placing a semicolon after an `insert` or `delete` operation tells DDlog to apply the
