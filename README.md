@@ -82,6 +82,8 @@ curl https://sh.rustup.rs -sSf | sh
 to `~/.profile`, so that it becomes effective at the next login attempt.  To configure your current
 shell run `source $HOME/.cargo/env`.
 
+Finally, you will need static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`, `libdl.a`, `libgmp.a`, which can be installed from distro-specific packages.
+
 ## Building
 
 To build the software:
@@ -104,29 +106,21 @@ To install to a different location:
 stack install --local-bin-path <custom_path>
 ```
 
-To run the tests execute (**Note:** this take a while (~30 minutes on my system) and requires ~20GB
+To run the tests execute (**Note:** this takes a while (~30 minutes on my system) and requires ~20GB
 of disk space):
 
 ```
 stack test
 ```
 
+## Binary installation
+
+To install a precompiled version of DDlog, download the [latest binary release](https://github.com/ryzhyk/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [above](#prerequisites))
+
 # vim syntax highlighting
 
 Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential
 datalog syntax highlighting in `.dl` files.
-
-# Using IntelliJ IDEA
-
-You can download and install the community edition of IntelliJ IDEA
-from https://www.jetbrains.com/idea/download.
-
-Start IntelliJ.
-
-Install the IntelliJ-Hakell plugin: (File/Settings/Plugins -- search).
-
-Follow the instructions here: https://github.com/rikvdkleij/intellij-haskell to
-get started with the plugin.
 
 # Debugging with GHCi
 
