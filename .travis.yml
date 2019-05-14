@@ -78,7 +78,9 @@ before_deploy:
     - export DIST_DIR=ddlog
     - mkdir -p $DIST_DIR/bin
     - export BIN="$(stack path --local-install-root)/bin/ddlog"
+    - export OVSDB_BIN="$(stack path --local-install-root)/bin/ovsdb2ddlog"
     - cp "$BIN" "$DIST_DIR/bin/"
+    - cp "$OVSDB_BIN" "$DIST_DIR/bin/"
     - cp -r lib "$DIST_DIR/"
     # First copy Java sources only, then build and copy the .jar
     - cp -r java "$DIST_DIR/"
