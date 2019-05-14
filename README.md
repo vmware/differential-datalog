@@ -113,7 +113,7 @@ of disk space):
 stack test
 ```
 
-## Binary installation
+# Binary installation
 
 To install a precompiled version of DDlog, download the [latest binary release](https://github.com/ryzhyk/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [above](#prerequisites))
 
