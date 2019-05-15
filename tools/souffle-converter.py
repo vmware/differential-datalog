@@ -11,6 +11,7 @@ import argparse
 import parglare # parser generator
 
 skip_files = False  # If true do not process .input and .output declarations
+skip_logic = False  # If true do not produce file .dl
 relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
                     # This makes it possible to concatenate multiple .dat files together
                     # This should end in a dot.
@@ -203,7 +204,8 @@ class Files(object):
         outputName = outputPrefix + ".dl"
         outputDataName = outputPrefix + ".dat"
         outputDumpName = outputPrefix + ".dump.expected"
-        self.outFile = open(outputName, 'w')
+        if not skip_logic:
+            self.outFile = open(outputName, 'w')
         self.output("import intern")
         self.output("import souffle_lib")
         Type.create("IString", "IString")
@@ -214,29 +216,33 @@ class Files(object):
         t = Type.create("symbol", "IString")
         self.output(t.declaration())
         self.output("typedef TEmpty = ()")
-        self.outputDataFile = open(outputDataName, 'w')
-        self.dumpFile = open(outputDumpName, 'w')
-        self.outputData("start", ";")
+        if not skip_files:
+            self.outputDataFile = open(outputDataName, 'w')
+            self.dumpFile = open(outputDumpName, 'w')
+            self.outputData("start", ";")
         print "Reading from", self.inputName, "writing output to", outputName, "writing data to", outputDataName
 
     def output(self, text):
-        self.outFile.write(text + "\n")
+        if not skip_logic:
+            self.outFile.write(text + "\n")
 
     def outputData(self, text, terminator):
         self.outputDataFile.write(text + terminator + "\n")
 
     def done(self, dumporder):
         global relationPrefix
-        self.outputData("commit", ";")
-        if len(dumporder) == 0:
-            self.outputData("dump", ";")
-        else:
-            for r in dumporder:
-                self.outputData("dump " + relationPrefix + r, ";")
-        self.outputData("exit", ";")
-        self.outFile.close()
-        self.outputDataFile.close()
-        self.dumpFile.close()
+        if not skip_files:
+            self.outputData("commit", ";")
+            if len(dumporder) == 0:
+                self.outputData("dump", ";")
+            else:
+                for r in dumporder:
+                    self.outputData("dump " + relationPrefix + r, ";")
+            self.outputData("exit", ";")
+            self.outputDataFile.close()
+            self.dumpFile.close()
+        if not skip_logic:
+            self.outFile.close()
 
 # The next few functions manipulate Parglare Parse Trees
 def getOptField(node, field):
@@ -958,6 +964,24 @@ class SouffleConverter(object):
             return
         raise Exception("Unexpected node " + decl.tree_str())
 
+    def process_only_facts(self, decl):
+        typedecl = getOptField(decl, "TypeDecl")
+        if typedecl != None:
+            self.process_type(typedecl)
+            return
+        relationdecl = getOptField(decl, "RelationDecl")
+        if relationdecl != None:
+            self.process_relation_decl(relationdecl)
+            return
+        inputdecl = getOptField(decl, "InputDecl")
+        if inputdecl != None:
+            self.process_input(inputdecl)
+            return
+        outputdecl = getOptField(decl, "OutputDecl")
+        if outputdecl != None:
+            self.process_output(outputdecl)
+            return
+
     def process(self, tree):
         if not self.preprocess:
             # Create a dummy relation with one variable
@@ -966,7 +990,10 @@ class SouffleConverter(object):
             self.files.output(self.dummyRelation + "(0).")
         decls = getListField(tree, "Declaration", "DeclarationList")
         for decl in decls:
-            self.process_decl(decl)
+            if skip_logic:
+                self.process_only_facts(decl)
+            else:
+                self.process_decl(decl)
         self.files.output(self.aggregates)
 
 def main():
@@ -976,12 +1003,21 @@ def main():
     argParser.add_argument("input", help="input Souffle program", type=str)
     argParser.add_argument("out", help="Output file prefix data file", type=str)
     argParser.add_argument("-d", help="Debug parser", action="store_true")
+    argParser.add_argument("--facts-only", "--facts_only", action='store_true', help="produces only facts")
+    argParser.add_argument("--logic-only", "--logic_only", action='store_true', help="produces only logic")
     args = argParser.parse_args()
     inputName, outputPrefix = args.input, args.out
     global relationPrefix
     relationPrefix = args.prefix if args.prefix else ""
     if relationPrefix != "":
         assert relationPrefix.endswith("."), "prefix is expected to end with a dot"
+    if args.facts_only and args.logic_only:
+        raise Exception("Cannot produce only facts and only logic")
+    global skip_files, skip_logic
+    if args.logic_only:
+        skip_files = True
+    if args.facts_only:
+        skip_logic = True
     files = Files(inputName, outputPrefix)
     parser = getParser(args.d)
     tree = parser.parse_file(files.inputName)
