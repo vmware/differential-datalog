@@ -143,7 +143,7 @@ minutes).
 
 Alternatively, run the DDlog compiler directly to produce the Rust program
 ```
-ddlog -i playpen.dl --action=compile
+ddlog -i playpen.dl -L../../lib
 ```
 and call the Rust toolchain to compile the program:
 ```
@@ -668,7 +668,7 @@ pub fn string_slice(x: &String, from: &u64, to: &u64) -> String {
 the DDlog compiler directly, modify the command line as follows:
 
 ```
-ddlog -i tutorial.dl --action=compile --inline-rust-file=playpen.rs
+ddlog -i tutorial.dl --inline-rust-file=playpen.rs -L../../lib
 ```
 
 ### Advanced rules
@@ -1196,8 +1196,8 @@ references rather than their addresses.  Two references are equal if and only
 if the objects they point to are equal, whether they are the same object or not.
 
 The `ref_new()` and `deref()` functions are in principle sufficient
-to work with references, but they would be a pain to use without syntactic
-sugar, described below.
+to work with references, but they would be cumbersome to use without
+additional syntactic support, described below.
 
 Consider two relations that store information about schools and students:
 
@@ -1229,7 +1229,15 @@ StudentInfo(student, school) :-
 
 Note the use of the `Ref` type in relation declaration.  Note also how `&` is
 used to "open up" the relation and patten match its fields without
-calling `deref` on it.
+calling `deref` on it.  Here is an equivalent rule written without `&`:
+
+```
+StudentInfo(student, school) :-
+    Student[student],
+    Student{.school = var school_name} = deref(student),
+    School[school],
+    deref(school).name == school_name.
+```
 
 Next we use the `StudentInfo` relation to select the top SAT score for each school:
 
@@ -1366,7 +1374,7 @@ Note that we refer to relations and constructors via their fully qualified names
 Compile and run the test:
 
 ```
-ddlog -i test.dl
+ddlog -i test.dl -L../../lib
 cd test
 cargo build --release
 target/release/test_cli < ../test.dat
@@ -1376,10 +1384,18 @@ Modules do not have to be in the same directory with the main program.  Assuming
 hierarchy is located, e.g., in `../modules`,  the first command above must be changed as follows:
 
 ```
-ddlog -i test.dl -L../modules
+ddlog -i test.dl -L../modules -L../../lib
 ```
 
 Multiple `-L` options are allowed to access modules scattered across multiple directories.
+
+## The standard library
+
+The module system enables the creation of reusable DDlog libraries.  Some of these libraries
+are distributed with DDlog in the `lib` directory.  A particularly important one is the standard
+library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Map`, `Option`, `Ref`, and others.
+This library is imported automatically into every DDlog program; therefore the path to the
+`lib` directory must always be specified using the `-L` switch.
 
 ## Advanced topics
 
