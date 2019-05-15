@@ -32,9 +32,13 @@ typedef Pow2 = Pow2{p: string}
 typedef Price = Price{item: string, vendor: string, price: bit<64>}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
+typedef School = School{name: string, address: string}
+typedef Student = Student{id: student_id, name: string, school: string, sat_score: bit<16>}
+typedef StudentInfo = StudentInfo{student: std.Ref<Student>, school: std.Ref<School>}
 typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
 typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
 typedef TCPDstPort = TCPDstPort{port: bit<16>}
+typedef TopScore = TopScore{school: string, top_score: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
 typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
@@ -61,6 +65,7 @@ typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
+typedef student_id = bit<64>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
 typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
 function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
@@ -246,10 +251,14 @@ output relation Pow2 [Pow2]
 input relation Price [Price]
 output relation Product [Product]
 output relation SanitizedEndpoint [SanitizedEndpoint]
+input relation School [std.Ref<School>]
+input relation Student [std.Ref<Student>]
+relation StudentInfo [StudentInfo]
 input relation Subnet [Subnet]
 output relation Sum [Sum]
 output relation TCPDstPort [TCPDstPort]
 output relation TargetAudience [Person]
+output relation TopScore [TopScore]
 output relation UDPDstPort [UDPDstPort]
 output relation UDPDstPort2 [UDPDstPort2]
 input relation Word1 [Word1]
@@ -281,6 +290,8 @@ UDPDstPort2(.port=port) :- Packet(.pkt=pkt), std.Some{.x=var port} = pkt_udp_por
 IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
 IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
 TargetAudience[person] :- Person[person], is_target_audience(person).
+StudentInfo(.student=student, .school=school) :- Student[(student@ (&Student{.id=_, .name=_, .school=school_name, .sat_score=_}))], School[(school@ (&School{.name=school_name, .address=_}))].
+TopScore(.school=school, .top_score=top_score) :- StudentInfo(.student=(&Student{.id=_, .name=_, .school=_, .sat_score=sat}), .school=(&School{.name=school, .address=_})), var top_score = Aggregate((school), std.group_max(sat)).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], var a = lb.ip_addresses, match (lb.protocol) {

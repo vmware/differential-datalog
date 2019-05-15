@@ -1170,6 +1170,79 @@ TargetAudience[person] :- Person[person], is_target_audience(person).
 In the context of a rule, square brackets are used to select or assign the entire record rather than
 its individual fields.
 
+## Reference type (`Ref<>`)
+
+DDlog's rich type system makes it easy to store complex data structures in
+relations.  As these data structures are copied to other relations, their
+contents is duplicated, potentially wasting memory.  An alternative is to copy
+such values by reference instead.
+
+The reference type is declared in the standard library along with two functions
+that manipulate references.
+
+```
+extern type Ref<'A>
+
+extern function ref_new(x: 'A): Ref<'A>
+extern function deref(x: Ref<'A>): 'A
+```
+
+Objects wrapped in references are automatically reference counted and
+deallocated when the last reference is dropped.  The programmer must however
+**avoid creating cyclic references**, as those will form garbage that will stay
+in memory forever.  References can be compared using equality (`==`) and
+inequality (`!=`) operators.  The operators compare the objects wrapped in
+references rather than their addresses.  Two references are equal if and only
+if the objects they point to are equal, whether they are the same object or not.
+
+The `ref_new()` and `deref()` functions are in principle sufficient
+to work with references, but they would be a pain to use without syntactic
+sugar, described below.
+
+Consider two relations that store information about schools and students:
+
+```
+typedef student_id = bit<64>
+
+input relation &School(name: string, address: string)
+input relation &Student(id: student_id, name: string, school: string, sat_score: bit<16>)
+```
+
+We are planning to copy records from these relations around and therefore wrap them
+in `Ref<>`'s.  The ampersant (`&`) in these declaration is a shortcut notation for:
+
+```
+typedef School{name: string, address: string}
+input relation School[Ref<School>]
+```
+
+We now compute a new relation that stores the details of a student and their
+school in each record:
+
+```
+relation StudentInfo(student: Ref<Student>, school: Ref<School>)
+
+StudentInfo(student, school) :-
+    student in &Student(.school = school_name),
+    school in &School(.name = school_name).
+```
+
+Note the use of the `Ref` type in relation declaration.  Note also how `&` is
+used to "open up" the relation and patten match its fields without
+calling `deref` on it.
+
+Next we use the `StudentInfo` relation to select the top SAT score for each school:
+
+```
+output relation TopScore(school: string, top_score: bit<16>)
+
+TopScore(school, top_score) :-
+    StudentInfo(&Student{.sat_score = sat}, &School{.name = school}),
+    var top_score = Aggregate((school), group_max(sat)).
+```
+
+We again use `&` to pattern match values stored by reference.
+
 ## A more imperative syntax
 
 Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog
