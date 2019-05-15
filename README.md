@@ -2,8 +2,12 @@
 
 # Differential Datalog (DDlog)
 
-DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog engine for writing
-*application-integrated* deductive database engines.  DDlog is based on [Frank McSherry's](https://github.com/frankmcsherry/)
+DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog engine. It is well suited for
+writing programs that incrementally update their output in response to input changes. With DDlog,
+the programmer does not need to worry about writing incremental algorithms.
+Instead they specify the desired input-output mapping in a declarative manner, using a dialect of Datalog.
+The DDlog compiler then synthesizes an efficient incremental implementation.
+DDlog is based on [Frank McSherry's](https://github.com/frankmcsherry/)
 excellent [differential dataflow](https://github.com/frankmcsherry/differential-dataflow) library.
 
 1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
@@ -65,7 +69,6 @@ We have tested our software on Ubuntu Linux and MacOS.
 The compilers are written in Haskell.  One needs the Glasgow Haskell
 Compiler.  The Haskell compiler is managed by the
 [stack](https://github.com/commercialhaskell/stack) tool.
-
 To download stack (if you don't already have it) use:
 
 ```
