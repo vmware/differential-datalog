@@ -31,6 +31,20 @@ dump HostInSubnet;
 
 start;
 
+insert School("school1", ""),
+insert School("school2", ""),
+insert Student(1, "Adam", "school1", 1400),
+insert Student(1, "Aaron", "school2", 1500),
+insert Student(1, "Alice", "school1", 1300),
+insert Student(1, "Ann", "school2", 1600),
+
+commit;
+
+echo TopScore;
+dump TopScore;
+
+start;
+
 insert Logical_Switch(0),
 insert Logical_Switch(1),
 insert Load_Balancer(0, 0, "10.10.10.101", std.Some{"TCP"}, "lb1"),

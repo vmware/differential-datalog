@@ -393,6 +393,26 @@ output relation TargetAudience[Person]
 TargetAudience[person] :- Person[person], is_target_audience(person).
 
 /*
+ * Example: references
+ */
+typedef student_id = bit<64>
+
+input relation &School(name: string, address: string)
+input relation &Student(id: student_id, name: string, school: string, sat_score: bit<16>)
+
+relation StudentInfo(student: Ref<Student>, school: Ref<School>)
+
+StudentInfo(student, school) :-
+    student in &Student(.school = school_name),
+    school in &School(.name = school_name).
+
+output relation TopScore(school: string, top_score: bit<16>)
+
+TopScore(school, top_score) :-
+    StudentInfo(&Student{.sat_score = sat}, &School{.name = school}),
+    var top_score = Aggregate((school), group_max(sat)).
+
+/*
  * Example: Advanced features
  */
 

@@ -13,6 +13,9 @@ HostInSubnet:
 HostInSubnet{0,0}
 HostInSubnet{1,0}
 HostInSubnet{2,1}
+TopScore
+TopScore{"school1",1400}
+TopScore{"school2",1600}
 Flows:
 Flow{0,LS_IN_PRE_LB{},100,"ip4.dst == 10.10.10.101","{ reg0[0] = 1; next; }"}
 Flow{0,LS_OUT_PRE_LB{},100,"ip4","{ reg0[0] = 1; next; }"}
