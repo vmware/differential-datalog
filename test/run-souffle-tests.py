@@ -22,21 +22,14 @@ xfail = [
     "2sat",      # issue 197
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
-    "components",     # nested component
-    "components3",    # nested component
-    "comp-override3", # nested component
-    "comp-override2", # nested component
-    "components1",    # nested component
-    "components_generic", # nested component
+    "comp-override2", # nested component declaration
+    "components1",    # improper component nesting
     "functor_arity",  # min, max, cat with more than 2 arguments
     "grammar",        # funny unicode char in a comment
     "independent_body2", # not in DNF form
     "inline_nqueens", # recursive type
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # issue 197
-    "magic_components", # nested component instantiation
-    "magic_dfa",        # multiple inheritance
-    "magic_dominance",  # same
     "magic_nqueens",    # recursive type
     "magic_turing1",    # issue 198
     "math",             # Trigonometric functions and FP types
@@ -57,23 +50,19 @@ xfail = [
     "catalan",          # same
     "circuit_eval",     # issue 198
     "circuit_records",  # recursive type
-    "comp-parametrized", # generic component
-    "comp-parametrized-inherit", # same
-    "comp-parametrized-multilvl", # same
+    "comp-parametrized", # issue 198
     "counter",          # issue 197
-    "dfa",              # generic component
     "dfa_live_vars",    # issue 198
     "dfa_parse",        # issue 197
-    "dfa_summary_function", # generic component
+    "dfa_summary_function", # issue 197
     "dnf",              # not in dnf form
-    "dominance",        # generic component
     "edit_distance",    # issue 197
     "euclid",           # not in DNF form
     "inline_nats",      # issue 198
     "josephus",         # issue 197
     "longest_path",     # issue 198
     "magic_access-policy", # issue 197
-    "nfsa2fsa",         # generic component
+    "nfsa2fsa",         # recursive type
     "nqueens",          # recursive type
     "puzzle",           # issue 197
     "shortest_path",    # issue 197
@@ -105,14 +94,12 @@ def compile_example(directory, f):
     code, _ = run_command(["cpp", "-P", "-undef", "-nostdinc++", f, "-o", f + ".tmp"])
     if code != 0:
         raise Exception("Error " + str(code) + " running cpp")
-    try:
-        convert(f + ".tmp", "souffle", directory.replace("/", ".") + ".souffle.")
-    finally:
-        run_command(["rm", f + ".tmp"])
+    convert(f + ".tmp", "souffle", directory.replace("/", ".") + ".souffle.")
 
     if code == 0:
         code, _ = run_command(["ddlog", "-i", "souffle.dl", "-L", libpath])
     if code == 0:
+        run_command(["rm", f + ".tmp"])
         tests_passed = tests_passed + 1
     os.chdir(savedir)
     return code
@@ -204,7 +191,8 @@ def run_merged_test(filename):
     os.chdir("..")
     with open(filename + ".dat") as f:
         lines = f.read()
-    code, result = run_command(["./" + filename + "_ddlog/target/release/" + filename + "_cli", "--no-print"], lines)
+    code, result = run_command(["./" + filename + "_ddlog/target/release/" + filename +
+                                "_cli", "--no-print"], lines)
     if code != 0:
         print "Error running ddlog program", code
     with open(filename + ".dump", "w") as dump:
@@ -228,12 +216,12 @@ def main():
     if len(modules) == 0:
         return
 
-    file = "souffle_tests"
-    with open(file + ".dl", "w") as testfile:
+    output_file = "souffle_tests"
+    with open(output_file + ".dl", "w") as testfile:
         testfile.writelines("\n".join(imports))
 
     # Create input script by concatenating the other input scripts
-    with open(file + ".dat", "w") as testinputfile:
+    with open(output_file + ".dat", "w") as testinputfile:
         for m in modules:
             cli_file_name = m.replace(".", "/") + "/souffle.dat"
             with open(cli_file_name, "r") as cli_file:
@@ -242,14 +230,14 @@ def main():
                         continue
                     testinputfile.write(line)
     # Create expected output by concatenating the other expected outputs
-    with open(file + ".dump.expected", "w") as testoutputfile:
+    with open(output_file + ".dump.expected", "w") as testoutputfile:
         for m in modules:
             dump_file_name = m.replace(".", "/") + "/souffle.dump.expected"
             with open(dump_file_name, "r") as dump_file:
                 for line in dump_file:
                     testoutputfile.write(line)
 
-    run_merged_test(file)
+    run_merged_test(output_file)
 
 if __name__ == "__main__":
     main()

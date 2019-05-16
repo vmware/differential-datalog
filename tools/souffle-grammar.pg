@@ -58,8 +58,12 @@ ComponentType: Identifier TypeParameters
              ;
 
 Component: COMP ComponentType ComponentBody
-         | COMP ComponentType ":" ComponentType ComponentBody
+         | COMP ComponentType ":" ComponentTypeList ComponentBody
          ;
+
+ComponentTypeList : ComponentType
+                  | ComponentType "," ComponentTypeList
+                  ;
 
 ComponentBody: "{" DeclarationList "}"
              ;
