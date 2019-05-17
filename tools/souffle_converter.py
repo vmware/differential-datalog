@@ -365,7 +365,6 @@ class Files(object):
             return
         if not skip_logic:
             self.outFile.write(text + "\n")
-        self.outFile.write(text + "\n")
 
     def outputData(self, text, terminator):
         self.outputDataFile.write(text + terminator + "\n")
@@ -617,32 +616,42 @@ class SouffleConverter(object):
         if getOptField(outputdecl, "OUTPUT") is None:
             return
         directives = getField(outputdecl, "IodirectiveList")
-        body = getField(directives, "IodirectiveBody")
-        rel = self.get_relid(body)
+        rels = []
+        while True:
+            body = getOptField(directives, "IodirectiveBody")
+            if body is not None:
+                rel = self.get_relid(body)
+                rels.append(rel)
+                break
+            else:
+                relid = getIdentifier(directives)
+                rels.append(relid)
+                directives = getField(directives, "IodirectiveList")
 
-        ri = Relation.get(rel, self.getCurrentComponentLegalName())
-        ri.isoutput = True
-        if skip_files or self.preprocessing:
-            Relation.dumpOrder.append(ri.name)
-            return
+        for rel in rels:
+            ri = Relation.get(rel, self.getCurrentComponentLegalName())
+            ri.isoutput = True
+            if skip_files or self.preprocessing:
+                Relation.dumpOrder.append(ri.name)
+                return
 
-        filenames = self.generateFilenames(rel)
-        print "Reading output relation", rel
-        data = None
-        for suffix in ["", ".csv"]:
-            for filename in filenames:
-                tryFile = filename + suffix
-                if os.path.isfile(tryFile):
-                    data = tryFile
-                    break
-        if data is None:
-            print "*** Cannot find output file for " + rel + \
-                  "; the reference output will be incomplete"
-            return
-        output = self.process_file(rel, data, "\t", True)
-        for row in output:
-            self.files.dumpFile.write(
-                relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
+            filenames = self.generateFilenames(rel)
+            print "Reading output relation", rel
+            data = None
+            for suffix in ["", ".csv"]:
+                for filename in filenames:
+                    tryFile = filename + suffix
+                    if os.path.isfile(tryFile):
+                        data = tryFile
+                        break
+            if data is None:
+                print "*** Cannot find output file for " + rel + \
+                      "; the reference output will be incomplete"
+                return
+            output = self.process_file(rel, data, "\t", True)
+            for row in output:
+                self.files.dumpFile.write(
+                    relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
 
     def get_type_parameters(self, typeParameters):
         """Returns the type parameters as a list or None if there are no type parameters
@@ -1229,17 +1238,9 @@ def convert(inputName, outputPrefix, relPrefix, debug=False):
     files.done(Relation.dumpOrder)
 
 def main():
-<<<<<<< 56dfa1f0fa8130ac3df294397e348834d59b7870
     argParser = argparse.ArgumentParser("souffle_converter.py",
                                         description="Converts programs from Souffle Datalog into DDlog")
     argParser.add_argument("-p", "--prefix", help="Prefix to add to relations written in .dat files")
-=======
-    argParser = argparse.ArgumentParser("souffle-converter.py",
-                                        description=
-                                        "Converts programs from Souffle Datalog into DDlog")
-    argParser.add_argument("-p", "--prefix",
-                           help="Prefix to add to relations written in .dat files")
->>>>>>> Support almost complete for souffle components
     argParser.add_argument("input", help="input Souffle program", type=str)
     argParser.add_argument("out", help="Output file prefix data file", type=str)
     argParser.add_argument("-d", help="Debug parser", action="store_true")

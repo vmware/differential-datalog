@@ -207,7 +207,7 @@ def main():
     path = os.getcwd()
     libpath = path + "/../lib"
     todo = sys.argv[1:]
-#    run_examples()
+    run_examples()
     modules = run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed, skipped", tests_skipped
     imports = ["import " + m + ".souffle as " + m for m in modules]
