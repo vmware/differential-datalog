@@ -95,8 +95,7 @@ sOUFFLE_BASE = "./test"
 sOUFFLE_DIRS = ["souffle0", -- large Doop example
                 "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
                  -- "souffle7", -- uses a recursive type
-                 -- "souffle9", -- uses generic component
-                 -- "souffle10", -- generic component
+                 "souffle9", "souffle10", 
                  "souffle11", "souffle12", "souffle13", "souffle14", "souffle15", "souffle16", "souffle17", "souffle18"]
 
 souffleTests :: Bool -> TestTree
