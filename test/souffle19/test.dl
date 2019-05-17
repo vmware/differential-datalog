@@ -1,0 +1,26 @@
+.symbol_type node
+
+.comp DiGraph {
+    .decl node(a:node)
+    .decl edge(a:node,b:node)
+
+    node(X) :- edge(X,_).
+    node(X) :- edge(_,X).
+
+    .decl reach(a:node,b:node)
+    reach(X,Y) :- edge(X,Y).
+    reach(X,Z) :- reach(X,Y),reach(Y,Z).
+
+    .decl clique(a:node,b:node)
+    clique(X,Y) :- reach(X,Y),reach(Y,X).
+}
+
+.init Net = DiGraph
+.init Net1 = DiGraph
+
+Net.edge("A","B").
+Net.edge("B","C").
+
+.decl res(a:node,b:node)
+.output res
+res(X,Y) :- Net.reach(X,Y).
