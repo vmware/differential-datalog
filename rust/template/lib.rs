@@ -557,7 +557,3 @@ pub extern "C" fn ddlog_string_free(s: *mut raw::c_char)
     };
     unsafe { ffi::CString::from_raw(s); }
 }
-
-pub trait FromValue {
-    fn from_value(&Value) -> &Self;
-}

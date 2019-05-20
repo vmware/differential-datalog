@@ -5,7 +5,12 @@ typedef Aggregate1 = Aggregate1{x: string, cnt: bit<64>}
 typedef Aggregate2 = Aggregate2{x: string, set: std.Set<string>}
 typedef Aggregate3 = Aggregate3{x: string, vec: std.Vec<string>}
 typedef Aggregate4 = Aggregate4{x: string, map: std.Map<string,string>}
+typedef AggregateByX = AggregateByX{x: string, cnt: bit<64>}
+typedef AggregateCnt = AggregateCnt{cnt: bit<64>}
+typedef AggregateCnt2 = AggregateCnt2{cnt: bit<64>}
+typedef AggregateCnt3 = AggregateCnt3{cnt: bit<64>}
 typedef AggregateMe1 = AggregateMe1{x: string, y: string}
+typedef AggregateMe3 = AggregateMe3{x: string, y: string, z: string}
 typedef AggregateMeInts = AggregateMeInts{x: string, y: bit<32>}
 typedef Alloc = Alloc{id: bigint, allocated: std.Map<string,bit<32>>, toallocate: std.Vec<string>, min_val: bit<32>, max_val: bit<32>}
 typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
@@ -471,7 +476,12 @@ output relation Aggregate1 [Aggregate1]
 output relation Aggregate2 [Aggregate2]
 output relation Aggregate3 [Aggregate3]
 output relation Aggregate4 [Aggregate4]
+output relation AggregateByX [AggregateByX]
+output relation AggregateCnt [AggregateCnt]
+output relation AggregateCnt2 [AggregateCnt2]
+output relation AggregateCnt3 [AggregateCnt3]
 input relation AggregateMe1 [AggregateMe1]
+input relation AggregateMe3 [AggregateMe3]
 input relation AggregateMeInts [AggregateMeInts]
 input relation Alloc [Alloc]
 relation Allocated [Allocated]
@@ -665,11 +675,15 @@ Strings(.s="line1\nline2").
 Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).
 Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}).
 Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(y)).
+AggregateCnt(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_count(())).
+AggregateCnt2(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_sum((64'd1: bit<64>))).
+AggregateCnt3(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), (y != "1"), var cnt = Aggregate((), std.group_sum((64'd1: bit<64>))).
 Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)).
 Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), var vec = Aggregate((x), std.group2vec(y)).
 Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), var map = Aggregate((x), std.group2map((x, y))).
 Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)), var y = FlatMap(set).
 Sum(.x=x, .sum=sum) :- AggregateMeInts(.x=x, .y=y), var sum = Aggregate((x), std.group_sum(y)).
+AggregateByX(.x=x, .cnt=cnt) :- AggregateMe3(.x=x, .y=y, .z=z), AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(())).
 WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
 Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
 ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).

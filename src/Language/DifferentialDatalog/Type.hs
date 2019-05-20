@@ -35,7 +35,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isInt, isString, isStruct, isTuple,
+    isBool, isBit, isInt, isString, isStruct, isTuple, isGroup,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -50,7 +50,6 @@ module Language.DifferentialDatalog.Type(
     funcGroupArgTypes,
     sET_TYPES,
     gROUP_TYPE,
-    isGroup,
     rEF_TYPE,
     checkIterable,
     typeIterType
