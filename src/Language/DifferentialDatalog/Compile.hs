@@ -1160,7 +1160,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                      "}"
        Nothing -> do
             xform <- case arrange_input_by of
-                        Just (key_vars, val_vars) -> do 
+                        Just (key_vars, val_vars) -> do
                             -- Evaluate arrange_input_by in the context of 'rhs'
                             let key_str = parens $ commaSep $ map (pp . fst) key_vars
                             akey <- mkTupleValue d key_vars
