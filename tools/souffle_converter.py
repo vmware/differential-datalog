@@ -3,7 +3,6 @@
    Datalog programs written in the Differential Datalog dialect"""
 
 # pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long
-# from __future__ import unicode_literals
 import json
 import gzip
 import os
@@ -851,7 +850,7 @@ class SouffleConverter(object):
         argVariables = self.bound_variables.copy()
 
         print "Body bound", bodyBoundVariables
-        common = bodyBoundVariables # dict_intersection(bodyBoundVariables, save)
+        common = bodyBoundVariables.copy()
         dict_subtract(common, argVariables)
 
         result += "var " + variable + " = Aggregate(("

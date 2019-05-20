@@ -5,21 +5,25 @@ import os
 import subprocess
 import sys
 import shutil
+import argparse
+
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert
 
 tests_run = 0
 tests_passed = 0
-tests_skipped = 0
+tests_xfail = 0
 todo = []  # if not empty only the tests in this list are run
 libpath = ""
-tests_to_run = 7 # number of tests to run at once in Rust
+tests_to_skip = 0 # Skip this many tests
+tests_to_run = 20 # number of tests to run at once in Rust
 
 # expected to fail
 xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # recursive type
     "aggregates2", # max in relation argument
+    "circuit_sat", # issue #221
     "2sat",      # issue 197
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
@@ -111,8 +115,8 @@ def should_run(d):
     if d == "":
         return False
     if d in xfail:
-        global tests_skipped
-        tests_skipped = tests_skipped + 1
+        global tests_xfail
+        tests_xfail = tests_xfail + 1
         print "Expected to fail", d
         return False
     if len(todo) > 0:
@@ -157,8 +161,14 @@ def run_remote_tests():
             directory = tg + "/" + test
             if not should_run(test):
                 continue
+
+            global tests_to_skip
+            if tests_to_skip > 0:
+                tests_to_skip = tests_to_skip - 1
+                print "Skipping", directory
+                continue
+
             newName = normalize_name(directory)
-            print directory
             if newName != directory:
                 print "Using", newName, "for", directory
             if not os.path.isdir(newName):
@@ -173,7 +183,6 @@ def run_remote_tests():
             code = compile_example(directory, test + ".dl")
             if code == 0:
                 result.append(directory)
-            #    shutil.rmtree(directory)
             global tests_passed, tests_to_run
             if tests_passed == tests_to_run:
                 return result
@@ -210,15 +219,33 @@ def run_merged_test(filename):
         print "Output differs"
 
 def main():
-    global todo, tests_skipped, libpath
+    global todo, tests_xfail, libpath
+    argParser = argparse.ArgumentParser(
+        "run-souffle-tests.py",
+        description="Runs a number of Datalog Souffle tests from github.")
+    argParser.add_argument("-s", "--skip", help="Number of tests to skip")
+    argParser.add_argument("-r", "--run", help="Number of tests to run")
+    argParser.add_argument("-e", "--examples", action="store_true",
+                           help="Run the examples without reference data")
+    argParser.add_argument("remaining", nargs="*")
+    args = argParser.parse_args()
 
     run_command(["stack", "install"])
     path = os.getcwd()
     libpath = path + "/../lib"
-    todo = sys.argv[1:]
-#    run_examples()
+    todo = args.remaining
+    if args.examples:
+        run_examples()
+
+    global tests_to_skip, tests_to_run
+    if args.skip is not None:
+        tests_to_skip = int(args.skip)
+    if args.run is not None:
+        tests_to_run = int(args.run)
+    print "Running", tests_to_run, "after", tests_to_skip
+
     modules = run_remote_tests()
-    print "Ran", tests_run, "out of which", tests_passed, "passed, skipped", tests_skipped
+    print "Converted", tests_run, "out of which", tests_passed, "passed, skipped xfail", tests_xfail
     imports = ["import " + m + ".souffle as " + m for m in modules]
     imports = [s.replace("/", ".") for s in imports]
 
