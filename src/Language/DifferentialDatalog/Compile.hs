@@ -851,15 +851,6 @@ mkValType d types =
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
-    {-mkfromval t =
-        "impl FromValue for " <> mkType t <> " {"                                                               $$
-        "    fn from_value(v: &Value) -> &Self {"                                                               $$
-        "        match v {"                                                                                     $$
-        "            Value::" <> consname t <> "(x) => &" <> boxDeref d t "*x" <> ","                           $$
-        "            _ => panic!(\"unexpected constructor\")"                                                   $$
-        "        }"                                                                                             $$
-        "    }"                                                                                                 $$
-        "}"-}
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
 -- relation.  This is done as a separate compiler pass to maximize arrangement sharing
