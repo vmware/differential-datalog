@@ -958,7 +958,7 @@ extractValue d t = parens $
         "|" <> vALUE_VAR <> ": Value| {"                                                              $$
         "match" <+> vALUE_VAR <+> "{"                                                                 $$
         "    Value::" <> mkValConstructorName' d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"      $$
-        "    _ => panic!(\"unexpected constructor\")"                                                 $$
+        "    _ => unreachable!()"                                                                     $$
         "}}"
     where t' = typeNormalize d t
 
@@ -1047,7 +1047,7 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
         "    Value::" <> mkValConstructorName' d relType <> "(__" <> pp keyVar <> ") => {"            $$
         "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                   $$
         "       " <> val <> "},"                                                                      $$
-        "    _ => panic!(\"unexpected constructor in key_func\")"                                     $$
+        "    _ => unreachable!()"                                                                     $$
         "})"
 
 {- Generate Rust representation of a ground fact -}
@@ -1299,16 +1299,15 @@ openTuple d var vs = do
     cons <- mkValConstructorName d t
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     let vars = tuple $ map (pp . name) vs
-    -- TODO: use unreachable() instead of panic!()
     return $
         "let" <+> vars <+> "= match" <+> var <+> "{"                                                    $$
         "    " <> cons <> parens ("ref" <+> bOX_VAR) <+> "=> {"                                         $$
         "        match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                                       $$
         "            " <> pattern <+> "=>" <+> vars <> ","                                              $$
-        "            _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")," $$
+        "            _ => unreachable!(),"                                                              $$
         "        }"                                                                                     $$
         "    },"                                                                                        $$
-        "    _ => panic!(\"Unexpected value {:?} (expected" <+> cons <+> ")\", " <> var <> ")"          $$
+        "    _ => unreachable!()"                                                                       $$
         "};"
 
 -- Generate Rust constructor name for a type
