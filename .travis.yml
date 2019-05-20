@@ -25,14 +25,15 @@ cache:
         - .stack-work
 
 env:
-   - TEST_SUITE='-p tutorial' BUILD_BINARY=1
-   - TEST_SUITE='-p span_uuid' JAVA=1
-   - TEST_SUITE='-p souffle0'
-   - TEST_SUITE='-p simple'
-   - TEST_SUITE='-p path'
-   - TEST_SUITE='-p ovn'
-   - TEST_SUITE='-p modules'
-   - TEST_SUITE='-p span_string'
+   - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
+   - TOOL=run_souffle_tests
+   - TOOL=stack TEST_SUITE='-p span_uuid' JAVA=1
+   - TOOL=stack TEST_SUITE='-p souffle0'
+   - TOOL=stack TEST_SUITE='-p simple'
+   - TOOL=stack TEST_SUITE='-p path'
+   - TOOL=stack TEST_SUITE='-p ovn'
+   - TOOL=stack TEST_SUITE='-p modules'
+   - TOOL=stack TEST_SUITE='-p span_string'
 
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -48,6 +49,7 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - subversion
 
 before_install:
 - pip install --user parglare
@@ -57,6 +59,7 @@ before_install:
 - ./.travis/install-stack.sh
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
+- if [ `uname -s` = Darwin ]; then brew install subversion; fi
 
 install:
 # Build dependencies
@@ -66,7 +69,8 @@ script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
-- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"
+- if [ x${TOOL} = xstack]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
+- if [ x$TOOL = xrun_souffle_tests ]; then cd test && ./run-souffle-tests.py -s 0 -r 17; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test && ./run.sh; fi
 
 before_deploy:
