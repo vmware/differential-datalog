@@ -616,12 +616,20 @@ input relation AggregateMe1(x: string, y: string)
 output relation Aggregate1(x: string, cnt: bit<64>)
 Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), group_count(y)).
 
+output relation AggregateCnt(cnt: bit<64>)
+AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = Aggregate((), group_count(())).
+
+output relation AggregateCnt2(cnt: bit<64>)
+AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = Aggregate((), group_sum(1: bit<64>)).
+
+output relation AggregateCnt3(cnt: bit<64>)
+AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = Aggregate((), group_sum(1: bit<64>)).
+
 output relation Aggregate2(x: string, set: Set<string>)
 Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)).
 
 output relation Aggregate3(x: string, vec: Vec<string>)
 Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = Aggregate((x), group2vec(y)).
-
 
 output relation Aggregate4(x: string, map: Map<string,string>)
 Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group2map((x,y))).
@@ -629,11 +637,17 @@ Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group2map((x,y
 output relation Disaggregate(x: string, y: string)
 Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)), var y = FlatMap(set).
 
-
 input relation AggregateMeInts(x: string, y: bit<32>)
 
 output relation Sum(x: string, sum: bit<32>)
 Sum(x, sum) :- AggregateMeInts(x, y), var sum = Aggregate((x), group_sum(y)).
+
+input relation AggregateMe3(x: string, y: string, z: string)
+
+output relation AggregateByX(x: string, cnt: bit<64>)
+
+AggregateByX(x, cnt) :- AggregateMe3(x,y,z), AggregateMe1(x,y),
+                        var cnt = Aggregate((x), group_count(())).
 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)

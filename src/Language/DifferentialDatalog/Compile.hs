@@ -274,14 +274,12 @@ type ArrId = Int
 
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
-    cGroupTypes   :: S.Set Type,
     cArrangements :: M.Map String [Arrangement]
 }
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
     cTypes        = S.empty,
-    cGroupTypes   = S.empty,
     cArrangements = M.empty
 }
 
@@ -302,10 +300,6 @@ relId rel = "Relations::" <> rname rel <+> "as RelId"
 -- t must be normalized
 addType :: Type -> CompilerMonad ()
 addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
-
--- t must be normalized
-addGroupType :: Type -> CompilerMonad ()
-addGroupType t = modify $ \s -> s{cGroupTypes = S.insert t $ cGroupTypes s}
 
 -- Create a new arrangement for use in a join operator:
 -- * If the arrangement exists, do nothing
@@ -496,7 +490,7 @@ compileLib d specname rs_code =
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
     -- 'Value' enum type
-    valtype = mkValType d' (cTypes cstate) (cGroupTypes cstate)
+    valtype = mkValType d' (cTypes cstate)
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -665,7 +659,6 @@ mkFromRecord t@TypeDef{..} =
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
         fields = map (\f -> pp (name f) <> ": record::arg_extract::<" <> mkType f <> ">(args, \"" <> (pp $ unddname f) <> "\")?") consArgs
 
-
 mkStructIntoRecord :: TypeDef -> Doc
 mkStructIntoRecord t@TypeDef{..} =
     "decl_struct_into_record!(" <> rname (name t) <> ", " <> targs <> "," <+> args <> ");"
@@ -787,8 +780,6 @@ mkInputRelname2Id d =
     mkrel :: Relation -> Doc
     mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
 
-
-
 -- Convert string to enum Relations
 mkRelId2Relations :: DatalogProgram -> Doc
 mkRelId2Relations d =
@@ -819,7 +810,6 @@ mkRelId2Name d =
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
     "fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType          $$
-    where_clause                                                                                                                     $$
     "{"                                                                                                                              $$
     (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                           $$
     "}"
@@ -831,14 +821,10 @@ mkFunc d f@Function{..} | isJust funcDef =
     tvars = case funcTypeVars f of
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Eq + Ord + Clone + Hash + PartialEq + PartialOrd") . pp) tvs) <> ">"
-    where_clause = case funcGroupArgTypes d f of
-                        []     -> empty
-                        gtypes -> "where" $$
-                                  (nest' $ vcommaSep $ map (\t -> mkType (head $ typeArgs $ typ' d t) <> ": FromValue") gtypes)
 
 -- Generate Value type as an enum with one entry per type in types
-mkValType :: DatalogProgram -> S.Set Type -> S.Set Type -> Doc
-mkValType d types grp_types =
+mkValType :: DatalogProgram -> S.Set Type -> Doc
+mkValType d types =
     "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
     "pub enum Value {"                                                                      $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
@@ -855,8 +841,7 @@ mkValType d types grp_types =
     "    }"                                                                                 $$
     "}"                                                                                     $$
     "decl_val_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                   $$
-    "decl_record_mutator_val_enum!(Value, <>," <+> decl_mutator_entries <> ");"             $$
-    (vcat $ map mkfromval $ S.toList grp_types)
+    "decl_record_mutator_val_enum!(Value, <>," <+> decl_mutator_entries <> ");"
     where
     consname t = mkValConstructorName' d t
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
@@ -866,7 +851,7 @@ mkValType d types grp_types =
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
     mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
-    mkfromval t =
+    {-mkfromval t =
         "impl FromValue for " <> mkType t <> " {"                                                               $$
         "    fn from_value(v: &Value) -> &Self {"                                                               $$
         "        match v {"                                                                                     $$
@@ -874,7 +859,7 @@ mkValType d types grp_types =
         "            _ => panic!(\"unexpected constructor\")"                                                   $$
         "        }"                                                                                             $$
         "    }"                                                                                                 $$
-        "}"
+        "}"-}
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
 -- relation.  This is done as a separate compiler pass to maximize arrangement sharing
@@ -1082,7 +1067,7 @@ compileFact d rl@Rule{..} = do
     return $ "(" <> relId rel <> "," <+> val <> ") /*" <> pp rl <> "*/"
 
 
--- If the rule contains a join or antijoin operator then its first literal
+-- If the rule contains a join, antijoin, or aggregation operator then its first literal
 -- will have to be arranged before applying the operator.  This function checks
 -- if this arrangement can be stored as an 'Arranged' collection and, if so, returns
 -- the normalized representation of the arrangement.  (This requires that two
@@ -1107,7 +1092,7 @@ ruleArrangeFstLiteral d rl@Rule{..} | null ruleRHS = Nothing
     -- If we're at the start of the rule and need to arrange the input relation, generate
     -- arrangement pattern.
     input_arrangement = if all (rhsIsFilterCondition . (ruleRHS !!)) conds
-                           then maybe Nothing (arrangeInput d rl (rhsAtom $ head ruleRHS)) arrange_input_by
+                           then maybe Nothing (arrangeInput d rl (rhsAtom $ head ruleRHS) . fst) arrange_input_by
                            else Nothing
 
 
@@ -1155,15 +1140,15 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
     -- Generate XFormCollection or XFormArrangement for the 'rhs' operator.
     let mkArrangedOperator conds inpval =
             case rhs of
-                 RHSLiteral True a     -> mkJoin d conds inpval a rl rhs_idx
-                 RHSLiteral False a    -> mkAntijoin d conds inpval a rl rhs_idx
-                 _                     -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
+                 RHSLiteral True a  -> mkJoin d conds inpval a rl rhs_idx
+                 RHSLiteral False a -> mkAntijoin d conds inpval a rl rhs_idx
+                 RHSAggregate{}     -> mkAggregate d conds inpval rl rhs_idx
+                 _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
                              = mkHead d prefix rl
                              | otherwise =
             case rhs of
                  RHSFlatMap v e -> mkFlatMap d prefix rl rhs_idx v e
-                 RHSAggregate v vs f e -> mkAggregate d prefix rl rhs_idx vs v f e
                  _ -> error "compileRule: operator requires arranged input"
 
     -- If: input to the operator is an arranged collection
@@ -1183,24 +1168,22 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                      "    xform:" <+> xform                                                     $$
                      "}"
        Nothing -> do
-            xform <- if isJust arrange_input_by
-                        then do let post_join_vars = (rhsVarsAfter d rl (rhs_idx - 1)) `intersect`
-                                                     (rhsVarsAfter d rl rhs_idx)
-                                -- Evaluate arrange_input_by in the context of 'rhs'
-                                let key_str = parens $ commaSep $ map (pp . fst) $ fromJust arrange_input_by
-                                akey <- mkTupleValue d $ fromJust arrange_input_by
-                                aval <- mkVarsTupleValue d post_join_vars
-                                let afun = braces'
-                                           $ prefix $$
-                                             "Some((" <> akey <> "," <+> aval <> "))"
-                                xform' <- mkArrangedOperator [] False
-                                return $ "XFormCollection::Arrange {"                                                                                    $$
-                                         "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+>
-                                              ".to_string(),"                                                                                            $$
-                                         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")              $$
-                                         "    next: Box::new(" <> xform' <> ")"                                                                          $$
-                                         "}"
-                        else mkCollectionOperator
+            xform <- case arrange_input_by of
+                        Just (key_vars, val_vars) -> do 
+                            -- Evaluate arrange_input_by in the context of 'rhs'
+                            let key_str = parens $ commaSep $ map (pp . fst) key_vars
+                            akey <- mkTupleValue d key_vars
+                            aval <- mkVarsTupleValue d val_vars
+                            let afun = braces'
+                                       $ prefix $$
+                                         "Some((" <> akey <> "," <+> aval <> "))"
+                            xform' <- mkArrangedOperator [] False
+                            return $ "XFormCollection::Arrange {"                                                                                    $$
+                                     "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+> ".to_string(),"                                                                                                                             $$
+                                     (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")              $$
+                                     "    next: Box::new(" <> xform' <> ")"                                                                          $$
+                                     "}"
+                        Nothing -> mkCollectionOperator
             return $
                 if last_rhs_idx == 0
                    then "/*" <+> pp rl <+> "*/"                                         $$
@@ -1213,31 +1196,41 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
 
 
 -- 'Join', 'Antijoin', 'Semijoin', and 'Aggregate' operators take arranged collection
--- as input.  'rhsArrangement' returns the arrangement expected by the operator
+-- as input.  'rhsInputArrangement' returns the arrangement expected by the operator
 -- or Nothing if the operator takes a flat collection (e.g., it's a 'FlatMap').
 --
--- Returns a list of expressions that must be used to index the input collection.
-rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe [(Expr, ECtx)]
+-- The first component of the return tuple is the list of expressions that must be used
+-- to index the input collection.  The second component lists variables that
+-- will form the value of the arrangement.
+rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe ([(Expr, ECtx)], [Field])
 rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     let ctx = CtxRuleRAtom rl rhs_idx
         rel = getRelation d $ atomRelation atom
         (_, vmap) = normalizeArrangement d rel ctx $ atomVal atom
-    in Just $ map (\(_,e,c) -> (e,c)) vmap
---rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ _) = Just $ map eVar vs
+    in Just $ (map (\(_,e,c) -> (e,c)) vmap,
+               -- variables visible before join that are still in use after it
+               (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
+rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ e) =
+    let ctx = CtxRuleRAggregate rl rhs_idx
+    in Just $ (map (\v -> (eVar v, ctx)) vs,
+               -- all visible variables to preserve multiset semantics
+               rhsVarsAfter d rl (rhs_idx - 1))
 rhsInputArrangement _ _  _       _ = Nothing
 
 
 mkFlatMap :: DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx v e = do
     vars <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    -- Flatten
+    let flatten = "let __flattened =" <+> mkExpr d (CtxRuleRFlatMap rl idx) e EVal <> ";"
     -- Clone variables before passing them to the closure.
     let clones = vcat $ map ((\vname -> "let" <+> vname <+> "=" <+> vname <> ".clone();") . pp . name)
                       $ filter ((/= v) . name) $ rhsVarsAfter d rl idx
-    let set = mkExpr d (CtxRuleRFlatMap rl idx) e EVal
-        fmfun = braces'
-                $ prefix $$
-                  clones $$
-                  "Some(Box::new(" <> set <> ".into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
+    let fmfun = braces'
+                $ prefix  $$
+                  flatten $$
+                  clones  $$
+                  "Some(Box::new(__flattened.into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
     next <- compileRule d rl idx False
     return $
         "XFormCollection::FlatMap{"                                                                                        $$
@@ -1246,43 +1239,41 @@ mkFlatMap d prefix rl idx v e = do
         "    next: Box::new(" <> next <> ")"                                                                               $$
         "}"
 
-mkAggregate :: DatalogProgram -> Doc -> Rule -> Int -> [String] -> String -> String -> Expr -> CompilerMonad Doc
-mkAggregate d prefix rl idx vs v fname e = do
-    -- Group function: extract vs from input tuple
+mkAggregate :: DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
+mkAggregate d filters input_val rl@Rule{..} idx = do
+    let rhs@RHSAggregate{..} = ruleRHS !! idx
     let ctx = CtxRuleRAggregate rl idx
-    let key_vars = map (getVar d (CtxRuleRAggregate rl idx)) vs
-    let key_str = parens $ commaSep $ map (pp . name) key_vars
-    key <- mkVarsTupleValue d key_vars
-    val <- mkValue d ctx e
-    addGroupType $ typeNormalize d $ exprType d ctx e
-    let gfun = braces'
-               $ prefix $$
-                 "Some((" <> key <> "," <+> val <> "))"
+    let Just (_, group_vars) = rhsInputArrangement d rl idx rhs
+    -- Filter inputs before grouping
+    ffun <- mkFFun d rl filters
+    -- Function to extract the argument of aggregation function from 'Value'
+    open <- if input_val
+               then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
+               else openTuple d vALUE_VAR group_vars
+    let project = "&{fn __f(" <> vALUE_VAR <> ": &Value) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
+                  (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                   $$
+                  "__f}"
     -- Aggregate function:
-    -- - open-up key tuple
     -- - compute aggregate
     -- - return variables still in scope after this term
-    open <- openTuple d ("*" <> kEY_VAR) key_vars
     let tmap = ruleAggregateTypeParams d rl idx
-    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars $ getFunc d fname
-    let aggregate = "let" <+> pp v <+> "=" <+> rname fname <>
-                    "::<" <> tparams <> ">(&std_Group::new(" <> gROUP_VAR <> "));"
+    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars $ getFunc d rhsAggFunc
+    let aggregate = "let" <+> pp rhsVar <+> "=" <+> rname rhsAggFunc <>
+                    "::<" <> tparams <> ">(&std_Group::new(" <> gROUP_VAR <> "," <+> project <> "));"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    let key_vars = map (getVar d ctx) rhsGroupBy
+    open_key <- openTuple d ("*" <> kEY_VAR) key_vars
     let agfun = braces'
-                $ open $$
+                $ open_key  $$
                   aggregate $$
                   result
     next <- compileRule d rl idx False
     return $
-        "XFormCollection::Arrange{"                                                                                                                    $$
-        "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl idx <+> "by" <+> key_str) <> ".to_string(),"                          $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value, Value)>" $$ gfun $$ "__f},")                                            $$
-        "    next: Box::new("                                                                                                                          $$
-        "        XFormArrangement::Aggregate{"                                                                                                         $$
-        "            description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                               $$
-        (nest' $ nest' $ nest' $ "aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, Weight)]) -> Value" $$ agfun $$ "__f},") $$
-        "            next: Box::new(" <> next <> ")"                                                                                                   $$
-        "        })"                                                                                                                                   $$
+        "XFormArrangement::Aggregate{"                                                                                           $$
+        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                 $$
+        "    ffun:" <+> ffun <> ","                                                                                              $$
+        "    aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, Weight)]) -> Value" $$ agfun $$ "__f}," $$
+        "    next: Box::new(" <> next <> ")"                                                                                     $$
         "}"
 
 -- Generate Rust code to filter records and bring variables into scope.
@@ -1688,11 +1679,15 @@ mkHead d prefix rl = do
         "}"
 
 -- Variables in the RHS of the rule declared before or in i'th term
--- and visible after the term.
+-- and used after the term.
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter d rl i =
-    filter (\f -> elem (name f) $ (map name $ ruleLHSVars d rl) `union`
-                                  (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
+    filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
+                  -- keep all variables to preserve multiset semantics
+                  if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
+                     then True
+                     else elem (name f) $ (map name $ ruleLHSVars d rl) `union`
+                                          (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
            $ ruleRHSVars d rl (i+1)
 
 mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
@@ -1988,10 +1983,15 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
           (nest' $ val exprElse)            $$
           "}"
 
-mkExpr' _ _ EFor{..} = (doc, EVal)
+mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
-    doc = ("for" <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
-          (nest' $ val exprBody)                                               $$
+    e' = exprMap (E . sel3) e
+    -- Iterator over group produces owned values, not references
+    ref = if isGroup d $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
+             then "ref"
+             else empty
+    doc = ("for" <+> ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
+          (nest' $ val exprBody)                                                   $$
           "}"
 
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments

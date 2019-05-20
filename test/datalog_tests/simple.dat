@@ -58,10 +58,26 @@ insert AggregateMe1("b", "1"),
 insert AggregateMe1("b", "2"),
 insert AggregateMe1("b", "3");
 
+insert AggregateMe3("a", "1", "z"),
+insert AggregateMe3("a", "2", "z"),
+insert AggregateMe3("a", "3", "z"),
+insert AggregateMe3("b", "1", "z"),
+insert AggregateMe3("b", "2", "z"),
+insert AggregateMe3("b", "3", "z");
+
 commit;
 
 echo Aggregate1;
 dump Aggregate1;
+
+echo AggregateCnt;
+dump AggregateCnt;
+
+echo AggregateCnt2;
+dump AggregateCnt2;
+
+echo AggregateCnt3;
+dump AggregateCnt3;
 
 echo Aggregate2;
 dump Aggregate2;
@@ -71,6 +87,9 @@ dump Aggregate3;
 
 echo Aggregate4;
 dump Aggregate4;
+
+echo AggregateByX;
+dump AggregateByX;
 
 echo Disaggregate;
 dump Disaggregate;

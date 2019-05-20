@@ -308,6 +308,8 @@ pub enum XFormArrangement<V: Val>
     /// Aggregate
     Aggregate {
         description: String,
+        /// Filter arrangement before grouping
+        ffun: Option<&'static FilterFunc<V>>,
         /// Aggregation to apply to each group.
         aggfun: &'static AggFunc<V>,
         /// Apply transformation to the resulting collection.
@@ -881,7 +883,7 @@ impl<V:Val> Program<V>
                                     /* Relation may already be in the map if it was created by an `Apply` node */
                                     let mut collection = match collections.remove(&rel.id) {
                                         None => {
-                                            let (session, mut collection) = outer.new_collection::<V,Weight>();
+                                            let (session, collection) = outer.new_collection::<V,Weight>();
                                             sessions.insert(rel.id, session);
                                             collection
                                         },
@@ -1364,11 +1366,14 @@ impl<V:Val> Program<V>
                         arr.flat_map_ref(move |_,v|fmfun(v.clone())),
                         &*next, arrangements))
             },
-            XFormArrangement::Aggregate{description, aggfun: &aggfun, next} => {
+            XFormArrangement::Aggregate{description, ffun, aggfun: &aggfun, next} => {
                 let col = with_prof_context(
                     &description,
-                    ||arr.reduce(move |key, src, dst| dst.push((aggfun(key, src),1)))
-                         .map(|(_,v)|v));
+                    ||ffun.map_or_else(||arr.reduce(move |key, src, dst| dst.push((aggfun(key, src),1)))
+                                            .map(|(_,v)|v),
+                                       |f|arr.filter(move |_,v|f(v))
+                                             .reduce(move |key, src, dst| dst.push((aggfun(key, src),1)))
+                                             .map(|(_,v)|v)));
                 Self::xform_collection(col, &*next, arrangements)
             },
             XFormArrangement::Join{description, ffun, arrangement, jfun: &jfun, next} => {
@@ -1588,7 +1593,7 @@ impl<V:Val> RunningProgram<V> {
         /* Remove no-op updates to maintain set semantics */
         let mut filtered_updates = Vec::new();
         for upd in updates.drain(..) {
-            let mut rel = self.relations.get_mut(&upd.relid()).ok_or_else(||format!("unknown input relation {}", upd.relid()))?;
+            let rel = self.relations.get_mut(&upd.relid()).ok_or_else(||format!("unknown input relation {}", upd.relid()))?;
             match rel {
                 RelationInstance::Flat{elements, delta} => {
                     Self::set_update(elements, delta, upd, &mut filtered_updates)?
@@ -1613,7 +1618,7 @@ impl<V:Val> RunningProgram<V> {
         };
 
         let upds = {
-            let mut rel = self.relations.get_mut(&relid).ok_or_else(||format!("unknown input relation {}", relid))?;
+            let rel = self.relations.get_mut(&relid).ok_or_else(||format!("unknown input relation {}", relid))?;
             match rel {
                 RelationInstance::Flat{elements, delta: _} => {
                     let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());

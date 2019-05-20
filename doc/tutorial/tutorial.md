@@ -1443,6 +1443,8 @@ DDlog offers several ways to feed data to a program:
 
 1. From a C or C++ program.
 
+1. From a Java program.
+
 In the following sections, we expand on each method.
 
 #### Specifying ground facts statically in the program source code

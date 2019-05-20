@@ -152,6 +152,12 @@ Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
 Aggregate1
 Aggregate1{"a",3}
 Aggregate1{"b",3}
+AggregateCnt
+AggregateCnt{6}
+AggregateCnt2
+AggregateCnt2{6}
+AggregateCnt3
+AggregateCnt3{4}
 Aggregate2
 Aggregate2{"a",std_Set { x: {"1", "2", "3"} }}
 Aggregate2{"b",std_Set { x: {"1", "2", "3"} }}
@@ -161,6 +167,9 @@ Aggregate3{"b",std_Vec { x: ["1", "2", "3"] }}
 Aggregate4
 Aggregate4{"a",std_Map { x: {"a": "3"} }}
 Aggregate4{"b",std_Map { x: {"b": "3"} }}
+AggregateByX
+AggregateByX{"a",3}
+AggregateByX{"b",3}
 Disaggregate
 Disaggregate{"a","1"}
 Disaggregate{"a","2"}

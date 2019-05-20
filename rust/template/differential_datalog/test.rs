@@ -956,6 +956,7 @@ fn test_map(nthreads: usize) {
                         afun: &(gfun3 as ArrangeFunc<Value>),
                         next: Box::new(XFormArrangement::Aggregate{
                             description: "2.aggregate".to_string(),
+                            ffun: None,
                             aggfun: &(agfun3 as AggFunc<Value>),
                             next: Box::new(None)
                         })
@@ -984,6 +985,7 @@ fn test_map(nthreads: usize) {
                         afun: &(gfun4 as ArrangeFunc<Value>),
                         next: Box::new(XFormArrangement::Aggregate {
                             description: "2.aggregate".to_string(),
+                            ffun: None,
                             aggfun: &(agfun4 as AggFunc<Value>),
                             next: Box::new(None)
                         })

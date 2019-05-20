@@ -223,16 +223,15 @@ pub fn std_set_unions<X: u64set::Fits64 + Ord + Clone>(sets: &std_Vec<tinyset_Se
     tinyset_Set64{x: s}
 }
 
-pub fn tinyset_group2set<X: u64set::Fits64 + Ord + FromValue>(g: &std_Group<X>) -> tinyset_Set64<X> {
+pub fn tinyset_group2set<X: u64set::Fits64 + Ord>(g: &std_Group<X>) -> tinyset_Set64<X> {
     let mut res = tinyset_Set64::new();
-    for v in g.iter() {
+    for ref v in g.iter() {
         tinyset_insert(&mut res, v);
     };
     res
 }
 
 pub fn tinyset_group_set_unions<X: u64set::Fits64 + Ord + Clone>(g: &std_Group<tinyset_Set64<X>>) -> tinyset_Set64<X>
-where tinyset_Set64<X>: FromValue
 {
     let mut res = u64set::Set64::new();
     for gr in g.iter() {
@@ -247,7 +246,6 @@ where tinyset_Set64<X>: FromValue
 
 pub fn tinyset_group_setref_unions<X: u64set::Fits64 + Ord + Clone>(g: &std_Group<std_Ref<tinyset_Set64<X>>>)
     -> std_Ref<tinyset_Set64<X>> 
-where std_Ref<tinyset_Set64<X>>: FromValue
 {
     if std_group_count(g) == 1 {
         std_group_first(g)

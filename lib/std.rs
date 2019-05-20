@@ -555,35 +555,37 @@ pub fn std_hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
+pub type ProjectFunc<X> = fn(&Value) -> X;
+
 /*
  * Group type (used in aggregation operators)
  */
-pub struct std_Group<'a, X: FromValue> {
-    _phantom: marker::PhantomData<X>,
+pub struct std_Group<'a, X> {
     /* TODO: remove "pub" */
-    pub group: &'a [(&'a Value, Weight)]
+    pub group: &'a [(&'a Value, Weight)],
+    pub project: &'a ProjectFunc<X>
 }
 
 /* This is needed so we can support for-loops over `Group`'s
  */
 pub struct GroupIter<'a, X> {
-    _phantom: marker::PhantomData<X>,
-    iter: slice::Iter<'a, (&'a Value, Weight)>
+    iter: slice::Iter<'a, (&'a Value, Weight)>,
+    project: &'a ProjectFunc<X>
 }
 
-impl<'a, X: FromValue> GroupIter<'a, X> {
-    pub fn new(grp: &'a[(&'a Value, Weight)]) -> GroupIter<'a, X> {
-        GroupIter{_phantom: marker::PhantomData, iter: grp.iter()}
+impl<'a, X> GroupIter<'a, X> {
+    pub fn new(grp: &std_Group<'a, X>) -> GroupIter<'a, X> {
+        GroupIter{iter: grp.group.iter(), project: grp.project}
     }
 }
 
-impl<'a, X: 'a + FromValue> Iterator for GroupIter<'a, X> {
-    type Item = &'a X;
+impl<'a, X> Iterator for GroupIter<'a, X> {
+    type Item = X;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter.next() {
             None => None,
-            Some((x,_)) => Some(X::from_value(x))
+            Some((x,_)) => Some((self.project)(x))
         }
     }
 
@@ -592,32 +594,32 @@ impl<'a, X: 'a + FromValue> Iterator for GroupIter<'a, X> {
     }
 }
 
-impl<'a, X: FromValue> std_Group<'a, X> {
-    pub fn new(group: &'a[(&'a Value, Weight)]) -> std_Group<'a, X> {
-        std_Group{_phantom: marker::PhantomData, group: group}
+impl<'a, X> std_Group<'a, X> {
+    pub fn new(group: &'a[(&'a Value, Weight)], project: &'static ProjectFunc<X>) -> std_Group<'a, X> {
+        std_Group{group: group, project: project}
     }
 
     fn size(&self) -> u64 {
         self.group.len() as u64
     }
 
-    fn first(&'a self) -> &'a X {
-        X::from_value(self.group[0].0)
+    fn first(&'a self) -> X {
+        (self.project)(self.group[0].0)
     }
 
-    fn nth_unchecked(&'a self, n: u64) -> &'a X {
-        X::from_value(self.group[n as usize].0)
+    fn nth_unchecked(&'a self, n: u64) -> X {
+        (self.project)(self.group[n as usize].0)
     }
 
     pub fn iter(&'a self) -> GroupIter<'a, X> {
-        GroupIter::new(self.group)
+        GroupIter::new(self)
     }
 }
 
-impl<'a, X: FromValue + Clone> std_Group<'a, X> {
+impl<'a, X> std_Group<'a, X> {
     fn nth(&'a self, n: u64) -> std_Option<X> {
         if self.size() > n {
-            std_Option::std_Some{x: X::from_value(self.group[n as usize].0).clone()}
+            std_Option::std_Some{x: (self.project)(self.group[n as usize].0)}
         } else {
             std_Option::std_None
         }
@@ -627,28 +629,27 @@ impl<'a, X: FromValue + Clone> std_Group<'a, X> {
 /*
  * Standard aggregation function
  */
-pub fn std_group_count<A: FromValue>(g: &std_Group<A>) -> u64 {
+pub fn std_group_count<A>(g: &std_Group<A>) -> u64 {
     g.size()
 }
 
-pub fn std_group_first<A: FromValue + Clone>(g: &std_Group<A>) -> A {
-    (*g.first()).clone()
+pub fn std_group_first<A>(g: &std_Group<A>) -> A {
+    g.first()
 }
 
-pub fn std_group_nth<A: FromValue + Clone>(g: &std_Group<A>, n: &u64) -> std_Option<A> {
+pub fn std_group_nth<A>(g: &std_Group<A>, n: &u64) -> std_Option<A> {
     g.nth(*n)
 }
 
-pub fn std_group2set<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> std_Set<A> {
+pub fn std_group2set<A: Ord + Clone>(g: &std_Group<A>) -> std_Set<A> {
     let mut res = std_Set::new();
     for v in g.iter() {
-        std_set_insert(&mut res, v);
+        std_set_insert(&mut res, &v);
     };
     res
 }
 
-pub fn std_group_set_unions<A: Ord+Clone>(g: &std_Group<std_Set<A>>) -> std_Set<A>
-where std_Set<A>: FromValue
+pub fn std_group_set_unions<A: Ord + Clone>(g: &std_Group<std_Set<A>>) -> std_Set<A>
 {
     let mut res = std_Set::new();
     for gr in g.iter() {
@@ -659,19 +660,18 @@ where std_Set<A>: FromValue
     res
 }
 
-pub fn std_group_setref_unions<A: Ord+Clone>(g: &std_Group<std_Ref<std_Set<A>>>)
+pub fn std_group_setref_unions<A: Ord + Clone>(g: &std_Group<std_Ref<std_Set<A>>>)
     -> std_Ref<std_Set<A>>
-where std_Ref<std_Set<A>>: FromValue
 {
     if g.size() == 1 {
-        g.first().clone()
+        g.first()
     } else {
         let mut res: std_Ref<std_Set<A>> = std_ref_new(&std_Set::new());
         {
             let mut rres = std_Ref::get_mut(&mut res).unwrap();
             for gr in g.iter() {
                 for v in gr.iter() {
-                    std_set_insert(&mut rres, v);
+                    std_set_insert(&mut rres, &v);
                 }
             };
         }
@@ -679,38 +679,36 @@ where std_Ref<std_Set<A>>: FromValue
     }
 }
 
-pub fn std_group2vec<A: Ord+FromValue+Clone>(g: &std_Group<A>) -> std_Vec<A>
+pub fn std_group2vec<A: Ord + Clone>(g: &std_Group<A>) -> std_Vec<A>
 {
     let mut res = std_Vec::new();
     for v in g.iter() {
-        std_vec_push(&mut res, v);
+        std_vec_push(&mut res, &v);
     };
     res
 }
 
-pub fn std_group2map<K: Ord+Clone, V: Clone>(g: &std_Group<(K,V)>) -> std_Map<K,V>
-where (K,V): FromValue
+pub fn std_group2map<K: Ord + Clone, V: Clone>(g: &std_Group<(K,V)>) -> std_Map<K,V>
 {
     let mut res = std_Map::new();
-    for v in g.iter() {
-        let (k,v) = v;
-        std_map_insert(&mut res, k, v);
+    for (k, v) in g.iter() {
+        std_map_insert(&mut res, &k, &v);
     };
     res
 }
 
-pub fn std_group_min<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> A {
-    g.first().clone()
+pub fn std_group_min<A: Ord>(g: &std_Group<A>) -> A {
+    g.iter().min().unwrap()
 }
 
-pub fn std_group_max<A: Ord + FromValue + Clone>(g: &std_Group<A>) -> A {
-    g.nth_unchecked(g.size() - 1).clone()
+pub fn std_group_max<A: Ord>(g: &std_Group<A>) -> A {
+    g.iter().max().unwrap()
 }
 
-pub fn std_group_sum<A: ops::Add + ops::AddAssign + Clone + FromValue>(g: &std_Group<A>) -> A {
+pub fn std_group_sum<A: ops::Add + ops::AddAssign>(g: &std_Group<A>) -> A {
     let mut res = std_group_first(g);
     for v in g.iter().skip(1) {
-        res += v.clone();
+        res += v;
     };
     res
 }
