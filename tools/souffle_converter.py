@@ -3,19 +3,20 @@
    Datalog programs written in the Differential Datalog dialect"""
 
 # pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long
-#from __future__ import unicode_literals
+# from __future__ import unicode_literals
 import json
 import gzip
 import os
 import argparse
-import parglare # parser generator
+import parglare  # parser generator
 
 skip_files = False  # If true do not process .input and .output declarations
 skip_logic = False  # If true do not produce file .dl
-relationPrefix = "" # Prefix to prepend to all relation names when they are written to .dat files
-                    # This makes it possible to concatenate multiple .dat files together
-                    # This should end in a dot.
-parglareParser = None # Cache here the Parglare parser
+relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
+# This makes it possible to concatenate multiple .dat files together
+# This should end in a dot.
+parglareParser = None  # Cache here the Parglare parser
+
 
 ### Various utilities
 
@@ -27,20 +28,24 @@ def var_name(ident):
         ident = ident[1:]
     return "_" + ident
 
+
 def strip_quotes(string):
     assert string[0] == "\"", "String is not quoted"
     assert string[len(string) - 1] == "\"", "String is not quoted"
     return string[1:-1].decode('string_escape')
+
 
 def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
     keys = dict1.viewkeys() & dict2.viewkeys()
     return {x: dict1[x] for x in keys}
 
+
 def dict_append(dict1, dict2):
     """Add everything on dict2 on top of dict1"""
     for k, v in dict2.items():
         dict1[k] = v
+
 
 def dict_subtract(dict1, dict2):
     """Remove from dict1 all the keys from dict2"""
@@ -48,11 +53,13 @@ def dict_subtract(dict1, dict2):
         if k in dict1:
             del dict1[k]
 
+
 def join_dict(separator, kvseparator, dictionary):
     """Transform a dictionary to string.  separator is used between items,
     and kvseparator between each key-value"""
     lst = [x + kvseparator + dictionary[x] for x in dictionary]
     return separator.join(lst)
+
 
 #################################
 # The next few functions manipulate Parglare Parse Trees
@@ -60,12 +67,14 @@ def getOptField(node, field):
     """Returns the first field named 'field' from 'node', or None if it does not exist"""
     return next((x for x in node.children if x.symbol.name == field), None)
 
+
 def getField(node, field):
     """Returns the first field named 'field' from 'node'"""
     lst = [x for x in node.children if x.symbol.name == field]
     if lst == []:
         raise Exception("No field " + field + " in " + node.tree_str())
     return lst[0]
+
 
 def getList(node, field, fields):
     """Returns a list produced by a parglare *right-recursive* rule"""
@@ -83,13 +92,16 @@ def getList(node, field, fields):
             else:
                 node = tail
 
+
 def getArray(node, field):
     return [x for x in node.children if x.symbol.name == field]
+
 
 def getListField(node, field, fields):
     """Given a Parse tree node this gets all the children named field form the child list fields"""
     lst = getField(node, fields)
     return getList(lst, field, fields)
+
 
 def getParser(debugParser):
     """Parse the Parglare Souffle grammar and get the parser"""
@@ -109,11 +121,12 @@ def getIdentifier(node):
     ident = getField(node, "Identifier")
     return ident.value
 
+
 ################################################33
 
 class Type(object):
     """Information about a type"""
-    types = dict() # All types in the program
+    types = dict()  # All types in the program
 
     def __init__(self, name, outputName):
         assert name is not None
@@ -187,8 +200,10 @@ class Type(object):
         self.isnumber = result
         return result
 
+
 class Parameter(object):
     """Information about a parameter (of a relation or function)"""
+
     def __init__(self, name, typeName):
         self.name = name
         self.typeName = typeName
@@ -202,10 +217,11 @@ class Parameter(object):
         """Get the parameter's type"""
         return Type.get(self.typeName)
 
+
 class Relation(object):
     """Represents information about a relation"""
 
-    relations = dict() # All relations in program
+    relations = dict()  # All relations in program
     dumpOrder = []  # order in which we dump the relations
 
     def __init__(self, name):
@@ -277,6 +293,7 @@ class Relation(object):
                                                           for a in self.parameters]) + ")."
         return result
 
+
 class Component(object):
     """Represents a souffle component."""
 
@@ -286,7 +303,7 @@ class Component(object):
         self.name = name
         self.declarations = declTree
         self.inherits = []
-        self.overrides = set()   # List of relation names that this component overrides
+        self.overrides = set()  # List of relation names that this component overrides
         self.parameters = typeParameters
 
     def add_inherits(self, name, typeArgs):
@@ -303,8 +320,8 @@ class Component(object):
         assert isinstance(converter, SouffleConverter)
         if typeArgs is not None and len(typeArgs) != len(self.parameters):
             raise Exception("Cannot instantiate " + self.name + " with " +
-                                    str(len(typeArgs)) + " it expects " +
-                                    str(len(self.parameters)) + " type parameters.")
+                            str(len(typeArgs)) + " it expects " +
+                            str(len(self.parameters)) + " type parameters.")
 
         # process all ancestor components
         for parentName, typeParams in self.inherits:
@@ -333,6 +350,7 @@ class Component(object):
         converter.instantiating.pop()
         converter.typeSubstitution = saveSubstitution
 
+
 class Files(object):
     """Represents the files that are used for input and output"""
 
@@ -348,10 +366,9 @@ class Files(object):
         self.output("import souffle_types")
         Type.create("IString", "IString")
         Type.create("bit<32>", "bit<32>")
-
         # The following are in souffle_types
-        t = Type.create("number", "bit<32>")
-        t = Type.create("symbol", "IString")
+        Type.create("number", "bit<32>")
+        Type.create("symbol", "IString")
         Type.create("empty", "()")
         if not skip_files:
             self.outputDataFile = open(outputDataName, 'w')
@@ -373,16 +390,14 @@ class Files(object):
         global relationPrefix
         if not skip_files:
             self.outputData("commit", ";")
-            if len(dumporder) == 0:
-                self.outputData("dump", ";")
-            else:
-                for r in dumporder:
-                    self.outputData("dump " + relationPrefix + r, ";")
+            for r in dumporder:
+                self.outputData("dump " + relationPrefix + r, ";")
             self.outputData("exit", ";")
             self.outputDataFile.close()
             self.dumpFile.close()
         if not skip_logic:
             self.outFile.close()
+
 
 ##############################################################
 
@@ -402,9 +417,11 @@ def compare(list1, list2, isString):
             return 1
     return 0
 
+
 class SouffleConverter(object):
     """Translates a Souffle Datalog program into a DDlog datalog program.
        This class is probably used only as a singleton pattern."""
+
     # This class is very closely tied to the souffle-grammar.pg grammar.
 
     def __init__(self, files):
@@ -414,24 +431,23 @@ class SouffleConverter(object):
         # During postprocessing we traverse the AST again and we emit the output to files.
         self.preprocessing = False
         self.current_component = ""  # instance name of the component currently being instantiated
-        self.bound_variables = dict() # variables that have been bound, each with an inferred type
-        self.all_variables = set()   # all variable names that appear in the program
-        self.converting_head = False # True if we are converting a head clause
-        self.converting_tail = False # True if we are converting a tail clause
-        self.aggregates = ""         # Relations created by evaluating aggregates
-        self.dummyRelation = None    # Relation used to convert clauses starting with negative term
-        self.opdict = {              # Translation of some Souffle operators
+        self.bound_variables = dict()  # variables that have been bound, each with an inferred type
+        self.all_variables = set()  # all variable names that appear in the program
+        self.converting_tail = False  # True if we are converting a tail clause
+        self.aggregates = ""  # Relations created by evaluating aggregates
+        self.dummyRelation = None  # Relation used to convert clauses starting with negative term
+        self.opdict = {  # Translation of some Souffle operators
             "band": "&",
             "bor": "|",
             "bxor": "^",
             "bnot": "~",
         }
-        self.currentType = None      # Used to guess types for variables
-        self.components = {}         # Indexed by name
-        self.overridden = set()      # set of relation names that are overridden and should not
+        self.currentType = None # Used to guess types for variables, from context. May be incorrect.
+        self.components = {}  # Indexed by name
+        self.overridden = set()  # set of relation names that are overridden and should not
         #                              be emitted
-        self.instantiating = []      # stack of Component objects that are being instantiated
-        self.typeSubstitution = dict() # maps old type name to new type name
+        self.instantiating = []  # stack of Component objects that are being instantiated
+        self.typeSubstitution = dict()  # maps old type name to new type name
 
     @staticmethod
     def relative_name(component, name, separator="_"):
@@ -812,7 +828,7 @@ class SouffleConverter(object):
         agg = getOptField(right, "Aggregate")
         assert agg is not None, "Expected an aggregate" + str(right)
         # Save the bound variables
-        save = self.bound_variables
+        save = self.bound_variables.copy()
         self.bound_variables.clear()
 
         body = getField(agg, "AggregateBody")
@@ -820,21 +836,22 @@ class SouffleConverter(object):
         if atom is not None:
             result = self.convert_atom(atom) + ", "
         elif body is not None:
-            terms = getListField(body, "Term", "Conjunction")
-            terms = [self.convert_term(t) for t in terms]
+            termsAst = getListField(body, "Term", "Conjunction")
+            terms = self.convert_terms(termsAst)
             result = ", ".join(terms) + ", "
         else:
             raise Exception("Unhandled aggregate " + agg.tree_str())
-        bodyBoundVariables = self.bound_variables
+        bodyBoundVariables = self.bound_variables.copy()
 
         self.bound_variables.clear()
         arg = getOptField(agg, "Arg")
         call = "()"  # used when there is no argument to aggregate, e.g., count
         if arg is not None:
             call = self.convert_arg(arg)
-        argVariables = self.bound_variables
+        argVariables = self.bound_variables.copy()
 
-        common = dict_intersection(bodyBoundVariables, save)
+        print "Body bound", bodyBoundVariables
+        common = bodyBoundVariables # dict_intersection(bodyBoundVariables, save)
         dict_subtract(common, argVariables)
 
         result += "var " + variable + " = Aggregate(("
@@ -847,7 +864,7 @@ class SouffleConverter(object):
         result += "group_" + func + "(" + call + "))"
 
         # Restore the bound variables
-        self.bound_variables = save
+        self.bound_variables = save.copy()
         args = common
         args[variable] = "Tnumber"
         dict_append(self.bound_variables, args)
@@ -885,14 +902,16 @@ class SouffleConverter(object):
         return func + "(" + ", ".join(argStrings) + ")"
 
     def convert_literal(self, lit):
-        """Convert a literal from the Souffle grammar"""
+        """Convert a literal from the Souffle grammar.
+        Returns a tuple with two elements: a string, which is the result of the conversion
+        and a Boolean which indicates whether the conversion should be postponed (evaluated later)"""
         t = getOptField(lit, "TRUE")
         if t is not None:
-            return "true"
+            return ("true", False)
 
         f = getOptField(lit, "FALSE")
         if f is not None:
-            return "false"
+            return ("false", False)
 
         relop = getOptField(lit, "Relop")
         if relop is not None:
@@ -913,7 +932,7 @@ class SouffleConverter(object):
                 lvarname = self.arg_is_varname(args[0])
                 rvarname = self.arg_is_varname(args[1])
                 if (lvarname is not None) and (rvarname is not None) and \
-                   (lvarname not in self.bound_variables) and \
+                        (lvarname not in self.bound_variables) and \
                         (rvarname not in self.bound_variables):
                     raise Exception("Comparison between two unbound variables " +
                                     lvarname + op + rvarname)
@@ -940,21 +959,22 @@ class SouffleConverter(object):
                 result = self.convert_aggregate(lvarname, args[1])
                 if originalVar is not None:
                     result += ", " + lvarname + " == " + originalVar
-                return result
+                # TODO
+                return (result, False)
 
             # Not an aggregate
             left = self.convert_arg(args[0])
             right = self.convert_arg(args[1])
             result = prefix + left + " " + op + " " + right + suffix
-            return result
+            return (result, False)
 
         atom = getOptField(lit, "Atom")
         if atom is not None:
-            return self.convert_atom(atom)
+            return (self.convert_atom(atom), False)
 
         func = getOptField(lit, "FunctionCall")
         if func is not None:
-            return self.convert_function_call(func)
+            return (self.convert_function_call(func), False)
 
         raise Exception("Unexpected literal" + lit.tree_str())
 
@@ -974,13 +994,19 @@ class SouffleConverter(object):
             return self.term_has_relation(term)
 
     def convert_term(self, term):
+        """Convert a Souffle term.  Returns a tuple with two fields:
+        - the first field is the string representing the conversion
+        - the second field is a boolean indicating whether the term evaluation should be postponed.
+          This is because in Souffle the order is irrelevant, but in DDlog is not.
+        """
         # print term.tree_str()
         lit = getOptField(term, "Literal")
         if lit is not None:
             return self.convert_literal(lit)
         term = getOptField(term, "Term")
         if term is not None:
-            return "not " + self.convert_term(term)
+            (term, postpone) = self.convert_term(term)
+            return ("not " + term, postpone)
         raise Exception("Unpexpected term " + term.tree_str())
 
     def terms_have_relations(self, terms):
@@ -990,7 +1016,15 @@ class SouffleConverter(object):
         return reduce(lambda a, b: a or b, flags, False)
 
     def convert_terms(self, terms):
-        return [self.convert_term(t) for t in terms]
+        result = []
+        tail = []
+        for t in terms:
+            (term, postpone) = self.convert_term(t)
+            if postpone:
+                tail.append(term)
+            else:
+                result.append(term)
+        return result + tail
 
     def process_rule(self, rule):
         """Convert a rule and emit the output"""
@@ -1020,15 +1054,13 @@ class SouffleConverter(object):
                 ri = Relation.get(name, self.getCurrentComponentLegalName())
                 ri.isInput = True
         else:
-            self.converting_head = True
             heads = [self.convert_atom(x) for x in nonOverridden]
-            self.converting_head = False
             self.bound_variables.clear()
             self.converting_tail = True
             convertedDisjunctions = [self.convert_terms(x) for x in terms]
             if len(convertedDisjunctions) > 0 and \
-               len(convertedDisjunctions[0]) > 0 and \
-               convertedDisjunctions[0][0].startswith("not"):
+                    len(convertedDisjunctions[0]) > 0 and \
+                    convertedDisjunctions[0][0].startswith("not"):
                 # DDlog does not support rules that start with a negation.
                 # Insert a reference to a dummy non-empty relation before.
                 convertedDisjunctions[0].insert(0, self.dummyRelation + "(0)")
@@ -1187,19 +1219,19 @@ class SouffleConverter(object):
 
     def process_only_facts(self, decl):
         typedecl = getOptField(decl, "TypeDecl")
-        if typedecl != None:
+        if typedecl is not None:
             self.process_type(typedecl)
             return
         relationdecl = getOptField(decl, "RelationDecl")
-        if relationdecl != None:
+        if relationdecl is not None:
             self.process_relation_decl(relationdecl)
             return
         inputdecl = getOptField(decl, "InputDecl")
-        if inputdecl != None:
+        if inputdecl is not None:
             self.process_input(inputdecl)
             return
         outputdecl = getOptField(decl, "OutputDecl")
-        if outputdecl != None:
+        if outputdecl is not None:
             self.process_output(outputdecl)
             return
 
@@ -1211,6 +1243,7 @@ class SouffleConverter(object):
             else:
                 self.process_decl(decl)
         self.files.output(self.aggregates)
+
 
 def convert(inputName, outputPrefix, relPrefix, debug=False):
     Type.clear()
@@ -1237,17 +1270,21 @@ def convert(inputName, outputPrefix, relPrefix, debug=False):
     converter.process(tree)
     files.done(Relation.dumpOrder)
 
+
 def main():
-    argParser = argparse.ArgumentParser("souffle_converter.py",
-                                        description="Converts programs from Souffle Datalog into DDlog")
-    argParser.add_argument("-p", "--prefix", help="Prefix to add to relations written in .dat files")
+    argParser = argparse.ArgumentParser(
+        "souffle_converter.py",
+        description="Converts programs from Souffle Datalog into DDlog")
+    argParser.add_argument("-p", "--prefix",
+                           help="Prefix to add to relations written in .dat files")
     argParser.add_argument("input", help="input Souffle program", type=str)
     argParser.add_argument("out", help="Output file prefix data file", type=str)
     argParser.add_argument("-d", help="Debug parser", action="store_true")
-    argParser.add_argument("--facts-only", "--facts_only", action='store_true', help="produces only facts")
-    argParser.add_argument("--logic-only", "--logic_only", action='store_true', help="produces only logic")
+    argParser.add_argument("--facts-only", "--facts_only",
+                           action='store_true', help="produces only facts")
+    argParser.add_argument("--logic-only", "--logic_only",
+                           action='store_true', help="produces only logic")
     args = argParser.parse_args()
-    inputName, outputPrefix = args.input, args.out
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
     global skip_files, skip_logic
@@ -1256,6 +1293,7 @@ def main():
     if args.facts_only:
         skip_logic = True
     convert(args.input, args.out, args.prefix, args.d)
+
 
 if __name__ == "__main__":
     main()

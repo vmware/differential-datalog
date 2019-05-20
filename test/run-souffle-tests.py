@@ -13,6 +13,7 @@ tests_passed = 0
 tests_skipped = 0
 todo = []  # if not empty only the tests in this list are run
 libpath = ""
+tests_to_run = 7 # number of tests to run at once in Rust
 
 # expected to fail
 xfail = [
@@ -143,7 +144,7 @@ def normalize_name(name):
 def run_remote_tests():
     """Run a set of tests, returns the list of the ones successfully run"""
     result = []
-    testgroups = ["provenance", "profile", "example", "evaluation"]
+    testgroups = ["profile", "example", "evaluation"]
     url = "https://github.com/souffle-lang/souffle/trunk/tests/"
     for tg in testgroups:
         code, _ = run_command(["mkdir", "-p", tg])
@@ -173,30 +174,37 @@ def run_remote_tests():
             if code == 0:
                 result.append(directory)
             #    shutil.rmtree(directory)
+            global tests_passed, tests_to_run
+            if tests_passed == tests_to_run:
+                return result
     return result
 
 def run_merged_test(filename):
     """Runs a test that encompasses multiple other tests.
     This is created in a file called souffle_tests.dl, which
     imports multiple other tests"""
-    if os.path.isdir(filename + "_ddlog"):
-        shutil.rmtree(filename + "_ddlog")
-    code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib"])
+    #if os.path.isdir(filename + "_ddlog"):
+    #    shutil.rmtree(filename + "_ddlog")
+    code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib", "--no-dynlib", "--no-staticlib"])
     if code != 0:
         return
     os.chdir(filename + "_ddlog")
-    code, _ = run_command(["cargo", "build", "--release"])
+    code, _ = run_command(["cargo", "build"])
     if code != 0:
         return
     os.chdir("..")
     with open(filename + ".dat") as f:
         lines = f.read()
-    code, result = run_command(["./" + filename + "_ddlog/target/release/" + filename +
+    code, result = run_command(["./" + filename + "_ddlog/target/debug/" + filename +
                                 "_cli", "--no-print"], lines)
     if code != 0:
         print "Error running ddlog program", code
     with open(filename + ".dump", "w") as dump:
         dump.write(result)
+    run_command(["sort", filename + ".dump", "-o", "tmp.sorted"])
+    run_command(["mv", "tmp.sorted", filename + ".dump"])
+    run_command(["sort", filename + ".dump.expected", "-o", "tmp.sorted"])
+    run_command(["mv", "tmp.sorted", filename + ".dump.expected"])
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
         print "Output differs"
@@ -204,10 +212,11 @@ def run_merged_test(filename):
 def main():
     global todo, tests_skipped, libpath
 
+    run_command(["stack", "install"])
     path = os.getcwd()
     libpath = path + "/../lib"
     todo = sys.argv[1:]
-    run_examples()
+#    run_examples()
     modules = run_remote_tests()
     print "Ran", tests_run, "out of which", tests_passed, "passed, skipped", tests_skipped
     imports = ["import " + m + ".souffle as " + m for m in modules]
@@ -229,6 +238,8 @@ def main():
                     if line.startswith("exit"):
                         continue
                     testinputfile.write(line)
+        testinputfile.write("exit")
+
     # Create expected output by concatenating the other expected outputs
     with open(output_file + ".dump.expected", "w") as testoutputfile:
         for m in modules:
