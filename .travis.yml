@@ -59,7 +59,7 @@ before_install:
 - ./.travis/install-stack.sh
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
-- if [ `uname -s` = Darwin ]; then brew install subversion; fi
+- if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
 
 install:
 # Build dependencies
