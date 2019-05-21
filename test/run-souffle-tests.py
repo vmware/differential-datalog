@@ -106,7 +106,7 @@ def compile_example(directory, f):
     tests_compiled = tests_compiled + 1
     savedir = os.getcwd()
     os.chdir(directory)
-    code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc++", f])
+    code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc", f])
     if code != 0:
         raise Exception("Error " + str(code) + " running cpp")
     with open(f + ".tmp", "w") as tmp:

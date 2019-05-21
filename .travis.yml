@@ -69,8 +69,8 @@ script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
-- if [ x${TOOL} = xstack]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
-- if [ x$TOOL = xrun_souffle_tests ]; then cd test && ./run-souffle-tests.py -s 0 -r 17; fi
+- if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
+- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && ./run-souffle-tests.py -s 0 -r 17; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test && ./run.sh; fi
 
 before_deploy:
