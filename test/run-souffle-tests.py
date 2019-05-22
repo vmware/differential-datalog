@@ -6,6 +6,7 @@ import subprocess
 import sys
 import shutil
 import argparse
+import datetime
 
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert
@@ -23,8 +24,11 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # recursive type
     "aggregates2", # max in relation argument
-    "circuit_sat", # issue #221
+    "circuit_sat", # issue 221
+    "factorial",   # issue 221
+    "grid",        # issue 221
     "2sat",      # issue 197
+    "independent-body3", # issue 224
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
     "comp-override2", # nested component declaration
@@ -79,7 +83,7 @@ xfail = [
 
 def run_command(command, indata=None):
     """Runs a command in a shell; returns the stdout; on error prints stderr"""
-    print "Running", command
+    # print "Running", command
     p = subprocess.Popen(command,
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
@@ -96,9 +100,11 @@ def compile_example(directory, f):
     tests_run = tests_run + 1
     savedir = os.getcwd()
     os.chdir(directory)
-    code, _ = run_command(["cpp", "-P", "-undef", "-nostdinc++", f, "-o", f + ".tmp"])
+    code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc++", f])
     if code != 0:
         raise Exception("Error " + str(code) + " running cpp")
+    with open(f + ".tmp", "w") as tmp:
+        tmp.write(output)
     convert(f + ".tmp", "souffle", directory.replace("/", ".") + ".souffle.")
 
     if code == 0:
@@ -198,12 +204,14 @@ def run_merged_test(filename):
     if code != 0:
         return
     os.chdir(filename + "_ddlog")
+    print "Compiling Rust at", datetime.datetime.now().time()
     code, _ = run_command(["cargo", "build"])
     if code != 0:
         return
     os.chdir("..")
     with open(filename + ".dat") as f:
         lines = f.read()
+    print "Running program at", datetime.datetime.now().time()
     code, result = run_command(["./" + filename + "_ddlog/target/debug/" + filename +
                                 "_cli", "--no-print"], lines)
     if code != 0:
@@ -217,9 +225,11 @@ def run_merged_test(filename):
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
         print "Output differs"
+    print "Completed program at", datetime.datetime.now().time()
 
 def main():
     global todo, tests_xfail, libpath
+    print "Starting at", datetime.datetime.now().time()
     argParser = argparse.ArgumentParser(
         "run-souffle-tests.py",
         description="Runs a number of Datalog Souffle tests from github.")

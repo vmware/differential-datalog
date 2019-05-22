@@ -15,7 +15,7 @@ relationPrefix = ""  # Prefix to prepend to all relation names when they are wri
 # This makes it possible to concatenate multiple .dat files together
 # This should end in a dot.
 parglareParser = None  # Cache here the Parglare parser
-
+verbose = False
 
 ### Various utilities
 
@@ -104,14 +104,16 @@ def getListField(node, field, fields):
 
 def getParser(debugParser):
     """Parse the Parglare Souffle grammar and get the parser"""
-    global parglareParser
+    global parglareParser, verbose
     if parglareParser is None:
-        print "Creating parser"
+        if verbose:
+            print "Creating parser"
         fileName = "souffle-grammar.pg"
         directory = os.path.dirname(os.path.abspath(__file__))
         g = parglare.Grammar.from_file(directory + "/" + fileName)
         parglareParser = parglare.Parser(g, build_tree=True, debug=debugParser)
-        print "Parser constructed"
+        if verbose:
+            print "Parser constructed"
     return parglareParser
 
 
@@ -373,8 +375,10 @@ class Files(object):
             self.outputDataFile = open(outputDataName, 'w')
             self.dumpFile = open(outputDumpName, 'w')
             self.outputData("start", ";")
-        print "Reading from", self.inputName, "writing output to", \
-            outputName, "writing data to", outputDataName
+        global verbose
+        if verbose:
+            print "Reading from", self.inputName, "writing output to", \
+                outputName, "writing data to", outputDataName
 
     def output(self, text):
         if text == "":
@@ -609,8 +613,9 @@ class SouffleConverter(object):
         else:
             separator = kvp["separator"]
 
-        global relationPrefix
-        print "Reading", rel + "_shadow"
+        global relationPrefix, verbose
+        if verbose:
+            print "Reading", rel + "_shadow"
         data = None
         for directory in ["./", "./facts/"]:
             for suffix in ["", ".gz"]:
@@ -651,7 +656,9 @@ class SouffleConverter(object):
                 return
 
             filenames = self.generateFilenames(rel)
-            print "Reading output relation", rel
+            global verbose
+            if verbose:
+                print "Reading output relation", rel
             data = None
             for suffix in ["", ".csv"]:
                 for filename in filenames:
@@ -849,7 +856,6 @@ class SouffleConverter(object):
             call = self.convert_arg(arg)
         argVariables = self.bound_variables.copy()
 
-        print "Body bound", bodyBoundVariables
         common = bodyBoundVariables.copy()
         dict_subtract(common, argVariables)
 
@@ -1276,6 +1282,7 @@ def main():
         description="Converts programs from Souffle Datalog into DDlog")
     argParser.add_argument("-p", "--prefix",
                            help="Prefix to add to relations written in .dat files")
+    argParser.add_argument("-v", "--verbose", action="store_true", help="Verbose")
     argParser.add_argument("input", help="input Souffle program", type=str)
     argParser.add_argument("out", help="Output file prefix data file", type=str)
     argParser.add_argument("-d", help="Debug parser", action="store_true")
@@ -1284,6 +1291,8 @@ def main():
     argParser.add_argument("--logic-only", "--logic_only",
                            action='store_true', help="produces only logic")
     args = argParser.parse_args()
+
+    verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
     global skip_files, skip_logic
