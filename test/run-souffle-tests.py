@@ -28,7 +28,7 @@ xfail = [
     "factorial",   # issue 221
     "grid",        # issue 221
     "2sat",      # issue 197
-    "independent-body3", # issue 224
+    "independent_body3", # issue 224
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198
     "comp-override2", # nested component declaration
