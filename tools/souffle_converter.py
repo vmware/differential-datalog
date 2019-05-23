@@ -858,6 +858,7 @@ class SouffleConverter(object):
 
         common = bodyBoundVariables.copy()
         dict_subtract(common, argVariables)
+        common = dict_intersection(common, save)
 
         result += "var " + variable + " = Aggregate(("
         result += ", ".join(common.keys())
