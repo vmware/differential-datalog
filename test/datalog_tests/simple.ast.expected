@@ -302,7 +302,7 @@ function souffle_lib.castTo64 (i: bit<32>): bit<64> =
 function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString =
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
 function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
-    std.string_contains(intern.istring_str(s), intern.istring_str(i))
+    std.string_contains(intern.istring_str(i), intern.istring_str(s))
 function souffle_lib.group_count32 (g: std.Group<'A>): bit<32> =
     souffle_lib.castTo32(std.group_count(g))
 function souffle_lib.land (l: bit<32>, r: bit<32>): bit<32> =
@@ -328,7 +328,7 @@ function souffle_lib.ord (s: intern.IString): bit<32> =
 function souffle_lib.random (): bit<32> =
     32'd0
 function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool =
-    regex.regex_match(intern.istring_str(pattern), intern.istring_str(s))
+    regex.regex_match((("^" ++ intern.istring_str(pattern)) ++ "$"), intern.istring_str(s))
 function souffle_lib.strlen (s: intern.IString): bit<32> =
     souffle_lib.castTo32(std.string_len(intern.istring_str(s)))
 function souffle_lib.substr (s: intern.IString, i: bit<32>, l: bit<32>): intern.IString =
