@@ -25,7 +25,9 @@ xfail = [
     "souffle7",  # recursive type
     "aggregates2", # max in relation argument
     "aggregates",  # issue 227 - count of empty group
+    "count",       # issue 227
     "circuit_sat", # issue 221
+    "magic_circuit_sat", # issue 221
     "factorial",   # issue 221
     "grid",        # issue 221
     "planar",      # issue 188
