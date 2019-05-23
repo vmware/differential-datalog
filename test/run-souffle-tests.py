@@ -24,9 +24,11 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # recursive type
     "aggregates2", # max in relation argument
+    "aggregates",  # issue 227 - count of empty group
     "circuit_sat", # issue 221
     "factorial",   # issue 221
     "grid",        # issue 221
+    "planar",      # issue 188
     "2sat",      # issue 197
     "independent_body3", # issue 224
     "aliases",   # assignments to tuples containing variables
@@ -154,7 +156,7 @@ def normalize_name(name):
 def run_remote_tests():
     """Run a set of tests, returns the list of the ones successfully run"""
     result = []
-    testgroups = ["profile", "example", "evaluation"]
+    testgroups = ["example", "evaluation"]
     url = "https://github.com/souffle-lang/souffle/trunk/tests/"
     for tg in testgroups:
         code, _ = run_command(["mkdir", "-p", tg])
@@ -202,12 +204,13 @@ def run_merged_test(filename):
     #    shutil.rmtree(filename + "_ddlog")
     code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib", "--no-dynlib", "--no-staticlib"])
     if code != 0:
-        return
+        print "*** Error in compiling"
+        return code
     os.chdir(filename + "_ddlog")
     print "Compiling Rust at", datetime.datetime.now().time()
     code, _ = run_command(["cargo", "build"])
     if code != 0:
-        return
+        return code
     os.chdir("..")
     with open(filename + ".dat") as f:
         lines = f.read()
@@ -226,8 +229,10 @@ def run_merged_test(filename):
     if code != 0:
         print "Output differs"
     print "Completed program at", datetime.datetime.now().time()
+    return code
 
 def main():
+    os.environ["RUSTFLAGS"] = "-Awarnings"
     global todo, tests_xfail, libpath
     print "Starting at", datetime.datetime.now().time()
     argParser = argparse.ArgumentParser(
@@ -260,7 +265,7 @@ def main():
     imports = [s.replace("/", ".") for s in imports]
 
     if len(modules) == 0:
-        return
+        sys.exit(1)
 
     output_file = "souffle_tests"
     with open(output_file + ".dl", "w") as testfile:
@@ -285,7 +290,8 @@ def main():
                 for line in dump_file:
                     testoutputfile.write(line)
 
-    run_merged_test(output_file)
+    code = run_merged_test(output_file)
+    sys.exit(code)
 
 if __name__ == "__main__":
     main()
