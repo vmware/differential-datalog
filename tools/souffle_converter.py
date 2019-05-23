@@ -328,9 +328,9 @@ class Component(object):
         for parentName, typeParams in self.inherits:
             parent = converter.getComponent(parentName)
             assert parent is not None
-            # print "Adding overrides of", parent.name, parent.overrides
-            save = converter.overridden
-            converter.overridden = converter.overridden.union(parent.overrides)
+            # print "Adding overrides of", parent.name, parent.overrides, self.overrides
+            save = converter.overridden.copy()
+            converter.overridden = converter.overridden.union(self.overrides)
             parentTypeArgs = []
 
             saveSubstitution = converter.typeSubstitution
@@ -342,8 +342,9 @@ class Component(object):
             parent.instantiate(parentTypeArgs, converter)
 
             converter.typeSubstitution = saveSubstitution
-            converter.overridden = save
+            converter.overridden = save.copy()
         # insert own body
+        # print "Instantiating", self.name, "body"
         saveSubstitution = converter.typeSubstitution
         converter.setTypeSubstitution(self.parameters, typeArgs)
         converter.instantiating.append(self)
@@ -1206,7 +1207,11 @@ class SouffleConverter(object):
             self.current_component = SouffleConverter.relative_name(
                 self.current_component, ident, ".")
             typeArgs = [self.resolve_type(t) for t in typeArgs]
+            # apparently instantiation clears the overrides
+            save = self.overridden.copy()
+            self.overridden.clear()
             comp.instantiate(typeArgs, self)
+            self.overridden = save
             self.current_component = saveCurrent
             return
         pragma = getOptField(decl, "Pragma")
