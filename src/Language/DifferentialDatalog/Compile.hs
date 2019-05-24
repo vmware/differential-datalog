@@ -1327,6 +1327,7 @@ mkValConstructorName' d t =
          TInt{}      -> "int"
          TString{}   -> "string"
          TBit{..}    -> "bit" <> pp typeWidth
+         TSigned{..} -> "int" <> pp typeWidth
          TUser{}     -> consuser
          TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
@@ -2049,6 +2050,12 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 64 = "u64"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
+mkType' TSigned{..} | typeWidth <= 8  = "i8"
+                    | typeWidth <= 16 = "i16"
+                    | typeWidth <= 32 = "i32"
+                    | typeWidth <= 64 = "i64"
+                    | typeWidth <= 128= "i128"
+                    | otherwise       = "int"
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
@@ -2082,6 +2089,12 @@ typeSize' _ TBit{..} | typeWidth <= 8   = 1
                      | typeWidth <= 64  = 8
                      | typeWidth <= 128 = 16
                      | otherwise        = 32
+typeSize' _ TSigned{..} | typeWidth <= 8   = 1
+                        | typeWidth <= 16  = 2
+                        | typeWidth <= 32  = 4
+                        | typeWidth <= 64  = 8
+                        | typeWidth <= 128 = 16
+                        | otherwise        = 32
 typeSize' d (TStruct _ [cons]) = consSize d $ consArgs cons
 typeSize' d (TStruct _ cs) =
     tag_size + (maximum $ 0 : map (consSize d . consArgs) cs)
@@ -2118,6 +2131,12 @@ typeAlignment' _ TBit{..} | typeWidth <= 8   = 1
                           | typeWidth <= 64  = 8
                           | typeWidth <= 128 = 16
                           | otherwise        = 16
+typeAlignment' _ TSigned{..} | typeWidth <= 8   = 1
+                             | typeWidth <= 16  = 2
+                             | typeWidth <= 32  = 4
+                             | typeWidth <= 64  = 8
+                             | typeWidth <= 128 = 16
+                             | otherwise        = 16
 typeAlignment' d (TStruct _ [cons]) = consAlignment d $ consArgs cons
 typeAlignment' d (TStruct _ cs) = maximum $ 1 : map (consAlignment d . consArgs) cs
 typeAlignment' d (TTuple _ as)  = tupleAlignment d as
@@ -2227,9 +2246,11 @@ mkBVMask w | w > 128   = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
 mkTruncate :: Doc -> Type -> Doc
 mkTruncate v t =
     case t of
-         TBit{..} | needsTruncation typeWidth
-                  -> parens $ v <+> "&" <+> mask typeWidth
-         _        -> v
+         TBit{..}    | needsTruncation typeWidth
+                     -> parens $ v <+> "&" <+> mask typeWidth
+         TSigned{..} | needsTruncation typeWidth
+                     -> parens $ v <+> "&" <+> mask typeWidth
+         _           -> v
     where
     needsTruncation :: Int -> Bool
     needsTruncation w = mask w /= empty

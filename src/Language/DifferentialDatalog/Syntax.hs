@@ -41,6 +41,7 @@ module Language.DifferentialDatalog.Syntax (
         tInt,
         tString,
         tBit,
+        tSigned,
         tStruct,
         tTuple,
         tUser,
@@ -192,6 +193,7 @@ data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
           | TString   {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
+          | TSigned   {typePos :: Pos, typeWidth :: Int}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
           | TTuple    {typePos :: Pos, typeTupArgs :: [Type]}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
@@ -202,6 +204,7 @@ tBool      = TBool     nopos
 tInt       = TInt      nopos
 tString    = TString   nopos
 tBit       = TBit      nopos
+tSigned    = TSigned   nopos
 tStruct    = TStruct   nopos
 tTuple [t] = t
 tTuple ts  = TTuple    nopos ts
@@ -236,6 +239,7 @@ instance Eq Type where
     (==) TInt{}             TInt{}              = True
     (==) TString{}          TString{}           = True
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
+    (==) (TSigned _ w1)     (TSigned _ w2)      = w1 == w2
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
     (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
@@ -249,17 +253,19 @@ trank TBool  {} = 0
 trank TInt   {} = 1
 trank TString{} = 2
 trank TBit   {} = 3
-trank TStruct{} = 4
-trank TTuple {} = 5
-trank TUser  {} = 6
-trank TVar   {} = 7
-trank TOpaque{} = 8
+trank TSigned{} = 4
+trank TStruct{} = 5
+trank TTuple {} = 6
+trank TUser  {} = 7
+trank TVar   {} = 8
+trank TOpaque{} = 9
 
 instance Ord Type where
     compare TBool{}            TBool{}             = EQ
     compare TInt{}             TInt{}              = EQ
     compare TString{}          TString{}           = EQ
     compare (TBit _ w1)        (TBit _ w2)         = compare w1 w2
+    compare (TSigned _ w1)     (TSigned _ w2)      = compare w1 w2
     compare (TStruct _ cs1)    (TStruct _ cs2)     = compare cs1 cs2
     compare (TTuple _ ts1)     (TTuple _ ts2)      = compare ts1 ts2
     compare (TUser _ n1 as1)   (TUser _ n2 as2)    = compare (n1, as1) (n2, as2)
@@ -277,6 +283,7 @@ instance PP Type where
     pp (TInt _)         = "bigint"
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
+    pp (TSigned _ w)    = "int<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
@@ -299,6 +306,7 @@ typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
 typeTypeVars TString{}   = []
 typeTypeVars TBit{}      = []
+typeTypeVars TSigned{}   = []
 typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
                                $ concatMap consArgs typeCons
 typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
@@ -329,7 +337,7 @@ instance PP TypeDef where
                           then empty
                           else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
                       "=" <+> (pp $ fromJust tdefType))
-    pp TypeDef{..} = ppAttributes tdefAttrs $$   
+    pp TypeDef{..} = ppAttributes tdefAttrs $$
                      ("extern type" <+> pp tdefName <>
                       (if null tdefArgs
                           then empty
