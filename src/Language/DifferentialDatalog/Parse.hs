@@ -82,6 +82,7 @@ reservedNames = ["as",
                  "if",
                  "import",
                  "in",
+                 "int",
                  "mut",
                  "input",
                  "output",
@@ -405,6 +406,7 @@ namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
 
 typeSpec = withPos $
             bitType
+        <|> signedType
         <|> intType
         <|> stringType
         <|> boolType
@@ -415,6 +417,7 @@ typeSpec = withPos $
 
 typeSpecSimple = withPos $
                   bitType
+              <|> signedType
               <|> intType
               <|> stringType
               <|> boolType
@@ -423,6 +426,7 @@ typeSpecSimple = withPos $
               <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
+signedType = TSigned nopos <$ reserved "int" <*> (fromIntegral <$> angles decimal)
 intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
