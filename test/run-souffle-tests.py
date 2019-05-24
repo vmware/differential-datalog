@@ -4,15 +4,14 @@
 import os
 import subprocess
 import sys
-import shutil
 import argparse
 import datetime
 
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert
 
-tests_run = 0
-tests_passed = 0
+tests_compiled = 0
+tests_compiled_successfully = 0
 tests_xfail = 0
 todo = []  # if not empty only the tests in this list are run
 libpath = ""
@@ -22,67 +21,70 @@ tests_to_run = 20 # number of tests to run at once in Rust
 # expected to fail
 xfail = [
     "souffle_tests_ddlog", # auto-generated
-    "souffle7",  # recursive type
-    "aggregates2", # max in relation argument
+    "souffle7",  # issue 202 - recursive type
+    "aggregates2", # aggregation used in head
     "aggregates",  # issue 227 - count of empty group
-    "count",       # issue 227
-    "circuit_sat", # issue 221
-    "magic_circuit_sat", # issue 221
-    "factorial",   # issue 221
-    "grid",        # issue 221
-    "planar",      # issue 188
-    "2sat",      # issue 197
-    "independent_body3", # issue 224
+    "count",       # 227
+    "magic_count", # 227
+    "magic_samegen", # computes a very large join
+    "circuit_sat", # issue 221 - starting state is very large
+    "magic_circuit_sat", # 221
+    "factorial",   # 221
+    "grid",        # 221
+    "planar",      # issue 188 - requires signed numbers
+    "minmaxnum",   # 188
+    "number_constants", # 188
+    "2sat",      # issue 197 - bind and use variable
+    "independent_body3", # issue 224 - requires many iterations
     "aliases",   # assignments to tuples containing variables
-    "cellular_automata", # issue 198
+    "cellular_automata", # issue 198 - order of clauses
     "comp-override2", # nested component declaration
     "components1",    # improper component nesting
     "functor_arity",  # min, max, cat with more than 2 arguments
     "grammar",        # funny unicode char in a comment
-    "independent_body2", # not in DNF form
-    "inline_nqueens", # recursive type
+    "independent_body2", # issue #231 - not in DNF form
     "lucas",          # inputs and outputs are in the wrong directories
-    "magic_2sat",     # issue 197
-    "magic_nqueens",    # recursive type
-    "magic_turing1",    # issue 198
+    "magic_2sat",     # 197
+    "magic_nqueens",    # 202
+    "magic_turing1",    # 198
     "math",             # Trigonometric functions and FP types
-    "minesweeper",      # issue 198
-    "neg1",             # issue 198
-    "neg2",             # same
-    "neg3",             # same
-    "range",            # same
-    "rec_lists",        # recursive type
-    "rec_lists2",       # same
-    "subsumption",      # recursive type
-    "subtype",          # issue 197
-    "turing1",          # issue 198
-    "unused_constraints", # same
-    "access-policy",    # same
-    "amicable",         # same
-    "array",            # same
-    "catalan",          # same
-    "circuit_eval",     # issue 198
-    "circuit_records",  # recursive type
-    "comp-parametrized", # issue 198
-    "counter",          # issue 197
-    "dfa_live_vars",    # issue 198
-    "dfa_parse",        # issue 197
-    "dfa_summary_function", # issue 197
-    "dnf",              # not in dnf form
-    "edit_distance",    # issue 197
-    "euclid",           # not in DNF form
-    "inline_nats",      # issue 198
-    "josephus",         # issue 197
-    "longest_path",     # issue 198
-    "magic_access-policy", # issue 197
-    "nfsa2fsa",         # recursive type
-    "nqueens",          # recursive type
-    "puzzle",           # issue 197
-    "shortest_path",    # issue 197
-    "sort",             # recursive type
-    "tak",              # issue 197
-    "tic-tac-toe",      # issue 197
-    "weighted_distances" # issue 197
+    "minesweeper",      # 198
+    "neg1",             # 198
+    "neg2",             # 198
+    "neg3",             # 198
+    "range",            # 198
+    "rec_lists",        # 202
+    "rec_lists2",       # 202
+    "subsumption",      # 202
+    "subtype",          # 197
+    "turing1",          # 198
+    "unused_constraints", # 198
+    "access-policy",    # 198
+    "amicable",         # 198
+    "array",            # 198
+    "catalan",          # 198
+    "circuit_eval",     # 198
+    "circuit_records",  # 202
+    "comp-parametrized", # 198
+    "counter",          # 197
+    "dfa_live_vars",    # 198
+    "dfa_parse",        # 197
+    "dfa_summary_function", # 197
+    "dnf",              # 231
+    "edit_distance",    # 197
+    "euclid",           # 231
+    "inline_nats",      # 198
+    "josephus",         # 197
+    "longest_path",     # 198
+    "magic_access-policy", # 197
+    "nfsa2fsa",         # 202
+    "nqueens",          # 202
+    "puzzle",           # 197
+    "shortest_path",    # 197
+    "sort",             # 202
+    "tak",              # 197
+    "tic-tac-toe",      # 197
+    "weighted_distances" # 197
 ]
 
 def run_command(command, indata=None):
@@ -100,8 +102,8 @@ def run_command(command, indata=None):
 def compile_example(directory, f):
     """Run the Souffle example in directory 'directory'.  The test file is named f."""
     print "Testing " + directory
-    global tests_run, tests_passed, libpath
-    tests_run = tests_run + 1
+    global tests_compiled, tests_compiled_successfully, libpath
+    tests_compiled = tests_compiled + 1
     savedir = os.getcwd()
     os.chdir(directory)
     code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc++", f])
@@ -115,7 +117,7 @@ def compile_example(directory, f):
         code, _ = run_command(["ddlog", "-i", "souffle.dl", "-L", libpath])
     if code == 0:
         run_command(["rm", f + ".tmp"])
-        tests_passed = tests_passed + 1
+        tests_compiled_successfully = tests_compiled_successfully + 1
     os.chdir(savedir)
     return code
 
@@ -193,8 +195,8 @@ def run_remote_tests():
             code = compile_example(directory, test + ".dl")
             if code == 0:
                 result.append(directory)
-            global tests_passed, tests_to_run
-            if tests_passed == tests_to_run:
+            global tests_compiled_successfully, tests_to_run
+            if tests_compiled_successfully == tests_to_run:
                 return result
     return result
 
@@ -202,9 +204,8 @@ def run_merged_test(filename):
     """Runs a test that encompasses multiple other tests.
     This is created in a file called souffle_tests.dl, which
     imports multiple other tests"""
-    #if os.path.isdir(filename + "_ddlog"):
-    #    shutil.rmtree(filename + "_ddlog")
-    code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L", "../lib", "--no-dynlib", "--no-staticlib"])
+    code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L",
+                           "../lib", "--no-dynlib", "--no-staticlib"])
     if code != 0:
         print "*** Error in compiling"
         return code
@@ -254,15 +255,16 @@ def main():
     if args.examples:
         run_examples()
 
-    global tests_to_skip, tests_to_run
+    global tests_to_skip, tests_to_run, tests_compiled_successfully, tests_compiled
     if args.skip is not None:
         tests_to_skip = int(args.skip)
     if args.run is not None:
         tests_to_run = int(args.run)
-    print "Running", tests_to_run, "after", tests_to_skip
-
+    save_skip = tests_to_skip
     modules = run_remote_tests()
-    print "Converted", tests_run, "out of which", tests_passed, "passed, skipped xfail", tests_xfail
+    print "Converted successfully", tests_compiled_successfully, "out of", \
+        tests_compiled, "skipped xfail", tests_xfail, \
+        "running", tests_to_run, "after skipping", save_skip
     imports = ["import " + m + ".souffle as " + m for m in modules]
     imports = [s.replace("/", ".") for s in imports]
 

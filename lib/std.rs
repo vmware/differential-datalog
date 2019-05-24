@@ -524,7 +524,7 @@ pub fn std_string_contains(s1: &String, s2: &String) -> bool {
 
 pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
     let len = s.len();
-    let from = cmp::min(*start as usize, len-1);
+    let from = cmp::min(*start as usize, len);
     let to = cmp::max(from, cmp::min(*end as usize, len));
     s[from..to].to_string()
 }
