@@ -498,6 +498,7 @@ exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
+exprValidate1 _ _ _   ESigned{}           = return ()
 exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was performed by exprDesugar
     let tdef = consType d c
     case find ctxIsSetL $ ctxAncestors ctx of
@@ -608,10 +609,10 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
                -> return ()
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
-          isint1 = check (isInt d e1 || isBit d e1) (pos e1) "Not an integer"
-          isint2 = check (isInt d e2 || isBit d e2) (pos e2) "Not an integer"
-          isbit1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit vector"
-          isbit2 = check (isBit d e2 || isSigned d e2) (pos e2) "Not a bit vector"
+          isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
+          isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
+          isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
+          isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
           isbool = check (isBool d e1) (pos e1) "Not a Boolean"
 
 exprValidate2 d _   (EUnOp _ BNeg e)    =
@@ -693,6 +694,6 @@ exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
 exprConvertIntToBV d ctx e@(EInt p v) =
     case exprType' d ctx (E e) of
          TBit _ w    -> E $ EBit p w v
-         TSigned _ w -> E $ EBit p w v
+         TSigned _ w -> E $ ESigned p w v
          _           -> E e
 exprConvertIntToBV _ _ e = E e

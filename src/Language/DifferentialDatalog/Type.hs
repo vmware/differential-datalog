@@ -276,6 +276,7 @@ exprNodeType' d ctx (EInt p _)            = do
 
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
+exprNodeType' _ _   (ESigned _ w _)       = return $ tSigned w
 
 exprNodeType' d ctx (EStruct p c mas)     = do
     let tdef = consType d c
@@ -647,6 +648,7 @@ consTreeAbduct' d ct@(CT t nodes) (E e) =
          EInt p v       -> (ct, CT t [EInt p v])
          EString p s    -> (ct, CT t [EString p s])
          EBit p w v     -> (ct, CT t [EBit p w v])
+         ESigned p w v  -> (ct, CT t [ESigned p w v])
          EStruct p c fs ->
              let (leftover, abducted) = unzip $ map (\nd -> abductStruct d e nd) nodes
              in (CT t $ concat leftover, CT t $ concat abducted)

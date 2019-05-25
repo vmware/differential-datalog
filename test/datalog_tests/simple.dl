@@ -29,7 +29,7 @@ typedef t18 = Const18 { f0: bigint, f1: string, f2: t00 }
 typedef t19 = C000 { f0: bigint }
             | C111 { f0: bigint }
             | C222 { f0: bigint }
-
+typedef t20 = signed<32>
 
 typedef person = string
 
@@ -90,6 +90,18 @@ function a8(): bit<32>
 
 function a9(): bit<32>
     = 32'd1_2_5 | 32'hF_F___ | 32'o7_7_7 | 32'b10_1010_1011
+
+function a10(): signed<32>
+    = 32'sd0 + 32'sd1
+
+function a11(): signed<32>
+    = 0: signed<32>
+
+function a12(a: signed<16>, b: signed<16>): signed<16>
+    = (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+
+function a13(a: signed<16>, b: signed<16>): bool
+    = (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
 
 function b0(): bool
     = true and false
@@ -857,3 +869,32 @@ input relation Regex(regex: string, text: string)
 output relation RegexMatch(regex: string, text: string, m: bool)
 
 RegexMatch(regex, text, regex_match(regex, text)) :- Regex(regex, text).
+
+output relation Arithm(n:bit<32>)
+Arithm(0).
+Arithm(1 + 0).
+Arithm(0 + 2).
+Arithm(32'd2 + 1).
+Arithm(2+2).
+Arithm(32'd1 + 32'd4).
+Arithm(32'd2 * 32'd3).
+Arithm(32'd28 / 32'd4).
+Arithm(32'd24 % 32'd16).
+Arithm(32'd18 >> 1).
+Arithm(32'd5 << 1).
+Arithm(32'b1010 | 32'b1001).
+Arithm(32'b1111 & 32'b1100).
+Arithm(~32'hfffffff2).
+
+output relation Signed(n:signed<32>)
+Signed(0).
+Signed(1 + 0).
+Signed(0 + 2).
+Signed(32'sd2 + 1).
+Signed(2+2).
+Signed(32'sd1 + 32'sd4).
+Signed(32'sd2 * 32'sd3).
+Signed(32'sd28 / 32'sd4).
+Signed(32'sd24 % 32'sd16).
+Signed(32'sd18 >> 1).
+Signed(32'sd5 << 1).
