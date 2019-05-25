@@ -7,6 +7,22 @@ Answer{"Palais Royal"}
 Answer{"St.Germain"}
 Answer{"St.Michel"}
 
+Arithm:
+Arithm{0}
+Arithm{1}
+Arithm{2}
+Arithm{3}
+Arithm{4}
+Arithm{5}
+Arithm{6}
+Arithm{7}
+Arithm{8}
+Arithm{9}
+Arithm{10}
+Arithm{11}
+Arithm{12}
+Arithm{13}
+
 R7:
 R7{1,2}
 R7{1,3}
@@ -54,6 +70,19 @@ Sib{"Ben","Bob"}
 Sib{"Bob","Alice"}
 Sib{"Bob","Ben"}
 
+Signed:
+Signed{0}
+Signed{1}
+Signed{2}
+Signed{3}
+Signed{4}
+Signed{5}
+Signed{6}
+Signed{7}
+Signed{8}
+Signed{9}
+Signed{10}
+
 Rules test
 Answer:
 Answer{"Chatelet"}
@@ -62,6 +91,21 @@ Answer{"Odeon"}
 Answer{"Palais Royal"}
 Answer{"St.Germain"}
 Answer{"St.Michel"}
+
+Arithm:
+Arithm{0}
+Arithm{1}
+Arithm{2}
+Arithm{4}
+Arithm{5}
+Arithm{6}
+Arithm{7}
+Arithm{8}
+Arithm{9}
+Arithm{10}
+Arithm{11}
+Arithm{12}
+Arithm{13}
 
 R4:
 R3{0,true}
@@ -136,6 +180,18 @@ Sib{"Ben","Alice"}
 Sib{"Ben","Bob"}
 Sib{"Bob","Alice"}
 Sib{"Bob","Ben"}
+
+Signed:
+Signed{0}
+Signed{1}
+Signed{2}
+Signed{4}
+Signed{5}
+Signed{6}
+Signed{7}
+Signed{8}
+Signed{9}
+Signed{10}
 
 Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}
 Table12{81692126345696542188923640651411714412,"foo",S{(false, true),10000}}

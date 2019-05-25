@@ -507,6 +507,12 @@ The type `bigint` describes arbitrary-precision (unbounded) integers.
 `var x: bigint = 125` declares a variable `x` with type integer and
 initial value 125.
 
+Signed integers are written as `signed<N>`, where `N` is the width of
+the integer in bits.  Currently DDlog only supports integer with
+widths that are supported by the native machine type (e.g., 8, 16, 32,
+or 64 bits).  DDlog supports all standard arithmetic operators over
+integers.
+
 Bit-vector types are described by `bit<N>`, where `N` is the
 bit-vector width.  Bit-vectors are unsigned integers when performing
 arithmetic.  DDlog supports all standard arithmetic and bitwise

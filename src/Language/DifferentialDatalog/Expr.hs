@@ -79,6 +79,7 @@ exprFoldCtxM' f ctx   (EBool p b)             = f ctx $ EBool p b
 exprFoldCtxM' f ctx   (EInt p i)              = f ctx $ EInt p i
 exprFoldCtxM' f ctx   (EString p s)           = f ctx $ EString p s
 exprFoldCtxM' f ctx   (EBit p w v)            = f ctx $ EBit p w v
+exprFoldCtxM' f ctx   (ESigned p w v)         = f ctx $ ESigned p w v
 exprFoldCtxM' f ctx e@(EStruct p c fs)        = f ctx =<< EStruct p c <$> (mapM (\(fname, fl) -> (fname,) <$> exprFoldCtxM f (CtxStruct e ctx fname) fl) fs)
 exprFoldCtxM' f ctx e@(ETuple p fs)           = f ctx =<< ETuple p <$> (mapIdxM (\fl i -> exprFoldCtxM f (CtxTuple e ctx i) fl) fs)
 exprFoldCtxM' f ctx e@(ESlice p v h l)        = do v' <- exprFoldCtxM f (CtxSlice e ctx) v
@@ -88,7 +89,7 @@ exprFoldCtxM' f ctx e@(EMatch p m cs)         = do m' <- exprFoldCtxM f (CtxMatc
                                                                                           (exprFoldCtxM f (CtxMatchVal e ctx i) e2)) cs
                                                    f ctx $ EMatch p m' cs'
 exprFoldCtxM' f ctx   (EVarDecl p v)          = f ctx $ EVarDecl p v
-exprFoldCtxM' f ctx e@(ESeq p l r)            = f ctx =<< ESeq p <$> exprFoldCtxM f (CtxSeq1 e ctx) l <*> 
+exprFoldCtxM' f ctx e@(ESeq p l r)            = f ctx =<< ESeq p <$> exprFoldCtxM f (CtxSeq1 e ctx) l <*>
                                                                      exprFoldCtxM f (CtxSeq2 e ctx) r
 exprFoldCtxM' f ctx e@(EITE p i t el)         = f ctx =<< EITE p <$>
                                                           exprFoldCtxM f (CtxITEIf e ctx) i <*>
@@ -122,6 +123,7 @@ exprMapM g e = case e of
                    EInt p i            -> return $ EInt p i
                    EString p s         -> return $ EString p s
                    EBit p w v          -> return $ EBit p w v
+                   ESigned p w v       -> return $ ESigned p w v
                    EStruct p s fs      -> EStruct p s <$> mapM (\(fname, e) -> (fname,) <$> g e) fs
                    ETuple p fs         -> ETuple p <$> mapM g fs
                    ESlice p v h l      -> (\v' -> ESlice p v' h l) <$> g v
@@ -171,6 +173,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EInt _ _              -> x'
                                      EString _ _           -> x'
                                      EBit _ _ _            -> x'
+                                     ESigned _ _ _         -> x'
                                      EStruct _ _ fs        -> foldl' (\a (_, x) -> op a x) x' fs
                                      ETuple _ fs           -> foldl' op x' fs
                                      ESlice _ v _ _        -> x' `op` v
@@ -277,6 +280,7 @@ exprIsPattern e = exprFold exprIsPattern' e
 exprIsPattern' :: ExprNode Bool -> Bool
 exprIsPattern' EString{}        = True
 exprIsPattern' EBit{}           = True
+exprIsPattern' ESigned{}        = True
 exprIsPattern' EBool{}          = True
 exprIsPattern' EInt{}           = True
 exprIsPattern' EVarDecl{}       = True

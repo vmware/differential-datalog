@@ -8,4 +8,4 @@ error: Mutually recursive types: t -> t1 -> t
 
 Failed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
 unexpected "{"
-expecting "bit", "bigint", "string", "bool", constructor name, type name, "'" or "("
+expecting "bit", "signed", "bigint", "string", "bool", constructor name, type name, "'" or "("

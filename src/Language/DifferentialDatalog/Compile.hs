@@ -1327,7 +1327,7 @@ mkValConstructorName' d t =
          TInt{}      -> "int"
          TString{}   -> "string"
          TBit{..}    -> "bit" <> pp typeWidth
-         TSigned{..} -> "int" <> pp typeWidth
+         TSigned{..} -> "signed" <> pp typeWidth
          TUser{}     -> consuser
          TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
@@ -1547,6 +1547,7 @@ normalizeArrangement d rel ctx pat = (renamed, vmap)
              EInt{}                  -> return $ E e
              EString{}               -> return $ E e
              EBit{}                  -> return $ E e
+             ESigned{}               -> return $ E e
              EPHolder{}              -> return $ E e
              ETyped{..}              -> do
                 e' <- rename (CtxTyped e ctx) exprExpr
@@ -1619,6 +1620,7 @@ arrangeInput d rl fstatom arrange_input_by = do
     subst' e@EInt{}     _  _ = return $ E e
     subst' e@EString{}  _  _ = return $ E e
     subst' e@EBit{}     _  _ = return $ E e
+    subst' e@ESigned{}  _  _ = return $ E e
     subst' e@EPHolder{} _  _ = return $ E e
     subst' e@ETyped{}   _  _ = return $ E e
     subst' e            _  _ | exprIsConst (E e)
@@ -1914,6 +1916,8 @@ mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' _ _ ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tSigned exprWidth), EVal)
+                        | otherwise        = ("Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2055,7 +2059,7 @@ mkType' TSigned{..} | typeWidth <= 8  = "i8"
                     | typeWidth <= 32 = "i32"
                     | typeWidth <= 64 = "i64"
                     | typeWidth <= 128= "i128"
-                    | otherwise       = "int"
+                    | otherwise       = "Int"
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>

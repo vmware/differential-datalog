@@ -80,6 +80,7 @@ module Language.DifferentialDatalog.Syntax (
         eInt,
         eString,
         eBit,
+        eSigned,
         eStruct,
         eTuple,
         eSlice,
@@ -283,7 +284,7 @@ instance PP Type where
     pp (TInt _)         = "bigint"
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
-    pp (TSigned _ w)    = "int<" <> pp w <> ">"
+    pp (TSigned _ w)    = "signed<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
@@ -551,6 +552,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EInt          {exprPos :: Pos, exprIVal :: Integer}
                 | EString       {exprPos :: Pos, exprString :: String}
                 | EBit          {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
+                | ESigned       {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
                 | EStruct       {exprPos :: Pos, exprConstructor :: String, exprStructFields :: [(String, e)]}
                 | ETuple        {exprPos :: Pos, exprTupleFields :: [e]}
                 | ESlice        {exprPos :: Pos, exprOp :: e, exprH :: Int, exprL :: Int}
@@ -575,6 +577,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EInt _ i1)              (EInt _ i2)                = i1 == i2
     (==) (EString _ s1)           (EString _ s2)             = s1 == s2
     (==) (EBit _ w1 i1)           (EBit _ w2 i2)             = w1 == w2 && i1 == i2
+    (==) (ESigned _ w1 i1)        (ESigned _ w2 i2)          = w1 == w2 && i1 == i2
     (==) (EStruct _ c1 fs1)       (EStruct _ c2 fs2)         = c1 == c2 && fs1 == fs2
     (==) (ETuple _ fs1)           (ETuple _ fs2)             = fs1 == fs2
     (==) (ESlice _ e1 h1 l1)      (ESlice _ e2 h2 l2)        = e1 == e2 && h1 == h2 && l1 == l2
@@ -608,6 +611,7 @@ instance PP e => PP (ExprNode e) where
                      | otherwise
                              = pp $ show s
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
+    pp (ESigned _ w v)       = pp w <> "'sd" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
@@ -666,6 +670,7 @@ eFalse              = eBool False
 eInt i              = E $ EInt      nopos i
 eString s           = E $ EString   nopos s
 eBit w v            = E $ EBit      nopos w v
+eSigned w v         = E $ ESigned   nopos w v
 eStruct c as        = E $ EStruct   nopos c as
 eTuple [a]          = a
 eTuple as           = E $ ETuple    nopos as

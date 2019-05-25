@@ -17,6 +17,7 @@ typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
 typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
 typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
+typedef Arithm = Arithm{n: bit<32>}
 typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
@@ -71,6 +72,7 @@ typedef Request = Request{name: string, id: string}
 typedef Ris_true = Ris_true{_s: TB}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
+typedef Signed = Signed{n: signed<32>}
 typedef String2 = String2{s: string}
 typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
@@ -139,10 +141,19 @@ typedef t14 = (t04, t04)
 typedef t15 = Const15{f: bigint}
 typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
 typedef t19 = C000{f0: bigint} | C111{f0: bigint} | C222{f0: bigint}
+typedef t20 = signed<32>
 function a0 (): bigint =
     1
 function a1 (): bigint =
     (1 + 2)
+function a10 (): signed<32> =
+    (32'sd0 + 32'sd1)
+function a11 (): signed<32> =
+    (32'sd0: signed<32>)
+function a12 (a: signed<16>, b: signed<16>): signed<16> =
+    (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
+function a13 (a: signed<16>, b: signed<16>): bool =
+    (((((((a < b) or (a > b)) or (a <= b)) or (a >= b)) or (a == b)) or (a != b)) or (a < b))
 function a2 (): bit<32> =
     (32'd0 + 32'd1)
 function a3 (): bit<32> =
@@ -487,6 +498,7 @@ input relation Alloc [Alloc]
 relation Allocated [Allocated]
 output relation Allocation [Allocation]
 output relation Answer [Answer]
+output relation Arithm [Arithm]
 input relation BMethod [BMethod]
 input relation Blacklist [Blacklist]
 output relation CMethod [CMethod]
@@ -538,6 +550,7 @@ input relation Request [Request]
 relation Ris_true [Ris_true]
 output relation SCCLabel [(bigint, bigint)]
 output relation Sib [Sib]
+output relation Signed [Signed]
 input relation String2 [String2]
 output relation StringOrd [StringOrd]
 input relation Strings [Strings]
@@ -721,4 +734,29 @@ CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(
 DMethod(.c1=a, .c2=b) :- AMethod(.a1=b, .a2=a), BMethod(.b1=intern.string_intern("c"), .b2=b).
 Power3(.y=std.pow32(x, 32'd3)) :- Numbers(.x=x).
 RegexMatch(.regex=regex, .text=text, .m=regex.regex_match(regex, text)) :- Regex(.regex=regex, .text=text).
+Arithm(.n=32'd0).
+Arithm(.n=(32'd1 + 32'd0)).
+Arithm(.n=(32'd0 + 32'd2)).
+Arithm(.n=(32'd2 + 32'd1)).
+Arithm(.n=(32'd2 + 32'd2)).
+Arithm(.n=(32'd1 + 32'd4)).
+Arithm(.n=(32'd2 * 32'd3)).
+Arithm(.n=(32'd28 / 32'd4)).
+Arithm(.n=(32'd24 % 32'd16)).
+Arithm(.n=(32'd18 >> 32'd1)).
+Arithm(.n=(32'd5 << 32'd1)).
+Arithm(.n=(32'd10 | 32'd9)).
+Arithm(.n=(32'd15 & 32'd12)).
+Arithm(.n=(~ 32'd4294967282)).
+Signed(.n=32'sd0).
+Signed(.n=(32'sd1 + 32'sd0)).
+Signed(.n=(32'sd0 + 32'sd2)).
+Signed(.n=(32'sd2 + 32'sd1)).
+Signed(.n=(32'sd2 + 32'sd2)).
+Signed(.n=(32'sd1 + 32'sd4)).
+Signed(.n=(32'sd2 * 32'sd3)).
+Signed(.n=(32'sd28 / 32'sd4)).
+Signed(.n=(32'sd24 % 32'sd16)).
+Signed(.n=(32'sd18 >> 32'd1)).
+Signed(.n=(32'sd5 << 32'd1)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
