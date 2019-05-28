@@ -1,0 +1,11 @@
+.decl ARelation(a:symbol, c:symbol)
+.decl BRelation(b:symbol)
+.decl CRelation(c:symbol, a:symbol)
+
+ARelation(a_var, c_var),
+BRelation(a_var) :-
+	a_var = "<<main method array>>", c_var = "java.lang.String[]".
+
+CRelation(a_var, c_var) :-
+	a_var = "<<main method array content>>", c_var = "java.lang.String".
+
