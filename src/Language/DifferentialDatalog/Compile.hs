@@ -485,7 +485,7 @@ compileLib d specname rs_code =
                               $ emptyCompilerState { cArrangements = arrs
                                                    , cTypes        = types }
     -- Type declarations
-    typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
+    typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d'
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
@@ -499,8 +499,8 @@ addDummyRel :: DatalogProgram -> DatalogProgram
 addDummyRel d | not $ M.null $ progRelations d = d
               | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos RelInternal "Null" (tTuple []) Nothing}
 
-mkTypedef :: TypeDef -> Doc
-mkTypedef tdef@TypeDef{..} =
+mkTypedef :: DatalogProgram -> TypeDef -> Doc
+mkTypedef d tdef@TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive_struct                                                             $$
@@ -570,13 +570,25 @@ mkTypedef tdef@TypeDef{..} =
               "}"
     mkDispCons :: Constructor -> Doc
     mkDispCons c@Constructor{..} =
-        cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
-        "write!(__formatter, \"" <> pp (name c) <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+>
-        (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
+        cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} => {" $$
+        (nest' $
+            "__formatter.write_str(\"" <> (pp $ name c) <> "{\")?;" $$
+            (vcat $
+             mapIdx (\a i -> (if isString d a
+                                 then "record::format_ddlog_str(" <> (pp $ name a) <> ", __formatter)?;"
+                                 else "fmt::Debug::fmt(" <> (pp $ name a) <> ", __formatter)?;")
+                             $$
+                             (if i + 1 < length consArgs
+                                 then "__formatter.write_str(\",\")?;"
+                                 else empty))
+                    consArgs) $$
+            "__formatter.write_str(\"}\")")
+        $$
+        "}"
         where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
 
     default_enum =
-              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                    $$
+              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                     $$
               "    fn default() -> Self {"                                                                     $$
               "        " <> cname <> "{" <> def_args <> "}"                                                    $$
               "    }"                                                                                          $$
@@ -850,7 +862,10 @@ mkValType d types =
     mkValCons t = consname t <> (parens $ mkBoxType d t)
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
-    mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
+    mkdisplay t | isString d t = "Value::" <> consname t <+> "(v) => record::format_ddlog_str(v.as_ref(), f)"
+                | otherwise    = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
+    mkintorec :: Type -> Doc
+    mkintorec t = "Value::" <> consname t <+> "(v) => v.into_record()"
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
 -- relation.  This is done as a separate compiler pass to maximize arrangement sharing

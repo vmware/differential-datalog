@@ -10,8 +10,35 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use libc::size_t;
 use std::fmt;
+use std::fmt::Write;
 
 pub type Name = Cow<'static, str>;
+
+/* Rust's implementation of `Debug::fmt` for `str` incorrectly escapes
+ * single quotes, e.g., "isn't" becomes "isn\'t".  To get around this,
+ * I copied Rust's implementation and modified it to handle single quotes
+ * as a special case. */
+pub fn format_ddlog_str(s: &str, f: &mut fmt::Formatter) -> fmt::Result {
+    //write!(f, "{:?}", s),
+    f.write_char('"')?;
+    let mut from = 0;
+    for (i, c) in s.char_indices() {
+        if c == '\'' {
+            f.write_char('\'')?;
+        } else {
+            let esc = c.escape_debug();
+            if esc.len() != 1 {
+                f.write_str(&s[from..i])?;
+                for c in esc {
+                    f.write_char(c)?;
+                }
+                from = i + c.len_utf8();
+            }
+        }
+    }
+    f.write_str(&s[from..])?;
+    f.write_char('"')
+}
 
 /// `enum Record` represents an arbitrary DDlog value.
 ///
@@ -37,7 +64,7 @@ impl fmt::Display for Record {
             Record::Bool(true)          => write!(f, "true"),
             Record::Bool(false)         => write!(f, "false"),
             Record::Int(i)              => i.fmt(f),
-            Record::String(s)           => write!(f, "{:?}", s),
+            Record::String(s)           => format_ddlog_str(s.as_ref(), f),
             Record::Tuple(recs)         => {
                 write!(f, "(")?;
                 let len = recs.len();
