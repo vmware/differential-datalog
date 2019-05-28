@@ -2054,12 +2054,12 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 64 = "u64"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
-mkType' TSigned{..} | typeWidth <= 8  = "i8"
-                    | typeWidth <= 16 = "i16"
-                    | typeWidth <= 32 = "i32"
-                    | typeWidth <= 64 = "i64"
-                    | typeWidth <= 128= "i128"
-                    | otherwise       = "Int"
+mkType' t@TSigned{..} | typeWidth == 8  = "i8"
+                    | typeWidth == 16 = "i16"
+                    | typeWidth == 32 = "i32"
+                    | typeWidth == 64 = "i64"
+                    | typeWidth == 128= "i128"
+                    | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
@@ -2251,8 +2251,6 @@ mkTruncate :: Doc -> Type -> Doc
 mkTruncate v t =
     case t of
          TBit{..}    | needsTruncation typeWidth
-                     -> parens $ v <+> "&" <+> mask typeWidth
-         TSigned{..} | needsTruncation typeWidth
                      -> parens $ v <+> "&" <+> mask typeWidth
          _           -> v
     where

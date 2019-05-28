@@ -96,6 +96,7 @@ Arithm:
 Arithm{0}
 Arithm{1}
 Arithm{2}
+Arithm{3}
 Arithm{4}
 Arithm{5}
 Arithm{6}
@@ -185,6 +186,7 @@ Signed:
 Signed{0}
 Signed{1}
 Signed{2}
+Signed{3}
 Signed{4}
 Signed{5}
 Signed{6}
