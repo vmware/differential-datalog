@@ -1067,7 +1067,8 @@ class SouffleConverter(object):
             convertedDisjunctions = [self.convert_terms(x) for x in terms]
             if len(convertedDisjunctions) > 0 and \
                     len(convertedDisjunctions[0]) > 0 and \
-                    convertedDisjunctions[0][0].startswith("not"):
+                    convertedDisjunctions[0][0].startswith("not") or\
+                    convertedDisjunctions[0][0].startswith("var"):
                 # DDlog does not support rules that start with a negation.
                 # Insert a reference to a dummy non-empty relation before.
                 convertedDisjunctions[0].insert(0, self.dummyRelation + "(0)")
