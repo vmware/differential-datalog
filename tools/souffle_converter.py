@@ -489,11 +489,11 @@ class SouffleConverter(object):
     def getCurrentComponentLegalName(self):
         return self.current_component.replace(".", "_")
 
-    def process_file(self, rel, inFileName, inSeparator, sort):
+    def process_file(self, rel, inFileName, inDelimiter, sort):
         """Process an INPUT or OUTPUT with name inFileName.
         rel: is the relation name that is being processed
         inFileName: is the file which contains the data
-        inSeparator: is the input record separator
+        inDelimiter: is the input record delimiter
         sort: is a Boolean indicating whether the records in the output
         should be lexicographically sorted.
         Returns the data in the file as a list of lists of strings.
@@ -522,7 +522,7 @@ class SouffleConverter(object):
 
         output = []
         for line in data:
-            fields = line.rstrip('\n').split(inSeparator)
+            fields = line.rstrip('\n').split(inDelimiter)
             result = []
             # Special handling for the empty tuple, which seems
             # to be written as () in Souffle, instead of the emtpy string
@@ -609,10 +609,10 @@ class SouffleConverter(object):
         else:
             filenames = [kvp["filename"]]
 
-        if "separator" not in kvp:
-            separator = '\t'
+        if "delimiter" not in kvp:
+            delimiter = '\t'
         else:
-            separator = kvp["separator"]
+            delimiter = kvp["delimiter"]
 
         global relationPrefix, verbose
         if verbose:
@@ -628,7 +628,7 @@ class SouffleConverter(object):
         if data is None:
             print "** Cannot find input file for " + rel
             return
-        output = self.process_file(rel, data, separator, False)
+        output = self.process_file(rel, data, delimiter, False)
         for row in output:
             self.files.outputData(
                 "insert " + relationPrefix + ri.name + "_shadow(" + ",".join(row) + ")", ",")
