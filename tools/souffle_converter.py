@@ -190,7 +190,7 @@ class Type(object):
         """True if this type is equivalent to number."""
         if self.isnumber is not None:
             return self.isnumber
-        if self.name == "Tnumber" or self.name == "bit<32>":
+        if self.name == "Tnumber" or self.name == "signed<32>":
             self.isnumber = True
             return True
         if self.name == "IString":
@@ -367,9 +367,9 @@ class Files(object):
         self.output("import souffle_lib")
         self.output("import souffle_types")
         Type.create("IString", "IString")
-        Type.create("bit<32>", "bit<32>")
+        Type.create("signed<32>", "signed<32>")
         # The following are in souffle_types
-        Type.create("number", "bit<32>")
+        Type.create("number", "signed<32>")
         Type.create("symbol", "IString")
         Type.create("empty", "()")
         if not skip_files:
@@ -790,7 +790,7 @@ class SouffleConverter(object):
                 val = "32'h" + val[2:]
             elif val.startswith("0b"):
                 val = "32'b" + val[2:]
-            return "(" + val + ":bit<32>)"
+            return "(" + val + ":Tnumber)"
 
         if len(args) == 2:
             # Binary operator

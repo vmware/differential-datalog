@@ -11,6 +11,8 @@ use std::fmt;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use super::record::{FromRecord, IntoRecord, Record, Mutator};
+use super::uint;
+use num::ToPrimitive;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}
@@ -26,6 +28,24 @@ impl Int {
     pub fn from_bigint(v: BigInt) -> Int {
         Int{x: v}
     }
+    pub fn from_u8(v: u8) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_i8(v: i8) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_u16(v: u16) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_i16(v: i16) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_u32(v: u32) -> Int {
+        Int{x: BigInt::from(v)}
+    }
+    pub fn from_i32(v: i32) -> Int {
+        Int{x: BigInt::from(v)}
+    }
     pub fn from_u64(v: u64) -> Int {
         Int{x: BigInt::from(v)}
     }
@@ -37,6 +57,27 @@ impl Int {
     }
     pub fn from_i128(v: i128) -> Int {
         Int{x: BigInt::from(v)}
+    }
+    pub fn from_Uint(v: uint::Uint) -> Int {
+        v.to_Int().unwrap()
+    }
+    pub fn to_i8(&self) -> Option<i8> {
+        self.x.to_i8()
+    }
+    pub fn to_i16(&self) -> Option<i16> {
+        self.x.to_i16()
+    }
+    pub fn to_i32(&self) -> Option<i32> {
+        self.x.to_i32()
+    }
+    pub fn to_i64(&self) -> Option<i64> {
+        self.x.to_i64()
+    }
+    pub fn to_i128(&self) -> Option<i128> {
+        self.x.to_i128()
+    }
+    pub fn to_Uint(&self) -> Option<uint::Uint> {
+        self.x.to_biguint().map(|x| uint::Uint::from_biguint(x))
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Int {
         Int{x: BigInt::parse_bytes(buf, radix).unwrap()}

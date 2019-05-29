@@ -31,9 +31,6 @@ xfail = [
     "magic_circuit_sat", # 221
     "factorial",   # 221
     "grid",        # 221
-    "planar",      # issue 188 - requires signed numbers
-    "minmaxnum",   # 188
-    "number_constants", # 188
     "2sat",      # issue 197 - bind and use variable
     "independent_body3", # issue 224 - requires many iterations
     "aliases",   # assignments to tuples containing variables
@@ -235,7 +232,7 @@ def run_merged_test(filename):
     return code
 
 def main():
-    os.environ["RUSTFLAGS"] = "-Awarnings"
+    os.environ["RUSTFLAGS"] = "-Awarnings" # " -opt-level=z"
     global todo, tests_xfail, libpath
     print "Starting at", datetime.datetime.now().time()
     argParser = argparse.ArgumentParser(

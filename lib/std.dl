@@ -59,6 +59,7 @@ extern function __builtin_2string(x: 'X): string
 extern function hex(x: 'X): string
 
 extern function parse_dec_u64(s: string): Option<bit<64>>
+extern function parse_dec_i64(s: string): Option<signed<64>>
 
 extern function string_join(strings: Vec<string>, sep: string): string
 extern function string_split(s: string, sep: string): Vec<string>
@@ -79,7 +80,7 @@ extern function hash128(x: 'X): bit<128>
 
 /* The `Group` type is used exclusively in aggregation operations.  It
  * represents a non-empty list of objects sorted in ascending order.
- */ 
+ */
 extern type Group<'A>
 
 /*
