@@ -1,3 +1,4 @@
+# Comment
 echo Metro test;
 
 start;
@@ -526,5 +527,3 @@ commit;
 
 echo RegexMatch;
 dump RegexMatch;
-
-

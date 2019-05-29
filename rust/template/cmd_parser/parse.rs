@@ -7,7 +7,6 @@ use nom::*;
 use differential_datalog::record::*;
 use std::borrow::Cow;
 
-
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum ProfileCmd {
     CPU(bool)
@@ -17,6 +16,7 @@ pub enum ProfileCmd {
 pub enum Command {
     Start,
     Commit,
+    Comment,
     Rollback,
     Timestamp,
     Profile(Option<ProfileCmd>),
@@ -62,6 +62,7 @@ named!(pub parse_command<&[u8], Command>,
         upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
                   do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
                   do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
+                  do_parse!(apply!(sym,"#")         >> take_until!("\n") >> (Command::Comment)) |
                   do_parse!(apply!(sym,"profile")   >>
                             cmd: opt!(profile_cmd)  >>
                             apply!(sym,";")         >>
@@ -90,6 +91,7 @@ named!(pub parse_command<&[u8], Command>,
 #[test]
 fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
+    assert_eq!(parse_command(br"# comment") , Ok((&br""[..], Command::Comment)));
     assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
     assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
     assert_eq!(parse_command(br"profile cpu on;") , Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true))))));
