@@ -534,6 +534,8 @@ exprValidate1 d _ ctx (EBinding p v _)    = do
     checkNoVar p d ctx v
 
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
+-- TODO: Validate that cast can be performed
+exprValidate1 d tvs _ (EAs _ _ t)         = typeValidate d tvs t
 exprValidate1 _ _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
     check (ctxInRuleRHSPattern ctx) p "Dereference pattern not allowed in this context"

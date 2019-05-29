@@ -47,7 +47,7 @@ import Data.Maybe
 import Data.List
 import Data.Int
 import Data.Word
-import Data.Bits
+import Data.Bits hiding (isSigned)
 import Data.Char
 import Data.FileEmbed
 import Data.String.Utils
@@ -2055,6 +2055,51 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
     isint = case e of
                  EInt{} -> True
                  _      -> False
+
+mkExpr' d ctx EAs{..} | narrow_from && narrow_to && width_cmp /= GT
+                      -- use Rust's type cast syntax to convert between
+                      -- primitive types; no need to truncate the result if
+                      -- target width is greater than or equal to source
+                      = (parens $ val exprExpr <+> "as" <+> mkType exprTSpec, EVal)
+                      | narrow_from && narrow_to
+                      -- apply lossy type conversion between primitive Rust types;
+                      -- truncate the result if needed
+                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType exprTSpec) to_type,
+                         EVal)
+                      | width_cmp == GT && tfrom == tto
+                      -- from_type is wider than to_type, but they both
+                      -- correspond to the same Rust type: truncate from_type
+                      -- (e & ((1 << w) - 1))
+                      = ("(" <> val exprExpr <+>
+                         "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))"
+                        , EVal)
+                      | width_cmp == GT
+                      -- from_type is wider than to_type: truncate from_type and
+                      -- then convert:
+                      -- (e & ((1 << w) - 1)).to_<to_type>().unwrap()
+                      = ("(" <> val exprExpr <+>
+                         "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))" <>
+                         ".to_" <> tto <> "().unwrap()", EVal)
+                      | tto == tfrom
+                      -- from_type is same width or narrower than to_type and
+                      -- they both correspond to the same Rust type
+                      = (val exprExpr, EVal)
+                      | otherwise
+                      = (parens $ tto <> "::from_" <> tfrom <> "(" <> val exprExpr <> ")", EVal)
+    where
+    e' = sel3 exprExpr
+    from_type = exprType' d (CtxAs e' ctx) $ E e'
+    to_type   = typ' d exprTSpec
+    tfrom = mkType from_type
+    tto   = mkType to_type
+    narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
+    narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128
+    width_cmp = if ((isBit d from_type || isSigned d from_type) &&
+                    (isBit d to_type || isSigned d to_type))
+                   then compare (typeWidth from_type) (typeWidth to_type)
+                   else if isInt d from_type && isInt d to_type
+                           then EQ
+                           else if isInt d to_type then LT else GT
 
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' $ typ x

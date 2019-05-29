@@ -22,6 +22,10 @@ typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
+typedef Cast_s32 = Cast_s32{description: string, expected: signed<32>, actual: signed<32>}
+typedef Cast_u24 = Cast_u24{description: string, expected: bit<24>, actual: bit<24>}
+typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: bit<256>}
+typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
 typedef ConcatString = ConcatString{s: string}
 typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
 typedef Disaggregate = Disaggregate{x: string, y: string}
@@ -113,6 +117,9 @@ typedef line = bigint
 typedef nested_t = N{field: C}
 typedef person = string
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
+typedef souffle_types.TEmtpy = ()
+typedef souffle_types.Tnumber = signed<32>
+typedef souffle_types.Tsymbol = intern.IString
 typedef station = string
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
@@ -306,50 +313,50 @@ function shadow (): string =
           std.Some{.x=var v} -> v,
           std.None{} -> ""
       }))
-function souffle_lib.castTo32 (i: bit<64>): bit<32> =
-    i[31:0]
-function souffle_lib.castTo64 (i: bit<32>): bit<64> =
-    (32'd0 ++ i)
+function souffle_lib.castTo32 (i: bit<64>): souffle_types.Tnumber =
+    (i[31:0] as souffle_types.Tnumber)
+function souffle_lib.castTo64 (i: souffle_types.Tnumber): bit<64> =
+    (32'd0 ++ (i as bit<32>))
 function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString =
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
 function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
     std.string_contains(intern.istring_str(i), intern.istring_str(s))
-function souffle_lib.group_count32 (g: std.Group<'A>): bit<32> =
+function souffle_lib.group_count32 (g: std.Group<'A>): souffle_types.Tnumber =
     souffle_lib.castTo32(std.group_count(g))
-function souffle_lib.land (l: bit<32>, r: bit<32>): bit<32> =
-    if ((l != 32'd0) and (r != 32'd0)) {
-        32'd1
+function souffle_lib.land (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber =
+    if ((l != 32'sd0) and (r != 32'sd0)) {
+        32'sd1
     } else {
-          32'd0
+          32'sd0
       }
-function souffle_lib.lnot (l: bit<32>): bit<32> =
-    if (l != 32'd0) {
-        32'd0
+function souffle_lib.lnot (l: souffle_types.Tnumber): souffle_types.Tnumber =
+    if (l != 32'sd0) {
+        32'sd0
     } else {
-          32'd1
+          32'sd1
       }
-function souffle_lib.lor (l: bit<32>, r: bit<32>): bit<32> =
-    if ((l == 32'd0) and (r == 32'd0)) {
-        32'd0
+function souffle_lib.lor (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber =
+    if ((l == 32'sd0) and (r == 32'sd0)) {
+        32'sd0
     } else {
-          32'd1
+          32'sd1
       }
-function souffle_lib.ord (s: intern.IString): bit<32> =
-    intern.istring_ord(s)
-function souffle_lib.random (): bit<32> =
-    32'd0
+function souffle_lib.ord (s: intern.IString): souffle_types.Tnumber =
+    (intern.istring_ord(s) as souffle_types.Tnumber)
+function souffle_lib.random (): souffle_types.Tnumber =
+    32'sd0
 function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool =
     regex.regex_match((("^" ++ intern.istring_str(pattern)) ++ "$"), intern.istring_str(s))
-function souffle_lib.strlen (s: intern.IString): bit<32> =
+function souffle_lib.strlen (s: intern.IString): souffle_types.Tnumber =
     souffle_lib.castTo32(std.string_len(intern.istring_str(s)))
-function souffle_lib.substr (s: intern.IString, i: bit<32>, l: bit<32>): intern.IString =
+function souffle_lib.substr (s: intern.IString, i: souffle_types.Tnumber, l: souffle_types.Tnumber): intern.IString =
     intern.string_intern(std.string_substr(intern.istring_str(s), souffle_lib.castTo64(i), souffle_lib.castTo64((i + l))))
-function souffle_lib.to_number (s: intern.IString): bit<32> =
-    match (std.parse_dec_u64(intern.istring_str(s))) {
-        std.None{} -> 32'd0,
-        std.Some{.x=var x} -> souffle_lib.castTo32(x)
+function souffle_lib.to_number (s: intern.IString): souffle_types.Tnumber =
+    match (std.parse_dec_i64(intern.istring_str(s))) {
+        std.None{} -> 32'sd0,
+        std.Some{.x=var x} -> (x as souffle_types.Tnumber)
     }
-function souffle_lib.to_string (n: bit<32>): intern.IString =
+function souffle_lib.to_string (n: souffle_types.Tnumber): intern.IString =
     intern.string_intern(std.__builtin_2string(n))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -401,6 +408,7 @@ extern function std.max (x: 'A, y: 'A): 'A
 extern function std.min (x: 'A, y: 'A): 'A
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.pow32 (base: 'A, exp: bit<32>): 'A
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
@@ -502,6 +510,10 @@ output relation Arithm [Arithm]
 input relation BMethod [BMethod]
 input relation Blacklist [Blacklist]
 output relation CMethod [CMethod]
+output relation Cast_s32 [Cast_s32]
+output relation Cast_u24 [Cast_u24]
+output relation Cast_u256 [Cast_u256]
+output relation Cast_u32 [Cast_u32]
 output relation ConcatString [ConcatString]
 output relation DMethod [DMethod]
 output relation Disaggregate [Disaggregate]
@@ -748,6 +760,7 @@ Arithm(.n=(32'd5 << 32'd1)).
 Arithm(.n=(32'd10 | 32'd9)).
 Arithm(.n=(32'd15 & 32'd12)).
 Arithm(.n=(~ 32'd4294967282)).
+Arithm(.n=(32'sd14 as bit<32>)).
 Signed(.n=32'sd0).
 Signed(.n=(32'sd1 + 32'sd0)).
 Signed(.n=(32'sd0 + 32'sd2)).
@@ -759,4 +772,43 @@ Signed(.n=(32'sd28 / 32'sd4)).
 Signed(.n=(32'sd24 % 32'sd16)).
 Signed(.n=(32'sd18 >> 32'd1)).
 Signed(.n=(32'sd5 << 32'd1)).
+Cast_u32(.description="32'd100  as bit<32>", .actual=(32'd100 as bit<32>), .expected=32'd100).
+Cast_u32(.description="16'd100  as bit<32>", .actual=(16'd100 as bit<32>), .expected=32'd100).
+Cast_u32(.description="8'd100   as bit<32>", .actual=(8'd100 as bit<32>), .expected=32'd100).
+Cast_u32(.description="128'd100 as bit<32>", .actual=(128'd100 as bit<32>), .expected=32'd100).
+Cast_u32(.description="256'd100 as bit<32>", .actual=(256'd100 as bit<32>), .expected=32'd100).
+Cast_u32(.description="64'hffffffffffff as bit<32>", .actual=(64'd281474976710655 as bit<32>), .expected=32'd4294967295).
+Cast_u32(.description="128'hffffffffffffffffffff as bit<32>", .actual=(128'd1208925819614629174706175 as bit<32>), .expected=32'd4294967295).
+Cast_u32(.description="256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual=(256'd22300745198530623141535718272648361505980415 as bit<32>), .expected=32'd4294967295).
+Cast_u32(.description="(100: signed<32>) as bit<32>", .actual=((32'sd100: signed<32>) as bit<32>), .expected=32'd100).
+Cast_u32(.description="(32'sd0 - 32'sd10) as bit<32>", .actual=((32'sd0 - 32'sd10) as bit<32>), .expected=32'd4294967286).
+Cast_s32(.description="32'sd100  as signed<32>", .expected=(32'sd100 as signed<32>), .actual=32'sd100).
+Cast_s32(.description="16'sd100  as signed<32>", .expected=(16'sd100 as signed<32>), .actual=32'sd100).
+Cast_s32(.description="8'sd100   as signed<32>", .expected=(8'sd100 as signed<32>), .actual=32'sd100).
+Cast_s32(.description="128'sd100 as signed<32>", .expected=(128'sd100 as signed<32>), .actual=32'sd100).
+Cast_s32(.description="64'shffffffffffff as signed<32>", .expected=(64'sd281474976710655 as signed<32>), .actual=32'sd4294967295).
+Cast_s32(.description="128'shffffffffffffffffffff as signed<32>", .expected=(128'sd1208925819614629174706175 as signed<32>), .actual=32'sd4294967295).
+Cast_s32(.description="(100: bit<32>) as signed<32>", .expected=((32'd100: bit<32>) as signed<32>), .actual=32'sd100).
+Cast_u24(.description="24'd100  as bit<24>", .expected=(24'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="32'd100  as bit<24>", .expected=(32'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="16'd100  as bit<24>", .expected=(16'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="8'd100   as bit<24>", .expected=(8'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="128'd100 as bit<24>", .expected=(128'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="256'd100 as bit<24>", .expected=(256'd100 as bit<24>), .actual=24'd100).
+Cast_u24(.description="64'hffffffffffff as bit<24>", .expected=(64'd281474976710655 as bit<24>), .actual=24'd16777215).
+Cast_u24(.description="128'hffffffffffffffffffff as bit<24>", .expected=(128'd1208925819614629174706175 as bit<24>), .actual=24'd16777215).
+Cast_u24(.description="256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected=(256'd22300745198530623141535718272648361505980415 as bit<24>), .actual=24'd16777215).
+Cast_u24(.description="(100: signed<32>) as bit<32> as bit<24>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<24>), .actual=24'd100).
+Cast_u24(.description="(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<24>), .actual=24'd16777206).
+Cast_u256(.description="24'd100  as bit<256>", .expected=(24'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="32'd100  as bit<256>", .expected=(32'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="16'd100  as bit<256>", .expected=(16'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="8'd100   as bit<256>", .expected=(8'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="128'd100 as bit<256>", .expected=(128'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="256'd100 as bit<256>", .expected=(256'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="512'd100 as bit<256>", .expected=(512'd100 as bit<256>), .actual=256'd100).
+Cast_u256(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bit<256>), .actual=256'd115792089237316195423570985008687907853269984665640564039457584007913129639930).
+Cast_u256(.description="128'hffffffffffffffffffff as bit<256>", .expected=(128'd1208925819614629174706175 as bit<256>), .actual=256'd1208925819614629174706175).
+Cast_u256(.description="(100: signed<32>) as bit<32> as bit<256>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<256>), .actual=256'd100).
+Cast_u256(.description="(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<256>), .actual=256'd4294967286).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

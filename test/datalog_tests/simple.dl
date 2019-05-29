@@ -885,6 +885,7 @@ Arithm(32'd5 << 1).
 Arithm(32'b1010 | 32'b1001).
 Arithm(32'b1111 & 32'b1100).
 Arithm(~32'hfffffff2).
+Arithm(32'sd14 as bit<32>).
 
 output relation Signed(n:signed<32>)
 Signed(0).
@@ -898,3 +899,66 @@ Signed(32'sd28 / 32'sd4).
 Signed(32'sd24 % 32'sd16).
 Signed(32'sd18 >> 1).
 Signed(32'sd5 << 1).
+
+/* Type casts */
+output relation Cast_u32(description: string, actual: bit<32>, expected: bit<32>)
+Cast_u32("32'd100  as bit<32>", 32'd100  as bit<32>, 100).
+Cast_u32("16'd100  as bit<32>", 16'd100  as bit<32>, 100).
+Cast_u32("8'd100   as bit<32>", 8'd100   as bit<32>, 100).
+Cast_u32("128'd100 as bit<32>", 128'd100 as bit<32>, 100).
+Cast_u32("256'd100 as bit<32>", 256'd100 as bit<32>, 100).
+
+Cast_u32("64'hffffffffffff as bit<32>", 64'hffffffffffff as bit<32>, 32'hffffffff).
+Cast_u32("128'hffffffffffffffffffff as bit<32>", 128'hffffffffffffffffffff as bit<32>, 32'hffffffff).
+Cast_u32("256'hffffffffffffffffffffffffffffffffffff as bit<32>", 256'hffffffffffffffffffffffffffffffffffff as bit<32>, 32'hffffffff).
+
+Cast_u32("(100: signed<32>) as bit<32>", (100: signed<32>) as bit<32>, 100).
+Cast_u32("(32'sd0 - 32'sd10) as bit<32>", (32'sd0 - 32'sd10) as bit<32>, 4294967286).
+
+output relation Cast_s32(description: string, expected: signed<32>, actual: signed<32>)
+
+Cast_s32("32'sd100  as signed<32>", 32'sd100  as signed<32>, 100).
+Cast_s32("16'sd100  as signed<32>", 16'sd100  as signed<32>, 100).
+Cast_s32("8'sd100   as signed<32>", 8'sd100   as signed<32>, 100).
+Cast_s32("128'sd100 as signed<32>", 128'sd100 as signed<32>, 100).
+
+Cast_s32("64'shffffffffffff as signed<32>", 64'shffffffffffff as signed<32>, 32'shffffffff).
+Cast_s32("128'shffffffffffffffffffff as signed<32>", 128'shffffffffffffffffffff as signed<32>, 32'shffffffff).
+
+Cast_s32("(100: bit<32>) as signed<32>", (100: bit<32>) as signed<32>, 100).
+
+output relation Cast_u24(description: string, expected: bit<24>, actual: bit<24>)
+
+Cast_u24("24'd100  as bit<24>", 24'd100  as bit<24>, 100).
+Cast_u24("32'd100  as bit<24>", 32'd100  as bit<24>, 100).
+Cast_u24("16'd100  as bit<24>", 16'd100  as bit<24>, 100).
+Cast_u24("8'd100   as bit<24>", 8'd100   as bit<24>, 100).
+Cast_u24("128'd100 as bit<24>", 128'd100 as bit<24>, 100).
+Cast_u24("256'd100 as bit<24>", 256'd100 as bit<24>, 100).
+
+Cast_u24("64'hffffffffffff as bit<24>", 64'hffffffffffff as bit<24>, 24'hffffff).
+Cast_u24("128'hffffffffffffffffffff as bit<24>", 128'hffffffffffffffffffff as bit<24>, 24'hffffff).
+Cast_u24("256'hffffffffffffffffffffffffffffffffffff as bit<24>", 256'hffffffffffffffffffffffffffffffffffff as bit<24>, 24'hffffff).
+
+Cast_u24("(100: signed<32>) as bit<32> as bit<24>", (100: signed<32>) as bit<32> as bit<24>, 100).
+Cast_u24("(32'sd0 - 32'sd10) as bit<32> as bit<24>", (32'sd0 - 32'sd10) as bit<32> as bit<24>, 24'hfffff6).
+
+output relation Cast_u256(description: string, expected: bit<256>, actual: bit<256>)
+
+Cast_u256("24'd100  as bit<256>", 24'd100  as bit<256>, 100).
+Cast_u256("32'd100  as bit<256>", 32'd100  as bit<256>, 100).
+Cast_u256("16'd100  as bit<256>", 16'd100  as bit<256>, 100).
+Cast_u256("8'd100   as bit<256>", 8'd100   as bit<256>, 100).
+Cast_u256("128'd100 as bit<256>", 128'd100 as bit<256>, 100).
+Cast_u256("256'd100 as bit<256>", 256'd100 as bit<256>, 100).
+Cast_u256("512'd100 as bit<256>", 512'd100 as bit<256>, 100).
+
+Cast_u256("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",
+           264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>,
+           256'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa).
+Cast_u256("128'hffffffffffffffffffff as bit<256>",
+           128'hffffffffffffffffffff as bit<256>,
+           256'hffffffffffffffffffff).
+
+Cast_u256("(100: signed<32>) as bit<32> as bit<256>", (100: signed<32>) as bit<32> as bit<256>, 100).
+Cast_u256("(32'sd0 - 32'sd10) as bit<32> as bit<256>", (32'sd0 - 32'sd10) as bit<32> as bit<256>, 256'hfffffff6).

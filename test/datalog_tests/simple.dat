@@ -527,3 +527,21 @@ commit;
 
 echo RegexMatch;
 dump RegexMatch;
+
+echo Arithm;
+dump Arithm;
+
+echo Signed;
+dump Signed;
+
+echo Cast_u32;
+dump Cast_u32;
+
+echo Cast_s32;
+dump Cast_s32;
+
+echo Cast_u24;
+dump Cast_u24;
+
+echo Cast_u256;
+dump Cast_u256;

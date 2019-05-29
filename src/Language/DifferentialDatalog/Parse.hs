@@ -606,7 +606,7 @@ mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
                    | msb v < w           = return $ if s then eSigned w v else eBit w v
                    | otherwise           = fail "Value exceeds specified width"
 
-etable = [[postf $ choice [postSlice, postApply, postField, postType]]
+etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
          ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
@@ -639,6 +639,7 @@ postf p = Postfix . chainl1 p $ return (flip (.))
 postField = (\f end e -> E $ EField (fst $ pos e, end) e f) <$> field <*> getPosition
 postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) f (e:args)) <$> dotcall <*> getPosition
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
+postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition
 slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (colon *> natural)
 
@@ -654,6 +655,7 @@ dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
                         symbol "("
 
 etype = reservedOp ":" *> typeSpecSimple
+eAsType = reserved "as" *> typeSpecSimple
 
 preRef = (\start e -> E $ ERef (start, snd $ pos e) e) <$> getPosition <* reservedOp "&"
 prefix n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n

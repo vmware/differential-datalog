@@ -22,6 +22,54 @@ Arithm{10}
 Arithm{11}
 Arithm{12}
 Arithm{13}
+Arithm{14}
+
+Cast_s32:
+Cast_s32{"(100: bit<32>) as signed<32>",100,100}
+Cast_s32{"128'sd100 as signed<32>",100,100}
+Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
+Cast_s32{"16'sd100  as signed<32>",100,100}
+Cast_s32{"32'sd100  as signed<32>",100,100}
+Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
+Cast_s32{"8'sd100   as signed<32>",100,100}
+
+Cast_u24:
+Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
+Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
+Cast_u24{"128'd100 as bit<24>",100,100}
+Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"16'd100  as bit<24>",100,100}
+Cast_u24{"24'd100  as bit<24>",100,100}
+Cast_u24{"256'd100 as bit<24>",100,100}
+Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"32'd100  as bit<24>",100,100}
+Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"8'd100   as bit<24>",100,100}
+
+Cast_u256:
+Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
+Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
+Cast_u256{"128'd100 as bit<256>",100,100}
+Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
+Cast_u256{"16'd100  as bit<256>",100,100}
+Cast_u256{"24'd100  as bit<256>",100,100}
+Cast_u256{"256'd100 as bit<256>",100,100}
+Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{"32'd100  as bit<256>",100,100}
+Cast_u256{"512'd100 as bit<256>",100,100}
+Cast_u256{"8'd100   as bit<256>",100,100}
+
+Cast_u32:
+Cast_u32{"(100: signed<32>) as bit<32>",100,100}
+Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
+Cast_u32{"128'd100 as bit<32>",100,100}
+Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"16'd100  as bit<32>",100,100}
+Cast_u32{"256'd100 as bit<32>",100,100}
+Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"32'd100  as bit<32>",100,100}
+Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"8'd100   as bit<32>",100,100}
 
 R7:
 R7{1,2}
@@ -107,6 +155,54 @@ Arithm{10}
 Arithm{11}
 Arithm{12}
 Arithm{13}
+Arithm{14}
+
+Cast_s32:
+Cast_s32{"(100: bit<32>) as signed<32>",100,100}
+Cast_s32{"128'sd100 as signed<32>",100,100}
+Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
+Cast_s32{"16'sd100  as signed<32>",100,100}
+Cast_s32{"32'sd100  as signed<32>",100,100}
+Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
+Cast_s32{"8'sd100   as signed<32>",100,100}
+
+Cast_u24:
+Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
+Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
+Cast_u24{"128'd100 as bit<24>",100,100}
+Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"16'd100  as bit<24>",100,100}
+Cast_u24{"24'd100  as bit<24>",100,100}
+Cast_u24{"256'd100 as bit<24>",100,100}
+Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"32'd100  as bit<24>",100,100}
+Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"8'd100   as bit<24>",100,100}
+
+Cast_u256:
+Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
+Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
+Cast_u256{"128'd100 as bit<256>",100,100}
+Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
+Cast_u256{"16'd100  as bit<256>",100,100}
+Cast_u256{"24'd100  as bit<256>",100,100}
+Cast_u256{"256'd100 as bit<256>",100,100}
+Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{"32'd100  as bit<256>",100,100}
+Cast_u256{"512'd100 as bit<256>",100,100}
+Cast_u256{"8'd100   as bit<256>",100,100}
+
+Cast_u32:
+Cast_u32{"(100: signed<32>) as bit<32>",100,100}
+Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
+Cast_u32{"128'd100 as bit<32>",100,100}
+Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"16'd100  as bit<32>",100,100}
+Cast_u32{"256'd100 as bit<32>",100,100}
+Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"32'd100  as bit<32>",100,100}
+Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"8'd100   as bit<32>",100,100}
 
 R4:
 R3{0,true}
@@ -407,3 +503,74 @@ RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-01-01",true}
 RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-0101",false}
 RegexMatch{"a+b+","AaAaAbbBBBb",false}
 RegexMatch{"a+b+","aaaaabbbbbb",true}
+Arithm
+Arithm{0}
+Arithm{1}
+Arithm{2}
+Arithm{3}
+Arithm{4}
+Arithm{5}
+Arithm{6}
+Arithm{7}
+Arithm{8}
+Arithm{9}
+Arithm{10}
+Arithm{11}
+Arithm{12}
+Arithm{13}
+Arithm{14}
+Signed
+Signed{0}
+Signed{1}
+Signed{2}
+Signed{3}
+Signed{4}
+Signed{5}
+Signed{6}
+Signed{7}
+Signed{8}
+Signed{9}
+Signed{10}
+Cast_u32
+Cast_u32{"(100: signed<32>) as bit<32>",100,100}
+Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
+Cast_u32{"128'd100 as bit<32>",100,100}
+Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"16'd100  as bit<32>",100,100}
+Cast_u32{"256'd100 as bit<32>",100,100}
+Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"32'd100  as bit<32>",100,100}
+Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
+Cast_u32{"8'd100   as bit<32>",100,100}
+Cast_s32
+Cast_s32{"(100: bit<32>) as signed<32>",100,100}
+Cast_s32{"128'sd100 as signed<32>",100,100}
+Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
+Cast_s32{"16'sd100  as signed<32>",100,100}
+Cast_s32{"32'sd100  as signed<32>",100,100}
+Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
+Cast_s32{"8'sd100   as signed<32>",100,100}
+Cast_u24
+Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
+Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
+Cast_u24{"128'd100 as bit<24>",100,100}
+Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"16'd100  as bit<24>",100,100}
+Cast_u24{"24'd100  as bit<24>",100,100}
+Cast_u24{"256'd100 as bit<24>",100,100}
+Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"32'd100  as bit<24>",100,100}
+Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
+Cast_u24{"8'd100   as bit<24>",100,100}
+Cast_u256
+Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
+Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
+Cast_u256{"128'd100 as bit<256>",100,100}
+Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
+Cast_u256{"16'd100  as bit<256>",100,100}
+Cast_u256{"24'd100  as bit<256>",100,100}
+Cast_u256{"256'd100 as bit<256>",100,100}
+Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{"32'd100  as bit<256>",100,100}
+Cast_u256{"512'd100 as bit<256>",100,100}
+Cast_u256{"8'd100   as bit<256>",100,100}

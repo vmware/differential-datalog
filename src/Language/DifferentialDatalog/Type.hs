@@ -332,6 +332,7 @@ exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
 exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
 exprNodeType' d ctx (EBinding p _ e)       = mtype2me p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
+exprNodeType' _ _   (EAs _ _ t)            = return t
 exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t]
 exprNodeType' _ ctx (ERef p _)             = eunknown p ctx
 
@@ -579,6 +580,7 @@ ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
 ctxExpectType d (CtxUnOp (EUnOp _ BNeg _) ctx)       = ctxExpectType d ctx
 ctxExpectType d (CtxBinding _ ctx)                   = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
+ctxExpectType _ CtxAs{}                              = Nothing
 ctxExpectType d (CtxRef (ERef _ e) ctx)              =
     case ctxExpectType' d ctx of
          Just (TOpaque _ rEF_TYPE [t]) -> Just t

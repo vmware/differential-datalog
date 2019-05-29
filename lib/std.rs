@@ -510,6 +510,10 @@ pub fn std_parse_dec_u64(s: &String) -> std_Option<u64> {
     option2std(s.parse::<u64>().ok())
 }
 
+pub fn std_parse_dec_i64(s: &String) -> std_Option<i64> {
+    option2std(s.parse::<i64>().ok())
+}
+
 pub fn std_string_join(strings: &std_Vec<String>, sep: &String) -> String {
     strings.x.join(sep.as_str())
 }

@@ -111,6 +111,8 @@ exprFoldCtxM' f ctx e@(EBinding p v x)        = do x' <- exprFoldCtxM f (CtxBind
                                                    f ctx $ EBinding p v x'
 exprFoldCtxM' f ctx e@(ETyped p x t)          = do x' <- exprFoldCtxM f (CtxTyped e ctx) x
                                                    f ctx $ ETyped p x' t
+exprFoldCtxM' f ctx e@(EAs p x t)             = do x' <- exprFoldCtxM f (CtxAs e ctx) x
+                                                   f ctx $ EAs p x' t
 exprFoldCtxM' f ctx e@(ERef p x)              = do x' <- exprFoldCtxM f (CtxRef e ctx) x
                                                    f ctx $ ERef p x'
 
@@ -138,6 +140,7 @@ exprMapM g e = case e of
                    EPHolder p          -> return $ EPHolder p
                    EBinding p v x      -> EBinding p v <$> g x
                    ETyped p x t        -> (\x' -> ETyped p x' t) <$> g x
+                   EAs p x t           -> (\x' -> EAs p x' t) <$> g x
                    ERef p x            -> ERef p <$> g x
 
 
@@ -188,6 +191,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EPHolder _            -> x'
                                      EBinding _ _ pat      -> x' `op` pat
                                      ETyped _ v _          -> x' `op` v
+                                     EAs _ v _             -> x' `op` v
                                      ERef _ v              -> x' `op` v
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
@@ -338,4 +342,5 @@ exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprTypeMapM fun e = exprFoldM fun' e
     where
     fun' (ETyped p e t) = (E . ETyped p e) <$> typeMapM fun t
+    fun' (EAs p e t)    = (E . EAs p e) <$> typeMapM fun t
     fun' e              = return $ E e

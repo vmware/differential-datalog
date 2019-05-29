@@ -298,6 +298,7 @@ expr ::= term
        | expr "=>" expr                  (*implication*)
        | expr "=" expr                   (*assignment*)
        | expr ";" expr                   (*sequential composition*)
+       | expr "as" simple_type_spec      (*cast*)
 ```
 
 The following table lists operators order by decreasing priority.

@@ -2,6 +2,6 @@
 
 import intern
 
-typedef Tnumber = bit<32>
+typedef Tnumber = signed<32>
 typedef Tsymbol = IString
 typedef TEmtpy = ()

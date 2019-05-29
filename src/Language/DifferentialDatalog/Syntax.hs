@@ -96,6 +96,7 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eBinding,
         eTyped,
+        eAs,
         FuncArg(..),
         Function(..),
         funcMutArgs,
@@ -567,6 +568,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EPHolder      {exprPos :: Pos}
                 | EBinding      {exprPos :: Pos, exprVar :: String, exprPattern :: e}
                 | ETyped        {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
+                | EAs           {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | ERef          {exprPos :: Pos, exprPattern :: e}
 
 instance Eq e => Eq (ExprNode e) where
@@ -592,6 +594,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EPHolder _)             (EPHolder _)               = True
     (==) (EBinding _ v1 e1)       (EBinding _ v2 e2)         = v1 == v2 && e1 == e2
     (==) (ETyped _ e1 t1)         (ETyped _ e2 t2)           = e1 == e2 && t1 == t2
+    (==) (EAs _ e1 t1)            (EAs _ e2 t2)              = e1 == e2 && t1 == t2
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) _                        _                          = False
 
@@ -637,6 +640,7 @@ instance PP e => PP (ExprNode e) where
     pp (EPHolder _)          = "_"
     pp (EBinding _ v e)      = parens $ pp v <> "@" <+> pp e
     pp (ETyped _ e t)        = parens $ pp e <> ":" <+> pp t
+    pp (EAs _ e t)           = parens $ pp e <+> "as" <+> pp t
     pp (ERef _ e)            = parens $ "&" <> pp e
 
 instance PP e => Show (ExprNode e) where
@@ -687,6 +691,7 @@ eNot e              = eUnOp Not e
 ePHolder            = E $ EPHolder  nopos
 eBinding v e        = E $ EBinding  nopos v e
 eTyped e t          = E $ ETyped    nopos e t
+eAs e t             = E $ EAs       nopos e t
 eRef e              = E $ ERef      nopos e
 
 data FuncArg = FuncArg { argPos  :: Pos
@@ -1035,6 +1040,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxBinding        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a typed expression 'X: t'
           | CtxTyped          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a type cast expression 'X as t'
+          | CtxAs             {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a &-pattern '&e'
           | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
 
@@ -1078,6 +1085,7 @@ instance PP ECtx where
                     CtxUnOp{..}           -> "CtxUnOp           " <+> epar
                     CtxBinding{..}        -> "CtxBinding        " <+> epar
                     CtxTyped{..}          -> "CtxTyped          " <+> epar
+                    CtxAs{..}             -> "CtxAs             " <+> epar
                     CtxRef{..}            -> "CtxRef            " <+> epar
                     CtxTop                -> error "pp CtxTop"
 
