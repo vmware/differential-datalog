@@ -8,6 +8,7 @@ use std::collections;
 use std::sync;
 use serde;
 use differential_datalog::record::Record;
+use differential_datalog::record;
 
 type Symbol = u32;
 
@@ -70,14 +71,14 @@ pub fn intern_istring_ord(s: &intern_IString) -> u32 {
 
 impl fmt::Display for intern_IString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&intern_istring_str(self), f)
+        record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
 
 impl fmt::Debug for intern_IString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&intern_istring_str(self), f)
+        record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
