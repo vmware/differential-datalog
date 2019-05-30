@@ -23,17 +23,13 @@ pub fn format_ddlog_str(s: &str, f: &mut fmt::Formatter) -> fmt::Result {
     f.write_char('"')?;
     let mut from = 0;
     for (i, c) in s.char_indices() {
-        if c == '\'' {
-            f.write_char('\'')?;
-        } else {
-            let esc = c.escape_debug();
-            if esc.len() != 1 {
-                f.write_str(&s[from..i])?;
-                for c in esc {
-                    f.write_char(c)?;
-                }
-                from = i + c.len_utf8();
+        let esc = c.escape_debug();
+        if esc.len() != 1 && c != '\'' {
+            f.write_str(&s[from..i])?;
+            for c in esc {
+                f.write_char(c)?;
             }
+            from = i + c.len_utf8();
         }
     }
     f.write_str(&s[from..])?;
