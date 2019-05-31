@@ -787,9 +787,9 @@ class SouffleConverter(object):
         if num is not None:
             val = num.value
             if val.startswith("0x"):
-                val = "32'h" + val[2:]
+                val = "32'sh" + val[2:]
             elif val.startswith("0b"):
-                val = "32'b" + val[2:]
+                val = "32'sb" + val[2:]
             return "(" + val + ":Tnumber)"
 
         if len(args) == 2:
@@ -800,7 +800,7 @@ class SouffleConverter(object):
             left = self.convert_arg(args[0])
             right = self.convert_arg(args[1])
             if op == "^":
-                return "pow32(" + left + ", " + right + ")"
+                return "pow32(" + left + ", (" + right + " as bit<32>))"
             elif (op == "land") or (op == "lor"):
                 return op + "(" + left + ", " + right + ")"
             return "(" + left + " " + op + " " + right + ")"
