@@ -24,6 +24,7 @@ xfail = [
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
     "aggregates",  # issue 227 - count of empty group
+    "magic_aggregates",  # 227
     "count",       # 227
     "magic_count", # 227
     "magic_samegen", # computes a very large join
@@ -233,7 +234,7 @@ def run_merged_test(filename):
     run_command(["mv", "tmp.sorted", filename + ".dump.expected"])
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
-        print "Output differs"
+        print "*** Error: Output differs"
     print "Completed program at", datetime.datetime.now().time()
     return code
 
