@@ -61,6 +61,8 @@ DDlog language reference can be found [here](doc/language_reference/language_ref
 
 Instructions for writing and testing your own Datalog programs are [here](doc/testing/testing.md).
 
+A [paper](docs/datalog2.0-workshop/paper.pdf) describing the system.
+
 # Installing from sources
 
 ## Prerequisites
