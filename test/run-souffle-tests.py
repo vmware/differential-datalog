@@ -10,6 +10,7 @@ import datetime
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert
 
+verbose = False
 tests_compiled = 0
 tests_compiled_successfully = 0
 tests_xfail = 0
@@ -128,7 +129,8 @@ def should_run(d):
     if d in xfail:
         global tests_xfail
         tests_xfail = tests_xfail + 1
-        print "Expected to fail", d
+        if verbose:
+            print "Expected to fail", d
         return False
     if len(todo) > 0:
         return d in todo
@@ -179,7 +181,8 @@ def run_remote_tests():
             global tests_to_skip
             if tests_to_skip > 0:
                 tests_to_skip = tests_to_skip - 1
-                print "Skipping", directory
+                if verbose:
+                    print "Skipping", directory
                 continue
 
             newName = normalize_name(directory)
@@ -240,17 +243,20 @@ def run_merged_test(filename):
 
 def main():
     os.environ["RUSTFLAGS"] = "-Awarnings" # " -opt-level=z"
-    global todo, tests_xfail, libpath
+    global todo, tests_xfail, libpath, verbose
     print "Starting at", datetime.datetime.now().time()
     argParser = argparse.ArgumentParser(
         "run-souffle-tests.py",
         description="Runs a number of Datalog Souffle tests from github.")
     argParser.add_argument("-s", "--skip", help="Number of tests to skip")
+    argParser.add_argument("-v", "--verbose", help="Verbose operation",
+                           action="store_true")
     argParser.add_argument("-r", "--run", help="Number of tests to run")
     argParser.add_argument("-e", "--examples", action="store_true",
                            help="Run the examples without reference data")
     argParser.add_argument("remaining", nargs="*")
     args = argParser.parse_args()
+    verbose = args.verbose
 
     run_command(["stack", "install"])
     path = os.getcwd()
