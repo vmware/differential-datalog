@@ -614,7 +614,7 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
           isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
           isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
           isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
-          isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit vector"
+          isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
           isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
           isbool = check (isBool d e1) (pos e1) "Not a Boolean"
 
