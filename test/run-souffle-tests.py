@@ -43,6 +43,7 @@ xfail = [
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # 197
     "magic_nqueens",    # 202
+    "inline_nqueens",   # 202
     "magic_turing1",    # 198
     "math",             # Trigonometric functions and FP types
     "minesweeper",      # 198
@@ -139,7 +140,10 @@ def run_examples():
         if "souffle" not in d:
             continue
         if should_run(d):
-            compile_example(d, "test.dl")
+            code = compile_example(d, "test.dl")
+            if code != 0:
+                return code
+    return 0
 
 def normalize_name(name):
     reserved = ["match"]
@@ -192,6 +196,8 @@ def run_remote_tests():
             code = compile_example(directory, test + ".dl")
             if code == 0:
                 result.append(directory)
+            else:
+                sys.exit(code)
             global tests_compiled_successfully, tests_to_run
             if tests_compiled_successfully == tests_to_run:
                 return result
@@ -250,7 +256,9 @@ def main():
     libpath = path + "/../lib"
     todo = args.remaining
     if args.examples:
-        run_examples()
+        code = run_examples()
+        if code != 0:
+            sys.exit(code)
 
     global tests_to_skip, tests_to_run, tests_compiled_successfully, tests_compiled
     if args.skip is not None:
