@@ -2043,6 +2043,7 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
              BNeg   -> mkTruncate (parens $ "!" <> arg) $ exprType' d ctx (E e')
+             UMinus -> mkTruncate (parens $ "-" <> arg) $ exprType' d ctx (E e')
 
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 

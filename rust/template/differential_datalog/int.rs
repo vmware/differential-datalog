@@ -196,6 +196,15 @@ impl Shl<usize> for Int {
     }
 }
 
+impl Neg for Int {
+    type Output = Int;
+
+    #[inline]
+    fn neg(self) -> Self::Output {
+        Int{x: self.x.neg()}
+    }
+}
+
 macro_rules! forward_binop {
     (impl $imp:ident for $res:ty, $method:ident) => {
         impl $imp<$res> for $res {

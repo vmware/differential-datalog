@@ -775,7 +775,7 @@ class SouffleConverter(object):
             op = self.convert_op(arg.children[0])
             self.currentType = "Tnumber"
             if op == "-":
-                return "(0 - " + rec + ")"
+                return "(- " + rec + ")"
             elif op == "lnot":
                 return "lnot(" + rec + ")"
             return "(" + op + " " + rec + ")"

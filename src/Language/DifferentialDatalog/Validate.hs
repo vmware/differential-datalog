@@ -619,6 +619,9 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
 
 exprValidate2 d _   (EUnOp _ BNeg e)    =
     check (isBit d e || isSigned d e) (pos e) "Not a bit vector"
+exprValidate2 d _   (EUnOp _ UMinus e)    =
+    check (isSigned d e || isInt d e) (pos e)
+        $ "Cannot negate expression of type " ++ show e ++ ". Negation applies to signed<> and bigint values only."
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e

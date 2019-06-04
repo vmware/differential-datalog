@@ -98,6 +98,8 @@ typedef Tnumber = bit<32>
 typedef ToAllocate = ToAllocate{name: string, ids: std.Vec<string>}
 typedef Tsymbol = intern.IString
 typedef Ttxt = intern.IString
+typedef UMinus_bigint = UMinus_bigint{description: string, n: bigint}
+typedef UMinus_s32 = UMinus_s32{description: string, n: signed<32>}
 typedef ValidDestination = ValidDestination{addr: ip_addr_t}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef WithKey = WithKey{key: bit<128>, val: string}
@@ -575,6 +577,8 @@ input relation Table1 [Table1]
 output relation Table12 [Table12]
 input relation Table2 [Table2]
 relation ToAllocate [ToAllocate]
+output relation UMinus_bigint [UMinus_bigint]
+output relation UMinus_s32 [UMinus_s32]
 output relation ValidDestination [ValidDestination]
 output relation W [W]
 input relation WithKey [WithKey] primary key (x) x.key
@@ -822,4 +826,10 @@ Cast_bigint(.description="256'd100 as bigint", .expected=(256'd100 as bigint), .
 Cast_bigint(.description="512'd100 as bigint", .expected=(512'd100 as bigint), .actual=100).
 Cast_bigint(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bigint), .actual=29642774844752946028434172162224104410437116074403984394101141506025761187823610).
 Cast_bigint(.description="(32'sd0 - 32'sd10) as bigint", .expected=((32'sd0 - 32'sd10) as bigint), .actual=(0 - 10)).
+UMinus_s32(.description="-32'sd100", .n=(- 32'sd100)).
+UMinus_s32(.description="-(-32'sd100)", .n=(- (- 32'sd100))).
+UMinus_s32(.description="-32768", .n=(- 32'sd32768)).
+UMinus_bigint(.description="-100", .n=(- 100)).
+UMinus_bigint(.description="- -100", .n=(- (- 100))).
+UMinus_bigint(.description="-32768", .n=(- 32768)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
