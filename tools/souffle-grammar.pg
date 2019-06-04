@@ -163,8 +163,12 @@ Head: Atom
 
 Term: Literal
     | "!" Term
-//    | "(" Body ")" // TODO
+    | "(" Disjunction ")"
     ;
+
+Disjunction: Conjunction
+           | Conjunction OR Disjunction
+           ;
 
 Conjunction: Term
            | Term "," Conjunction
@@ -230,7 +234,8 @@ Attributes : EMPTY
 
 Literal : Arg Relop Arg
         | Atom
-        | FunctionCall
+        | "match" "(" Arg "," Arg ")"
+        | "contains" "(" Arg "," Arg ")"
         | TRUE
         | FALSE
         ;

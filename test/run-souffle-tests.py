@@ -178,7 +178,7 @@ def run_remote_tests():
             if not should_run(test):
                 continue
 
-            global tests_to_skip
+            global tests_to_skip, verbose
             if tests_to_skip > 0:
                 tests_to_skip = tests_to_skip - 1
                 if verbose:
@@ -188,6 +188,7 @@ def run_remote_tests():
             newName = normalize_name(directory)
             if newName != directory:
                 print "Using", newName, "for", directory
+
             if not os.path.isdir(newName):
                 os.chdir(tg)
                 code, _ = run_command(["svn", "export", url + tg + "/" + test])

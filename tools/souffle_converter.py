@@ -984,9 +984,14 @@ class SouffleConverter(object):
         if atom is not None:
             return (self.convert_atom(atom), False)
 
-        func = getOptField(lit, "FunctionCall")
-        if func is not None:
-            return (self.convert_function_call(func), False)
+        mat = getOptField(lit, "match")
+        cont = getOptField(lit, "contains")
+        if mrg is not None or cont is not None:
+            func = "re_match" if mat else "contains"
+            args = getArray(lit, "Arg")
+            assert len(args) == 2
+            argStrings = [self.convert_arg(arg) for arg in args]
+            return (func + "(" + ", ".join(argStrings) + ")", False)
 
         raise Exception("Unexpected literal" + lit.tree_str())
 
@@ -1019,7 +1024,10 @@ class SouffleConverter(object):
         if term is not None:
             (term, postpone) = self.convert_term(term)
             return ("not " + term, postpone)
-        raise Exception("Unpexpected term " + term.tree_str())
+        disj = getOptField(term, "Disjunction")
+        if disj is not None:
+            raise Exception("Disjunction not yet handled")
+        raise Exception("Unhandled term " + term.tree_str())
 
     def terms_have_relations(self, terms):
         """True if a conjunction contains any relations"""
