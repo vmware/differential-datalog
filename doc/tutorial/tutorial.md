@@ -580,6 +580,13 @@ The following type conversions are currently supported:
 Note that converting between signed and unsigned bit vectors of different width
 requires chaining two type casts: `bit<32> as signed<32> as signed<64>`.
 
+DDlog uses two's complement representation for bit vectors.  Casting a signed or
+unsigned bit vector to a narrower bit vector type truncates higher-order bits.
+Casting to a wider type sign extends (for signed bit vectors) or zero-extends
+(for unsigned bit vectors) the value to the new width.  Finally, converting
+between signed and unsigned bitvectors does not change the underlying
+representation.
+
 ### Control flow
 
 DDlog functions are written using an *expression-oriented language*,
