@@ -962,3 +962,19 @@ Cast_u256("128'hffffffffffffffffffff as bit<256>",
 
 Cast_u256("(100: signed<32>) as bit<32> as bit<256>", (100: signed<32>) as bit<32> as bit<256>, 100).
 Cast_u256("(32'sd0 - 32'sd10) as bit<32> as bit<256>", (32'sd0 - 32'sd10) as bit<32> as bit<256>, 256'hfffffff6).
+
+output relation Cast_bigint(description: string, expected: bigint, actual: bigint)
+
+Cast_bigint("24'd100  as bigint", 24'd100  as bigint, 100).
+Cast_bigint("32'd100  as bigint", 32'd100  as bigint, 100).
+Cast_bigint("16'd100  as bigint", 16'd100  as bigint, 100).
+Cast_bigint("8'd100   as bigint", 8'd100   as bigint, 100).
+Cast_bigint("128'd100 as bigint", 128'd100 as bigint, 100).
+Cast_bigint("256'd100 as bigint", 256'd100 as bigint, 100).
+Cast_bigint("512'd100 as bigint", 512'd100 as bigint, 100).
+
+Cast_bigint("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",
+            264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint,
+           'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa).
+
+Cast_bigint("(32'sd0 - 32'sd10) as bigint", (32'sd0 - 32'sd10) as bigint, 0-10).

@@ -534,7 +534,6 @@ exprValidate1 d _ ctx (EBinding p v _)    = do
     checkNoVar p d ctx v
 
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
--- TODO: Validate that cast can be performed
 exprValidate1 d tvs _ (EAs _ _ t)         = typeValidate d tvs t
 exprValidate1 _ _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
@@ -624,6 +623,18 @@ exprValidate2 d _   (EUnOp _ BNeg e)    =
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d ctx (EFor p _ i _)       = checkIterable "iterator" p d ctx i
+exprValidate2 d ctx (EAs p e t)          = do
+    check (isBit d e || isSigned d e) p
+        $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for bit<> and signed<> types."
+    check (isBit d t || isSigned d t || isInt d t) p
+        $ "Cannot type-cast expression to " ++ show t ++ ".  Only bit<>, signed<>, and bigint types can be cast to."
+    when (not $ isInt d t) $
+        check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
+            "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++
+            "Try casting to " ++ show (t'{typeWidth = typeWidth e'}) ++ " first."
+    where
+    e' = typ' d e
+    t' = typ' d t
 exprValidate2 _ _   _                    = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()

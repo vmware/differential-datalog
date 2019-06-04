@@ -22,6 +22,7 @@ typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
+typedef Cast_bigint = Cast_bigint{description: string, expected: bigint, actual: bigint}
 typedef Cast_s32 = Cast_s32{description: string, expected: signed<32>, actual: signed<32>}
 typedef Cast_u24 = Cast_u24{description: string, expected: bit<24>, actual: bit<24>}
 typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: bit<256>}
@@ -510,6 +511,7 @@ output relation Arithm [Arithm]
 input relation BMethod [BMethod]
 input relation Blacklist [Blacklist]
 output relation CMethod [CMethod]
+output relation Cast_bigint [Cast_bigint]
 output relation Cast_s32 [Cast_s32]
 output relation Cast_u24 [Cast_u24]
 output relation Cast_u256 [Cast_u256]
@@ -811,4 +813,13 @@ Cast_u256(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffff
 Cast_u256(.description="128'hffffffffffffffffffff as bit<256>", .expected=(128'd1208925819614629174706175 as bit<256>), .actual=256'd1208925819614629174706175).
 Cast_u256(.description="(100: signed<32>) as bit<32> as bit<256>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<256>), .actual=256'd100).
 Cast_u256(.description="(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<256>), .actual=256'd4294967286).
+Cast_bigint(.description="24'd100  as bigint", .expected=(24'd100 as bigint), .actual=100).
+Cast_bigint(.description="32'd100  as bigint", .expected=(32'd100 as bigint), .actual=100).
+Cast_bigint(.description="16'd100  as bigint", .expected=(16'd100 as bigint), .actual=100).
+Cast_bigint(.description="8'd100   as bigint", .expected=(8'd100 as bigint), .actual=100).
+Cast_bigint(.description="128'd100 as bigint", .expected=(128'd100 as bigint), .actual=100).
+Cast_bigint(.description="256'd100 as bigint", .expected=(256'd100 as bigint), .actual=100).
+Cast_bigint(.description="512'd100 as bigint", .expected=(512'd100 as bigint), .actual=100).
+Cast_bigint(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bigint), .actual=29642774844752946028434172162224104410437116074403984394101141506025761187823610).
+Cast_bigint(.description="(32'sd0 - 32'sd10) as bigint", .expected=((32'sd0 - 32'sd10) as bigint), .actual=(0 - 10)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
