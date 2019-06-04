@@ -986,7 +986,7 @@ class SouffleConverter(object):
 
         mat = getOptField(lit, "match")
         cont = getOptField(lit, "contains")
-        if mrg is not None or cont is not None:
+        if mat is not None or cont is not None:
             func = "re_match" if mat else "contains"
             args = getArray(lit, "Arg")
             assert len(args) == 2
