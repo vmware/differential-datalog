@@ -142,6 +142,16 @@ Signed{8}
 Signed{9}
 Signed{10}
 
+UMinus_bigint:
+UMinus_bigint{"- -100",100}
+UMinus_bigint{"-100",-100}
+UMinus_bigint{"-32768",-32768}
+
+UMinus_s32:
+UMinus_s32{"-(-32'sd100)",100}
+UMinus_s32{"-32'sd100",-100}
+UMinus_s32{"-32768",-32768}
+
 Rules test
 Answer:
 Answer{"Chatelet"}
@@ -312,6 +322,16 @@ Signed{7}
 Signed{8}
 Signed{9}
 Signed{10}
+
+UMinus_bigint:
+UMinus_bigint{"- -100",100}
+UMinus_bigint{"-100",-100}
+UMinus_bigint{"-32768",-32768}
+
+UMinus_s32:
+UMinus_s32{"-(-32'sd100)",100}
+UMinus_s32{"-32'sd100",-100}
+UMinus_s32{"-32768",-32768}
 
 Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}
 Table12{81692126345696542188923640651411714412,"foo",S{(false, true),10000}}
@@ -606,3 +626,11 @@ Cast_bigint{"264'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 Cast_bigint{"32'd100  as bigint",100,100}
 Cast_bigint{"512'd100 as bigint",100,100}
 Cast_bigint{"8'd100   as bigint",100,100}
+UMinus_s32
+UMinus_s32{"-(-32'sd100)",100}
+UMinus_s32{"-32'sd100",-100}
+UMinus_s32{"-32768",-32768}
+UMinus_bigint
+UMinus_bigint{"- -100",100}
+UMinus_bigint{"-100",-100}
+UMinus_bigint{"-32768",-32768}

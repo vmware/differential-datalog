@@ -608,6 +608,7 @@ mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
 
 etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
          ,[pref  $ choice [preRef]]
+         ,[pref  $ choice [prefix "-" UMinus]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
          ,[binary "%" Mod AssocLeft,

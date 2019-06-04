@@ -978,3 +978,13 @@ Cast_bigint("264'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
            'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa).
 
 Cast_bigint("(32'sd0 - 32'sd10) as bigint", (32'sd0 - 32'sd10) as bigint, 0-10).
+
+output relation UMinus_s32(description: string, n:signed<32>)
+UMinus_s32("-32'sd100", -32'sd100).
+UMinus_s32("-(-32'sd100)", -(-32'sd100)).
+UMinus_s32("-32768", -32768).
+
+output relation UMinus_bigint(description: string, n: bigint)
+UMinus_bigint("-100", -100).
+UMinus_bigint("- -100", - -100).
+UMinus_bigint("-32768", -32768).
