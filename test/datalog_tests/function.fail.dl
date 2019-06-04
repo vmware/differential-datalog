@@ -92,3 +92,23 @@ function use_parameterized(x: string, y: bigint): string =
 
 function foo(x: bigint): string = 
     x.bar // x is not a struct
+
+//---
+
+function cast(x: bit<32>): signed<64> = x as signed<64>
+
+//---
+
+function cast(x: signed<32>): bit<64> = x as bit<64>
+
+//---
+
+function cast(x: bigint): bit<64> = x as bit<64>
+
+//---
+
+function cast(x: bit<16>): bool = x as bool
+
+//---
+
+function cast(x: string): bool = x as bool

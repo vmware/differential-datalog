@@ -545,3 +545,6 @@ dump Cast_u24;
 
 echo Cast_u256;
 dump Cast_u256;
+
+echo Cast_bigint;
+dump Cast_bigint;

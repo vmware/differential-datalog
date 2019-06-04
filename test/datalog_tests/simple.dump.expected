@@ -24,6 +24,17 @@ Arithm{12}
 Arithm{13}
 Arithm{14}
 
+Cast_bigint:
+Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
+Cast_bigint{"128'd100 as bigint",100,100}
+Cast_bigint{"16'd100  as bigint",100,100}
+Cast_bigint{"24'd100  as bigint",100,100}
+Cast_bigint{"256'd100 as bigint",100,100}
+Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{"32'd100  as bigint",100,100}
+Cast_bigint{"512'd100 as bigint",100,100}
+Cast_bigint{"8'd100   as bigint",100,100}
+
 Cast_s32:
 Cast_s32{"(100: bit<32>) as signed<32>",100,100}
 Cast_s32{"128'sd100 as signed<32>",100,100}
@@ -156,6 +167,17 @@ Arithm{11}
 Arithm{12}
 Arithm{13}
 Arithm{14}
+
+Cast_bigint:
+Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
+Cast_bigint{"128'd100 as bigint",100,100}
+Cast_bigint{"16'd100  as bigint",100,100}
+Cast_bigint{"24'd100  as bigint",100,100}
+Cast_bigint{"256'd100 as bigint",100,100}
+Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{"32'd100  as bigint",100,100}
+Cast_bigint{"512'd100 as bigint",100,100}
+Cast_bigint{"8'd100   as bigint",100,100}
 
 Cast_s32:
 Cast_s32{"(100: bit<32>) as signed<32>",100,100}
@@ -574,3 +596,13 @@ Cast_u256{"264'hffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 Cast_u256{"32'd100  as bit<256>",100,100}
 Cast_u256{"512'd100 as bit<256>",100,100}
 Cast_u256{"8'd100   as bit<256>",100,100}
+Cast_bigint
+Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
+Cast_bigint{"128'd100 as bigint",100,100}
+Cast_bigint{"16'd100  as bigint",100,100}
+Cast_bigint{"24'd100  as bigint",100,100}
+Cast_bigint{"256'd100 as bigint",100,100}
+Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{"32'd100  as bigint",100,100}
+Cast_bigint{"512'd100 as bigint",100,100}
+Cast_bigint{"8'd100   as bigint",100,100}

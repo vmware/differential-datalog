@@ -19,3 +19,13 @@ unexpected "f"
 expecting "="
 
 error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
+
+error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to signed<32> first.
+
+error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to bit<32> first.
+
+error: ./test/datalog_tests/function.fail.dl:3:37-5:1: Cannot type-cast expression of type bigint.  The type-cast operator is only supported for bit<> and signed<> types.
+
+error: ./test/datalog_tests/function.fail.dl:3:35-5:1: Cannot type-cast expression to bool.  Only bit<>, signed<>, and bigint types can be cast to.
+
+error: ./test/datalog_tests/function.fail.dl:3:34-4:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for bit<> and signed<> types.
