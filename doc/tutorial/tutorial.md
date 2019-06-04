@@ -558,6 +558,28 @@ numbers respectively:
 'd15                // bit vector whose value is 15 and whose width is determined from the context
 ```
 
+DDlog does not automatically coerce different integer types to each other, e.g.,
+it is an error for a function that is declared to return a `bit<64>` value to
+return `bit<32>`.  Instead, the programmer must use the type cast operator `as` to
+perform type conversion explicitly:
+
+```
+32'd15 as bit<64>    // type-cast bit<32> to bit<64>
+32'd15 as signed<32> // type-cast bit<32> to signed<32>
+32'd15 as bigint     // type-cast bit<32> to bigint
+```
+
+The following type conversions are currently supported:
+- `bit<N>` to `bit<M>` for any `N` and `M`
+- `signed<N>` to `signed<M>` for any `N` and `M`
+- `bit<N>` to `signed<N>`
+- `signed<N>` to `bit<N>`
+- `bit<N>` to `bigint`
+- `signed<N>` to `bigint`
+
+Note that converting between signed and unsigned bit vectors of different width
+requires chaining two type casts: `bit<32> as signed<32> as signed<64>`.
+
 ### Control flow
 
 DDlog functions are written using an *expression-oriented language*,
