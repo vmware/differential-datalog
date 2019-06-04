@@ -11,6 +11,7 @@ import parglare  # parser generator
 
 skip_files = False  # If true do not process .input and .output declarations
 skip_logic = False  # If true do not produce file .dl
+profile = False     # If true, enable profiling and dump profiling information
 relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
 # This makes it possible to concatenate multiple .dat files together
 # This should end in a dot.
@@ -375,6 +376,8 @@ class Files(object):
         if not skip_files:
             self.outputDataFile = open(outputDataName, 'w')
             self.dumpFile = open(outputDumpName, 'w')
+            if profile:
+                self.outputData("profile cpu on", ";")
             self.outputData("start", ";")
         global verbose
         if verbose:
@@ -396,6 +399,8 @@ class Files(object):
             self.outputData("commit", ";")
             for r in dumporder:
                 self.outputData("dump " + relationPrefix + r, ";")
+            if profile:
+                self.outputData("profile", ";")
             self.outputData("exit", ";")
             self.outputDataFile.close()
             self.dumpFile.close()
@@ -1297,16 +1302,19 @@ def main():
                            action='store_true', help="produces only facts")
     argParser.add_argument("--logic-only", "--logic_only",
                            action='store_true', help="produces only logic")
+    argParser.add_argument("--profile", help="dump profile information", action="store_true")
     args = argParser.parse_args()
 
     verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
-    global skip_files, skip_logic
+    global skip_files, skip_logic, profile
     if args.logic_only:
         skip_files = True
     if args.facts_only:
         skip_logic = True
+    if args.profile:
+        profile = True
     convert(args.input, args.out, args.prefix, args.d)
 
 
