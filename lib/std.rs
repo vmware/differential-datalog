@@ -685,7 +685,7 @@ pub fn std_group_setref_unions<A: Ord + Clone>(g: &std_Group<std_Ref<std_Set<A>>
 
 pub fn std_group2vec<A: Ord + Clone>(g: &std_Group<A>) -> std_Vec<A>
 {
-    let mut res = std_Vec::new();
+    let mut res = std_Vec::with_capacity(g.size() as usize);
     for v in g.iter() {
         std_vec_push(&mut res, &v);
     };
