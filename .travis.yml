@@ -57,6 +57,7 @@ before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
+- if [ x$BUILD_BINARY = x1 ]; then cargo install cargo-vendor || true; fi
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
 - if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
@@ -86,12 +87,22 @@ before_deploy:
     - cp "$BIN" "$DIST_DIR/bin/"
     - cp "$OVSDB_BIN" "$DIST_DIR/bin/"
     - cp -r lib "$DIST_DIR/"
+    # Include Rust dependencies for offline build
+    - cd rust/template
+    - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
+    - cargo vendor -s Cargo.full.toml --relative-path > config
+    - cp -r vendor "../../$DIST_DIR/"
+    - mkdir "../../$DIST_DIR/.cargo" 
+    - cp config "../../$DIST_DIR/.cargo/"
+    - cp Cargo.lock "../../$DIST_DIR/"
+    - cd ../../
     # First copy Java sources only, then build and copy the .jar
     - cp -r java "$DIST_DIR/"
     - cd java
     - make
     - cd ..
     - cp java/ddlogapi.jar "$DIST_DIR/java/"
+    - cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
     - cp -r doc "$DIST_DIR/"
     - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
 
