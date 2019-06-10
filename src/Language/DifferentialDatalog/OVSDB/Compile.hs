@@ -149,6 +149,13 @@ tableNeedsSwizzle t = any colIsRef $ tableGetNonROCols t
 tableNeedsOutputProxy :: (?with_oproxies::[String]) => Table -> Bool
 tableNeedsOutputProxy t = elem (name t) ?with_oproxies
 
+tableMaxRows :: Table -> Maybe Int
+tableMaxRows t = fmap (\(MaxRows n) -> n)
+                 $ find (\case
+                          MaxRows n -> True
+                          _ -> False)
+                 $ tableProperties t
+
 -- Column is a key column
 colIsKey :: (?outputs::[(String, [String])]) => Table -> TableColumn -> Maybe [String] -> Bool
 colIsKey t c Nothing =
@@ -248,13 +255,18 @@ compileSchema schema outputs with_oproxies keys = do
     return $ pp builtins $+$ "" $+$ rels
 
 mkTable :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String], MonadError String me) => Bool -> Table -> Maybe [String] -> me (Doc, Doc, Doc)
-mkTable isinput t@Table{..} keys = do
+mkTable isinput t@Table{..} key_cols = do
     ovscols <- tableCheckCols t
     maybe (return ())
           (\rocols -> mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t))
                                         $ throwError $ "Column " ++ c ++ " not found in table " ++ name t) rocols)
           $ lookup (name t) ?outputs
     uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
+    when (isJust key_cols && tableMaxRows t == Just 1)
+          $ throwError $ "Key columns specified for table " ++ name t ++ ", which has maxRows value of 1"
+    let keys = if tableMaxRows t == Just 1
+                  then Just []
+                  else key_cols
     if isinput
        then (, empty, empty) <$> mkTable' TableInput t keys
        else do output           <- mkTable' TableOutput         t keys
