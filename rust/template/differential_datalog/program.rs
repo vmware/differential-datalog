@@ -192,7 +192,25 @@ pub enum ProgNode<V: Val> {
     SCC{rels: Vec<Relation<V>>}
 }
 
-pub type UpdateCallback<V> = Arc<Fn(RelId, &V, Weight) + Send + Sync>;
+pub trait CBFn<V>: Fn(RelId, &V, Weight) + Send {
+   fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
+}
+
+impl<T, V> CBFn<V> for T
+where
+   V: Val,
+   T: 'static + Send + Clone + Fn(RelId, &V, Weight)
+{
+   fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
+       Box::new(self.clone())
+   }
+}
+
+impl <V: Val> Clone for Box<dyn CBFn<V>> {
+   fn clone(&self) -> Self {
+       self.as_ref().clone_boxed()
+   }
+}
 
 /// Datalog relation.
 ///
@@ -222,7 +240,7 @@ pub struct Relation<V: Val> {
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement<V>>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb:    Option<UpdateCallback<V>>
+    pub change_cb:    Option<Arc<Mutex<Box<dyn CBFn<V>>>>>
 }
 
 /// Function type used to map the content of a relation
@@ -1011,7 +1029,7 @@ impl<V:Val> Program<V>
                                     collection.probe_with(&mut probe1);
                                 },
                                 Some(cb) => {
-                                    let cb = cb.clone();
+                                    let cb = cb.lock().unwrap().clone();
                                     collection.inspect(move |x| {cb(relid, &x.0, x.2)})
                                                       .probe_with(&mut probe1);
                                 }

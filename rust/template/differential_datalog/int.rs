@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use abomonation::Abomonation;
 use num::bigint::{BigInt};
 #[cfg(test)]

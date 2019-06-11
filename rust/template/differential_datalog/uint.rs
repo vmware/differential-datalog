@@ -1,7 +1,7 @@
+#![allow(non_snake_case)]
+
 use abomonation::Abomonation;
 use num::bigint::{BigUint, BigInt};
-#[cfg(test)]
-use num::bigint::{ToBigInt};
 use std::str::FromStr;
 use std::ops::*;
 use serde::ser::*;

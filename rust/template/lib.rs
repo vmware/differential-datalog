@@ -52,10 +52,14 @@ use num_traits::identities::One;
 use libc::size_t;
 
 pub mod valmap;
+pub mod update_handler;
 pub mod ovsdb;
+
+use self::update_handler as handler;
 
 pub struct HDDlog {
     prog: sync::Mutex<RunningProgram<Value>>,
+    update_handler: Box<dyn handler::DynUpdateHandler<Value>>,
     db: Option<sync::Arc<sync::Mutex<valmap::ValMap>>>,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     /* When set, all commands sent to the program are recorded in
@@ -129,13 +133,7 @@ fn relident2name(r: &record::RelIdentifier) -> Option<&str> {
     }
 }
 
-
-
 fn __null_cb(_relid: RelId, _v: &Value, _w: isize) {}
-
-fn upd_cb(db: &sync::Arc<sync::Mutex<valmap::ValMap>>, relid: RelId, v: &Value, pol: bool) {
-    db.lock().unwrap().update(relid, v, pol);
-}
 
 #[no_mangle]
 pub extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t
@@ -169,57 +167,37 @@ pub extern "C" fn ddlog_run(
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
     let workers = if workers == 0 { 1 } else { workers };
+
+    let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
+    let mut handlers: Vec<Box<dyn handler::DynUpdateHandler<Value>>> = Vec::new();
     if do_store {
-        let db: sync::Arc<sync::Mutex<valmap::ValMap>> = sync::Arc::new(sync::Mutex::new(valmap::ValMap::new()));
-        let db2 = db.clone();
-        match cb {
-            None => {
-                let program = prog(sync::Arc::new(move |relid,v,w| {
-                    debug_assert!(w == 1 || w == -1);
-                    upd_cb(&db, relid, v, w == 1)
-                }));
-                let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
-                                                          db:          Some(db2),
-                                                          print_err:   print_err,
-                                                          replay_file: None}))
-            },
-            Some(cb) => {
-                let program = prog(sync::Arc::new(move |relid,v,w| {
-                    debug_assert!(w == 1 || w == -1);
-                    upd_cb(&db, relid, v, w == 1);
-                    cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
-                }));
-                let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
-                                                          db:          Some(db2),
-                                                          print_err:   print_err,
-                                                          replay_file: None}))
-            }
-        }
+        handlers.push(Box::new(handler::MTValMapUpdateHandler::new(db.clone())));
+    };
+    match cb {
+        None => {},
+        Some(cb) => handlers.push(Box::new(handler::ExternCUpdateHandler::new(cb, cb_arg)))
+    };
+
+    let handler: Box<dyn handler::DynUpdateHandler<Value>> = if handlers.len() == 0 {
+        Box::new(handler::NullUpdateHandler::new())
+    } else if handlers.len() == 1 {
+        handlers[0].clone()
     } else {
-        match cb {
-            None => {
-                let program = prog(sync::Arc::new(|_,_,_| {}));
-                let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
-                                                          db:          None,
-                                                          print_err:   print_err,
-                                                          replay_file: None}))
-            },
-            Some(cb) => {
-                let program = prog(sync::Arc::new(move |relid,v,w| {
-                        debug_assert!(w == 1 || w == -1);
-                        cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w == 1)
-                    }));
-                let prog = program.run(workers as usize);
-                sync::Arc::into_raw(sync::Arc::new(HDDlog{prog:        sync::Mutex::new(prog),
-                                                          db:          None,
-                                                          print_err:   print_err,
-                                                          replay_file: None}))
-            }
-        }
-    }
+        Box::new(handler::ChainedDynUpdateHandler::new(handlers))
+    };
+
+    let handler2 = handler.clone();
+    let program = prog(Box::new(move |relid, v, w| {
+        debug_assert!(w == 1 || w == -1);
+        handler2.update(relid, v, w == 1)
+    }));
+    let prog = program.run(workers as usize);
+    sync::Arc::into_raw(sync::Arc::new(HDDlog{
+        prog:           sync::Mutex::new(prog),
+        update_handler: handler,
+        db:             Some(db),
+        print_err:      print_err,
+        replay_file:    None}))
 }
 
 #[no_mangle]
@@ -311,11 +289,14 @@ pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c
     let prog = sync::Arc::from_raw(prog);
 
     record_transaction_commit(&prog);
+    prog.update_handler.before_commit();
 
     let res = prog.prog.lock().unwrap().transaction_commit().map(|_|0).unwrap_or_else(|e|{
+        prog.update_handler.after_commit(false);
         prog.eprintln(&format!("ddlog_transaction_commit(): error: {}", e));
         -1
     });
+    prog.update_handler.after_commit(true);
     sync::Arc::into_raw(prog);
     res
 }
