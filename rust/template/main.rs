@@ -151,7 +151,7 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: UpdateCallback<Value>, nworkers: usize) -> i32 {
+pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: Box<dyn CBFn<Value>>, nworkers: usize) -> i32 {
     let p = prog(upd_cb);
     let mut running = Arc::new(Mutex::new(p.run(nworkers)));
     let upds = Arc::new(Mutex::new(Vec::new()));
@@ -185,7 +185,7 @@ pub fn main() {
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
-    let ret = run_interactive(db.clone(), Arc::new(move |relid,v,w| {
+    let ret = run_interactive(db.clone(), Box::new(move |relid,v,w| {
         debug_assert!(w == 1 || w == -1);
         upd_cb(print, store, &db, relid, v, w == 1)
     }), workers);

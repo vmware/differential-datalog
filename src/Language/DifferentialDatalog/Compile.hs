@@ -131,6 +131,7 @@ templateFiles specname =
         , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
         , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
         , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
+        , (dir </> "update_handler.rs"      , $(embedFile "rust/template/update_handler.rs"))
         , (dir </> "ddlog.h"                , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"     , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
@@ -1033,7 +1034,7 @@ compileRelation d rn = do
                 relPrimaryKey
 
     let cb = if relRole == RelOutput
-                then "change_cb:    Some(__update_cb.clone())"
+                then "change_cb:    Some(sync::Arc::new(sync::Mutex::new(__update_cb.clone())))"
                 else "change_cb:    None"
     arrangements <- gets $ (M.! rn) . cArrangements
     compiled_arrangements <- mapM (mkArrangement d rel) arrangements
@@ -1715,7 +1716,7 @@ mkProg d nodes = do
                "    ]"                                          $$
                "}"
     return $
-        "pub fn prog(__update_cb: UpdateCallback<Value>) -> Program<Value> {"  $$
+        "pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {"  $$
         (nest' $ rels $$ prog)                                                 $$
         "}"
 
