@@ -958,11 +958,12 @@ compileApplyNode d Apply{..} = ApplyNode $
     "    })"                                                                                                                                                   $$
     "}; transformer}"
   where
-    inputs = concatMap (\i ->
-                         if isLower $ head i
+    Transformer{..} = getTransformer d applyTransformer
+    inputs = concatMap (\(i, ti) ->
+                         if hotypeIsFunction (hofType ti)
                             then [rname i]
                             else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
-                       applyInputs
+                       (zip applyInputs transInputs)
              ++
              map (\o -> parens $ "|v|" <> mkValue' d "v" (relType $ getRelation d o)) applyOutputs
     outputs = map rname applyOutputs
