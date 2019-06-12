@@ -1,6 +1,7 @@
 import foolib.lib
 import foolib.ns1.m1 as m1
 import foolib.ns1.m2 as m2
+import redist
 
 input relation Rmain(f1: Tlib, f2: m1.T1)
 output relation Rout(f1: bool, f2: bigint)

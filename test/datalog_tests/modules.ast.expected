@@ -7,6 +7,17 @@ typedef foolib.ns1.m1.R1 = foolib.ns1.m1.R1{f1: foolib.ns1.m2.T2}
 typedef foolib.ns1.m1.T1 = foolib.ns1.m1.T1{f1: bigint}
 typedef foolib.ns1.m2.R2 = foolib.ns1.m2.R2{f1: bool}
 typedef foolib.ns1.m2.T2 = foolib.ns1.m2.T2{f1: bigint}
+typedef redist.BiEdge = redist.BiEdge{parent: redist.entid_t, child: redist.entid_t}
+typedef redist.DdlogBinding = redist.DdlogBinding{tn: redist.tnid_t, entity: redist.entid_t}
+typedef redist.DdlogDependency = redist.DdlogDependency{parent: redist.entid_t, child: redist.entid_t}
+typedef redist.DdlogNode = redist.DdlogNode{id: redist.entid_t}
+typedef redist.LabeledNode = redist.LabeledNode{node: redist.entid_t, scc: redist.entid_t}
+typedef redist.SCCBinding = redist.SCCBinding{scc: redist.entid_t, bindings: std.Ref<tinyset.Set64<redist.tnid_t>>}
+typedef redist.SCCEdge = redist.SCCEdge{parent: redist.entid_t, child: redist.entid_t}
+typedef redist.SCCSpan = redist.SCCSpan{scc: redist.entid_t, span: std.Ref<tinyset.Set64<redist.tnid_t>>}
+typedef redist.Span = redist.Span{entity: redist.entid_t, tns: std.Ref<tinyset.Set64<redist.tnid_t>>}
+typedef redist.entid_t = bit<32>
+typedef redist.tnid_t = bit<16>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
@@ -15,10 +26,15 @@ typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
+extern type tinyset.Set64<'X>
 function fmain (a1: foolib.lib.Rlib): foolib.ns1.m1.R1 =
     foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=0}}
 function foolib.ns1.m1.fM1 (a1: foolib.ns1.m1.T1): foolib.ns1.m1.R1 =
     foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=a1.f1}}
+function redist.edge_child (e: redist.BiEdge): redist.entid_t =
+    e.child
+function redist.edge_parent (e: redist.BiEdge): redist.entid_t =
+    e.parent
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
@@ -100,9 +116,43 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function tinyset.contains (s: tinyset.Set64<'X>, v: 'X): bool
+extern function tinyset.empty (): tinyset.Set64<'X>
+extern function tinyset.group2set (g: std.Group<'A>): tinyset.Set64<'A>
+extern function tinyset.group_set_unions (g: std.Group<tinyset.Set64<'A>>): tinyset.Set64<'A>
+extern function tinyset.group_setref_unions (g: std.Group<std.Ref<tinyset.Set64<'A>>>): std.Ref<tinyset.Set64<'A>>
+extern function tinyset.insert (s: mut tinyset.Set64<'X>, v: 'X): ()
+extern function tinyset.insert_imm (s: tinyset.Set64<'X>, v: 'X): tinyset.Set64<'X>
+extern function tinyset.is_empty (s: tinyset.Set64<'X>): bool
+extern function tinyset.nth (s: tinyset.Set64<'X>, n: bit<64>): std.Option<bit<64>>
+extern function tinyset.singleton (x: 'X): tinyset.Set64<'X>
+extern function tinyset.size (s: tinyset.Set64<'X>): bit<64>
+extern function tinyset.union (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
+extern function tinyset.unions (sets: std.Vec<tinyset.Set64<'X>>): tinyset.Set64<'X>
+extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
+extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
 input relation Rmain [Rmain]
 output relation Rout [Rout]
 input relation foolib.lib.Rlib [foolib.lib.Rlib]
 input relation foolib.ns1.m1.R1 [foolib.ns1.m1.R1]
 input relation foolib.ns1.m2.R2 [foolib.ns1.m2.R2]
+relation redist.BiEdge [redist.BiEdge]
+input relation redist.DdlogBinding [redist.DdlogBinding]
+input relation redist.DdlogDependency [redist.DdlogDependency]
+input relation redist.DdlogNode [redist.DdlogNode]
+relation redist.LabeledNode [redist.LabeledNode]
+relation redist.SCCBinding [redist.SCCBinding]
+relation redist.SCCEdge [redist.SCCEdge]
+relation redist.SCCLabel [(redist.entid_t, redist.entid_t)]
+relation redist.SCCSpan [redist.SCCSpan]
+output relation redist.Span [redist.Span]
 Rout(.f1=q, .f2=x) :- Rmain(.f1=foolib.lib.Tlib{.f1=x}, .f2=foolib.ns1.m1.T1{.f1=y}), foolib.lib.Rlib(.f1=foolib.ns1.m2.T2{.f1=z}), foolib.ns1.m1.R1(.f1=foolib.ns1.m2.T2{.f1=p}), foolib.ns1.m2.R2(.f1=q).
+redist.BiEdge(.parent=parent, .child=child) :- redist.DdlogDependency(.parent=parent, .child=child), redist.DdlogDependency(.parent=child, .child=parent).
+redist.LabeledNode(.node=node, .scc=scc) :- redist.SCCLabel[(node, scc)].
+redist.LabeledNode(.node=node, .scc=node) :- redist.DdlogNode(.id=node), not redist.SCCLabel[(node, _)].
+redist.SCCEdge(.parent=parentscc, .child=childscc) :- redist.DdlogDependency(.parent=parent, .child=child), redist.LabeledNode(.node=parent, .scc=parentscc), redist.LabeledNode(.node=child, .scc=childscc), (childscc != parentscc).
+redist.SCCBinding(.scc=scc, .bindings=std.ref_new(bindings)) :- redist.DdlogBinding(.tn=tn, .entity=entity), redist.LabeledNode(.node=entity, .scc=scc), var bindings = Aggregate((scc), tinyset.group2set(tn)).
+redist.SCCSpan(.scc=scc, .span=bindings) :- redist.SCCBinding(.scc=scc, .bindings=bindings).
+redist.SCCSpan(.scc=parent, .span=tns) :- redist.SCCEdge(.parent=child, .child=parent), redist.SCCSpan(.scc=child, .span=child_tns), var tns = Aggregate((parent), tinyset.group_setref_unions(child_tns)).
+redist.Span(.entity=node, .tns=span) :- redist.SCCSpan(.scc=scc, .span=span), redist.LabeledNode(.node=node, .scc=scc).
+apply graph.ConnectedComponents(redist.BiEdge, redist.edge_child, redist.edge_parent) -> (redist.SCCLabel)
