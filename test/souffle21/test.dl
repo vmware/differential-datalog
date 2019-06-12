@@ -1,0 +1,75 @@
+.decl AMethod(?simplename:symbol, ?descriptor:symbol, ?type:symbol, ?method:symbol)
+.decl A1Method(?simplename:symbol, ?descriptor:symbol, ?type:symbol, ?method:symbol)
+.decl BMethod(?class:symbol, ?superclass:symbol)
+.decl CMethod(?ref:symbol, ?interface:symbol)
+.decl DMethod(?refer:symbol, ?interfaces:symbol)
+
+.decl MethodInvocation_Base(?invocation:symbol, ?base:symbol)
+.decl VirtualMethodInvocation_Base(?invocation:symbol, ?base:symbol)
+.decl SpecialMethodInvocation_Base(?invocation:symbol, ?base:symbol)
+
+.decl isOpaqueMethod(?m:symbol)
+.decl isOpaqueInstruction(?insn:symbol)
+.decl _StaticMethodInvocation(?instruction:symbol, ?index:number, ?signature:symbol, ?method:symbol)
+.decl _SpecialMethodInvocation(?instruction:symbol, ?index:number, ?signature:symbol, ?base:symbol, ?method:symbol)
+.decl _VirtualMethodInvocation(?instruction:symbol, ?index:number, ?signature:symbol, ?base:symbol, ?method:symbol)
+
+.decl isAnnotation(?a:symbol)
+.decl Type_Annotation(?type:symbol, ?annotation:symbol)
+.decl Method_Annotation(?method:symbol, ?annotation:symbol)
+.decl Field_Annotation(?fld:symbol, ?annotation:symbol)
+.decl Param_Annotation(?method:symbol, ?index:symbol, ?annotation:symbol)
+
+.decl isHeapAllocation(?h:symbol)
+.decl HeapAllocation_Type(?heap:symbol, ?type:symbol)
+
+.decl _MethodLookup_WithLen(?simplename:symbol, ?descriptor:symbol, ?type:symbol, ?method:symbol, ?len:number)
+.decl MethodImplemented(?simplename:symbol, ?descriptor:symbol, ?type:symbol, ?method:symbol)
+.decl DirectSuperclass(?class:symbol, ?superclass:symbol)
+.decl DirectSuperinterface(?ref:symbol, ?interface:symbol)
+
+AMethod(?simplename, ?descriptor, ?type, ?method) :-
+  ((BMethod(?supertype, ?type), DMethod(?type, ?supertype)) ; 
+   (DMethod(?type, ?supertype) , CMethod(?type, ?supertype))),
+  AMethod(?simplename, ?descriptor, ?supertype, ?method).
+
+
+A1Method(?simplename, ?descriptor, ?type, ?method) :-
+  (BMethod(?supertype, ?type); DMethod(?type, ?supertype)) ,
+   (DMethod(?type, ?supertype) ; CMethod(?type, ?supertype)),
+  A1Method(?simplename, ?descriptor, ?supertype, ?method).
+
+
+MethodInvocation_Base(?invocation, ?base) :-
+  VirtualMethodInvocation_Base(?invocation, ?base) ;
+  SpecialMethodInvocation_Base(?invocation, ?base).
+
+
+isOpaqueInstruction(?instruction) :-
+  (_StaticMethodInvocation(?instruction, _, ?signature, _);
+   _SpecialMethodInvocation(?instruction, _, ?signature, _, _);
+   _VirtualMethodInvocation(?instruction, _, ?signature, _, _)),
+  isOpaqueMethod(?signature).
+
+
+isAnnotation(?annotation) :-
+    Type_Annotation(_, ?annotation);
+    Method_Annotation(_, ?annotation);
+    Field_Annotation(_, ?annotation);
+    Param_Annotation(_, _, ?annotation).
+
+isHeapAllocation(?heap), HeapAllocation_Type(?heap, ?type) :-
+   (?heap ="<<string-constant>>";
+    ?heap ="<<reflection-string-constant>>"),
+   ?type = "java.lang.String".
+
+isHeapAllocation(?heap), HeapAllocation_Type(?heap, ?type) :-
+   (?heap ="<<system-thread-group>>";
+    ?heap ="<<main-thread-group>>"),
+   ?type = "java.lang.ThreadGroup".
+
+_MethodLookup_WithLen(?simplename, ?descriptor, ?type, ?method, n + 1) :-
+    (DirectSuperclass(?type, ?supertype) ;
+     DirectSuperinterface(?type, ?supertype)),
+    _MethodLookup_WithLen(?simplename, ?descriptor, ?supertype, ?method, n),
+    !MethodImplemented(?simplename, ?descriptor, ?type, _).

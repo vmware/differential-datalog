@@ -96,7 +96,7 @@ sOUFFLE_DIRS = ["souffle0", -- large Doop example
                 "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
                  -- "souffle7", -- uses a recursive type
                  "souffle9", "souffle10", "souffle11", "souffle12", "souffle13",
-                 "souffle14", "souffle15", "souffle16", "souffle17", "souffle18", "souffle19", "souffle20"]
+                 "souffle14", "souffle15", "souffle16", "souffle17", "souffle18", "souffle19", "souffle20", "souffle21"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =
@@ -114,7 +114,7 @@ convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
     dir <- makeAbsolute $ testdir
     let inputDl = dir </> "test.dl"  -- input file always called test.dl
-        convert_proc = (proc (dir </> "../../tools/souffle_converter.py") [inputDl, "souffle"]) { cwd = Just dir }
+        convert_proc = (proc (dir </> "../../tools/souffle_converter.py") [inputDl, "souffle", "--non-dnf"]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
     when (code /= ExitSuccess) $ do
         errorWithoutStackTrace $ "souffle_converter.py failed with exit code " ++ show code ++

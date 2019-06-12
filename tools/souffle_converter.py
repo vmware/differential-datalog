@@ -12,6 +12,7 @@ import parglare  # parser generator
 skip_files = False  # If true do not process .input and .output declarations
 skip_logic = False  # If true do not produce file .dl
 profile = False     # If true, enable profiling and dump profiling information
+non_dnf = False     # If true, enable transformmation of non-dnf disjunctions
 relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
 # This makes it possible to concatenate multiple .dat files together
 # This should end in a dot.
@@ -1046,6 +1047,70 @@ class SouffleConverter(object):
                 result.append(term)
         return result + tail
 
+    def flatten(self, tail, listbody, bool_dis):
+        for x in tail.children:
+            if (x.symbol.name == "Term"):
+                if (getOptField(x, "Literal") != None) or (getOptField(x, "!") != None):
+                    listbody.append(x)
+                child = getOptField(x, "Disjunction")
+                if child != None:
+                    if getOptField(child, "OR") != None:
+                        bool_dis = True
+                    listbody.append(child)
+            elif (x.symbol.name in ["OR", "(", ")", ",", "!"]):
+                listbody.append(x)
+            else:
+                (_, bool_dis) = self.flatten(x, listbody, bool_dis)
+        return (listbody, bool_dis)
+
+    def findCommas(self, comma):
+        commas = False
+        for x in comma.children:
+            if x.symbol.name == ",":
+                return True
+            elif not (x.symbol.name in ["Term", "OR", "(", ")", "!"]):
+                commas = self.findCommas(x)
+        return commas
+
+    def disconjunction(self, listbody):
+        """ This function returns lists of conjunctions (represented as lists).
+        Parameter listbody contains or-separated terms and disjunctions."""
+        dislist = []
+        for choice in listbody:
+            if choice.symbol.name == "Term":
+                dislist.append([choice])
+            elif choice.symbol.name == "Disjunction":
+                bool_comma = self.findCommas(choice)
+                (listbody, _) = self.flatten(choice, [], False)
+                if bool_comma:
+                    disconlist = self.condisjunction(listbody)
+                else:
+                    disconlist = self.disconjunction(listbody)
+                for elem in disconlist:
+                    dislist.append(elem)
+        return dislist
+
+    def condisjunction(self, listbody):
+        """ This function returns a list of conjunctions (represented as lists).
+        Parameter listbody contains comma-separated terms and disjunctions."""
+        conlist = []
+        for choice in listbody:
+            if choice.symbol.name == "Term":
+                conlist.append([[choice]])
+            elif choice.symbol.name == "Disjunction":
+                (listbody, _) = self.flatten(choice, [], False)
+                dislist = self.disconjunction(listbody)
+                conlist.append(dislist)
+
+        result = conlist[0]
+        for i in range(1, len(conlist)):
+            new_res = []
+            for r in result:
+                for t in conlist[i]:
+                    new_res.append(r + t)
+            result = new_res
+        return result
+
     def process_rule(self, rule):
         """Convert a rule and emit the output"""
         # print rule.tree_str()
@@ -1053,7 +1118,16 @@ class SouffleConverter(object):
         tail = getField(rule, "Body")
         headAtoms = getList(head, "Atom", "Head")
         disjunctions = getList(tail, "Conjunction", "Body")
-        terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
+
+        transformed = False
+        if non_dnf:
+            (listbody, transformed) = self.flatten(tail, [], False)
+            if transformed:
+                terms = self.condisjunction(listbody)
+
+        if not transformed:
+            terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
+
         nonOverridden = []
         # print "Overridden:", self.overridden
         for atom in headAtoms:
@@ -1077,14 +1151,17 @@ class SouffleConverter(object):
             heads = [self.convert_atom(x) for x in nonOverridden]
             self.bound_variables.clear()
             self.converting_tail = True
-            convertedDisjunctions = [self.convert_terms(x) for x in terms]
-            if len(convertedDisjunctions) > 0 and \
-                    len(convertedDisjunctions[0]) > 0 and \
-                    convertedDisjunctions[0][0].startswith("not") or\
-                    convertedDisjunctions[0][0].startswith("var"):
-                # DDlog does not support rules that start with a negation.
-                # Insert a reference to a dummy non-empty relation before.
-                convertedDisjunctions[0].insert(0, self.dummyRelation + "(0)")
+            convertedDisjunctions = []
+            for x in terms:
+                self.bound_variables.clear()
+                convertedDisjunctions += [self.convert_terms(x)]
+            for convertedDisjunction in convertedDisjunctions:
+                if len(convertedDisjunction) > 0 and \
+                    convertedDisjunction[0].startswith("not") or\
+                    convertedDisjunction[0].startswith("var"):
+                    # DDlog does not support rules that start with a negation.
+                    # Insert a reference to a dummy non-empty relation before.
+                    convertedDisjunction.insert(0, self.dummyRelation + "(0)")
             self.converting_tail = False
             for d in convertedDisjunctions:
                 self.files.output(",\n\t".join(heads) + " :- " + ", ".join(d) + ".")
@@ -1310,19 +1387,23 @@ def main():
                            action='store_true', help="produces only facts")
     argParser.add_argument("--logic-only", "--logic_only",
                            action='store_true', help="produces only logic")
+    argParser.add_argument("--non-dnf", "--non_dnf",
+                           action='store_true', help="support disjunctions of non-DNF form")
     argParser.add_argument("--profile", help="dump profile information", action="store_true")
     args = argParser.parse_args()
 
     verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
-    global skip_files, skip_logic, profile
+    global skip_files, skip_logic, profile, non_dnf
     if args.logic_only:
         skip_files = True
     if args.facts_only:
         skip_logic = True
     if args.profile:
         profile = True
+    if args.non_dnf:
+        non_dnf = True
     convert(args.input, args.out, args.prefix, args.d)
 
 
