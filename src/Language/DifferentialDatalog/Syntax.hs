@@ -794,11 +794,11 @@ instance Show HOType where
 
 hotypeIsRelation :: HOType -> Bool
 hotypeIsRelation HOTypeRelation{} = True
-hotypeIsRelation _                = True
+hotypeIsRelation _                = False
 
 hotypeIsFunction :: HOType -> Bool
 hotypeIsFunction HOTypeFunction{} = True
-hotypeIsFunction _                = True
+hotypeIsFunction _                = False
 
 -- | Type variables used in transformer declaration in the order they appear in the declaration
 hotypeTypeVars :: HOType -> [String]
