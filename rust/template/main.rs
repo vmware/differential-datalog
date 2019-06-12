@@ -21,6 +21,7 @@ use std::process::exit;
 use std::io;
 use std::io::{Stdout,stdout,stderr};
 use std::env;
+use std::option::*;
 //use std::mem;
 
 use std::collections::BTreeMap;
@@ -38,15 +39,6 @@ use time::precise_time_ns;
 //extern crate cpuprofiler;
 //use cpuprofiler::PROFILER;
 
-/*fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
-    if do_store {
-        db.lock().unwrap().update(relid, v, pol);
-    };
-    if do_print {
-        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, relid, *v);
-    };
-}*/
-
 extern "C" fn print_fun(_arg: libc::uintptr_t,
                         table: libc::size_t,
                         rec: *const Record,
@@ -56,7 +48,12 @@ extern "C" fn print_fun(_arg: libc::uintptr_t,
     }
 }
 
-fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32, bool) {
+fn handle_cmd(handler: &Box<dyn DynUpdateHandler<Value>>,
+              db: &Arc<Mutex<ValMap>>,
+              p: &mut RunningProgram<Value>,
+              upds: &mut Vec<Update<Value>>,
+              cmd: Command) -> (i32, bool)
+{
     let resp = (
         if !is_upd_cmd(&cmd) {
             apply_updates(p, upds)
@@ -68,9 +65,11 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
         },
         Command::Commit => {
             // uncomment to enable profiling
+            handler.before_commit();
             //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
             let res = p.transaction_commit();
             //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
+            handler.after_commit(res.is_ok());
             res
         },
         Command::Comment => {
@@ -161,11 +160,11 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, upd_cb: Box<dyn CBFn<Value>>, nworkers: usize) -> i32 {
-    let p = prog(upd_cb);
+pub fn run_interactive(db: Arc<Mutex<ValMap>>, handler: Box<dyn DynUpdateHandler<Value>>, nworkers: usize) -> i32 {
+    let p = prog(handler.update());
     let mut running = Arc::new(Mutex::new(p.run(nworkers)));
     let upds = Arc::new(Mutex::new(Vec::new()));
-    let ret = interact(|cmd| handle_cmd(&db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd));
+    let ret = interact(|cmd| handle_cmd(&handler, &db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd));
     Arc::try_unwrap(running).ok()
         .expect("run_interactive: cannot unwrap Arc")
         .into_inner()
@@ -193,30 +192,37 @@ pub fn main() {
     let store   = args.store;
     let workers = args.workers;
 
-    //let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
-
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
-    let mut handlers: Vec<Box<dyn DynUpdateHandler<Value>>> = Vec::new();
 
-    if store {
-        handlers.push(Box::new(MTValMapUpdateHandler::new(db.clone())));
-    };
-    if print{
-        handlers.push(Box::new(ExternCUpdateHandler::new(print_fun, 0)))
-    };
-
-    let handler: Box<dyn DynUpdateHandler<Value>> = if handlers.len() == 0 {
-        Box::new(NullUpdateHandler::new())
-    } else if handlers.len() == 1 {
-        handlers[0].clone()
+    let mut nhandlers: usize = 0;
+    let store_handler = if store {
+        nhandlers = nhandlers + 1;
+        Some(MTValMapUpdateHandler::new(db.clone()))
     } else {
-        Box::new(ChainedDynUpdateHandler::new(handlers))
+        None
+    };
+    let print_handler = if print {
+        nhandlers = nhandlers + 1;
+        Some(ExternCUpdateHandler::new(print_fun, 0))
+    } else {
+        None
     };
 
-    let handler2 = handler.clone();
-    let ret = run_interactive(db.clone(), Box::new(move |relid,v,w| {
-        debug_assert!(w == 1 || w == -1);
-        handler2.update(relid, v, w == 1)
-    }), workers);
+    let handler: Box<dyn DynUpdateHandler<Value>> = if nhandlers <= 1 {
+        if print_handler.is_some() {
+            Box::new(ThreadUpdateHandler::new(print_handler.unwrap()))
+        } else if store_handler.is_some() {
+            Box::new(ThreadUpdateHandler::new(store_handler.unwrap()))
+        } else {
+            Box::new(ThreadUpdateHandler::new(NullUpdateHandler::new()))
+        }
+    } else {
+        let mut handlers: Vec<Box<dyn DynUpdateHandler<Value>>> = Vec::new();
+        store_handler.map(|h| handlers.push(Box::new(h)));
+        print_handler.map(|h| handlers.push(Box::new(h)));
+        Box::new(ThreadUpdateHandler::new(ChainedDynUpdateHandler::new(handlers)))
+    };
+
+    let ret = run_interactive(db.clone(), handler, workers);
     exit(ret);
 }

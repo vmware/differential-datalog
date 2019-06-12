@@ -192,14 +192,14 @@ pub enum ProgNode<V: Val> {
     SCC{rels: Vec<Relation<V>>}
 }
 
-pub trait CBFn<V>: Fn(RelId, &V, Weight) + Send {
+pub trait CBFn<V>: Fn(RelId, &V, bool) + Send {
    fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
 }
 
 impl<T, V> CBFn<V> for T
 where
    V: Val,
-   T: 'static + Send + Clone + Fn(RelId, &V, Weight)
+   T: 'static + Send + Clone + Fn(RelId, &V, bool)
 {
    fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
        Box::new(self.clone())
@@ -1030,12 +1030,13 @@ impl<V:Val> Program<V>
                                 },
                                 Some(cb) => {
                                     let cb = cb.lock().unwrap().clone();
-                                    collection.inspect(move |x| {cb(relid, &x.0, x.2)})
-                                                      .probe_with(&mut probe1);
+                                    collection.inspect(move |x| {
+                                        debug_assert!(x.2 == 1 || x.2 == -1);
+                                        cb(relid, &x.0, x.2 == 1)
+                                    }).probe_with(&mut probe1);
                                 }
                             }
                         };
-
                         sessions
                     });
                     //println!("worker {} started", worker.index());

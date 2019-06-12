@@ -17,10 +17,11 @@ use super::*;
 
 use std::thread::*;
 use std::sync::mpsc::*;
+use std::sync::{Arc, Barrier, Mutex};
 
 pub trait UpdateHandler<V>: Send {
-    /* Invoked on each output relation update */
-    fn update(&self, relid: RelId, v: &V, w: bool);
+    /* Returns a handler to be invoked on each output relation update. */
+    fn update(&self) -> Box<dyn CBFn<V>>;
 
     /* Notifies the handler that a transaction_commit method is about to be
      * called. The handler has an opportunity to prepare to handle
@@ -78,7 +79,9 @@ impl NullUpdateHandler
 
 impl <V: Val> UpdateHandler<V> for NullUpdateHandler
 {
-    fn update(&self, _relid: RelId, _v: &V, _w: bool) {}
+    fn update(&self) -> Box<dyn CBFn<V>> {
+        Box::new(|_,_,_|{})
+    }
     fn before_commit(&self) {}
     fn after_commit(&self, _success: bool) {}
 }
@@ -100,8 +103,10 @@ impl ExternCUpdateHandler
 
 impl <V: Val + IntoRecord> UpdateHandler<V> for ExternCUpdateHandler
 {
-    fn update(&self, relid: RelId, v: &V, w: bool) {
-        (self.cb)(self.cb_arg, relid, &v.clone().into_record() as *const record::Record, w)
+    fn update(&self) -> Box<dyn CBFn<V>> {
+        let cb = self.cb.clone();
+        let cb_arg = self.cb_arg.clone();
+        Box::new(move |relid, v, w|cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w))
     }
     fn before_commit(&self) {}
     fn after_commit(&self, success: bool) {}
@@ -124,8 +129,9 @@ impl MTValMapUpdateHandler
 
 impl UpdateHandler<Value> for MTValMapUpdateHandler
 {
-    fn update(&self, relid: RelId, v: &Value, w: bool) {
-        self.db.lock().unwrap().update(relid, v, w)
+    fn update(&self) -> Box<dyn CBFn<Value>> {
+        let db = self.db.clone();
+        Box::new(move |relid, v, w|db.lock().unwrap().update(relid, v, w))
     }
     fn before_commit(&self) {}
     fn after_commit(&self, success: bool) {}
@@ -141,16 +147,19 @@ pub struct ChainedDynUpdateHandler<V: Val> {
 
 impl <V: Val> ChainedDynUpdateHandler<V> {
     pub fn new(handlers: Vec<Box<dyn DynUpdateHandler<V>>>) -> Self {
-        Self{handlers}
+        Self{ handlers }
     }
 }
 
 impl <V: Val> UpdateHandler<V> for ChainedDynUpdateHandler<V>
 {
-    fn update(&self, relid: RelId, v: &V, w: bool) {
-        for h in self.handlers.iter() {
-            h.update(relid, v, w);
-        }
+    fn update(&self) -> Box<dyn CBFn<V>> {
+        let cbs: Vec<Box<dyn CBFn<V>>> = self.handlers.iter().map(|h|h.update()).collect();
+        Box::new(move |relid, v, w| {
+            for cb in cbs.iter() {
+                cb(relid, v, w);
+            }
+        })
     }
     fn before_commit(&self) {
         for h in self.handlers.iter() {
@@ -162,5 +171,94 @@ impl <V: Val> UpdateHandler<V> for ChainedDynUpdateHandler<V>
         for h in self.handlers.iter() {
             h.after_commit(success);
         }
+    }
+}
+
+/* `UpdateHandler` implementation that handles updates in a separate
+ * worker thread.
+ */
+
+/* We use a single mpsc channel to notify worker about
+ * update, start, and commit events. */
+enum Msg<V: Val> {
+    BeforeCommit,
+    Update{relid: RelId, v: V, w: bool},
+    AfterCommit{success: bool},
+    Stop
+}
+
+#[derive(Clone)]
+pub struct ThreadUpdateHandler<V: Val> {
+    /* Channel to worker thread. */
+    msg_channel: Arc<Mutex<Sender<Msg<V>>>>,
+
+    /* Barrier to synchronize completion of transaction with worker. */
+    commit_barrier: Arc<Barrier>
+}
+
+impl <V: Val> ThreadUpdateHandler<V>
+{
+    pub fn new<H: UpdateHandler<V> + 'static>(handler: H) -> Self {
+        let (tx_msg_channel, rx_message_channel) = channel();
+        let commit_barrier = Arc::new(Barrier::new(2));
+        let commit_barrier2 = commit_barrier.clone();
+        spawn(move || {
+            let update_cb = handler.update();
+            loop {
+                match rx_message_channel.recv() {
+                    Ok(Msg::Update{relid, v, w}) => {
+                        update_cb(relid, &v, w);
+                    },
+                    Ok(Msg::BeforeCommit) => {
+                        handler.before_commit();
+                    },
+                    Ok(Msg::AfterCommit{success}) => {
+                        /* All updates have been sent to channel by now: flush the channel. */
+                        loop {
+                            match rx_message_channel.try_recv() {
+                                Ok(Msg::Update{relid, v, w}) => {
+                                    update_cb(relid, &v, w);
+                                },
+                                Ok(Msg::Stop) => { return; },
+                                _ => { break; }
+                            }
+                        };
+                        handler.after_commit(success);
+                        commit_barrier2.wait();
+                    },
+                    Ok(Msg::Stop) => { return; },
+                    _ => { return; }
+                }
+            }
+        });
+        Self {
+            msg_channel: Arc::new(Mutex::new(tx_msg_channel)),
+            commit_barrier: commit_barrier
+        }
+    }
+}
+
+impl<V: Val> Drop for ThreadUpdateHandler<V> {
+    fn drop(&mut self) {
+        self.msg_channel.lock().unwrap().send(Msg::Stop);
+    }
+}
+
+impl <V: Val + IntoRecord> UpdateHandler<V> for ThreadUpdateHandler<V>
+{
+    fn update(&self) -> Box<dyn CBFn<V>> {
+        let channel = self.msg_channel.lock().unwrap().clone();
+        Box::new(move |relid, v, w| {
+            channel.send(Msg::Update{relid, v: v.clone(), w});
+        })
+    }
+    fn before_commit(&self) {
+        self.msg_channel.lock().unwrap().send(Msg::BeforeCommit);
+    }
+    fn after_commit(&self, success: bool) {
+        self.msg_channel.lock().unwrap().send(Msg::AfterCommit{success});
+
+        /* Wait for all queued updates to get processed by worker. */
+        self.commit_barrier.wait();
     }
 }
