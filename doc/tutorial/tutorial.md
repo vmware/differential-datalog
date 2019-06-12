@@ -507,6 +507,12 @@ The type `bigint` describes arbitrary-precision (unbounded) integers.
 `var x: bigint = 125` declares a variable `x` with type integer and
 initial value 125.
 
+Signed integers are written as `signed<N>`, where `N` is the width of
+the integer in bits.  Currently DDlog only supports integer with
+widths that are supported by the native machine type (e.g., 8, 16, 32,
+or 64 bits).  DDlog supports all standard arithmetic operators over
+integers.
+
 Bit-vector types are described by `bit<N>`, where `N` is the
 bit-vector width.  Bit-vectors are unsigned integers when performing
 arithmetic.  DDlog supports all standard arithmetic and bitwise
@@ -551,6 +557,35 @@ numbers respectively:
 3'b101              // 3-bit binary
 'd15                // bit vector whose value is 15 and whose width is determined from the context
 ```
+
+DDlog does not automatically coerce different integer types to each other, e.g.,
+it is an error for a function that is declared to return a `bit<64>` value to
+return `bit<32>`.  Instead, the programmer must use the type cast operator `as` to
+perform type conversion explicitly:
+
+```
+32'd15 as bit<64>    // type-cast bit<32> to bit<64>
+32'd15 as signed<32> // type-cast bit<32> to signed<32>
+32'd15 as bigint     // type-cast bit<32> to bigint
+```
+
+The following type conversions are currently supported:
+- `bit<N>` to `bit<M>` for any `N` and `M`
+- `signed<N>` to `signed<M>` for any `N` and `M`
+- `bit<N>` to `signed<N>`
+- `signed<N>` to `bit<N>`
+- `bit<N>` to `bigint`
+- `signed<N>` to `bigint`
+
+Note that converting between signed and unsigned bit vectors of different width
+requires chaining two type casts: `bit<32> as signed<32> as signed<64>`.
+
+DDlog uses two's complement representation for bit vectors.  Casting a signed or
+unsigned bit vector to a narrower bit vector type truncates higher-order bits.
+Casting to a wider type sign extends (for signed bit vectors) or zero-extends
+(for unsigned bit vectors) the value to the new width.  Finally, converting
+between signed and unsigned bitvectors does not change the underlying
+representation.
 
 ### Control flow
 
@@ -857,11 +892,27 @@ BestPrice(item, best_price) :-
 
 Here `group_min()` is one of several aggregation functions defined in
 `lib/std.rs`.  What if we wanted to return the name of the vendor along with the
-lowest price for each item?  This requires an aggregation function that takes a
+lowest price for each item?  The following naive attempt will not work:
+
+```
+output relation BestVendor(item: string, vendor: string, price: bit<64>)
+
+BestVendor(item, vendor, best_price) :-
+    Price(.item = item, .vendor = vendor, .price = price),
+    var best_price = Aggregate((item), group_min(price)).
+```
+
+DDlog will complain that `vendor` is unknown in the head of the rule. What
+happens here is that we first group records with the same `item` value
+and then reduce each group to a single value, `best_price`.  All other
+variables (except `item` and `best_price`) disappear from the scope and cannot
+be used in the body of the rule following the `Aggregate` operator or in
+its head.
+
+A correct solution requires a different aggregation function that takes a
 group of `(vendor, price)` tuples and picks one with the smallest price.  To
 enable such use cases, DDlog allows users to implement their own custom
 aggregation functions:
-
 
 ```
 /* User-defined aggregate that picks a tuple with the smallest price */
@@ -883,6 +934,16 @@ BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
     var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
     (var best_vendor, var best_price) = best_vendor_price.
+```
+
+Finally, it is possible to group a relation by multiple fields.  For
+example, the following rule computes the lowest price that each vendor
+charged for each item:
+
+```
+BestPricePerVendor(item, vendor, best_price) :-
+    Price(.item = item, .vendor = vendor, .price = price),
+    var best_price = Aggregate((item, vendor), group_min(price)).
 ```
 
 ## Advanced types

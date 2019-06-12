@@ -183,6 +183,8 @@ typeValidate _ _     TInt{}           = return ()
 typeValidate _ _     TBool{}          = return ()
 typeValidate _ _     (TBit p w)       =
     check (w>0) p "Integer width must be greater than 0"
+typeValidate _ _     (TSigned p w)       =
+    check (w>0) p "Integer width must be greater than 0"
 typeValidate d tvars (TStruct p cs)   = do
     uniqNames ("Multiple definitions of constructor " ++) cs
     mapM_ (consValidate d tvars) cs
@@ -238,7 +240,7 @@ funcValidateDefinition d f@Function{..} = do
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
 relValidate d rel@Relation{..} = do
     typeValidate d [] relType
-    check (isNothing relPrimaryKey || relRole == RelInput) (pos rel) 
+    check (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
         $ "Only input relations can be declared with a primary key"
     maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
 
@@ -496,6 +498,7 @@ exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
+exprValidate1 _ _ _   ESigned{}           = return ()
 exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was performed by exprDesugar
     let tdef = consType d c
     case find ctxIsSetL $ ctxAncestors ctx of
@@ -529,8 +532,9 @@ exprValidate1 _ _ ctx (EPHolder p)        = do
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d _ ctx (EBinding p v _)    = do
     checkNoVar p d ctx v
-    
+
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
+exprValidate1 d tvs _ (EAs _ _ t)         = typeValidate d tvs t
 exprValidate1 _ _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
     check (ctxInRuleRHSPattern ctx) p "Dereference pattern not allowed in this context"
@@ -599,25 +603,41 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Mod    -> do {m; isint1; isint2}
         Times  -> do {m; isint1; isint2}
         Div    -> do {m; isint1; isint2}
-        BAnd   -> do {m; isbit1}
-        BOr    -> do {m; isbit1}
+        BAnd   -> do {m; isbitOrSigned1}
+        BOr    -> do {m; isbitOrSigned1}
         BXor   -> do {m; isbit1}
         Concat | isString d e1
                -> return ()
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
-          isint1 = check (isInt d e1 || isBit d e1) (pos e1) "Not an integer"
-          isint2 = check (isInt d e2 || isBit d e2) (pos e2) "Not an integer"
+          isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
+          isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
           isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
+          isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
           isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
           isbool = check (isBool d e1) (pos e1) "Not a Boolean"
 
 exprValidate2 d _   (EUnOp _ BNeg e)    =
-    check (isBit d e) (pos e) "Not a bit vector"
+    check (isBit d e || isSigned d e) (pos e) "Not a bit vector"
+exprValidate2 d _   (EUnOp _ UMinus e)    =
+    check (isSigned d e || isInt d e) (pos e)
+        $ "Cannot negate expression of type " ++ show e ++ ". Negation applies to signed<> and bigint values only."
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d ctx (EFor p _ i _)       = checkIterable "iterator" p d ctx i
+exprValidate2 d ctx (EAs p e t)          = do
+    check (isBit d e || isSigned d e) p
+        $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for bit<> and signed<> types."
+    check (isBit d t || isSigned d t || isInt d t) p
+        $ "Cannot type-cast expression to " ++ show t ++ ".  Only bit<>, signed<>, and bigint types can be cast to."
+    when (not $ isInt d t) $
+        check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
+            "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++
+            "Try casting to " ++ show (t'{typeWidth = typeWidth e'}) ++ " first."
+    where
+    e' = typ' d e
+    t' = typ' d t
 exprValidate2 _ _   _                    = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
@@ -655,6 +675,7 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
                   TInt{}      -> return $ bUILTIN_2STRING_FUNC
                   TString{}   -> return $ bUILTIN_2STRING_FUNC
                   TBit{}      -> return $ bUILTIN_2STRING_FUNC
+                  TSigned{}   -> return $ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
@@ -689,6 +710,7 @@ progConvertIntsToBVs d = progExprMapCtx d (exprConvertIntToBV d)
 exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
 exprConvertIntToBV d ctx e@(EInt p v) =
     case exprType' d ctx (E e) of
-         TBit _ w -> E $ EBit p w v
-         _        -> E e
+         TBit _ w    -> E $ EBit p w v
+         TSigned _ w -> E $ ESigned p w v
+         _           -> E e
 exprConvertIntToBV _ _ e = E e

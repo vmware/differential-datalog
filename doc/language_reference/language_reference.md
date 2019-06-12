@@ -109,6 +109,7 @@ type_spec ::= bigint_type
             | bool_type
             | string_type
             | bitvector_type
+            | integer_type
             | tuple_type
             | union_type     (* tagged union *)
             | type_alias     (* reference to user-defined type *)
@@ -131,6 +132,7 @@ bigint_type      ::= "bigint" (* unbounded mathematical integer *)
 bool_type        ::= "bool"
 string_type      ::= "string" (* UTF-8 string *)
 bitvector_type   ::= "bit" "<" decimal ">"
+integer_type     ::= "signed" "<" decimal ">"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
 type_alias       ::= type_name           (* type name declared using typedef*)
@@ -255,7 +257,7 @@ The optional primary key clause is only allowed in `input` relations and defines
 its unique key. For example, the following declares a relation with primary key `f1`:
 
 ```
-relation R(f1: bigint, f2: bool) 
+relation R(f1: bigint, f2: bool)
 primary key (r) r.f1
 ```
 
@@ -271,6 +273,7 @@ expr ::= term
        | expr "["decimal "," decimal"]"  (*bit slice (e[h:l])*)
        | expr ":" simple_type_spec       (*explicit type signature*)
        | expr "." identifier             (*struct field*)
+       | "-" expr                        (*unary arithmetic negation*)
        | "~" expr                        (*bitwise negation*)
        | "not" expr                      (*boolean negation*)
        | "(" expr ")"                    (*grouping*)
@@ -296,6 +299,7 @@ expr ::= term
        | expr "=>" expr                  (*implication*)
        | expr "=" expr                   (*assignment*)
        | expr ";" expr                   (*sequential composition*)
+       | expr "as" simple_type_spec      (*cast*)
 ```
 
 The following table lists operators order by decreasing priority.
@@ -332,8 +336,7 @@ term ::= "_"                 (* wildcard *)
        | vardecl_term        (* local variable declaration *)
 ```
 
-**Integer literal syntax is currently arcane and will be changed to
-C-style syntax.**
+**Integer literal syntax is currently arcane and may be changed.**
 
 ```EBNF
 int_literal  ::= decimal
@@ -341,8 +344,14 @@ int_literal  ::= decimal
                | [width] "'h" hexadecimal
                | [width] "'o" octal
                | [width] "'b" binary
+               | [width] "'sd" decimal
+               | [width] "'sh" hexadecimal
+               | [width] "'so" octal
+               | [width] "'sb" binary
 width ::= decimal
 ```
+
+The "s" in a literal indicates a "signed" literal.
 
 We support two types of UTF-8 string literals: quoted strings with escaping,
 e.g., `"foo\nbar"`

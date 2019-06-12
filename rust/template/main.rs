@@ -63,6 +63,9 @@ fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut
             //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
             res
         },
+        Command::Comment => {
+            Ok(())
+        },
         Command::Rollback => {
             p.transaction_rollback()
         },
@@ -183,7 +186,7 @@ pub fn main() {
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
     let ret = run_interactive(db.clone(), Arc::new(move |relid,v,w| {
-        debug_assert!(w == 1 || w == -1); 
+        debug_assert!(w == 1 || w == -1);
         upd_cb(print, store, &db, relid, v, w == 1)
     }), workers);
     exit(ret);

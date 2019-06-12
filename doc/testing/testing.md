@@ -70,19 +70,20 @@ outputs.
 | `rollback;`                    |                                                  | rollback current transaction; reverting all changes                    |
 | `timestamp;`                   |                                                  | print current time in ns since some unspecified epoch                  |
 | `dump;`                        |                                                  | dump the content of all relations                                      |
-| `dump <relation>;`             | dump Rel1;                                       | dump the content of an individual relation                             |
-| `echo <text>;`                 | echo Hello world;                                | copy arbitrary text to stdout                                          |
-| `insert <record>;`             | insert Rel1(1,true,"foo");                       | insert record to relation Rel1                                         |
-|                                | insert Rel1(.arg2=true,.arg1=1, .arg3="foo");    | as above, but uses named rather than positional arguments              |
-|                                | insert Rel2(.x=10, .y=Constructor{"foo", true}); | passing structured data by calling type constructor                    |
-|                                | insert Rel2(.x=10, .y=Constructor{.f1="foo", .f2=true}); | type constructor arguments can also be passed by name          |
-| `delete <record>;`             | delete Rel1(1,true,"foo");                       | delete record from Rel1 (using argument syntax identical to `insert`)  |
-| `delete_key <relation> <key>;` | delete Rel1 1;                                   | delete record by key; only valid for relations with primary key        |
-| `modify <relation> <key> <- <record>;` | modify Rel1 1 <- Rel1{.f1 = 5};          | modify record; `<record>` specifies just the fields to be modified; only valid for relations with primary key        |
-| comma-separated updates        | insert Foo(1), delete Bar("buzz");               | a sequence of insert and delete commands can be applied in one update  |
-| `profile`                     |                                                  | print CPU and memory profile of the DDlog program                      |
-| `profile cpu "on"/"off"`      |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
+| `dump <relation>;`             | `dump Rel1;`                                     | dump the content of an individual relation                             |
+| `echo <text>;`                 | `echo Hello world;`                              | copy arbitrary text to stdout                                          |
+| `insert <record>;`             | `insert Rel1(1,true,"foo");`                     | insert record to relation Rel1                                         |
+|                                | `insert Rel1(.arg2=true,.arg1=1, .arg3="foo");`  | as above, but uses named rather than positional arguments              |
+|                                | `insert Rel2(.x=10, .y=Constructor{"foo", true});` | passing structured data by calling type constructor                    |
+|                                | `insert Rel2(.x=10, .y=Constructor{.f1="foo", .f2=true});` | type constructor arguments can also be passed by name          |
+| `delete <record>;`             | `delete Rel1(1,true,"foo");`                     | delete record from Rel1 (using argument syntax identical to `insert`)  |
+| `delete_key <relation> <key>;` | `delete Rel1 1;`                                 | delete record by key; only valid for relations with primary key        |
+| `modify <relation> <key> <- <record>;` | `modify Rel1 1 <- Rel1{.f1 = 5};`        | modify record; `<record>` specifies just the fields to be modified; only valid for relations with primary key        |
+| comma-separated updates        | `insert Foo(1), delete Bar("buzz");`             | a sequence of insert and delete commands can be applied in one update  |
+| `profile`                      |                                                  | print CPU and memory profile of the DDlog program                      |
+| `profile cpu "on"/"off"`       |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
 | `exit;`                        |                                                  | terminates execution                                                   |
+| `#`                            | `# comment ending at the end of line`            | comment that ends at the end of the line                               |
 
 **Note**: Placing a semicolon after an `insert` or `delete` operation tells DDlog to apply the
 update instantly, without waiting for subsequent updates.  Comma-separated updates are only applied
@@ -123,6 +124,6 @@ Edge{"Redwood City","San Bruno"}
 Include the following files in your PR:
 
 1. `<test>.dl`
-1. `<test>.ast.expeted`
+1. `<test>.ast.expected`
 1. `<test>.dat`
 1. `<test>.dump.expected`

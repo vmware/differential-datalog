@@ -2,26 +2,27 @@
 
 import intern
 import regex
+import souffle_types
 
-function castTo32(i: bit<64>): bit<32> = i[31:0]
-function castTo64(i: bit<32>): bit<64> = 32'd0 ++ i
+function castTo32(i: bit<64>): Tnumber = i[31:0] as Tnumber
+function castTo64(i: Tnumber): bit<64> = 32'd0 ++ (i as bit<32>)
 function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))
-function strlen(s: IString): bit<32> = castTo32(string_len(istring_str(s)))
-function ord(s: IString): bit<32> = istring_ord(s)
-function substr(s: IString, i: bit<32>, l: bit<32>): IString = string_intern(string_substr(istring_str(s), castTo64(i), castTo64(i + l)))
+function strlen(s: IString): Tnumber = castTo32(string_len(istring_str(s)))
+function ord(s: IString): Tnumber = istring_ord(s) as Tnumber
+function substr(s: IString, i: Tnumber, l: Tnumber): IString = string_intern(string_substr(istring_str(s), castTo64(i), castTo64(i + l)))
 // The order of arguments in Souffle is reverted
 function contains(s: IString, i: IString): bool = string_contains(istring_str(i), istring_str(s))
 // Souffle match must match the whole string
 function re_match(pattern: IString, s: IString): bool = regex_match("^" ++ istring_str(pattern) ++ "$", istring_str(s))
-function to_number(s: IString): bit<32> = {
-    match (parse_dec_u64(istring_str(s))) {
+function to_number(s: IString): Tnumber = {
+    match (parse_dec_i64(istring_str(s))) {
         None -> 0,
-        Some{x} -> castTo32(x)
+        Some{x} -> x as Tnumber
     }
 }
-function to_string(n: bit<32>): IString = string_intern(__builtin_2string(n))
-function random(): bit<32> = 0
-function land(l: bit<32>, r: bit<32>): bit<32> = if (l != 0 and r != 0) 1 else 0
-function lor(l: bit<32>, r: bit<32>): bit<32> = if (l == 0 and r == 0) 0 else 1
-function lnot(l: bit<32>): bit<32> = if (l != 0) 0 else 1
-function group_count32(g: Group<'A>): bit<32> = castTo32(group_count(g))
+function to_string(n: Tnumber): IString = string_intern(__builtin_2string(n))
+function random(): Tnumber = 0
+function land(l: Tnumber, r: Tnumber): Tnumber = if (l != 0 and r != 0) 1 else 0
+function lor(l: Tnumber, r: Tnumber): Tnumber = if (l == 0 and r == 0) 0 else 1
+function lnot(l: Tnumber): Tnumber = if (l != 0) 0 else 1
+function group_count32(g: Group<'A>): Tnumber = castTo32(group_count(g))

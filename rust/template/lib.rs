@@ -1,8 +1,9 @@
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code)]
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code, overflowing_literals)]
 
 extern crate fnv;
 extern crate differential_dataflow;
 extern crate timely;
+extern crate num_traits;
 
 #[macro_use]
 extern crate serde_derive;
@@ -47,6 +48,7 @@ use std::io::Write;
 use std::os::unix;
 use std::os::unix::io::{IntoRawFd, FromRawFd};
 use std::mem;
+use num_traits::identities::One;
 use libc::size_t;
 
 pub mod valmap;

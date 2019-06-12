@@ -89,6 +89,7 @@ reservedNames = ["as",
                  "not",
                  "or",
                  "relation",
+                 "signed",
                  "skip",
                  "string",
                  "transformer",
@@ -405,6 +406,7 @@ namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
 
 typeSpec = withPos $
             bitType
+        <|> signedType
         <|> intType
         <|> stringType
         <|> boolType
@@ -415,6 +417,7 @@ typeSpec = withPos $
 
 typeSpecSimple = withPos $
                   bitType
+              <|> signedType
               <|> intType
               <|> stringType
               <|> boolType
@@ -423,6 +426,7 @@ typeSpecSimple = withPos $
               <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
+signedType = TSigned nopos <$ reserved "signed" <*> (fromIntegral <$> angles decimal)
 intType    = TInt    nopos <$ reserved "bigint"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
@@ -559,8 +563,8 @@ interpolate' mprefix = do
 estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
 
 eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
-                                                   v <- sradval
-                                                   mkLit w v)
+                                                   (s, v) <- sradval
+                                                   mkLit w s v)
 
 -- strip underscores
 stripUnder :: String -> String
@@ -575,11 +579,15 @@ evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 
 width = optionMaybe (try $ ((fmap fromIntegral parseDec) <* (lookAhead $ char '\'')))
-sradval =  ((try $ string "'b") *> parseBin)
-       <|> ((try $ string "'o") *> parseOct)
-       <|> ((try $ string "'d") *> parseDec)
-       <|> ((try $ string "'h") *> parseHex)
-       <|> parseDec
+sradval =  ((try $ string "'b") *> ((False, ) <$> parseBin))
+       <|> ((try $ string "'o") *> ((False, ) <$> parseOct))
+       <|> ((try $ string "'d") *> ((False, ) <$> parseDec))
+       <|> ((try $ string "'h") *> ((False, ) <$> parseHex))
+       <|> ((try $ string "'sb") *> ((True, ) <$> parseBin))
+       <|> ((try $ string "'so") *> ((True, ) <$> parseOct))
+       <|> ((try $ string "'sd") *> ((True, ) <$> parseDec))
+       <|> ((try $ string "'sh") *> ((True, ) <$> parseHex))
+       <|> ((True, ) <$> parseDec)
 parseBin :: Stream s m Char => ParsecT s u m Integer
 parseBin = readBin . stripUnder <$> (digitPrefix $ (char '0') <|> (char '1'))
 parseOct :: Stream s m Char => ParsecT s u m Integer
@@ -592,14 +600,15 @@ parseDec = (fst . head . readDec . stripUnder) <$> digitPrefix digit
 parseHex :: Stream s m Char => ParsecT s u m Integer
 parseHex = (fst . head . readHex . stripUnder) <$> digitPrefix hexDigit
 
-mkLit :: Maybe Int -> Integer -> ParsecT s u m Expr
-mkLit Nothing  v                       = return $ eInt v
-mkLit (Just w) v | w == 0              = fail "Unsigned literals must have width >0"
-                 | msb v < w           = return $ eBit w v
-                 | otherwise           = fail "Value exceeds specified width"
+mkLit :: Maybe Int -> Bool -> Integer -> ParsecT s u m Expr
+mkLit Nothing _ v                        = return $ eInt v
+mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
+                   | msb v < w           = return $ if s then eSigned w v else eBit w v
+                   | otherwise           = fail "Value exceeds specified width"
 
-etable = [[postf $ choice [postSlice, postApply, postField, postType]]
+etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
          ,[pref  $ choice [preRef]]
+         ,[pref  $ choice [prefix "-" UMinus]]
          ,[pref  $ choice [prefix "~" BNeg]]
          ,[pref  $ choice [prefix "not" Not]]
          ,[binary "%" Mod AssocLeft,
@@ -631,6 +640,7 @@ postf p = Postfix . chainl1 p $ return (flip (.))
 postField = (\f end e -> E $ EField (fst $ pos e, end) e f) <$> field <*> getPosition
 postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) f (e:args)) <$> dotcall <*> getPosition
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
+postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition
 slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (colon *> natural)
 
@@ -646,6 +656,7 @@ dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
                         symbol "("
 
 etype = reservedOp ":" *> typeSpecSimple
+eAsType = reserved "as" *> typeSpecSimple
 
 preRef = (\start e -> E $ ERef (start, snd $ pos e) e) <$> getPosition <* reservedOp "&"
 prefix n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n

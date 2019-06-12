@@ -10,6 +10,7 @@ import datetime
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert
 
+verbose = False
 tests_compiled = 0
 tests_compiled_successfully = 0
 tests_xfail = 0
@@ -24,6 +25,7 @@ xfail = [
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
     "aggregates",  # issue 227 - count of empty group
+    "magic_aggregates",  # 227
     "count",       # 227
     "magic_count", # 227
     "magic_samegen", # computes a very large join
@@ -31,9 +33,6 @@ xfail = [
     "magic_circuit_sat", # 221
     "factorial",   # 221
     "grid",        # 221
-    "planar",      # issue 188 - requires signed numbers
-    "minmaxnum",   # 188
-    "number_constants", # 188
     "2sat",      # issue 197 - bind and use variable
     "independent_body3", # issue 224 - requires many iterations
     "aliases",   # assignments to tuples containing variables
@@ -46,6 +45,7 @@ xfail = [
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # 197
     "magic_nqueens",    # 202
+    "inline_nqueens",   # 202
     "magic_turing1",    # 198
     "math",             # Trigonometric functions and FP types
     "minesweeper",      # 198
@@ -106,7 +106,7 @@ def compile_example(directory, f):
     tests_compiled = tests_compiled + 1
     savedir = os.getcwd()
     os.chdir(directory)
-    code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc++", f])
+    code, output = run_command(["cc", "-x", "c", "-E", "-P", "-undef", "-nostdinc", f])
     if code != 0:
         raise Exception("Error " + str(code) + " running cpp")
     with open(f + ".tmp", "w") as tmp:
@@ -129,7 +129,8 @@ def should_run(d):
     if d in xfail:
         global tests_xfail
         tests_xfail = tests_xfail + 1
-        print "Expected to fail", d
+        if verbose:
+            print "Expected to fail", d
         return False
     if len(todo) > 0:
         return d in todo
@@ -142,7 +143,10 @@ def run_examples():
         if "souffle" not in d:
             continue
         if should_run(d):
-            compile_example(d, "test.dl")
+            code = compile_example(d, "test.dl")
+            if code != 0:
+                return code
+    return 0
 
 def normalize_name(name):
     reserved = ["match"]
@@ -174,15 +178,17 @@ def run_remote_tests():
             if not should_run(test):
                 continue
 
-            global tests_to_skip
+            global tests_to_skip, verbose
             if tests_to_skip > 0:
                 tests_to_skip = tests_to_skip - 1
-                print "Skipping", directory
+                if verbose:
+                    print "Skipping", directory
                 continue
 
             newName = normalize_name(directory)
             if newName != directory:
                 print "Using", newName, "for", directory
+
             if not os.path.isdir(newName):
                 os.chdir(tg)
                 code, _ = run_command(["svn", "export", url + tg + "/" + test])
@@ -195,6 +201,8 @@ def run_remote_tests():
             code = compile_example(directory, test + ".dl")
             if code == 0:
                 result.append(directory)
+            else:
+                sys.exit(code)
             global tests_compiled_successfully, tests_to_run
             if tests_compiled_successfully == tests_to_run:
                 return result
@@ -230,30 +238,35 @@ def run_merged_test(filename):
     run_command(["mv", "tmp.sorted", filename + ".dump.expected"])
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
-        print "Output differs"
+        print "*** Error: Output differs"
     print "Completed program at", datetime.datetime.now().time()
     return code
 
 def main():
-    os.environ["RUSTFLAGS"] = "-Awarnings"
-    global todo, tests_xfail, libpath
+    os.environ["RUSTFLAGS"] = "-Awarnings" # " -opt-level=z"
+    global todo, tests_xfail, libpath, verbose
     print "Starting at", datetime.datetime.now().time()
     argParser = argparse.ArgumentParser(
         "run-souffle-tests.py",
         description="Runs a number of Datalog Souffle tests from github.")
     argParser.add_argument("-s", "--skip", help="Number of tests to skip")
+    argParser.add_argument("-v", "--verbose", help="Verbose operation",
+                           action="store_true")
     argParser.add_argument("-r", "--run", help="Number of tests to run")
     argParser.add_argument("-e", "--examples", action="store_true",
                            help="Run the examples without reference data")
     argParser.add_argument("remaining", nargs="*")
     args = argParser.parse_args()
+    verbose = args.verbose
 
     run_command(["stack", "install"])
     path = os.getcwd()
     libpath = path + "/../lib"
     todo = args.remaining
     if args.examples:
-        run_examples()
+        code = run_examples()
+        if code != 0:
+            sys.exit(code)
 
     global tests_to_skip, tests_to_run, tests_compiled_successfully, tests_compiled
     if args.skip is not None:

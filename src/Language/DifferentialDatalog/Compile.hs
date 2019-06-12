@@ -47,7 +47,7 @@ import Data.Maybe
 import Data.List
 import Data.Int
 import Data.Word
-import Data.Bits
+import Data.Bits hiding (isSigned)
 import Data.Char
 import Data.FileEmbed
 import Data.String.Utils
@@ -485,7 +485,7 @@ compileLib d specname rs_code =
                               $ emptyCompilerState { cArrangements = arrs
                                                    , cTypes        = types }
     -- Type declarations
-    typedefs = vcat $ map mkTypedef $ M.elems $ progTypedefs d'
+    typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d'
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
     funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
@@ -499,8 +499,8 @@ addDummyRel :: DatalogProgram -> DatalogProgram
 addDummyRel d | not $ M.null $ progRelations d = d
               | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos RelInternal "Null" (tTuple []) Nothing}
 
-mkTypedef :: TypeDef -> Doc
-mkTypedef tdef@TypeDef{..} =
+mkTypedef :: DatalogProgram -> TypeDef -> Doc
+mkTypedef d tdef@TypeDef{..} =
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive_struct                                                             $$
@@ -570,13 +570,25 @@ mkTypedef tdef@TypeDef{..} =
               "}"
     mkDispCons :: Constructor -> Doc
     mkDispCons c@Constructor{..} =
-        cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} =>" <+>
-        "write!(__formatter, \"" <> pp (name c) <> "{{" <> (hcat $ punctuate comma $ map (\_ -> "{:?}") consArgs) <> "}}\"," <+>
-        (hcat $ punctuate comma $ map (("*" <>) . pp . name) consArgs) <> ")"
+        cname <> "{" <> (hcat $ punctuate comma $ map (pp . name) consArgs) <> "} => {" $$
+        (nest' $
+            "__formatter.write_str(\"" <> (pp $ name c) <> "{\")?;" $$
+            (vcat $
+             mapIdx (\a i -> (if isString d a
+                                 then "record::format_ddlog_str(" <> (pp $ name a) <> ", __formatter)?;"
+                                 else "fmt::Debug::fmt(" <> (pp $ name a) <> ", __formatter)?;")
+                             $$
+                             (if i + 1 < length consArgs
+                                 then "__formatter.write_str(\",\")?;"
+                                 else empty))
+                    consArgs) $$
+            "__formatter.write_str(\"}\")")
+        $$
+        "}"
         where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
 
     default_enum =
-              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                    $$
+              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                     $$
               "    fn default() -> Self {"                                                                     $$
               "        " <> cname <> "{" <> def_args <> "}"                                                    $$
               "    }"                                                                                          $$
@@ -850,7 +862,10 @@ mkValType d types =
     mkValCons t = consname t <> (parens $ mkBoxType d t)
     tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
-    mkdisplay t = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
+    mkdisplay t | isString d t = "Value::" <> consname t <+> "(v) => record::format_ddlog_str(v.as_ref(), f)"
+                | otherwise    = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
+    mkintorec :: Type -> Doc
+    mkintorec t = "Value::" <> consname t <+> "(v) => v.into_record()"
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
 -- relation.  This is done as a separate compiler pass to maximize arrangement sharing
@@ -1327,6 +1342,7 @@ mkValConstructorName' d t =
          TInt{}      -> "int"
          TString{}   -> "string"
          TBit{..}    -> "bit" <> pp typeWidth
+         TSigned{..} -> "signed" <> pp typeWidth
          TUser{}     -> consuser
          TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
@@ -1546,6 +1562,7 @@ normalizeArrangement d rel ctx pat = (renamed, vmap)
              EInt{}                  -> return $ E e
              EString{}               -> return $ E e
              EBit{}                  -> return $ E e
+             ESigned{}               -> return $ E e
              EPHolder{}              -> return $ E e
              ETyped{..}              -> do
                 e' <- rename (CtxTyped e ctx) exprExpr
@@ -1618,6 +1635,7 @@ arrangeInput d rl fstatom arrange_input_by = do
     subst' e@EInt{}     _  _ = return $ E e
     subst' e@EString{}  _  _ = return $ E e
     subst' e@EBit{}     _  _ = return $ E e
+    subst' e@ESigned{}  _  _ = return $ E e
     subst' e@EPHolder{} _  _ = return $ E e
     subst' e@ETyped{}   _  _ = return $ E e
     subst' e            _  _ | exprIsConst (E e)
@@ -1913,6 +1931,8 @@ mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' _ _ ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tSigned exprWidth), EVal)
+                        | otherwise        = ("Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2023,6 +2043,7 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
              BNeg   -> mkTruncate (parens $ "!" <> arg) $ exprType' d ctx (E e')
+             UMinus -> mkTruncate (parens $ "-" <> arg) $ exprType' d ctx (E e')
 
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
@@ -2035,6 +2056,51 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
     isint = case e of
                  EInt{} -> True
                  _      -> False
+
+mkExpr' d ctx EAs{..} | narrow_from && narrow_to && width_cmp /= GT
+                      -- use Rust's type cast syntax to convert between
+                      -- primitive types; no need to truncate the result if
+                      -- target width is greater than or equal to source
+                      = (parens $ val exprExpr <+> "as" <+> mkType exprTSpec, EVal)
+                      | narrow_from && narrow_to
+                      -- apply lossy type conversion between primitive Rust types;
+                      -- truncate the result if needed
+                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType exprTSpec) to_type,
+                         EVal)
+                      | width_cmp == GT && tfrom == tto
+                      -- from_type is wider than to_type, but they both
+                      -- correspond to the same Rust type: truncate from_type
+                      -- (e & ((1 << w) - 1))
+                      = ("(" <> val exprExpr <+>
+                         "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))"
+                        , EVal)
+                      | width_cmp == GT
+                      -- from_type is wider than to_type: truncate from_type and
+                      -- then convert:
+                      -- (e & ((1 << w) - 1)).to_<to_type>().unwrap()
+                      = ("(" <> val exprExpr <+>
+                         "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))" <>
+                         ".to_" <> tto <> "().unwrap()", EVal)
+                      | tto == tfrom
+                      -- from_type is same width or narrower than to_type and
+                      -- they both correspond to the same Rust type
+                      = (val exprExpr, EVal)
+                      | otherwise
+                      = (parens $ tto <> "::from_" <> tfrom <> "(" <> val exprExpr <> ")", EVal)
+    where
+    e' = sel3 exprExpr
+    from_type = exprType' d (CtxAs e' ctx) $ E e'
+    to_type   = typ' d exprTSpec
+    tfrom = mkType from_type
+    tto   = mkType to_type
+    narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
+    narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128
+    width_cmp = if ((isBit d from_type || isSigned d from_type) &&
+                    (isBit d to_type || isSigned d to_type))
+                   then compare (typeWidth from_type) (typeWidth to_type)
+                   else if isInt d from_type && isInt d to_type
+                           then EQ
+                           else if isInt d to_type then LT else GT
 
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' $ typ x
@@ -2049,6 +2115,12 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 64 = "u64"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
+mkType' t@TSigned{..} | typeWidth == 8  = "i8"
+                    | typeWidth == 16 = "i16"
+                    | typeWidth == 32 = "i32"
+                    | typeWidth == 64 = "i64"
+                    | typeWidth == 128= "i128"
+                    | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
@@ -2082,6 +2154,12 @@ typeSize' _ TBit{..} | typeWidth <= 8   = 1
                      | typeWidth <= 64  = 8
                      | typeWidth <= 128 = 16
                      | otherwise        = 32
+typeSize' _ TSigned{..} | typeWidth <= 8   = 1
+                        | typeWidth <= 16  = 2
+                        | typeWidth <= 32  = 4
+                        | typeWidth <= 64  = 8
+                        | typeWidth <= 128 = 16
+                        | otherwise        = 32
 typeSize' d (TStruct _ [cons]) = consSize d $ consArgs cons
 typeSize' d (TStruct _ cs) =
     tag_size + (maximum $ 0 : map (consSize d . consArgs) cs)
@@ -2118,6 +2196,12 @@ typeAlignment' _ TBit{..} | typeWidth <= 8   = 1
                           | typeWidth <= 64  = 8
                           | typeWidth <= 128 = 16
                           | otherwise        = 16
+typeAlignment' _ TSigned{..} | typeWidth <= 8   = 1
+                             | typeWidth <= 16  = 2
+                             | typeWidth <= 32  = 4
+                             | typeWidth <= 64  = 8
+                             | typeWidth <= 128 = 16
+                             | otherwise        = 16
 typeAlignment' d (TStruct _ [cons]) = consAlignment d $ consArgs cons
 typeAlignment' d (TStruct _ cs) = maximum $ 1 : map (consAlignment d . consArgs) cs
 typeAlignment' d (TTuple _ as)  = tupleAlignment d as
@@ -2227,9 +2311,9 @@ mkBVMask w | w > 128   = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
 mkTruncate :: Doc -> Type -> Doc
 mkTruncate v t =
     case t of
-         TBit{..} | needsTruncation typeWidth
-                  -> parens $ v <+> "&" <+> mask typeWidth
-         _        -> v
+         TBit{..}    | needsTruncation typeWidth
+                     -> parens $ v <+> "&" <+> mask typeWidth
+         _           -> v
     where
     needsTruncation :: Int -> Bool
     needsTruncation w = mask w /= empty

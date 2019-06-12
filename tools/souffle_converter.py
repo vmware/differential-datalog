@@ -11,6 +11,7 @@ import parglare  # parser generator
 
 skip_files = False  # If true do not process .input and .output declarations
 skip_logic = False  # If true do not produce file .dl
+profile = False     # If true, enable profiling and dump profiling information
 relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
 # This makes it possible to concatenate multiple .dat files together
 # This should end in a dot.
@@ -190,7 +191,7 @@ class Type(object):
         """True if this type is equivalent to number."""
         if self.isnumber is not None:
             return self.isnumber
-        if self.name == "Tnumber" or self.name == "bit<32>":
+        if self.name == "Tnumber" or self.name == "signed<32>":
             self.isnumber = True
             return True
         if self.name == "IString":
@@ -367,14 +368,16 @@ class Files(object):
         self.output("import souffle_lib")
         self.output("import souffle_types")
         Type.create("IString", "IString")
-        Type.create("bit<32>", "bit<32>")
+        Type.create("signed<32>", "signed<32>")
         # The following are in souffle_types
-        Type.create("number", "bit<32>")
+        Type.create("number", "signed<32>")
         Type.create("symbol", "IString")
         Type.create("empty", "()")
         if not skip_files:
             self.outputDataFile = open(outputDataName, 'w')
             self.dumpFile = open(outputDumpName, 'w')
+            if profile:
+                self.outputData("profile cpu on", ";")
             self.outputData("start", ";")
         global verbose
         if verbose:
@@ -396,6 +399,8 @@ class Files(object):
             self.outputData("commit", ";")
             for r in dumporder:
                 self.outputData("dump " + relationPrefix + r, ";")
+            if profile:
+                self.outputData("profile", ";")
             self.outputData("exit", ";")
             self.outputDataFile.close()
             self.dumpFile.close()
@@ -489,11 +494,11 @@ class SouffleConverter(object):
     def getCurrentComponentLegalName(self):
         return self.current_component.replace(".", "_")
 
-    def process_file(self, rel, inFileName, inSeparator, sort):
+    def process_file(self, rel, inFileName, inDelimiter, sort):
         """Process an INPUT or OUTPUT with name inFileName.
         rel: is the relation name that is being processed
         inFileName: is the file which contains the data
-        inSeparator: is the input record separator
+        inDelimiter: is the input record delimiter
         sort: is a Boolean indicating whether the records in the output
         should be lexicographically sorted.
         Returns the data in the file as a list of lists of strings.
@@ -522,7 +527,7 @@ class SouffleConverter(object):
 
         output = []
         for line in data:
-            fields = line.rstrip('\n').split(inSeparator)
+            fields = line.rstrip('\n').split(inDelimiter)
             result = []
             # Special handling for the empty tuple, which seems
             # to be written as () in Souffle, instead of the emtpy string
@@ -609,10 +614,10 @@ class SouffleConverter(object):
         else:
             filenames = [kvp["filename"]]
 
-        if "separator" not in kvp:
-            separator = '\t'
+        if "delimiter" not in kvp:
+            delimiter = '\t'
         else:
-            separator = kvp["separator"]
+            delimiter = kvp["delimiter"]
 
         global relationPrefix, verbose
         if verbose:
@@ -628,7 +633,7 @@ class SouffleConverter(object):
         if data is None:
             print "** Cannot find input file for " + rel
             return
-        output = self.process_file(rel, data, separator, False)
+        output = self.process_file(rel, data, delimiter, False)
         for row in output:
             self.files.outputData(
                 "insert " + relationPrefix + ri.name + "_shadow(" + ",".join(row) + ")", ",")
@@ -770,7 +775,7 @@ class SouffleConverter(object):
             op = self.convert_op(arg.children[0])
             self.currentType = "Tnumber"
             if op == "-":
-                return "(0 - " + rec + ")"
+                return "(- " + rec + ")"
             elif op == "lnot":
                 return "lnot(" + rec + ")"
             return "(" + op + " " + rec + ")"
@@ -787,10 +792,10 @@ class SouffleConverter(object):
         if num is not None:
             val = num.value
             if val.startswith("0x"):
-                val = "32'h" + val[2:]
+                val = "32'sh" + val[2:]
             elif val.startswith("0b"):
-                val = "32'b" + val[2:]
-            return "(" + val + ":bit<32>)"
+                val = "32'sb" + val[2:]
+            return "(" + val + ":Tnumber)"
 
         if len(args) == 2:
             # Binary operator
@@ -800,7 +805,7 @@ class SouffleConverter(object):
             left = self.convert_arg(args[0])
             right = self.convert_arg(args[1])
             if op == "^":
-                return "pow32(" + left + ", " + right + ")"
+                return "pow32(" + left + ", (" + right + " as bit<32>))"
             elif (op == "land") or (op == "lor"):
                 return op + "(" + left + ", " + right + ")"
             return "(" + left + " " + op + " " + right + ")"
@@ -979,9 +984,14 @@ class SouffleConverter(object):
         if atom is not None:
             return (self.convert_atom(atom), False)
 
-        func = getOptField(lit, "FunctionCall")
-        if func is not None:
-            return (self.convert_function_call(func), False)
+        mat = getOptField(lit, "match")
+        cont = getOptField(lit, "contains")
+        if mat is not None or cont is not None:
+            func = "re_match" if mat else "contains"
+            args = getArray(lit, "Arg")
+            assert len(args) == 2
+            argStrings = [self.convert_arg(arg) for arg in args]
+            return (func + "(" + ", ".join(argStrings) + ")", False)
 
         raise Exception("Unexpected literal" + lit.tree_str())
 
@@ -1014,7 +1024,10 @@ class SouffleConverter(object):
         if term is not None:
             (term, postpone) = self.convert_term(term)
             return ("not " + term, postpone)
-        raise Exception("Unpexpected term " + term.tree_str())
+        disj = getOptField(term, "Disjunction")
+        if disj is not None:
+            raise Exception("Disjunction not yet handled")
+        raise Exception("Unhandled term " + term.tree_str())
 
     def terms_have_relations(self, terms):
         """True if a conjunction contains any relations"""
@@ -1297,16 +1310,19 @@ def main():
                            action='store_true', help="produces only facts")
     argParser.add_argument("--logic-only", "--logic_only",
                            action='store_true', help="produces only logic")
+    argParser.add_argument("--profile", help="dump profile information", action="store_true")
     args = argParser.parse_args()
 
     verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
-    global skip_files, skip_logic
+    global skip_files, skip_logic, profile
     if args.logic_only:
         skip_files = True
     if args.facts_only:
         skip_logic = True
+    if args.profile:
+        profile = True
     convert(args.input, args.out, args.prefix, args.d)
 
 

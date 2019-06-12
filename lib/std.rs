@@ -510,6 +510,10 @@ pub fn std_parse_dec_u64(s: &String) -> std_Option<u64> {
     option2std(s.parse::<u64>().ok())
 }
 
+pub fn std_parse_dec_i64(s: &String) -> std_Option<i64> {
+    option2std(s.parse::<i64>().ok())
+}
+
 pub fn std_string_join(strings: &std_Vec<String>, sep: &String) -> String {
     strings.x.join(sep.as_str())
 }
@@ -681,7 +685,7 @@ pub fn std_group_setref_unions<A: Ord + Clone>(g: &std_Group<std_Ref<std_Set<A>>
 
 pub fn std_group2vec<A: Ord + Clone>(g: &std_Group<A>) -> std_Vec<A>
 {
-    let mut res = std_Vec::new();
+    let mut res = std_Vec::with_capacity(g.size() as usize);
     for v in g.iter() {
         std_vec_push(&mut res, &v);
     };

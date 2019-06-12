@@ -10,8 +10,31 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use libc::size_t;
 use std::fmt;
+use std::fmt::Write;
 
 pub type Name = Cow<'static, str>;
+
+/* Rust's implementation of `Debug::fmt` for `str` incorrectly escapes
+ * single quotes, e.g., "isn't" becomes "isn\'t".  To get around this,
+ * I copied Rust's implementation and modified it to handle single quotes
+ * as a special case. */
+pub fn format_ddlog_str(s: &str, f: &mut fmt::Formatter) -> fmt::Result {
+    //write!(f, "{:?}", s),
+    f.write_char('"')?;
+    let mut from = 0;
+    for (i, c) in s.char_indices() {
+        let esc = c.escape_debug();
+        if esc.len() != 1 && c != '\'' {
+            f.write_str(&s[from..i])?;
+            for c in esc {
+                f.write_char(c)?;
+            }
+            from = i + c.len_utf8();
+        }
+    }
+    f.write_str(&s[from..])?;
+    f.write_char('"')
+}
 
 /// `enum Record` represents an arbitrary DDlog value.
 ///
@@ -37,7 +60,7 @@ impl fmt::Display for Record {
             Record::Bool(true)          => write!(f, "true"),
             Record::Bool(false)         => write!(f, "false"),
             Record::Int(i)              => i.fmt(f),
-            Record::String(s)           => write!(f, "{:?}", s),
+            Record::String(s)           => format_ddlog_str(s.as_ref(), f),
             Record::Tuple(recs)         => {
                 write!(f, "(")?;
                 let len = recs.len();
@@ -697,6 +720,151 @@ impl IntoRecord for u128 {
 impl Mutator<u128> for Record {
     fn mutate(&self, v: &mut u128) -> Result<(), String> {
         *v = u128::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for i8 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_i8() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot convert {} to i8", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+impl Mutator<i8> for Record {
+    fn mutate(&self, v: &mut i8) -> Result<(), String> {
+        *v = i8::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl IntoRecord for i8 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
+impl FromRecord for i16 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_i16() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot convert {} to i16", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+impl IntoRecord for i16 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
+impl Mutator<i16> for Record {
+    fn mutate(&self, v: &mut i16) -> Result<(), String> {
+        *v = i16::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for i32 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_i32() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot convert {} to i32", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+impl IntoRecord for i32 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
+impl Mutator<i32> for Record {
+    fn mutate(&self, v: &mut i32) -> Result<(), String> {
+        *v = i32::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for i64 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_i64() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot convert {} to i64", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+impl IntoRecord for i64 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
+impl Mutator<i64> for Record {
+    fn mutate(&self, v: &mut i64) -> Result<(), String> {
+        *v = i64::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for i128 {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Int(i) => {
+                match i.to_i128() {
+                    Some(x) => Result::Ok(x),
+                    None    => Result::Err(format!("cannot convert {} to i128", i))
+                }
+            },
+            v => {
+                Result::Err(format!("not an int {:?}", *v))
+            }
+        }
+    }
+}
+
+impl IntoRecord for i128 {
+    fn into_record(self) -> Record {
+        Record::Int(BigInt::from(self))
+    }
+}
+
+impl Mutator<i128> for Record {
+    fn mutate(&self, v: &mut i128) -> Result<(), String> {
+        *v = i128::from_record(self)?;
         Ok(())
     }
 }

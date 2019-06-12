@@ -81,11 +81,13 @@ instance Show BOp where
 
 data UOp = Not
          | BNeg
+         | UMinus
          deriving (Eq, Ord)
 
 instance PP UOp where
-    pp Not  = "not"
-    pp BNeg = "~"
+    pp Not    = "not"
+    pp BNeg   = "~"
+    pp UMinus = "-"
 
 instance Show UOp where
     show = render . pp

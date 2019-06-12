@@ -41,6 +41,7 @@ module Language.DifferentialDatalog.Syntax (
         tInt,
         tString,
         tBit,
+        tSigned,
         tStruct,
         tTuple,
         tUser,
@@ -79,6 +80,7 @@ module Language.DifferentialDatalog.Syntax (
         eInt,
         eString,
         eBit,
+        eSigned,
         eStruct,
         eTuple,
         eSlice,
@@ -94,6 +96,7 @@ module Language.DifferentialDatalog.Syntax (
         ePHolder,
         eBinding,
         eTyped,
+        eAs,
         FuncArg(..),
         Function(..),
         funcMutArgs,
@@ -192,6 +195,7 @@ data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
           | TString   {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
+          | TSigned   {typePos :: Pos, typeWidth :: Int}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
           | TTuple    {typePos :: Pos, typeTupArgs :: [Type]}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
@@ -202,6 +206,7 @@ tBool      = TBool     nopos
 tInt       = TInt      nopos
 tString    = TString   nopos
 tBit       = TBit      nopos
+tSigned    = TSigned   nopos
 tStruct    = TStruct   nopos
 tTuple [t] = t
 tTuple ts  = TTuple    nopos ts
@@ -236,6 +241,7 @@ instance Eq Type where
     (==) TInt{}             TInt{}              = True
     (==) TString{}          TString{}           = True
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
+    (==) (TSigned _ w1)     (TSigned _ w2)      = w1 == w2
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
     (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
@@ -249,17 +255,19 @@ trank TBool  {} = 0
 trank TInt   {} = 1
 trank TString{} = 2
 trank TBit   {} = 3
-trank TStruct{} = 4
-trank TTuple {} = 5
-trank TUser  {} = 6
-trank TVar   {} = 7
-trank TOpaque{} = 8
+trank TSigned{} = 4
+trank TStruct{} = 5
+trank TTuple {} = 6
+trank TUser  {} = 7
+trank TVar   {} = 8
+trank TOpaque{} = 9
 
 instance Ord Type where
     compare TBool{}            TBool{}             = EQ
     compare TInt{}             TInt{}              = EQ
     compare TString{}          TString{}           = EQ
     compare (TBit _ w1)        (TBit _ w2)         = compare w1 w2
+    compare (TSigned _ w1)     (TSigned _ w2)      = compare w1 w2
     compare (TStruct _ cs1)    (TStruct _ cs2)     = compare cs1 cs2
     compare (TTuple _ ts1)     (TTuple _ ts2)      = compare ts1 ts2
     compare (TUser _ n1 as1)   (TUser _ n2 as2)    = compare (n1, as1) (n2, as2)
@@ -277,6 +285,7 @@ instance PP Type where
     pp (TInt _)         = "bigint"
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
+    pp (TSigned _ w)    = "signed<" <> pp w <> ">"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
@@ -299,6 +308,7 @@ typeTypeVars TBool{}     = []
 typeTypeVars TInt{}      = []
 typeTypeVars TString{}   = []
 typeTypeVars TBit{}      = []
+typeTypeVars TSigned{}   = []
 typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
                                $ concatMap consArgs typeCons
 typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
@@ -329,7 +339,7 @@ instance PP TypeDef where
                           then empty
                           else "<" <> (hcat $ punctuate comma $ map (("'" <>) . pp) tdefArgs) <> ">") <+>
                       "=" <+> (pp $ fromJust tdefType))
-    pp TypeDef{..} = ppAttributes tdefAttrs $$   
+    pp TypeDef{..} = ppAttributes tdefAttrs $$
                      ("extern type" <+> pp tdefName <>
                       (if null tdefArgs
                           then empty
@@ -543,6 +553,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EInt          {exprPos :: Pos, exprIVal :: Integer}
                 | EString       {exprPos :: Pos, exprString :: String}
                 | EBit          {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
+                | ESigned       {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
                 | EStruct       {exprPos :: Pos, exprConstructor :: String, exprStructFields :: [(String, e)]}
                 | ETuple        {exprPos :: Pos, exprTupleFields :: [e]}
                 | ESlice        {exprPos :: Pos, exprOp :: e, exprH :: Int, exprL :: Int}
@@ -557,6 +568,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EPHolder      {exprPos :: Pos}
                 | EBinding      {exprPos :: Pos, exprVar :: String, exprPattern :: e}
                 | ETyped        {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
+                | EAs           {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | ERef          {exprPos :: Pos, exprPattern :: e}
 
 instance Eq e => Eq (ExprNode e) where
@@ -567,6 +579,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EInt _ i1)              (EInt _ i2)                = i1 == i2
     (==) (EString _ s1)           (EString _ s2)             = s1 == s2
     (==) (EBit _ w1 i1)           (EBit _ w2 i2)             = w1 == w2 && i1 == i2
+    (==) (ESigned _ w1 i1)        (ESigned _ w2 i2)          = w1 == w2 && i1 == i2
     (==) (EStruct _ c1 fs1)       (EStruct _ c2 fs2)         = c1 == c2 && fs1 == fs2
     (==) (ETuple _ fs1)           (ETuple _ fs2)             = fs1 == fs2
     (==) (ESlice _ e1 h1 l1)      (ESlice _ e2 h2 l2)        = e1 == e2 && h1 == h2 && l1 == l2
@@ -581,6 +594,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EPHolder _)             (EPHolder _)               = True
     (==) (EBinding _ v1 e1)       (EBinding _ v2 e2)         = v1 == v2 && e1 == e2
     (==) (ETyped _ e1 t1)         (ETyped _ e2 t2)           = e1 == e2 && t1 == t2
+    (==) (EAs _ e1 t1)            (EAs _ e2 t2)              = e1 == e2 && t1 == t2
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) _                        _                          = False
 
@@ -600,6 +614,7 @@ instance PP e => PP (ExprNode e) where
                      | otherwise
                              = pp $ show s
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
+    pp (ESigned _ w v)       = pp w <> "'sd" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
@@ -625,6 +640,7 @@ instance PP e => PP (ExprNode e) where
     pp (EPHolder _)          = "_"
     pp (EBinding _ v e)      = parens $ pp v <> "@" <+> pp e
     pp (ETyped _ e t)        = parens $ pp e <> ":" <+> pp t
+    pp (EAs _ e t)           = parens $ pp e <+> "as" <+> pp t
     pp (ERef _ e)            = parens $ "&" <> pp e
 
 instance PP e => Show (ExprNode e) where
@@ -658,6 +674,7 @@ eFalse              = eBool False
 eInt i              = E $ EInt      nopos i
 eString s           = E $ EString   nopos s
 eBit w v            = E $ EBit      nopos w v
+eSigned w v         = E $ ESigned   nopos w v
 eStruct c as        = E $ EStruct   nopos c as
 eTuple [a]          = a
 eTuple as           = E $ ETuple    nopos as
@@ -674,6 +691,7 @@ eNot e              = eUnOp Not e
 ePHolder            = E $ EPHolder  nopos
 eBinding v e        = E $ EBinding  nopos v e
 eTyped e t          = E $ ETyped    nopos e t
+eAs e t             = E $ EAs       nopos e t
 eRef e              = E $ ERef      nopos e
 
 data FuncArg = FuncArg { argPos  :: Pos
@@ -1022,6 +1040,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxBinding        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a typed expression 'X: t'
           | CtxTyped          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a type cast expression 'X as t'
+          | CtxAs             {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a &-pattern '&e'
           | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
 
@@ -1065,6 +1085,7 @@ instance PP ECtx where
                     CtxUnOp{..}           -> "CtxUnOp           " <+> epar
                     CtxBinding{..}        -> "CtxBinding        " <+> epar
                     CtxTyped{..}          -> "CtxTyped          " <+> epar
+                    CtxAs{..}             -> "CtxAs             " <+> epar
                     CtxRef{..}            -> "CtxRef            " <+> epar
                     CtxTop                -> error "pp CtxTop"
 

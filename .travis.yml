@@ -25,14 +25,15 @@ cache:
         - .stack-work
 
 env:
-   - TEST_SUITE='-p tutorial' BUILD_BINARY=1
-   - TEST_SUITE='-p span_uuid' JAVA=1
-   - TEST_SUITE='-p souffle0'
-   - TEST_SUITE='-p simple'
-   - TEST_SUITE='-p path'
-   - TEST_SUITE='-p ovn'
-   - TEST_SUITE='-p modules'
-   - TEST_SUITE='-p span_string'
+   - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
+   - TOOL=run_souffle_tests
+   - TOOL=stack TEST_SUITE='-p span_uuid' JAVA=1
+   - TOOL=stack TEST_SUITE='-p souffle0'
+   - TOOL=stack TEST_SUITE='-p simple'
+   - TOOL=stack TEST_SUITE='-p path'
+   - TOOL=stack TEST_SUITE='-p ovn'
+   - TOOL=stack TEST_SUITE='-p modules'
+   - TOOL=stack TEST_SUITE='-p span_string'
 
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -48,6 +49,7 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - subversion
 
 before_install:
 - pip install --user parglare
@@ -55,8 +57,10 @@ before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
+- if [ x$BUILD_BINARY = x1 ]; then cargo install cargo-vendor || true; fi
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
+- if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
 
 install:
 # Build dependencies
@@ -66,7 +70,8 @@ script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
-- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"
+- if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
+- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && ./run-souffle-tests.py -s 0 -r 17; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test && ./run.sh; fi
 
 before_deploy:
@@ -82,12 +87,22 @@ before_deploy:
     - cp "$BIN" "$DIST_DIR/bin/"
     - cp "$OVSDB_BIN" "$DIST_DIR/bin/"
     - cp -r lib "$DIST_DIR/"
+    # Include Rust dependencies for offline build
+    - cd rust/template
+    - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
+    - cargo vendor -s Cargo.full.toml --relative-path > config
+    - cp -r vendor "../../$DIST_DIR/"
+    - mkdir "../../$DIST_DIR/.cargo" 
+    - cp config "../../$DIST_DIR/.cargo/"
+    - cp Cargo.lock "../../$DIST_DIR/"
+    - cd ../../
     # First copy Java sources only, then build and copy the .jar
     - cp -r java "$DIST_DIR/"
     - cd java
     - make
     - cd ..
     - cp java/ddlogapi.jar "$DIST_DIR/java/"
+    - cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
     - cp -r doc "$DIST_DIR/"
     - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
 

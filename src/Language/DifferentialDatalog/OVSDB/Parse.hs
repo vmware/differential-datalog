@@ -110,20 +110,20 @@ removeTabs = do s <- getInput
                 setInput s'
 
 databaseSchema :: Parsec String u OVSDBSchema
-databaseSchema = do 
+databaseSchema = do
     properties <- braces $ commaSep databaseSchemaProperties
     name <- case mapMaybe (\case
                             PropertyName n -> Just n
                             _              -> Nothing) properties of
                  [n] -> return n
-                 []  -> fail "Schema name is missing" 
+                 []  -> fail "Schema name is missing"
                  _   -> fail "Multiple \"name\" fields"
     tables <- case mapMaybe (\case
                              PropertyTables ts -> Just ts
                              _                 -> Nothing) properties of
                    [ts] -> return ts
-                   []   -> fail "Schema is empty" 
-                   _    -> fail "Multiple \"tables\" fields"                   
+                   []   -> fail "Schema is empty"
+                   _    -> fail "Multiple \"tables\" fields"
     return $ OVSDBSchema name tables
 
 databaseSchemaProperties :: Parsec String u SchemaProperty
@@ -163,9 +163,8 @@ tableRoot = RootProperty <$> ((simpleOrQuoted "isRoot") *> colon *> booleanLit)
 tableIndexes :: Parsec String u TableProperty
 tableIndexes = IgnoredProperty <$ ((simpleOrQuoted "indexes") *> colon *> stringArrayArray)
 
--- currently ignored
 tableMaxRows :: Parsec String u TableProperty
-tableMaxRows = IgnoredProperty <$ ((simpleOrQuoted "maxRows") *> colon *> decimal)
+tableMaxRows = MaxRows <$> ((simpleOrQuoted "maxRows") *> colon *> (fromInteger <$> decimal))
 
 stringArrayArray :: Parsec String u [[String]]
 stringArrayArray = brackets $ commaSep $ brackets $ commaSep stringLit
@@ -306,6 +305,7 @@ instance WithPos Table where
 data TableProperty = IgnoredProperty
                    | RootProperty Bool
                    | ColumnsProperty [TableColumn]
+                   | MaxRows Int
 
 instance Show TableProperty where
   show IgnoredProperty = ""

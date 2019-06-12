@@ -11,6 +11,9 @@ use std::fmt;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use super::record::{FromRecord, IntoRecord, Record, Mutator};
+use super::int;
+use num::ToPrimitive;
+use num::bigint::ToBigInt;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint{x:BigUint}
@@ -29,6 +32,9 @@ impl Uint {
     pub fn from_bigint(v: BigInt) -> Uint {
         Uint{x: v.to_biguint().unwrap()}
     }
+    pub fn from_Int(v: int::Int) -> Uint {
+        v.to_Uint().unwrap()
+    }    
     pub fn from_u8(v: u8) -> Uint {
         Uint{x: BigUint::from(v)}
     }
@@ -43,6 +49,24 @@ impl Uint {
     }
     pub fn from_u128(v: u128) -> Uint {
         Uint{x: BigUint::from(v)}
+    }
+    pub fn to_u8(&self) -> Option<u8> {
+        self.x.to_u8()
+    }
+    pub fn to_u16(&self) -> Option<u16> {
+        self.x.to_u16()
+    }
+    pub fn to_u32(&self) -> Option<u32> {
+        self.x.to_u32()
+    }
+    pub fn to_u64(&self) -> Option<u64> {
+        self.x.to_u64()
+    }
+    pub fn to_u128(&self) -> Option<u128> {
+        self.x.to_u128()
+    }
+    pub fn to_Int(&self) -> Option<int::Int> {
+        self.x.to_bigint().map(|x|int::Int::from_bigint(x))
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
         Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}

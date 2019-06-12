@@ -90,13 +90,13 @@ goldenTests progress = do
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
 
 sOUFFLE_BASE = "./test"
--- These should be all directories, but currently many tests do not work with
+-- These should be all directories, but currently some tests do not work with
 -- the Souffle translator
 sOUFFLE_DIRS = ["souffle0", -- large Doop example
                 "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
                  -- "souffle7", -- uses a recursive type
-                 "souffle9", "souffle10", 
-                 "souffle11", "souffle12", "souffle13", "souffle14", "souffle15", "souffle16", "souffle17", "souffle18", "souffle20"]
+                 "souffle9", "souffle10", "souffle11", "souffle12", "souffle13",
+                 "souffle14", "souffle15", "souffle16", "souffle17", "souffle18", "souffle19", "souffle20"]
 
 souffleTests :: Bool -> TestTree
 souffleTests progress =

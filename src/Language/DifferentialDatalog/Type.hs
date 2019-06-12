@@ -35,7 +35,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isInt, isString, isStruct, isTuple, isGroup,
+    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -105,6 +105,7 @@ typeIsPolymorphic TBool{}     = False
 typeIsPolymorphic TInt{}      = False
 typeIsPolymorphic TString{}   = False
 typeIsPolymorphic TBit{}      = False
+typeIsPolymorphic TSigned{}   = False
 typeIsPolymorphic TStruct{..} = any (any (typeIsPolymorphic . typ) . consArgs) typeCons
 typeIsPolymorphic TTuple{..}  = any typeIsPolymorphic typeTupArgs
 typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
@@ -144,6 +145,8 @@ unifyTypes' d p ctx (a, c) =
         (TInt{}          , TInt{})           -> return M.empty
         (TString{}       , TString{})        -> return M.empty
         (TBit _ w1       , TBit _ w2)        | w1 == w2
+                                             -> return M.empty
+        (TSigned _ w1    , TSigned _ w2)     | w1 == w2
                                              -> return M.empty
         (TTuple _ as1    , TTuple _ as2)     | length as1 == length as2
                                              -> unifyTypes d p ctx $ zip as1 as2
@@ -265,13 +268,15 @@ exprNodeType' _ _   (EBool _ _)           = return tBool
 
 exprNodeType' d ctx (EInt p _)            = do
     case ctxExpectType' d ctx of
-         Just t@(TBit _ _) -> return t
-         Just t@(TInt _)   -> return t
-         Nothing           -> return tInt
-         _                 -> eunknown p ctx
+         Just t@(TBit _ _)    -> return t
+         Just t@(TSigned _ _) -> return t
+         Just t@(TInt _)      -> return t
+         Nothing              -> return tInt
+         _                    -> eunknown p ctx
 
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
+exprNodeType' _ _   (ESigned _ w _)       = return $ tSigned w
 
 exprNodeType' d ctx (EStruct p c mas)     = do
     let tdef = consType d c
@@ -300,8 +305,10 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
          And    -> return tBool
          Or     -> return tBool
          Impl   -> return tBool
-         Plus   -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
-         Minus  -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else tInt
+         Plus   -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else
+                            if isSigned d t1 then tSigned (max (typeWidth t1) (typeWidth t2)) else tInt
+         Minus  -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else
+                            if isSigned d t1 then tSigned (max (typeWidth t1) (typeWidth t2)) else tInt
          Mod    -> return t1
          Times  -> return t1
          Div    -> return t1
@@ -321,11 +328,13 @@ exprNodeType' _ ctx (EBinOp p ShiftL e1 _) = mtype2me p ctx e1
 exprNodeType' _ ctx (EBinOp p _ _ _)       = eunknown p ctx
 exprNodeType' _ _   (EUnOp _ Not _)        = return tBool
 exprNodeType' d _   (EUnOp _ BNeg (Just e))= return $ typ' d e
+exprNodeType' d _   (EUnOp _ UMinus (Just e)) = return $ typ' d e
 exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
 exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
 exprNodeType' d ctx (EBinding p _ e)       = mtype2me p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
-exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t] 
+exprNodeType' _ _   (EAs _ _ t)            = return t
+exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t]
 exprNodeType' _ ctx (ERef p _)             = eunknown p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
@@ -381,6 +390,11 @@ isBit d a = case typ' d a of
                  TBit _ _ -> True
                  _        -> False
 
+isSigned :: (WithType a) => DatalogProgram -> a -> Bool
+isSigned d a = case typ' d a of
+                 TSigned _ _ -> True
+                 _           -> False
+
 isInt :: (WithType a) => DatalogProgram -> a -> Bool
 isInt d a = case typ' d a of
                  TInt _ -> True
@@ -428,6 +442,7 @@ typeNormalize' d t =
     case t' of
          TBool{}            -> t'
          TBit{}             -> t'
+         TSigned{}          -> t'
          TInt{}             -> t'
          TString{}          -> t'
          TTuple{..}         -> t'{typeTupArgs = map (typeNormalize d) typeTupArgs}
@@ -564,8 +579,10 @@ ctxExpectType d (CtxBinOpR e ctx)                    =
     where tlhs = exprTypeMaybe d ctx $ exprLeft e
 ctxExpectType _ (CtxUnOp (EUnOp _ Not _) _)          = Just tBool
 ctxExpectType d (CtxUnOp (EUnOp _ BNeg _) ctx)       = ctxExpectType d ctx
+ctxExpectType d (CtxUnOp (EUnOp _ UMinus _) ctx)     = ctxExpectType d ctx
 ctxExpectType d (CtxBinding _ ctx)                   = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
+ctxExpectType _ CtxAs{}                              = Nothing
 ctxExpectType d (CtxRef (ERef _ e) ctx)              =
     case ctxExpectType' d ctx of
          Just (TOpaque _ rEF_TYPE [t]) -> Just t
@@ -635,6 +652,7 @@ consTreeAbduct' d ct@(CT t nodes) (E e) =
          EInt p v       -> (ct, CT t [EInt p v])
          EString p s    -> (ct, CT t [EString p s])
          EBit p w v     -> (ct, CT t [EBit p w v])
+         ESigned p w v  -> (ct, CT t [ESigned p w v])
          EStruct p c fs ->
              let (leftover, abducted) = unzip $ map (\nd -> abductStruct d e nd) nodes
              in (CT t $ concat leftover, CT t $ concat abducted)
@@ -678,6 +696,7 @@ typeMapM fun t@TBool{}     = fun t
 typeMapM fun t@TInt{}      = fun t
 typeMapM fun t@TString{}   = fun t
 typeMapM fun t@TBit{}      = fun t
+typeMapM fun t@TSigned{}   = fun t
 typeMapM fun t@TStruct{..} = do
     cons <- mapM (\c -> do
                    cargs <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ consArgs c

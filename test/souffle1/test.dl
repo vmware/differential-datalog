@@ -1,8 +1,8 @@
 .decl edge(x:number, y:number)
-.input edge(separator=",")
+.input edge(delimiter=",")
 
 .decl path(x:number, y:number)
-.output path(separator=",")
+.output path(delimiter=",")
 
 path(x, y) :- edge(x, y).
 path(x, y) :- path(x, z), edge(z, y).
