@@ -28,6 +28,7 @@ use std::collections::BTreeSet;
 
 use datalog_example_ddlog::*;
 use datalog_example_ddlog::valmap::*;
+use datalog_example_ddlog::update_handler::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;
@@ -37,13 +38,22 @@ use time::precise_time_ns;
 //extern crate cpuprofiler;
 //use cpuprofiler::PROFILER;
 
-fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
+/*fn upd_cb(do_print: bool, do_store: bool, db: &Arc<Mutex<ValMap>>, relid: RelId, v: &Value, pol: bool) {
     if do_store {
         db.lock().unwrap().update(relid, v, pol);
     };
     if do_print {
         eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, relid, *v);
     };
+}*/
+
+extern "C" fn print_fun(_arg: libc::uintptr_t,
+                        table: libc::size_t,
+                        rec: *const Record,
+                        pol: bool) {
+    unsafe {
+        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec);
+    }
 }
 
 fn handle_cmd(db: &Arc<Mutex<ValMap>>, p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>, cmd: Command) -> (i32, bool) {
@@ -183,11 +193,30 @@ pub fn main() {
     let store   = args.store;
     let workers = args.workers;
 
-    let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
+    //let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
 
+    let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
+    let mut handlers: Vec<Box<dyn DynUpdateHandler<Value>>> = Vec::new();
+
+    if store {
+        handlers.push(Box::new(MTValMapUpdateHandler::new(db.clone())));
+    };
+    if print{
+        handlers.push(Box::new(ExternCUpdateHandler::new(print_fun, 0)))
+    };
+
+    let handler: Box<dyn DynUpdateHandler<Value>> = if handlers.len() == 0 {
+        Box::new(NullUpdateHandler::new())
+    } else if handlers.len() == 1 {
+        handlers[0].clone()
+    } else {
+        Box::new(ChainedDynUpdateHandler::new(handlers))
+    };
+
+    let handler2 = handler.clone();
     let ret = run_interactive(db.clone(), Box::new(move |relid,v,w| {
         debug_assert!(w == 1 || w == -1);
-        upd_cb(print, store, &db, relid, v, w == 1)
+        handler2.update(relid, v, w == 1)
     }), workers);
     exit(ret);
 }
