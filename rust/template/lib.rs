@@ -186,11 +186,7 @@ pub extern "C" fn ddlog_run(
         Box::new(handler::ChainedDynUpdateHandler::new(handlers))
     };
 
-    let handler2 = handler.clone();
-    let program = prog(Box::new(move |relid, v, w| {
-        debug_assert!(w == 1 || w == -1);
-        handler2.update(relid, v, w == 1)
-    }));
+    let program = prog(handler.update());
     let prog = program.run(workers as usize);
     sync::Arc::into_raw(sync::Arc::new(HDDlog{
         prog:           sync::Mutex::new(prog),

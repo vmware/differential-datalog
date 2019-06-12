@@ -202,11 +202,10 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
     }
 }*/
 
-fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: Weight)
+fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: bool)
 {
-    debug_assert!(w == 1 || w == -1);
     //println!("set_update({}) {:?} {}", rel, *x, insert);
-    if w==1 {
+    if w {
         s.lock().unwrap().insert(x.clone());
     } else {
         s.lock().unwrap().remove(x);
