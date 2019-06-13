@@ -193,23 +193,23 @@ pub enum ProgNode<V: Val> {
 }
 
 pub trait CBFn<V>: Fn(RelId, &V, bool) + Send {
-   fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
+    fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
 }
 
 impl<T, V> CBFn<V> for T
 where
-   V: Val,
-   T: 'static + Send + Clone + Fn(RelId, &V, bool)
+    V: Val,
+    T: 'static + Send + Clone + Fn(RelId, &V, bool)
 {
-   fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
-       Box::new(self.clone())
-   }
+    fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
+        Box::new(self.clone())
+    }
 }
 
 impl <V: Val> Clone for Box<dyn CBFn<V>> {
-   fn clone(&self) -> Self {
-       self.as_ref().clone_boxed()
-   }
+    fn clone(&self) -> Self {
+        self.as_ref().clone_boxed()
+    }
 }
 
 /// Datalog relation.

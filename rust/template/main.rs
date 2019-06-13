@@ -18,17 +18,11 @@ extern crate rustop;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::process::exit;
-use std::io;
-use std::io::{Stdout,stdout,stderr};
-use std::env;
-use std::option::*;
-//use std::mem;
-
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::io::stdout;
 
 use datalog_example_ddlog::*;
 use datalog_example_ddlog::valmap::*;
+use datalog_example_ddlog::api::*;
 use datalog_example_ddlog::update_handler::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
@@ -48,7 +42,7 @@ extern "C" fn print_fun(_arg: libc::uintptr_t,
     }
 }
 
-fn handle_cmd(handler: &Box<dyn DynUpdateHandler<Value>>,
+fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
               db: &Arc<Mutex<ValMap>>,
               p: &mut RunningProgram<Value>,
               upds: &mut Vec<Update<Value>>,
@@ -160,9 +154,11 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, handler: Box<dyn DynUpdateHandler<Value>>, nworkers: usize) -> i32 {
-    let p = prog(handler.update());
-    let mut running = Arc::new(Mutex::new(p.run(nworkers)));
+pub fn run_interactive(db: Arc<Mutex<ValMap>>, handler: Box<dyn IMTUpdateHandler<Value>>, nworkers: usize) -> i32 {
+    let p = prog(handler.mt_update_cb());
+    handler.before_commit();
+    let running = Arc::new(Mutex::new(p.run(nworkers)));
+    handler.after_commit(true);
     let upds = Arc::new(Mutex::new(Vec::new()));
     let ret = interact(|cmd| handle_cmd(&handler, &db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd));
     Arc::try_unwrap(running).ok()
@@ -193,34 +189,43 @@ pub fn main() {
     let workers = args.workers;
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
+    let db2 = db.clone();
 
-    let mut nhandlers: usize = 0;
-    let store_handler = if store {
-        nhandlers = nhandlers + 1;
-        Some(MTValMapUpdateHandler::new(db.clone()))
+    let handler: Box<dyn IMTUpdateHandler<Value>> = if !store && !print {
+            Box::new(NullUpdateHandler::new())
     } else {
-        None
-    };
-    let print_handler = if print {
-        nhandlers = nhandlers + 1;
-        Some(ExternCUpdateHandler::new(print_fun, 0))
-    } else {
-        None
-    };
+        let handler_generator = move || {
+            let mut nhandlers: usize = 0;
+            let store_handler = if store {
+                nhandlers = nhandlers + 1;
+                Some(ValMapUpdateHandler::new(db2))
+            } else {
+                None
+            };
+            let print_handler = if print {
+                nhandlers = nhandlers + 1;
+                Some(ExternCUpdateHandler::new(print_fun, 0))
+            } else {
+                None
+            };
 
-    let handler: Box<dyn DynUpdateHandler<Value>> = if nhandlers <= 1 {
-        if print_handler.is_some() {
-            Box::new(ThreadUpdateHandler::new(print_handler.unwrap()))
-        } else if store_handler.is_some() {
-            Box::new(ThreadUpdateHandler::new(store_handler.unwrap()))
-        } else {
-            Box::new(ThreadUpdateHandler::new(NullUpdateHandler::new()))
-        }
-    } else {
-        let mut handlers: Vec<Box<dyn DynUpdateHandler<Value>>> = Vec::new();
-        store_handler.map(|h| handlers.push(Box::new(h)));
-        print_handler.map(|h| handlers.push(Box::new(h)));
-        Box::new(ThreadUpdateHandler::new(ChainedDynUpdateHandler::new(handlers)))
+            let handler: Box<dyn UpdateHandler<Value>> = if nhandlers <= 1 {
+                if print_handler.is_some() {
+                    Box::new(print_handler.unwrap())
+                } else if store_handler.is_some() {
+                    Box::new(store_handler.unwrap())
+                } else {
+                    unreachable!()
+                }
+            } else {
+                let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
+                store_handler.map(|h| handlers.push(Box::new(h)));
+                print_handler.map(|h| handlers.push(Box::new(h)));
+                Box::new(ChainedUpdateHandler::new(handlers))
+            };
+            handler
+        };
+        Box::new(ThreadUpdateHandler::new(handler_generator, 100000))
     };
 
     let ret = run_interactive(db.clone(), handler, workers);

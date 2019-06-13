@@ -49,6 +49,7 @@ import Data.Int
 import Data.Word
 import Data.Bits hiding (isSigned)
 import Data.Char
+import Data.List.Split
 import Data.FileEmbed
 import Data.String.Utils
 import System.FilePath
@@ -111,7 +112,12 @@ fUNCS_RETURN_REF = ["std.deref"]
 
 -- Rust imports
 header :: String -> Doc
-header specname = pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/lib.rs")
+header specname =
+    let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/" 
+                 $ BS.unpack $ $(embedFile "rust/template/lib.rs") of
+                []  -> error "Missing separator in lib.rs"
+                h:_ -> h
+    in pp $ replace "datalog_example" specname h
 
 -- Cargo.toml
 cargo :: String -> Doc -> [String] -> Doc
@@ -129,6 +135,7 @@ templateFiles specname =
     map (mapSnd (BS.unpack)) $
         [ (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
         , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
+        , (dir </> "api.rs"                 , $(embedFile "rust/template/api.rs"))
         , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
         , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
         , (dir </> "update_handler.rs"      , $(embedFile "rust/template/update_handler.rs"))

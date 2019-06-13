@@ -212,8 +212,6 @@ fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: bool)
     }
 }
 
-
-
 /* Test insertion/deletion into a database with a single table and no rules
  */
 fn test_one_relation(nthreads: usize) {
