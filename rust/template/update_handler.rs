@@ -18,7 +18,7 @@ use super::*;
 use std::thread::*;
 use std::sync::mpsc::*;
 use std::sync::{Arc, Barrier, Mutex, MutexGuard};
-use std::cell::RefCell;
+use std::cell::Cell;
 use super::valmap::*;
 
 /* Single-threaded (non-thread-safe callback)
@@ -198,8 +198,9 @@ pub struct ValMapUpdateHandler {
     db: Arc<Mutex<ValMap>>,
     /* Stores pointer to `MutexGuard` between `before_commit()` and
     * `after_commit()`.  This has to be unsafe, because Rust does
-    * not let us express a borrow from a field of the same struct. */
-    locked: Arc<RefCell<*mut libc::c_void>>
+    * not let us express a borrow from a field of the same struct in a
+    * safe way. */
+    locked: Arc<Cell<*mut libc::c_void>>
 }
 
 impl Drop for ValMapUpdateHandler {
@@ -215,7 +216,7 @@ impl Drop for ValMapUpdateHandler {
 impl ValMapUpdateHandler
 {
     pub fn new(db: Arc<Mutex<ValMap>>) -> Self {
-        Self{db, locked: Arc::new(RefCell::new(ptr::null_mut()))}
+        Self{db, locked: Arc::new(Cell::new(ptr::null_mut()))}
     }
 }
 
@@ -224,12 +225,12 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
     fn update_cb(&self) -> Box<dyn ST_CBFn<Value>> {
         let handler = self.clone();
         Box::new(move |relid, v, w|{
-            let guard_ptr = handler.locked.borrow();
+            let guard_ptr = handler.locked.get();
             /* `update_cb` can only be called between `before_commit()` and
              * `after_commit()` */
-            assert_ne!(*guard_ptr, ptr::null_mut());
+            assert_ne!(guard_ptr, ptr::null_mut());
             let mut guard: Box<MutexGuard<'_, ValMap>> = unsafe {
-                Box::from_raw(*guard_ptr as *mut MutexGuard<'_, ValMap>)
+                Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
             };
             guard.update(relid, v, w);
             Box::into_raw(guard);
@@ -250,6 +251,66 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
     }
 }
 
+/* `UpdateHandler` implementation that records _changes_ to output relations
+ * rather than complete state.
+ *
+ * The implementation is similar to `ValMapUpdateHandler`, except it keeps
+ * track of the (positive or negative) weight of each record.
+ */
+#[derive(Clone)]
+pub struct DeltaUpdateHandler {
+    /* Setting the `DeltaMap` to `None` disables recording. */
+    db: Arc<Mutex<Option<DeltaMap>>>,
+    locked: Arc<Cell<*mut libc::c_void>>
+}
+
+impl Drop for DeltaUpdateHandler {
+    /* Release the mutex if still held. */
+    fn drop<'a>(&'a mut self) {
+        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap>;
+        if guard_ptr != ptr::null_mut() {
+            let _guard: Box<MutexGuard<'_, DeltaMap>> = unsafe { Box::from_raw(guard_ptr) };
+        }
+    }
+}
+
+impl DeltaUpdateHandler
+{
+    pub fn new(db: Arc<Mutex<Option<DeltaMap>>>) -> Self {
+        Self{db, locked: Arc::new(Cell::new(ptr::null_mut()))}
+    }
+}
+
+impl UpdateHandler<Value> for DeltaUpdateHandler
+{
+    fn update_cb(&self) -> Box<dyn ST_CBFn<Value>> {
+        let handler = self.clone();
+        Box::new(move |relid, v, w|{
+            let guard_ptr = handler.locked.get();
+            if guard_ptr != ptr::null_mut() {
+                let mut guard: Box<MutexGuard<'_, Option<DeltaMap>>> = unsafe {
+                    Box::from_raw(guard_ptr as *mut MutexGuard<'_, Option<DeltaMap>>)
+                };
+                (*guard).as_mut().map(|db|db.update(relid, v, w));
+                /* make sure that guard does not get dropped */
+                Box::into_raw(guard);
+            }
+        })
+    }
+    fn before_commit(&self) {
+        let guard = Box::into_raw(Box::new(self.db.lock().unwrap())) as *mut libc::c_void;
+        let old = self.locked.replace(guard);
+        assert_eq!(old, ptr::null_mut());
+    }
+    fn after_commit(&self, _success: bool) {
+        let guard_ptr = self.locked.replace(ptr::null_mut());
+        assert_ne!(guard_ptr, ptr::null_mut());
+        let _guard = unsafe {
+            Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>)
+        };
+        /* Lock will be released when `_guard` goes out of scope. */
+    }
+}
 
 /* `UpdateHandler` implementation that chains multiple single-threaded
  * handlers.
@@ -349,8 +410,6 @@ enum Msg<V: Val> {
     Stop
 }
 
-
-
 #[derive(Clone)]
 pub struct ThreadUpdateHandler<V: Val> {
     /* Channel to worker thread. */
@@ -431,10 +490,10 @@ impl <V: Val + IntoRecord> UpdateHandler<V> for ThreadUpdateHandler<V>
         self.msg_channel.lock().unwrap().send(Msg::BeforeCommit);
     }
     fn after_commit(&self, success: bool) {
-        self.msg_channel.lock().unwrap().send(Msg::AfterCommit{success});
-
-        /* Wait for all queued updates to get processed by worker. */
-        self.commit_barrier.wait();
+        if self.msg_channel.lock().unwrap().send(Msg::AfterCommit{success}).is_ok() {
+            /* Wait for all queued updates to get processed by worker. */
+            self.commit_barrier.wait();
+        }
     }
 }
 

@@ -67,6 +67,7 @@ outputs.
 | ------------------------------ |--------------------------------------------------| -----------------------------------------------------------------------|
 | `start;`                       |                                                  | start a transaction                                                    |
 | `commit;`                      |                                                  | commit current transaction                                             |
+| `commit dump_changes;`         |                                                  | commit current transaction and dump all changes to output relations    |
 | `rollback;`                    |                                                  | rollback current transaction; reverting all changes                    |
 | `timestamp;`                   |                                                  | print current time in ns since some unspecified epoch                  |
 | `dump;`                        |                                                  | dump the content of all relations                                      |

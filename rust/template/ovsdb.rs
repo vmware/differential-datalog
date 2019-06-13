@@ -63,7 +63,10 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
         for (i, upd) in upds.iter().enumerate() {
             let sep = if i == n - 1 { ";" } else { "," };
             record_update(&mut *file, upd);
-            write!(&mut *file, "{}\n", sep);
+            if write!(&mut *file, "{}\n", sep).is_err() {
+                prog.eprintln("ddlog_transaction_start(): failed to record invocation in replay file");
+            }
+
         }
     }
 }

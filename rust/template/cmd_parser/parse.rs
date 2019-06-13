@@ -15,7 +15,7 @@ pub enum ProfileCmd {
 #[derive(Debug,PartialEq,Eq,Clone)]
 pub enum Command {
     Start,
-    Commit,
+    Commit(bool),
     Comment,
     Rollback,
     Timestamp,
@@ -60,7 +60,10 @@ named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>
         upd: alt!(do_parse!(apply!(sym,"start")     >> apply!(sym,";") >> (Command::Start))     |
-                  do_parse!(apply!(sym,"commit")    >> apply!(sym,";") >> (Command::Commit))    |
+                  do_parse!(apply!(sym,"commit")    >>
+                            delta: opt!(apply!(sym, "dump_changes"))   >>
+                            apply!(sym,";")         >>
+                            (Command::Commit(delta.is_some())))                                 |
                   do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
                   do_parse!(apply!(sym,"#")         >> take_until!("\n") >> (Command::Comment)) |
                   do_parse!(apply!(sym,"profile")   >>

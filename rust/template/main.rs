@@ -44,6 +44,7 @@ extern "C" fn print_fun(_arg: libc::uintptr_t,
 
 fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
               db: &Arc<Mutex<ValMap>>,
+              deltadb: &Arc<Mutex<Option<DeltaMap>>>,
               p: &mut RunningProgram<Value>,
               upds: &mut Vec<Update<Value>>,
               cmd: Command) -> (i32, bool)
@@ -57,13 +58,21 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
         Command::Start => {
             p.transaction_start()
         },
-        Command::Commit => {
+        Command::Commit(record_delta) => {
+            if record_delta {
+                *deltadb.lock().unwrap() = Some(DeltaMap::new());
+            }
             // uncomment to enable profiling
             handler.before_commit();
             //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
             let res = p.transaction_commit();
             //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
             handler.after_commit(res.is_ok());
+            if record_delta {
+                let mut delta = deltadb.lock().unwrap();
+                let _ = delta.as_ref().map(|db|db.format(&mut stdout()));
+                *delta = None;
+            }
             res
         },
         Command::Comment => {
@@ -86,7 +95,7 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
             Ok(())
         },
         Command::Dump(None) => {
-            db.lock().unwrap().format(&mut stdout());
+            let _ = db.lock().unwrap().format(&mut stdout());
             Ok(())
         },
         Command::Dump(Some(rname)) => {
@@ -97,7 +106,7 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
                 },
                 Some(rid) => rid as RelId
             };
-            db.lock().unwrap().format_rel(relid, &mut stdout());
+            let _ = db.lock().unwrap().format_rel(relid, &mut stdout());
             Ok(())
         },
         Command::Clear(rname) => {
@@ -108,8 +117,7 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
                 },
                 Some(rid) => rid as RelId
             };
-            p.clear_relation(relid);
-            Ok(())
+            p.clear_relation(relid)
         },
         Command::Exit => {
             return (0, false);
@@ -154,19 +162,30 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>, handler: Box<dyn IMTUpdateHandler<Value>>, nworkers: usize) -> i32 {
+pub fn run_interactive(db: Arc<Mutex<ValMap>>,
+                       deltadb: Arc<Mutex<Option<DeltaMap>>>,
+                       handler: Box<dyn IMTUpdateHandler<Value>>,
+                       nworkers: usize) -> i32
+{
     let p = prog(handler.mt_update_cb());
     handler.before_commit();
     let running = Arc::new(Mutex::new(p.run(nworkers)));
     handler.after_commit(true);
     let upds = Arc::new(Mutex::new(Vec::new()));
-    let ret = interact(|cmd| handle_cmd(&handler, &db.clone(), &mut running.lock().unwrap(), &mut upds.lock().unwrap(), cmd));
-    Arc::try_unwrap(running).ok()
-        .expect("run_interactive: cannot unwrap Arc")
-        .into_inner()
-        .expect("run_interactive: program is still locked")
-        .stop();
-    ret
+    let ret = interact(|cmd| {
+        handle_cmd(&handler,
+                   &db.clone(),
+                   &deltadb.clone(),
+                   &mut running.lock().unwrap(),
+                   &mut upds.lock().unwrap(),
+                   cmd)
+    });
+    let stop_res = Arc::try_unwrap(running).ok()
+                   .expect("run_interactive: cannot unwrap Arc")
+                   .into_inner()
+                   .expect("run_interactive: program is still locked")
+                   .stop();
+    if ret != 0 { ret } else if stop_res.is_err() { -1 } else { 0 }
 }
 
 pub fn main() {
@@ -175,6 +194,7 @@ pub fn main() {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
         opt store:bool=true, desc:"Do not store relation state (for benchmarking only)."; // --no-store
+        opt delta:bool=true, desc:"Do not record changes.";                               // --no-delta
         opt print:bool=true, desc:"Do not print deltas.";                                 // --no-print
         opt workers:usize=4, short:'w', desc:"The number of worker threads.";             // --workers or -w
     };
@@ -186,10 +206,14 @@ pub fn main() {
 
     let print   = args.print;
     let store   = args.store;
+    let delta   = args.delta;
     let workers = args.workers;
 
     let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
     let db2 = db.clone();
+
+    let deltadb: Arc<Mutex<Option<DeltaMap>>> = Arc::new(Mutex::new(None));
+    let deltadb2 = deltadb.clone();
 
     let handler: Box<dyn IMTUpdateHandler<Value>> = if !store && !print {
             Box::new(NullUpdateHandler::new())
@@ -199,6 +223,12 @@ pub fn main() {
             let store_handler = if store {
                 nhandlers = nhandlers + 1;
                 Some(ValMapUpdateHandler::new(db2))
+            } else {
+                None
+            };
+            let delta_handler = if delta {
+                nhandlers = nhandlers + 1;
+                Some(DeltaUpdateHandler::new(deltadb2))
             } else {
                 None
             };
@@ -214,12 +244,15 @@ pub fn main() {
                     Box::new(print_handler.unwrap())
                 } else if store_handler.is_some() {
                     Box::new(store_handler.unwrap())
+                } else if delta_handler.is_some() {
+                    Box::new(delta_handler.unwrap())
                 } else {
                     unreachable!()
                 }
             } else {
                 let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
                 store_handler.map(|h| handlers.push(Box::new(h)));
+                delta_handler.map(|h| handlers.push(Box::new(h)));
                 print_handler.map(|h| handlers.push(Box::new(h)));
                 Box::new(ChainedUpdateHandler::new(handlers))
             };
@@ -228,6 +261,6 @@ pub fn main() {
         Box::new(ThreadUpdateHandler::new(handler_generator))
     };
 
-    let ret = run_interactive(db.clone(), handler, workers);
+    let ret = run_interactive(db.clone(), deltadb.clone(), handler, workers);
     exit(ret);
 }
