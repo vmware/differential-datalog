@@ -11,7 +11,7 @@ insert Links(1, "Louvres", "Palais Royal"),
 insert Links(1, "Palais-Royal", "Tuileries"),
 insert Links(1, "Tuileries", "Concorde");
 
-commit;
+commit dump_changes;
 
 dump;
 
@@ -24,7 +24,7 @@ insert R3(3, true),
 insert R3(4, true),
 insert R3(5, true),
 insert R3(6, true);
-commit;
+commit dump_changes;
 dump;
 
 start;
@@ -36,7 +36,7 @@ insert Table2("foo", 1234567890, S{(true,true),5}),
 insert Table2("foo", 12, S{(true,false),0xabcd}),
 insert Table2("foo", 100000000000000, S{(false,true),10000}),
 insert Table2("buzzzzzzzz", 1234567890, S{(true,true),5});
-commit;
+commit dump_changes;
 dump Table12;
 
 start;
@@ -45,7 +45,7 @@ insert Rel1(0, IP4{100}),
 insert Rel1(1, IP6{200}),
 insert Rel2(0, Option1{0, IP4{300}, (true, "foo")});
 
-commit;
+commit dump_changes;
 
 echo Rel3:;
 dump Rel3;
@@ -66,7 +66,7 @@ insert AggregateMe3("b", "1", "z"),
 insert AggregateMe3("b", "2", "z"),
 insert AggregateMe3("b", "3", "z");
 
-commit;
+commit dump_changes;
 
 echo Aggregate1;
 dump Aggregate1;
@@ -104,7 +104,7 @@ insert AggregateMeInts("b", 10),
 insert AggregateMeInts("b", 20),
 insert AggregateMeInts("b", 30);
 
-commit;
+commit dump_changes;
 
 echo Sum;
 dump Sum;
@@ -116,7 +116,7 @@ insert WithKey(0, "foo"),
 insert WithKey(1, "bar"),
 insert WithKey(2, "buzz");
 
-commit;
+commit dump_changes;
 
 echo WithKeyDbg;
 dump WithKeyDbg;
@@ -125,7 +125,7 @@ start;
 
 delete WithKey(0, "foo");
 
-commit;
+commit dump_changes;
 
 echo WithKeyDbg after deletion by value;
 dump WithKeyDbg;
@@ -134,7 +134,7 @@ start;
 
 delete_key WithKey 1;
 
-commit;
+commit dump_changes;
 
 echo WithKeyDbg after deletion by key;
 dump WithKeyDbg;
@@ -148,7 +148,7 @@ insert WithKey(4, "hello"),
 delete_key WithKey 2,
 delete_key WithKey 3;
 
-commit;
+commit dump_changes;
 
 echo WithKeyDbg: +3, -2;
 dump WithKeyDbg;
@@ -178,7 +178,7 @@ insert Suspect("Bill Smith"),
 insert Suspect("Arnold Squitieri"),
 insert Suspect("Frank Morelli");
 
-commit;
+commit dump_changes;
 
 echo Innocent;
 dump Innocent;
@@ -199,7 +199,7 @@ insert Address(IPAddr{192,168,0,5}),
 insert Blacklist(IPAddr{192,168,0,0}),
 insert Blacklist(IPAddr{172,16,0,0});
 
-commit;
+commit dump_changes;
 
 echo ValidDestination;
 dump ValidDestination;
@@ -208,7 +208,7 @@ start;
 insert HostAddresses(0, ["10.10.10.101", "10.10.10.102", "10.10.10.103"]),
 insert HostAddresses(0, ["10.10.10.103", "10.10.10.104", "10.10.10.105"]),
 insert HostAddresses(1, ["192.168.0.1", "192.168.0.2", "192.168.0.3"]);
-commit;
+commit dump_changes;
 
 dump HostAddress;
 
@@ -217,7 +217,7 @@ start;
 
 insert ExternalIds(0, [("a", "1"),("b", "2"),("c", "3")]),
 insert ExternalIds(0, [("c", "4"),("d", "5"),("e", "6")]);
-commit;
+commit dump_changes;
 
 dump ExternalId;
 
@@ -242,7 +242,7 @@ insert Request("b", "3"),
 insert Request("b", "4"),
 insert Request("b", "5");
 
-commit;
+commit dump_changes;
 
 dump Allocation;
 
@@ -251,7 +251,7 @@ start;
 clear Request;
 clear Realized;
 
-commit;
+commit dump_changes;
 
 echo Allocation after clear;
 dump Allocation;
@@ -260,7 +260,7 @@ start;
 
 insert Referenced(true, std.Some{"hello"});
 
-commit;
+commit dump_changes;
 
 echo Referee;
 dump Referee;
@@ -414,7 +414,7 @@ insert Alloc(.id = 21,
              .min_val = 1,
              .max_val = 1),
 
-commit;
+commit dump_changes;
 
 echo NewAllocation;
 dump NewAllocation;
@@ -437,7 +437,7 @@ insert YZX(.y = 30, .z = 300, .x = 3),
 insert YZX(.y = 40, .z = 400, .x = 4),
 insert YZX(.y = 50, .z = 500, .x = 5);
 
-commit;
+commit dump_changes;
 
 echo YX;
 dump YX;
@@ -458,7 +458,7 @@ insert Edge(7,8),
 insert Edge(0,7),
 insert Edge(11,12);
 
-commit;
+commit dump_changes;
 
 echo SCCLabel;
 dump SCCLabel;
@@ -471,7 +471,7 @@ insert IString1("Foo "),
 insert String2("world"),
 insert String2("bar");
 
-commit;
+commit dump_changes;
 
 echo ConcatString;
 dump ConcatString;
@@ -491,7 +491,7 @@ insert AMethod("foo", "buzz"),
 insert BMethod("c", "world"),
 insert AMethod("world", "hello"),
 
-commit;
+commit dump_changes;
 
 echo CMethod;
 dump CMethod;
@@ -507,7 +507,7 @@ insert Numbers(2),
 insert Numbers(3),
 insert Numbers(4);
 
-commit;
+commit dump_changes;
 
 echo Power3;
 dump Power3;
@@ -523,7 +523,7 @@ insert Regex("(?i)a+(?-i)b+", "AaAaAbbBBBb"),
 insert Regex("a+b+", "aaaaabbbbbb"),
 insert Regex("a+b+", "AaAaAbbBBBb"),
 
-commit;
+commit dump_changes;
 
 echo RegexMatch;
 dump RegexMatch;
