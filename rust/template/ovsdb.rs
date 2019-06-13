@@ -4,13 +4,12 @@ use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, UpdCmd};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use super::{Value, updcmd2upd, relname2id};
+use super::{Value, relname2id};
 use ddlog_ovsdb_adapter::*;
 use super::valmap;
 use std::sync;
-use std::ptr;
 use std::io::Write;
-use super::{HDDlog, output_relname_to_id, record_update};
+use super::api::{HDDlog, updcmd2upd, record_update};
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -150,5 +149,5 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
 #[no_mangle]
 pub extern "C" fn ddlog_free_json(str: *mut c_char) {
     if str.is_null() { return; }
-    let cstr = unsafe{CString::from_raw(str)};
+    let _ = unsafe{CString::from_raw(str)};
 }

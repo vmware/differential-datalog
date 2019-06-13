@@ -53,7 +53,7 @@ impl ValMap {
     pub fn format_rel(&mut self, relid: RelId, w: &mut io::Write) {
         let set = self.get_rel(relid);
         for val in set {
-            println!("{}", *val);
+            w.write_fmt(format_args!("{}\n", *val));
         };
     }
 
