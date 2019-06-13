@@ -225,7 +225,7 @@ pub fn main() {
             };
             handler
         };
-        Box::new(ThreadUpdateHandler::new(handler_generator, 100000))
+        Box::new(ThreadUpdateHandler::new(handler_generator))
     };
 
     let ret = run_interactive(db.clone(), handler, workers);

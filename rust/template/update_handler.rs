@@ -349,6 +349,8 @@ enum Msg<V: Val> {
     Stop
 }
 
+
+
 #[derive(Clone)]
 pub struct ThreadUpdateHandler<V: Val> {
     /* Channel to worker thread. */
@@ -360,7 +362,15 @@ pub struct ThreadUpdateHandler<V: Val> {
 
 impl <V: Val> ThreadUpdateHandler<V>
 {
-    pub fn new<F>(handler_generator: F, queue_capacity: usize) -> Self 
+    pub const DEFAULT_QUEUE_CAPACITY: usize = 100000;
+
+    pub fn new<F>(handler_generator: F) -> Self
+        where F: FnOnce() -> Box<dyn UpdateHandler<V>> + Send + 'static
+    {
+        Self::with_capacity(handler_generator, Self::DEFAULT_QUEUE_CAPACITY)
+    }
+
+    pub fn with_capacity<F>(handler_generator: F, queue_capacity: usize) -> Self 
         where F: FnOnce() -> Box<dyn UpdateHandler<V>> + Send + 'static
     {
         let (tx_msg_channel, rx_message_channel) = sync_channel(queue_capacity);
