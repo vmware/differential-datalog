@@ -215,7 +215,7 @@ pub fn main() {
     let deltadb: Arc<Mutex<Option<DeltaMap>>> = Arc::new(Mutex::new(None));
     let deltadb2 = deltadb.clone();
 
-    let handler: Box<dyn IMTUpdateHandler<Value>> = if !store && !print {
+    let handler: Box<dyn IMTUpdateHandler<Value>> = if !store && !print && !delta {
             Box::new(NullUpdateHandler::new())
     } else {
         let handler_generator = move || {
