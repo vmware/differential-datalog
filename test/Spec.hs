@@ -83,7 +83,7 @@ goldenTests progress = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] ["staticlib", "cdylib"])
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] ["staticlib"])
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
