@@ -63,6 +63,13 @@ impl DeltaMap {
         DeltaMap{map: BTreeMap::default()}
     }
 
+    pub fn as_ref(&self) -> &BTreeMap<RelId, BTreeMap<Value, isize>> {
+        &self.map
+    }
+    pub fn as_mut(&mut self) -> &mut BTreeMap<RelId, BTreeMap<Value, isize>> {
+        &mut self.map
+    }
+
     pub fn format(&self, w: &mut io::Write) -> io::Result<()> {
        for (relid, relmap) in &self.map {
            w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
