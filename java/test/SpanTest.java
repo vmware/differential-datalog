@@ -283,6 +283,7 @@ public class SpanTest {
                     this.checkSemicolon();
                     break;
                 case "commit":
+                    //this.exitCode = this.api.commit_dump_changes(r -> System.err.println(r.toString()));
                     this.exitCode = this.api.commit();
                     this.checkExitCode();
                     this.checkSemicolon();

@@ -66,7 +66,6 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
             if write!(&mut *file, "{}\n", sep).is_err() {
                 prog.eprintln("ddlog_transaction_start(): failed to record invocation in replay file");
             }
-
         }
     }
 }

@@ -83,15 +83,14 @@ static void deleteCallback(struct CallbackInfo* cbinfo) {
     free(cbinfo);
 }
 
-bool commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     if (cbi == NULL || cbi->jvm == NULL)
-        return false;
+        return;
     JNIEnv* env;
     (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
-    jboolean result = (*env)->CallBooleanMethod(
+    (*env)->CallVoidMethod(
         env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
-    return (bool)result;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
@@ -102,7 +101,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     if (callback == NULL)
         return (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, NULL);
 
-    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)Z");
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
     if (cbinfo == NULL)
         return 0;
     return (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
@@ -128,6 +127,21 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1start(
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
     JNIEnv * env, jobject obj, jlong handle) {
     return ddlog_transaction_commit((ddlog_prog)handle);
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes(
+    JNIEnv * env, jobject obj, jlong handle, jstring callback) {
+
+    if (callback == NULL)
+        return ddlog_transaction_commit_dump_changes((ddlog_prog)handle, NULL, 0);
+
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
+    if (cbinfo == NULL)
+        return -1;
+
+    return ddlog_transaction_commit_dump_changes((ddlog_prog)handle,
+						 commit_callback,
+						 (uintptr_t)cbinfo);
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(

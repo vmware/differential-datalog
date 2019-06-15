@@ -20,6 +20,7 @@ public class DDlogAPI {
     static native int  ddlog_stop(long hprog);
     static native int ddlog_transaction_start(long hprog);
     static native int ddlog_transaction_commit(long hprog);
+    native int ddlog_transaction_commit_dump_changes(long hprog, String callbackName);
     static native int ddlog_transaction_rollback(long hprog);
     static native int ddlog_apply_updates(long hprog, long[] upds);
     static native String ddlog_profile(long hprog);
@@ -74,10 +75,16 @@ public class DDlogAPI {
     public static final int error = -1;
     // Maps table names to table IDs
     private final Map<String, Integer> tableId;
-    // Callback to invoke for each record on commit.
-    // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
+    // Callback to invoke for each modified record on commit.
+    // The command supplied to the callback can only have an Insert or DeleteValue 'kind'.
     // This callback can be invoked simultaneously from multiple threads.
     private final Consumer<DDlogCommand> commitCallback;
+
+    // Callback to invoke for each modified record on commit_dump_changes.
+    // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
+    // In the current implementation this callback is invoked sequentially
+    // by the same DDlog worker thread.
+    private Consumer<DDlogCommand> deltaCallback;
 
     /**
      * Create an API to access the DDlog program.
@@ -103,14 +110,13 @@ public class DDlogAPI {
     }
 
     /// Callback invoked from commit.
-    boolean onCommit(int tableid, long handle, boolean polarity) {
+    void onCommit(int tableid, long handle, boolean polarity) {
         if (this.commitCallback != null) {
             DDlogCommand.Kind kind = polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
             DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
             DDlogCommand command = new DDlogCommand(kind, tableid, record);
             this.commitCallback.accept(command);
         }
-        return true;
     }
 
     public int getTableId(String table) {
@@ -135,6 +141,22 @@ public class DDlogAPI {
 
     public int commit() {
         return DDlogAPI.ddlog_transaction_commit(this.hprog);
+    }
+
+    public int commit_dump_changes(Consumer<DDlogCommand> callback) {
+        String onDelta = callback == null ? null : "onDelta";
+        this.deltaCallback = callback;
+        return this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
+    }
+
+    /// Callback invoked from commit_dump_changes.
+    void onDelta(int tableid, long handle, boolean polarity) {
+        if (this.deltaCallback != null) {
+            DDlogCommand.Kind kind = polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            DDlogCommand command = new DDlogCommand(kind, tableid, record);
+            this.deltaCallback.accept(command);
+        }
     }
 
     public int rollback() {

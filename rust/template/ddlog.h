@@ -113,10 +113,10 @@ extern table_id ddlog_get_table_id(const char* tname);
  */
 extern ddlog_prog ddlog_run(unsigned int workers,
 			    bool do_store,
-			    bool (*cb)(void *arg,
-				       table_id table,
-				       const ddlog_record *rec,
-				       bool polarity),
+                            void (*cb)(void *arg,
+                                       table_id table,
+                                       const ddlog_record *rec,
+                                       bool polarity),
 			    uintptr_t cb_arg,
 			    void (*print_err_msg)(const char *msg));
 
@@ -140,7 +140,7 @@ extern int ddlog_record_commands(ddlog_prog hprog, int fd);
  * function.
  *
  * On success, returns `0`; on error, returns `-1` and prints error message
- * to `stderr`.
+ * (see `print_err_msg` parameter to `ddlog_run()`).
  */
 extern int ddlog_stop(ddlog_prog hprog);
 
@@ -148,7 +148,7 @@ extern int ddlog_stop(ddlog_prog hprog);
  * Start a transaction.
  *
  * On success, returns `0`; on error, returns `-1` and prints error message
- * to `stderr`.
+ * (see `print_err_msg` parameter to `ddlog_run()`).
  *
  * This function will fail if another transaction is in progress.
  *
@@ -159,20 +159,42 @@ extern int ddlog_transaction_start(ddlog_prog hprog);
 
 /*
  * Commit a transaction; propagate all buffered changes through all
- * rules in the program and update all computed relations.
+ * rules in the program and update all output relations.
  *
  * On success, returns `0`; on error, returns `-1` and prints error message
- * to `stderr`.
+ * (see `print_err_msg` parameter to `ddlog_run()`).
  *
  * This function will fail if there is no transaction in progress.
  */
 extern int ddlog_transaction_commit(ddlog_prog hprog);
 
 /*
+ * Commit a transaction; propagate all buffered changes through all
+ * rules in the program and update all output relations.  Once all
+ * updates are finished, invokes `cb` for each new or deleted record
+ * in each output relation.
+ *
+ * Note: unlike the `cb` parameter to `ddlog_run`, this function will
+ * invoke the callback exactly once for every modified record.
+ *
+ * On success, returns `0`; on error, returns `-1` and prints error message
+ * (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ * This function will fail if there is no transaction in progress.
+ */
+extern int
+ddlog_transaction_commit_dump_changes(ddlog_prog hprog,
+                                      void (*cb)(void *arg,
+                                                 table_id table,
+                                                 const ddlog_record *rec,
+                                                 bool polarity),
+                                      uintptr_t cb_arg);
+
+/*
  * Discard all buffered updates and abort the current transaction.
  *
  * On success, returns `0`; on error, returns `-1` and prints error message
- * to `stderr`.
+ * (see `print_err_msg` parameter to `ddlog_run()`).
  *
  * This function will fail if there is no transaction in progress.
  */
@@ -210,7 +232,8 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
  * `json`.  This pointer must be later deallocated by calling
  * `ddlog_free_json()`
  *
- * On error, returns a negative number and writes error message to stderr.
+ * On error, returns a negative number and writes error message
+ * (see `print_err_msg` parameter to `ddlog_run()`).
  */
 extern int ddlog_dump_ovsdb_delta(ddlog_prog hprog, const char *module,
 				  const char *table, char **json);
@@ -228,7 +251,7 @@ extern void ddlog_free_json(char *json);
  * itself.
  *
  * On success, returns `0`. On error, returns a negative value and
- * writes error message to stderr.
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
  */
 extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
 
@@ -238,7 +261,7 @@ extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
  * Fails if there is no transaction in progress.
  *
  * On success, returns `0`. On error, returns a negative value and
- * writes error message to stderr.
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
  */
 extern int ddlog_clear_relation(ddlog_prog prog, table_id table);
 
