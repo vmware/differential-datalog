@@ -16,6 +16,8 @@ public class DDlogAPI {
      * The C ddlog API
      */
     native long ddlog_run(boolean storeData, int workers, String callbackName);
+    static native int ddlog_record_commands(long hprog, String filename);
+    static native int ddlog_stop_recording(long hprog, int fd);
     native int dump_table(long hprog, int table, String callbackMethod);
     static native int  ddlog_stop(long hprog);
     static native int ddlog_transaction_start(long hprog);
@@ -70,6 +72,9 @@ public class DDlogAPI {
 
     // This is a handle to the program; it wraps a void*.
     private final long hprog;
+
+    // File descriptor used to record DDlog command log
+    private int record_fd = -1;
 
     public static final int success = 0;
     public static final int error = -1;
@@ -128,7 +133,32 @@ public class DDlogAPI {
         return this.tableId.get(table);
     }
 
+    // Record DDlog commands to file.
+    // Set `filename` to `null` to stop recording.
+    public int record_commands(String filename) {
+        if (this.record_fd != -1) {
+            DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
+            this.record_fd = -1;
+        }
+        if (filename == null) {
+            return 0;
+        }
+
+        int fd = DDlogAPI.ddlog_record_commands(this.hprog, filename);
+        if (fd < 0) {
+            return fd;
+        } else {
+            this.record_fd = fd;
+            return 0;
+        }
+    }
+
     public int stop() {
+        /* Close the file handle. */
+        if (this.record_fd != -1) {
+            DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
+            this.record_fd = -1;
+        }
         return DDlogAPI.ddlog_stop(this.hprog);
     }
 

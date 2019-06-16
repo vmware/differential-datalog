@@ -4,6 +4,11 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "ddlogapi_DDlogAPI.h"
 #include "ddlog.h"
 
@@ -105,6 +110,37 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     if (cbinfo == NULL)
         return 0;
     return (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
+    JNIEnv *env, jobject obj, jlong handle, jstring filename)
+{
+    int ret;
+    int fd;
+
+    const char *c_filename = (*env)->GetStringUTFChars(env, filename, NULL);
+    if (c_filename == NULL) {
+        return -1;
+    }
+    fd = open(c_filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    (*env)->ReleaseStringUTFChars(env, filename, c_filename);
+
+    if (fd < 0) {
+        return fd;
+    } else if ((ret = ddlog_record_commands((ddlog_prog)handle, fd))) {
+        close(fd);
+        return ret;
+    } else {
+        return fd;
+    }
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop_1recording(
+    JNIEnv *env, jobject obj, jlong handle, jint fd)
+{
+    ddlog_record_commands((ddlog_prog)handle, -1);
+    close(fd);
+    return 0;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
