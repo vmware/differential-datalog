@@ -106,6 +106,7 @@ public class SpanTest {
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.api = new DDlogAPI(1, r -> this.onCommitDirect(r));
+                this.api.record_commands("replay.dat");
                 this.ruleSpanTableId = this.api.getTableId("RuleSpan");
                 this.containerSpanTableId = this.api.getTableId("ContainerSpan");
                 this.ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
