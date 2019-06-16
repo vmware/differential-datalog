@@ -43,6 +43,13 @@ public class SpanTest {
             this.tn = tn;
         }
 
+        protected SpanBase(DDlogRecord r) {
+            DDlogRecord entity = r.getStructField(0);
+            DDlogRecord tn = r.getStructField(1);
+            this.entity = entity.getU128();
+            this.tn = tn.getU128();
+        }
+
         @Override
         public String toString() {
             return this.getClass().getSimpleName() + "{" +
@@ -62,10 +69,12 @@ public class SpanTest {
         // We need an empty constructor for reflection to work.
         public RuleSpan() {}
         public RuleSpan(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
+        public RuleSpan(DDlogRecord r) { super(r); }
     }
     public static final class ContainerSpan extends SpanBase {
         public ContainerSpan() {}
         public ContainerSpan(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
+        public ContainerSpan(DDlogRecord r) { super(r); }
     }
     public static final class Binding extends SpanBase {
         public Binding(final BigInteger entity, final BigInteger tn) { super(entity, tn); }
@@ -100,7 +109,7 @@ public class SpanTest {
         private static Set<ContainerSpan> containerSpan;
         private int ruleSpanTableId;
         private int containerSpanTableId;
-        private boolean localTables = true;
+        private boolean localTables = false;
 
         SpanParser() {
             if (localTables) {
@@ -321,8 +330,14 @@ public class SpanTest {
                             System.out.println(s);
                         System.out.println();
                     } else {
-                        this.exitCode = this.api.dump("ContainerSpan");
-                        this.exitCode = this.api.dump("RuleSpan");
+                        System.out.println("ContainerSpan:");
+                        this.exitCode = this.api.dump("ContainerSpan",
+                                r -> System.out.println(new ContainerSpan(r)));
+                        System.out.println();
+                        System.out.println("RuleSpan:");
+                        this.exitCode = this.api.dump("RuleSpan",
+                                r -> System.out.println(new RuleSpan(r)));
+                        System.out.println();
                         this.checkExitCode();
                         this.checkSemicolon();
                     }
@@ -345,8 +360,10 @@ public class SpanTest {
                     }
                 });
             this.api.stop();
-            this.ruleSpan.clear();
-            this.containerSpan.clear();
+            if (localTables) {
+                this.ruleSpan.clear();
+                this.containerSpan.clear();
+            }
         }
     }
 
