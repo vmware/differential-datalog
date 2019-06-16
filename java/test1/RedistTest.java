@@ -55,6 +55,18 @@ public class RedistTest {
             this.tns = tns;
         }
 
+        public Span(DDlogRecord r) {
+            super((int)r.getStructField(0).getLong());
+            DDlogRecord tn = r.getStructField(1);
+            int elements = tn.getSetSize();
+            List<Integer> set = new ArrayList<Integer>();
+            for (int i = 0; i < elements; i++) {
+                DDlogRecord f = tn.getSetField(i);
+                set.add((int)f.getLong());
+            }
+            this.tns = set;
+        }
+
         @Override
         public Iterable<Integer> getTNs() {
             return this.tns;
@@ -232,12 +244,12 @@ public class RedistTest {
 
         SpanParser() {
             if (localTables) {
-                this.api = new DDlogAPI(2, r -> this.onCommit(r));
+                this.api = new DDlogAPI(2, r -> this.onCommit(r), false);
                 this.spanTableId = this.api.getTableId("Span");
                 if (debug)
                     System.err.println("Span table id " + this.spanTableId);
             } else {
-                this.api = new DDlogAPI(2, null);
+                this.api = new DDlogAPI(2, null, true);
             }
             this.command = null;
             this.exitCode = -1;
@@ -250,15 +262,7 @@ public class RedistTest {
         void onCommit(DDlogCommand command) {
             DDlogRecord record = command.value;
             if (command.table == this.spanTableId) {
-                DDlogRecord entity = record.getStructField(0);
-                DDlogRecord tn = record.getStructField(1);
-                int elements = tn.getSetSize();
-                List<Integer> set = new ArrayList<Integer>();
-                for (int i = 0; i < elements; i++) {
-                    DDlogRecord f = tn.getSetField(i);
-                    set.add((int)f.getLong());
-                }
-                Span s = new Span((int)entity.getLong(), set);
+                Span s = new Span(record);
                 if (command.kind == DDlogCommand.Kind.Insert) {
                     this.currentDelta.add(s, true);
                 } else if (command.kind == DDlogCommand.Kind.DeleteVal) {
@@ -382,7 +386,9 @@ public class RedistTest {
                         this.runCommands();
                     break;
                 case "profile":
-                    this.exitCode = this.api.profile();
+                    String profile = this.api.profile();
+                    System.out.println("Profile:");
+                    System.out.println(profile);
                     this.checkExitCode();
                     this.checkSemicolon();
                     break;
@@ -395,7 +401,10 @@ public class RedistTest {
                             System.out.println(s);
                         }
                     } else {
-                        this.api.dump("Span");
+                        System.out.println("Span:");
+                        this.exitCode = this.api.dump("Span",
+                                r -> System.out.println(new Span(r)));
+                        System.out.println();
                     }
                     break;
                 case "exit":
