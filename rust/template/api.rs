@@ -344,9 +344,9 @@ pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c
 unsafe fn record_transaction_commit(prog: &Arc<HDDlog>, record_changes: bool) {
     if let Some(ref f) = prog.replay_file {
         let res = if record_changes {
-            write!(f.lock().unwrap(), "commit;\n")
-        } else {
             write!(f.lock().unwrap(), "commit dump_changes;\n")
+        } else {
+            write!(f.lock().unwrap(), "commit;\n")
         };
         if res.is_err() {
             prog.eprintln("ddlog_transaction_commit(): failed to record invocation in replay file");
