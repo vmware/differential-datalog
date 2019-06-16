@@ -221,10 +221,7 @@ public class DDlogAPI {
         return this.dump_table(this.hprog, id, "dumpCallback");
     }
 
-    public int profile() {
-        String s = DDlogAPI.ddlog_profile(this.hprog);
-        System.out.println("Profile:");
-        System.out.println(s);
-        return 0;
+    public String profile() {
+        return DDlogAPI.ddlog_profile(this.hprog);
     }
 }

@@ -303,7 +303,9 @@ public class SpanTest {
                     }
                     break;
                 case "profile":
-                    this.exitCode = this.api.profile();
+                    String profile = this.api.profile();
+                    System.out.println("Profile:");
+                    System.out.println(profile);
                     this.checkExitCode();
                     this.checkSemicolon();
                     break;
