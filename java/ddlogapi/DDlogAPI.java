@@ -91,6 +91,10 @@ public class DDlogAPI {
     // by the same DDlog worker thread.
     private Consumer<DDlogCommand> deltaCallback;
 
+    // Callback to invoke for each record on `DDlogAPI.dump()`.
+    // The callback is invoked sequentially by the same DDlog worker thread.
+    private Consumer<DDlogRecord> dumpCallback;
+
     /**
      * Create an API to access the DDlog program.
      * @param workers   number of threads the DDlog program can use
@@ -202,9 +206,10 @@ public class DDlogAPI {
 
     /// Callback invoked from dump.
     boolean dumpCallback(long handle) {
-        DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-        String s = record.toString();
-        System.out.println(s);
+        if (this.dumpCallback != null) {
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            this.dumpCallback.accept(record);
+        }
         return true;
     }
 
@@ -213,12 +218,13 @@ public class DDlogAPI {
      * For this to work the DDlogAPI must have been created with a
      * storeData parameter set to true.
      */
-    public int dump(String table) {
-        System.out.println(table + ":");
+    public int dump(String table, Consumer<DDlogRecord> callback) {
         int id = this.getTableId(table);
         if (id == -1)
             throw new RuntimeException("Unknown table " + table);
-        return this.dump_table(this.hprog, id, "dumpCallback");
+        String onDump = callback == null ? null : "dumpCallback";
+        this.dumpCallback = callback;
+        return this.dump_table(this.hprog, id, onDump);
     }
 
     public String profile() {
