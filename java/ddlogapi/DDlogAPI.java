@@ -114,10 +114,6 @@ public class DDlogAPI {
         this.hprog = this.ddlog_run(storeData, workers, onCommit);
     }
 
-    public DDlogAPI(int workers, Consumer<DDlogCommand> callback) {
-        this(workers, callback, callback == null);
-    }
-
     /// Callback invoked from commit.
     void onCommit(int tableid, long handle, boolean polarity) {
         if (this.commitCallback != null) {

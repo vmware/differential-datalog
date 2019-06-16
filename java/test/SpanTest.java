@@ -114,14 +114,14 @@ public class SpanTest {
         SpanParser() {
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
-                this.api = new DDlogAPI(1, r -> this.onCommitDirect(r));
+                this.api = new DDlogAPI(1, r -> this.onCommitDirect(r), false);
                 this.api.record_commands("replay.dat");
                 this.ruleSpanTableId = this.api.getTableId("RuleSpan");
                 this.containerSpanTableId = this.api.getTableId("ContainerSpan");
                 this.ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
                 this.containerSpan = new TreeSet<ContainerSpan>(new SpanComparator());
             } else {
-                this.api = new DDlogAPI(1, null);
+                this.api = new DDlogAPI(1, null, true);
             }
             this.command = null;
             this.exitCode = -1;
