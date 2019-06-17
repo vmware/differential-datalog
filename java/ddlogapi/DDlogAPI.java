@@ -26,6 +26,7 @@ public class DDlogAPI {
     static native int ddlog_transaction_rollback(long hprog);
     static native int ddlog_apply_updates(long hprog, long[] upds);
     static native String ddlog_profile(long hprog);
+    static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -225,5 +226,9 @@ public class DDlogAPI {
 
     public String profile() {
         return DDlogAPI.ddlog_profile(this.hprog);
+    }
+
+    public int enable_cpu_profiling(boolean enable) {
+        return DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
     }
 }

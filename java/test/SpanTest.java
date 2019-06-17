@@ -312,11 +312,20 @@ public class SpanTest {
                     }
                     break;
                 case "profile":
-                    String profile = this.api.profile();
-                    System.out.println("Profile:");
-                    System.out.println(profile);
-                    this.checkExitCode();
-                    this.checkSemicolon();
+                    if (rest.equals(" cpu on")) {
+                        this.exitCode = this.api.enable_cpu_profiling(true);
+                        this.checkExitCode();
+                    } else if (rest.equals(" cpu off")) {
+                        this.exitCode = this.api.enable_cpu_profiling(false);
+                        this.checkExitCode();
+                    } else if (rest.equals("")) {
+                        String profile = this.api.profile();
+                        System.out.println("Profile:");
+                        System.out.println(profile);
+                        this.checkSemicolon();
+                    } else {
+                        throw new RuntimeException("Unexpected command " + line);
+                    }
                     break;
                 case "dump":
                     // Hardwired output relation name

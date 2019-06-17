@@ -233,6 +233,11 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1profile(
     return result;
 }
 
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1cpu_1profiling(
+    JNIEnv *env, jobject obj, jlong progHandle, jboolean enable) {
+    return ddlog_enable_cpu_profiling((ddlog_prog)progHandle, enable);
+}
+
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1bool(
     JNIEnv *env, jclass obj, jboolean b) {
     return (jlong)ddlog_bool(b);
