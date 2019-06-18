@@ -226,14 +226,15 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
         let handler = self.clone();
         Box::new(move |relid, v, w|{
             let guard_ptr = handler.locked.get();
-            /* `update_cb` can only be called between `before_commit()` and
-             * `after_commit()` */
-            assert_ne!(guard_ptr, ptr::null_mut());
-            let mut guard: Box<MutexGuard<'_, ValMap>> = unsafe {
-                Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
-            };
-            guard.update(relid, v, w);
-            Box::into_raw(guard);
+            /* `update_cb` can also be called during rollback and stop operations.
+             * Ignore those. */
+            if guard_ptr != ptr::null_mut() {
+                let mut guard: Box<MutexGuard<'_, ValMap>> = unsafe {
+                    Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
+                };
+                guard.update(relid, v, w);
+                Box::into_raw(guard);
+            }
         })
     }
     fn before_commit(&self) {
