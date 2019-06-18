@@ -18,10 +18,10 @@ use super::api::{HDDlog, updcmd2upd, record_update};
 /// `prefix` contains is the prefix to be added to JSON table names, e.g, `OVN_Southbound_` or
 /// `OVN_Northbound_` for OVN southbound and northbound database updates.
 ///
-/// `updates` is the JSON string, e.g.,
-/// ```
+/// `updates` is the JSON string, e.g.:
+///
 /// {"Logical_Switch":{"ffe8d84e-b4a0-419e-b865-19f151eed878":{"new":{"acls":["set",[]],"dns_records":["set",[]],"external_ids":["map",[]],"load_balancer":["set",[]],"name":"lsw0","other_config":["map",[]],"ports":["set",[]],"qos_rules":["set",[]]}}}}
-/// ```
+///
 ///
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(

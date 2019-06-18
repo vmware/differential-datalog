@@ -1,5 +1,3 @@
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, unused_parens, non_shorthand_field_patterns, dead_code, overflowing_literals)]
-
 use differential_datalog::program::*;
 use differential_datalog::record;
 use differential_datalog::record::IntoRecord;
