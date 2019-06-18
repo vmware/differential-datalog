@@ -113,8 +113,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
-    JNIEnv *env, jobject obj, jlong handle, jstring filename)
-{
+    JNIEnv *env, jobject obj, jlong handle, jstring filename) {
     int ret;
     int fd;
 

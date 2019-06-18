@@ -88,8 +88,6 @@ public class DDlogAPI {
 
     // Callback to invoke for each modified record on commit_dump_changes.
     // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
-    // In the current implementation this callback is invoked sequentially
-    // by the same DDlog worker thread.
     private Consumer<DDlogCommand> deltaCallback;
 
     // Callback to invoke for each record on `DDlogAPI.dump()`.
