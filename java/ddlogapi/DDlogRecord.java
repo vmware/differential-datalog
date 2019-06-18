@@ -52,7 +52,7 @@ public class DDlogRecord {
 
     private static DDlogRecord fromHandle(long handle) {
         DDlogRecord result = new DDlogRecord();
-        if (handle == DDlogAPI.error)
+        if (handle == 0)
             throw new RuntimeException("Received invalid handle.");
         result.handle = handle;
         result.shared = false;
