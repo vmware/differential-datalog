@@ -12,7 +12,7 @@ import parglare  # parser generator
 skip_files = False  # If true do not process .input and .output declarations
 skip_logic = False  # If true do not produce file .dl
 profile = False     # If true, enable profiling and dump profiling information
-non_dnf = False     # If true, enable transformmation of non-dnf disjunctions
+toDNF = False       # If true, enable transformmation of non-dnf disjunctions
 relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
 # This makes it possible to concatenate multiple .dat files together
 # This should end in a dot.
@@ -1021,10 +1021,10 @@ class SouffleConverter(object):
         lit = getOptField(term, "Literal")
         if lit is not None:
             return self.convert_literal(lit)
-        term = getOptField(term, "Term")
-        if term is not None:
-            (term, postpone) = self.convert_term(term)
-            return ("not " + term, postpone)
+        not_term = getOptField(term, "Term")
+        if not_term is not None:
+            (not_term, postpone) = self.convert_term(not_term)
+            return ("not " + not_term, postpone)
         disj = getOptField(term, "Disjunction")
         if disj is not None:
             raise Exception("Disjunction not yet handled")
@@ -1047,7 +1047,11 @@ class SouffleConverter(object):
                 result.append(term)
         return result + tail
 
-    def flatten(self, tail, listbody, bool_dis):
+    def flatten(self, tail, listbody, hasDisjunction):
+        """
+        The function returns a list consisting of Terms, Disjunctions and terminal characters
+        so as to better manage the non-conjunctive form.
+        """
         for x in tail.children:
             if (x.symbol.name == "Term"):
                 if (getOptField(x, "Literal") != None) or (getOptField(x, "!") != None):
@@ -1055,24 +1059,27 @@ class SouffleConverter(object):
                 child = getOptField(x, "Disjunction")
                 if child != None:
                     if getOptField(child, "OR") != None:
-                        bool_dis = True
+                        hasDisjunction = True
                     listbody.append(child)
             elif (x.symbol.name in ["OR", "(", ")", ",", "!"]):
                 listbody.append(x)
             else:
-                (_, bool_dis) = self.flatten(x, listbody, bool_dis)
-        return (listbody, bool_dis)
+                # In case x is not a Term or a terminal character, the function
+                # is called recursively to reach the final flattened form.
+                (_, hasDisjunction) = self.flatten(x, listbody, hasDisjunction)
+        # The elements of the bodylist are entered during the recursive calls
+        # and the final result returns when the whole process is completed.
+        return (listbody, hasDisjunction)
 
-    def findCommas(self, comma):
-        commas = False
-        for x in comma.children:
+    def hasCommas(self, disj):
+        for x in disj.children:
             if x.symbol.name == ",":
                 return True
-            elif not (x.symbol.name in ["Term", "OR", "(", ")", "!"]):
-                commas = self.findCommas(x)
-        return commas
+            elif not (x.symbol.name in ["Term", "OR", "(", ")", "!"]) and self.hasCommas(x):
+                return True
+        return False
 
-    def disconjunction(self, listbody):
+    def disConjunction(self, listbody):
         """ This function returns lists of conjunctions (represented as lists).
         Parameter listbody contains or-separated terms and disjunctions."""
         dislist = []
@@ -1080,17 +1087,17 @@ class SouffleConverter(object):
             if choice.symbol.name == "Term":
                 dislist.append([choice])
             elif choice.symbol.name == "Disjunction":
-                bool_comma = self.findCommas(choice)
+                hasComma = self.hasCommas(choice)
                 (listbody, _) = self.flatten(choice, [], False)
-                if bool_comma:
-                    disconlist = self.condisjunction(listbody)
+                if hasComma:
+                    disconlist = self.conDisjunction(listbody)
                 else:
-                    disconlist = self.disconjunction(listbody)
+                    disconlist = self.disConjunction(listbody)
                 for elem in disconlist:
                     dislist.append(elem)
         return dislist
 
-    def condisjunction(self, listbody):
+    def conDisjunction(self, listbody):
         """ This function returns a list of conjunctions (represented as lists).
         Parameter listbody contains comma-separated terms and disjunctions."""
         conlist = []
@@ -1099,7 +1106,7 @@ class SouffleConverter(object):
                 conlist.append([[choice]])
             elif choice.symbol.name == "Disjunction":
                 (listbody, _) = self.flatten(choice, [], False)
-                dislist = self.disconjunction(listbody)
+                dislist = self.disConjunction(listbody)
                 conlist.append(dislist)
 
         result = conlist[0]
@@ -1120,10 +1127,10 @@ class SouffleConverter(object):
         disjunctions = getList(tail, "Conjunction", "Body")
 
         transformed = False
-        if non_dnf:
+        if toDNF:
             (listbody, transformed) = self.flatten(tail, [], False)
             if transformed:
-                terms = self.condisjunction(listbody)
+                terms = self.conDisjunction(listbody)
 
         if not transformed:
             terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
@@ -1387,7 +1394,7 @@ def main():
                            action='store_true', help="produces only facts")
     argParser.add_argument("--logic-only", "--logic_only",
                            action='store_true', help="produces only logic")
-    argParser.add_argument("--non-dnf", "--non_dnf",
+    argParser.add_argument("--convert-dnf", "--convert_dnf",
                            action='store_true', help="support disjunctions of non-DNF form")
     argParser.add_argument("--profile", help="dump profile information", action="store_true")
     args = argParser.parse_args()
@@ -1395,15 +1402,15 @@ def main():
     verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
-    global skip_files, skip_logic, profile, non_dnf
+    global skip_files, skip_logic, profile, toDNF
     if args.logic_only:
         skip_files = True
     if args.facts_only:
         skip_logic = True
     if args.profile:
         profile = True
-    if args.non_dnf:
-        non_dnf = True
+    if args.convert_dnf:
+        toDNF = True
     convert(args.input, args.out, args.prefix, args.d)
 
 
