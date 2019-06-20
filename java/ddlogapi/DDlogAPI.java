@@ -19,7 +19,7 @@ public class DDlogAPI {
     static native int ddlog_record_commands(long hprog, String filename);
     static native int ddlog_stop_recording(long hprog, int fd);
     native int dump_table(long hprog, int table, String callbackMethod);
-    static native int  ddlog_stop(long hprog);
+    static native int  ddlog_stop(long hprog, long callbackHandle);
     static native int ddlog_transaction_start(long hprog);
     static native int ddlog_transaction_commit(long hprog);
     native int ddlog_transaction_commit_dump_changes(long hprog, String callbackName);
@@ -73,6 +73,8 @@ public class DDlogAPI {
 
     // This is a handle to the program; it wraps a void*.
     private final long hprog;
+    // This stores a C pointer which is deallocated when the program stops.
+    public long callbackHandle;
 
     // File descriptor used to record DDlog command log
     private int record_fd = -1;
@@ -158,7 +160,7 @@ public class DDlogAPI {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
         }
-        return DDlogAPI.ddlog_stop(this.hprog);
+        return this.ddlog_stop(this.hprog, this.callbackHandle);
     }
 
     /**
