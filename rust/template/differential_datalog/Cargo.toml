@@ -12,9 +12,12 @@ byteorder="0.4.2"
 itertools="^0.6"
 
 [dependencies]
-differential-dataflow = "0.9"
+differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow" }
+dogsdogsdogs = { git = "https://github.com/ryzhyk/differential-dataflow" }
+#differential-dataflow = "0.9"
 abomonation = "0.7"
-timely = "0.9"
+timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
+#timely = "0.9"
 fnv="1.0.2"
 num = "0.2"
 serde = "1.0"

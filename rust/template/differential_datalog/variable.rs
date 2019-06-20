@@ -3,7 +3,7 @@ use timely::dataflow::*;
 use timely::dataflow::scopes::{Child};
 use timely::dataflow::operators::*;
 use timely::dataflow::operators::feedback::Handle;
-use differential_dataflow::{Data, Collection, Hashable};
+use differential_dataflow::{Data, ExchangeData, Collection, Hashable};
 use differential_dataflow::operators::*;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::difference::Monoid;
@@ -17,7 +17,7 @@ use program::{TSNested, Weight};
 /// A `Variable` names a collection that may be used in mutually recursive rules. This implementation
 /// is like the `Variable` defined in `iterate.rs` optimized for Datalog rules: it supports repeated
 /// addition of collections, and a final `distinct` operator applied before connecting the definition.
-pub struct Variable<'a, G: Scope, D: Default+Data+Hashable>
+pub struct Variable<'a, G: Scope, D: ExchangeData+Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
     feedback: Option<Handle<Child<'a, G, Product<G::Timestamp, TSNested>>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
     current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D>,
@@ -25,7 +25,7 @@ where G::Timestamp: Lattice+Ord {
     name: String
 }
 
-impl<'a, G: Scope, D: Default+Data+Hashable> Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
+impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
     /// Creates a new `Variable` from a supplied `source` stream.
     /*pub fn from(source: &Collection<Child<'a, G, u64>, D>) -> Variable<'a, G, D> {
         let (feedback, cycle) = source.inner.scope().loop_variable(u64::max_value(), 1);
@@ -48,14 +48,14 @@ impl<'a, G: Scope, D: Default+Data+Hashable> Variable<'a, G, D> where G::Timesta
     }
 }
 
-impl<'a, G: Scope, D: Default+Data+Hashable> ::std::ops::Deref for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
+impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> ::std::ops::Deref for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
     type Target = Collection<Child<'a, G, Product<G::Timestamp,TSNested>>, D, Weight>;
     fn deref(&self) -> &Self::Target {
         &self.cycle
     }
 }
 
-impl<'a, G: Scope, D: Default+Data+Hashable> Drop for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
+impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Drop for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
     fn drop(&mut self) {
         if let Some(feedback) = self.feedback.take() {
             with_prof_context(

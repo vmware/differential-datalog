@@ -19,6 +19,7 @@ use std::sync::{Arc, Mutex, RwLock, Barrier};
 use std::sync::atomic::{Ordering, AtomicBool};
 use std::result::Result;
 use std::collections::hash_map;
+use std::collections::{BTreeMap, BTreeSet};
 use std::thread;
 use std::time::Duration;
 use std::sync::mpsc;
@@ -44,7 +45,7 @@ use differential_dataflow::input::{Input,InputSession};
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::Collection;
-use differential_dataflow::trace::TraceReader;
+use differential_dataflow::trace::{Cursor, TraceReader, BatchReader};
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
 use differential_dataflow::Data;
@@ -56,15 +57,18 @@ use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKe
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::AsCollection;
 
+use dogsdogsdogs::altneu::AltNeu;
+use dogsdogsdogs::operators::propose;
+
 use variable::*;
 use profile::*;
 use record::Mutator;
 
-type TValAgent<S,V> = TraceAgent<V,V,<S as ScopeParent>::Timestamp,Weight,DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight>>;
-type TKeyAgent<S,V> = TraceAgent<V,(),<S as ScopeParent>::Timestamp,Weight,DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight>>;
+type TValAgent<S,V> = TraceAgent<DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight>>;
+type TKeyAgent<S,V> = TraceAgent<DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight>>;
 
-type TValEnter<'a,P,T,V> = TraceEnter<V,V,<P as ScopeParent>::Timestamp,Weight,TValAgent<P,V>,T>;
-type TKeyEnter<'a,P,T,V> = TraceEnter<V,(),<P as ScopeParent>::Timestamp,Weight,TKeyAgent<P,V>,T>;
+type TValEnter<'a,P,T,V> = TraceEnter<TValAgent<P,V>,T>;
+type TKeyEnter<'a,P,T,V> = TraceEnter<TKeyAgent<P,V>,T>;
 
 /* 16-bit timestamp.
  * TODO: get rid of this and use `u16` directly when/if differential implements
@@ -181,7 +185,7 @@ pub struct Program<V: Val> {
 /// set, adding new collections.  Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
 /// transformer in monotonic and thus it may not converge if used in a nested scope.
-pub type TransformerFunc<V> = fn() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,V,Weight>>)>;
+pub type TransformerFunc<V> = fn() -> Box<for<'a> Fn(&mut BTreeMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,V,Weight>>)>;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
 /// a vector of one or more mutually recursive relations.
@@ -274,9 +278,16 @@ pub type SemijoinFunc<V> = fn(&V,&V, &()) -> Option<V>;
 /// Aggregation function: aggregates multiple values into a single value.
 pub type AggFunc<V> = fn(&V, &[(&V, Weight)]) -> V;
 
+/// (see `DeltaOps::Join`)
+pub type ProposeFunc<V> = fn((V, V)) -> Option<V>;
+
+/// Like `MapFunc`, but operates on a reference
+/// (see `DeltaOp::Join`)
+pub type RefMapFunc<V> = fn(&V) -> V;
+
 /// A Datalog relation or rule can depend on other relations and their
 /// arrangements.
-#[derive(PartialEq,Eq,Hash,Debug,Clone)]
+#[derive(PartialEq,Eq,Hash,Debug,Clone,PartialOrd,Ord)]
 pub enum Dep {
     Rel(RelId),
     Arr(ArrId)
@@ -382,30 +393,30 @@ impl<V: Val> XFormArrangement<V>
         }
     }
 
-    fn dependencies(&self) -> FnvHashSet<Dep>
+    fn dependencies(&self) -> BTreeSet<Dep>
     {
         match self {
             XFormArrangement::FlatMap{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormArrangement::FilterMap{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormArrangement::Aggregate{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormArrangement::Join{arrangement, next, ..} => {
                 let mut deps = match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 };
                 deps.insert(Dep::Arr(*arrangement));
@@ -413,7 +424,7 @@ impl<V: Val> XFormArrangement<V>
             }
             XFormArrangement::Semijoin{arrangement, next, ..} => {
                 let mut deps = match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 };
                 deps.insert(Dep::Arr(*arrangement));
@@ -421,7 +432,7 @@ impl<V: Val> XFormArrangement<V>
             }
             XFormArrangement::Antijoin{arrangement, next, ..} => {
                 let mut deps = match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 };
                 deps.insert(Dep::Arr(*arrangement));
@@ -479,7 +490,7 @@ impl<V: Val> XFormCollection<V>
         }
     }
 
-    pub fn dependencies(&self) -> FnvHashSet<Dep>
+    pub fn dependencies(&self) -> BTreeSet<Dep>
     {
         match self {
             XFormCollection::Arrange{next, ..} => {
@@ -487,29 +498,71 @@ impl<V: Val> XFormCollection<V>
             },
             XFormCollection::Map{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormCollection::FlatMap{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormCollection::Filter{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             },
             XFormCollection::FilterMap{next, ..} => {
                 match **next {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref n) => n.dependencies()
                 }
             }
         }
+    }
+}
+
+/// `Old` = collection delayed by one time unit
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OldNew { Old, New }
+
+#[derive(Clone)]
+pub struct DeltaRule<V: Val> {
+    pub rel: RelId,
+    pub ops: Vec<DeltaOp<V>>
+}
+
+#[derive(Clone)]
+pub enum DeltaOp<V: Val> {
+    /// Join an input collection (that contains changes computed so far) with
+    /// matching elements of an arrangement and filter results through a function.
+    Join {
+        /// Extract key from input collection
+        keyfunc: &'static RefMapFunc<V>,
+        arrangement: ArrId,
+        /// `Old` - delay arrangement by one timestamp
+        timestamp: OldNew,
+        /// Map a pair of values (from the input collection and the arrangement)
+        /// returns a proposed output value
+        pfunc: &'static ProposeFunc<V>
+    }
+}
+//                  | DeltaAntijoin<V>
+
+impl<V: Val> DeltaRule<V> {
+    fn dependencies(&self) -> BTreeSet<Dep> {
+        let mut deps = BTreeSet::new();
+        deps.insert(Dep::Rel(self.rel));
+        for op in self.ops.iter() {
+            match op {
+                DeltaOp::Join{arrangement,..} => {
+                    deps.insert(Dep::Arr(*arrangement));
+                }
+            }
+        }
+        deps
     }
 }
 
@@ -526,6 +579,10 @@ pub enum Rule<V: Val> {
         description: String,
         arr: ArrId,
         xform: XFormArrangement<V>
+    },
+    DeltaRule {
+        description: String,
+        deltas: Vec<DeltaRule<V>>
     }
 }
 
@@ -533,16 +590,17 @@ impl<V:Val> Rule<V> {
     pub fn description(&self) -> &str {
         match self {
             Rule::CollectionRule{description,..}  => description.as_ref(),
-            Rule::ArrangementRule{description,..} => description.as_ref()
+            Rule::ArrangementRule{description,..} => description.as_ref(),
+            Rule::DeltaRule{description,..}       => description.as_ref()
         }
     }
 
-    fn dependencies(&self) -> FnvHashSet<Dep>
+    fn dependencies(&self) -> BTreeSet<Dep>
     {
         match self {
             Rule::CollectionRule{rel,xform,..} => {
                 let mut deps = match xform {
-                    None => FnvHashSet::default(),
+                    None => BTreeSet::new(),
                     Some(ref x) => x.dependencies()
                 };
                 deps.insert(Dep::Rel(*rel));
@@ -551,6 +609,15 @@ impl<V:Val> Rule<V> {
             Rule::ArrangementRule{arr,xform,..} => {
                 let mut deps = xform.dependencies();
                 deps.insert(Dep::Arr(*arr));
+                deps
+            },
+            Rule::DeltaRule{deltas,..} => {
+                let mut deps = BTreeSet::new();
+                for r in deltas.iter() {
+                    for dep in r.dependencies().into_iter() {
+                        deps.insert(dep);
+                    }
+                }
                 deps
             }
         }
@@ -640,11 +707,15 @@ where
     S:Scope,
     V:Val,
     S::Timestamp: Lattice+Ord,
-    T1: TraceReader<V,V,S::Timestamp,Weight> + Clone,
-    T2: TraceReader<V,(),S::Timestamp,Weight> + Clone
+    T1: TraceReader<Key=V, Val=V, Time=S::Timestamp, R=Weight> + Clone,
+    T1::Batch: BatchReader<V, V, S::Timestamp, Weight>,
+    T1::Cursor: Cursor<V, V, S::Timestamp, Weight>,
+    T2: TraceReader<Key=V, Val=(), Time=S::Timestamp, R=Weight> + Clone,
+    T2::Batch: BatchReader<V, (), S::Timestamp, Weight>,
+    T2::Cursor: Cursor<V, (), S::Timestamp, Weight>,
 {
-    Map ( Arranged<S,V,V,Weight,T1> ),
-    Set ( Arranged<S,V,(),Weight,T2> ),
+    Map ( Arranged<S,T1> ),
+    Set ( Arranged<S,T2> ),
 }
 
 impl<S,V> ArrangedCollection<S,V,TValAgent<S,V>,TKeyAgent<S,V>>
@@ -688,8 +759,8 @@ where
     V:Val,
     'a: 'b
 {
-    arrangements1: &'b FnvHashMap<ArrId, ArrangedCollection<Child<'a,P,T>,V,TValAgent<Child<'a,P,T>,V>,TKeyAgent<Child<'a,P,T>,V>>>,
-    arrangements2: &'b FnvHashMap<ArrId, ArrangedCollection<Child<'a,P,T>,V,TValEnter<'a,P,T,V>,TKeyEnter<'a,P,T,V>>>
+    arrangements1: &'b BTreeMap<ArrId, ArrangedCollection<Child<'a,P,T>,V,TValAgent<Child<'a,P,T>,V>,TKeyAgent<Child<'a,P,T>,V>>>,
+    arrangements2: &'b BTreeMap<ArrId, ArrangedCollection<Child<'a,P,T>,V,TValEnter<'a,P,T,V>,TKeyEnter<'a,P,T,V>>>
 }
 
 impl<'a,'b,V,P,T> Arrangements<'a,'b,V,P,T>
@@ -869,6 +940,9 @@ impl<V:Val> Program<V>
 
                     worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
                         let profcpu: &AtomicBool = &*profile_cpu3;
+                        //for event in data.iter() {
+                        //    eprintln!("Timely event @{:?}: {:?}", _time, event);
+                        //}
                         /* Filter out events we don't care about to avoid the overhead of sending
                          * the event around just to drop it eventually. */
                         let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
@@ -886,15 +960,18 @@ impl<V:Val> Program<V>
                         if data.len() == 0 {
                             return;
                         }
+                        //for event in data.iter() {
+                        //    eprintln!("Differential event @{:?}: {:?}", _time, event);
+                        //}
                         /* Send update to profiling channel */
                         prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect())).unwrap();
                     });
 
                     let rx = rx.clone();
                     let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| {
-                        let mut sessions : FnvHashMap<RelId, InputSession<TS, V, Weight>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = FnvHashMap::default();
-                        let mut arrangements = FnvHashMap::default();
+                        let mut sessions : BTreeMap<RelId, InputSession<TS, V, Weight>> = BTreeMap::new();
+                        let mut collections : BTreeMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = BTreeMap::new();
+                        let mut arrangements = BTreeMap::new();
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
                                 ProgNode::Rel{rel} => {
@@ -909,9 +986,9 @@ impl<V:Val> Program<V>
                                     };
                                     /* apply rules */
                                     let mut rule_collections: Vec<_> = rel.rules.iter().map(|rule| {
-                                        prog.mk_rule(rule, |rid| collections.get(&rid),
+                                        prog.mk_rule(outer, rule, |rid| collections.get(&rid),
                                                      Arrangements{arrangements1: &arrangements,
-                                                     arrangements2: &FnvHashMap::default()})
+                                                     arrangements2: &BTreeMap::default()})
 
                                     }).collect();
                                     rule_collections.push(collection);
@@ -946,13 +1023,13 @@ impl<V:Val> Program<V>
                                     /* create a nested scope for mutually recursive relations */
                                     let new_collections = outer.scoped("recursive component", |inner| {
                                         /* create variables for relations defined in the SCC. */
-                                        let mut vars = FnvHashMap::default();
+                                        let mut vars = BTreeMap::new();
                                         /* arrangements created inside the nested scope */
-                                        let mut local_arrangements = FnvHashMap::default();
+                                        let mut local_arrangements = BTreeMap::new();
                                         /* arrangements entered from global scope */
-                                        let mut inner_arrangements = FnvHashMap::default();
+                                        let mut inner_arrangements = BTreeMap::new();
                                         /* collections entered from global scope */
-                                        let mut inner_collections = FnvHashMap::default();
+                                        let mut inner_collections = BTreeMap::new();
                                         for r in rels.iter() {
                                             vars.insert(r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
                                         };
@@ -990,7 +1067,7 @@ impl<V:Val> Program<V>
                                         for rel in rels {
                                             for rule in &rel.rules {
                                                 let c = prog.mk_rule(
-                                                    rule,
+                                                    inner, rule,
                                                     |rid| vars.get(&rid).map(|v|&(**v)).or(inner_collections.get(&rid)),
                                                     Arrangements{arrangements1: &local_arrangements,
                                                                  arrangements2: &inner_arrangements});
@@ -999,7 +1076,7 @@ impl<V:Val> Program<V>
                                             /* var.distinct() will be called automatically by var.drop() */
                                         };
                                         /* bring new relations back to the outer scope */
-                                        let mut new_collections = FnvHashMap::default();
+                                        let mut new_collections = BTreeMap::new();
                                         for rel in rels {
                                             new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
                                         };
@@ -1055,8 +1132,8 @@ impl<V:Val> Program<V>
                     }
 
                     // close session handles for non-input sessions
-                    let mut sessions: FnvHashMap<RelId, InputSession<TS, V, Weight>> =
-                        all_sessions.drain().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
+                    let mut sessions: BTreeMap<RelId, InputSession<TS, V, Weight>> =
+                        all_sessions.into_iter().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
 
                     /* Only worker 0 receives data */
                     if worker_index == 0 {
@@ -1180,7 +1257,7 @@ impl<V:Val> Program<V>
     }
 
     /* Advance the epoch on all input sessions */
-    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>, epoch : TS) {
+    fn advance(sessions: &mut BTreeMap<RelId, InputSession<TS, V, Weight>>, epoch : TS) {
         for (_,s) in sessions.into_iter() {
             //print!("advance\n");
             s.advance_to(epoch);
@@ -1189,7 +1266,7 @@ impl<V:Val> Program<V>
 
     /* Propagate all changes through the pipeline */
     fn flush(
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
+        sessions: &mut BTreeMap<RelId, InputSession<TS, V, Weight>>,
         probe: &ProbeHandle<TS>,
         worker: &mut Worker<Allocator>,
         progress_lock: &RwLock<TS>,
@@ -1290,15 +1367,15 @@ impl<V:Val> Program<V>
     }
 
     /* Return all relations required to compute rels, excluding recursive dependencies on rels */
-    fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep>
+    fn dependencies(rels: &Vec<Relation<V>>) -> BTreeSet<Dep>
     {
-        let mut result = FnvHashSet::default();
+        let mut result = BTreeSet::new();
         for rel in rels {
             for rule in &rel.rules {
                 result = result.union(&rule.dependencies()).cloned().collect();
             }
         };
-        let filtered = result.drain().filter(|d| rels.iter().all(|r|r.id != d.relid())).collect();
+        let filtered = result.into_iter().filter(|d| rels.iter().all(|r|r.id != d.relid())).collect();
         filtered
     }
 
@@ -1361,14 +1438,16 @@ impl<V:Val> Program<V>
         }
     }
 
-    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,V,V,Weight,TR>,
+    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,TR>,
                                        xform       : &XFormArrangement<V>,
                                        arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
     where
         P  : ScopeParent,
         P::Timestamp : Lattice,
         T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
-        TR  : TraceReader<V,V,T,Weight> + Clone + 'static,
+        TR  : TraceReader<Key=V, Val=V, Time=T, R=Weight> + Clone + 'static,
+        TR::Batch: BatchReader<V, V, T, Weight>,
+        TR::Cursor: Cursor<V, V, T, Weight>
     {
         match xform {
             XFormArrangement::FlatMap{description, fmfun: &fmfun, next} => {
@@ -1457,16 +1536,17 @@ impl<V:Val> Program<V>
     }
 
     /* Compile right-hand-side of a rule to a collection */
-    fn mk_rule<'a,'b,P,T,F>(
+    fn mk_rule<'a,'b,'c,P,T,F>(
         &self,
+        scope: &mut Child<'c,P,T>,
         rule: &Rule<V>,
         lookup_collection: F,
-        arrangements: Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
+        arrangements: Arrangements<'c,'b,V,P,T>) -> Collection<Child<'c,P,T>,V,Weight>
     where
         P: ScopeParent + 'a,
         P::Timestamp : Lattice,
         T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
-        F: Fn(RelId) -> Option<&'b Collection<Child<'a,P,T>,V,Weight>>,
+        F: Fn(RelId) -> Option<&'b Collection<Child<'c,P,T>,V,Weight>>,
         'a: 'b
     {
         match rule {
@@ -1492,6 +1572,129 @@ impl<V:Val> Program<V>
                     },
                     _ => panic!("Rule starts with a set arrangement {:?}", *arr)
                 }
+            },
+            Rule::DeltaRule{description, deltas} => {
+                /* Create dataflow for delta query of the form:
+                 * dQ/dE1 = dE1, E2', E3',... .
+                 * dQ/dE2 = dE2, E1, E3',... .
+                 * dQ/dE3 = dE3, E1, E2,... .
+                 * ...
+                 * where `dEi` are collections that represent streams of changes to relations `Ei`,
+                 * `Ei` and `Ei'` are arrangements of `Ei` at the previous and current timestamps
+                 * respectively.
+                 */
+                scope.scoped::<AltNeu<T>,_,_>(description, |inner| {
+                    /* Import `dE1`, ..., `dEn` in the nested scope */
+                    let local_collections: BTreeMap<RelId, Collection<_,_,_>> = {
+                        let mut local_collections = BTreeMap::new();
+                        for dep in rule.dependencies().iter() {
+                            match dep {
+                                Dep::Rel(relid) => {
+                                    local_collections.insert(*relid,
+                                                             lookup_collection(*relid)
+                                                             .expect(&format!("mk_rule: unknown relation {:?}", *relid))
+                                                             .enter(inner));
+                                },
+                                _ => {}
+                            }
+                        };
+                        local_collections
+                    };
+
+                    /* Import `Ei`, `Ei'` in the nested scope */
+                    let mut local_arrangements_alt1: BTreeMap<(ArrId, OldNew), Arranged<_,_>> = BTreeMap::new();
+                    let mut local_arrangements_neu1: BTreeMap<(ArrId, OldNew), Arranged<_,_>> = BTreeMap::new();
+                    let mut local_arrangements_alt2: BTreeMap<(ArrId, OldNew), Arranged<_,_>> = BTreeMap::new();
+                    let mut local_arrangements_neu2: BTreeMap<(ArrId, OldNew), Arranged<_,_>> = BTreeMap::new();
+                    {
+                        /* Arrangements used by the rule along with timestamps when we need them. */
+                        let mut arrdeps: BTreeSet<(ArrId, OldNew)> = BTreeSet::new();
+                        for delta_rule in deltas.iter() {
+                            for op in delta_rule.ops.iter() {
+                                match op {
+                                    DeltaOp::Join{timestamp, arrangement, ..} => {
+                                        arrdeps.insert((arrangement.clone(), timestamp.clone()));
+                                    }
+                                }
+                            }
+                        }
+                        for (arr, ts) in arrdeps.iter() {
+                            let alt: (for<'r, 's, 't0> fn(&'r V, &'s V, &'t0 T) -> _) = |_,_,t| AltNeu::alt(t.clone());
+                            let neu: (for<'r, 's, 't0> fn(&'r V, &'s V, &'t0 T) -> _) = |_,_,t| AltNeu::neu(t.clone());
+                            match arrangements.lookup_arr(*arr) {
+                                A::Arrangement1(ArrangedCollection::Map(arranged)) => {
+                                    match ts {
+                                        OldNew::Old => {
+                                            local_arrangements_alt1.insert((arr.clone(),ts.clone()), arranged.enter_at(inner, alt));
+                                        },
+                                        OldNew::New => {
+                                            local_arrangements_neu1.insert((arr.clone(),ts.clone()), arranged.enter_at(inner, neu));
+                                        }
+                                    }
+                                },
+                                A::Arrangement2(ArrangedCollection::Map(arranged)) => {
+                                    match ts {
+                                        OldNew::Old => {
+                                            local_arrangements_alt2.insert((arr.clone(),ts.clone()), arranged.enter_at(inner, alt));
+                                        },
+                                        OldNew::New => {
+                                            local_arrangements_neu2.insert((arr.clone(),ts.clone()), arranged.enter_at(inner, neu));
+                                        }
+                                    }
+                                },
+                                _ => panic!("Set arrangement in a delta rule {:?}", *arr)
+                            };
+                        };
+                    };
+
+                    let mut diffs: Vec<Collection<_,_,_>> = Vec::new();
+                    for delta_rule in deltas.iter() {
+                        /* dQ/dEi = dEi, E2', E3',... .
+                         */
+                        let mut prefix = local_collections.get(&delta_rule.rel)
+                            .expect(&format!("mk_rule: unknown local relation {:?}", &delta_rule.rel));
+                        let mut changes = None;
+                        for op in delta_rule.ops.iter() {
+                            changes = Some (match op {
+                                DeltaOp::Join{keyfunc, arrangement, timestamp, pfunc} => {
+                                    match timestamp {
+                                        OldNew::Old => {
+                                            match local_arrangements_alt1.get(&(arrangement.clone(), timestamp.clone())) {
+                                                Some(arranged) => {
+                                                    propose(changes.as_ref().unwrap_or(prefix),
+                                                            arranged.clone(),
+                                                            keyfunc.clone())
+                                                },
+                                                None => {
+                                                    propose(changes.as_ref().unwrap_or(prefix),
+                                                            local_arrangements_alt2.get(&(arrangement.clone(), timestamp.clone())).unwrap().clone(),
+                                                            keyfunc.clone())
+                                                }
+                                            }
+                                        },
+                                        OldNew::New => {
+                                            match local_arrangements_neu1.get(&(arrangement.clone(), timestamp.clone())) {
+                                                Some(arranged) => {
+                                                    propose(changes.as_ref().unwrap_or(prefix),
+                                                            arranged.clone(),
+                                                            keyfunc.clone())
+                                                },
+                                                None => {
+                                                    propose(changes.as_ref().unwrap_or(prefix),
+                                                            local_arrangements_neu2.get(&(arrangement.clone(), timestamp.clone())).unwrap().clone(),
+                                                            keyfunc.clone())
+                                                }
+                                            }
+                                        }
+                                    }.flat_map(pfunc.clone())
+                                }
+                            })
+                        };
+                        diffs.push(changes.unwrap_or(prefix.clone()));
+                    }
+                    /* Concatenate all diffs */
+                    concatenate_collections(inner, diffs.into_iter()).leave()
+                })
             }
         }
     }
@@ -1918,13 +2121,17 @@ impl<V:Val> RunningProgram<V> {
 }
 
 // Versions of semijoin and antijoin operators that take arrangement instead of collection.
-fn semijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, K, V, R1, T1>,
-                                        other: &Arranged<G, K, (), R2, T2>) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
+fn semijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
+                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
 where
     G: Scope,
     G::Timestamp: Lattice+Ord,
-    T1: TraceReader<K,V,G::Timestamp,R1> + Clone + 'static,
-    T2: TraceReader<K,(),G::Timestamp,R2> + Clone + 'static,
+    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
     K: Data+Hashable,
     V: Data,
     R2: Diff,
@@ -1934,13 +2141,17 @@ where
     arranged.join_core(other, |k,v,_| Some((k.clone(), v.clone())))
 }
 
-fn antijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, K, V, R1, T1>,
-                                        other: &Arranged<G, K, (), R2, T2>) -> Collection<G, (K, V), R1>
+fn antijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
+                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), R1>
 where
     G: Scope,
     G::Timestamp: Lattice+Ord,
-    T1: TraceReader<K,V,G::Timestamp,R1> + Clone + 'static,
-    T2: TraceReader<K,(),G::Timestamp,R2> + Clone + 'static,
+    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
     K: Data+Hashable,
     V: Data,
     R2: Diff,

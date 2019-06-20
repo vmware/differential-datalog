@@ -11,6 +11,7 @@ extern crate libc;
 extern crate timely;
 //extern crate timely_communication;
 extern crate differential_dataflow;
+extern crate dogsdogsdogs;
 extern crate fnv;
 extern crate sequence_trie;
 
