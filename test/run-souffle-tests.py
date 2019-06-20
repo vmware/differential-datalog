@@ -1,6 +1,8 @@
 #! /usr/bin/env python2.7
 """Run various Souffle Datalog programs tests"""
 
+# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,too-many-locals,too-many-return-statements
+
 import os
 import subprocess
 import sys
@@ -8,7 +10,7 @@ import argparse
 import datetime
 
 sys.path.append(os.getcwd() + "/../tools")
-from souffle_converter import convert
+from souffle_converter import convert, ConversionOptions
 
 verbose = False
 tests_compiled = 0
@@ -41,7 +43,7 @@ xfail = [
     "components1",    # improper component nesting
     "functor_arity",  # min, max, cat with more than 2 arguments
     "grammar",        # funny unicode char in a comment
-    "independent_body2", # issue #231 - not in DNF form
+    "independent_body2", # issue #231 - not in DNF form, #197
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # 197
     "magic_nqueens",    # 202
@@ -72,7 +74,7 @@ xfail = [
     "dfa_summary_function", # 197
     "dnf",              # 231
     "edit_distance",    # 197
-    "euclid",           # 231
+    "euclid",           # 231, 202
     "inline_nats",      # 198
     "josephus",         # 197
     "longest_path",     # 198
@@ -111,7 +113,10 @@ def compile_example(directory, f):
         raise Exception("Error " + str(code) + " running cpp")
     with open(f + ".tmp", "w") as tmp:
         tmp.write(output)
-    convert(f + ".tmp", "souffle", directory.replace("/", ".") + ".souffle.")
+    options = ConversionOptions()
+    options.relationPrefix = directory.replace("/", ".") + ".souffle."
+    options.toDNF = True
+    convert(f + ".tmp", "souffle", options)
 
     if code == 0:
         code, _ = run_command(["ddlog", "-i", "souffle.dl", "-L", libpath])

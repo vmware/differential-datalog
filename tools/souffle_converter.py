@@ -2,20 +2,25 @@
 """This program converts Datalog programs written in the Souffle dialect to
    Datalog programs written in the Differential Datalog dialect"""
 
-# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long
+# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long,too-many-locals,too-many-return-statements,too-many-branches
 import json
 import gzip
 import os
 import argparse
 import parglare  # parser generator
 
-skip_files = False  # If true do not process .input and .output declarations
-skip_logic = False  # If true do not produce file .dl
-profile = False     # If true, enable profiling and dump profiling information
-toDNF = False       # If true, enable transformmation of non-dnf disjunctions
-relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
-# This makes it possible to concatenate multiple .dat files together
-# This should end in a dot.
+class ConversionOptions(object):
+    """Options that influence how the conversion from Souffle to DDlog is done"""
+
+    def __init__(self):
+        self.skip_files = False  # If true do not process .input and .output declarations
+        self.skip_logic = False  # If true do not produce file .dl
+        self.profile = False     # If true, enable profiling and dump profiling information
+        self.toDNF = False       # If true, enable transformmation of non-dnf disjunctions
+        self.relationPrefix = ""  # Prefix to prepend to all relation names when they are written to .dat files
+                                  # This makes it possible to concatenate multiple .dat files together
+                                  # This should end in a dot.
+
 parglareParser = None  # Cache here the Parglare parser
 verbose = False
 
@@ -358,12 +363,14 @@ class Component(object):
 class Files(object):
     """Represents the files that are used for input and output"""
 
-    def __init__(self, inputDl, outputPrefix):
+    def __init__(self, options, inputDl, outputPrefix):
         self.inputName = inputDl
+        self.options = options
+
         outputName = outputPrefix + ".dl"
         outputDataName = outputPrefix + ".dat"
         outputDumpName = outputPrefix + ".dump.expected"
-        if not skip_logic:
+        if not options.skip_logic:
             self.outFile = open(outputName, 'w')
         self.output("import intern")
         self.output("import souffle_lib")
@@ -374,10 +381,10 @@ class Files(object):
         Type.create("number", "signed<32>")
         Type.create("symbol", "IString")
         Type.create("empty", "()")
-        if not skip_files:
+        if not options.skip_files:
             self.outputDataFile = open(outputDataName, 'w')
             self.dumpFile = open(outputDumpName, 'w')
-            if profile:
+            if options.profile:
                 self.outputData("profile cpu on", ";")
             self.outputData("start", ";")
         global verbose
@@ -388,24 +395,23 @@ class Files(object):
     def output(self, text):
         if text == "":
             return
-        if not skip_logic:
+        if not self.options.skip_logic:
             self.outFile.write(text + "\n")
 
     def outputData(self, text, terminator):
         self.outputDataFile.write(text + terminator + "\n")
 
     def done(self, dumporder):
-        global relationPrefix
-        if not skip_files:
+        if not self.options.skip_files:
             self.outputData("commit", ";")
             for r in dumporder:
-                self.outputData("dump " + relationPrefix + r, ";")
-            if profile:
+                self.outputData("dump " + self.options.relationPrefix + r, ";")
+            if self.options.profile:
                 self.outputData("profile", ";")
             self.outputData("exit", ";")
             self.outputDataFile.close()
             self.dumpFile.close()
-        if not skip_logic:
+        if not self.options.skip_logic:
             self.outFile.close()
 
 
@@ -434,8 +440,9 @@ class SouffleConverter(object):
 
     # This class is very closely tied to the souffle-grammar.pg grammar.
 
-    def __init__(self, files):
+    def __init__(self, files, conversion_options):
         assert isinstance(files, Files)
+        self.conversion_options = conversion_options
         self.files = files
         # During preprocessing we traverse the entire AST and construct various objects.
         # During postprocessing we traverse the AST again and we emit the output to files.
@@ -598,7 +605,7 @@ class SouffleConverter(object):
         ri = Relation.get(rel, self.getCurrentComponentLegalName())
         ri.mark_as_input()
 
-        if skip_files or self.preprocessing:
+        if self.conversion_options.skip_files or self.preprocessing:
             return
 
         kvpf = getOptField(body, "KeyValuePairs")
@@ -620,7 +627,7 @@ class SouffleConverter(object):
         else:
             delimiter = kvp["delimiter"]
 
-        global relationPrefix, verbose
+        global verbose
         if verbose:
             print "Reading", rel + "_shadow"
         data = None
@@ -637,7 +644,8 @@ class SouffleConverter(object):
         output = self.process_file(rel, data, delimiter, False)
         for row in output:
             self.files.outputData(
-                "insert " + relationPrefix + ri.name + "_shadow(" + ",".join(row) + ")", ",")
+                "insert " + self.conversion_options.relationPrefix + \
+                ri.name + "_shadow(" + ",".join(row) + ")", ",")
 
     def process_output(self, outputdecl):
         if getOptField(outputdecl, "OUTPUT") is None:
@@ -658,7 +666,7 @@ class SouffleConverter(object):
         for rel in rels:
             ri = Relation.get(rel, self.getCurrentComponentLegalName())
             ri.isoutput = True
-            if skip_files or self.preprocessing:
+            if self.conversion_options.skip_files or self.preprocessing:
                 Relation.dumpOrder.append(ri.name)
                 return
 
@@ -680,7 +688,7 @@ class SouffleConverter(object):
             output = self.process_file(rel, data, "\t", True)
             for row in output:
                 self.files.dumpFile.write(
-                    relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
+                    self.conversion_options.relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
 
     def get_type_parameters(self, typeParameters):
         """Returns the type parameters as a list or None if there are no type parameters
@@ -1075,7 +1083,7 @@ class SouffleConverter(object):
         for x in disj.children:
             if x.symbol.name == ",":
                 return True
-            elif not (x.symbol.name in ["Term", "OR", "(", ")", "!"]) and self.hasCommas(x):
+            elif (x.symbol.name not in ["Term", "OR", "(", ")", "!"]) and self.hasCommas(x):
                 return True
         return False
 
@@ -1127,7 +1135,7 @@ class SouffleConverter(object):
         disjunctions = getList(tail, "Conjunction", "Body")
 
         transformed = False
-        if toDNF:
+        if self.conversion_options.toDNF:
             (listbody, transformed) = self.flatten(tail, [], False)
             if transformed:
                 terms = self.conDisjunction(listbody)
@@ -1347,24 +1355,22 @@ class SouffleConverter(object):
     def process(self, tree):
         decls = getListField(tree, "Declaration", "DeclarationList")
         for decl in decls:
-            if skip_logic:
+            if self.conversion_options.skip_logic:
                 self.process_only_facts(decl)
             else:
                 self.process_decl(decl)
         self.files.output(self.aggregates)
 
 
-def convert(inputName, outputPrefix, relPrefix, debug=False):
+def convert(inputName, outputPrefix, options, debug=False):
     Type.clear()
     Relation.clear()
-    global relationPrefix
-    relationPrefix = relPrefix if relPrefix else ""
-    if relationPrefix != "":
-        assert relationPrefix.endswith("."), "prefix is expected to end with a dot"
-    files = Files(inputName, outputPrefix)
+    if options.relationPrefix != "":
+        assert options.relationPrefix.endswith("."), "prefix is expected to end with a dot"
+    files = Files(options, inputName, outputPrefix)
     parser = getParser(debug)
     tree = parser.parse_file(files.inputName)
-    converter = SouffleConverter(files)
+    converter = SouffleConverter(files, options)
     converter.preprocessing = True
     converter.process(tree)
 
@@ -1399,20 +1405,18 @@ def main():
     argParser.add_argument("--profile", help="dump profile information", action="store_true")
     args = argParser.parse_args()
 
+    global verbose
     verbose = args.verbose
     if args.facts_only and args.logic_only:
         raise Exception("Cannot produce only facts and only logic")
-    global skip_files, skip_logic, profile, toDNF
-    if args.logic_only:
-        skip_files = True
-    if args.facts_only:
-        skip_logic = True
-    if args.profile:
-        profile = True
-    if args.convert_dnf:
-        toDNF = True
-    convert(args.input, args.out, args.prefix, args.d)
 
+    options = ConversionOptions()
+    options.skip_files = args.logic_only
+    options.skip_logic = args.facts_only
+    options.profile = args.profile
+    options.toDNF = args.convert_dnf
+    options.relationPrefix = args.prefix if args.prefix else ""
+    convert(args.input, args.out, options, args.d)
 
 if __name__ == "__main__":
     main()
