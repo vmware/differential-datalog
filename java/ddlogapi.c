@@ -25,11 +25,7 @@ struct CallbackInfo {
     jobject obj;
     // Handle to the method to call.
     jmethodID method;
-    // chained so we can resolve the leaks.
-    struct CallbackInfo* next;
 };
-
-static struct CallbackInfo* toDelete = NULL;
 
 // Debugging code
 static void printClass(JNIEnv* env, jobject obj) {
@@ -67,9 +63,6 @@ static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring met
     if (methodId == NULL)
         return NULL;
     cbinfo->method = methodId;
-    // chain all structures to be deleted.
-    cbinfo->next = toDelete;
-    toDelete = cbinfo;
     return cbinfo;
 }
 
@@ -109,7 +102,16 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
     if (cbinfo == NULL)
         return 0;
-    return (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
+
+    // store the callback pointer in the parent Java object
+    jclass thisClass = (*env)->GetObjectClass(env, obj);
+    jfieldID callbackHandle = (*env)->GetFieldID(env, thisClass, "callbackHandle", "J");
+    if (callbackHandle == NULL)
+        return 0;
+    (*env)->SetLongField(env, obj, callbackHandle, (jlong)cbinfo);
+
+    void* handle = ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
+    return (jlong)handle;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
@@ -135,22 +137,17 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop_1recording(
-    JNIEnv *env, jobject obj, jlong handle, jint fd)
-{
+    JNIEnv *env, jobject obj, jlong handle, jint fd) {
     ddlog_record_commands((ddlog_prog)handle, -1);
     close(fd);
     return 0;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
-    JNIEnv *env, jobject obj, jlong handle) {
-    struct CallbackInfo* current = toDelete;
-    while (current != NULL) {
-        struct CallbackInfo* next = current->next;
-        deleteCallback(current);
-        current = next;
-    }
-    toDelete = NULL;
+    JNIEnv *env, jobject obj, jlong handle, jlong callbackHandle) {
+
+    // Delete the callback pointer stored in the parent Java object
+    deleteCallback((void*)callbackHandle);
     return ddlog_stop((ddlog_prog)handle);
 }
 
@@ -174,9 +171,11 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
     if (cbinfo == NULL)
         return -1;
 
-    return ddlog_transaction_commit_dump_changes((ddlog_prog)handle,
-						 commit_callback,
-						 (uintptr_t)cbinfo);
+    int result = ddlog_transaction_commit_dump_changes((ddlog_prog)handle,
+                                                       commit_callback,
+                                                       (uintptr_t)cbinfo);
+    free(cbinfo);
+    return (jint)result;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(
@@ -221,6 +220,7 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_dump_1table(
         return -1;
     cbinfo->env = env;  // the dump_callback will be called on the same thread
     int result = ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo);
+    free(cbinfo);
     return (jint)result;
 }
 
