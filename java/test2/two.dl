@@ -1,0 +1,8 @@
+input relation A1(a: bit<32>)
+input relation A2(a: bit<32>)
+
+output relation B1(b: bit<32>)
+B1(b) :- A1(b).
+
+output relation B2(b: bit<32>)
+B2(b) :- A2(b).
