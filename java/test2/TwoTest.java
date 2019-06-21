@@ -40,6 +40,8 @@ public class TwoTest {
         this.api2.applyUpdates(c2);
         this.api1.commit();
         this.api2.commit();
+        this.api1.stop();
+        this.api2.stop();
     }
 
     public static void main(String[] args) throws IOException {
