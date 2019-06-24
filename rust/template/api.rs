@@ -389,20 +389,25 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
     record_updates(&prog, upds, n);
 
     let mut upds_vec = Vec::with_capacity(n as usize);
+    let mut res = 0;
     for i in 0..n {
-        let upd = match updcmd2upd(Box::from_raw(*upds.offset(i as isize)).as_ref()) {
-            Ok(upd) => upd,
-            Err(e) => {
-                prog.eprintln(&format!("ddlog_apply_updates(): invalid argument: {}", e));
-                return -1;
-            }
-        };
-        upds_vec.push(upd);
+        let boxed = Box::from_raw(*upds.offset(i as isize));
+        if res == 0 {
+            match updcmd2upd(boxed.as_ref()) {
+                Ok(upd) => upds_vec.push(upd),
+                Err(e) => {
+                    prog.eprintln(&format!("ddlog_apply_updates(): invalid argument: {}", e));
+                    res = -1;
+                }
+            };
+        }
     };
-    let res = prog.prog.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
-        prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
-        return -1;
-    });
+    if res == 0 {
+        res = prog.prog.lock().unwrap().apply_updates(upds_vec).map(|_|0).unwrap_or_else(|e|{
+            prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
+            return -1;
+        });
+    }
     Arc::into_raw(prog);
     res
 }

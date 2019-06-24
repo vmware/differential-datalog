@@ -247,11 +247,12 @@ extern void ddlog_free_json(char *json);
 /*
  * Apply updates to DDlog tables.  See the ddlog_cmd API below.
  *
- * Takes ownership of all commands in the `upds` array, but not the array
- * itself.
- *
  * On success, returns `0`. On error, returns a negative value and
  * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ * Whether the function succeeds or fails, it consumes all commands in
+ * the `upds` array (but not the array itself), so they can no longer be
+ * accessed by the called after the function returns.
  */
 extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
 
