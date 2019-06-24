@@ -1,3 +1,4 @@
+.DS_store
 dist
 dist-*
 cabal-dev
@@ -17,6 +18,7 @@ cabal.sandbox.config
 *.eventlog
 *.swp
 .stack-work/
+stack.yaml.lock
 cabal.project.local
 .HTF/
 test/datalog_tests/*.ast

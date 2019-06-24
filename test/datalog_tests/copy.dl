@@ -1,0 +1,4 @@
+input relation Rin(b: bool)
+output relation Rout(b: bool)
+
+Rout(b) :- Rin(b).
