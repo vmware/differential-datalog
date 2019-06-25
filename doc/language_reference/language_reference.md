@@ -395,7 +395,7 @@ cons_term    ::= (* positional arguments *)
                             ("," "." field_name "=" expr)* "}"]
 apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
-ite_term     ::= "if" term term "else" term
+ite_term     ::= "if" term term [ "else" term ]
 for_term     ::= "for" "(" var_name "in" expr ")" term
 vardecl_term ::= "var" var_name
 
