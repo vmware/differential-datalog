@@ -574,7 +574,7 @@ unsafe fn record_profile(prog: &Arc<HDDlog>) {
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_string_free(s: *mut raw::c_char)
+pub unsafe extern "C" fn ddlog_string_free(s: *mut raw::c_char)
 {
     if s.is_null() {
         return;
