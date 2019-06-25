@@ -236,7 +236,7 @@ function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
         if (price < min_price) {
             min_vendor = vendor;
             min_price = price
-        } else ()
+        }
     };
     (min_vendor, min_price)
 }

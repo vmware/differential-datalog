@@ -573,7 +573,7 @@ stripUnder = filter (/= '_')
 digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
 digitPrefix digit = (:) <$> digit <*> (many (digit <|> char '_'))
 
-eite    = eITE     <$ reserved "if" <*> term <*> term <*> (reserved "else" *> term)
+eite    = eITE     <$ reserved "if" <*> term <*> term <*> (option (eTuple []) $ (reserved "else" *> term))
 efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (varIdent <* reserved "in") <*> (expr <* symbol ")") <*> term
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"

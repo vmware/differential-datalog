@@ -595,7 +595,8 @@ Evaluation order can be controlled using several constructs:
 
 1. Semicolon is used to separate expressions that are evaluated in sequence, from left to right.
 
-1. *`if (cond) e1 else e2`* evaluates one of two subexpressions depending on the value of `cond`.
+1. *`if (cond) e1 [else e2]`* evaluates one of two subexpressions depending on the value of `cond`.
+   If the `else` is missing, the value `()` (emtpy tuple) is used for `e2`
 
 1. *Matching* is a generalization of C/Java `switch` statements.
 
@@ -624,8 +625,9 @@ function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): strin
 ```
 
 The result computed by a function is the result of the last expression
-evaluated.  There is no `return` statement.  The `else` clause is
-mandatory for an `if`.  In `match` expressions the patterns must cover
+evaluated.  There is no `return` statement.  If the `else` is
+missing the value `()` (empty tuple) is used for the `else` branch.
+In `match` expressions the patterns must cover
 all possible cases (for instance, the match expression above would not
 be correct without the last "catch-all" (`_`) case).
 
@@ -925,7 +927,7 @@ function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
         if (price < min_price) {
             min_vendor = vendor;
             min_price = price
-        } else ()
+        }
     };
     (min_vendor, min_price)
 }
@@ -1372,8 +1374,7 @@ for (person in Person)
 
 These 5 kinds of statements (`for`, `if`, `match`, `var`, blocks enclosed in braces) can be nested
 in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
-Also note that the `if` statement is not an expression, and thus the `else` clause is not required
-when using this syntax.  The DDlog compiler translates such programs into regular DDlog programs.
+The DDlog compiler translates such programs into regular DDlog programs.
 
 ## Modules
 
