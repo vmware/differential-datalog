@@ -5,8 +5,9 @@
 #include <stdbool.h>
 
 /*
- * *Note:* all functions in this library are thread-safe. E.g., it is
- * legal to call `ddlog_transaction_start()` from thread 1,
+ * *Note:* all functions in this library, with the exception of 
+ * `ddlog_record_commands()` and `ddlog_stop()` are thread-safe. E.g.,
+ * it is legal to call `ddlog_transaction_start()` from thread 1,
  * `ddlog_apply_ovsdb_updates()` from thread 2, and
  * `ddlog_transaction_commit()` from thread 3.  Multiple concurrent
  * updates from different threads are also valid.
@@ -125,11 +126,14 @@ extern ddlog_prog ddlog_run(unsigned int workers,
  *
  * This is a debugging feature used to record DDlog commands issued through
  * functions in this file in a DDlog command file that can later be replayed
- * throught the CLI interface.
+ * through the CLI interface.
  *
  * `fd` - file descriptor.  Passing -1 in this argument instructs DDlog to stop
  * recording. The caller is responsible for opening and closing the file.  They
  * can inject additional commands, e.g., `echo` to the file.
+ *
+ * IMPORTANT: this function is _not_ thread-safe and must not be invoked
+ * concurrently with other functions in this API.
  */
 extern int ddlog_record_commands(ddlog_prog hprog, int fd);
 
@@ -177,6 +181,9 @@ extern int ddlog_dump_input_snapshot(ddlog_prog hprog, int fd);
  *
  * On success, returns `0`; on error, returns `-1` and prints error message
  * (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ * IMPORTANT: this function is _not_ thread-safe and must not be invoked
+ * concurrently with other functions in this API.
  */
 extern int ddlog_stop(ddlog_prog hprog);
 
