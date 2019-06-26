@@ -11,6 +11,7 @@ use std::os::raw::c_char;
 use libc::size_t;
 use std::fmt;
 use std::fmt::Write;
+use std::string::ToString;
 
 pub type Name = Cow<'static, str>;
 
@@ -156,7 +157,7 @@ pub enum UpdCmd {
 pub unsafe extern "C" fn ddlog_dump_record(rec: *const Record) -> *mut c_char
 {
     match rec.as_ref() {
-        Some(rec) => CString::new(format!("{}", rec)).unwrap().into_raw(),
+        Some(rec) => CString::new(rec.to_string()).unwrap().into_raw(),
         _ => null_mut()
     }
 }
