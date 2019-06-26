@@ -77,7 +77,7 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
+pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
                                          module: *const c_char,
                                          table:  *const c_char,
                                          json:   *mut *mut c_char) -> c_int
@@ -149,7 +149,7 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
 
 /// Deallocates strings returned by other functions in this API.
 #[no_mangle]
-pub extern "C" fn ddlog_free_json(str: *mut c_char) {
+pub unsafe extern "C" fn ddlog_free_json(str: *mut c_char) {
     if str.is_null() { return; }
     let _ = unsafe{CString::from_raw(str)};
 }

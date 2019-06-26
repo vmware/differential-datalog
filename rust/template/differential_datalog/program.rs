@@ -598,10 +598,10 @@ impl<V: Val> Arrangement<V>
         S::Timestamp: Lattice+Ord+TotalOrder
     {
         match self {
-            Arrangement::Map{name: _, afun} => {
+            Arrangement::Map{afun, ..} => {
                 ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
             },
-            Arrangement::Set{name:_, fmfun, distinct} => {
+            Arrangement::Set{fmfun, distinct, ..} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
                     ArrangedCollection::Set(filtered.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }).arrange_by_self())
@@ -619,10 +619,10 @@ impl<V: Val> Arrangement<V>
         S::Timestamp: Lattice+Ord
     {
         match self {
-            Arrangement::Map{name: _, afun} => {
+            Arrangement::Map{afun, ..} => {
                 ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
             },
-            Arrangement::Set{name:_, fmfun, distinct} => {
+            Arrangement::Set{fmfun, distinct, ..} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
                     ArrangedCollection::Set(filtered.threshold(|_,c| if c.is_zero() { 0 } else { 1 }).arrange_by_self())
@@ -761,14 +761,14 @@ enum RelationInstance<V: Val> {
 impl<V: Val> RelationInstance<V> {
     pub fn delta(&self) -> &DeltaSet<V>{
         match self {
-            RelationInstance::Flat{elements: _, delta} => delta,
-            RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
+            RelationInstance::Flat{delta, ..} => delta,
+            RelationInstance::Indexed{delta, ..} => delta
         }
     }
     pub fn delta_mut(&mut self) -> &mut DeltaSet<V>{
         match self {
-            RelationInstance::Flat{elements: _, delta} => delta,
-            RelationInstance::Indexed{key_func: _, elements: _, delta} => delta
+            RelationInstance::Flat{delta, ..} => delta,
+            RelationInstance::Indexed{delta, ..} => delta
         }
     }
 }
@@ -798,7 +798,7 @@ impl<V:Val> Update<V> {
     }
     pub fn is_delete_key(&self) -> bool {
         match self {
-            Update::DeleteKey{relid: _, k: _} => true,
+            Update::DeleteKey{..} => true,
             _ => false
         }
     }
@@ -1122,7 +1122,7 @@ impl<V:Val> Program<V>
                     }
                 }
             }
-        ).map(|g| {g.join(); ()})
+        ).map(|g| {g.join();})
         );
 
         //println!("timely computation started");
@@ -1160,20 +1160,20 @@ impl<V:Val> Program<V>
             thread_handle: h,
             transaction_in_progress: false,
             need_to_flush: false,
-            profile_cpu: profile_cpu,
+            profile_cpu,
             prof_thread_handle: prof_thread,
-            profile: profile,
+            profile,
         }
     }
 
     /* Profiler thread function */
-    fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) -> () {
+    fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) {
         loop {
             match chan.recv() {
                 Ok(msg) => profile.lock().unwrap().update(&msg),
                 _ => {
                     //eprintln!("profiling thread exiting");
-                    return ()
+                    return
                 }
             }
         }
@@ -1639,14 +1639,14 @@ impl<V:Val> RunningProgram<V> {
         let upds = {
             let rel = self.relations.get_mut(&relid).ok_or_else(||format!("unknown input relation {}", relid))?;
             match rel {
-                RelationInstance::Flat{elements, delta: _} => {
+                RelationInstance::Flat{elements, ..} => {
                     let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
                     for v in elements.iter() {
                         upds.push(Update::DeleteValue{relid, v: v.clone()});
                     };
                     upds
                 },
-                RelationInstance::Indexed{key_func: _, elements, delta: _} => {
+                RelationInstance::Indexed{elements, ..} => {
                     let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
                     for k in elements.keys() {
                         upds.push(Update::DeleteKey{relid, k: k.clone()});

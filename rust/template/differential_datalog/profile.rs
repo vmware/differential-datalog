@@ -79,7 +79,7 @@ impl Profile {
         size_vec.iter().map(|(operator, size)| {
             let name = self.names.get(operator).map(|s|s.as_ref()).unwrap_or("???");
             let msg = format!("{} {}", name, operator);
-            write!(f, "{}      {}\n", size, msg)
+            writeln!(f, "{}      {}", size, msg)
         }).collect()
     }
 
@@ -103,7 +103,7 @@ impl Profile {
             /* Print the duration of the child before calling the function recursively on it */
             match child.value() {
                 None => {
-                    write!(f, "Unknown operator\n")?;
+                    writeln!(f, "Unknown operator")?;
                 },
                 Some(opid) => {
                     let name = self.names.get(opid).map(|s|s.as_ref()).unwrap_or("???");
