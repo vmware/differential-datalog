@@ -1,13 +1,25 @@
-Each DDlog program generates a rust package during compilation. The package
-contains an API to the running DDlog instance, providing methods in [`ddlog.h`](ddlog.h).
-Following are the steps to interact with a running DDlog program from Rust
+Each DDlog program generates a Rust crate during compilation. The crate,
+generated from the template in this directory, contains the DDlog engine
+and a runtime API to the DDlog instance for multiple languages:
+- Rust in [`api.rs`](api.rs)
+- C in [`ddlog.h`](ddlog.h)
+- Java (TODO)
+
+Following are the steps to run and interact with the DDlog program from Rust
 through the API:
 
-1. Compile the DDlog program to produce the rust code.
-2. In the client package, import the root of the generated package as well as
+1. Compile the DDlog program to produce Rust code:
+  ```
+  ddlog -i <prog>.dl -L<path_to_lib_directory>
+  ```
+  This generates a directory called `<prog>_ddlog` containing the Rust crate.
+
+2. In the client crate's `Cargo.toml`, import the root of the generated package as well as
 the `differential_datalog` directory in it. This links the client code to the
-DDlog program.
-3. Write code against the API documented in [`ddlog.h`](ddlog.h). The rust
+DDlog program (see example in 
+[`test/datalog_tests/api_test/Cargo.toml`](../test/datalog_tests/api_test/Cargo.toml)).
+
+3. Write code against the API documented in [`ddlog.h`](ddlog.h). The Rust
    implementation for the API can be found in [`api.rs`](api.rs),
    [`differential_datalog/record.rs`](differential_datalog/record.rs) etc.
 
