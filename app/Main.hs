@@ -35,8 +35,10 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
+import Language.DifferentialDatalog.CompileJava
 
 data TOption = Datalog String
+             | Java String
              | Action String
              | LibDir String
              | DynLib
@@ -55,6 +57,7 @@ options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "D
           , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
           , Option ['L'] []                   (ReqArg LibDir   "PATH")        "extra DDlog library directory"
           , Option []    ["dynlib"]           (NoArg DynLib)                  "generate dynamic library"
+          , Option ['j'] ["java"]             (ReqArg Java "FILE")            "generate a Java file with helper APIs"
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                "do not generate dynamic library (default)"
           , Option []    ["staticlib"]        (NoArg StaticLib)               "generate static library (default)"
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)             "do not generate static library"
@@ -66,6 +69,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confLibDirs       :: [FilePath]
                      , confStaticLib     :: Bool
                      , confDynamicLib    :: Bool
+                     , confJava          :: FilePath
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
@@ -73,6 +77,7 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confLibDirs       = []
                        , confStaticLib     = True
                        , confDynamicLib    = False
+                       , confJava          = "" -- if empty no Java output is produced
                        }
 
 
@@ -83,6 +88,7 @@ addOption config (Action a)     = do a' <- case a of
                                                 "compile"    -> return ActionCompile
                                                 _            -> errorWithoutStackTrace "invalid action"
                                      return config{confAction = a'}
+addOption config (Java f)       = return config { confJava = f }
 addOption config (LibDir d)     = return config { confLibDirs = nub (d:confLibDirs config)}
 addOption config DynLib         = return config { confDynamicLib = True }
 addOption config NoDynLib       = return config { confDynamicLib = False }
@@ -128,3 +134,7 @@ compileProg conf@Config{..} = do
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     compile prog specname rs_code toml_code rust_dir crate_types
+    -- generate Java API
+    case confJava of
+       "" -> return ()
+       _  -> compileJava prog specname confJava
