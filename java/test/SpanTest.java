@@ -275,13 +275,13 @@ public class SpanTest {
             if (relation.equals("Container") || relation.equals("FWRule")) {
                 checkSize(args, 1);
                 DDlogRecord s = new DDlogRecord(args[0]);
-                DDlogRecord sa[] = { s };
+                DDlogRecord[] sa = { s };
                 o = DDlogRecord.makeStruct(relation, sa);
             } else if (relation.equals("Dependency") || relation.equals("Source") || relation.equals("Binding")) {
                 checkSize(args, 2);
                 DDlogRecord s0 = new DDlogRecord(args[0]);
                 DDlogRecord s1 = new DDlogRecord(args[1]);
-                DDlogRecord sa[] = { s0, s1 };
+                DDlogRecord[] sa = { s0, s1 };
                 o = DDlogRecord.makeStruct(relation, sa);
             } else {
                 throw new RuntimeException("Unexpected class: " + relation);

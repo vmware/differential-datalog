@@ -52,6 +52,7 @@ tags
 *.facts
 *.jar
 java/test/span_uuid.java.dump
+java/test*/*_ddlog
 *.pyc
 souffle-grammar.pgt
 # idea project files
