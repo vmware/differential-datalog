@@ -68,7 +68,8 @@ ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
--- a rule.  All conjuncts before 'i' must be validated before calling this
+-- a rule.  Does not include variables introduced in this conjunct.
+-- All conjuncts before 'i' must be validated before calling this
 -- function.
 ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Field
 ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
