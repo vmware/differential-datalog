@@ -13,7 +13,7 @@ use std::ops::BitOr;
 use std::collections;
 
 #[derive(Eq, Clone, Hash, PartialEq)]
-pub struct tinyset_Set64<T: u64set::Fits64 + Ord> {
+pub struct tinyset_Set64<T: u64set::Fits64> {
     pub x: u64set::Set64<T>
 }
 
@@ -53,11 +53,11 @@ impl <T: tinyset::Fits64 + Ord> tinyset_Set64<T> {
     }
 }
 
-impl <'a, T: tinyset::Fits64 + Ord> tinyset_Set64<T> {
+impl <T: tinyset::Fits64> tinyset_Set64<T> {
     /* In cases when order really, definitely, 100% does not matter,
      * a more efficient iterator can be used.
      */
-    pub fn unsorted_iter(&'a self) -> u64set::Iter64<'a, T> {
+    pub fn unsorted_iter(&self) -> u64set::Iter64<T> {
         self.x.iter()
     }
 }
@@ -116,7 +116,7 @@ impl<'de, T: u64set::Fits64 + serde::Deserialize<'de> + Ord> serde::Deserialize<
     }
 }
 
-impl <T: u64set::Fits64 + Ord> tinyset_Set64<T> {
+impl <T: u64set::Fits64> tinyset_Set64<T> {
     pub fn new() -> Self {
         tinyset_Set64{x: u64set::Set64::new()}
     }
@@ -128,7 +128,7 @@ impl <T: u64set::Fits64 + Ord> tinyset_Set64<T> {
     }
 }
 
-impl<T: FromRecord + u64set::Fits64 + Ord> FromRecord for tinyset_Set64<T> {
+impl<T: FromRecord + u64set::Fits64> FromRecord for tinyset_Set64<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v|tinyset_Set64{x: u64set::Set64::from_iter(v)})
     }
@@ -161,7 +161,7 @@ impl<T: u64set::Fits64 + Ord> iter::IntoIterator for &tinyset_Set64<T> {
     }
 }
 
-impl<T: u64set::Fits64 + Ord> FromIterator<T> for tinyset_Set64<T> {
+impl<T: u64set::Fits64> FromIterator<T> for tinyset_Set64<T> {
     fn from_iter<I>(iter: I) -> Self
     where I: iter::IntoIterator<Item = T>
     {
@@ -185,35 +185,35 @@ impl<T: Display + u64set::Fits64 + Ord> Display for tinyset_Set64<T> {
     }
 }
 
-pub fn tinyset_size<X: u64set::Fits64+ Ord + Clone>(s: &tinyset_Set64<X>) -> u64 {
+pub fn tinyset_size<X: u64set::Fits64>(s: &tinyset_Set64<X>) -> u64 {
     s.x.len() as u64
 }
 
-pub fn tinyset_empty<X: u64set::Fits64 + Ord + Clone>() -> tinyset_Set64<X> {
+pub fn tinyset_empty<X: u64set::Fits64>() -> tinyset_Set64<X> {
     tinyset_Set64::new()
 }
 
-pub fn tinyset_singleton<X: u64set::Fits64 + Ord + Clone>(v: &X) -> tinyset_Set64<X> {
+pub fn tinyset_singleton<X: u64set::Fits64 + Clone>(v: &X) -> tinyset_Set64<X> {
     let mut s = tinyset_Set64::new();
     s.insert(v.clone());
     s
 }
 
-pub fn tinyset_insert<X: u64set::Fits64 + Ord + Clone>(s: &mut tinyset_Set64<X>, v: &X) {
+pub fn tinyset_insert<X: u64set::Fits64 + Clone>(s: &mut tinyset_Set64<X>, v: &X) {
     s.x.insert((*v).clone());
 }
 
-pub fn tinyset_insert_imm<X: u64set::Fits64 + Ord + Clone>(s: &tinyset_Set64<X>, v: &X) -> tinyset_Set64<X> {
+pub fn tinyset_insert_imm<X: u64set::Fits64 + Clone>(s: &tinyset_Set64<X>, v: &X) -> tinyset_Set64<X> {
     let mut s2 = s.clone();
     s2.insert((*v).clone());
     s2
 }
 
-pub fn tinyset_contains<X: u64set::Fits64 + Ord>(s: &tinyset_Set64<X>, v: &X) -> bool {
+pub fn tinyset_contains<X: u64set::Fits64>(s: &tinyset_Set64<X>, v: &X) -> bool {
     s.x.contains(*v)
 }
 
-pub fn tinyset_is_empty<X: u64set::Fits64 + Ord>(s: &tinyset_Set64<X>) -> bool {
+pub fn tinyset_is_empty<X: u64set::Fits64>(s: &tinyset_Set64<X>) -> bool {
     s.x.len() == 0
 }
 
@@ -227,12 +227,12 @@ pub fn tinyset_set2vec<X: u64set::Fits64 + Ord + Clone>(s: &tinyset_Set64<X>) ->
     std_Vec{x: v}
 }
 
-pub fn tinyset_union<X: u64set::Fits64 + Ord + Clone>(s1: &tinyset_Set64<X>, s2: &tinyset_Set64<X>) -> tinyset_Set64<X> {
+pub fn tinyset_union<X: u64set::Fits64 + Clone>(s1: &tinyset_Set64<X>, s2: &tinyset_Set64<X>) -> tinyset_Set64<X> {
     let s = s1.x.clone();
     tinyset_Set64{x: s.bitor(&s2.x)}
 }
 
-pub fn std_set_unions<X: u64set::Fits64 + Ord + Clone>(sets: &std_Vec<tinyset_Set64<X>>) -> tinyset_Set64<X> {
+pub fn tinyset_unions<X: u64set::Fits64 + Clone>(sets: &std_Vec<tinyset_Set64<X>>) -> tinyset_Set64<X> {
     let mut s = u64set::Set64::new();
     for si in sets.x.iter() {
         for v in si.unsorted_iter() {
@@ -243,7 +243,7 @@ pub fn std_set_unions<X: u64set::Fits64 + Ord + Clone>(sets: &std_Vec<tinyset_Se
     tinyset_Set64{x: s}
 }
 
-pub fn tinyset_group2set<X: u64set::Fits64 + Ord>(g: &std_Group<X>) -> tinyset_Set64<X> {
+pub fn tinyset_group2set<X: u64set::Fits64>(g: &std_Group<X>) -> tinyset_Set64<X> {
     let mut res = tinyset_Set64::new();
     for ref v in g.iter() {
         tinyset_insert(&mut res, v);
@@ -251,11 +251,11 @@ pub fn tinyset_group2set<X: u64set::Fits64 + Ord>(g: &std_Group<X>) -> tinyset_S
     res
 }
 
-pub fn tinyset_group_set_unions<X: u64set::Fits64 + Ord + Clone>(g: &std_Group<tinyset_Set64<X>>) -> tinyset_Set64<X>
+pub fn tinyset_group_set_unions<X: u64set::Fits64 + Clone>(g: &std_Group<tinyset_Set64<X>>) -> tinyset_Set64<X>
 {
     let mut res = u64set::Set64::new();
     for gr in g.iter() {
-        for v in gr.iter() {
+        for v in gr.unsorted_iter() {
             res.insert(v.clone());
         }
         //`extend` should be more efficient, but is not yet implemented in the tinyset library
