@@ -101,6 +101,7 @@ typedef Ttxt = intern.IString
 typedef UMinus_bigint = UMinus_bigint{description: string, n: bigint}
 typedef UMinus_s32 = UMinus_s32{description: string, n: signed<32>}
 typedef ValidDestination = ValidDestination{addr: ip_addr_t}
+typedef VecTest = VecTest{x: std.Vec<string>}
 typedef W = W{f1: bigint, f2: bigint, f3: bigint}
 typedef WithKey = WithKey{key: bit<128>, val: string}
 typedef WithKeyDbg = WithKeyDbg{key: bit<128>, val: string}
@@ -580,6 +581,7 @@ relation ToAllocate [ToAllocate]
 output relation UMinus_bigint [UMinus_bigint]
 output relation UMinus_s32 [UMinus_s32]
 output relation ValidDestination [ValidDestination]
+output relation VecTest [VecTest]
 output relation W [W]
 input relation WithKey [WithKey] primary key (x) x.key
 output relation WithKeyDbg [WithKeyDbg]
@@ -595,6 +597,11 @@ Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (
 Parent(.child="Alice", .parent="Bob").
 Parent(.child="Ben", .parent="Bob").
 Parent(.child="Bob", .parent="Bob").
+VecTest(.x=std.vec_empty()).
+VecTest(.x=((var v: std.Vec<string>) = std.vec_empty();
+            (std.vec_push(v, "Hello,");
+             v))).
+VecTest(.x=std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<string>), "Hello, "), "world!")).
 Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=y).
 Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=y, .s2=x).
 Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=z), Reach(.s1=z, .s2=y).
