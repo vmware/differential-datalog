@@ -263,7 +263,7 @@ public class SpanTest {
 
         // Alternative implementation of createCommand which does not
         // use reflection and is more efficient.
-        private DDlogCommand createCommandDirect(String commang, String arguments) {
+        private DDlogCommand createCommandDirect(String command, String arguments) {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
                 throw new RuntimeException("Cannot parse arguments for " + command);

@@ -34,4 +34,4 @@ ${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I..
 java -Djava.library.path=. -cp ../ddlogapi.jar:. TwoTest
 
 # Cleanup
-rm -rf META-INF *.class
+rm -rf *.class

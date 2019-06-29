@@ -37,4 +37,4 @@ java -Djava.library.path=. -cp ../ddlogapi.jar:. SpanTest ../../test/datalog_tes
 diff -q span_uuid.java.dump ../../test/datalog_tests/span_uuid.dump.expected
 
 # Cleanup
-rm -rf META-INF *.class
+rm -rf *.class

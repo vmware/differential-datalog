@@ -39,4 +39,4 @@ java -Djava.library.path=. -cp ./fastutil-8.2.2.jar:../ddlogapi.jar:. RedistTest
 diff -q redist.java.dump ../../test/datalog_tests/redist.dump
 
 # Cleanup
-rm -rf META-INF *.class # redist.java.dump
+rm -rf *.class # redist.java.dump
