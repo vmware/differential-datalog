@@ -194,6 +194,11 @@ UMinus_s32{"-(-32'sd100)",100}
 UMinus_s32{"-32'sd100",-100}
 UMinus_s32{"-32768",-32768}
 
+VecTest:
+VecTest{std_Vec { x: [] }}
+VecTest{std_Vec { x: ["Hello,"] }}
+VecTest{std_Vec { x: ["Hello, ", "world!"] }}
+
 Rules test
 R4:
 R3{0,true}: 1
@@ -401,6 +406,11 @@ UMinus_s32:
 UMinus_s32{"-(-32'sd100)",100}
 UMinus_s32{"-32'sd100",-100}
 UMinus_s32{"-32768",-32768}
+
+VecTest:
+VecTest{std_Vec { x: [] }}
+VecTest{std_Vec { x: ["Hello,"] }}
+VecTest{std_Vec { x: ["Hello, ", "world!"] }}
 
 Table12:
 Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}: 1
