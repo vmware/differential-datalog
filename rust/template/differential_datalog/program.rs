@@ -1802,7 +1802,7 @@ impl<V:Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_index(&mut self, relid: RelId) -> Response<&IndexedValSet<V>> {
+    pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet<V>> {
         match self.relations.get(&relid) {
             None => {
                 Err(format!("unknown relation {}", relid))
@@ -1820,7 +1820,7 @@ impl<V:Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_data(&mut self, relid: RelId) -> Response<&ValSet<V>> {
+    pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet<V>> {
         match self.relations.get(&relid) {
             None => {
                 Err(format!("unknown relation {}", relid))
