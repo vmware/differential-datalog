@@ -729,7 +729,7 @@ The `not` operator in the last line eliminates all endpoint values
 that appear in `Blacklisted`.  In database terminology this is known
 as *antijoin*.
 
-### Assignments in rules
+#### Assignments in rules
 
 We can directly use assignments in rules:
 
@@ -1459,41 +1459,51 @@ library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Ma
 This library is imported automatically into every DDlog program; therefore the path to the
 `lib` directory must always be specified using the `-L` switch.
 
-## Advanced topics
+## Using DDlog programs as libraries
 
-**TODO** probably these should be moved out of the tutorial into a more
- detailed reference document.
+The text-based interface to DDlog, described so far, is primarily intended for
+testing and debugging purposes.  In production use, a DDlog program is typically
+invoked as a library from a program written in a different language (e.g., C or Java).
 
-### Using DDlog programs as libraries
+Compile your program as explained [above](#compiling-the-hello-world-program).
+Let's assume your program is `playpen.dl`.
+When compilation completes, the `playpen_ddlog` directory will be created,
+containing generated Rust crate for the DDlog program.  You can invoke this
+crate from programs written in Rust, C/C++, Java, or any other language that
+is able to invoke DDlog's C API through a foreign function interface.
 
-Place your program in the `test/datalog_tests` folder.  Let's assume your
-program is `playpen.dl`.
-Run `stack test --ta '-p playpen'` to compile the `playpen` program.
-When compilation completes the following artifacts are
-produced in the same directory with the input file:
+1. **Rust**
+In order to use the generated crate directly from another Rust program,
+add it as a dependency to your `Cargo.toml`, e.g.,
+```
+[dependencies]
+playpen = {path = "../playpen_ddlog"}
+```
+And invoke it through the API defined in the `./playpen_ddlog/api.rs` file.
 
-1. Three Rust packages (or "crates") in separate directories:
-    * `./differential_dataflow/`
-    * `./cmd_parser/`
-    * `./playpen/` (this is the main crate, which imports the other two)
+**TODO: link to a separate API document**
 
-1. If you plan to use this library directly from a Rust program, have a look at the
-`./playpen/lib.rs` file, which contains the Rust API to DDlog.
+1. **C/C++**
+The compiled program will contain a static library `playpen_ddlog/target/release/libplaypen_ddlog.a`
+that can be linked against your C or C++ application.  The C API to DDlog is defined in
+`playpen_ddlog/ddlog.h`.  To generare a dynamic library instead, pass the
+`--dynlib` flag to `ddlog` to generate a `.so` (or `.dylib` on a Mac) file,
+along with `--no-staticlib` to disable generation of the static library.
 
-    **TODO: link to a separate document explaining the structure and API of the Rust project**
+1. **Java**
+If you plan to use the library from a Java program, make sure to use
+`--dynlib` and `--no-staticlib` flags to generate a dynamically linked library.
+The Java bindings to the DDlog API are imlemented by classes in the `java/ddlogapi`
+directory. See an example Java project in `java/test`.
 
-1. If you plan to use the library from a C/C++ program, your program must link against the
-`./playpen/target/release/libplaypen.so` library, which wraps the DDlog program into a C API.  This
-API is declared in the auto-generated `./playpen/playpen.h` header file.
-
-    **TODO: link to a separate document explaining the use of the C FFI**
+    **TODO: link to a separate API document**
 
 1. The text-based interface is implemented by an
-auto-generated executable `./playpen/target/release/playpen_cli`.  This interface is
+auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is
 primarily meant for testing and debugging purposes, as it does not offer the same performance and
 flexibility as the API-based interfaces.
 
-### Input/output to DDlog
+## Input/output to DDlog
 
 DDlog offers several ways to feed data to a program:
 
@@ -1509,7 +1519,7 @@ DDlog offers several ways to feed data to a program:
 
 In the following sections, we expand on each method.
 
-#### Specifying ground facts statically in the program source code
+### Specifying ground facts statically in the program source code
 
 This method is useful for specifying ground facts that are guaranteed to hold in every instantiation
 of the program.  Such facts can be specified statically to save the hassle of adding them manually
@@ -1520,3 +1530,86 @@ declarations to the program to pre-populate `Word1` and `Word2` relations:
 Word1("Hello,", CategoryOther).
 Word2("world!", CategoryOther).
 ```
+
+## Profiling
+
+DDlog's profiling features are designed to help the programmer to understand
+what parts of the DDlog program use the most CPU and memory.  DDlog supports two
+commands related to profiling (also available through Rust, C, and Java APIs):
+
+1. `profile cpu on/off;` - enables/disables recording of CPU usage info in
+additition to memory profiling.  CPU profiling is not enabled by default, as
+it can slow down the program somewhat, especially for large programs
+that handle many small updates.
+
+1. `profile;` - returns information about program's CPU and memory usage.  CPU
+usage is expessed as the total amount of time DDlog spent evaluating each operator,
+assuming CPU profiling was enabled.  For example the following CPU profile
+record:
+```
+CPU profile
+    ...
+       0s005281us (        112calls)     Join: DdlogDependency(.parent=parent, .child=child), LabeledNode(.node=parent, .scc=parentscc), LabeledNode(.node=child, .scc=childscc) 165
+    ...
+```
+indicates that the program spent `5,281` microseconds in 112 activations of the
+join operator that joins the prefix of the rule (`DdlogDependency(.parent=parent, .child=child), LabeledNode(.node=parent, .scc=parentscc)`)
+with the `LabeledNode(.node=child, .scc=childscc)` literal.
+
+  Memory profile reports current (at the time when the profile is being generated)
+  and peak (since the start of the program) number of records in each DDlog
+  *arrangement*.  An arrangement is similar to an indexed representation of a
+  relation in databases.  Arrangements are responsible for the majority of memory
+  consumption of a DDlog program.  For example, the following memory profile
+  fragment:
+  ```
+  Arrangement peak sizes
+  ...
+  451529      Arrange: LabeledNode{.node=_, .scc=_0} 136
+  372446      Arrange: LabeledNode{.node=_0, .scc=_} 132
+  ```
+  indicates that the program contains two different arrangements of the `LabeledNode`
+  relation, indexed by the second and first fields, whose peak size is
+  451,529 and 372,446 records respectively (the numbered variables, e.g., `_0`)
+  indicate one or more fields used to index the relation by.
+
+## Replay debugging
+
+When using DDlog as a library, it may be difficult to isolate bugs in the DDlog
+program from those in the application using DDlog.  Replay debugging is a DDlog
+feature that intercepts all DDlog invocations made by a program and dumps them
+in a DDlog command file that can later be replayed against the DDlog program
+running standalone, via the CLI interface.  This has several advantages.  First,
+it allows the user to inspect DDlog inputs in human-readable form.  Second, one
+can easily modify the recorded command file, e.g., to dump relations of interest
+or to print profiling information in various points throughout the execution, or
+to simplify inputs in order to narrow down search for an error.  Third, one can
+replay the log against a modified DDlog program, e.g., to check that the program
+behaves correctly after a bug fix. As another example, it may be useful to dump
+the contents of intermediate relations by labeling them as `output relation` and
+adding a `dump <relation_name>;` command to the command file.
+
+Finally, by replaying recorded commands, one can obtain a relatively accurate
+estimate of the amount of CPU time and memory spent in the DDlog computation
+in isolation from the host program.  For example, here we use the UNIX `time`
+program (note: this is not the same as the `time` command in `bash`)
+to measure time and memory footpint of a DDlog computation:
+```
+/usr/bin/time playpen_ddlog/target/release/playpen_cli -w 2 --no-print --no-store < replay.dat
+```
+where `-w 2` runs DDlog with two worker threads,
+`--no-print` stops DDlog from printing every update to output tables on `stdout`,
+`--no-store` tells DDlog not to cache the content of output relations (which takes
+time and memory), and
+`replay.dat` is the name of the file that contains recorded DDlog commands.
+
+To enable replay debugging, call the `ddlog_record_commands()` function in C (see
+`ddlog.h`), `DDlogAPI.record_commands()` method in Java (`DDlogAPI.java`) or
+the `HDDlog.record_commands()` method in Rust right after starting the
+DDlog program, and before pushing any data to it.
+
+**TODO: checkpointing feature**
+
+## Logging
+
+** TODO **
