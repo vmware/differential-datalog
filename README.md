@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/ryzhyk/differential-datalog.svg?branch=master)](https://travis-ci.com/ryzhyk/differential-datalog)
+[![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
 
 # Differential Datalog (DDlog)
 
