@@ -134,6 +134,42 @@ extern ddlog_prog ddlog_run(unsigned int workers,
 extern int ddlog_record_commands(ddlog_prog hprog, int fd);
 
 /*
+ * Dump current snapshot of input tables to a file in a format suitable
+ * for replay debugging.
+ *
+ * This function is intended to be used in conjunction with
+ * `ddlog_record_commands`.  It is useful if one wants to start recording
+ * after the program has been running for some time, or if the current log is
+ * full and needs to be rotated out.  Simply calling `ddlog_record_commands`
+ * with a new file descriptor at this point will generate an incomplete log that
+ * will not reflect the state of input tables at the time recording is starting.
+ * Such a log cannot be replayed in a meaningful way.
+ *
+ * Instead, we would like to start replay from the current input state (which
+ * is in essence a compressed representation of the entire previous execution
+ * history).  This can be achieved by first calling this function to store a
+ * snapshot of input tables, followed by `ddlog_record_commands()` to continue
+ * recording subsequent commands to the same file.
+ *
+ * This function generates input snapshot in the following format:
+ *
+ * ```
+ * insert Table1[val1],
+ * insert Table1[val2],
+ * insert Table2[val3],
+ * insert Table2[val4],
+ * ...
+ * ```
+ *
+ * NOTE: it does not wrap its output in a transaction.  The caller is
+ * responsible for injecting `start;` and `commit;` commands, if necessary.
+ *
+ * `fd` - valid writable file descriptor.  The caller is responsible for opening
+ * and closing the file.
+ */
+extern int ddlog_dump_input_snapshot(ddlog_prog hprog, int fd);
+
+/*
  * Stops the program; deallocates all resources, invalidates the handle.
  *
  * All concurrent calls using the handle must complete before calling this

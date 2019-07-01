@@ -6,7 +6,7 @@ use std::os::raw;
 use std::ptr;
 use std::ffi;
 use std::fs;
-use std::io::Write;
+use std::io;
 use std::os::unix;
 use std::os::unix::io::{IntoRawFd, FromRawFd};
 use std::mem;
@@ -199,6 +199,47 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: unix::io
     };
     Arc::into_raw(prog);
     res
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: unix::io::RawFd) -> raw::c_int
+{
+    if prog.is_null() || fd < 0 {
+        return -1;
+    };
+    let mut prog = Arc::from_raw(prog);
+    let mut file = fs::File::from_raw_fd(fd);
+    let res = prog.dump_input_snapshot(&mut file);
+    file.into_raw_fd();
+    Arc::into_raw(prog);
+    if res.is_ok() { 0 } else { -1 }
+}
+
+impl HDDlog {
+    pub fn dump_input_snapshot<W: io::Write>(&self, w: &mut W) -> io::Result<()>
+    {
+        for (rel, relname) in INPUT_RELIDMAP.iter() {
+            let prog = self.prog.lock().unwrap();
+            match prog.get_input_relation_data(*rel as RelId) {
+                Ok(valset) => {
+                    for v in valset.iter() {
+                        write!(w, "insert {}[{}],", relname, v)?;
+                    }
+                },
+                _ => match prog.get_input_relation_index(*rel as RelId) {
+                    Ok(ivalset) => {
+                        for v in ivalset.values() {
+                            write!(w, "insert {}[{}],", relname, v)?;
+                        }
+                    },
+                    _ => {
+                        panic!("Unknown input relation {:?} in dump_input_snapshot", rel);
+                    }
+                }
+            }
+        };
+        Ok(())
+    }
 }
 
 #[no_mangle]
