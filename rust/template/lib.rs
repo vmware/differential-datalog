@@ -6,6 +6,9 @@ extern crate timely;
 extern crate num_traits;
 
 #[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate libc;
@@ -72,7 +75,7 @@ pub fn string_append(mut s1: String, s2: &String) -> String
 // Code below this point is needed to test-compile template
 // code and is not part of the template.
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]
 pub enum Relations {
     X = 0
 }
@@ -139,4 +142,25 @@ pub fn relid2name(_rid: RelId) -> Option<&'static str> {
 
 pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
     panic!("prog not implemented")
+}
+
+lazy_static! {
+    pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = {
+        let mut m = FnvHashMap::default();
+        m
+   };
+}
+
+lazy_static! {
+    pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {
+        let mut m = FnvHashMap::default();
+        m
+   };
+}
+
+lazy_static! {
+    pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {
+        let mut m = FnvHashMap::default();
+        m
+   };
 }
