@@ -146,21 +146,18 @@ pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
 
 lazy_static! {
     pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = {
-        let mut m = FnvHashMap::default();
-        m
+        FnvHashMap::default()
    };
 }
 
 lazy_static! {
     pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {
-        let mut m = FnvHashMap::default();
-        m
+        FnvHashMap::default()
    };
 }
 
 lazy_static! {
     pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {
-        let mut m = FnvHashMap::default();
-        m
+        FnvHashMap::default()
    };
 }
