@@ -115,38 +115,20 @@ impl <V: Val> MTUpdateHandler<V> for NullUpdateHandler
     }
 }
 
+/* `UpdateHandler` implementation that invokes user-provided closure.
+ */
+
+pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F:Callback>
 {
      cb: F
 }
 
-/* `UpdateHandler` implementation that invokes user-provided callback.
- */
-#[derive(Clone)]
-pub struct ExternCUpdateHandler {
-    cb:      ExternCCallback,
-    cb_arg:  libc::uintptr_t
-}
-
-// TODO check the trait constraints
-pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
-
-type ExternCCallback = extern "C" fn(arg: libc::uintptr_t,
-                                     table: libc::size_t,
-                                     rec: *const record::Record,
-                                     polarity: bool);
-
 impl <F:Callback>CallbackUpdateHandler<F> {
     pub fn new(cb: F) -> Self {
         Self{cb}
-    }
-}
-
-impl ExternCUpdateHandler
-{
-    pub fn new(cb: ExternCCallback, cb_arg: libc::uintptr_t) -> Self {
-        Self{cb, cb_arg}
     }
 }
 
@@ -160,6 +142,35 @@ impl <V: Val + IntoRecord, F:Callback> UpdateHandler<V> for CallbackUpdateHandle
     fn after_commit(&self, _success: bool) {}
 }
 
+impl <V: Val + IntoRecord, F:Callback> MTUpdateHandler<V> for CallbackUpdateHandler<F>
+{
+    fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
+        let cb = self.cb.clone();
+        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
+    }
+}
+
+/* `UpdateHandler` implementation that invokes user-provided C function.
+ */
+#[derive(Clone)]
+pub struct ExternCUpdateHandler {
+    cb:      ExternCCallback,
+    cb_arg:  libc::uintptr_t
+}
+
+type ExternCCallback = extern "C" fn(arg: libc::uintptr_t,
+                                     table: libc::size_t,
+                                     rec: *const record::Record,
+                                     polarity: bool);
+
+
+impl ExternCUpdateHandler
+{
+    pub fn new(cb: ExternCCallback, cb_arg: libc::uintptr_t) -> Self {
+        Self{cb, cb_arg}
+    }
+}
+
 impl <V: Val + IntoRecord> UpdateHandler<V> for ExternCUpdateHandler
 {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
@@ -169,14 +180,6 @@ impl <V: Val + IntoRecord> UpdateHandler<V> for ExternCUpdateHandler
     }
     fn before_commit(&self) {}
     fn after_commit(&self, _success: bool) {}
-}
-
-impl <V: Val + IntoRecord, F:Callback> MTUpdateHandler<V> for CallbackUpdateHandler<F>
-{
-    fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
-        let cb = self.cb.clone();
-        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
-    }
 }
 
 impl <V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler

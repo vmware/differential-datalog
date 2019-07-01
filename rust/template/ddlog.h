@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 /*
- * *Note:* all functions in this library, with the exception of 
+ * *Note:* all functions in this library, with the exception of
  * `ddlog_record_commands()` and `ddlog_stop()` are thread-safe. E.g.,
  * it is legal to call `ddlog_transaction_start()` from thread 1,
  * `ddlog_apply_ovsdb_updates()` from thread 2, and

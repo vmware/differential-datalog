@@ -278,16 +278,17 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: unix
     if prog.is_null() || fd < 0 {
         return -1;
     };
-    let mut prog = Arc::from_raw(prog);
+    let prog = Arc::from_raw(prog);
     let mut file = fs::File::from_raw_fd(fd);
-    let res = prog.dump_input_snapshot(&mut file);
+    let res = prog.dump_input_snapshot(&mut file)
+                  .map(|_|0)
+                  .unwrap_or_else(|e| {
+                      prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
+                      -1
+                  });
     file.into_raw_fd();
     Arc::into_raw(prog);
-    res.map(|_|0)
-       .unwrap_or_else(|e| {
-           prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
-           -1
-        })
+    res
 }
 
 impl HDDlog {
@@ -519,7 +520,7 @@ pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw:
 
 impl HDDlog {
     pub fn transaction_rollback(&self) -> Result<(), String> {
-        self.record_transaction_rollback();
+        let _ = self.record_transaction_rollback();
         self.prog.lock().unwrap().transaction_rollback()
     }
 
@@ -565,10 +566,8 @@ impl HDDlog {
 
         let upds_vec: Result<Vec<_>, _> = upds.map(|upd| updcmd2upd(upd))
                                               .collect();
-
-        upds_vec.map(|upds| {
-            self.prog.lock().unwrap().apply_updates(upds);
-        })
+        let upds = upds_vec?;
+        self.prog.lock().unwrap().apply_updates(upds)
     }
 
     pub fn record_updates<'a, I: iter::ExactSizeIterator<Item=&'a record::UpdCmd>>(&self, upds: I) {
