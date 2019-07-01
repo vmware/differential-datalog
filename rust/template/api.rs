@@ -260,7 +260,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: unix::io
 
             let mut old_file = file.map(|f| Mutex::new(f));
             prog.record_commands(&mut old_file);
-            /* Convert the old fild into FD to prevent it from closeing.
+            /* Convert the old file into FD to prevent it from closing.
              * It is the caller's responsibility to close the file when
              * they are done with it. */
             old_file.map(|m| m.into_inner().unwrap().into_raw_fd());
@@ -283,7 +283,11 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: unix
     let res = prog.dump_input_snapshot(&mut file);
     file.into_raw_fd();
     Arc::into_raw(prog);
-    if res.is_ok() { 0 } else { -1 }
+    res.map(|_|0)
+       .unwrap_or_else(|e| {
+           prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
+           -1
+        })
 }
 
 impl HDDlog {
@@ -412,7 +416,8 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
 impl HDDlog {
     pub fn transaction_commit_dump_changes<F>
         (&self, cb: Option<F>) -> Result<(), String>
-    where F: Fn(usize, &record::Record, bool) {
+    where F: Fn(usize, &record::Record, bool)
+    {
         self.record_transaction_commit(true);
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
 
@@ -433,7 +438,7 @@ impl HDDlog {
     }
 
     fn dump_delta<F>(db: &mut DeltaMap,
-                  cb: Option<F>)
+                     cb: Option<F>)
     where F:Fn(usize, &record::Record, bool)
     {
         cb.map(|f|
@@ -514,9 +519,7 @@ pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw:
 
 impl HDDlog {
     pub fn transaction_rollback(&self) -> Result<(), String> {
-        if let Err(e) = self.record_transaction_rollback() {
-            return Err(e);
-        }
+        self.record_transaction_rollback();
         self.prog.lock().unwrap().transaction_rollback()
     }
 
@@ -678,8 +681,8 @@ impl HDDlog {
     }
 
     fn db_dump_table<F>(db: &mut ValMap,
-                     table: libc::size_t,
-                     cb: Option<F>)
+                        table: libc::size_t,
+                        cb: Option<F>)
     where F:Fn(&record::Record) -> bool
     {
         cb.map(|f|
