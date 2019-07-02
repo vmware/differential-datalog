@@ -94,10 +94,10 @@ generateJava d sourceName =
 -- Generates the preamble of a Java file
 preamble :: String -> Doc
 preamble sourceName =
-    pp ("import java.util.*;" :: String) $+$
-    pp ("import ddlogapi.DDlogRecord;\n" :: String) $+$
-    pp ("import ddlogapi.DDlogCommand;\n" :: String) $+$
-    pp ("class " ++ capitalize sourceName)
+    "import java.util.*;"                       $+$
+    "import ddlogapi.DDlogRecord;\n"            $+$
+    "import ddlogapi.DDlogCommand;\n"           $+$
+    "class" <+> pp (capitalize sourceName)
 
 -- Generates the body of the Java class containing all utility methods
 body :: DatalogProgram -> Doc
@@ -107,12 +107,11 @@ body d = genEnum d $+$
 
 -- Generate a Java class for an element of a specific relation
 genClass :: DatalogProgram -> String -> Doc
-genClass d relationName =
-    let relations = progRelations d
-        rel = fromJust $ M.lookup relationName relations
+genClass d@DatalogProgram{..} relationName =
+    let rel = progRelations M.! relationName
         rtype = relType rel in
-      pp ("public static class " ++ makeIdentifier relationName) $+$
-        (braces' $ classBody d relationName rtype)
+    "public static class" <+> makeIdentifier relationName $+$
+    (braces' $ classBody d relationName rtype)
 
 -- given a (relation) type generate the body of a Java class storing the columns of the relation
 classBody :: DatalogProgram -> String -> Type -> Doc
@@ -120,9 +119,9 @@ classBody d className t =
   -- class fields
   (classFields d t) $+$
   -- constructor from DDlogRecord
-  ("public" <+> (pp className) <> (parens "DDlogRecord r") $+$ (braces' $ constructorBody d t)) $+$
+  ("public" <+> pp className <> (parens "DDlogRecord r") $+$ (braces' $ constructorBody d t)) $+$
   -- constructor from fields
-  ("public" <+> (pp className) <> (parens $ parameters d t) $+$ (braces' $ constructorFieldsBody d t)) $+$
+  ("public" <+> pp className <> (parens $ parameters d t) $+$ (braces' $ constructorFieldsBody d t)) $+$
   -- conversion to DDlogRecord
   "public DDlogRecord asRecord()" $+$
   (braces' $ ((pp ("return create_" :: String)) <> (pp className) <> (parens $ arguments d t)) <> semi) $+$
@@ -145,14 +144,12 @@ constructorFieldsBody d t =
         TSigned{..} -> "this.a0 = a0;"
         TBit{..}    -> "this.a0 = a0;"
         TUser{..}   -> constructorFieldsBody d (resolveType d t)
-        TTuple{..}  -> vcat $ map (\(i,t) ->
-                                     pp ("this.a" ++ (show i) ++ " = a" ++ (show i) ++ "") <> semi) (zip [0..] typeTupArgs)
+        TTuple{..}  -> vcat $ mapIdx (\_ i -> "this.a" <> pp i <+> "= a" <> pp i <> semi) typeTupArgs
         TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
+                       if null tail then
                            let assignField f =
-                                 ("this." <> (pp $ fieldName f)) <+> "=" <+> (pp $ fieldName f) <> semi
-                           in
-                               vcat $ map assignField $ consArgs c0
+                                 "this." <> (pp $ fieldName f) <+> "=" <+> (pp $ fieldName f) <> semi
+                           in vcat $ map assignField $ consArgs c0
                        else errorWithoutStackTrace $ "Unsupported type " ++ show t
         _           -> errorWithoutStackTrace $ "Unsupported type " ++ show t
 
@@ -164,9 +161,9 @@ toStringBody d t =
         TInt{..}    -> "this.a0"
         TString{..} -> "this.a0"
         TSigned{..} -> "this.a0"
-        TBit{..}     -> "this.a0"
+        TBit{..}    -> "this.a0"
         TUser{..}   -> toStringBody d (resolveType d t)
-        TTuple{..}  -> (cat $ punctuate " + \",\" + " (map (\i -> pp ("this.a" ++ (show i))) [0.. (length typeTupArgs)]))
+        TTuple{..}  -> (cat $ punctuate " + \",\" + " (mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs))
         TStruct{..} -> let c0:tail = typeCons in
                        if tail == [] then
                            let toStringField f =
@@ -187,16 +184,15 @@ constructorBody d t =
         TSigned{..} -> "this.a0 = r." <> getRecord t <> semi
         TBit{..}    -> "this.a0 = r." <> getRecord t <> semi
         TUser{..}   -> constructorBody d (resolveType d t)
-        TTuple{..}  -> vcat $ map (\(i,t) ->
-                                     pp ("this.a" ++ (show i) ++ " = r.getStructField(" ++ (show i) ++ ").") <+>
-                                     (getRecord $ resolveType d t) <> semi) (zip [0..] typeTupArgs)
+        TTuple{..}  -> vcat $ mapIdx (\t i ->
+                                      "this.a" <> pp i <+> "= r.getStructField(" <> pp i <> ")." <+>
+                                      (getRecord $ resolveType d t) <> semi) typeTupArgs
         TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
-                           let assignField (i,f) =
-                                 ("this." <> (pp $ fieldName f)) <+> "= r.getStructField" <> (parens $ pp (i::Int)) <> "." <>
+                       if null tail then
+                           let assignField f i =
+                                 "this." <> (pp $ fieldName f) <+> "= r.getStructField" <> (parens $ pp i) <> "." <>
                                  (getRecord $ resolveType d $ fieldType f) <> semi
-                           in
-                               vcat $ map assignField (zip [0..] (consArgs c0))
+                           in vcat $ mapIdx assignField $ consArgs c0
                        else errorWithoutStackTrace $ "Unsupported type " ++ show t
         _           -> errorWithoutStackTrace $ "Unsupported type " ++ show t
 
@@ -211,11 +207,11 @@ arguments d t =
         TString{..} -> "this.a0"
         TSigned{..} -> "this.a0"
         TUser{..}   -> arguments d (resolveType d t)
-        TTuple{..}  -> commaSep $ map (\i -> pp ("this.a" ++ (show i))) [0 .. length typeTupArgs]
+        TTuple{..}  -> commaSep $ mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs
         TStruct{..} -> let c0:tail = typeCons
                            printField p = "this." <> (pp $ fieldName p)
                        in
-                       if tail == [] then
+                       if null tail then
                            commaSep $ map printField (consArgs c0)
                        else errorWithoutStackTrace $ "Unsupported type " ++ show t
         _           -> errorWithoutStackTrace $ "Unsupported type " ++ show t
@@ -231,8 +227,8 @@ classFields d t =
         TString{..} -> "public" <+> simpleType t <+> "a0" <> semi
         TSigned{..} -> "public" <+> simpleType t <+> "a0" <> semi
         TUser{..}   -> classFields d (resolveType d t)
-        TTuple{..}  -> vcat $ map (\(i,t) -> ("public" <+> (simpleType $ resolveType d t)) <+>
-                                    pp ("a" ++ (show i) ++ ";")) (zip [0..] typeTupArgs)
+        TTuple{..}  -> vcat $ mapIdx (\t i -> "public" <+> (simpleType $ resolveType d t) <+>
+                                              "a" <> pp i <> ";") typeTupArgs
         TStruct{..} -> let c0:tail = typeCons in
                        if tail == [] then
                            let fieldField f = ("public" <+> (simpleType $ resolveType d $ fieldType f)) <+>
@@ -244,11 +240,11 @@ classFields d t =
 -- generates an enum mapping table names to table ids
 genEnum :: DatalogProgram -> Doc
 genEnum d =
-  let relNames = map fst (M.toList $ progRelations d)
-      addToIds r = pp $ "idToName.put(TableId_" ++ r ++ ", \"" ++ r ++ "\");"
-      addToNames r = pp $ "nameToId.put(\"" ++ r ++ "\", TableId_" ++ r ++ ");"
-      makeTableId (t,i) = pp $ "public static final int TableId_" ++ (makeIdentifier t) ++ " = " ++ show(i) ++ ";"
-      indexedTables = zip relNames [0..]
+  let relNames = M.keys $ progRelations d
+      addToIds r = "idToName.put(TableId_" <> pp r <> ", \"" <> pp r <> "\");"
+      addToNames r = "nameToId.put(\"" <> pp r <> "\", TableId_" <> pp r <> ");"
+      makeTableId (t,i) = "public static final int TableId_" <> makeIdentifier t <+> "=" <+> pp i <> ";"
+      indexedTables = zip relNames [(0::Int)..]
   in
       (vcat $ map makeTableId indexedTables) $+$
       "public static HashMap<Integer, String> idToName = new HashMap<Integer, String>();" $+$
@@ -262,13 +258,13 @@ genRecord d relationName =
     let relations = progRelations d
         rel = fromJust $ M.lookup relationName relations
         rtype = relType rel in
-      pp ("public static DDlogRecord create_" ++ makeIdentifier relationName) <>
+    "public static DDlogRecord create_" <> makeIdentifier relationName <>
         (parens $ parameters d rtype) $+$
         (braces' $ genRecordBody d rtype $+$ "return r;")
 
 -- convert a DDlog string into an identifier
-makeIdentifier :: String -> String
-makeIdentifier str = capitalize $ legalize str
+makeIdentifier :: String -> Doc
+makeIdentifier str = pp $ capitalize $ legalize str
 
 -- capitalize the first letter of a string
 capitalize :: String -> String
@@ -292,9 +288,9 @@ parameters d t =
         TString{..} -> simpleType t <+> "a0"
         TSigned{..} -> simpleType t <+> "a0"
         TUser{..}   -> parameters d (resolveType d t)
-        TTuple{..}  -> commaSep $ map (\(i,t) -> (simpleType $ resolveType d t) <+> pp ("a" ++ (show i))) (zip [0..] typeTupArgs)
+        TTuple{..}  -> commaSep $ mapIdx (\t i -> (simpleType $ resolveType d t) <+> "a" <> pp i) typeTupArgs
         TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
+                       if null tail then
                            let fieldParam f = (simpleType $ resolveType d $ fieldType f) <+> (pp $ fieldName f) in
                                commaSep $ map fieldParam (consArgs c0)
                        else errorWithoutStackTrace $ "Unsupported type " ++ show t
@@ -329,7 +325,7 @@ resolveType d t =
     -- trace (show t) $
     case t of
         TUser{..} -> resolveType d actual
-                     where typeDef = (getType d typeName)
+                     where typeDef = getType d typeName
                            maybeActual = tdefType typeDef
                            actual = case maybeActual of
                                 Nothing -> errorWithoutStackTrace $ "Extern type not supported: " ++ show t
@@ -346,17 +342,17 @@ genRecordBody d t =
         TString{..} -> "DDlogRecord r = new DDlogRecord(a0);"
         TSigned{..} -> "DDlogRecord r = new DDlogRecord(a0);"
         TUser{..}   -> genRecordBody d (resolveType d t)
-        TTuple{..}  -> (vcat $ map (\i -> pp $ "DDlogRecord r" ++ (show i) ++ " = new DDlogRecord(a" ++ (show i) ++ ")")
-                                   [0..(length typeTupArgs)]) $+$
-                       "DDlogRecord[] a = " <> (braces $ commaSep $ map (\i -> pp $ "r" ++ (show i))
-                                                                        [0..(length typeTupArgs)]) <> semi $$
+        TTuple{..}  -> (vcat $ mapIdx (\_ i -> "DDlogRecord r" <> pp i <+> "= new DDlogRecord(a" <> pp i <> ")")
+                                      typeTupArgs) $+$
+                       "DDlogRecord[] a = " <> (braces $ commaSep $ mapIdx (\_ i -> "r" <> pp i)
+                                                                           typeTupArgs) <> semi $$
                        "DDlogRecord r = DDlogRecord.makeTuple(a);"
         TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
+                       if null tail then
                          let fieldRec f = "DDlogRecord r" <> (pp $ fieldName f) <+>
                                "= new DDlogRecord" <> (parens $ pp $ fieldName f) <> semi in
                            (vcat $ map fieldRec (consArgs c0)) $$
-                         "DDlogRecord[] a = " <> (braces $ commaSep $ map (pp . ((++) "r") . fieldName) (consArgs c0)) <> semi $$
+                         "DDlogRecord[] a = " <> (braces $ commaSep $ map (pp . ("r" ++) . fieldName) (consArgs c0)) <> semi $$
                          "DDlogRecord r = DDlogRecord.makeStruct" <> (parens $ commaSep [doubleQuotes $ pp $ consName c0, "a"]) <> semi
                          -- we do not support multiple constructors
                        else errorWithoutStackTrace $ "Unsupported type " ++ show t
