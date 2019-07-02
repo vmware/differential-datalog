@@ -1,0 +1,12 @@
+// Test roundtrip connection between 2 DDLog programs
+
+import rt.a as a
+import rt.b as b
+
+// The tables are connected as follows, where the output
+// of the RHS table is the input of the LHS table
+
+// b.In :- a.Middle
+// a.Out :- b.Out 
+
+// a - b - a
