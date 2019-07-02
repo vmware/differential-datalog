@@ -16,8 +16,9 @@ public class DDlogAPI {
      * The C ddlog API
      */
     native long ddlog_run(boolean storeData, int workers, String callbackName);
-    static native int ddlog_record_commands(long hprog, String filename);
+    static native int ddlog_record_commands(long hprog, String filename, boolean append);
     static native int ddlog_stop_recording(long hprog, int fd);
+    static native int ddlog_dump_input_snapshot(long hprog, String filename, boolean append);
     native int dump_table(long hprog, int table, String callbackMethod);
     static native int  ddlog_stop(long hprog, long callbackHandle);
     static native int ddlog_transaction_start(long hprog);
@@ -136,7 +137,8 @@ public class DDlogAPI {
 
     // Record DDlog commands to file.
     // Set `filename` to `null` to stop recording.
-    public int record_commands(String filename) {
+    // Set `append` to `true` to open the file in append mode.
+    public int record_commands(String filename, boolean append) {
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
@@ -145,13 +147,17 @@ public class DDlogAPI {
             return 0;
         }
 
-        int fd = DDlogAPI.ddlog_record_commands(this.hprog, filename);
+        int fd = DDlogAPI.ddlog_record_commands(this.hprog, filename, append);
         if (fd < 0) {
             return fd;
         } else {
             this.record_fd = fd;
             return 0;
         }
+    }
+
+    public int dump_input_snapshot(String filename, boolean append) {
+        return DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
     }
 
     public int stop() {
