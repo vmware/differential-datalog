@@ -115,7 +115,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
-    JNIEnv *env, jobject obj, jlong handle, jstring filename) {
+    JNIEnv *env, jobject obj, jlong handle, jstring filename, jboolean append) {
     int ret;
     int fd;
 
@@ -123,7 +123,8 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
     if (c_filename == NULL) {
         return -1;
     }
-    fd = open(c_filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
+    fd = open(c_filename, O_CREAT | O_WRONLY | (append ? O_APPEND : O_TRUNC),
+              S_IRUSR | S_IWUSR);
     (*env)->ReleaseStringUTFChars(env, filename, c_filename);
 
     if (fd < 0) {
@@ -141,6 +142,28 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop_1recording(
     ddlog_record_commands((ddlog_prog)handle, -1);
     close(fd);
     return 0;
+}
+
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
+    JNIEnv *env, jobject obj, jlong handle, jstring filename, jboolean append) {
+    int ret;
+    int fd;
+
+    const char *c_filename = (*env)->GetStringUTFChars(env, filename, NULL);
+    if (c_filename == NULL) {
+        return -1;
+    }
+    fd = open(c_filename, O_CREAT | O_WRONLY | (append ? O_APPEND : O_TRUNC),
+              S_IRUSR | S_IWUSR);
+    (*env)->ReleaseStringUTFChars(env, filename, c_filename);
+
+    if (fd < 0) {
+        return fd;
+    } else {
+        ret = ddlog_dump_input_snapshot((ddlog_prog)handle, fd);
+        close(fd);
+        return ret;
+    }
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
