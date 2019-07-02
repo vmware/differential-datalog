@@ -1,0 +1,4 @@
+input relation Left[bool]
+output relation Right[bool]
+
+Right[b] :- Left[b].

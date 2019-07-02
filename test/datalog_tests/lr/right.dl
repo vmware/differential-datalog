@@ -1,0 +1,8 @@
+/* First DDlog example */
+
+input relation Up[bool]
+input relation Down[bool]
+output relation Right[bool]
+
+// Rule
+Right[b] :- Up[b], Down[b].

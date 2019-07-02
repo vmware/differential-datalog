@@ -1,0 +1,15 @@
+import lr.left as l
+import lr.right as r
+import lr.up as u
+import lr.down as d
+
+// r.Up   :- u.Right
+// r.Down :- d.Right
+// u.Left :- l.Up
+// d.Left :- l.Down
+
+//        up
+//        |
+// left -< >- right
+//        |
+//        down

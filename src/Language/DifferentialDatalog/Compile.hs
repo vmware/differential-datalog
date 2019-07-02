@@ -143,6 +143,7 @@ templateFiles specname =
         , (dir </> "src/ovsdb.rs"               , $(embedFile "rust/template/src/ovsdb.rs"))
         , (dir </> "src/valmap.rs"              , $(embedFile "rust/template/src/valmap.rs"))
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
+        , (dir </> "src/server.rs"              , $(embedFile "rust/template/src/server.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
@@ -166,6 +167,10 @@ rustLibFiles specname =
         , (dir </> "cmd_parser/Cargo.toml"              , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (dir </> "cmd_parser/lib.rs"                  , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (dir </> "cmd_parser/parse.rs"                , $(embedFile "rust/template/cmd_parser/parse.rs"))
+        , (dir </> "observe/Cargo.toml"                 , $(embedFile "rust/template/observe/Cargo.toml"))
+        , (dir </> "observe/lib.rs"                     , $(embedFile "rust/template/observe/lib.rs"))
+        , (dir </> "tcp_channel/Cargo.toml"             , $(embedFile "rust/template/tcp_channel/Cargo.toml"))
+        , (dir </> "tcp_channel/lib.rs"                 , $(embedFile "rust/template/tcp_channel/lib.rs"))
         , (dir </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))
