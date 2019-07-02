@@ -874,7 +874,6 @@ impl<V: Val> RelationInstance<V> {
 /// `DeleteKey` takes key only and is only defined for relations with 'key_func';
 /// `Modify` takes a key and a `Mutator` trait object that represents an update
 /// to be applied to the given key.
-//#[derive(Debug)]
 pub enum Update<V: Val> {
     Insert {
         relid: RelId,
@@ -893,6 +892,66 @@ pub enum Update<V: Val> {
         k: V,
         m: Box<dyn Mutator<V> + Send>,
     },
+}
+
+// Manual implementation of `Debug` for `Update` because the latter
+// contains a member that is not auto-derivable.
+impl<V: Val> Debug for Update<V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Update::Insert { relid, v } => {
+                let mut builder = f.debug_struct("Insert");
+                let _ = builder.field("relid", relid);
+                let _ = builder.field("v", v);
+                builder.finish()
+            }
+            Update::DeleteValue { relid, v } => {
+                let mut builder = f.debug_struct("DeleteValue");
+                let _ = builder.field("relid", relid);
+                let _ = builder.field("v", v);
+                builder.finish()
+            }
+            Update::DeleteKey { relid, k } => {
+                let mut builder = f.debug_struct("DeleteKey");
+                let _ = builder.field("relid", relid);
+                let _ = builder.field("k", k);
+                builder.finish()
+            }
+            Update::Modify { relid, k, m } => {
+                let mut builder = f.debug_struct("Modify");
+                let _ = builder.field("relid", relid);
+                let _ = builder.field("k", k);
+                let _ = builder.field("m", &m.to_string());
+                builder.finish()
+            }
+        }
+    }
+}
+
+impl<V: Val + Serialize> Serialize for Update<V> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let upd = match self {
+            Update::Insert { relid, v } => (true, relid, v),
+            Update::DeleteValue { relid, v } => (false, relid, v),
+            _ => panic!("Cannot serialize Modify/DeleteKey update"),
+        };
+
+        upd.serialize(serializer)
+    }
+}
+
+impl<'de, V> Deserialize<'de> for Update<V>
+where
+    V: Val + DeserializeOwned,
+{
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (b, relid, v) = <(bool, RelId, V) as Deserialize>::deserialize(deserializer)?;
+        if b {
+            Ok(Update::Insert { relid, v })
+        } else {
+            Ok(Update::DeleteValue { relid, v })
+        }
+    }
 }
 
 impl<V: Val> Update<V> {
@@ -1865,7 +1924,7 @@ impl<V: Val> RunningProgram<V> {
     }
 
     /* increment the counter associated with value `x` in the delta-set
-     * delta(x) == false => remove entry (equivalen to delta(x):=0)
+     * delta(x) == false => remove entry (equivalent to delta(x):=0)
      * x not in delta => delta(x) := true
      * delta(x) == true => error
      */

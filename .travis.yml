@@ -88,6 +88,7 @@ script:
       (cd rust/template/ && cargo fmt --all -- --check) &&
       (cd rust/template/cmd_parser/ && cargo fmt --all -- --check) &&
       (cd rust/template/differential_datalog/ && cargo fmt --all -- --check) &&
+      (cd rust/template/observe/ && cargo fmt --all -- --check) &&
       (cd rust/template/ovsdb/ && cargo fmt --all -- --check)
   fi
 - if [ -n "${CLIPPY}" ]; then
@@ -118,6 +119,7 @@ script:
       (cd rust/template/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
       (cd rust/template/cmd_parser/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
       (cd rust/template/differential_datalog/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
+      (cd rust/template/observe/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
       (cd rust/template/ovsdb/ && cargo clippy --all-targets -- ${CLIPPYFLAGS})
   fi
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi

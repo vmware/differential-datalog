@@ -1,0 +1,6 @@
+// Simple test for distributed DDlog. See ../ddd.dl
+input relation Up[bool]
+input relation Down[bool]
+output relation Right[bool]
+
+Right[b] :- Up[b], Down[b].

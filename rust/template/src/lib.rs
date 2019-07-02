@@ -13,15 +13,15 @@
 extern crate differential_dataflow;
 extern crate fnv;
 extern crate num_traits;
+extern crate observe;
 extern crate timely;
 
 #[macro_use]
 extern crate lazy_static;
 
 #[macro_use]
-extern crate serde_derive;
-extern crate libc;
 extern crate serde;
+extern crate libc;
 extern crate twox_hash;
 
 #[macro_use]
@@ -69,6 +69,7 @@ use std::sync;
 
 pub mod api;
 pub mod ovsdb;
+pub mod server;
 pub mod update_handler;
 pub mod valmap;
 
