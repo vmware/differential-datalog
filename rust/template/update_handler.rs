@@ -119,6 +119,7 @@ impl <V: Val> MTUpdateHandler<V> for NullUpdateHandler
  */
 
 pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
 
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F:Callback>
