@@ -1,0 +1,5 @@
+// Simple test for distributed DDlog. See ../ddd.dl
+input relation Left[bool]
+output relation Right[bool]
+
+Right[b] :- Left[b].

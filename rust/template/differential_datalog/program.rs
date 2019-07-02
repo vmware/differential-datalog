@@ -787,6 +787,50 @@ pub enum Update<V: Val> {
     Modify{relid: RelId, k: V, m: Box<dyn Mutator<V> + Send>}
 }
 
+impl <V: Val> Debug for Update<V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Update::Insert{relid, v} => {
+                write!(f, "Insert {{ relid: {:?}, v: {:?} }}", relid, v)
+            },
+            Update::DeleteValue{relid, v} => {
+                write!(f, "DeleteValue {{ relid: {:?}, v: {:?} }}", relid, v)
+            },
+            Update::DeleteKey{relid, k} => {
+                write!(f, "DeleteKey {{ relid: {:?}, k: {:?} }}", relid, k)
+            },
+            Update::Modify{relid, k, m} => {
+                write!(f, "Modify {{ relid: {:?}, k: {:?}, m: {} }}", relid, k, m)
+            }
+        }
+    }
+}
+
+impl <V: Val + Serialize> Serialize for Update<V> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let upd = match self {
+            Update::Insert{relid, v} => (true, relid, v),
+            Update::DeleteValue{relid, v} => (false, relid, v),
+            _ => panic!("Cannot serialize Modify/DeleteKey update")
+        };
+
+        upd.serialize(serializer)
+    }
+}
+
+impl <'de, V> Deserialize<'de> for Update<V>
+where V: Val + DeserializeOwned
+{
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (b, relid, v) = <(bool, RelId, V) as Deserialize>::deserialize(deserializer)?;
+        if b {
+            Ok(Update::Insert{relid, v})
+        } else {
+            Ok(Update::DeleteValue{relid, v})
+        }
+    }
+}
+
 impl<V:Val> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
