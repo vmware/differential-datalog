@@ -13,6 +13,9 @@ use std::fmt;
 use std::fmt::Write;
 use std::string::ToString;
 
+extern crate serde;
+use serde::{Serialize, Deserialize};
+
 pub type Name = Cow<'static, str>;
 
 /* Rust's implementation of `Debug::fmt` for `str` incorrectly escapes
@@ -44,7 +47,7 @@ pub fn format_ddlog_str(s: &str, f: &mut fmt::Formatter) -> fmt::Result {
 /// instance from some external representation, e.g., JSON, one needs to use `String`'s instead.  To
 /// accommodate both options, `Record` uses `Cow` to store names.
 ///
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug,PartialEq,Eq,Clone,Serialize,Deserialize)]
 pub enum Record {
     Bool(bool),
     Int(BigInt),
@@ -114,7 +117,7 @@ impl fmt::Display for Record {
     }
 }
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug,PartialEq,Eq,Clone,Serialize,Deserialize)]
 pub enum CollectionKind {
     Unknown,
     Vector,

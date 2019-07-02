@@ -1,0 +1,7 @@
+/* First DDlog example */
+
+input relation Middle[bool]
+output relation Right[bool]
+
+// Rule
+Right[b] :- Middle[b].
