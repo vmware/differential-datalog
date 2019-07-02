@@ -166,6 +166,8 @@ rustLibFiles specname =
         , (dir </> "ovsdb/Cargo.toml"                   , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                       , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                      , $(embedFile "rust/template/ovsdb/test.rs"))
+        , (dir </> "tcp_channel/Cargo.toml"             , $(embedFile "rust/template/tcp_channel/Cargo.toml"))
+        , (dir </> "tcp_channel/lib.rs"                 , $(embedFile "rust/template/tcp_channel/lib.rs"))
         ]
     where dir = rustProjectDir specname
 

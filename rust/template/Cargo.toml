@@ -10,6 +10,7 @@ members = [
   "differential_datalog",
   "observe",
   "ovsdb",
+  "tcp_channel",
 ]
 
 [build-dependencies]
@@ -26,6 +27,9 @@ path = "./ovsdb"
 
 [dependencies.observe]
 path = "./observe"
+
+[dependencies.tcp_channel]
+path = "./tcp_channel"
 
 [dependencies]
 differential-dataflow = "0.9"
