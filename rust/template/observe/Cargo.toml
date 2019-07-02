@@ -1,0 +1,9 @@
+[package]
+name = "observe"
+version = "0.1.0"
+authors = ["Remy Wang <remy.sucre@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "observe"
+path = "./lib.rs"

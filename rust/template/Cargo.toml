@@ -16,12 +16,14 @@ path = "./cmd_parser"
 [dependencies.ddlog_ovsdb_adapter]
 path = "./ovsdb"
 
+[dependencies.observe]
+path = "./observe"
+
 [dependencies]
 differential-dataflow = "0.9"
 timely = "0.9"
 abomonation= "0.7"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 fnv="1.0.2"
 libc="0.2"
 time="0.1"
