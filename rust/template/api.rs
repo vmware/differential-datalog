@@ -176,7 +176,7 @@ pub extern "C" fn ddlog_run(
 impl HDDlog {
     pub fn run<F>(workers: usize,
                   do_store: bool,
-                  cb: Option<F>) -> Arc<HDDlog>
+                  cb: Option<F>) -> HDDlog
     where F: Callback
     {
         let workers = if workers == 0 { 1 } else { workers };
@@ -224,13 +224,13 @@ impl HDDlog {
         let prog = program.run(workers as usize);
         handler.after_commit(true);
 
-        Arc::new(HDDlog{
+        HDDlog{
             prog:           Mutex::new(prog),
             update_handler: handler,
             db:             Some(db),
             deltadb:        deltadb,
             print_err:      None,
-            replay_file:    None})
+            replay_file:    None}
     }
 }
 
@@ -299,13 +299,13 @@ impl HDDlog {
             match prog.get_input_relation_data(*rel as RelId) {
                 Ok(valset) => {
                     for v in valset.iter() {
-                        write!(w, "insert {}[{}],", relname, v)?;
+                        writeln!(w, "insert {}[{}],", relname, v)?;
                     }
                 },
                 _ => match prog.get_input_relation_index(*rel as RelId) {
                     Ok(ivalset) => {
                         for v in ivalset.values() {
-                            write!(w, "insert {}[{}],", relname, v)?;
+                            writeln!(w, "insert {}[{}],", relname, v)?;
                         }
                     },
                     _ => {
@@ -379,7 +379,7 @@ impl HDDlog {
 
     fn record_transaction_start(&self) {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "start;\n").is_err() {
+            if writeln!(f.lock().unwrap(), "start;").is_err() {
                 self.eprintln("failed to record invocation in replay file");
             }
         }
@@ -417,7 +417,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
 impl HDDlog {
     pub fn transaction_commit_dump_changes<F>
         (&self, cb: Option<F>) -> Result<(), String>
-    where F: Fn(usize, &record::Record, bool)
+    where F: FnMut(usize, &record::Record, bool)
     {
         self.record_transaction_commit(true);
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
@@ -440,9 +440,9 @@ impl HDDlog {
 
     fn dump_delta<F>(db: &mut DeltaMap,
                      cb: Option<F>)
-    where F:Fn(usize, &record::Record, bool)
+    where F:FnMut(usize, &record::Record, bool)
     {
-        cb.map(|f|
+        cb.map(|mut f|
                for (table_id, table_data) in db.as_ref().iter() {
                    for (val, weight) in table_data.iter() {
                        debug_assert!(*weight == 1 || *weight == -1);
@@ -491,9 +491,9 @@ impl HDDlog {
     fn record_transaction_commit(&self, record_changes: bool) {
         if let Some(ref f) = self.replay_file {
             let res = if record_changes {
-                write!(f.lock().unwrap(), "commit dump_changes;\n")
+                writeln!(f.lock().unwrap(), "commit dump_changes;")
             } else {
-                write!(f.lock().unwrap(), "commit;\n")
+                writeln!(f.lock().unwrap(), "commit;")
             };
             if res.is_err() {
                 self.eprintln("failed to record invocation in replay file");
@@ -526,7 +526,7 @@ impl HDDlog {
 
     fn record_transaction_rollback(&self) -> Result<(), String> {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "rollback;\n").is_err() {
+            if writeln!(f.lock().unwrap(), "rollback;").is_err() {
                 Err("failed to record invocation in replay file".to_string())
             } else {
                 Ok(())
@@ -578,7 +578,7 @@ impl HDDlog {
             for (i, u) in upds.enumerate() {
                 let sep = if i == n - 1 { ";" } else { "," };
                 record_update(&mut *file, u);
-                let _ = write!(file, "{}\n", sep);
+                let _ = writeln!(file, "{}", sep);
             }
         }
     }
@@ -628,7 +628,7 @@ impl HDDlog {
 
     fn record_clear_relation(&self, table:usize) {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "clear {};\n", relid2name(table).unwrap_or(&"???")).is_err() {
+            if writeln!(f.lock().unwrap(), "clear {};", relid2name(table).unwrap_or(&"???")).is_err() {
                 self.eprintln("failed to record invocation in replay file");
             }
         }
@@ -673,7 +673,7 @@ impl HDDlog {
 
     fn record_dump_table(&self, table: usize) {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "dump {};\n", relid2name(table).unwrap_or(&"???")).is_err() {
+            if writeln!(f.lock().unwrap(), "dump {};", relid2name(table).unwrap_or(&"???")).is_err() {
                 self.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
             }
         }
@@ -724,7 +724,7 @@ impl HDDlog {
 
     fn record_enable_cpu_profiling(&self, enable: bool) {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "profile cpu {};\n", if enable { "on" } else { "off" }).is_err() {
+            if writeln!(f.lock().unwrap(), "profile cpu {};", if enable { "on" } else { "off" }).is_err() {
                 self.eprintln("ddlog_cpu_profiling_enable(): failed to record invocation in replay file");
             }
         }
@@ -760,7 +760,7 @@ impl HDDlog {
 
     fn record_profile(&self) {
         if let Some(ref f) = self.replay_file {
-            if write!(f.lock().unwrap(), "profile;\n").is_err() {
+            if writeln!(f.lock().unwrap(), "profile;").is_err() {
                 self.eprintln("failed to record invocation in replay file");
             }
         }
