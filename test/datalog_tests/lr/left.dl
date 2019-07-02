@@ -1,0 +1,7 @@
+/* First DDlog example */
+
+input relation CLeft(b: bool)
+output relation CMiddle(b: bool)
+
+// Rule
+CMiddle(b) :- CLeft(b).
