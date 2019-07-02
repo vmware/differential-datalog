@@ -55,7 +55,7 @@ fn handle_cmd(hddlog: &HDDlog,
             let mut current_table = None;
             let res = if record_delta {
                 let cb = if print_deltas {
-                    Some(move |table, val: &Record, pol: bool| {
+                    Some(|table, val: &Record, pol: bool| {
                         if current_table != Some(table) {
                             let _ = writeln!(stdout(), "{}:", relid2name(table).unwrap());
                             current_table = Some(table);

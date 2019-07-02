@@ -86,12 +86,12 @@ fn relident2name(r: &record::RelIdentifier) -> Option<&str> {
 fn __null_cb(_relid: RelId, _v: &Value, _w: isize) {}
 
 #[no_mangle]
-pub extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t
+pub unsafe extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t
 {
     if tname.is_null() {
         return libc::size_t::max_value();
     };
-    let table_str = unsafe{ ffi::CStr::from_ptr(tname) }.to_str().unwrap();
+    let table_str = ffi::CStr::from_ptr(tname).to_str().unwrap();
     match HDDlog::get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
         Err(_) => {
