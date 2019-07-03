@@ -4,9 +4,11 @@ use ddd_ddlog::api::*;
 use ddd_ddlog::*;
 use differential_datalog::record;
 use std::ffi::CString;
+use std::net::SocketAddr;
 
-use std::io::prelude::*;
-use std::net::TcpStream;
+use tokio::prelude::*;
+use tokio::net::TcpStream;
+use tokio::io;
 
 fn main() {
     let prog = ddlog_run(1, false, None, 0, None);
@@ -33,12 +35,24 @@ pub extern "C" fn transmit(_: libc::uintptr_t,
                            rec: *const record::Record,
                            _polarity: bool) {
     unsafe {
-        let mut stream = TcpStream::connect("127.0.0.1:8000").expect("connection failed");
+
+        let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
+        let stream = TcpStream::connect(&addr);
 
         let data = (&*rec, table);
-
         let s = serde_json::to_string(&data).unwrap();
 
-        stream.write(s.as_bytes());
+        let client = stream.and_then(|stream| {
+            // stream.write(s.as_bytes());
+            // stream.write("dawg".as_bytes());
+            io::write_all(stream, "dawg\n").then( |result| {
+                Ok(())
+            })
+        }).map_err(|err| {
+            println!("connection error = {:?}", err);
+        });
+
+
+        tokio::run(client);
     }
 }

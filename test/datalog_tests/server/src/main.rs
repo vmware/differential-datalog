@@ -4,10 +4,11 @@ use ddd_ddlog::api::*;
 use ddd_ddlog::*;
 use differential_datalog::record;
 use std::ffi::CString;
+use std::net::SocketAddr;
 
-use std::net::{TcpListener, TcpStream};
-use std::io::prelude::*;
-use std::io;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::prelude::*;
+use tokio::io;
 use std::str;
 
 fn handle_connection(mut stream: TcpStream) -> io::Result<()>{
@@ -15,29 +16,29 @@ fn handle_connection(mut stream: TcpStream) -> io::Result<()>{
     let prog = ddlog_run(1, false, None, 0, None);
 
     let mut s = String::new();
-    stream.read_to_string(&mut s);
+    stream.read_to_string(&mut s).and_then(|_| {println!("{:?}", s); Ok(())});
 
-    let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
+    // let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
 
-    unsafe {
-        let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
-        let b_bool = record::ddlog_get_bool(f);
-        let b = record::ddlog_bool(b_bool);
+    // unsafe {
+    //     let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
+    //     let b_bool = record::ddlog_get_bool(f);
+    //     let b = record::ddlog_bool(b_bool);
 
-        let table_name = relid2name(table).unwrap();
-        let constr = table_name.split('.').last().unwrap();
-        let constr_r = String::from("lr.right.") + constr;
+    //     let table_name = relid2name(table).unwrap();
+    //     let constr = table_name.split('.').last().unwrap();
+    //     let constr_r = String::from("lr.right.") + constr;
 
-        let bin = CString::new(constr_r).unwrap();
-        let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
+    //     let bin = CString::new(constr_r).unwrap();
+    //     let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
 
-        let table_id = ddlog_get_table_id(bin.as_ptr());
-        let updates = &[record::ddlog_insert_cmd(table_id, rec)];
+    //     let table_id = ddlog_get_table_id(bin.as_ptr());
+    //     let updates = &[record::ddlog_insert_cmd(table_id, rec)];
 
-        ddlog_transaction_start(prog);
-        ddlog_apply_updates(prog, updates.as_ptr(), 1);
-        ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
-    }
+    //     ddlog_transaction_start(prog);
+    //     ddlog_apply_updates(prog, updates.as_ptr(), 1);
+    //     ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
+    // }
 
     Ok(())
 }
@@ -53,17 +54,21 @@ pub extern "C" fn show_out(arg: libc::uintptr_t,
 
 fn main() {
 
-    let listener = TcpListener::bind("127.0.0.1:8000").expect("could not start server");
+    let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
+    let listener = TcpListener::bind(&addr).unwrap();
+
 
     // accept connections and get a TcpStream
-    for connection in listener.incoming() {
-        match connection {
-            Ok(stream) => {
-                if let Err(e) = handle_connection(stream) {
-                    println!("eror {:?}",e);
-                }
-            }
-            Err(e) => { print!("connection failed {}\n",e); }
-        }
-    }
+    tokio::run(
+        listener.incoming()
+            .map_err(|e| eprintln!("failed to accept stream; error = {:?}", e))
+            .for_each(|stream| {
+                let buf = vec![];
+                // stream.read_to_string(&mut s);
+                tokio::io::read_to_end(stream, &buf);
+            }).map(|_stream, buffer| {
+                let s = std::str::from_utf8(&buffer).unwrap();
+                println!("{}", s);
+            }).map_err(|e| eprintln!("Error occured: {:?}", e));
+    );
 }
