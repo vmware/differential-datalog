@@ -1,6 +1,8 @@
 import java.io.IOException;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.util.*;
@@ -102,6 +104,8 @@ public class SpanTest {
         String terminator;
         /// List of commands to execute
         List<DDlogCommand> commands;
+        /// `true` when command recording is enabled
+        boolean recording;
 
         private final DDlogAPI api;
         private static boolean debug = true;
@@ -115,7 +119,6 @@ public class SpanTest {
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.api = new DDlogAPI(1, r -> this.onCommitDirect(r), false);
-                this.api.record_commands("replay.dat");
                 this.ruleSpanTableId = this.api.getTableId("RuleSpan");
                 this.containerSpanTableId = this.api.getTableId("ContainerSpan");
                 this.ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
@@ -297,6 +300,21 @@ public class SpanTest {
                     this.exitCode = this.api.commit();
                     this.checkExitCode();
                     this.checkSemicolon();
+
+                    // Start recording after the first commit. Dump current
+                    // database snapshot to the replay file first
+                    if (!this.recording) {
+                        try {
+                            Files.write(Paths.get("./replay.dat"), "start;\n".getBytes());
+                            this.api.dump_input_snapshot("replay.dat", true);
+                            Files.write(Paths.get("./replay.dat"), "commit;\n".getBytes(), StandardOpenOption.APPEND);
+                            this.api.record_commands("replay.dat", true);
+                            this.recording = true;
+                        }  catch (Exception ex) {
+                            ex.printStackTrace();
+                            throw new RuntimeException(ex);
+                        }
+                    }
                     break;
                 case "insert":
                 case "delete":

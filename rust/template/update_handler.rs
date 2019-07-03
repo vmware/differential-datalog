@@ -115,7 +115,43 @@ impl <V: Val> MTUpdateHandler<V> for NullUpdateHandler
     }
 }
 
-/* `UpdateHandler` implementation that invokes user-provided callback.
+/* `UpdateHandler` implementation that invokes user-provided closure.
+ */
+
+pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+
+#[derive(Clone)]
+pub struct CallbackUpdateHandler<F:Callback>
+{
+     cb: F
+}
+
+impl <F:Callback>CallbackUpdateHandler<F> {
+    pub fn new(cb: F) -> Self {
+        Self{cb}
+    }
+}
+
+impl <V: Val + IntoRecord, F:Callback> UpdateHandler<V> for CallbackUpdateHandler<F>
+{
+    fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
+        let cb = self.cb.clone();
+        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
+    }
+    fn before_commit(&self) {}
+    fn after_commit(&self, _success: bool) {}
+}
+
+impl <V: Val + IntoRecord, F:Callback> MTUpdateHandler<V> for CallbackUpdateHandler<F>
+{
+    fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
+        let cb = self.cb.clone();
+        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
+    }
+}
+
+/* `UpdateHandler` implementation that invokes user-provided C function.
  */
 #[derive(Clone)]
 pub struct ExternCUpdateHandler {
@@ -127,6 +163,7 @@ type ExternCCallback = extern "C" fn(arg: libc::uintptr_t,
                                      table: libc::size_t,
                                      rec: *const record::Record,
                                      polarity: bool);
+
 
 impl ExternCUpdateHandler
 {

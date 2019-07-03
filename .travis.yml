@@ -33,7 +33,7 @@ env:
    - TOOL=stack TEST_SUITE='-p path'
    - TOOL=stack TEST_SUITE='-p ovn'
    - TOOL=stack TEST_SUITE='-p modules'
-   - TOOL=stack TEST_SUITE='-p span_string'
+   - TOOL=stack TEST_SUITE='-p redist'
 
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 

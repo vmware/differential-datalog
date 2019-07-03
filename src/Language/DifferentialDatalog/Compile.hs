@@ -297,7 +297,7 @@ rname = pp . replace "." "_"
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =
-    "#[derive(Copy,Clone,Debug)]"                                                                                  $$
+    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                $$
     "pub enum Relations {"                                                                                         $$
     (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> rname rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
     "}"
@@ -733,6 +733,9 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkInputRelname2Id d                                                                             $$
     mkRelId2Relations d                                                                             $$
     mkRelId2Name d                                                                                  $$
+    mkRelIdMap d                                                                                    $$
+    mkInputRelIdMap d                                                                               $$
+    mkOutputRelIdMap d                                                                              $$
     "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                                $$
@@ -826,6 +829,48 @@ mkRelId2Name d =
     entries = mapIdx mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Int -> Doc
     mkrel rel i = pp i <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
+
+mkRelIdMap :: DatalogProgram -> Doc
+mkRelIdMap d =
+    "lazy_static! {"                                                        $$
+    "    pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = {"  $$
+    "        let mut m = FnvHashMap::default();"                            $$
+    (nest' $ nest' $ vcat entries)                                          $$
+    "        m"                                                             $$
+    "   };"                                                                 $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+
+mkInputRelIdMap :: DatalogProgram -> Doc
+mkInputRelIdMap d =
+    "lazy_static! {"                                                                $$
+    "    pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {"    $$
+    "        let mut m = FnvHashMap::default();"                                    $$
+    (nest' $ nest' $ vcat entries)                                                  $$
+    "        m"                                                                     $$
+    "    };"                                                                        $$
+    "}"
+    where
+    entries = map mkrel $ filter ((== RelInput) . relRole) $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+
+mkOutputRelIdMap :: DatalogProgram -> Doc
+mkOutputRelIdMap d =
+    "lazy_static! {"                                                                $$
+    "    pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {"   $$
+    "        let mut m = FnvHashMap::default();"                                    $$
+    (nest' $ nest' $ vcat entries)                                                  $$
+    "        m"                                                                     $$
+    "    };"                                                                        $$
+    "}"
+    where
+    entries = map mkrel $ filter ((== RelOutput) . relRole) $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
 
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =

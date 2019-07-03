@@ -183,7 +183,7 @@ pub fn std_vec_push<X: Ord+Clone>(v: &mut std_Vec<X>, x: &X) {
     v.push((*x).clone());
 }
 
-pub fn std_vec_insert_imm<X: Ord+Clone>(v: &std_Vec<X>, x: &X) -> std_Vec<X> {
+pub fn std_vec_push_imm<X: Ord+Clone>(v: &std_Vec<X>, x: &X) -> std_Vec<X> {
     let mut v2 = v.clone();
     v2.push((*x).clone());
     v2

@@ -80,7 +80,7 @@ pub extern "C" fn uint_from_u64(v: u64) -> *mut Uint {
 
 #[no_mangle]
 pub unsafe extern "C" fn uint_from_str(s: *const c_char, radix: u32) -> *mut Uint {
-    let c_str = unsafe { CStr::from_ptr(s) };
+    let c_str = CStr::from_ptr(s);
     Box::into_raw(Box::new(Uint::parse_bytes(c_str.to_bytes(), radix)))
 }
 
@@ -89,9 +89,7 @@ pub unsafe extern "C" fn uint_free(x: *mut Uint) {
     if x.is_null() {
         return;
     }
-    unsafe {
-        Box::from_raw(x);
-    }
+    Box::from_raw(x);
 }
 
 
