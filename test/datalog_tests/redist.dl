@@ -16,7 +16,7 @@ input relation DdlogDependency(parent: entid_t, child: entid_t)
 relation BiEdge(parent: entid_t, child: entid_t)
 BiEdge(parent, child) :- DdlogDependency(parent, child), DdlogDependency(child, parent).
 
-/* Compute connected components by propagating node id's along biditectional edges.
+/* Compute connected components by propagating node id's along bidirectional edges.
  */
 function edge_parent(e: BiEdge): entid_t = e.parent
 function edge_child(e: BiEdge): entid_t = e.child

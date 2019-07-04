@@ -24,8 +24,6 @@ cargo build
 popd
 # Build the Java library with the DDlog API
 make -C ..
-# Force linking with the static library by deleting the dynamic library
-rm -f two_ddlog/target/debug/libtwo_ddlog.so
 # Compile TwoTest.java
 javac -cp .. TwoTest.java
 # Create a shared library containing all the native code: ddlogapi.c, libtwo_ddlog.a

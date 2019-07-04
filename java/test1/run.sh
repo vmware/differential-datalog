@@ -26,8 +26,6 @@ cargo build --release
 popd
 # Build the JAR with the DDlog API
 make -C ..
-# Force linking with the static library by deleting the dynamic library
-rm -f ../../test/datalog_tests/redist_ddlog/target/release/libredist_ddlog.so
 # Compile RedistTest.java
 javac -cp ..:fastutil-8.2.2.jar RedistTest.java
 # Create a shared library containing all the native code: ddlogapi.c, libredist_ddlog.a

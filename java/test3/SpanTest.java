@@ -10,7 +10,7 @@ public class SpanTest {
     private final DDlogAPI api;
 
     SpanTest() {
-        this.api = new DDlogAPI(1, r -> this.onCommit(r), false);
+        this.api = new DDlogAPI(1, null, false);
     }
 
     void onCommit(DDlogCommand command) {
@@ -25,7 +25,7 @@ public class SpanTest {
         DDlogCommand[] commands = { command0, command1 };
         this.api.start();
         this.api.applyUpdates(commands);
-        this.api.commit();
+        this.api.commit_dump_changes(r -> this.onCommit(r));
         this.api.stop();
     }
 

@@ -24,8 +24,6 @@ cargo build --release
 popd
 # Build the Java library with the DDlog API
 make -C ..
-# Force linking with the static library by deleting the dynamic library
-rm -f ../../test/datalog_tests/span_uuid_ddlog/target/release/libspan_uuid_ddlog.so
 # Compile SpanTest.java
 javac -cp .. SpanTest.java
 # Create a shared library containing all the native code: ddlogapi.c, libspan_uuid_ddlog.a
