@@ -145,7 +145,7 @@ pub type Weight = isize;
 const MSG_BUF_SIZE: usize = 500;
 
 /* Message buffer for profiling messages */
-const PROF_MSD_BUF_SIZE: usize = 10000;
+const PROF_MSG_BUF_SIZE: usize = 10000;
 
 /// Result type returned by this library
 pub type Response<X> = Result<X, String>;
@@ -839,7 +839,7 @@ impl<V:Val> Program<V>
         let flush_ack_send = flush_ack_send.clone();
 
         /* Profiling channel */
-        let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSD_BUF_SIZE);
+        let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
 
         /* Profile data structure */
         let profile = Arc::new(Mutex::new(Profile::new()));
