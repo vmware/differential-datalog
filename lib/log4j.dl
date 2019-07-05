@@ -1,0 +1,12 @@
+/*
+ * Convenience functions for using the logging API with log4j.
+ */
+
+import log
+
+function trace(module: module_t, msg: string): bool = log(module, 600/*TRACE*/, msg)
+function debug(module: module_t, msg: string): bool = log(module, 500/*DEBUG*/, msg)
+function info (module: module_t, msg: string): bool = log(module, 400/*INFO*/,  msg)
+function warn (module: module_t, msg: string): bool = log(module, 300/*WARN*/,  msg)
+function error(module: module_t, msg: string): bool = log(module, 200/*ERROR*/, msg)
+function fatal(module: module_t, msg: string): bool = log(module, 100/*FATAL*/, msg)

@@ -28,6 +28,7 @@ public class DDlogAPI {
     static native int ddlog_apply_updates(long hprog, long[] upds);
     static native String ddlog_profile(long hprog);
     static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
+    static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
 
     // All the following methods return in fact handles
     static public native void ddlog_free(long handle);
@@ -96,6 +97,11 @@ public class DDlogAPI {
     // Callback to invoke for each record on `DDlogAPI.dump()`.
     // The callback is invoked sequentially by the same DDlog worker thread.
     private Consumer<DDlogRecord> dumpCallback;
+
+    // Stores pointer to `struct CallbackInfo` for each registered logging
+    // callback.  This is needed so that we can deallocate the `CallbackInfo*`
+    // when removing on changing the callback.
+    private static Map<Integer, Long> logCBInfo = new HashMap<>();
 
     /**
      * Create an API to access the DDlog program.
@@ -236,5 +242,31 @@ public class DDlogAPI {
 
     public int enable_cpu_profiling(boolean enable) {
         return DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
+    }
+
+    /*
+     * Control DDlog logging behavior (see detailed explanation of the logging
+     * API in `lib/log.dl`).
+     *
+     * `module` - Module id for logging purposes.  Must match module ids
+     *    used in the DDlog program.
+     * `cb` - Logging callback that takes log message level and the message
+     *    itself.  Passing `null` disables logging for the given module.
+     * `max_level` - Maximal enabled log level.  Log messages with this module
+     *    id and log level above `max_level` will be dropped by DDlog (i.e.,
+     *    the callback will not be invoked for  those messages).
+     */
+    static public synchronized int log_set_callback(int module, ObjIntConsumer<String> cb, int max_level) {
+        Long old_cbinfo = logCBInfo.remove(module);
+        long new_cbinfo = ddlog_log_replace_callback(module, old_cbinfo == null ? 0 : old_cbinfo, cb, max_level);
+        /* Store pointer to CallbackInfo in internal map */
+        if (new_cbinfo != 0) {
+            logCBInfo.put(module, new_cbinfo);
+        }
+        if (cb != null && new_cbinfo == 0) {
+            return -1;
+        } else {
+            return 0;
+        }
     }
 }

@@ -11,6 +11,7 @@
 
 #include "ddlogapi_DDlogAPI.h"
 #include "ddlog.h"
+#include "ddlog_log.h"
 
 /* The _1 in all the function names below
    is the JNI translation of the _ character from Java */
@@ -45,7 +46,7 @@ static void printClass(JNIEnv* env, jobject obj) {
     (*env)->ReleaseStringUTFChars(env, strObj, str);
 }
 
-static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring method, const char* signature) {
+static struct CallbackInfo* createCallbackByName(JNIEnv* env, jobject obj, const char* method, const char* signature) {
     if (method == NULL)
         return NULL;
     struct CallbackInfo* cbinfo = malloc(sizeof(struct CallbackInfo));
@@ -56,15 +57,25 @@ static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring met
     cbinfo->obj = (*env)->NewGlobalRef(env, obj);
     jclass thisClass = (*env)->GetObjectClass(env, cbinfo->obj);
     cbinfo->cls = (jclass)(*env)->NewGlobalRef(env, thisClass);
-    const char* methodstr = (*env)->GetStringUTFChars(env, method, NULL);
-    jmethodID methodId = (*env)->GetMethodID(env, cbinfo->cls, methodstr, signature);
-    (*env)->ReleaseStringUTFChars(env, method, methodstr);
+    jmethodID methodId = (*env)->GetMethodID(env, cbinfo->cls, method, signature);
 
     if (methodId == NULL)
         return NULL;
     cbinfo->method = methodId;
     return cbinfo;
 }
+
+static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring method, const char* signature) {
+    if (method == NULL)
+        return NULL;
+
+    const char* methodstr = (*env)->GetStringUTFChars(env, method, NULL);
+    struct CallbackInfo *cbinfo = createCallbackByName(env, obj, methodstr, signature);
+    (*env)->ReleaseStringUTFChars(env, method, methodstr);
+    return cbinfo;
+}
+
+
 
 static void deleteCallback(struct CallbackInfo* cbinfo) {
     if (cbinfo == NULL)
@@ -259,6 +270,40 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1cpu_1profiling(
     JNIEnv *env, jobject obj, jlong progHandle, jboolean enable) {
     return ddlog_enable_cpu_profiling((ddlog_prog)progHandle, enable);
 }
+
+void log_callback(uintptr_t callbackInfo, int level, const char *msg) {
+    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
+    JNIEnv* env;
+    (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
+    assert(env);
+    jstring jmsg = (*env)->NewStringUTF(env, msg);
+    (*env)->CallVoidMethod(env, cbi->obj, cbi->method, jmsg, (jint) level);
+}
+
+/* This function sets up a new logging callback for the given module and
+ * then deallocates the old `CallbackInfo`, if any.
+ */
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1log_1replace_1callback(
+    JNIEnv *env, jobject obj, jint module, jlong old_cbinfo, jobject callback, jint max_level) {
+
+    if (callback == NULL) {
+        ddlog_log_set_callback(module, NULL, 0, max_level);
+        deleteCallback((struct CallbackInfo*)old_cbinfo);
+        return 0;
+    }
+
+    struct CallbackInfo* cbinfo = createCallbackByName(env, callback, "accept", "(Ljava/lang/Object;I)V");
+    if (cbinfo == NULL) {
+        deleteCallback((struct CallbackInfo*)old_cbinfo);
+        return 0;
+    }
+
+    ddlog_log_set_callback(module, log_callback, (uintptr_t)cbinfo, max_level);
+
+    deleteCallback((struct CallbackInfo*)old_cbinfo);
+    return (jlong)cbinfo;
+}
+
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1bool(
     JNIEnv *env, jclass obj, jboolean b) {
