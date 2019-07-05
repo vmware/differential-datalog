@@ -23,25 +23,29 @@ fn handle_connection(mut stream: TcpStream) -> impl Future<Item = (), Error = ()
                 println!("{:?}", &s);
                 let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
 
-                unsafe {
-                let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
-                let b_bool = record::ddlog_get_bool(f);
-                let b = record::ddlog_bool(b_bool);
+                // let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
 
-                let table_name = relid2name(table).unwrap();
-                let constr = table_name.split('.').last().unwrap();
-                let constr_r = String::from("lr.right.") + constr;
+                if let record::Record::PosStruct(_, fields) = rec {
+                    let f = fields.get(0).unwrap();
+                };
 
-                let bin = CString::new(constr_r).unwrap();
-                let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
 
-                let table_id = ddlog_get_table_id(bin.as_ptr());
-                let updates = &[record::ddlog_insert_cmd(table_id, rec)];
+                //  let b_bool = record::ddlog_get_bool(f);
+                //  let b = record::ddlog_bool(b_bool);
+
+                //  let table_name = relid2name(table).unwrap();
+                //  let constr = table_name.split('.').last().unwrap();
+                //  let constr_r = String::from("lr.right.") + constr;
+
+                //  let bin = CString::new(constr_r).unwrap();
+                //  let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
+
+                //  let table_id = ddlog_get_table_id(bin.as_ptr());
+                //  let updates = &[record::ddlog_insert_cmd(table_id, rec)];
 
                 // ddlog_transaction_start(prog);
                 //     ddlog_apply_updates(prog, updates.as_ptr(), 1);
                 //     ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
-                }
             }
             Err(e) => println!("{:?}", e),
         }
@@ -66,20 +70,18 @@ fn main() {
     let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
     let listener = TcpListener::bind(&addr).unwrap();
 
-    let prog = ddlog_run(1, false, None, 0, None);
+    let prog = HDDlog::run(1, false, None::<fn(usize, &record::Record, bool)>);
 
-    unsafe {
-        let server = listener.incoming().for_each(|socket| {
+    let server = listener.incoming().for_each(|socket| {
 
-            let work = handle_connection(socket);
+        let work = handle_connection(socket);
 
-            tokio::spawn(work);
-            Ok(())
-        }).map_err(|err| {
-            // Handle error by printing to STDOUT.
-            println!("accept error = {:?}", err);
-        });
+        tokio::spawn(work);
+        Ok(())
+    }).map_err(|err| {
+        // Handle error by printing to STDOUT.
+        println!("accept error = {:?}", err);
+    });
 
-        tokio::run(server);
-    }
+    tokio::run(server);
 }

@@ -5,54 +5,48 @@ use ddd_ddlog::*;
 use differential_datalog::record;
 use std::ffi::CString;
 use std::net::SocketAddr;
+use std::borrow::Cow;
 
 use tokio::prelude::*;
 use tokio::net::TcpStream;
 use tokio::io;
 
 fn main() {
-    let prog = ddlog_run(1, false, None, 0, None);
+    let prog = HDDlog::run(1, false, None::<fn(usize, &record::Record, bool)>);
 
-    unsafe {
-        let b = record::ddlog_bool(true);
-        let c_left = CString::new("lr.left.CLeft").unwrap();
+    let b = record::Record::Bool(true);
 
-        // todo assuming the constructor for the record is the same as table name
-        let rec = record::ddlog_struct(c_left.as_ptr(), [b].as_ptr(), 1);
-        let table_id = ddlog_get_table_id(c_left.as_ptr());
-        let updates = &[record::ddlog_insert_cmd(table_id, rec)];
+    // todo assuming the constructor for the record is the same as table name
+    let rec = record::Record::PosStruct(
+        Cow::from("lr.left.CLeft".to_owned()),
+        [b].to_vec());
 
-        ddlog_transaction_start(prog);
-        ddlog_apply_updates(prog, updates.as_ptr(), 1);
-        ddlog_transaction_commit_dump_changes(prog, Some(transmit), 0);
+    let table_id = HDDlog::get_table_id("lr.left.CLeft").unwrap();
+    let updates = &[record::UpdCmd::Insert(record::RelIdentifier::RelId(table_id as usize), rec)];
 
-        ddlog_stop(prog);
-    }
+    prog.transaction_start();
+    prog.apply_updates(updates.into_iter());
+    prog.transaction_commit_dump_changes(Some(transmit));
+    prog.stop();
 }
 
-pub extern "C" fn transmit(_: libc::uintptr_t,
-                           table: libc::size_t,
-                           rec: *const record::Record,
-                           _polarity: bool) {
-    unsafe {
+fn transmit(table: libc::size_t,
+            rec: &record::Record,
+            _polarity: bool) {
 
-        let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
-        let stream = TcpStream::connect(&addr);
+    let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
+    let stream = TcpStream::connect(&addr);
 
-        let data = (&*rec, table);
-        let s = serde_json::to_string(&data).unwrap();
+    let data = (&*rec, table);
+    let s = serde_json::to_string(&data).unwrap();
 
-        let client = stream.and_then(|stream| {
-            // stream.write(s.as_bytes());
-            // stream.write("dawg".as_bytes());
-            io::write_all(stream, "hello").then( |result| {
-                Ok(())
-            })
-        }).map_err(|err| {
-            println!("connection error = {:?}", err);
-        });
+    let client = stream.and_then(|stream| {
+        io::write_all(stream, "hello").then( |_result| {
+            Ok(())
+        })
+    }).map_err(|err| {
+        println!("connection error = {:?}", err);
+    });
 
-
-        tokio::run(client);
-    }
+    tokio::run(client);
 }
