@@ -6,7 +6,6 @@ extern crate num;
 extern crate uuid;
 
 use differential_datalog::record::*;
-use differential_datalog::arcval::*;
 use serde_json::Value;
 use serde_json::map::Map;
 use serde_json::Number;

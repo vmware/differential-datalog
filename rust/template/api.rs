@@ -57,7 +57,7 @@ impl HDDlog {
     {
         Self::do_run(workers,
                      do_store,
-                     cb.map(|f| CallbackUpdateHandler::new(f)),
+                     cb.map(CallbackUpdateHandler::new),
                      None)
     }
 
@@ -221,7 +221,7 @@ impl HDDlog {
                 let delta_handler = DeltaUpdateHandler::new(deltadb2);
 
                 let store_handler = if do_store {
-                    nhandlers = nhandlers + 1;
+                    nhandlers += 1;
                     Some(ValMapUpdateHandler::new(db2))
                 } else {
                     None
@@ -233,8 +233,8 @@ impl HDDlog {
                 } else {
                     let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
                     handlers.push(Box::new(delta_handler));
-                    store_handler.map(|h| handlers.push(Box::new(h)));
-                    cb_handler.map(|h| handlers.push(h));
+                    if let Some(h) = store_handler { handlers.push(Box::new(h))};
+                    if let Some(h) = cb_handler { handlers.push(h) };
                     Box::new(ChainedUpdateHandler::new(handlers))
                 };
                 handler
@@ -253,8 +253,8 @@ impl HDDlog {
             prog:           Mutex::new(prog),
             update_handler: handler,
             db:             Some(db),
-            deltadb:        deltadb,
-            print_err:      print_err,
+            deltadb,
+            print_err,
             replay_file:    None}
     }
 
@@ -262,15 +262,16 @@ impl HDDlog {
                      cb: Option<F>)
     where F:FnMut(usize, &record::Record, bool)
     {
-        cb.map(|mut f|
-               for (table_id, table_data) in db.as_ref().iter() {
-                   for (val, weight) in table_data.iter() {
-                       debug_assert!(*weight == 1 || *weight == -1);
-                       f(*table_id as libc::size_t,
-                         &val.clone().into_record(),
-                         *weight == 1);
-                   }
-               });
+        if let Some(mut f) = cb {
+            for (table_id, table_data) in db.as_ref().iter() {
+                for (val, weight) in table_data.iter() {
+                    debug_assert!(*weight == 1 || *weight == -1);
+                    f(*table_id as libc::size_t,
+                      &val.clone().into_record(),
+                      *weight == 1);
+                }
+            }
+        };
     }
 
     fn db_dump_table<F>(db: &mut ValMap,
@@ -278,12 +279,13 @@ impl HDDlog {
                         cb: Option<F>)
     where F:Fn(&record::Record) -> bool
     {
-        cb.map(|f|
-               for val in db.get_rel(table) {
-                   if !f(&val.clone().into_record()) {
-                       break;
-                   }
-               });
+        if let Some(f) = cb {
+            for val in db.get_rel(table) {
+                if !f(&val.clone().into_record()) {
+                    break;
+                }
+            }
+        };
     }
 
     fn record_transaction_start(&self) {
@@ -478,7 +480,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: unix::io
     let res = match Arc::get_mut(&mut prog) {
         Some(prog) => {
 
-            let mut old_file = file.map(|f| Mutex::new(f));
+            let mut old_file = file.map(Mutex::new);
             prog.record_commands(&mut old_file);
             /* Convert the old file into FD to prevent it from closing.
              * It is the caller's responsibility to close the file when
@@ -629,7 +631,7 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
     let mut cmds_vec: Vec<Box<record::UpdCmd>> = Vec::with_capacity(n as usize);
 
     for i in 0..n {
-        cmds_vec.push(Box::from_raw(*upds.offset(i as isize)));
+        cmds_vec.push(Box::from_raw(*upds.add(i)));
     }
 
     let res = prog.apply_updates(cmds_vec.iter().map(|x|x.as_ref()))

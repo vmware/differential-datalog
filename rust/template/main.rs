@@ -21,9 +21,6 @@ use std::process::exit;
 use std::io::stdout;
 
 use datalog_example_ddlog::*;
-use datalog_example_ddlog::valmap::*;
-use datalog_example_ddlog::api::*;
-use datalog_example_ddlog::update_handler::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;
@@ -35,6 +32,7 @@ use std::io::Write;
 //extern crate cpuprofiler;
 //use cpuprofiler::PROFILER;
 
+#[allow(clippy::let_and_return)]
 fn handle_cmd(hddlog: &HDDlog,
               print_deltas: bool,
               upds: &mut Vec<UpdCmd>,
@@ -178,7 +176,7 @@ pub fn main() {
     };
     let (args, rest) = parser.parse_or_exit();
 
-    if rest.len() != 0 || args.workers == 0 {
+    if !rest.is_empty() || args.workers == 0 {
         panic!("Invalid command line arguments; try -h for help");
     }
 
