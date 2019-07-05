@@ -115,7 +115,23 @@ public class SpanTest {
         private int containerSpanTableId;
         private boolean localTables = false;
 
+        /* LOGGING: Module id's for logging purposes.  Must match declarations in
+         * `span_uuid.dl`
+         */
+        static int MOD_SPAN_UUID1 = 100;
+        static int MOD_SPAN_UUID2 = 200;
+
         SpanParser() {
+            /* LOGGING: Log level definitions should be imported from log4j. We use magic
+             * numbers instead to avoid extra dependencies. */
+            DDlogAPI.log_set_callback(
+                    MOD_SPAN_UUID1,
+                    (msg, level) -> System.err.println("Log msg from module1 (" + level + "): " + msg),
+                    2147483647/*log4j.ALL*/);
+            DDlogAPI.log_set_callback(
+                    MOD_SPAN_UUID2,
+                    (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
+                    100/*log4j.FATAL*/);
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.api = new DDlogAPI(1, r -> this.onCommitDirect(r), false);
@@ -300,6 +316,15 @@ public class SpanTest {
                     this.exitCode = this.api.commit();
                     this.checkExitCode();
                     this.checkSemicolon();
+
+                    /* LOGGING: Change logging settings after the first commit.
+                     * Disable logging for the first module completely; raise
+                     * logging level to DEBUG for the second module */
+                    DDlogAPI.log_set_callback(MOD_SPAN_UUID1, null, 0/*log4j.OFF*/);
+                    DDlogAPI.log_set_callback(
+                            MOD_SPAN_UUID2,
+                            (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
+                            500/*log4j.DEBUG*/);
 
                     // Start recording after the first commit. Dump current
                     // database snapshot to the replay file first

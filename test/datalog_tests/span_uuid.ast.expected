@@ -8,6 +8,8 @@ typedef Source = Source{parent: entid_t, child: entid_t}
 typedef SourceSpan = SourceSpan{entity: uuid_t, tn: tnid_t}
 typedef Span = Span{entity: uuid_t, tn: tnid_t}
 typedef entid_t = uuid_t
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
@@ -18,6 +20,23 @@ extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef tnid_t = uuid_t
 typedef uuid_t = std.Ref<bit<128>>
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
+function log4j.debug (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd500, msg)
+function log4j.error (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd200, msg)
+function log4j.fatal (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd100, msg)
+function log4j.info (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd400, msg)
+function log4j.trace (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd600, msg)
+function log4j.warn (module: log.module_t, msg: string): bool =
+    log.log(module, 32'sd300, msg)
+function mod_SPAN_UUID1 (): log.module_t =
+    32'sd100
+function mod_SPAN_UUID2 (): log.module_t =
+    32'sd200
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
@@ -108,9 +127,9 @@ output relation RuleSpan [RuleSpan]
 input relation Source [Source]
 relation SourceSpan [SourceSpan]
 relation Span [Span]
-Span(.entity=entity, .tn=tn) :- Binding(.entity=entity, .tn=tn).
-Span(.entity=parent, .tn=tn) :- Dependency(.parent=parent, .child=child), Span(.entity=child, .tn=tn).
+Span(.entity=entity, .tn=tn) :- Binding(.entity=entity, .tn=tn), log4j.trace(mod_SPAN_UUID1(), (((("Span(entity,tn) :- Binding(.entity=" ++ std.__builtin_2string(std.deref(entity))) ++ ",.tn=") ++ std.__builtin_2string(std.deref(tn))) ++ "))")).
+Span(.entity=parent, .tn=tn) :- Dependency(.parent=parent, .child=child), log4j.trace(mod_SPAN_UUID1(), (((("Span recursive step: Dependency(.parent=" ++ std.__builtin_2string(std.deref(parent))) ++ ",.child=") ++ std.__builtin_2string(std.deref(child))) ++ "))")), Span(.entity=child, .tn=tn), log4j.trace(mod_SPAN_UUID1(), (((((("Span(parent, tn) :- Dependency(.parent=" ++ std.__builtin_2string(std.deref(parent))) ++ ",.child=") ++ std.__builtin_2string(std.deref(child))) ++ ")), Span(.child, .tn=") ++ std.__builtin_2string(std.deref(tn))) ++ ")")).
 RuleSpan(.entity=entity, .tn=tn) :- Span(.entity=entity, .tn=tn), FWRule(.id=entity).
 SourceSpan(.entity=parent, .tn=tn) :- RuleSpan(.entity=child, .tn=tn), Source(.parent=parent, .child=child).
 SourceSpan(.entity=parent, .tn=tn) :- SourceSpan(.entity=child, .tn=tn), Source(.parent=parent, .child=child).
-ContainerSpan(.entity=entity, .tn=tn) :- SourceSpan(.entity=entity, .tn=tn), Container(.id=entity).
+ContainerSpan(.entity=entity, .tn=tn) :- SourceSpan(.entity=entity, .tn=tn), Container(.id=entity), log4j.debug(mod_SPAN_UUID2(), (((("ContainerSpan(.entity=" ++ std.__builtin_2string(std.deref(entity))) ++ ",.tn=") ++ std.__builtin_2string(std.deref(tn))) ++ "))")).
