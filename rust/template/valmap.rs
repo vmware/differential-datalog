@@ -5,7 +5,7 @@
 #![allow(non_snake_case, dead_code)]
 
 use std::io;
-
+use std::convert::{AsMut, AsRef};
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::BTreeSet;
 
@@ -13,6 +13,7 @@ use super::*;
 
 /* Stores the snapshot of output tables.
  */
+#[derive(Default)]
 pub struct ValMap{map: BTreeMap<RelId, BTreeSet<Value>>}
 
 impl ValMap {
@@ -40,34 +41,40 @@ impl ValMap {
     }
 
     pub fn get_rel(&mut self, relid: RelId) -> &BTreeSet<Value> {
-        self.map.entry(relid).or_insert(BTreeSet::default())
+        self.map.entry(relid).or_insert_with(BTreeSet::default)
     }
 
     pub fn update(&mut self, relid: RelId, x : &Value, insert: bool)
     {
         //println!("set_update({}) {:?} {}", rel, *x, insert);
         if insert {
-            self.map.entry(relid).or_insert(BTreeSet::default()).insert(x.clone());
+            self.map.entry(relid).or_insert_with(BTreeSet::default).insert(x.clone());
         } else {
-            self.map.entry(relid).or_insert(BTreeSet::default()).remove(x);
+            self.map.entry(relid).or_insert_with(BTreeSet::default).remove(x);
         }
     }
 }
 
 /* Stores a set of changes to output tables.
  */
+#[derive(Default)]
 pub struct DeltaMap{map: BTreeMap<RelId, BTreeMap<Value, isize>>}
+
+impl AsMut<BTreeMap<RelId, BTreeMap<Value, isize>>> for DeltaMap {
+    fn as_mut(&mut self) -> &mut BTreeMap<RelId, BTreeMap<Value, isize>> {
+        &mut self.map
+    }
+}
+
+impl AsRef<BTreeMap<RelId, BTreeMap<Value, isize>>> for DeltaMap {
+    fn as_ref(&self) -> &BTreeMap<RelId, BTreeMap<Value, isize>> {
+        &self.map
+    }
+}
 
 impl DeltaMap {
     pub fn new() -> DeltaMap {
         DeltaMap{map: BTreeMap::default()}
-    }
-
-    pub fn as_ref(&self) -> &BTreeMap<RelId, BTreeMap<Value, isize>> {
-        &self.map
-    }
-    pub fn as_mut(&mut self) -> &mut BTreeMap<RelId, BTreeMap<Value, isize>> {
-        &mut self.map
     }
 
     pub fn format(&self, w: &mut io::Write) -> io::Result<()> {
@@ -90,15 +97,16 @@ impl DeltaMap {
     }
 
     pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<Value, isize> {
-        self.map.entry(relid).or_insert(BTreeMap::default())
+        self.map.entry(relid).or_insert_with(BTreeMap::default)
     }
 
     pub fn update(&mut self, relid: RelId, x : &Value, insert: bool)
     {
         let diff = if insert { 1 } else { -1 };
         //println!("set_update({}) {:?} {}", rel, *x, insert);
-        let entry = self.map.entry(relid).or_insert(BTreeMap::default())
-                        .entry(x.clone());
+        let entry = self.map.entry(relid)
+            .or_insert_with(BTreeMap::default)
+            .entry(x.clone());
         match entry {
             Entry::Vacant(vacant) => { vacant.insert(diff); },
             Entry::Occupied(mut occupied) => {
