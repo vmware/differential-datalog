@@ -57,18 +57,41 @@ fn main() {
     let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
     let listener = TcpListener::bind(&addr).unwrap();
 
+    let server = listener.incoming().for_each(|socket| {
+        println!("got socket");
+
+        let buf = Vec::new();
+
+        let res = io::read_to_end(socket, buf);
+
+        let work = res.then(|result| {
+            match result {
+                Ok((_socket, buf)) => println!("{:?}", String::from_utf8(buf).unwrap()),
+                Err(e) => println!("{:?}", e),
+            }
+
+            Ok(())
+        });
+
+        tokio::spawn(work);
+        Ok(())
+    }).map_err(|err| {
+        // Handle error by printing to STDOUT.
+        println!("accept error = {:?}", err);
+    });
+
+    tokio::run(server);
 
     // accept connections and get a TcpStream
-    tokio::run(
-        listener.incoming()
-            .map_err(|e| eprintln!("failed to accept stream; error = {:?}", e))
-            .for_each(|stream| {
-                let buf = vec![];
-                // stream.read_to_string(&mut s);
-                tokio::io::read_to_end(stream, &buf);
-            }).map(|_stream, buffer| {
-                let s = std::str::from_utf8(&buffer).unwrap();
-                println!("{}", s);
-            }).map_err(|e| eprintln!("Error occured: {:?}", e));
-    );
+    // tokio::run(
+    //     listener.incoming()
+    //         .map_err(|e| eprintln!("failed to accept stream; error = {:?}", e))
+    //         .for_each(|mut stream| {
+    //             println!("got stuff");
+    //             let mut buf = String::new();
+    //             stream.read_to_string(&mut buf);
+    //             println!("{:?}", buf);
+    //             Ok(())
+    //         }).map_err(|e| eprintln!("Error occured: {:?}", e))
+    // );
 }

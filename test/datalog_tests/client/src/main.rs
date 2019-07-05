@@ -45,7 +45,7 @@ pub extern "C" fn transmit(_: libc::uintptr_t,
         let client = stream.and_then(|stream| {
             // stream.write(s.as_bytes());
             // stream.write("dawg".as_bytes());
-            io::write_all(stream, "dawg\n").then( |result| {
+            io::write_all(stream, "hello").then( |result| {
                 Ok(())
             })
         }).map_err(|err| {
