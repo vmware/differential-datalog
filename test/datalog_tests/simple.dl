@@ -186,6 +186,16 @@ typedef string_syn = string
 function use_parameterized(x: string, y: string_syn): string =
     parameterized(x, y)
 
+output relation VecTest(x: Vec<string>)
+
+VecTest(vec_empty()).
+VecTest({
+    var v: Vec<string> = vec_empty();
+    vec_push(v, "Hello,");
+    v
+}).
+VecTest(vec_push_imm(vec_push_imm(vec_empty(): Vec<string>, "Hello, "), "world!")).
+
 // metro: graph reachability
 
 typedef line = bigint

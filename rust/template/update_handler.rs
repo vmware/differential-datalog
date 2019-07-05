@@ -89,7 +89,7 @@ impl<V> Clone for Box<dyn IMTUpdateHandler<V>> {
 
 /* A no-op `UpdateHandler` implementation
  */
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct NullUpdateHandler {}
 
 impl NullUpdateHandler
@@ -115,7 +115,43 @@ impl <V: Val> MTUpdateHandler<V> for NullUpdateHandler
     }
 }
 
-/* `UpdateHandler` implementation that invokes user-provided callback.
+/* `UpdateHandler` implementation that invokes user-provided closure.
+ */
+
+pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+
+#[derive(Clone)]
+pub struct CallbackUpdateHandler<F:Callback>
+{
+     cb: F
+}
+
+impl <F:Callback>CallbackUpdateHandler<F> {
+    pub fn new(cb: F) -> Self {
+        Self{cb}
+    }
+}
+
+impl <V: Val + IntoRecord, F:Callback> UpdateHandler<V> for CallbackUpdateHandler<F>
+{
+    fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
+        let cb = self.cb.clone();
+        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
+    }
+    fn before_commit(&self) {}
+    fn after_commit(&self, _success: bool) {}
+}
+
+impl <V: Val + IntoRecord, F:Callback> MTUpdateHandler<V> for CallbackUpdateHandler<F>
+{
+    fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
+        let cb = self.cb.clone();
+        Box::new(move |relid, v, w|cb(relid, &v.clone().into_record(), w))
+    }
+}
+
+/* `UpdateHandler` implementation that invokes user-provided C function.
  */
 #[derive(Clone)]
 pub struct ExternCUpdateHandler {
@@ -128,6 +164,7 @@ type ExternCCallback = extern "C" fn(arg: libc::uintptr_t,
                                      rec: *const record::Record,
                                      polarity: bool);
 
+
 impl ExternCUpdateHandler
 {
     pub fn new(cb: ExternCCallback, cb_arg: libc::uintptr_t) -> Self {
@@ -138,8 +175,8 @@ impl ExternCUpdateHandler
 impl <V: Val + IntoRecord> UpdateHandler<V> for ExternCUpdateHandler
 {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
-        let cb = self.cb.clone();
-        let cb_arg = self.cb_arg.clone();
+        let cb = self.cb;
+        let cb_arg = self.cb_arg;
         Box::new(move |relid, v, w|cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w))
     }
     fn before_commit(&self) {}
@@ -149,8 +186,8 @@ impl <V: Val + IntoRecord> UpdateHandler<V> for ExternCUpdateHandler
 impl <V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler
 {
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
-        let cb = self.cb.clone();
-        let cb_arg = self.cb_arg.clone();
+        let cb = self.cb;
+        let cb_arg = self.cb_arg;
         Box::new(move |relid, v, w|cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w))
     }
 }
@@ -207,7 +244,7 @@ impl Drop for ValMapUpdateHandler {
     /* Release the mutex if still held. */
     fn drop<'a>(&'a mut self) {
         let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, ValMap>;
-        if guard_ptr != ptr::null_mut() {
+        if !guard_ptr.is_null() {
             let _guard: Box<MutexGuard<'_, ValMap>> = unsafe { Box::from_raw(guard_ptr) };
         }
     }
@@ -228,7 +265,7 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
             let guard_ptr = handler.locked.get();
             /* `update_cb` can also be called during rollback and stop operations.
              * Ignore those. */
-            if guard_ptr != ptr::null_mut() {
+            if !guard_ptr.is_null() {
                 let mut guard: Box<MutexGuard<'_, ValMap>> = unsafe {
                     Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
                 };
@@ -269,7 +306,7 @@ impl Drop for DeltaUpdateHandler {
     /* Release the mutex if still held. */
     fn drop<'a>(&'a mut self) {
         let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap>;
-        if guard_ptr != ptr::null_mut() {
+        if !guard_ptr.is_null() {
             let _guard: Box<MutexGuard<'_, DeltaMap>> = unsafe { Box::from_raw(guard_ptr) };
         }
     }
@@ -288,11 +325,11 @@ impl UpdateHandler<Value> for DeltaUpdateHandler
         let handler = self.clone();
         Box::new(move |relid, v, w|{
             let guard_ptr = handler.locked.get();
-            if guard_ptr != ptr::null_mut() {
+            if !guard_ptr.is_null() {
                 let mut guard: Box<MutexGuard<'_, Option<DeltaMap>>> = unsafe {
                     Box::from_raw(guard_ptr as *mut MutexGuard<'_, Option<DeltaMap>>)
                 };
-                (*guard).as_mut().map(|db|db.update(relid, v, w));
+                if let Some(db) = (*guard).as_mut() { db.update(relid, v, w) };
                 /* make sure that guard does not get dropped */
                 Box::into_raw(guard);
             }
@@ -422,7 +459,7 @@ pub struct ThreadUpdateHandler<V: Val> {
 
 impl <V: Val> ThreadUpdateHandler<V>
 {
-    pub const DEFAULT_QUEUE_CAPACITY: usize = 100000;
+    pub const DEFAULT_QUEUE_CAPACITY: usize = 100_000;
 
     pub fn new<F>(handler_generator: F) -> Self
         where F: FnOnce() -> Box<dyn UpdateHandler<V>> + Send + 'static
@@ -468,14 +505,14 @@ impl <V: Val> ThreadUpdateHandler<V>
         });
         Self {
             msg_channel: Arc::new(Mutex::new(tx_msg_channel)),
-            commit_barrier: commit_barrier
+            commit_barrier
         }
     }
 }
 
 impl<V: Val> Drop for ThreadUpdateHandler<V> {
     fn drop(&mut self) {
-        self.msg_channel.lock().unwrap().send(Msg::Stop);
+        self.msg_channel.lock().unwrap().send(Msg::Stop).unwrap();
     }
 }
 
@@ -484,11 +521,11 @@ impl <V: Val + IntoRecord> UpdateHandler<V> for ThreadUpdateHandler<V>
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
         let channel = self.msg_channel.lock().unwrap().clone();
         Box::new(move |relid, v, w| {
-            channel.send(Msg::Update{relid, v: v.clone(), w});
+            channel.send(Msg::Update{relid, v: v.clone(), w}).unwrap();
         })
     }
     fn before_commit(&self) {
-        self.msg_channel.lock().unwrap().send(Msg::BeforeCommit);
+        self.msg_channel.lock().unwrap().send(Msg::BeforeCommit).unwrap();
     }
     fn after_commit(&self, success: bool) {
         if self.msg_channel.lock().unwrap().send(Msg::AfterCommit{success}).is_ok() {
@@ -503,7 +540,7 @@ impl <V: Val + IntoRecord> MTUpdateHandler<V> for ThreadUpdateHandler<V>
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
         let channel = self.msg_channel.lock().unwrap().clone();
         Box::new(move |relid, v, w| {
-            channel.send(Msg::Update{relid, v: v.clone(), w});
+            channel.send(Msg::Update{relid, v: v.clone(), w}).unwrap();
         })
     }
 }

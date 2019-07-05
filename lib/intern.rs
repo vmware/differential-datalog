@@ -1,6 +1,4 @@
-extern crate lazy_static;
-
-pub use self::lazy_static::lazy_static;
+use lazy_static::lazy_static;
 use std::marker;
 use std::thread;
 use std::vec;

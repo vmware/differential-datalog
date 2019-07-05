@@ -21,81 +21,76 @@ use std::process::exit;
 use std::io::stdout;
 
 use datalog_example_ddlog::*;
-use datalog_example_ddlog::valmap::*;
-use datalog_example_ddlog::api::*;
-use datalog_example_ddlog::update_handler::*;
 use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;
 use time::precise_time_ns;
+use api::HDDlog;
+use std::io::Write;
 
 // uncomment to enable profiling
 //extern crate cpuprofiler;
 //use cpuprofiler::PROFILER;
 
-extern "C" fn print_fun(_arg: libc::uintptr_t,
-                        table: libc::size_t,
-                        rec: *const Record,
-                        pol: bool) {
-    unsafe {
-        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec);
-    }
-}
-
-fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
-              db: &Arc<Mutex<ValMap>>,
-              deltadb: &Arc<Mutex<Option<DeltaMap>>>,
-              p: &mut RunningProgram<Value>,
-              upds: &mut Vec<Update<Value>>,
+#[allow(clippy::let_and_return)]
+fn handle_cmd(hddlog: &HDDlog,
+              print_deltas: bool,
+              upds: &mut Vec<UpdCmd>,
               cmd: Command) -> (i32, bool)
 {
     let resp = (
         if !is_upd_cmd(&cmd) {
-            apply_updates(p, upds)
+            apply_updates(hddlog, upds)
         } else {
             Ok(())
         }).and(match cmd {
         Command::Start => {
-            p.transaction_start()
+            hddlog.transaction_start()
         },
         Command::Commit(record_delta) => {
-            if record_delta {
-                *deltadb.lock().unwrap() = Some(DeltaMap::new());
-            }
             // uncomment to enable profiling
-            handler.before_commit();
             //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
-            let res = p.transaction_commit();
+            let mut current_table = None;
+            let res = if record_delta {
+                let cb = if print_deltas {
+                    Some(|table, val: &Record, pol: bool| {
+                        if current_table != Some(table) {
+                            let _ = writeln!(stdout(), "{}:", relid2name(table).unwrap());
+                            current_table = Some(table);
+                        };
+                        let _ = writeln!(stdout(), "{}: {}", *val, if pol { "+1" } else { "-1" });
+                    })
+                } else {
+                    None
+                };
+                hddlog.transaction_commit_dump_changes(cb)
+            } else {
+                hddlog.transaction_commit()
+            };
             //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
-            handler.after_commit(res.is_ok());
-            if record_delta {
-                let mut delta = deltadb.lock().unwrap();
-                let _ = delta.as_ref().map(|db|db.format(&mut stdout()));
-                *delta = None;
-            }
             res
         },
         Command::Comment => {
             Ok(())
         },
         Command::Rollback => {
-            p.transaction_rollback()
+            hddlog.transaction_rollback()
         },
         Command::Timestamp => {
             println!("Timestamp: {}", precise_time_ns());
             Ok(())
         },
         Command::Profile(None) => {
-            let profile = (*p.profile.lock().unwrap()).clone();
+            let profile = hddlog.profile();
             println!("Profile:\n{}", profile);
             Ok(())
         },
         Command::Profile(Some(ProfileCmd::CPU(enable))) => {
-            p.enable_cpu_profiling(enable);
+            hddlog.enable_cpu_profiling(enable);
             Ok(())
         },
         Command::Dump(None) => {
-            let _ = db.lock().unwrap().format(&mut stdout());
+            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format(&mut stdout()));
             Ok(())
         },
         Command::Dump(Some(rname)) => {
@@ -106,7 +101,7 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
                 },
                 Some(rid) => rid as RelId
             };
-            let _ = db.lock().unwrap().format_rel(relid, &mut stdout());
+            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format_rel(relid, &mut stdout()));
             Ok(())
         },
         Command::Clear(rname) => {
@@ -117,7 +112,7 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
                 },
                 Some(rid) => rid as RelId
             };
-            p.clear_relation(relid)
+            hddlog.clear_relation(relid)
         },
         Command::Exit => {
             return (0, false);
@@ -127,16 +122,9 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
             Ok(())
         },
         Command::Update(upd, last) => {
-             match updcmd2upd(&upd) {
-                Ok(u)  => upds.push(u),
-                Err(e) => {
-                    upds.clear();
-                    eprintln!("Error: {}", e);
-                    return (-1, false);
-                }
-            };
+            upds.push(upd.clone());
             if last {
-                apply_updates(p, upds)
+                apply_updates(hddlog, upds)
             } else {
                 Ok(())
             }
@@ -148,10 +136,11 @@ fn handle_cmd(handler: &Box<dyn IMTUpdateHandler<Value>>,
     }
 }
 
-fn apply_updates(p: &mut RunningProgram<Value>, upds: &mut Vec<Update<Value>>) -> Response<()> {
-    let copy: Vec<Update<Value>> = upds.drain(..).collect();
-    if copy.len() != 0 {
-        p.apply_updates(copy)
+fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<UpdCmd>) -> Response<()> {
+    if !upds.is_empty() {
+        let res = hddlog.apply_updates(upds.iter());
+        upds.clear();
+        res
     } else { Ok(()) }
 }
 
@@ -162,29 +151,16 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(db: Arc<Mutex<ValMap>>,
-                       deltadb: Arc<Mutex<Option<DeltaMap>>>,
-                       handler: Box<dyn IMTUpdateHandler<Value>>,
-                       nworkers: usize) -> i32
+pub fn run_interactive(hddlog: HDDlog, print_deltas: bool) -> i32
 {
-    let p = prog(handler.mt_update_cb());
-    handler.before_commit();
-    let running = Arc::new(Mutex::new(p.run(nworkers)));
-    handler.after_commit(true);
     let upds = Arc::new(Mutex::new(Vec::new()));
     let ret = interact(|cmd| {
-        handle_cmd(&handler,
-                   &db.clone(),
-                   &deltadb.clone(),
-                   &mut running.lock().unwrap(),
+        handle_cmd(&hddlog,
+                   print_deltas,
                    &mut upds.lock().unwrap(),
                    cmd)
     });
-    let stop_res = Arc::try_unwrap(running).ok()
-                   .expect("run_interactive: cannot unwrap Arc")
-                   .into_inner()
-                   .expect("run_interactive: program is still locked")
-                   .stop();
+    let stop_res = hddlog.stop();
     if ret != 0 { ret } else if stop_res.is_err() { -1 } else { 0 }
 }
 
@@ -200,67 +176,18 @@ pub fn main() {
     };
     let (args, rest) = parser.parse_or_exit();
 
-    if rest.len() != 0 || args.workers == 0 {
+    if !rest.is_empty() || args.workers == 0 {
         panic!("Invalid command line arguments; try -h for help");
     }
 
-    let print   = args.print;
-    let store   = args.store;
-    let delta   = args.delta;
-    let workers = args.workers;
+    let hddlog = HDDlog::run(args.workers,
+                             args.store,
+                             if args.print {
+                                 Some(|table:usize, rec: &Record, pol: bool| eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec))
+                             } else {
+                                 None
+                             });
 
-    let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
-    let db2 = db.clone();
-
-    let deltadb: Arc<Mutex<Option<DeltaMap>>> = Arc::new(Mutex::new(None));
-    let deltadb2 = deltadb.clone();
-
-    let handler: Box<dyn IMTUpdateHandler<Value>> = if !store && !print && !delta {
-            Box::new(NullUpdateHandler::new())
-    } else {
-        let handler_generator = move || {
-            let mut nhandlers: usize = 0;
-            let store_handler = if store {
-                nhandlers = nhandlers + 1;
-                Some(ValMapUpdateHandler::new(db2))
-            } else {
-                None
-            };
-            let delta_handler = if delta {
-                nhandlers = nhandlers + 1;
-                Some(DeltaUpdateHandler::new(deltadb2))
-            } else {
-                None
-            };
-            let print_handler = if print {
-                nhandlers = nhandlers + 1;
-                Some(ExternCUpdateHandler::new(print_fun, 0))
-            } else {
-                None
-            };
-
-            let handler: Box<dyn UpdateHandler<Value>> = if nhandlers <= 1 {
-                if print_handler.is_some() {
-                    Box::new(print_handler.unwrap())
-                } else if store_handler.is_some() {
-                    Box::new(store_handler.unwrap())
-                } else if delta_handler.is_some() {
-                    Box::new(delta_handler.unwrap())
-                } else {
-                    unreachable!()
-                }
-            } else {
-                let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
-                store_handler.map(|h| handlers.push(Box::new(h)));
-                delta_handler.map(|h| handlers.push(Box::new(h)));
-                print_handler.map(|h| handlers.push(Box::new(h)));
-                Box::new(ChainedUpdateHandler::new(handlers))
-            };
-            handler
-        };
-        Box::new(ThreadUpdateHandler::new(handler_generator))
-    };
-
-    let ret = run_interactive(db.clone(), deltadb.clone(), handler, workers);
+    let ret = run_interactive(hddlog, args.delta);
     exit(ret);
 }

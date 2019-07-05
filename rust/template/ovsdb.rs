@@ -63,7 +63,7 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
         for (i, upd) in upds.iter().enumerate() {
             let sep = if i == n - 1 { ";" } else { "," };
             record_update(&mut *file, upd);
-            if write!(&mut *file, "{}\n", sep).is_err() {
+            if writeln!(&mut *file, "{}", sep).is_err() {
                 prog.eprintln("ddlog_transaction_start(): failed to record invocation in replay file");
             }
         }
@@ -85,11 +85,11 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
     if json.is_null() || prog.is_null() || module.is_null() || table.is_null() {
         return -1;
     };
-    let prog = unsafe {sync::Arc::from_raw(prog)};
+    let prog = sync::Arc::from_raw(prog);
     let res = if let Some(ref db) = prog.db {
         match dump_delta(&mut db.lock().unwrap(), module, table) {
             Ok(json_string) => {
-                unsafe { *json = json_string.into_raw() };
+                *json = json_string.into_raw();
                 0
             },
             Err(e) => {
@@ -151,5 +151,5 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free_json(str: *mut c_char) {
     if str.is_null() { return; }
-    let _ = unsafe{CString::from_raw(str)};
+    let _ = CString::from_raw(str);
 }

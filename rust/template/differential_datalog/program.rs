@@ -1543,7 +1543,7 @@ impl<V:Val> RunningProgram<V> {
     /// Commit a transaction.
     pub fn transaction_commit(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("no transaction in progress"))
+            return Err(format!("transaction_commit: no transaction in progress"))
         };
 
         self.flush()
@@ -1557,7 +1557,7 @@ impl<V:Val> RunningProgram<V> {
     /// Rollback the transaction, undoing all changes.
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("no transaction in progress"));
+            return Err(format!("transacion_rollback: no transaction in progress"));
         }
 
         self.flush()
@@ -1606,7 +1606,7 @@ impl<V:Val> RunningProgram<V> {
     /// Updates can only be applied to input relations (see `struct Relation`).
     pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("no transaction in progress"));
+            return Err(format!("apply_updates: no transaction in progress"));
         };
 
         /* Remove no-op updates to maintain set semantics */
@@ -1633,7 +1633,7 @@ impl<V:Val> RunningProgram<V> {
     /// Deletes all values in an input table
     pub fn clear_relation(&mut self, relid: RelId) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("no transaction in progress"));
+            return Err(format!("clear_relation: no transaction in progress"));
         };
 
         let upds = {
@@ -1802,7 +1802,7 @@ impl<V:Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_index(&mut self, relid: RelId) -> Response<&IndexedValSet<V>> {
+    pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet<V>> {
         match self.relations.get(&relid) {
             None => {
                 Err(format!("unknown relation {}", relid))
@@ -1820,7 +1820,7 @@ impl<V:Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_data(&mut self, relid: RelId) -> Response<&ValSet<V>> {
+    pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet<V>> {
         match self.relations.get(&relid) {
             None => {
                 Err(format!("unknown relation {}", relid))

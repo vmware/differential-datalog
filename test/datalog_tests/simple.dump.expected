@@ -1,46 +1,44 @@
 Metro test
 Answer:
-Answer{"Chatelet"}: 1
-Answer{"Louvres"}: 1
-Answer{"Odeon"}: 1
-Answer{"Palais Royal"}: 1
-Answer{"St.Germain"}: 1
-Answer{"St.Michel"}: 1
-
+Answer{.x = "Chatelet"}: +1
+Answer{.x = "Louvres"}: +1
+Answer{.x = "Odeon"}: +1
+Answer{.x = "Palais Royal"}: +1
+Answer{.x = "St.Germain"}: +1
+Answer{.x = "St.Michel"}: +1
 Reach:
-Reach{"Chatelet","Chatelet"}: 1
-Reach{"Chatelet","Louvres"}: 1
-Reach{"Chatelet","Palais Royal"}: 1
-Reach{"Chatelet","St.Michel"}: 1
-Reach{"Concorde","Tuileries"}: 1
-Reach{"Louvres","Chatelet"}: 1
-Reach{"Louvres","Louvres"}: 1
-Reach{"Louvres","Palais Royal"}: 1
-Reach{"Odeon","Chatelet"}: 1
-Reach{"Odeon","Louvres"}: 1
-Reach{"Odeon","Odeon"}: 1
-Reach{"Odeon","Palais Royal"}: 1
-Reach{"Odeon","St.Germain"}: 1
-Reach{"Odeon","St.Michel"}: 1
-Reach{"Palais Royal","Louvres"}: 1
-Reach{"Palais-Royal","Concorde"}: 1
-Reach{"Palais-Royal","Palais-Royal"}: 1
-Reach{"Palais-Royal","Tuileries"}: 1
-Reach{"St.Germain","Chatelet"}: 1
-Reach{"St.Germain","Louvres"}: 1
-Reach{"St.Germain","Odeon"}: 1
-Reach{"St.Germain","Palais Royal"}: 1
-Reach{"St.Germain","St.Germain"}: 1
-Reach{"St.Germain","St.Michel"}: 1
-Reach{"St.Michel","Chatelet"}: 1
-Reach{"St.Michel","Louvres"}: 1
-Reach{"St.Michel","Odeon"}: 1
-Reach{"St.Michel","Palais Royal"}: 1
-Reach{"St.Michel","St.Michel"}: 1
-Reach{"Tuileries","Concorde"}: 1
-Reach{"Tuileries","Palais-Royal"}: 1
-Reach{"Tuileries","Tuileries"}: 1
-
+Reach{.s1 = "Chatelet", .s2 = "Chatelet"}: +1
+Reach{.s1 = "Chatelet", .s2 = "Louvres"}: +1
+Reach{.s1 = "Chatelet", .s2 = "Palais Royal"}: +1
+Reach{.s1 = "Chatelet", .s2 = "St.Michel"}: +1
+Reach{.s1 = "Concorde", .s2 = "Tuileries"}: +1
+Reach{.s1 = "Louvres", .s2 = "Chatelet"}: +1
+Reach{.s1 = "Louvres", .s2 = "Louvres"}: +1
+Reach{.s1 = "Louvres", .s2 = "Palais Royal"}: +1
+Reach{.s1 = "Odeon", .s2 = "Chatelet"}: +1
+Reach{.s1 = "Odeon", .s2 = "Louvres"}: +1
+Reach{.s1 = "Odeon", .s2 = "Odeon"}: +1
+Reach{.s1 = "Odeon", .s2 = "Palais Royal"}: +1
+Reach{.s1 = "Odeon", .s2 = "St.Germain"}: +1
+Reach{.s1 = "Odeon", .s2 = "St.Michel"}: +1
+Reach{.s1 = "Palais Royal", .s2 = "Louvres"}: +1
+Reach{.s1 = "Palais-Royal", .s2 = "Concorde"}: +1
+Reach{.s1 = "Palais-Royal", .s2 = "Palais-Royal"}: +1
+Reach{.s1 = "Palais-Royal", .s2 = "Tuileries"}: +1
+Reach{.s1 = "St.Germain", .s2 = "Chatelet"}: +1
+Reach{.s1 = "St.Germain", .s2 = "Louvres"}: +1
+Reach{.s1 = "St.Germain", .s2 = "Odeon"}: +1
+Reach{.s1 = "St.Germain", .s2 = "Palais Royal"}: +1
+Reach{.s1 = "St.Germain", .s2 = "St.Germain"}: +1
+Reach{.s1 = "St.Germain", .s2 = "St.Michel"}: +1
+Reach{.s1 = "St.Michel", .s2 = "Chatelet"}: +1
+Reach{.s1 = "St.Michel", .s2 = "Louvres"}: +1
+Reach{.s1 = "St.Michel", .s2 = "Odeon"}: +1
+Reach{.s1 = "St.Michel", .s2 = "Palais Royal"}: +1
+Reach{.s1 = "St.Michel", .s2 = "St.Michel"}: +1
+Reach{.s1 = "Tuileries", .s2 = "Concorde"}: +1
+Reach{.s1 = "Tuileries", .s2 = "Palais-Royal"}: +1
+Reach{.s1 = "Tuileries", .s2 = "Tuileries"}: +1
 Answer:
 Answer{"Chatelet"}
 Answer{"Louvres"}
@@ -194,34 +192,36 @@ UMinus_s32{"-(-32'sd100)",100}
 UMinus_s32{"-32'sd100",-100}
 UMinus_s32{"-32768",-32768}
 
+VecTest:
+VecTest{std_Vec { x: [] }}
+VecTest{std_Vec { x: ["Hello,"] }}
+VecTest{std_Vec { x: ["Hello, ", "world!"] }}
+
 Rules test
 R4:
-R3{0,true}: 1
-R3{1,true}: 1
-R3{2,true}: 1
-R3{3,true}: 1
-R3{4,true}: 1
-R3{5,true}: 1
-R3{6,true}: 1
-
+R3{.f1 = 0, .f2 = true}: +1
+R3{.f1 = 1, .f2 = true}: +1
+R3{.f1 = 2, .f2 = true}: +1
+R3{.f1 = 3, .f2 = true}: +1
+R3{.f1 = 4, .f2 = true}: +1
+R3{.f1 = 5, .f2 = true}: +1
+R3{.f1 = 6, .f2 = true}: +1
 R5:
-0: 1
-1: 1
-2: 1
-3: 1
-4: 1
-5: 1
-6: 1
-
+0: +1
+1: +1
+2: +1
+3: +1
+4: +1
+5: +1
+6: +1
 R6:
-R6{0}: 1
-R6{1}: 1
-R6{2}: 1
-R6{3}: 1
-R6{4}: 1
-R6{5}: 1
-R6{6}: 1
-
+R6{.f = 0}: +1
+R6{.f = 1}: +1
+R6{.f = 2}: +1
+R6{.f = 3}: +1
+R6{.f = 4}: +1
+R6{.f = 5}: +1
+R6{.f = 6}: +1
 Answer:
 Answer{"Chatelet"}
 Answer{"Louvres"}
@@ -402,18 +402,22 @@ UMinus_s32{"-(-32'sd100)",100}
 UMinus_s32{"-32'sd100",-100}
 UMinus_s32{"-32768",-32768}
 
-Table12:
-Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}: 1
-Table12{81692126345696542188923640651411714412,"foo",S{(false, true),10000}}: 1
-Table12{137151609739491206170748566711757625861,"foo",S{(true, false),43981}}: 1
-Table12{173592105249357153805573863620167017533,"foo",S{(false, true),10000}}: 1
-Table12{173670172741911619502105830072953828992,"foo",S{(true, false),43981}}: 1
-Table12{211727904196777888792921590151204575764,"foo",S{(true, true),5}}: 1
-Table12{218334107078988268330177571792522447425,"foo",S{(true, true),5}}: 1
-Table12{258101594679877739861006822360175003366,"buzzzzzzzz",S{(true, true),5}}: 1
-Table12{312560568469280405643575197132576203606,"foo",S{(false, true),10000}}: 1
-Table12{324905179504175058909924909437678210347,"foo",S{(true, false),43981}}: 1
+VecTest:
+VecTest{std_Vec { x: [] }}
+VecTest{std_Vec { x: ["Hello,"] }}
+VecTest{std_Vec { x: ["Hello, ", "world!"] }}
 
+Table12:
+Table12{.id = 20695836920908937261915266253713563738, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 81692126345696542188923640651411714412, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 137151609739491206170748566711757625861, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
+Table12{.id = 173592105249357153805573863620167017533, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 173670172741911619502105830072953828992, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
+Table12{.id = 211727904196777888792921590151204575764, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 218334107078988268330177571792522447425, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 258101594679877739861006822360175003366, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 312560568469280405643575197132576203606, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 324905179504175058909924909437678210347, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
 Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}
 Table12{81692126345696542188923640651411714412,"foo",S{(false, true),10000}}
 Table12{137151609739491206170748566711757625861,"foo",S{(true, false),43981}}
@@ -425,47 +429,37 @@ Table12{258101594679877739861006822360175003366,"buzzzzzzzz",S{(true, true),5}}
 Table12{312560568469280405643575197132576203606,"foo",S{(false, true),10000}}
 Table12{324905179504175058909924909437678210347,"foo",S{(true, false),43981}}
 Rel3:
-Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}: 1
-
+Rel3{.x = 0, .y = IP4{.ip4 = 100}, .z = Option1{.f1 = 0, .f2 = IP4{.ip4 = 300}, .f3 = (true, "foo")}}: +1
 Rel3:
 Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
 Aggregate1:
-Aggregate1{"a",3}: 1
-Aggregate1{"b",3}: 1
-
+Aggregate1{.x = "a", .cnt = 3}: +1
+Aggregate1{.x = "b", .cnt = 3}: +1
 Aggregate2:
-Aggregate2{"a",std_Set { x: {"1", "2", "3"} }}: 1
-Aggregate2{"b",std_Set { x: {"1", "2", "3"} }}: 1
-
+Aggregate2{.x = "a", .set = ["1", "2", "3"]}: +1
+Aggregate2{.x = "b", .set = ["1", "2", "3"]}: +1
 Aggregate3:
-Aggregate3{"a",std_Vec { x: ["1", "2", "3"] }}: 1
-Aggregate3{"b",std_Vec { x: ["1", "2", "3"] }}: 1
-
+Aggregate3{.x = "a", .vec = ["1", "2", "3"]}: +1
+Aggregate3{.x = "b", .vec = ["1", "2", "3"]}: +1
 Aggregate4:
-Aggregate4{"a",std_Map { x: {"a": "3"} }}: 1
-Aggregate4{"b",std_Map { x: {"b": "3"} }}: 1
-
+Aggregate4{.x = "a", .map = [("a", "3")]}: +1
+Aggregate4{.x = "b", .map = [("b", "3")]}: +1
 AggregateByX:
-AggregateByX{"a",3}: 1
-AggregateByX{"b",3}: 1
-
+AggregateByX{.x = "a", .cnt = 3}: +1
+AggregateByX{.x = "b", .cnt = 3}: +1
 AggregateCnt:
-AggregateCnt{6}: 1
-
+AggregateCnt{.cnt = 6}: +1
 AggregateCnt2:
-AggregateCnt2{6}: 1
-
+AggregateCnt2{.cnt = 6}: +1
 AggregateCnt3:
-AggregateCnt3{4}: 1
-
+AggregateCnt3{.cnt = 4}: +1
 Disaggregate:
-Disaggregate{"a","1"}: 1
-Disaggregate{"a","2"}: 1
-Disaggregate{"a","3"}: 1
-Disaggregate{"b","1"}: 1
-Disaggregate{"b","2"}: 1
-Disaggregate{"b","3"}: 1
-
+Disaggregate{.x = "a", .y = "1"}: +1
+Disaggregate{.x = "a", .y = "2"}: +1
+Disaggregate{.x = "a", .y = "3"}: +1
+Disaggregate{.x = "b", .y = "1"}: +1
+Disaggregate{.x = "b", .y = "2"}: +1
+Disaggregate{.x = "b", .y = "3"}: +1
 Aggregate1
 Aggregate1{"a",3}
 Aggregate1{"b",3}
@@ -495,54 +489,47 @@ Disaggregate{"b","1"}
 Disaggregate{"b","2"}
 Disaggregate{"b","3"}
 Sum:
-Sum{"a",111}: 1
-Sum{"b",60}: 1
-
+Sum{.x = "a", .sum = 111}: +1
+Sum{.x = "b", .sum = 60}: +1
 Sum
 Sum{"a",111}
 Sum{"b",60}
 WithKeyDbg:
-WithKeyDbg{0,"foo"}: 1
-WithKeyDbg{1,"bar"}: 1
-WithKeyDbg{2,"buzz"}: 1
-
+WithKeyDbg{.key = 0, .val = "foo"}: +1
+WithKeyDbg{.key = 1, .val = "bar"}: +1
+WithKeyDbg{.key = 2, .val = "buzz"}: +1
 WithKeyDbg
 WithKeyDbg{0,"foo"}
 WithKeyDbg{1,"bar"}
 WithKeyDbg{2,"buzz"}
 WithKeyDbg:
-WithKeyDbg{0,"foo"}: -1
-
+WithKeyDbg{.key = 0, .val = "foo"}: -1
 WithKeyDbg after deletion by value
 WithKeyDbg{1,"bar"}
 WithKeyDbg{2,"buzz"}
 WithKeyDbg:
-WithKeyDbg{1,"bar"}: -1
-
+WithKeyDbg{.key = 1, .val = "bar"}: -1
 WithKeyDbg after deletion by key
 WithKeyDbg{2,"buzz"}
 WithKeyDbg:
-WithKeyDbg{1,"bar2"}: 1
-WithKeyDbg{2,"buzz"}: -1
-WithKeyDbg{4,"hello"}: 1
-
+WithKeyDbg{.key = 1, .val = "bar2"}: +1
+WithKeyDbg{.key = 2, .val = "buzz"}: -1
+WithKeyDbg{.key = 4, .val = "hello"}: +1
 WithKeyDbg: +3, -2
 WithKeyDbg{1,"bar2"}
 WithKeyDbg{4,"hello"}
 Innocent:
-Innocent{"Bill Smith"}: 1
-Innocent{"John Doe"}: 1
-
+Innocent{.name = "Bill Smith"}: +1
+Innocent{.name = "John Doe"}: +1
 Innocent
 Innocent{"Bill Smith"}
 Innocent{"John Doe"}
 ValidDestination:
-ValidDestination{IPAddr{10,10,10,101}}: 1
-ValidDestination{IPAddr{10,10,10,102}}: 1
-ValidDestination{IPAddr{10,10,10,103}}: 1
-ValidDestination{IPAddr{10,10,10,104}}: 1
-ValidDestination{IPAddr{10,10,10,105}}: 1
-
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}: +1
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}: +1
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}: +1
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}: +1
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}: +1
 ValidDestination
 ValidDestination{IPAddr{10,10,10,101}}
 ValidDestination{IPAddr{10,10,10,102}}
@@ -550,15 +537,14 @@ ValidDestination{IPAddr{10,10,10,103}}
 ValidDestination{IPAddr{10,10,10,104}}
 ValidDestination{IPAddr{10,10,10,105}}
 HostAddress:
-HostAddress{0,"10.10.10.101"}: 1
-HostAddress{0,"10.10.10.102"}: 1
-HostAddress{0,"10.10.10.103"}: 1
-HostAddress{0,"10.10.10.104"}: 1
-HostAddress{0,"10.10.10.105"}: 1
-HostAddress{1,"192.168.0.1"}: 1
-HostAddress{1,"192.168.0.2"}: 1
-HostAddress{1,"192.168.0.3"}: 1
-
+HostAddress{.host = 0, .addr = "10.10.10.101"}: +1
+HostAddress{.host = 0, .addr = "10.10.10.102"}: +1
+HostAddress{.host = 0, .addr = "10.10.10.103"}: +1
+HostAddress{.host = 0, .addr = "10.10.10.104"}: +1
+HostAddress{.host = 0, .addr = "10.10.10.105"}: +1
+HostAddress{.host = 1, .addr = "192.168.0.1"}: +1
+HostAddress{.host = 1, .addr = "192.168.0.2"}: +1
+HostAddress{.host = 1, .addr = "192.168.0.3"}: +1
 HostAddress{0,"10.10.10.101"}
 HostAddress{0,"10.10.10.102"}
 HostAddress{0,"10.10.10.103"}
@@ -568,13 +554,12 @@ HostAddress{1,"192.168.0.1"}
 HostAddress{1,"192.168.0.2"}
 HostAddress{1,"192.168.0.3"}
 ExternalId:
-ExternalId{0,("a", "1")}: 1
-ExternalId{0,("b", "2")}: 1
-ExternalId{0,("c", "3")}: 1
-ExternalId{0,("c", "4")}: 1
-ExternalId{0,("d", "5")}: 1
-ExternalId{0,("e", "6")}: 1
-
+ExternalId{.host = 0, .id = ("a", "1")}: +1
+ExternalId{.host = 0, .id = ("b", "2")}: +1
+ExternalId{.host = 0, .id = ("c", "3")}: +1
+ExternalId{.host = 0, .id = ("c", "4")}: +1
+ExternalId{.host = 0, .id = ("d", "5")}: +1
+ExternalId{.host = 0, .id = ("e", "6")}: +1
 ExternalId{0,("a", "1")}
 ExternalId{0,("b", "2")}
 ExternalId{0,("c", "3")}
@@ -582,16 +567,15 @@ ExternalId{0,("c", "4")}
 ExternalId{0,("d", "5")}
 ExternalId{0,("e", "6")}
 Allocation:
-Allocation{"a","1",30}: 1
-Allocation{"a","2",31}: 1
-Allocation{"a","3",50}: 1
-Allocation{"a","4",51}: 1
-Allocation{"a","5",52}: 1
-Allocation{"b","1",10000}: 1
-Allocation{"b","3",16777215}: 1
-Allocation{"b","4",1}: 1
-Allocation{"b","5",2}: 1
-
+Allocation{.name = "a", .id = "1", .x = 30}: +1
+Allocation{.name = "a", .id = "2", .x = 31}: +1
+Allocation{.name = "a", .id = "3", .x = 50}: +1
+Allocation{.name = "a", .id = "4", .x = 51}: +1
+Allocation{.name = "a", .id = "5", .x = 52}: +1
+Allocation{.name = "b", .id = "1", .x = 10000}: +1
+Allocation{.name = "b", .id = "3", .x = 16777215}: +1
+Allocation{.name = "b", .id = "4", .x = 1}: +1
+Allocation{.name = "b", .id = "5", .x = 2}: +1
 Allocation{"a","1",30}
 Allocation{"a","2",31}
 Allocation{"a","3",50}
@@ -602,29 +586,24 @@ Allocation{"b","3",16777215}
 Allocation{"b","4",1}
 Allocation{"b","5",2}
 Allocation:
-Allocation{"a","1",30}: -1
-Allocation{"a","2",31}: -1
-Allocation{"a","3",50}: -1
-Allocation{"a","4",51}: -1
-Allocation{"a","5",52}: -1
-Allocation{"b","1",10000}: -1
-Allocation{"b","3",16777215}: -1
-Allocation{"b","4",1}: -1
-Allocation{"b","5",2}: -1
-
+Allocation{.name = "a", .id = "1", .x = 30}: -1
+Allocation{.name = "a", .id = "2", .x = 31}: -1
+Allocation{.name = "a", .id = "3", .x = 50}: -1
+Allocation{.name = "a", .id = "4", .x = 51}: -1
+Allocation{.name = "a", .id = "5", .x = 52}: -1
+Allocation{.name = "b", .id = "1", .x = 10000}: -1
+Allocation{.name = "b", .id = "3", .x = 16777215}: -1
+Allocation{.name = "b", .id = "4", .x = 1}: -1
+Allocation{.name = "b", .id = "5", .x = 2}: -1
 Allocation after clear
 Filtered:
-Filtered{Referenced{true,std.Some{"hello"}}}: 1
-
+Filtered{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Filtered2:
-Filtered2{Referee2{Referenced{true,std.Some{"hello"}}}}: 1
-
+Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}}: +1
 Referee:
-Referee{Referenced{true,std.Some{"hello"}}}: 1
-
+Referee{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Referee2:
-Referee2{Referenced{true,std.Some{"hello"}}}: 1
-
+Referee2{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Referee
 Referee{Referenced{true,std.Some{"hello"}}}
 Filtered
@@ -634,77 +613,74 @@ Referee2{Referenced{true,std.Some{"hello"}}}
 Filtered2
 Filtered2{Referee2{Referenced{true,std.Some{"hello"}}}}
 Adjusted:
-Adjusted{1,std_Vec { x: [] }}: 1
-Adjusted{2,std_Vec { x: [("a", 0)] }}: 1
-Adjusted{3,std_Vec { x: [("a", 0)] }}: 1
-Adjusted{4,std_Vec { x: [("a", 0), ("b", 1)] }}: 1
-Adjusted{5,std_Vec { x: [("a", 1000), ("b", 1001)] }}: 1
-Adjusted{5,std_Vec { x: [("a", 4294967294), ("b", 4294967295)] }}: 1
-Adjusted{6,std_Vec { x: [("a", 4294967292), ("b", 4294967293)] }}: 1
-Adjusted{7,std_Vec { x: [("a", 0), ("b", 1)] }}: 1
-Adjusted{8,std_Vec { x: [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)] }}: 1
-Adjusted{9,std_Vec { x: [("x", 0), ("b", 10001), ("c", 10002), ("d", 10003), ("e", 10004), ("z", 10000)] }}: 1
-Adjusted{10,std_Vec { x: [("x", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("z", 10000)] }}: 1
-Adjusted{11,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5)] }}: 1
-Adjusted{12,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0)] }}: 1
-Adjusted{13,std_Vec { x: [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0), ("r", 2)] }}: 1
-Adjusted{14,std_Vec { x: [("x", 4294967287), ("b", 4294967286), ("c", 4294967288), ("d", 4294967290), ("e", 4294967291), ("z", 4294967295), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)] }}: 1
-Adjusted{15,std_Vec { x: [("x", 16777207), ("b", 4294967286), ("c", 4294967287), ("d", 4294967288), ("e", 4294967289), ("z", 16777215), ("p", 4294967290), ("q", 4294967291), ("r", 4294967292)] }}: 1
-Adjusted{16,std_Vec { x: [("x", 11), ("b", 10), ("c", 12), ("d", 14), ("e", 15), ("z", 20), ("p", 16), ("q", 17), ("r", 18)] }}: 1
-Adjusted{17,std_Vec { x: [("x", 10), ("z", 12)] }}: 1
-Adjusted{18,std_Vec { x: [("x", 4294967293), ("z", 4294967295)] }}: 1
-Adjusted{19,std_Vec { x: [("x", 0), ("z", 2)] }}: 1
-Adjusted{20,std_Vec { x: [("x", 0), ("z", 2)] }}: 1
-Adjusted{21,std_Vec { x: [("x", 0), ("z", 2)] }}: 1
-
+Adjusted{.id = 1, .alloc = []}: +1
+Adjusted{.id = 2, .alloc = [("a", 0)]}: +1
+Adjusted{.id = 3, .alloc = [("a", 0)]}: +1
+Adjusted{.id = 4, .alloc = [("a", 0), ("b", 1)]}: +1
+Adjusted{.id = 5, .alloc = [("a", 1000), ("b", 1001)]}: +1
+Adjusted{.id = 5, .alloc = [("a", 4294967294), ("b", 4294967295)]}: +1
+Adjusted{.id = 6, .alloc = [("a", 4294967292), ("b", 4294967293)]}: +1
+Adjusted{.id = 7, .alloc = [("a", 0), ("b", 1)]}: +1
+Adjusted{.id = 8, .alloc = [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)]}: +1
+Adjusted{.id = 9, .alloc = [("x", 0), ("b", 10001), ("c", 10002), ("d", 10003), ("e", 10004), ("z", 10000)]}: +1
+Adjusted{.id = 10, .alloc = [("x", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("z", 10000)]}: +1
+Adjusted{.id = 11, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5)]}: +1
+Adjusted{.id = 12, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0)]}: +1
+Adjusted{.id = 13, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0), ("r", 2)]}: +1
+Adjusted{.id = 14, .alloc = [("x", 4294967287), ("b", 4294967286), ("c", 4294967288), ("d", 4294967290), ("e", 4294967291), ("z", 4294967295), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)]}: +1
+Adjusted{.id = 15, .alloc = [("x", 16777207), ("b", 4294967286), ("c", 4294967287), ("d", 4294967288), ("e", 4294967289), ("z", 16777215), ("p", 4294967290), ("q", 4294967291), ("r", 4294967292)]}: +1
+Adjusted{.id = 16, .alloc = [("x", 11), ("b", 10), ("c", 12), ("d", 14), ("e", 15), ("z", 20), ("p", 16), ("q", 17), ("r", 18)]}: +1
+Adjusted{.id = 17, .alloc = [("x", 10), ("z", 12)]}: +1
+Adjusted{.id = 18, .alloc = [("x", 4294967293), ("z", 4294967295)]}: +1
+Adjusted{.id = 19, .alloc = [("x", 0), ("z", 2)]}: +1
+Adjusted{.id = 20, .alloc = [("x", 0), ("z", 2)]}: +1
+Adjusted{.id = 21, .alloc = [("x", 0), ("z", 2)]}: +1
 NewAllocation:
-NewAllocation{1,std_Vec { x: [] }}: 1
-NewAllocation{2,std_Vec { x: [("a", 0)] }}: 1
-NewAllocation{3,std_Vec { x: [("a", 0)] }}: 1
-NewAllocation{4,std_Vec { x: [("a", 0), ("b", 1)] }}: 1
-NewAllocation{5,std_Vec { x: [("a", 1000), ("b", 1001)] }}: 1
-NewAllocation{5,std_Vec { x: [("a", 4294967294), ("b", 4294967295)] }}: 1
-NewAllocation{6,std_Vec { x: [("a", 4294967292), ("b", 4294967293)] }}: 1
-NewAllocation{7,std_Vec { x: [("a", 0), ("b", 1)] }}: 1
-NewAllocation{8,std_Vec { x: [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)] }}: 1
-NewAllocation{9,std_Vec { x: [("x", 10001), ("b", 10002), ("c", 10003), ("d", 10004), ("e", 10005), ("z", 10006)] }}: 1
-NewAllocation{10,std_Vec { x: [("x", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("z", 6)] }}: 1
-NewAllocation{11,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0)] }}: 1
-NewAllocation{12,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)] }}: 1
-NewAllocation{13,std_Vec { x: [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)] }}: 1
-NewAllocation{14,std_Vec { x: [("x", 4294967286), ("b", 4294967288), ("c", 4294967290), ("d", 4294967291), ("e", 4294967292), ("z", 4294967293), ("p", 4294967294)] }}: 1
-NewAllocation{15,std_Vec { x: [("x", 4294967286), ("b", 4294967287), ("c", 4294967288), ("d", 4294967289), ("e", 4294967290), ("z", 4294967291), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)] }}: 1
-NewAllocation{16,std_Vec { x: [("x", 10), ("b", 12), ("c", 14), ("d", 15), ("e", 16), ("z", 17), ("p", 18), ("q", 19)] }}: 1
-NewAllocation{17,std_Vec { x: [] }}: 1
-NewAllocation{18,std_Vec { x: [] }}: 1
-NewAllocation{19,std_Vec { x: [] }}: 1
-NewAllocation{20,std_Vec { x: [] }}: 1
-NewAllocation{21,std_Vec { x: [] }}: 1
-
+NewAllocation{.id = 1, .alloc = []}: +1
+NewAllocation{.id = 2, .alloc = [("a", 0)]}: +1
+NewAllocation{.id = 3, .alloc = [("a", 0)]}: +1
+NewAllocation{.id = 4, .alloc = [("a", 0), ("b", 1)]}: +1
+NewAllocation{.id = 5, .alloc = [("a", 1000), ("b", 1001)]}: +1
+NewAllocation{.id = 5, .alloc = [("a", 4294967294), ("b", 4294967295)]}: +1
+NewAllocation{.id = 6, .alloc = [("a", 4294967292), ("b", 4294967293)]}: +1
+NewAllocation{.id = 7, .alloc = [("a", 0), ("b", 1)]}: +1
+NewAllocation{.id = 8, .alloc = [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)]}: +1
+NewAllocation{.id = 9, .alloc = [("x", 10001), ("b", 10002), ("c", 10003), ("d", 10004), ("e", 10005), ("z", 10006)]}: +1
+NewAllocation{.id = 10, .alloc = [("x", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("z", 6)]}: +1
+NewAllocation{.id = 11, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0)]}: +1
+NewAllocation{.id = 12, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)]}: +1
+NewAllocation{.id = 13, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)]}: +1
+NewAllocation{.id = 14, .alloc = [("x", 4294967286), ("b", 4294967288), ("c", 4294967290), ("d", 4294967291), ("e", 4294967292), ("z", 4294967293), ("p", 4294967294)]}: +1
+NewAllocation{.id = 15, .alloc = [("x", 4294967286), ("b", 4294967287), ("c", 4294967288), ("d", 4294967289), ("e", 4294967290), ("z", 4294967291), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)]}: +1
+NewAllocation{.id = 16, .alloc = [("x", 10), ("b", 12), ("c", 14), ("d", 15), ("e", 16), ("z", 17), ("p", 18), ("q", 19)]}: +1
+NewAllocation{.id = 17, .alloc = []}: +1
+NewAllocation{.id = 18, .alloc = []}: +1
+NewAllocation{.id = 19, .alloc = []}: +1
+NewAllocation{.id = 20, .alloc = []}: +1
+NewAllocation{.id = 21, .alloc = []}: +1
 NewAllocationOpt:
-NewAllocationOpt{1,std_Vec { x: [] }}: 1
-NewAllocationOpt{2,std_Vec { x: [("a", std.Some{0})] }}: 1
-NewAllocationOpt{3,std_Vec { x: [("a", std.Some{0}), ("b", std.None{})] }}: 1
-NewAllocationOpt{4,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1})] }}: 1
-NewAllocationOpt{5,std_Vec { x: [("a", std.Some{1000}), ("b", std.Some{1001})] }}: 1
-NewAllocationOpt{5,std_Vec { x: [("a", std.Some{4294967294}), ("b", std.Some{4294967295})] }}: 1
-NewAllocationOpt{6,std_Vec { x: [("a", std.Some{4294967292}), ("b", std.Some{4294967293})] }}: 1
-NewAllocationOpt{7,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1})] }}: 1
-NewAllocationOpt{8,std_Vec { x: [("a", std.Some{0}), ("b", std.Some{1}), ("c", std.Some{2}), ("d", std.Some{3}), ("e", std.Some{4}), ("f", std.Some{5})] }}: 1
-NewAllocationOpt{9,std_Vec { x: [("x", std.Some{10001}), ("b", std.Some{10002}), ("c", std.Some{10003}), ("d", std.Some{10004}), ("e", std.Some{10005}), ("z", std.Some{10006})] }}: 1
-NewAllocationOpt{10,std_Vec { x: [("x", std.Some{1}), ("b", std.Some{2}), ("c", std.Some{3}), ("d", std.Some{4}), ("e", std.Some{5}), ("z", std.Some{6})] }}: 1
-NewAllocationOpt{11,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0})] }}: 1
-NewAllocationOpt{12,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0}), ("p", std.Some{2}), ("q", std.Some{4})] }}: 1
-NewAllocationOpt{13,std_Vec { x: [("x", std.Some{6}), ("b", std.Some{7}), ("c", std.Some{8}), ("d", std.Some{9}), ("e", std.Some{10}), ("z", std.Some{0}), ("p", std.Some{2}), ("q", std.Some{4}), ("r", std.None{})] }}: 1
-NewAllocationOpt{14,std_Vec { x: [("x", std.Some{4294967286}), ("b", std.Some{4294967288}), ("c", std.Some{4294967290}), ("d", std.Some{4294967291}), ("e", std.Some{4294967292}), ("z", std.Some{4294967293}), ("p", std.Some{4294967294}), ("q", std.None{}), ("r", std.None{})] }}: 1
-NewAllocationOpt{15,std_Vec { x: [("x", std.Some{4294967286}), ("b", std.Some{4294967287}), ("c", std.Some{4294967288}), ("d", std.Some{4294967289}), ("e", std.Some{4294967290}), ("z", std.Some{4294967291}), ("p", std.Some{4294967292}), ("q", std.Some{4294967293}), ("r", std.Some{4294967294})] }}: 1
-NewAllocationOpt{16,std_Vec { x: [("x", std.Some{10}), ("b", std.Some{12}), ("c", std.Some{14}), ("d", std.Some{15}), ("e", std.Some{16}), ("z", std.Some{17}), ("p", std.Some{18}), ("q", std.Some{19}), ("r", std.None{})] }}: 1
-NewAllocationOpt{17,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}: 1
-NewAllocationOpt{18,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}: 1
-NewAllocationOpt{19,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}: 1
-NewAllocationOpt{20,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}: 1
-NewAllocationOpt{21,std_Vec { x: [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})] }}: 1
-
+NewAllocationOpt{.id = 1, .alloc = []}: +1
+NewAllocationOpt{.id = 2, .alloc = [("a", std_Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 3, .alloc = [("a", std_Some{.x = 0}), ("b", std_None{})]}: +1
+NewAllocationOpt{.id = 4, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", std_Some{.x = 1000}), ("b", std_Some{.x = 1001})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", std_Some{.x = 4294967294}), ("b", std_Some{.x = 4294967295})]}: +1
+NewAllocationOpt{.id = 6, .alloc = [("a", std_Some{.x = 4294967292}), ("b", std_Some{.x = 4294967293})]}: +1
+NewAllocationOpt{.id = 7, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 8, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1}), ("c", std_Some{.x = 2}), ("d", std_Some{.x = 3}), ("e", std_Some{.x = 4}), ("f", std_Some{.x = 5})]}: +1
+NewAllocationOpt{.id = 9, .alloc = [("x", std_Some{.x = 10001}), ("b", std_Some{.x = 10002}), ("c", std_Some{.x = 10003}), ("d", std_Some{.x = 10004}), ("e", std_Some{.x = 10005}), ("z", std_Some{.x = 10006})]}: +1
+NewAllocationOpt{.id = 10, .alloc = [("x", std_Some{.x = 1}), ("b", std_Some{.x = 2}), ("c", std_Some{.x = 3}), ("d", std_Some{.x = 4}), ("e", std_Some{.x = 5}), ("z", std_Some{.x = 6})]}: +1
+NewAllocationOpt{.id = 11, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 12, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0}), ("p", std_Some{.x = 2}), ("q", std_Some{.x = 4})]}: +1
+NewAllocationOpt{.id = 13, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0}), ("p", std_Some{.x = 2}), ("q", std_Some{.x = 4}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 14, .alloc = [("x", std_Some{.x = 4294967286}), ("b", std_Some{.x = 4294967288}), ("c", std_Some{.x = 4294967290}), ("d", std_Some{.x = 4294967291}), ("e", std_Some{.x = 4294967292}), ("z", std_Some{.x = 4294967293}), ("p", std_Some{.x = 4294967294}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 15, .alloc = [("x", std_Some{.x = 4294967286}), ("b", std_Some{.x = 4294967287}), ("c", std_Some{.x = 4294967288}), ("d", std_Some{.x = 4294967289}), ("e", std_Some{.x = 4294967290}), ("z", std_Some{.x = 4294967291}), ("p", std_Some{.x = 4294967292}), ("q", std_Some{.x = 4294967293}), ("r", std_Some{.x = 4294967294})]}: +1
+NewAllocationOpt{.id = 16, .alloc = [("x", std_Some{.x = 10}), ("b", std_Some{.x = 12}), ("c", std_Some{.x = 14}), ("d", std_Some{.x = 15}), ("e", std_Some{.x = 16}), ("z", std_Some{.x = 17}), ("p", std_Some{.x = 18}), ("q", std_Some{.x = 19}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 17, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 18, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 19, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 20, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 21, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
 NewAllocation
 NewAllocation{1,std_Vec { x: [] }}
 NewAllocation{2,std_Vec { x: [("a", 0)] }}
@@ -775,24 +751,22 @@ Adjusted{19,std_Vec { x: [("x", 0), ("z", 2)] }}
 Adjusted{20,std_Vec { x: [("x", 0), ("z", 2)] }}
 Adjusted{21,std_Vec { x: [("x", 0), ("z", 2)] }}
 YX:
-YX{10,1}: 1
-YX{20,2}: 1
-YX{30,3}: 1
-YX{40,4}: 1
-
+YX{.y = 10, .x = 1}: +1
+YX{.y = 20, .x = 2}: +1
+YX{.y = 30, .x = 3}: +1
+YX{.y = 40, .x = 4}: +1
 YX
 YX{10,1}
 YX{20,2}
 YX{30,3}
 YX{40,4}
 SCCLabel:
-(2, 2): 1
-(3, 2): 1
-(4, 2): 1
-(5, 5): 1
-(6, 5): 1
-(7, 5): 1
-
+(2, 2): +1
+(3, 2): +1
+(4, 2): +1
+(5, 5): +1
+(6, 5): +1
+(7, 5): +1
 SCCLabel
 (2, 2)
 (3, 2)
@@ -801,19 +775,17 @@ SCCLabel
 (6, 5)
 (7, 5)
 ConcatString:
-ConcatString{"Foo bar"}: 1
-ConcatString{"Foo world"}: 1
-ConcatString{"Hello, bar"}: 1
-ConcatString{"Hello, world"}: 1
-
+ConcatString{.s = "Foo bar"}: +1
+ConcatString{.s = "Foo world"}: +1
+ConcatString{.s = "Hello, bar"}: +1
+ConcatString{.s = "Hello, world"}: +1
 StringOrd:
-StringOrd{"Foo ",3}: 1
-StringOrd{"Foo bar",6}: 1
-StringOrd{"Foo world",7}: 1
-StringOrd{"Hello, ",2}: 1
-StringOrd{"Hello, bar",4}: 1
-StringOrd{"Hello, world",5}: 1
-
+StringOrd{.s = "Foo ", .ord = 3}: +1
+StringOrd{.s = "Foo bar", .ord = 6}: +1
+StringOrd{.s = "Foo world", .ord = 7}: +1
+StringOrd{.s = "Hello, ", .ord = 2}: +1
+StringOrd{.s = "Hello, bar", .ord = 4}: +1
+StringOrd{.s = "Hello, world", .ord = 5}: +1
 ConcatString
 ConcatString{"Foo bar"}
 ConcatString{"Foo world"}
@@ -827,15 +799,13 @@ StringOrd{"Hello, ",2}
 StringOrd{"Hello, bar",4}
 StringOrd{"Hello, world",5}
 CMethod:
-CMethod{"bar","foo"}: 1
-CMethod{"buzz","foo"}: 1
-CMethod{"hello","world"}: 1
-
+CMethod{.c1 = "bar", .c2 = "foo"}: +1
+CMethod{.c1 = "buzz", .c2 = "foo"}: +1
+CMethod{.c1 = "hello", .c2 = "world"}: +1
 DMethod:
-DMethod{"bar","foo"}: 1
-DMethod{"buzz","foo"}: 1
-DMethod{"hello","world"}: 1
-
+DMethod{.c1 = "bar", .c2 = "foo"}: +1
+DMethod{.c1 = "buzz", .c2 = "foo"}: +1
+DMethod{.c1 = "hello", .c2 = "world"}: +1
 CMethod
 CMethod{"bar","foo"}
 CMethod{"buzz","foo"}
@@ -845,12 +815,11 @@ DMethod{"bar","foo"}
 DMethod{"buzz","foo"}
 DMethod{"hello","world"}
 Power3:
-Power3{0}: 1
-Power3{1}: 1
-Power3{8}: 1
-Power3{27}: 1
-Power3{64}: 1
-
+Power3{.y = 0}: +1
+Power3{.y = 1}: +1
+Power3{.y = 8}: +1
+Power3{.y = 27}: +1
+Power3{.y = 64}: +1
 Power3
 Power3{0}
 Power3{1}
@@ -858,15 +827,14 @@ Power3{8}
 Power3{27}
 Power3{64}
 RegexMatch:
-RegexMatch{"(?i)a+(?-i)b+","AaAaAbbBBBb",true}: 1
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-333",false}: 1
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-3333",true}: 1
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","phone: 111-222-3333",true}: 1
-RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-01-01",true}: 1
-RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-0101",false}: 1
-RegexMatch{"a+b+","AaAaAbbBBBb",false}: 1
-RegexMatch{"a+b+","aaaaabbbbbb",true}: 1
-
+RegexMatch{.regex = "(?i)a+(?-i)b+", .text = "AaAaAbbBBBb", .m = true}: +1
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "111-222-333", .m = false}: +1
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "111-222-3333", .m = true}: +1
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "phone: 111-222-3333", .m = true}: +1
+RegexMatch{.regex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", .text = "2014-01-01", .m = true}: +1
+RegexMatch{.regex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", .text = "2014-0101", .m = false}: +1
+RegexMatch{.regex = "a+b+", .text = "AaAaAbbBBBb", .m = false}: +1
+RegexMatch{.regex = "a+b+", .text = "aaaaabbbbbb", .m = true}: +1
 RegexMatch
 RegexMatch{"(?i)a+(?-i)b+","AaAaAbbBBBb",true}
 RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-333",false}
