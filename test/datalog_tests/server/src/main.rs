@@ -11,36 +11,45 @@ use tokio::prelude::*;
 use tokio::io;
 use std::str;
 
-fn handle_connection(mut stream: TcpStream) -> io::Result<()>{
+fn handle_connection(mut stream: TcpStream) -> impl Future<Item = (), Error = ()>
+{
+    let buf = Vec::new();
+    let res = io::read_to_end(stream, buf);
 
-    let prog = ddlog_run(1, false, None, 0, None);
+    let work = res.then(|result| {
+        match result {
+            Ok((_socket, buf)) => {
+                let s = String::from_utf8(buf).unwrap();
+                println!("{:?}", &s);
+                let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
 
-    let mut s = String::new();
-    stream.read_to_string(&mut s).and_then(|_| {println!("{:?}", s); Ok(())});
+                unsafe {
+                let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
+                let b_bool = record::ddlog_get_bool(f);
+                let b = record::ddlog_bool(b_bool);
 
-    // let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
+                let table_name = relid2name(table).unwrap();
+                let constr = table_name.split('.').last().unwrap();
+                let constr_r = String::from("lr.right.") + constr;
 
-    // unsafe {
-    //     let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
-    //     let b_bool = record::ddlog_get_bool(f);
-    //     let b = record::ddlog_bool(b_bool);
+                let bin = CString::new(constr_r).unwrap();
+                let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
 
-    //     let table_name = relid2name(table).unwrap();
-    //     let constr = table_name.split('.').last().unwrap();
-    //     let constr_r = String::from("lr.right.") + constr;
+                let table_id = ddlog_get_table_id(bin.as_ptr());
+                let updates = &[record::ddlog_insert_cmd(table_id, rec)];
 
-    //     let bin = CString::new(constr_r).unwrap();
-    //     let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
+                // ddlog_transaction_start(prog);
+                //     ddlog_apply_updates(prog, updates.as_ptr(), 1);
+                //     ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
+                }
+            }
+            Err(e) => println!("{:?}", e),
+        }
 
-    //     let table_id = ddlog_get_table_id(bin.as_ptr());
-    //     let updates = &[record::ddlog_insert_cmd(table_id, rec)];
+        Ok(())
+    });
 
-    //     ddlog_transaction_start(prog);
-    //     ddlog_apply_updates(prog, updates.as_ptr(), 1);
-    //     ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
-    // }
-
-    Ok(())
+    work
 }
 
 pub extern "C" fn show_out(arg: libc::uintptr_t,
@@ -57,41 +66,20 @@ fn main() {
     let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
     let listener = TcpListener::bind(&addr).unwrap();
 
-    let server = listener.incoming().for_each(|socket| {
-        println!("got socket");
+    let prog = ddlog_run(1, false, None, 0, None);
 
-        let buf = Vec::new();
+    unsafe {
+        let server = listener.incoming().for_each(|socket| {
 
-        let res = io::read_to_end(socket, buf);
+            let work = handle_connection(socket);
 
-        let work = res.then(|result| {
-            match result {
-                Ok((_socket, buf)) => println!("{:?}", String::from_utf8(buf).unwrap()),
-                Err(e) => println!("{:?}", e),
-            }
-
+            tokio::spawn(work);
             Ok(())
+        }).map_err(|err| {
+            // Handle error by printing to STDOUT.
+            println!("accept error = {:?}", err);
         });
 
-        tokio::spawn(work);
-        Ok(())
-    }).map_err(|err| {
-        // Handle error by printing to STDOUT.
-        println!("accept error = {:?}", err);
-    });
-
-    tokio::run(server);
-
-    // accept connections and get a TcpStream
-    // tokio::run(
-    //     listener.incoming()
-    //         .map_err(|e| eprintln!("failed to accept stream; error = {:?}", e))
-    //         .for_each(|mut stream| {
-    //             println!("got stuff");
-    //             let mut buf = String::new();
-    //             stream.read_to_string(&mut buf);
-    //             println!("{:?}", buf);
-    //             Ok(())
-    //         }).map_err(|e| eprintln!("Error occured: {:?}", e))
-    // );
+        tokio::run(server);
+    }
 }
