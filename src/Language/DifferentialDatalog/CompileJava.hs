@@ -99,23 +99,52 @@ preamble sourceName =
     "import ddlogapi.DDlogCommand;\n"           $+$
     "class" <+> pp (capitalize sourceName)
 
+data JavaState = JavaState {
+    -- types that have been compiled
+    typesCompiled  :: S.Set String,
+    -- types that still have to be compiled
+    typesToCompile :: M.Map String Type
+}
+
+type JavaMonad = State JavaState
+emptyState :: JavaState
+emptyState = JavaState {
+    typesCompiled  = S.empty,
+    typesToCompile = M.empty
+}
+
 -- Generates the body of the Java class containing all utility methods
 body :: DatalogProgram -> Doc
-body d = genEnum d $+$
-          (vcat $ punctuate "\n" $ map (genCreate d) (M.keys $ progRelations d)) $+$
-          (vcat $ punctuate "\n" $ map (genClass d) (M.keys $ progRelations d))
+body d =
+    evalState (
+        do relations <- mapM (genRelationCreate d) (M.keys $ progRelations d)
+           -- TODO: this should iterate until todo is empty
+           todo <- gets (\state -> M.toList $ typesToCompile state)
+           creates <- mapM (\(n,t) -> genCreate d n t) todo
+           let types = map (\(n,t) -> genClass d n t False) todo
+           return $ genEnum d $+$
+                 (vcat $ punctuate "\n" relations) $+$
+                 (vcat $ punctuate "\n" $ map (genRelationClass d) (M.keys $ progRelations d)) $+$
+                 (vcat $ punctuate "\n" types) $+$
+                 (vcat $ punctuate "\n" creates)
+    )
+    emptyState
 
--- Generate a Java class for an element of a specific relation
-genClass :: DatalogProgram -> String -> Doc
-genClass d@DatalogProgram{..} relationName =
-    let rel = progRelations M.! relationName
-        rtype = relType rel in
-    "public static class" <+> makeIdentifier relationName $+$
-    (braces' $ classBody d relationName rtype)
+-- Generate a Java class for a specific relation
+genRelationClass :: DatalogProgram -> String -> Doc
+genRelationClass d@DatalogProgram{..} relationName =
+    let rtype = relType $ progRelations M.! relationName in
+    genClass d relationName rtype True
 
--- given a (relation) type generate the body of a Java class storing the columns of the relation
-classBody :: DatalogProgram -> String -> Type -> Doc
-classBody d className t =
+-- Generate a Java class for a specific type
+genClass :: DatalogProgram -> String -> Type -> Bool -> Doc
+genClass d@DatalogProgram{} name rtype isRelation =
+    "public static class" <+> makeIdentifier name $+$
+    (braces' $ classBody d name rtype isRelation)
+
+-- given a type generate the body of a Java class storing the columns of the relation
+classBody :: DatalogProgram -> String -> Type -> Bool -> Doc
+classBody d className t isRelation =
   -- class fields
   (classFields d t) $+$
   -- constructor from DDlogRecord
@@ -129,54 +158,60 @@ classBody d className t =
   "@Override public String toString()" $+$
   (braces' $ "return" <+> (doubleQuotes $ pp className) <+> "+ \"{\" +" <+> (toStringBody d t) <+> "+ \"}\"" <> semi) $+$
   -- command to insert
-  "public DDlogCommand createCommand(boolean insert)" $+$
-  (braces' $ ("return new DDlogCommand(insert ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal," $+$
+  if isRelation then
+      "public DDlogCommand createCommand(boolean insert)" $+$
+      (braces' $ ("return new DDlogCommand(insert ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal," $+$
               (pp $ "TableId_" ++ className ++ ",") $+$
               "this.asRecord());"))
+  else ""
+
+-- given a TStruct extract the first constructor if it is the only one;
+-- report an error otherwise.  Thsi is because we don't support (yet) structs
+-- with multiple constructors
+getSingleConstructor :: Type -> Constructor
+getSingleConstructor t@TStruct{..} =
+    let c0:tail = typeCons in
+       if null tail then c0
+       else error $ "Types with multiple constructors not supported" ++ show t
 
 -- generates the body of the constructor from values for all fields
 constructorFieldsBody :: DatalogProgram -> Type -> Doc
 constructorFieldsBody d t =
     case t of
-        TBool{..}   -> "this.a0 = a0;"
-        TInt{..}    -> "this.a0 = a0;"
-        TString{..} -> "this.a0 = a0;"
-        TSigned{..} -> "this.a0 = a0;"
-        TBit{..}    -> "this.a0 = a0;"
-        TTuple{..}  -> vcat $ mapIdx (\_ i -> "this.a" <> pp i <+> "= a" <> pp i <> semi) typeTupArgs
+        TBool{..}     -> "this.a0 = a0;"
+        TInt{..}      -> "this.a0 = a0;"
+        TString{..}   -> "this.a0 = a0;"
+        TSigned{..}   -> "this.a0 = a0;"
+        TBit{..}      -> "this.a0 = a0;"
+        TTuple{..}    -> vcat $ mapIdx (\_ i -> "this.a" <> pp i <+> "= a" <> pp i <> semi) typeTupArgs
         -- we do not really do anything different for collections, so we can just use elementType
-        TUser{..}   -> constructorFieldsBody d $ elementType $ resolveType d t
-        TStruct{..} -> let c0:tail = typeCons in
-                       if null tail then
-                           let assignField f =
-                                 "this." <> (pp $ fieldName f) <+> "=" <+> (pp $ fieldName f) <> semi
-                           in vcat $ map assignField $ consArgs c0
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        TUser{..}     -> constructorFieldsBody d $ elementType $ resolveType d t
+        t@TStruct{..} -> let c0 = getSingleConstructor t
+                             assignField f = "this." <> (pp $ fieldName f) <+> "=" <+> (pp $ fieldName f) <> semi
+                       in vcat $ map assignField $ consArgs c0
+        _             -> error $ "Unsupported type " ++ show t
 
 -- given a relation type generate the body of the toString method
 toStringBody :: DatalogProgram -> Type -> Doc
 toStringBody d t =
     case t of
-        TBool{..}   -> "this.a0"
-        TInt{..}    -> "this.a0"
-        TString{..} -> "this.a0"
-        TSigned{..} -> "this.a0"
-        TBit{..}    -> "this.a0"
+        TBool{..}     -> "this.a0"
+        TInt{..}      -> "this.a0"
+        TString{..}   -> "this.a0"
+        TSigned{..}   -> "this.a0"
+        TBit{..}      -> "this.a0"
         -- we don't do anything different for collections, so we can just use elementType
-        TUser{..}   -> toStringBody d $ elementType $ resolveType d t
-        TTuple{..}  -> (cat $ punctuate " + \",\" + " (mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs))
-        TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
-                           let toStringField f =
-                                 ("this." <> (pp $ fieldName f))
-                           in
-                               (cat $ punctuate " + \",\" + " (map toStringField (consArgs c0)))
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        TUser{..}     -> toStringBody d $ elementType $ resolveType d t
+        TTuple{..}    -> (cat $ punctuate " + \",\" + " (mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs))
+        t@TStruct{..} -> let c0 = getSingleConstructor t
+                             toStringField f = ("this." <> (pp $ fieldName f))
+                         in
+                             (cat $ punctuate " + \",\" + " (map toStringField (consArgs c0)))
+        _             -> error $ "Unsupported type " ++ show t
 
 
 -- generate code to create a a collection-typed value from a DDlogRecord
+-- (remember that CNone is a collection too)
 collectionFromRecord :: String -> String -> Collection -> Doc
 collectionFromRecord destination value valueType =
     let extractCollection kind =
@@ -187,78 +222,72 @@ collectionFromRecord destination value valueType =
                                     (getRecord $ elementType valueType) <> ")" <> semi)
     in
     case valueType of
-        CNone t     -> (pp destination) <+> "=" <+> (parens $ simpleType t) <> (pp value) <> "." <> (getRecord t) <> semi
-        CVector{..} -> extractCollection "Vector"
-        CSet{..}    -> extractCollection "Set"
+        CNone t@TStruct{} -> (pp destination) <+> "= new" <+> (pp $ capitalize $ consName $ getSingleConstructor t) <> (parens $ pp value) <> semi
+        CNone t           -> (pp destination) <+> "=" <+> (parens $ simpleType t) <> (pp value) <> "." <> (getRecord t) <> semi
+        CVector{}         -> extractCollection "Vector"
+        CSet{}            -> extractCollection "Set"
 
 -- given a relation type generate the body of the constructor that
 -- initializes the corresponding Java class fields
 constructorBody :: DatalogProgram -> Type -> Doc
 constructorBody d t =
     case t of
-        TBool{..}   -> "this.a0 = r." <> getRecord t <> semi
-        TInt{..}    -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
-        TString{..} -> "this.a0 = r." <> getRecord t <> semi
-        TSigned{..} -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
-        TBit{..}    -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
-        TUser{..}   -> let rt = resolveType d t in
+        TBool{..}     -> "this.a0 = r." <> getRecord t <> semi
+        TInt{..}      -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
+        TString{..}   -> "this.a0 = r." <> getRecord t <> semi
+        TSigned{..}   -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
+        TBit{..}      -> "this.a0 = (" <> (simpleType t) <> ")r." <> getRecord t <> semi
+        TUser{..}     -> let rt = resolveType d t in
                          case rt of
                          CNone{..} -> constructorBody d $ elementType
                          _         -> collectionFromRecord "this.a0" "r" rt
-        TTuple{..}  -> vcat $ mapIdx (\ft i ->
+        TTuple{..}    -> vcat $ mapIdx (\ft i ->
                                         (pp $ "DDlogRecord t" ++ (show i) ++ " = r.getTupleField(" ++ (show i) ++ ");") $+$                                        collectionFromRecord ("this.a" ++ (show i)) ("t" ++ (show i)) (resolveType d ft)) typeTupArgs
-        TStruct{..} -> let c0:tail = typeCons in
-                       if null tail then
+        t@TStruct{..} -> let c0 = getSingleConstructor t in
                            (vcat $ mapIdx (\f i ->
                                              (pp $ "DDlogRecord t" ++ (show i) ++ " = r.getStructField(" ++ (show i) ++ ");") $+$
                                              collectionFromRecord ("this." ++ (fieldName f)) ("t" ++ show i) (resolveType d $ fieldType f)) (consArgs c0))
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        _             -> error $ "Unsupported type " ++ show t
 
 -- given a relation type generate arguments for the call to the create_CLASS method
 -- supplying fields as arguments
 arguments :: DatalogProgram -> Type -> Doc
 arguments d t =
     case t of
-        TBool{..}   -> "this.a0"
-        TInt{..}    -> "this.a0"
-        TBit{..}    -> "this.a0"
-        TString{..} -> "this.a0"
-        TSigned{..} -> "this.a0"
+        TBool{..}     -> "this.a0"
+        TInt{..}      -> "this.a0"
+        TBit{..}      -> "this.a0"
+        TString{..}   -> "this.a0"
+        TSigned{..}   -> "this.a0"
         -- we do not do anything special for collections, so we just use elementType
-        TUser{..}   -> arguments d $ elementType $ resolveType d t
-        TTuple{..}  -> commaSep $ mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs
-        TStruct{..} -> let c0:tail = typeCons
-                           printField p = "this." <> (pp $ fieldName p)
-                       in
-                       if null tail then
-                           commaSep $ map printField (consArgs c0)
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        TUser{..}     -> arguments d $ elementType $ resolveType d t
+        TTuple{..}    -> commaSep $ mapIdx (\_ i -> "this.a" <> pp i) typeTupArgs
+        t@TStruct{..} -> let c0 = getSingleConstructor t
+                             printField p = "this." <> (pp $ fieldName p)
+                         in commaSep $ map printField (consArgs c0)
+        _             -> error $ "Unsupported type " ++ show t
 
 
 -- given a (relation) type generate the fields of a clas storing the columns of the relation
 classFields :: DatalogProgram -> Type -> Doc
 classFields d t =
     case t of
-        TBool{..}   -> "public" <+> simpleType t <+> "a0" <> semi
-        TInt{..}    -> "public" <+> simpleType t <+> "a0" <> semi
-        TBit{..}    -> "public" <+> simpleType t <+> "a0" <> semi
-        TString{..} -> "public" <+> simpleType t <+> "a0" <> semi
-        TSigned{..} -> "public" <+> simpleType t <+> "a0" <> semi
-        TUser{..}   -> let rt = resolveType d t in
-                         case rt of
-                         CNone{..}   -> classFields d $ elementType
-                         _           -> "public" <+> (collectionType $ resolveType d t) <+> "a0" <> semi
-        TTuple{..}  -> vcat $ mapIdx (\t i -> "public" <+> (collectionType $ resolveType d t) <+>
+        TBool{..}     -> "public" <+> simpleType t <+> "a0" <> semi
+        TInt{..}      -> "public" <+> simpleType t <+> "a0" <> semi
+        TBit{..}      -> "public" <+> simpleType t <+> "a0" <> semi
+        TString{..}   -> "public" <+> simpleType t <+> "a0" <> semi
+        TSigned{..}   -> "public" <+> simpleType t <+> "a0" <> semi
+        TUser{..}     -> let rt = resolveType d t in
+                            case rt of
+                            CNone{..}   -> classFields d $ elementType
+                            _           -> "public" <+> (collectionType $ resolveType d t) <+> "a0" <> semi
+        TTuple{..}    -> vcat $ mapIdx (\t i -> "public" <+> (collectionType $ resolveType d t) <+>
                                               "a" <> pp i <> ";") typeTupArgs
-        TStruct{..} -> let c0:tail = typeCons in
-                       if tail == [] then
-                           let fieldField f = ("public" <+> (collectionType $ resolveType d $ fieldType f)) <+>
-                                 (pp $ fieldName f) <> semi in
-                               vcat $ map fieldField (consArgs c0)
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        t@TStruct{..} -> let c0 = getSingleConstructor t
+                             fieldField f = ("public" <+> (collectionType $ resolveType d $ fieldType f)) <+>
+                                 (pp $ fieldName f) <> semi
+                         in vcat $ map fieldField (consArgs c0)
+        _             -> error $ "Unsupported type " ++ show t
 
 -- generates an enum mapping table names to table ids
 genEnum :: DatalogProgram -> Doc
@@ -276,14 +305,22 @@ genEnum d =
 
 -- given a relation name this creates a function to construct a DDlogRecord that can be inserted or
 -- deleted in the relation
-genCreate :: DatalogProgram -> String -> Doc
-genCreate d relationName =
-    let relations = progRelations d
-        rel = fromJust $ M.lookup relationName relations
-        rtype = relType rel in
-    "public static DDlogRecord create_" <> makeIdentifier relationName <>
-        (parens $ parameters d rtype) $+$
-        (braces' $ genCreateBody d rtype $+$ "return r;")
+genRelationCreate :: DatalogProgram -> String -> JavaMonad Doc
+genRelationCreate d relationName =
+    let rtype = relType $ fromJust $ M.lookup relationName $ progRelations d in
+    genCreate d relationName rtype
+
+-- given a type name and a type this creates a function to construct a
+-- DDlogRecord that can be inserted or deleted in the relation
+genCreate :: DatalogProgram -> String -> Type -> JavaMonad Doc
+genCreate d name rtype = do
+    done <- gets (\state -> S.member name $ typesCompiled state)
+    if done then return ""
+    else do modify (\state -> state { typesCompiled = S.insert name $ typesCompiled state})
+            body <- genCreateBody d rtype
+            return $ "public static DDlogRecord create_" <> makeIdentifier name <>
+                     (parens $ parameters d rtype) $+$
+                     (braces' $ body $+$ "return r;")
 
 -- convert a DDlog string into an identifier
 makeIdentifier :: String -> Doc
@@ -306,21 +343,19 @@ legalizeChar c = if isAlphaNum c then c else '_'
 parameters :: DatalogProgram -> Type -> Doc
 parameters d t =
     case t of
-        TBool{..}   -> simpleType t <+> "a0"
-        TInt{..}    -> simpleType t <+> "a0"
-        TString{..} -> simpleType t <+> "a0"
-        TSigned{..} -> simpleType t <+> "a0"
-        TUser{..}   -> let rt = resolveType d t in
+        TBool{..}     -> simpleType t <+> "a0"
+        TInt{..}      -> simpleType t <+> "a0"
+        TString{..}   -> simpleType t <+> "a0"
+        TSigned{..}   -> simpleType t <+> "a0"
+        TUser{..}     -> let rt = resolveType d t in
                          case rt of
                          CNone{..}   -> parameters d $ elementType
                          CVector{..} -> (collectionType rt) <> "a0"
-        TTuple{..}  -> commaSep $ mapIdx (\t i -> (collectionType $ resolveType d t) <+> "a" <> pp i) typeTupArgs
-        TStruct{..} -> let c0:tail = typeCons in
-                       if null tail then
-                           let fieldParam f = (collectionType $ resolveType d $ fieldType f) <+> (pp $ fieldName f) in
-                               commaSep $ map fieldParam (consArgs c0)
-                       else error $ "Unsupported type " ++ show t
-        _           -> error $ "Unsupported type " ++ show t
+        TTuple{..}    -> commaSep $ mapIdx (\t i -> (collectionType $ resolveType d t) <+> "a" <> pp i) typeTupArgs
+        t@TStruct{..} -> let c0 = getSingleConstructor t
+                             fieldParam f = (collectionType $ resolveType d $ fieldType f) <+> (pp $ fieldName f)
+                         in commaSep $ map fieldParam (consArgs c0)
+        _             -> error $ "Unsupported type " ++ show t
 
 -- convert a collection type to a Java type
 collectionType :: Collection -> Doc
@@ -346,14 +381,17 @@ simpleType :: Type -> Doc
 simpleType TBool{..} = "boolean"
 simpleType TInt{..} = "BigInt"
 simpleType TString{..} = "String"
+simpleType TSigned{..} | typeWidth == 8  = "byte"
 simpleType TSigned{..} | typeWidth == 16 = "short"
 simpleType TSigned{..} | typeWidth == 32 = "int"
 simpleType TSigned{..} | typeWidth == 64 = "long"
 -- the mapping of unsigned values is not really correct if the value overflows
 -- but Java does not really support unsigned types, so any mapping will be a compromise
+simpleType TBit{..}    | typeWidth == 8  = "byte"
 simpleType TBit{..}    | typeWidth == 16 = "short"
 simpleType TBit{..}    | typeWidth == 32 = "int"
 simpleType TBit{..}    | typeWidth == 64 = "long"
+simpleType TStruct{..} | length typeCons == 1 = pp $ capitalize $ consName $ head typeCons
 simpleType t = error $ "Unsupported type " ++ show t
 
 -- given a simple type returns the accessor for a DDlogRecord to extract a field of this type
@@ -407,8 +445,8 @@ resolveType d t =
         _         -> CNone t
 
 -- generate code to create a DDlogRecord from a collection-typed value
-recordFromCollection :: String -> String -> Collection -> Doc
-recordFromCollection destination value valueType =
+recordFromCollection :: DatalogProgram -> String -> String -> Collection -> JavaMonad Doc
+recordFromCollection d destination value valueType =
     let ds v = v ++ (capitalize destination)
         makeCollection creator =
           (pp $ (ds "DDlogRecord[] components") ++ " = new DDlogRecord[" ++ value ++ ".size()];") $+$
@@ -416,33 +454,34 @@ recordFromCollection destination value valueType =
                        (nest' $ pp $ (ds "components") ++ "[i] = new DDlogRecord(" ++ value ++ ".get(i));") $+$
                        (pp $ "DDlogRecord " ++ destination ++ " = DDlogRecord." ++ creator ++ "(" ++ (ds "components") ++ ");") in
     case valueType of
-        CNone{..}   -> (pp $ "DDlogRecord " ++ destination ++ " = new DDlogRecord(" ++ value ++ ");")
-        CVector{..} -> makeCollection "makeVector"
-        CSet{..}    -> makeCollection "makeSet"
+        CNone t@TStruct{} -> let c = consName $ getSingleConstructor t in do
+                             modify (\state -> state { typesToCompile = M.insert c t $ typesToCompile state})
+                             return $ pp $ "DDlogRecord " ++ destination ++ " = " ++ value ++ ".asRecord();"
+        CNone{}           -> return $ (pp $ "DDlogRecord " ++ destination ++ " = new DDlogRecord(" ++ value ++ ");")
+        CVector{}         -> return $ makeCollection "makeVector"
+        CSet{}            -> return $ makeCollection "makeSet"
 
 -- generates the body of a function which creates a DDlogRecord from an object
-genCreateBody :: DatalogProgram -> Type -> Doc
+genCreateBody :: DatalogProgram -> Type -> JavaMonad Doc
 genCreateBody d t =
     case t of
-        TBool{..}   -> "DDlogRecord r = new DDlogRecord(a0);"
-        TInt{..}    -> "DDlogRecord r = new DDlogRecord(a0);"
-        TBit{..}    -> "DDlogRecord r = new DDlogRecord(a0);"
-        TString{..} -> "DDlogRecord r = new DDlogRecord(a0);"
-        TSigned{..} -> "DDlogRecord r = new DDlogRecord(a0);"
+        TBool{}     -> return "DDlogRecord r = new DDlogRecord(a0);"
+        TInt{}      -> return "DDlogRecord r = new DDlogRecord(a0);"
+        TBit{}      -> return "DDlogRecord r = new DDlogRecord(a0);"
+        TString{}   -> return "DDlogRecord r = new DDlogRecord(a0);"
+        TSigned{}   -> return "DDlogRecord r = new DDlogRecord(a0);"
         TUser{..}   -> let rt = resolveType d t in
-                         case rt of
-                         CNone{..}   -> genCreateBody d $ elementType
-                         _           -> recordFromCollection "r" "a0" rt
-        TTuple{..}  -> (vcat $ mapIdx (\t i -> recordFromCollection ("r" ++ show i) ("a" ++ show i) (resolveType d t)) typeTupArgs) $+$
-                       "DDlogRecord[] a = " <> (braces $ commaSep $ mapIdx (\_ i -> "r" <> pp i)
-                                                                           typeTupArgs) <> semi $$
-                       "DDlogRecord r = DDlogRecord.makeTuple(a);"
-        TStruct{..} -> let c0:tail = typeCons in
-                       if null tail then
-                         let fieldRec f = recordFromCollection ("r" ++ (fieldName f)) (fieldName f) (resolveType d $ fieldType f) in
-                           (vcat $ map fieldRec (consArgs c0)) $$
-                         "DDlogRecord[] a = " <> (braces $ commaSep $ map (pp . ("r" ++) . fieldName) (consArgs c0)) <> semi $$
-                         "DDlogRecord r = DDlogRecord.makeStruct" <> (parens $ commaSep [doubleQuotes $ pp $ consName c0, "a"]) <> semi
-                         -- we do not support multiple constructors
-                       else error $ "Unsupported type " ++ show t
+                       case rt of
+                           CNone{..}   -> genCreateBody d $ elementType
+                           _           -> recordFromCollection d "r" "a0" rt
+        -- TTuple{..}  -> return $ (vcat $ mapIdx (\t i -> recordFromCollection d ("r" ++ show i) ("a" ++ show i) (resolveType d t)) typeTupArgs) $+$
+        --                "DDlogRecord[] a = " <> (braces $ commaSep $ mapIdx (\_ i -> "r" <> pp i)
+        --                                          typeTupArgs) <> semi $$
+        --                "DDlogRecord r = DDlogRecord.makeTuple(a);"
+        t@TStruct{} -> let c0 = getSingleConstructor t
+                           fieldRec f = recordFromCollection d ("r" ++ (fieldName f)) (fieldName f) (resolveType d $ fieldType f)
+                       in do fields <- mapM fieldRec (consArgs c0)
+                             return $ (vcat fields) $+$
+                                    "DDlogRecord[] a = " <> (braces $ commaSep $ map (pp . ("r" ++) . fieldName) (consArgs c0)) <> semi $$
+                                    "DDlogRecord r = DDlogRecord.makeStruct" <> (parens $ commaSep [doubleQuotes $ pp $ consName c0, "a"]) <> semi
         _           -> error $ "Unsupported type " ++ show t

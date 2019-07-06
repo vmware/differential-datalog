@@ -58,7 +58,6 @@ module Language.DifferentialDatalog.Type(
 import Data.Maybe
 import Data.List
 import Control.Monad.Except
-import Control.Monad.State
 import qualified Data.Graph.Inductive as G
 import qualified Data.Map as M
 --import Debug.Trace
