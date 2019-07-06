@@ -56,7 +56,6 @@ import Data.List
 import Data.Maybe
 import Control.Monad
 import Control.Monad.Identity
-import Control.Monad.State
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Ops
