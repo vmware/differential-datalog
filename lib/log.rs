@@ -15,6 +15,7 @@ lazy_static! {
 
 /*
  * Logging API exposed to the DDlog program.
+ * (see detailed documentation in `log.dl`)
  */
 pub fn log_log(module: &log_module_t, level: &log_log_level_t, msg: &String) -> bool
 {
@@ -27,7 +28,10 @@ pub fn log_log(module: &log_module_t, level: &log_log_level_t, msg: &String) -> 
 }
 
 /*
- * Configuration API.
+ * Configuration API
+ * (detailed documentation in `ddlog_log.h`)
+ *
+ * `cb = None` - disables logging for the given module.
  *
  * NOTE: we set callback and log level simultaneously.  A more flexible API
  * would allow changing log level without changing the callback.
