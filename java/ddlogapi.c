@@ -75,8 +75,6 @@ static struct CallbackInfo* createCallback(JNIEnv* env, jobject obj, jstring met
     return cbinfo;
 }
 
-
-
 static void deleteCallback(struct CallbackInfo* cbinfo) {
     if (cbinfo == NULL)
         return;
@@ -282,6 +280,9 @@ void log_callback(uintptr_t callbackInfo, int level, const char *msg) {
 
 /* This function sets up a new logging callback for the given module and
  * then deallocates the old `CallbackInfo`, if any.
+ *
+ * Returns 0 if either `callback` is NULL or `callback` is not NULL and
+ * installing the new callback fails.
  */
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1log_1replace_1callback(
     JNIEnv *env, jobject obj, jint module, jlong old_cbinfo, jobject callback, jint max_level) {
