@@ -5,47 +5,52 @@ use ddd_ddlog::*;
 use differential_datalog::record;
 use std::ffi::CString;
 use std::net::SocketAddr;
+use std::borrow::Cow;
+use std::sync::Arc;
 
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 use tokio::io;
 use std::str;
 
-fn handle_connection(mut stream: TcpStream) -> impl Future<Item = (), Error = ()>
+fn handle_connection(stream: TcpStream, prog: Arc<HDDlog>) -> impl Future<Item = (), Error = ()>
 {
     let buf = Vec::new();
     let res = io::read_to_end(stream, buf);
 
-    let work = res.then(|result| {
+    let work = res.then(move |result| {
         match result {
             Ok((_socket, buf)) => {
                 let s = String::from_utf8(buf).unwrap();
-                println!("{:?}", &s);
+                // println!("{:?}", &s);
                 let (rec, table): (record::Record, usize)= serde_json::from_str(&s).unwrap();
 
                 // let f = record::ddlog_get_struct_field(&rec as *const record::Record, 0);
 
-                if let record::Record::PosStruct(_, fields) = rec {
-                    let f = fields.get(0).unwrap();
+                if let record::Record::NamedStruct(_, fields) = rec {
+                    // let (_, b) = fields.get(0).unwrap();
+
+                    let table_name = relid2name(table).unwrap();
+                    let constr = table_name.split('.').last().unwrap();
+                    let constr_r = String::from("lr.right.") + constr;
+                    // println!("{:?}", constr_r);
+
+                    //  let bin = CString::new(constr_r).unwrap();
+                    //  let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
+
+                    let rec = record::Record::NamedStruct(
+                        Cow::from(constr_r.to_owned()), fields);
+
+                    // println!("{:?}", rec);
+
+                    let table_id = HDDlog::get_table_id(&constr_r).unwrap();
+                    let updates = &[record::UpdCmd::Insert(record::RelIdentifier::RelId(table_id as usize), rec)];
+                    prog.transaction_start();
+                    prog.apply_updates(updates.iter());
+                    prog.transaction_commit_dump_changes(Some(show_out));
+
+                    // println!("{:?}", updates);
                 };
-
-
-                //  let b_bool = record::ddlog_get_bool(f);
-                //  let b = record::ddlog_bool(b_bool);
-
-                //  let table_name = relid2name(table).unwrap();
-                //  let constr = table_name.split('.').last().unwrap();
-                //  let constr_r = String::from("lr.right.") + constr;
-
-                //  let bin = CString::new(constr_r).unwrap();
-                //  let rec = record::ddlog_struct(bin.as_ptr(), [b].as_ptr(), 1);
-
-                //  let table_id = ddlog_get_table_id(bin.as_ptr());
-                //  let updates = &[record::ddlog_insert_cmd(table_id, rec)];
-
-                // ddlog_transaction_start(prog);
-                //     ddlog_apply_updates(prog, updates.as_ptr(), 1);
-                //     ddlog_transaction_commit_dump_changes(prog, Some(show_out), 0);
             }
             Err(e) => println!("{:?}", e),
         }
@@ -56,13 +61,8 @@ fn handle_connection(mut stream: TcpStream) -> impl Future<Item = (), Error = ()
     work
 }
 
-pub extern "C" fn show_out(arg: libc::uintptr_t,
-                           table: libc::size_t,
-                           rec: *const record::Record,
-                           polarity: bool) {
-    unsafe {
-        println!("output is {:?}, {:?}, {:?}, {:?}", arg, table, *rec, polarity);
-    }
+fn show_out(table: usize, rec: &record::Record, polarity: bool) {
+    println!("output is {:?}, {:?}, {:?}", table, rec, polarity);
 }
 
 fn main() {
@@ -72,9 +72,13 @@ fn main() {
 
     let prog = HDDlog::run(1, false, None::<fn(usize, &record::Record, bool)>);
 
-    let server = listener.incoming().for_each(|socket| {
+    let pm = Arc::new(prog);
 
-        let work = handle_connection(socket);
+    let server = listener.incoming().for_each(move |socket| {
+
+        // prog.transaction_start();
+
+        let work = handle_connection(socket, pm.clone());
 
         tokio::spawn(work);
         Ok(())
