@@ -87,9 +87,9 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-input relation lr.left.CLeft [bool]
-output relation lr.left.CMiddle [bool]
-input relation lr.right.CMiddle [bool]
-output relation lr.right.CRight [bool]
-lr.left.CMiddle[b] :- lr.left.CLeft[b].
-lr.right.CRight[b] :- lr.right.CMiddle[b].
+input relation lr.left.Left [bool]
+output relation lr.left.Middle [bool]
+input relation lr.right.Middle [bool]
+output relation lr.right.Right [bool]
+lr.left.Middle[b] :- lr.left.Left[b].
+lr.right.Right[b] :- lr.right.Middle[b].

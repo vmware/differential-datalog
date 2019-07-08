@@ -1,7 +1,7 @@
 /* First DDlog example */
 
-input relation CLeft[bool]
-output relation CMiddle[bool]
+input relation Left[bool]
+output relation Middle[bool]
 
 // Rule
-CMiddle[b] :- CLeft[b].
+Middle[b] :- Left[b].

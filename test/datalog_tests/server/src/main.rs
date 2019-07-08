@@ -21,7 +21,7 @@ fn handle_connection(stream: TcpStream, prog: Arc<HDDlog>) -> impl Future<Item =
                 let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
 
                 let updates = &[UpdCmd::Insert(
-                    RelIdentifier::RelId(lr_right_CMiddle as usize),
+                    RelIdentifier::RelId(lr_right_Middle as usize),
                     rec)];
                 prog.transaction_start().unwrap();
                 prog.apply_updates(updates.iter()).unwrap();

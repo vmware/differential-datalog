@@ -1,2 +1,4 @@
-import lr.left
-import lr.right
+import lr.left as l
+import lr.right as r
+
+// r.CMiddle :- l.CMiddle
