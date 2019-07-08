@@ -1,7 +1,3 @@
-typedef lr.left.CLeft = lr.left.CLeft{b: bool}
-typedef lr.left.CMiddle = lr.left.CMiddle{b: bool}
-typedef lr.right.CMiddle = lr.right.CMiddle{b: bool}
-typedef lr.right.CRight = lr.right.CRight{b: bool}
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
@@ -91,9 +87,9 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-input relation lr.left.CLeft [lr.left.CLeft]
-output relation lr.left.CMiddle [lr.left.CMiddle]
-input relation lr.right.CMiddle [lr.right.CMiddle]
-output relation lr.right.CRight [lr.right.CRight]
-lr.left.CMiddle(.b=b) :- lr.left.CLeft(.b=b).
-lr.right.CRight(.b=b) :- lr.right.CMiddle(.b=b).
+input relation lr.left.CLeft [bool]
+output relation lr.left.CMiddle [bool]
+input relation lr.right.CMiddle [bool]
+output relation lr.right.CRight [bool]
+lr.left.CMiddle[b] :- lr.left.CLeft[b].
+lr.right.CRight[b] :- lr.right.CMiddle[b].

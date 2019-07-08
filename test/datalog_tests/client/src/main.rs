@@ -1,8 +1,8 @@
 extern crate serde_json;
 
 use ddd_ddlog::api::*;
+use ddd_ddlog::Relations::*;
 use differential_datalog::record::*;
-use std::borrow::Cow;
 use std::net::SocketAddr;
 
 use tokio::io;
@@ -12,13 +12,10 @@ use tokio::prelude::*;
 fn main() -> Result<(), String> {
     let prog = HDDlog::run(1, false, None::<fn(usize, &Record, bool)>);
 
-    let rec = Record::PosStruct(
-        Cow::from("lr.left.CLeft".to_owned()),
-        [Record::Bool(false)].to_vec(),
-    );
+    let rec = Record::Bool(true);
 
-    let table_id = HDDlog::get_table_id("lr.left.CLeft").unwrap();
-    let updates = &[UpdCmd::Insert(RelIdentifier::RelId(table_id as usize), rec)];
+    // let table_id = HDDlog::get_table_id("lr.left.CLeft").unwrap();
+    let updates = &[UpdCmd::Insert(RelIdentifier::RelId(lr_left_CLeft as usize), rec)];
 
     prog.transaction_start()?;
     prog.apply_updates(updates.into_iter())?;

@@ -1,7 +1,7 @@
 /* First DDlog example */
 
-input relation CMiddle(b: bool)
-output relation CRight(b: bool)
+input relation CMiddle[bool]
+output relation CRight[bool]
 
 // Rule
-CRight(b) :- CMiddle(b).
+CRight[b] :- CMiddle[b].

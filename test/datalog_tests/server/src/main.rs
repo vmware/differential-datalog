@@ -1,9 +1,8 @@
 extern crate serde_json;
 
 use ddd_ddlog::api::*;
-use ddd_ddlog::*;
+use ddd_ddlog::Relations::*;
 use differential_datalog::record::*;
-use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -19,23 +18,14 @@ fn handle_connection(stream: TcpStream, prog: Arc<HDDlog>) -> impl Future<Item =
         match result {
             Ok((_socket, buf)) => {
                 let s = String::from_utf8(buf).unwrap();
-                let (rec, table): (Record, usize) = serde_json::from_str(&s).unwrap();
+                let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
 
-                if let Record::NamedStruct(_, fields) = rec {
-                    let table_name = relid2name(table).unwrap();
-                    let constr = table_name.split('.').last().unwrap();
-                    let constr_r = String::from("lr.right.") + constr;
-
-                    let rec = Record::NamedStruct(Cow::from(constr_r.to_owned()), fields);
-
-                    let table_id = HDDlog::get_table_id(&constr_r).unwrap();
-                    let updates = &[UpdCmd::Insert(
-                        RelIdentifier::RelId(table_id as usize),
-                        rec)];
-                    prog.transaction_start();
-                    prog.apply_updates(updates.iter());
-                    prog.transaction_commit_dump_changes(Some(show_out));
-                };
+                let updates = &[UpdCmd::Insert(
+                    RelIdentifier::RelId(lr_right_CMiddle as usize),
+                    rec)];
+                prog.transaction_start().unwrap();
+                prog.apply_updates(updates.iter()).unwrap();
+                prog.transaction_commit_dump_changes(Some(show_out)).unwrap();
             }
             Err(e) => println!("{:?}", e),
         }
