@@ -1,0 +1,4 @@
+From 0 Insert true
+From 1 Insert (0, [false, true])
+From 2 Insert O2{UUID{1,2},UUID{0,1}}
+From 3 Insert O3{M{N{true,true},N{false,false}}}

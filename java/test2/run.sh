@@ -18,7 +18,7 @@ esac
 
 # Compile the span_uuid.dl DDlog program
 ddlog -i ./two.dl -L../../lib
-# Compile the rust program; generates two_ddlog/target/debug/two_ddlog.a and .so
+# Compile the rust program; generates two_ddlog/target/debug/two_ddlog.a
 pushd two_ddlog
 cargo build
 popd

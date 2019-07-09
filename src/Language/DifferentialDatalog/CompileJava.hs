@@ -94,9 +94,9 @@ generateJava d sourceName =
 -- Generates the preamble of a Java file
 preamble :: String -> Doc
 preamble sourceName =
-    "import java.util.*;"                       $+$
-    "import ddlogapi.DDlogRecord;\n"            $+$
-    "import ddlogapi.DDlogCommand;\n"           $+$
+    "import java.util.*;"             $+$
+    "import ddlogapi.DDlogRecord;"    $+$
+    "import ddlogapi.DDlogCommand;\n" $+$
     "class" <+> pp (capitalize sourceName)
 
 data JavaState = JavaState {
@@ -113,38 +113,54 @@ emptyState = JavaState {
     typesToCompile = M.empty
 }
 
+data TypeKind = TypeRelation      -- Type used in a relation
+              | TypeInputRelation -- Type used in an input relation
+              | TypeOther         -- Another kind of type
+              deriving(Eq)
+
 -- Generates the body of the Java class containing all utility methods
 body :: DatalogProgram -> Doc
 body d =
     evalState (
         do relations <- mapM (genRelationCreate d) (M.keys $ progRelations d)
-           -- TODO: this should iterate until todo is empty
-           todo <- gets (\state -> M.toList $ typesToCompile state)
-           creates <- mapM (\(n,t) -> genCreate d n t) todo
-           let types = map (\(n,t) -> genClass d n t False) todo
+           objects <- generate d
            return $ genEnum d $+$
                  (vcat $ punctuate "\n" relations) $+$
                  (vcat $ punctuate "\n" $ map (genRelationClass d) (M.keys $ progRelations d)) $+$
-                 (vcat $ punctuate "\n" types) $+$
-                 (vcat $ punctuate "\n" creates)
+                 (vcat $ punctuate "\n" objects)
     )
     emptyState
+
+-- generates one class and a factory method for each type used
+generate :: DatalogProgram -> JavaMonad [Doc]
+generate d = do
+    todo <- gets (\state -> M.toList $ typesToCompile state)
+    if todo == [] then return []
+    else do
+        creates <- mapM (\(n,t) -> genCreate d n t) todo -- may add elements to typesToCompile
+        let types = map (\(n,t) -> genClass d n t TypeOther) todo
+        -- remove the types that we have generated from the list
+        modify (\state -> state { typesToCompile = M.difference (typesToCompile state) (M.fromList todo) })
+        -- recursive call for the remaining typesToCompile
+        rest <- generate d
+        return $ creates ++ types ++ rest
 
 -- Generate a Java class for a specific relation
 genRelationClass :: DatalogProgram -> String -> Doc
 genRelationClass d@DatalogProgram{..} relationName =
-    let rtype = relType $ progRelations M.! relationName in
-    genClass d relationName rtype True
+    let relation = progRelations M.! relationName
+        rtype = relType relation in
+    genClass d relationName rtype $ if (relRole relation == RelInput) then TypeInputRelation else TypeRelation
 
 -- Generate a Java class for a specific type
-genClass :: DatalogProgram -> String -> Type -> Bool -> Doc
-genClass d@DatalogProgram{} name rtype isRelation =
+genClass :: DatalogProgram -> String -> Type -> TypeKind -> Doc
+genClass d@DatalogProgram{} name rtype typeKind =
     "public static class" <+> makeIdentifier name $+$
-    (braces' $ classBody d name rtype isRelation)
+    (braces' $ classBody d name rtype typeKind)
 
 -- given a type generate the body of a Java class storing the columns of the relation
-classBody :: DatalogProgram -> String -> Type -> Bool -> Doc
-classBody d className t isRelation =
+classBody :: DatalogProgram -> String -> Type -> TypeKind -> Doc
+classBody d className t typeKind =
   -- class fields
   (classFields d t) $+$
   -- constructor from DDlogRecord
@@ -158,20 +174,20 @@ classBody d className t isRelation =
   "@Override public String toString()" $+$
   (braces' $ "return" <+> (doubleQuotes $ pp className) <+> "+ \"{\" +" <+> (toStringBody d t) <+> "+ \"}\"" <> semi) $+$
   -- command to insert
-  if isRelation then
+  if typeKind == TypeInputRelation then
       "public DDlogCommand createCommand(boolean insert)" $+$
       (braces' $ ("return new DDlogCommand(insert ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal," $+$
               (pp $ "TableId_" ++ className ++ ",") $+$
               "this.asRecord());"))
-  else ""
+  else empty
 
 -- given a TStruct extract the first constructor if it is the only one;
 -- report an error otherwise.  Thsi is because we don't support (yet) structs
 -- with multiple constructors
 getSingleConstructor :: Type -> Constructor
 getSingleConstructor t@TStruct{..} =
-    let c0:tail = typeCons in
-       if null tail then c0
+    let c0:rest = typeCons in
+       if null rest then c0
        else error $ "Types with multiple constructors not supported" ++ show t
 
 -- generates the body of the constructor from values for all fields
@@ -315,7 +331,7 @@ genRelationCreate d relationName =
 genCreate :: DatalogProgram -> String -> Type -> JavaMonad Doc
 genCreate d name rtype = do
     done <- gets (\state -> S.member name $ typesCompiled state)
-    if done then return ""
+    if done then return empty
     else do modify (\state -> state { typesCompiled = S.insert name $ typesCompiled state})
             body <- genCreateBody d rtype
             return $ "public static DDlogRecord create_" <> makeIdentifier name <>
@@ -357,12 +373,6 @@ parameters d t =
                          in commaSep $ map fieldParam (consArgs c0)
         _             -> error $ "Unsupported type " ++ show t
 
--- convert a collection type to a Java type
-collectionType :: Collection -> Doc
-collectionType CVector{..} = "List<" <> (classType elementType) <> ">"
-collectionType CSet{..} = "List<" <> (classType elementType) <> ">"
-collectionType CNone{..} = simpleType elementType
-
 -- classes corresponding to scalar Java types -- required for template arguments
 classType :: Type -> Doc
 classType TBool{..} = "Boolean"
@@ -378,9 +388,9 @@ classType t = simpleType t
 
 -- convert a simple type to a Java type
 simpleType :: Type -> Doc
-simpleType TBool{..} = "boolean"
-simpleType TInt{..} = "BigInt"
-simpleType TString{..} = "String"
+simpleType TBool{} = "boolean"
+simpleType TInt{} = "BigInt"
+simpleType TString{} = "String"
 simpleType TSigned{..} | typeWidth == 8  = "byte"
 simpleType TSigned{..} | typeWidth == 16 = "short"
 simpleType TSigned{..} | typeWidth == 32 = "int"
@@ -396,12 +406,19 @@ simpleType t = error $ "Unsupported type " ++ show t
 
 -- given a simple type returns the accessor for a DDlogRecord to extract a field of this type
 getRecord :: Type -> Doc
-getRecord TBool{..}   = "getBoolean()"
-getRecord TInt{..}    = "getU128()"
-getRecord TString{..} = "getString()"
-getRecord TSigned{..} = "getLong()"
-getRecord TBit{..}    = "getLong()"
+getRecord TBool{}   = "getBoolean()"
+getRecord TInt{}    = "getU128()"
+getRecord TString{} = "getString()"
+getRecord TSigned{} = "getLong()"
+getRecord TBit{}    = "getLong()"
 getRecord t = error $ "Unsupported type " ++ show t
+
+isSimpleType :: Type -> Bool
+isSimpleType TBool{} = True
+isSimpleType TInt{} = True
+isSimpleType TSigned{} = True
+isSimpleType TBit{} = True
+isSimpleType _ = False
 
 -- This type describes collections of base types.
 -- Currently collections of collections are not supported.
@@ -414,34 +431,41 @@ instance Show Collection where
 
 instance PP Collection where
     pp (CNone t) = pp t
-    pp (CVector t) = "Vector<" <> (pp t) <> ">"
+    pp (CVector t) = "Vec<" <> (pp t) <> ">"
     pp (CSet t)    = "Set<" <> (pp t) <> ">"
+
+-- convert a collection type to a Java type
+collectionType :: Collection -> Doc
+collectionType CVector{..} = "List<" <> (classType elementType) <> ">"
+collectionType CSet{..} = "List<" <> (classType elementType) <> ">"
+collectionType CNone{..} = simpleType elementType
 
 -- resolves a TypeDef to its underlying type (which is a Collection description)
 resolveType :: DatalogProgram -> Type -> Collection
 resolveType d t =
-    -- trace (show t) $
     case t of
         -- it is arguably wrong to hardwire these type names in the compiler, but we assume that
         -- they are more or less standard types.  Maybe the compiler should know about them?
-        TUser{..} -> if typeName == "std.Ref"
-                     then resolveType d $ head typeArgs
-                     else if elem typeName ["std.Set", "tinyset.Set64"] then
-                         let inner = resolveType d $ head typeArgs in
-                         case inner of
-                              CNone elem   -> CSet elem
-                              _            -> error $ "Nested collections not supported: " ++ show t
-                     else if typeName == "std.Vector" then
-                         let inner = resolveType d $ head typeArgs in
-                         case inner of
-                              CNone elem   -> CVector elem
-                              _            -> error $ "Nested collections not supported: " ++ show t
-                     else resolveType d actual
-                          where typeDef = getType d typeName
-                                maybeActual = tdefType typeDef
-                                actual = case maybeActual of
-                                     Nothing        -> error $ "Extern type not supported: " ++ show t
-                                     Just something -> something
+        TUser{typeName = "std.Ref", ..} -> resolveType d $ head typeArgs
+        TUser{typeName = "std.Vec", ..} ->
+            let inner = resolveType d $ head typeArgs in
+            case inner of
+                CNone elem -> if isSimpleType elem then CVector elem
+                              else error $ "Only vectors of base types supported: " ++ show t
+                _          -> error $ "Nested collections not supported: " ++ show t
+        TUser{..} | elem typeName ["std.Set", "tinyset.Set64"] ->
+            let inner = resolveType d $ head typeArgs in
+            case inner of
+                CNone elem -> if isSimpleType elem then CSet elem
+                              else error $ "Only sets of base types supported: " ++ show t
+                _          -> error $ "Nested collections not supported: " ++ show t
+        TUser{..} ->
+            resolveType d actual
+            where typeDef = getType d typeName
+                  maybeActual = tdefType typeDef
+                  actual = case maybeActual of
+                      Nothing        -> error $ "Extern type not supported: " ++ show t
+                      Just something -> something
         _         -> CNone t
 
 -- generate code to create a DDlogRecord from a collection-typed value
@@ -474,10 +498,11 @@ genCreateBody d t =
                        case rt of
                            CNone{..}   -> genCreateBody d $ elementType
                            _           -> recordFromCollection d "r" "a0" rt
-        -- TTuple{..}  -> return $ (vcat $ mapIdx (\t i -> recordFromCollection d ("r" ++ show i) ("a" ++ show i) (resolveType d t)) typeTupArgs) $+$
-        --                "DDlogRecord[] a = " <> (braces $ commaSep $ mapIdx (\_ i -> "r" <> pp i)
-        --                                          typeTupArgs) <> semi $$
-        --                "DDlogRecord r = DDlogRecord.makeTuple(a);"
+        TTuple{..}  -> let convertField (t,i) = recordFromCollection d ("r" ++ show i) ("a" ++ show i) (resolveType d t) in
+                       do fields <- mapM convertField $ zip typeTupArgs [0..]
+                          return $ (vcat fields) $+$
+                            "DDlogRecord[] a = " <> (braces $ commaSep $ mapIdx (\_ i -> "r" <> pp i) typeTupArgs) <> semi $$
+                            "DDlogRecord r = DDlogRecord.makeTuple(a);"
         t@TStruct{} -> let c0 = getSingleConstructor t
                            fieldRec f = recordFromCollection d ("r" ++ (fieldName f)) (fieldName f) (resolveType d $ fieldType f)
                        in do fields <- mapM fieldRec (consArgs c0)

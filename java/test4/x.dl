@@ -1,0 +1,21 @@
+
+typedef t0 = bool
+input relation R0[t0]
+output relation O0[t0]
+O0[x] :- R0[x].
+
+typedef t1 = (signed<32>, Set<bool>)
+input relation R1[t1]
+output relation O1[t1]
+O1[x] :- R1[x].
+
+typedef UUID = UUID {left: bit<64>, right: bit<64>}
+input relation R2(parent: UUID, child: UUID)
+output relation O2(child: UUID, parent: UUID)
+O2(c, p) :- R2(p, c).
+
+typedef N = N { b1: bool, b2: bool }
+typedef M = M { n1 : N, n2: N }
+input relation R3(m: M)
+output relation O3(m: M)
+O3(x) :- R3(x).
