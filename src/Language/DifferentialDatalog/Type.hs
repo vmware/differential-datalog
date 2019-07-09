@@ -49,6 +49,8 @@ module Language.DifferentialDatalog.Type(
     funcTypeArgSubsts,
     funcGroupArgTypes,
     sET_TYPES,
+    mAP_TYPE,
+    iNTERNED_TYPE,
     gROUP_TYPE,
     rEF_TYPE,
     checkIterable,
@@ -76,6 +78,8 @@ sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
 gROUP_TYPE = "std.Group"
 
 rEF_TYPE = "std.Ref"
+mAP_TYPE = "std.Map"
+iNTERNED_TYPE = "intern.IObj"
 
 -- | An object with type
 class WithType a where
@@ -715,20 +719,20 @@ typeMapM fun t@TOpaque{..} = do
 typeIterType :: DatalogProgram -> Type -> Maybe Type
 typeIterType d t =
     case typ' d t of
-         TOpaque _ tname [t'] | elem tname sET_TYPES -> Just t'
-         TOpaque _ "std.Map" [k,v]                   -> Just $ tTuple [k,v]
-         TOpaque _ tname [t'] | tname == gROUP_TYPE  -> Just $ t'
-         _                                           -> Nothing
+         TOpaque _ tname [t']  | elem tname sET_TYPES -> Just t'
+         TOpaque _ tname [k,v] | tname == mAP_TYPE    -> Just $ tTuple [k,v]
+         TOpaque _ tname [t']  | tname == gROUP_TYPE  -> Just $ t'
+         _                                            -> Nothing
 
 typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
 typeIsIterable d x =
     case typ' d x of
-         TOpaque _ tname [_] | elem tname sET_TYPES -> True
-         TOpaque _ "std.Map" [_,_]                  -> True
-         TOpaque _ tname _   | tname == gROUP_TYPE  -> True
-         _                                          -> False
+         TOpaque _ tname [_]   | elem tname sET_TYPES -> True
+         TOpaque _ tname [_,_] | tname == mAP_TYPE    -> True
+         TOpaque _ tname _     | tname == gROUP_TYPE  -> True
+         _                                            -> False
 
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> ECtx -> a -> me ()
 checkIterable prefix p d ctx x =
     check (typeIsIterable d x) p $
-          prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or std.Map but its type is " ++ show (typ x)
+          prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or " ++ mAP_TYPE ++ " but its type is " ++ show (typ x)

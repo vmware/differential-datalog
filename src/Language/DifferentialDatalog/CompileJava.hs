@@ -29,7 +29,7 @@ Description: Compile 'DatalogProgram' to Java API.
 -}
 
 module Language.DifferentialDatalog.CompileJava (
-    compileJava,
+    compileJavaBindings
 ) where
 
 import Prelude hiding((<>))
@@ -75,15 +75,22 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.FlatBuffer
+
+compileJavaBindings :: DatalogProgram -> String -> FilePath -> IO ()
+compileJavaBindings prog specname dir = do
+    let java_dir = dir </> "java"
+    createDirectoryIfMissing True java_dir
+    writeFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
+    writeFile (java_dir </> specname <.> ".fbs") (render $ compileFlatBufferSchema prog)
+
 
 -- generate a Java program from a DDlog program
 -- The Java program has some utility function to more easily create
 -- records for the DDlog relations.  Note that Java does not support
 -- all DDlog constructs
-compileJava :: DatalogProgram -> String -> IO ()
-compileJava d sourceName = do
-    let content = generateJava d sourceName in
-         writeFile (capitalize sourceName ++ ".java") (render content)
+compileJava :: DatalogProgram -> String -> Doc
+compileJava d sourceName = generateJava d sourceName 
 
 -- Generate a Java document from a program given the source filename
 generateJava :: DatalogProgram -> String -> Doc
