@@ -20,7 +20,7 @@ esac
 
 # Compile the redist.dl DDlog program
 ddlog -i ../../test/datalog_tests/redist.dl -L../../lib
-# Compile the rust program; generates ../test/datalog_tests/redist_ddlog/target/release/redist_ddlog.a and .so
+# Compile the rust program; generates ../test/datalog_tests/redist_ddlog/target/release/redist_ddlog.a
 pushd ../../test/datalog_tests/redist_ddlog
 cargo build --release
 popd

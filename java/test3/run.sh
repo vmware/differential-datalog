@@ -18,7 +18,7 @@ esac
 
 # Compile the span_uuid.dl DDlog program
 ddlog -i ../../test/datalog_tests/span_string.dl -j -L../../lib
-# Compile the rust program; generates ../test/datalog_tests/span_ddlog/target/release/libspan_ddlog.a and .so
+# Compile the rust program; generates ../test/datalog_tests/span_ddlog/target/release/libspan_ddlog.a
 pushd ../../test/datalog_tests/span_string_ddlog
 cargo build --release
 popd
