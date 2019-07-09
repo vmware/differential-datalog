@@ -18,6 +18,15 @@ fn main() -> Result<(), String> {
     prog.transaction_start()?;
     prog.apply_updates(updates.into_iter())?;
     prog.transaction_commit_dump_changes(Some(transmit))?;
+    // connect to a channel and set up which relations to send over
+    /*
+     * let channel = TokioChannel::new(ip_addr);
+     * channel.subscribe([table_id]);
+     * prog.transaction_commit_dump_changes(Some(channel.transmit));
+     *
+     */
+    // channel provides channel.transmit, which transmits deltas
+    // through the channel if it is in the specified relation
     prog.stop()
 }
 

@@ -41,12 +41,17 @@ fn show_out(table: usize, rec: &Record, polarity: bool) {
 }
 
 fn main() {
+    let prog = HDDlog::run(1, false, None::<fn(usize, &Record, bool)>);
+
     let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
     let listener = TcpListener::bind(&addr).unwrap();
 
-    let prog = HDDlog::run(1, false, None::<fn(usize, &Record, bool)>);
-    let prog_p = Arc::new(prog);
+    // connect to a channel and set up which relations to listen
+    /* let channel = TokioChannel::new(ip_addr);
+     * channel.emit([(table_id, table_id)]);
+     */
 
+    let prog_p = Arc::new(prog);
     let server = listener
         .incoming()
         .for_each(move |socket| {
