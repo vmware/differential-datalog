@@ -17,6 +17,7 @@ path = "./cmd_parser"
 path = "./ovsdb"
 
 [dependencies]
+fallible-iterator = "0.2"
 differential-dataflow = "0.9"
 timely = "0.9"
 abomonation= "0.7"

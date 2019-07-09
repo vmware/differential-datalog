@@ -1,29 +1,35 @@
+use fallible_iterator::FallibleIterator;
 use differential_datalog::record::Record;
 
-// TODO decide on using usize / RelID / etc.
-// TODO trait constraint on T
-// TODO use fn or closure as the arguments?
-
-// A channel to communicate DDlog deltas.
-// The channel is identified by an ID of type T.
-// For example, the ID can be a socket address.
-pub trait Channel<T> {
-
-    // Create a channel with an ID
-    fn new(T);
-
-    // Subscribe to a subset of the table updates to
-    // transmit.
-    fn subscribe(fn(usize)->bool);
-
-    // Transmit an update through the channel. The update
-    // is represented by a table ID (usize), a record,
-    // and a polarity (bool). Only the updates from
-    // subscribed tables are transmitted.
-    fn transmit(usize, &Record, bool);
-
-    // Emit an update to a callback. The update
-    // is represented by a table ID (usize), a record,
-    // and a polarity (bool)
-    fn emit(fn(usize, &Record, bool));
+pub trait FromObservable<T, E> {
+    fn from_observable(Observable<T, E>) -> Self;
 }
+
+pub trait IntoObservable<T, E> {
+    fn into_observable(&self) -> Observable<T, E>;
+}
+
+// The consumer can subscribe to the channel
+// which acts as an observable of deltas.
+pub trait Observable<T, E> {
+    fn subscribe(&self, observer: Observer<T, E>) -> Subscription;
+}
+
+// The channel is an observer of changes from
+// a producer
+pub trait Observer<T, E>
+{
+    fn on_updates(&self, updates: FallibleIterator<Item = T, Error = E>);
+    fn on_completed(&self);
+    // fn on_error(&self, error: ?);
+}
+
+pub trait Subscription
+{
+    fn unsubscribe(&self);
+}
+
+// A channel that transmits deltas. It acts as an observer of
+// changes on the consuming end, and an observable on the
+// producing end.
+pub trait Channel<T, E>: Observer<T, E> + Observable<T, E>{}
