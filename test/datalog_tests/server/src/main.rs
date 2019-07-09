@@ -47,7 +47,8 @@ fn main() {
     let listener = TcpListener::bind(&addr).unwrap();
 
     // connect to a channel and set up which relations to listen
-    /* let channel = TokioChannel::new(ip_addr);
+    /*
+     * let channel = TokioChannel::new(ip_addr);
      * channel.emit([(table_id, table_id)]);
      */
 
