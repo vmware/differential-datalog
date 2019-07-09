@@ -25,6 +25,7 @@ SOFTWARE.
 
 import System.Environment
 import System.FilePath.Posix
+import System.Directory
 import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
@@ -37,6 +38,7 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 import Language.DifferentialDatalog.CompileJava
+import Language.DifferentialDatalog.FlatBuffer
 
 data TOption = Help
              | Version
@@ -142,20 +144,24 @@ parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
     (d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
-    case validate d of
-         Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return (d', rs_code, toml_code)
+    d' <- case validate d of
+               Left e   -> errorWithoutStackTrace $ "error: " ++ e
+               Right d' -> return d'
+    when confJava $
+        case flatBufferValidate d of
+             Left e  -> errorWithoutStackTrace $ "error: " ++ e
+             Right{} -> return ()
+    return (d', rs_code, toml_code)
 
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
     (prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
-    let rust_dir = takeDirectory confDatalogFile
+    let dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold } in
-        compile prog specname rs_code toml_code rust_dir crate_types
-    -- generate Java API
-    if confJava then compileJava prog specname
-    else return ()
+        compile prog specname rs_code toml_code dir crate_types
+    when confJava $
+        compileJavaBindings prog specname (dir </> rustProjectDir specname)

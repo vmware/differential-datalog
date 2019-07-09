@@ -87,7 +87,8 @@ ruleRHSVarSet' d rl i =
          -- FlatMap introduces a variable
          RHSFlatMap v e                -> let t = case exprType' d (CtxRuleRFlatMap rl i) e of
                                                        TOpaque _ _         [t]     -> t
-                                                       TOpaque _ "std.Map" [kt,vt] -> tTuple [kt,vt]
+                                                       TOpaque _ tname     [kt,vt] | tname == mAP_TYPE
+                                                                                   -> tTuple [kt,vt]
                                           in S.insert (Field nopos v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable

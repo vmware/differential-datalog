@@ -54,6 +54,8 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
+import Language.DifferentialDatalog.CompileJava
+import Language.DifferentialDatalog.FlatBuffer
 import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
 main :: IO ()
@@ -83,7 +85,7 @@ goldenTests progress = do
   let compiler_tests = testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [] ["staticlib"])
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress True file [] ["staticlib"])
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
@@ -108,7 +110,7 @@ souffleTest testdir progress =
         [ goldenVsFiles testdir
           [testdir </> "souffle.dump.expected.gz"]
           [testdir </> "souffle.dump"]
-          $ do {convertSouffle testdir progress; compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
+          $ do {convertSouffle testdir progress; compilerTest progress True (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
 
 convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
@@ -121,17 +123,22 @@ convertSouffle testdir progress = do
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
 
-parseValidate :: FilePath -> String -> IO (DatalogProgram, Doc, Doc)
-parseValidate file program = do
+parseValidate :: FilePath -> Bool -> String -> IO (DatalogProgram, Doc, Doc)
+parseValidate file java program = do
     (d, rs_code, toml_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
-    case validate d of
-         Left e   -> errorWithoutStackTrace $ "error: " ++ e
-         Right d' -> return (d', rs_code, toml_code)
+    d' <- case validate d of
+               Left e   -> errorWithoutStackTrace $ "error: " ++ e
+               Right d' -> return d'
+    when java $
+        case flatBufferValidate d' of
+             Left e  -> errorWithoutStackTrace $ "error: " ++ e
+             Right{} -> return ()
+    return (d', rs_code, toml_code)
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
 compileFailingProgram file program =
-    (show <$> parseValidate file program) `catch`
+    (show <$> parseValidate file False program) `catch`
              (\e -> return $ show (e::SomeException))
 
 shouldFail fname = ".fail." `isInfixOf` fname
@@ -157,7 +164,7 @@ parserTest fname = do
         writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
       else do
         -- parse Datalog file and output its AST
-        (prog, _, _) <- parseValidate fname body
+        (prog, _, _) <- parseValidate fname False body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -172,19 +179,21 @@ parserTest fname = do
 --
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: Bool -> FilePath -> [String] -> [String] -> IO ()
-compilerTest progress fname cli_args crate_types = do
+compilerTest :: Bool -> Bool -> FilePath -> [String] -> [String] -> IO ()
+compilerTest progress java fname cli_args crate_types = do
     fname <- makeAbsolute fname
     body <- readFile fname
     let specname = takeBaseName fname
-    (prog, rs_code, toml_code) <- parseValidate fname body
+    (prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
-    let rust_dir = takeDirectory fname
+    let dir = takeDirectory fname
     let ?cfg = defaultCompilerConfig in
-        compile prog specname rs_code toml_code rust_dir crate_types
+        compile prog specname rs_code toml_code dir crate_types
+    when java $
+        compileJavaBindings prog specname (dir </> rustProjectDir specname)
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
-                          cwd = Just $ rust_dir </> rustProjectDir specname
+                          cwd = Just $ dir </> rustProjectDir specname
                      }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (code /= ExitSuccess) $ do
@@ -192,7 +201,7 @@ compilerTest progress fname cli_args crate_types = do
                                  "\nstdout:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
     {-let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
-                          cwd = Just $ rust_dir </> specname
+                          cwd = Just $ dir </> specname
                      }
 
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
@@ -200,7 +209,7 @@ compilerTest progress fname cli_args crate_types = do
         errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
                                  "\nstderr:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo -}
-    cliTest progress fname specname rust_dir cli_args
+    cliTest progress fname specname dir cli_args
 
 progressThread :: IO ()
 progressThread = do
