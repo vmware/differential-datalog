@@ -26,6 +26,7 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
+    "aggregates_complex", # cannot be evalated bottom-up; issue 293
     "aggregates",  # issue 227 - count of empty group
     "magic_aggregates",  # 227
     "count",       # 227
@@ -123,6 +124,8 @@ def compile_example(directory, f):
     if code == 0:
         run_command(["rm", f + ".tmp"])
         tests_compiled_successfully = tests_compiled_successfully + 1
+    else:
+        print "Error compiling " + directory + "/" + f
     os.chdir(savedir)
     return code
 
