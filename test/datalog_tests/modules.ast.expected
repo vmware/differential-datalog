@@ -7,6 +7,8 @@ typedef foolib.ns1.m1.R1 = foolib.ns1.m1.R1{f1: foolib.ns1.m2.T2}
 typedef foolib.ns1.m1.T1 = foolib.ns1.m1.T1{f1: bigint}
 typedef foolib.ns1.m2.R2 = foolib.ns1.m2.R2{f1: bool}
 typedef foolib.ns1.m2.T2 = foolib.ns1.m2.T2{f1: bigint}
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef redist.BiEdge = redist.BiEdge{parent: redist.entid_t, child: redist.entid_t}
 typedef redist.DdlogBinding = redist.DdlogBinding{tn: redist.tnid_t, entity: redist.entid_t}
 typedef redist.DdlogDependency = redist.DdlogDependency{parent: redist.entid_t, child: redist.entid_t}
@@ -31,6 +33,7 @@ function fmain (a1: foolib.lib.Rlib): foolib.ns1.m1.R1 =
     foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=0}}
 function foolib.ns1.m1.fM1 (a1: foolib.ns1.m1.T1): foolib.ns1.m1.R1 =
     foolib.ns1.m1.R1{.f1=foolib.ns1.m2.T2{.f1=a1.f1}}
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 function redist.edge_child (e: redist.BiEdge): redist.entid_t =
     e.child
 function redist.edge_parent (e: redist.BiEdge): redist.entid_t =

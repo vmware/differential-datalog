@@ -1,5 +1,7 @@
 typedef Edge = Edge{s: node, t: node}
 typedef Path = Path{s1: node, s2: node}
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef node = string
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
@@ -9,6 +11,7 @@ typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>

@@ -5,6 +5,8 @@ typedef Logical_Router_Port = Logical_Router_Port{name: string, lr: bigint, mac:
 typedef Logical_Switch = Logical_Switch{ls: bigint, has_stateful_acl: bool, has_load_balancer: bool}
 typedef Logical_Switch_Port = Logical_Switch_Port{lsp: bigint, ls: bigint, parent: std.Option<string>, tag_request: std.Option<bigint>, tag: std.Option<bigint>, up: std.Option<bool>, enabled: bool, port_security_not_empty: bool, port_security_l2: string, port_security_ip_ingress: string, port_security_ip_egress: string, port_security_nd: string, name: string, _type: string, macs: string}
 typedef Logical_Switch_Port_IP = Logical_Switch_Port_IP{lspip: bigint, ip_version: bigint, lsp: bigint, lsp_name: string, lsp_enabled: bool, lsp_type: string, ls: bigint, mac: string, ip: string, sn_ip: string, up: bool}
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef stage = LS_IN_ACL{} | LS_OUT_ACL{} | LR_IN_ADMISSION{} | LR_IN_IP_INPUT{} | LR_IN_UNSNAT{} | LR_OUT_SNAT{} | LR_IN_DNAT{} | LR_IN_ARP_RESOLVE{} | LR_IN_ARP_REQUEST{} | LR_IN_DEFRAG{} | LR_OUT_DELIVERY{} | LS_IN_LB{} | LS_OUT_LB{} | LS_IN_PRE_ACL{} | LS_OUT_PRE_ACL{} | LS_IN_PRE_LB{} | LS_OUT_PRE_LB{} | LS_IN_PRE_STATEFUL{} | LS_OUT_PRE_STATEFUL{} | LS_IN_STATEFUL{} | LS_OUT_STATEFUL{} | LS_IN_PORT_SEC_L2{} | LS_IN_PORT_SEC_IP{} | LS_IN_PORT_SEC_ND{} | LS_IN_ARP_RSP{} | LS_IN_DHCP_OPTIONS{} | LS_IN_DHCP_RESPONSE{} | LS_IN_L2_LKUP{} | LS_OUT_PORT_SEC_IP{} | LS_OUT_PORT_SEC_L2{}
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
@@ -14,6 +16,7 @@ typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
 extern type std.Ref<'A>
 extern type std.Set<'A>
 extern type std.Vec<'A>
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>

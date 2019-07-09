@@ -8,6 +8,8 @@ typedef SCCEdge = SCCEdge{parent: entid_t, child: entid_t}
 typedef SCCSpan = SCCSpan{scc: entid_t, span: std.Ref<tinyset.Set64<tnid_t>>}
 typedef Span = Span{entity: entid_t, tns: std.Ref<tinyset.Set64<tnid_t>>}
 typedef entid_t = bit<32>
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
@@ -22,6 +24,7 @@ function edge_child (e: BiEdge): entid_t =
     e.child
 function edge_parent (e: BiEdge): entid_t =
     e.parent
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
