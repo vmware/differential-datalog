@@ -1,5 +1,10 @@
 /* Description: DDlog "standard library" automatically imported into every module */
 
+/* Ensure that `log.rs` gets linked into the program even if noone imports
+ * its functionality, as it exports the `ddlog_log_set_callback`, expected, e.g., 
+ * by Java bindings. */
+import log
+
 /*
  * Ref
  */

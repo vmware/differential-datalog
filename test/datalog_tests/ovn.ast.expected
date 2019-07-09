@@ -66,6 +66,8 @@ typedef ip6_subnet_t = IP6Subnet{addr: ip6_addr_t, mask: ip6_addr_t}
 typedef ip_addr_t = IPAddr4{addr4: ip4_addr_t} | IPAddr6{addr6: ip6_addr_t}
 typedef ip_port_t = IPPort{ip: string, port: std.Option<port_t>}
 typedef ip_subnet_t = IPSubnet4{ip4_subnet: ip4_subnet_t} | IPSubnet6{ip6_subnet: ip6_subnet_t}
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef mac_addr_t = bit<48>
 typedef port_t = bit<16>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
@@ -86,6 +88,7 @@ extern function in6_generate_lla (mac: mac_addr_t): ip6_addr_t
 extern function ip_address_and_port_from_lb_key (key: string): ip_port_t
 extern function ip_parse (str: string): std.Option<ip_addr_t>
 extern function ipv6_string_mapped (addr: ip6_addr_t): string
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>

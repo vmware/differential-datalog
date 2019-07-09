@@ -31,7 +31,7 @@ rm -f ../../test/datalog_tests/redist_ddlog/target/release/libredist_ddlog.so
 # Compile RedistTest.java
 javac -cp ..:fastutil-8.2.2.jar RedistTest.java
 # Create a shared library containing all the native code: ddlogapi.c, libredist_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template ../ddlogapi.c -L../../test/datalog_tests/redist_ddlog/target/release/ -lredist_ddlog -o libddlogapi.${SHLIBEXT}
+${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template ../ddlogapi.c -I../../lib -L../../test/datalog_tests/redist_ddlog/target/release/ -lredist_ddlog -o libddlogapi.${SHLIBEXT}
 # Run the java program pointing to the created shared library
 # Note: this assumes that the fastutil-8.2.2.jar is in the current folder
 java -Djava.library.path=. -cp ./fastutil-8.2.2.jar:../ddlogapi.jar:. RedistTest ../../test/datalog_tests/redist.dat > redist.java.dump

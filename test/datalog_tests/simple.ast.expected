@@ -118,6 +118,8 @@ extern type intern.IObj<'A>
 typedef intern.IString = intern.IObj<string>
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef line = bigint
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef nested_t = N{field: C}
 typedef person = string
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
@@ -284,6 +286,7 @@ extern function h (a: (bigint, bigint)): (bigint, bigint)
 extern function intern.istring_ord (s: intern.IString): bit<32>
 extern function intern.istring_str (s: intern.IString): string
 extern function intern.string_intern (s: string): intern.IString
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool =
     (x == y)

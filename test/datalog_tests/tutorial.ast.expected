@@ -54,6 +54,8 @@ typedef ip6_addr_t = bit<128>
 typedef ip6_pkt_t = IP6Pkt{ttl: bit<8>, src: ip6_addr_t, dst: ip6_addr_t, payload: ip_payload_t}
 typedef ip_addr_t = IPAddr{addr: bit<32>}
 typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} | IPUDP{udp: udp_pkt_t} | IPOther{}
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
@@ -102,6 +104,7 @@ function is_multicast_addr (ip: ip_addr_t): bool =
     (ip.addr[31:28] == 4'd14)
 function is_target_audience (person: Person): bool =
     ((person.nationality == "USA") and (person.occupation == "student"))
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 function mac_addr_t2string (mac: mac_addr_t): string =
     ((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0]))
 function nethost_t2string (h: nethost_t): string =
