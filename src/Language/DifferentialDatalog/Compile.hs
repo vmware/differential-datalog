@@ -2094,11 +2094,14 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     where
     arg =  val exprOp
     e' = exprMap (E . sel3) e
+    t = exprType' d ctx (E e')
+    uint = (not $ isInt d t) && (typeWidth (typ' d t) <= 128)
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
-             BNeg   -> mkTruncate (parens $ "!" <> arg) $ exprType' d ctx (E e')
-             UMinus -> mkTruncate (parens $ "-" <> arg) $ exprType' d ctx (E e')
-
+             BNeg   -> mkTruncate (parens $ "!" <> arg) t
+             UMinus | uint
+                    -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
+             UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
 -- keep type ascriptions in LHS of assignment and in integer constants
