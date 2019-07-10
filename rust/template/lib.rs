@@ -60,6 +60,7 @@ pub mod update_handler;
 pub mod ovsdb;
 pub mod api;
 pub mod channel;
+pub mod server;
 
 pub fn string_append_str(mut s1: String, s2: &str) -> String
 {

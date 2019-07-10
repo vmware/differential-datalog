@@ -1,19 +1,19 @@
 use fallible_iterator::FallibleIterator;
 use differential_datalog::record::Record;
 
-pub trait FromObservable<T, E> {
-    fn from_observable(Observable<T, E>) -> Self;
-}
 
-pub trait IntoObservable<T, E> {
-    fn into_observable(&self) -> Observable<T, E>;
-}
+// pub trait FromObservable<T, E> {
+//     fn from_observable(Observable<T, E>) -> Self;
+// }
+//
+// pub trait IntoObservable<T, E> {
+//     fn into_observable(&self) -> Observable<T, E>;
+// }
 
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
 pub trait Observable<T, E> {
-    fn subscribe(&self, observer: Observer<T, E>);
-    // -> Subscription; TODO ignoring subscription for now
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, E>>); // -> Subscription;
 }
 
 // The channel is an observer of changes from
