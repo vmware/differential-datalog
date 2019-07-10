@@ -50,23 +50,20 @@ fn handle_cmd(hddlog: &HDDlog,
         Command::Commit(record_delta) => {
             // uncomment to enable profiling
             // PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
-            let mut current_table = None;
             let res = if record_delta {
-                hddlog.transaction_commit_dump_changes().map(|changes| if print_deltas {
-                    for (table_id, table_data) in changes.as_ref().iter() {
-                        for (val, weight) in table_data.iter() {
-                            debug_assert!(*weight == 1 || *weight == -1);
-                            if current_table != Some(*table_id) {
-                                let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
-                                current_table = Some(*table_id);
-                            };
-                            let _ = writeln!(stdout(),
-                                             "{}: {}",
-                                             val,
-                                             if *weight == 1 { "+1" } else { "-1" });
+                hddlog.transaction_commit_dump_changes()
+                    .map(|changes| if print_deltas {
+                        for (table_id, table_data) in changes.as_ref().iter() {
+                            let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
+                            for (val, weight) in table_data.iter() {
+                                debug_assert!(*weight == 1 || *weight == -1);
+                                let _ = writeln!(stdout(),
+                                                 "{}: {:+}",
+                                                 val,
+                                                 *weight);
+                            }
                         }
-                    }
-                })
+                    })
             } else {
                 hddlog.transaction_commit()
             };
