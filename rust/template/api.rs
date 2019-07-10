@@ -111,9 +111,7 @@ impl HDDlog {
             Ok(()) => {
                 self.update_handler.after_commit(true);
                 let mut delta = self.deltadb.lock().unwrap();
-                let res = delta.take();
-                // *delta = None;
-                Ok(res.unwrap())
+                Ok(delta.take().unwrap())
             },
             Err(e) => {
                 self.update_handler.after_commit(false);
@@ -255,16 +253,6 @@ impl HDDlog {
             print_err,
             replay_file:    None}
     }
-
-    // fn dump_delta(db: &mut DeltaMap) -> impl iter::Iterator<Item=(usize, &record::Record, bool)>
-    // {
-    //     db.as_ref().iter().map(|(table_id, table_data)| {
-    //         table_data.iter().map(|(val, weight)| {
-    //             debug_assert!(*weight == 1 || *weight == -1);
-    //             (*table_id, &val.clone().into_record(), *weight == 1)
-    //         })
-    //     }).flatten()
-    // }
 
     fn db_dump_table<F>(db: &mut ValMap,
                         table: libc::size_t,

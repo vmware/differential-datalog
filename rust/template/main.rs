@@ -49,62 +49,29 @@ fn handle_cmd(hddlog: &HDDlog,
         },
         Command::Commit(record_delta) => {
             // uncomment to enable profiling
-            //PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
-            if record_delta {
-                match hddlog.transaction_commit_dump_changes() {
-                    Ok(changes) => {
-                        let mut current_table = None;
-                        for (table_id, table_data) in changes.as_ref().iter() {
-                            for (val, weight) in table_data.iter() {
-                                debug_assert!(*weight == 1 || *weight == -1);
-                                if current_table != Some(*table_id) {
-                                    let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
-                                    current_table = Some(*table_id);
-                                };
-                                let _ = writeln!(stdout(),
-                                                 "{}: {}",
-                                                 val.clone().into_record(),
-                                                 if *weight == 1 { "+1" } else { "-1" });
-                            }
+            // PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
+            let mut current_table = None;
+            let res = if record_delta {
+                hddlog.transaction_commit_dump_changes().map(|changes| if print_deltas {
+                    for (table_id, table_data) in changes.as_ref().iter() {
+                        for (val, weight) in table_data.iter() {
+                            debug_assert!(*weight == 1 || *weight == -1);
+                            if current_table != Some(*table_id) {
+                                let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
+                                current_table = Some(*table_id);
+                            };
+                            let _ = writeln!(stdout(),
+                                             "{}: {}",
+                                             val,
+                                             if *weight == 1 { "+1" } else { "-1" });
                         }
-                        Ok(())
-                    },
-                    Err(e) => {
-                        Err(e)
                     }
-                }
+                })
             } else {
                 hddlog.transaction_commit()
-            }
-            // let res = if record_delta {
-
-
-            //     let cb = if print_deltas {
-            //         Some(|table, val: &Record, pol: bool| {
-            //             if current_table != Some(table) {
-            //                 let _ = writeln!(stdout(), "{}:", relid2name(table).unwrap());
-            //                 current_table = Some(table);
-            //             };
-            //             let _ = writeln!(stdout(), "{}: {}", *val, if pol { "+1" } else { "-1" });
-            //         })
-            //     } else {
-            //         None
-            //     };
-
-            //     if let Some(f) = cb {
-            //         for (table_id, table_data) in changes.as_ref().iter() {
-            //             for (val, weight) in table_data.iter() {
-            //                 debug_assert!(*weight == 1 || *weight == -1);
-            //                 f(*table_id as libc::size_t,
-            //                   &val.clone().into_record(),
-            //                   *weight == 1);
-            //             }
-            //         }
-            //     };
-            // } else {
-            // };
-            // //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
-            // res
+            };
+            //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
+            res
         },
         Command::Comment => {
             Ok(())
