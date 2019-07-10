@@ -50,10 +50,9 @@ impl HDDlog {
     }
 
     // TODO wrap the C API on this
-    pub fn run<F>(workers: usize,
+    pub fn run(workers: usize,
                   do_store: bool,
-                  cb: Option<F>) -> HDDlog
-    where F: Callback
+                  cb: Option<impl Callback>) -> HDDlog
     {
         Self::do_run(workers,
                      do_store,
