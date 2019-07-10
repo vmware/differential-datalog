@@ -28,6 +28,7 @@ xfail = [
     "aggregates2", # aggregation used in head
     "aggregates_complex", # cannot be evalated bottom-up; issue 293
     "aggregates",  # issue 227 - count of empty group
+    "number_constants", # overflow of negation; issue 294
     "magic_aggregates",  # 227
     "count",       # 227
     "magic_count", # 227
