@@ -27,7 +27,7 @@ make -C ..
 # Compile SpanTest.java and the generated Java file
 javac -cp .. SpanTest.java Span_string.java
 # Create a shared library containing all the native code: ddlogapi.c, libspan_string_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template ../ddlogapi.c -L../../test/datalog_tests/span_string_ddlog/target/release/ -lspan_string_ddlog -o libddlogapi.${SHLIBEXT}
+${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L../../test/datalog_tests/span_string_ddlog/target/release/ -lspan_string_ddlog -o libddlogapi.${SHLIBEXT}
 # Run the java program pointing to the created shared library
 java -Djava.library.path=. -cp ../ddlogapi.jar:. SpanTest > spantest.dump
 diff spantest.dump spantest.dump.expected

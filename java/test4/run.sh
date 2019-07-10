@@ -26,7 +26,7 @@ make -C ..
 # Compile XTest.java and the generated Java file
 javac -cp .. XTest.java X.java
 # Create a shared library containing all the native code: ddlogapi.c, libspan_string_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template ../ddlogapi.c -Lx_ddlog/target/debug/ -lx_ddlog -o libddlogapi.${SHLIBEXT}
+${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -Lx_ddlog/target/debug/ -lx_ddlog -o libddlogapi.${SHLIBEXT}
 # Run the java program pointing to the created shared library
 java -Djava.library.path=. -cp ../ddlogapi.jar:. XTest > xtest.dump
 diff xtest.dump xtest.dump.expected
