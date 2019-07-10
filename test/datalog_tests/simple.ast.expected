@@ -788,6 +788,7 @@ Signed(.n=(32'sd28 / 32'sd4)).
 Signed(.n=(32'sd24 % 32'sd16)).
 Signed(.n=(32'sd18 >> 32'd1)).
 Signed(.n=(32'sd5 << 32'd1)).
+Signed(.n=(- 32'sd2147483648)).
 Cast_u32(.description="32'd100  as bit<32>", .actual=(32'd100 as bit<32>), .expected=32'd100).
 Cast_u32(.description="16'd100  as bit<32>", .actual=(16'd100 as bit<32>), .expected=32'd100).
 Cast_u32(.description="8'd100   as bit<32>", .actual=(8'd100 as bit<32>), .expected=32'd100).

@@ -170,6 +170,7 @@ Sib{"Bob","Alice"}
 Sib{"Bob","Ben"}
 
 Signed:
+Signed{-2147483648}
 Signed{0}
 Signed{1}
 Signed{2}
@@ -380,6 +381,7 @@ Sib{"Bob","Alice"}
 Sib{"Bob","Ben"}
 
 Signed:
+Signed{-2147483648}
 Signed{0}
 Signed{1}
 Signed{2}
@@ -861,6 +863,7 @@ Arithm{12}
 Arithm{13}
 Arithm{14}
 Signed
+Signed{-2147483648}
 Signed{0}
 Signed{1}
 Signed{2}

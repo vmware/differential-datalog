@@ -909,6 +909,7 @@ Signed(32'sd28 / 32'sd4).
 Signed(32'sd24 % 32'sd16).
 Signed(32'sd18 >> 1).
 Signed(32'sd5 << 1).
+Signed(- (2147483648)).
 
 /* Type casts */
 output relation Cast_u32(description: string, actual: bit<32>, expected: bit<32>)
