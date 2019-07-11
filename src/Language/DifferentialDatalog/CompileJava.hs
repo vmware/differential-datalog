@@ -81,7 +81,7 @@ compileJavaBindings :: DatalogProgram -> String -> FilePath -> IO ()
 compileJavaBindings prog specname dir = do
     let java_dir = dir </> "java"
     createDirectoryIfMissing True java_dir
-    writeFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
+    --writeFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
     writeFile (java_dir </> specname <.> ".fbs") (render $ compileFlatBufferSchema prog)
 
 
