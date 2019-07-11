@@ -25,7 +25,7 @@ use differential_datalog::program::*;
 use cmd_parser::*;
 use differential_datalog::record::*;
 use time::precise_time_ns;
-use api::HDDlog;
+use api::{HDDlog, updcmd2upd};
 use std::io::Write;
 
 // uncomment to enable profiling
@@ -35,7 +35,7 @@ use std::io::Write;
 #[allow(clippy::let_and_return)]
 fn handle_cmd(hddlog: &HDDlog,
               print_deltas: bool,
-              upds: &mut Vec<UpdCmd>,
+              upds: &mut Vec<Update<Value>>,
               cmd: Command) -> (i32, bool)
 {
     let resp = (
@@ -122,7 +122,14 @@ fn handle_cmd(hddlog: &HDDlog,
             Ok(())
         },
         Command::Update(upd, last) => {
-            upds.push(upd.clone());
+             match updcmd2upd(&upd) {
+                Ok(u)  => upds.push(u),
+                Err(e) => {
+                    upds.clear();
+                    eprintln!("Error: {}", e);
+                    return (-1, false);
+                }
+            };
             if last {
                 apply_updates(hddlog, upds)
             } else {
@@ -136,11 +143,9 @@ fn handle_cmd(hddlog: &HDDlog,
     }
 }
 
-fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<UpdCmd>) -> Response<()> {
+fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<Value>>) -> Response<()> {
     if !upds.is_empty() {
-        let res = hddlog.apply_updates(upds.iter());
-        upds.clear();
-        res
+        hddlog.apply_valupdates(upds.drain(..))
     } else { Ok(()) }
 }
 

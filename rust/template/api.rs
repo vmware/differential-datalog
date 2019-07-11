@@ -31,7 +31,6 @@ pub struct HDDlog {
 
 /* Public API */
 impl HDDlog {
-    
     pub fn print_err(f: Option<extern "C" fn(msg: *const raw::c_char)>, msg: &str) {
         match f {
             None    => eprintln!("{}", msg),
@@ -145,13 +144,63 @@ impl HDDlog {
         self.prog.lock().unwrap().transaction_rollback()
     }
 
-    pub fn apply_updates<'a, I: iter::ExactSizeIterator<Item=&'a record::UpdCmd> + Clone>(&self, upds: I) -> Result<(), String>{
-        self.record_updates(upds.clone());
+    /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `Value`s.
+     */
+    pub fn apply_updates<'a, V, I>(&self, upds: I) -> Result<(), String>
+        where V: Deref<Target=record::UpdCmd>,
+              I: iter::Iterator<Item=V>
+    {
+        let mut conversion_err = false;
+        let mut msg: Option<String> = None;
 
-        let upds_vec: Result<Vec<_>, _> = upds.map(|upd| updcmd2upd(upd))
-                                              .collect();
-        let upds = upds_vec?;
-        self.prog.lock().unwrap().apply_updates(upds)
+        /* Iterate through all updates, but only feed them to `apply_valupdates` until we reach
+         * the first invalid command.
+         * XXX: We must iterate till the end of `upds`, as `ddlog_apply_updates` relies on this to
+         * deallocate all commands.
+         */
+        let res = self.apply_valupdates(upds.flat_map(|u| {
+            if conversion_err {
+                None
+            } else {
+                match updcmd2upd(u.deref()) {
+                    Ok(u) => Some(u),
+                    Err(e) => {
+                        conversion_err = true;
+                        msg = Some(format!("invalid command {:?}: {}", *u, e));
+                        None
+                    }
+                }
+            }
+        }));
+        match msg {
+            Some(e) => Err(e),
+            None => res
+        }
+    }
+
+    pub fn apply_valupdates<I: iter::Iterator<Item=Update<Value>>>(&self, upds: I) -> Result<(), String>
+    {
+        if let Some(ref f) = self.replay_file {
+            let mut file = f.lock().unwrap();
+            /* Count the number of elements in `upds`. */
+            let mut n = 0;
+
+            let res = self.prog.lock().unwrap().apply_updates(upds.enumerate().map(|(i, upd)| {
+                n += 1;
+                if i>0 {
+                    let _ = writeln!(file, ",");
+                };
+                record_valupdate(&mut *file, &upd);
+                upd
+            }));
+            /* Print semicolon if `upds` were not empty. */
+            if n > 0 {
+                let _ = writeln!(file, ";");
+            }
+            res
+        } else {
+            self.prog.lock().unwrap().apply_updates(upds)
+        }
     }
 
     pub fn clear_relation(&self, table: usize) -> Result<(), String> {
@@ -321,19 +370,6 @@ impl HDDlog {
         }
     }
 
-    fn record_updates<'a, I: iter::ExactSizeIterator<Item=&'a record::UpdCmd>>(&self, upds: I) {
-        let n = upds.len();
-
-        if let Some(ref f) = self.replay_file {
-            let mut file = f.lock().unwrap();
-            for (i, u) in upds.enumerate() {
-                let sep = if i == n - 1 { ";" } else { "," };
-                record_update(&mut *file, u);
-                let _ = writeln!(file, "{}", sep);
-            }
-        }
-    }
-
     fn record_clear_relation(&self, table:usize) {
         if let Some(ref f) = self.replay_file {
             if writeln!(f.lock().unwrap(), "clear {};", relid2name(table).unwrap_or(&"???")).is_err() {
@@ -385,6 +421,23 @@ pub fn record_update(file: &mut fs::File, upd: &record::UpdCmd)
     }
 }
 
+pub fn record_valupdate(file: &mut fs::File, upd: &Update<Value>)
+{
+    match upd {
+        Update::Insert{relid, v} => {
+            let _ = write!(file, "insert {}[{}]", relid2name(*relid).unwrap_or(&"???"), v);
+        },
+        Update::DeleteValue{relid, v} => {
+            let _ = write!(file, "delete {}[{}]", relid2name(*relid).unwrap_or(&"???"), v);
+        },
+        Update::DeleteKey{relid, k} => {
+            let _ = write!(file, "delete_key {} {}", relid2name(*relid).unwrap_or(&"???"), k);
+        },
+        Update::Modify{relid, k, m} => {
+            let _ = write!(file, "modify {} {} <- {}", relid2name(*relid).unwrap_or(&"???"), k, m);
+        }
+    }
+}
 
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String>
 {
@@ -427,7 +480,7 @@ fn relident2name(r: &record::RelIdentifier) -> Option<&str> {
 }
 
 /***************************************************
- * C bindings 
+ * C bindings
  ***************************************************/
 
 #[no_mangle]
@@ -628,14 +681,8 @@ pub unsafe extern "C" fn ddlog_apply_updates(prog: *const HDDlog, upds: *const *
     };
     let prog = Arc::from_raw(prog);
 
-    let mut cmds_vec: Vec<Box<record::UpdCmd>> = Vec::with_capacity(n as usize);
-
-    for i in 0..n {
-        cmds_vec.push(Box::from_raw(*upds.add(i)));
-    }
-
-    let res = prog.apply_updates(cmds_vec.iter().map(|x|x.as_ref()))
-                  .map(|_|0).unwrap_or_else(|e|{
+    let res = prog.apply_updates((0..n).map(|i| Box::from_raw(*upds.offset(i as isize))))
+                  .map(|_|0).unwrap_or_else(|e| {
                       prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
                       -1
                   });

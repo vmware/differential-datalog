@@ -52,7 +52,7 @@ fn apply_updates(prog: &sync::Arc<HDDlog>, prefix: *const c_char, updates_str: *
     record_updatecmds(prog, &commands);
 
     let updates: Result<Vec<Update<Value>>, String> = commands.iter().map(|c|updcmd2upd(c)).collect();
-    prog.prog.lock().unwrap().apply_updates(updates?)
+    prog.prog.lock().unwrap().apply_updates(updates?.into_iter())
 }
 
 fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
