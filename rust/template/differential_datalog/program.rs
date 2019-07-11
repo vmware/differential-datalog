@@ -1574,7 +1574,7 @@ impl<V:Val> RunningProgram<V> {
         self.apply_updates(vec![Update::Insert {
             relid: relid,
             v:     v
-        }])
+        }].into_iter())
     }
 
     /// Remove a record if it exists in the relation.
@@ -1582,7 +1582,7 @@ impl<V:Val> RunningProgram<V> {
         self.apply_updates(vec![Update::DeleteValue {
             relid: relid,
             v:     v
-        }])
+        }].into_iter())
     }
 
     /// Remove a key if it exists in the relation.
@@ -1590,7 +1590,7 @@ impl<V:Val> RunningProgram<V> {
         self.apply_updates(vec![Update::DeleteKey {
             relid: relid,
             k:     k
-        }])
+        }].into_iter())
     }
 
     /// Modify a key if it exists in the relation.
@@ -1599,19 +1599,19 @@ impl<V:Val> RunningProgram<V> {
             relid: relid,
             k:     k,
             m:     m
-        }])
+        }].into_iter())
     }
 
     /// Apply multiple insert and delete operations in one batch.
     /// Updates can only be applied to input relations (see `struct Relation`).
-    pub fn apply_updates(&mut self, mut updates: Vec<Update<V>>) -> Response<()> {
+    pub fn apply_updates<I: Iterator<Item=Update<V>>>(&mut self, updates: I) -> Response<()> {
         if !self.transaction_in_progress {
             return Err(format!("apply_updates: no transaction in progress"));
         };
 
         /* Remove no-op updates to maintain set semantics */
         let mut filtered_updates = Vec::new();
-        for upd in updates.drain(..) {
+        for upd in updates {
             let rel = self.relations.get_mut(&upd.relid()).ok_or_else(||format!("unknown input relation {}", upd.relid()))?;
             match rel {
                 RelationInstance::Flat{elements, delta} => {
@@ -1655,7 +1655,7 @@ impl<V:Val> RunningProgram<V> {
                 }
             }
         };
-        self.apply_updates(upds)
+        self.apply_updates(upds.into_iter())
     }
 
     /* increment the counter associated with value `x` in the delta-set
@@ -1891,7 +1891,7 @@ impl<V:Val> RunningProgram<V> {
             };
         };
         //println!("updates: {:?}", updates);
-        self.apply_updates(updates)
+        self.apply_updates(updates.into_iter())
             .and_then(|_| self.flush())
             .and_then(|_| {
                 /* validation: all deltas must be empty */

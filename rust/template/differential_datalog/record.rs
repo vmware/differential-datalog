@@ -562,7 +562,7 @@ pub unsafe extern "C" fn ddlog_delete_key_cmd(table: libc::size_t, rec: *mut Rec
 
 /// `Mutator` trait represents an object that can be used to mutate a value (e.g., change some of
 /// its fields).
-pub trait Mutator<V> {
+pub trait Mutator<V>: fmt::Display {
     /// Consumes a value and returns an updated value.
     fn mutate(&self, v: &mut V) -> Result<(), String>;
 }
