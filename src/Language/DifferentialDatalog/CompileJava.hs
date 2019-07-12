@@ -81,9 +81,10 @@ compileJavaBindings :: DatalogProgram -> String -> FilePath -> IO ()
 compileJavaBindings prog specname dir = do
     let java_dir = dir </> "java"
     createDirectoryIfMissing True java_dir
-    --writeFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
-    writeFile (java_dir </> specname <.> ".fbs") (render $ compileFlatBufferSchema prog)
-
+    --updateFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
+    updateFile (java_dir </> specname <.> ".fbs") (render $ compileFlatBufferSchema prog specname)
+    mapM_ (\(fname, doc) -> updateFile (java_dir </> fname) $ render doc)
+          $ compileFlatBufferJavaBindings prog specname
 
 -- generate a Java program from a DDlog program
 -- The Java program has some utility function to more easily create
