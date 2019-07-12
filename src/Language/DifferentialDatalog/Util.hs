@@ -34,6 +34,8 @@ import Data.Word
 import Data.Binary.Get
 import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as BL
+import System.Directory
+import System.FilePath
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
@@ -166,3 +168,17 @@ checksum16BS bs | l `mod` 2 == 0 = checksum16 $ runGet (sequence $ replicate (l 
 removeIndices :: [a] -> [Int] -> [a]
 removeIndices xs indices =
     foldl' (\xs' i -> take i xs' ++ drop (i+1) xs') xs $ reverse $ sort indices
+
+-- Replace file content if changed
+updateFile :: FilePath -> String -> IO ()
+updateFile path content = do
+    createDirectoryIfMissing True $ takeDirectory path
+    exists <- doesFileExist path
+    let tmppath = addExtension path "tmp"
+    if exists
+       then do
+            oldcontent <- readFile path
+            when (oldcontent /= content) $ do
+                writeFile tmppath content
+                renameFile tmppath path
+       else writeFile path content

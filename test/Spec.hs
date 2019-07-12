@@ -191,6 +191,25 @@ compilerTest progress java fname cli_args crate_types = do
         compile prog specname rs_code toml_code dir crate_types
     when java $
         compileJavaBindings prog specname (dir </> rustProjectDir specname)
+    -- compile FlatBuffer schema
+    let flatc_proc = (proc "flatc" (["-j", "-r", specname ++ ".fbs"])) {
+                          cwd = Just $ dir </> rustProjectDir specname </> "java"
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
+                                 "\nstdout:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
+    -- compile generated Java code
+    let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
+                            cwd = Just $ dir </> rustProjectDir specname </> "java"
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode javac_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "javac failed with exit code " ++ show code ++
+                                 "\nstdout:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
+
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ dir </> rustProjectDir specname

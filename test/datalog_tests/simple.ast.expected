@@ -79,8 +79,12 @@ typedef Rel4 = Rel4{x: bigint, y: IPAddr, b: bool}
 typedef Request = Request{name: string, id: string}
 typedef Ris_true = Ris_true{_s: TB}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
+typedef SetOfSet = SetOfSet{x: std.Set<std.Set<bool>>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef Signed = Signed{n: signed<32>}
+typedef Signed16 = Signed16{x: signed<16>}
+typedef Signed64 = Signed64{x: signed<64>}
+typedef Signed8 = Signed8{x: signed<8>}
 typedef Span = Span{entity: entid_t, tns: std.Set<tnid_t>}
 typedef String2 = String2{s: string}
 typedef StringOrd = StringOrd{s: string, ord: bit<32>}
@@ -578,8 +582,12 @@ output relation Rel4 [Rel4]
 input relation Request [Request]
 relation Ris_true [Ris_true]
 output relation SCCLabel [(bigint, bigint)]
+input relation SetOfSet [SetOfSet]
 output relation Sib [Sib]
 output relation Signed [Signed]
+input relation Signed16 [Signed16]
+input relation Signed64 [Signed64]
+input relation Signed8 [Signed8]
 output relation Span [Span]
 input relation String2 [String2]
 output relation StringOrd [StringOrd]

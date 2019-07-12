@@ -1000,10 +1000,10 @@ UMinus_bigint("-100", -100).
 UMinus_bigint("- -100", - -100).
 UMinus_bigint("-32768", -32768).
 
+/* Test recursion + aggregation */
 typedef entid_t = bit<32>
 typedef tnid_t = bit<16>
 
-/* Recursion + aggregation */
 input relation DdlogNode(id: entid_t)
 input relation DdlogBinding(tn: tnid_t, entity: entid_t)
 input relation DdlogDependency(parent: entid_t, child: entid_t)
@@ -1021,3 +1021,9 @@ Span(parent, tns) :-
     DdlogDependency(child, parent),
     Span(child, child_tns),
     var tns = Aggregate((parent), group_set_unions(child_tns)).
+
+input relation Signed8(x: signed<8>)
+input relation Signed16(x: signed<16>)
+input relation Signed64(x: signed<64>)
+
+input relation SetOfSet(x: Set<Set<bool>>)

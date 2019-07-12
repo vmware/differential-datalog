@@ -450,20 +450,6 @@ compile d specname rs_code toml_code dir crate_types = do
     updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
     return ()
 
--- Replace file content if changed
-updateFile :: FilePath -> String -> IO ()
-updateFile path content = do
-    createDirectoryIfMissing True $ takeDirectory path
-    exists <- doesFileExist path
-    let tmppath = addExtension path "tmp"
-    if exists
-       then do
-            oldcontent <- readFile path
-            when (oldcontent /= content) $ do
-                writeFile tmppath content
-                renameFile tmppath path
-       else writeFile path content
-
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing
 -- the program for the Rust Datalog library
 compileLib :: (?cfg::CompilerConfig) => DatalogProgram -> String -> Doc -> Doc
