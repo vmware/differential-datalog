@@ -50,12 +50,12 @@ impl HDDlog {
 
     pub fn run<F>(workers: usize,
                   do_store: bool,
-                  cb: Option<F>) -> HDDlog
+                  cb: F) -> HDDlog
     where F: Callback
     {
         Self::do_run(workers,
                      do_store,
-                     cb.map(CallbackUpdateHandler::new),
+                     CallbackUpdateHandler::new(cb),
                      None)
     }
 
@@ -245,7 +245,7 @@ impl HDDlog {
 impl HDDlog {
     fn do_run<UH>(workers: usize,
                   do_store: bool,
-                  cb: Option<UH>,
+                  cb: UH,
                   print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> HDDlog
     where UH: UpdateHandler<Value> + Send + 'static
     {
@@ -271,7 +271,9 @@ impl HDDlog {
                 } else {
                     None
                 };
-                let cb_handler = cb.map(|h| { nhandlers += 1; Box::new(h) as Box<dyn UpdateHandler<Value> + Send> });
+
+                let cb_handler = Box::new(cb) as Box<dyn UpdateHandler<Value> + Send>;
+                nhandlers += 1;
 
                 let handler: Box<dyn UpdateHandler<Value>> = if nhandlers == 1 {
                     Box::new(delta_handler)
@@ -279,7 +281,7 @@ impl HDDlog {
                     let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
                     handlers.push(Box::new(delta_handler));
                     if let Some(h) = store_handler { handlers.push(Box::new(h))};
-                    if let Some(h) = cb_handler { handlers.push(h) };
+                    handlers.push(cb_handler);
                     Box::new(ChainedUpdateHandler::new(handlers))
                 };
                 handler
@@ -489,10 +491,17 @@ pub extern "C" fn ddlog_run(
     cb_arg:  libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
+    extern "C" fn no_op(_arg: libc::uintptr_t,
+                        _table: libc::size_t,
+                        _rec: *const record::Record,
+                        _pol: bool) {};
+
+    let callback = if let Some(f) = cb { f } else { no_op };
+
     Arc::into_raw(Arc::new(
         HDDlog::do_run(workers as usize,
                        do_store,
-                       cb.map(|f| ExternCUpdateHandler::new(f, cb_arg)),
+                       ExternCUpdateHandler::new(callback, cb_arg),
                        print_err)))
 }
 
