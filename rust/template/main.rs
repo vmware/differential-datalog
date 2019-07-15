@@ -185,13 +185,15 @@ pub fn main() {
         panic!("Invalid command line arguments; try -h for help");
     }
 
+    fn record_upd(table:usize, rec: &Record, pol: bool) {
+        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec);
+    }
+    fn no_op(_table:usize, _rec: &Record, _pol: bool) {}
+    let cb = if args.print { record_upd } else { no_op };
+
     let hddlog = HDDlog::run(args.workers,
                              args.store,
-                             if args.print {
-                                 Some(|table:usize, rec: &Record, pol: bool| eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec))
-                             } else {
-                                 None
-                             });
+                             cb);
 
     let ret = run_interactive(hddlog, args.delta);
     exit(ret);
