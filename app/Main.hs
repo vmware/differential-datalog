@@ -37,7 +37,12 @@ import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 import Language.DifferentialDatalog.CompileJava
 
-data TOption = Datalog String
+-- Keep this in sync with the binary release version on github
+dDLOG_VERSION = "v0.6.2"
+
+data TOption = Help
+             | Version
+             | Datalog String
              | Action String
              | LibDir String
              | Java
@@ -45,23 +50,29 @@ data TOption = Datalog String
              | NoDynLib
              | StaticLib
              | NoStaticLib
-             | Help
+             | BoxThreshold String
 
 data DLAction = ActionCompile
               | ActionValidate
               | ActionHelp
+              | ActionVersion
               deriving Eq
 
 options :: [OptDescr TOption]
-options = [ Option ['i'] []                   (ReqArg Datalog  "FILE")        "DDlog program"
-          , Option []    ["action"]           (ReqArg Action   "ACTION")      "action: [validate, compile]"
-          , Option ['L'] []                   (ReqArg LibDir   "PATH")        "extra DDlog library directory"
-          , Option []    ["dynlib"]           (NoArg DynLib)                  "generate dynamic library"
-          , Option ['j'] ["java"]             (NoArg Java)                    "generate a Java file with helper APIs"
-          , Option []    ["no-dynlib"]        (NoArg NoDynLib)                "do not generate dynamic library (default)"
-          , Option []    ["staticlib"]        (NoArg StaticLib)               "generate static library (default)"
-          , Option []    ["no-staticlib"]     (NoArg NoStaticLib)             "do not generate static library"
-          , Option ['h'] ["help"]             (NoArg Help)                    "print help message"
+options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
+          , Option ['v'] ["version"]          (NoArg Version)                   "Display DDlog version."
+          , Option ['i'] []                   (ReqArg Datalog  "FILE")          "DDlog program to compile."
+          , Option []    ["action"]           (ReqArg Action   "ACTION")        "Action: [validate, compile]"
+          , Option ['L'] []                   (ReqArg LibDir   "PATH")          "Extra DDlog library directory."
+          , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
+          , Option ['j'] ["java"]             (NoArg Java)                      "Generate a Java file with helper APIs."
+          , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
+          , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
+          , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
+          , Option []    ["box-threshold"]    (ReqArg BoxThreshold "THRESHOLD") ("Maximum inline DDlog record size. Records larger than this\n"  ++
+                                                                                 "threshold will be stored on the heap. Used to fine-tune the\n" ++
+                                                                                 "memory footprint of the program. THRESHOLD must be >=8.\n"     ++
+                                                                                 "Recommended values are in the [8,32] range. Default is " ++ (show $ cconfBoxThreshold defaultCompilerConfig) ++ ".")
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
@@ -70,6 +81,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confStaticLib     :: Bool
                      , confDynamicLib    :: Bool
                      , confJava          :: Bool
+                     , confBoxThreshold  :: Int
                      }
 
 defaultConfig = Config { confDatalogFile   = ""
@@ -78,27 +90,36 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confStaticLib     = True
                        , confDynamicLib    = False
                        , confJava          = False
+                       , confBoxThreshold  = cconfBoxThreshold defaultCompilerConfig
                        }
 
 
 addOption :: Config -> TOption -> IO Config
-addOption config (Datalog f)    = return config{ confDatalogFile  = f}
-addOption config (Action a)     = do a' <- case a of
-                                                "validate"   -> return ActionValidate
-                                                "compile"    -> return ActionCompile
-                                                _            -> errorWithoutStackTrace "invalid action"
-                                     return config{confAction = a'}
-addOption config Java           = return config { confJava = True }
-addOption config (LibDir d)     = return config { confLibDirs = nub (d:confLibDirs config)}
-addOption config DynLib         = return config { confDynamicLib = True }
-addOption config NoDynLib       = return config { confDynamicLib = False }
-addOption config StaticLib      = return config { confStaticLib = True }
-addOption config NoStaticLib    = return config { confStaticLib = False }
-addOption config Help           = return config { confAction = ActionHelp}
+addOption config (Datalog f)      = return config{ confDatalogFile  = f}
+addOption config (Action a)       = do a' <- case a of
+                                                  "validate"   -> return ActionValidate
+                                                  "compile"    -> return ActionCompile
+                                                  _            -> errorWithoutStackTrace "invalid action"
+                                       return config{confAction = a'}
+addOption config Java             = return config { confJava = True }
+addOption config (LibDir d)       = return config { confLibDirs = nub (d:confLibDirs config)}
+addOption config DynLib           = return config { confDynamicLib = True }
+addOption config NoDynLib         = return config { confDynamicLib = False }
+addOption config StaticLib        = return config { confStaticLib = True }
+addOption config NoStaticLib      = return config { confStaticLib = False }
+addOption config Help             = return config { confAction = ActionHelp}
+addOption config Version          = return config { confAction = ActionVersion}
+addOption config (BoxThreshold t) =
+    case reads t of
+        [(tint, "")] -> if tint < 8
+                           then errorWithoutStackTrace "Box threshold must be greater than or equal to 8."
+                           else return config { confBoxThreshold = tint }
+        _  -> errorWithoutStackTrace "Box threshold must be a positive integer."
+
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
-    when (confDatalogFile == "" && confAction /= ActionHelp)
+    when (confDatalogFile == "" && confAction /= ActionHelp && confAction /= ActionVersion)
          $ errorWithoutStackTrace "input file not specified"
 
 main = do
@@ -114,6 +135,8 @@ main = do
                    _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
     case confAction config of
          ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
+         ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION
+                             putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
          ActionValidate -> do { parseValidate config; return () }
          ActionCompile -> compileProg config
 
@@ -133,7 +156,8 @@ compileProg conf@Config{..} = do
     let rust_dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    compile prog specname rs_code toml_code rust_dir crate_types
+    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold } in
+        compile prog specname rs_code toml_code rust_dir crate_types
     -- generate Java API
     if confJava then compileJava prog specname
     else return ()

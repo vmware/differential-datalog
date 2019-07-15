@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell, QuasiQuotes #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell, QuasiQuotes, ImplicitParams #-}
 
 {- |
 Module     : Compile
@@ -29,6 +29,8 @@ Description: Compile 'DatalogProgram' to Rust.  See program.rs for corresponding
 -}
 
 module Language.DifferentialDatalog.Compile (
+    CompilerConfig(..),
+    defaultCompilerConfig,
     compile,
     rustProjectDir,
     isStructType,
@@ -230,31 +232,37 @@ lval (x, ELVal, _) = x
 lval (x, EReference, _)  = parens $ "*" <> x
 lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
 
--- The size of the Value type depends on its largest variant.  To avoid wasting memory by padding
--- everything to the longest type, we place the actual payload in a Box, except when the size of the
--- payload is <= threshold, in which case it is stored directly in 'Value'
-
+-- | 'CompilerConfig'
+-- 'cconfBoxThreshold' - Largest value size to store inline.  The size of the Value type depends on its
+-- largest variant.  To avoid wasting memory by padding everything to the longest type, we place the
+-- actual payload in a Box, except when the size of the payload is <= threshold, in which case it is
+-- stored directly in 'Value'.
+--
 -- Threshold value depends on the smallest granularity at which malloc allocates memory (including
 -- internal fragmentation and malloc metadata) and the number of records of each type allocated by
 -- the program.
--- FIXME: this value is hard to get right statically.  Make this a configurable parameter
-bOX_THRESHOLD:: Int
-bOX_THRESHOLD = 16
+data CompilerConfig = CompilerConfig {
+    cconfBoxThreshold :: Int
+}
+
+defaultCompilerConfig = CompilerConfig {
+    cconfBoxThreshold = 16
+}
 
 -- Type width is <= pointer size and therefore does not need to be boxed
-typeIsSmall :: DatalogProgram -> Type -> Bool
-typeIsSmall d t = (typeSize d t) <= bOX_THRESHOLD
+typeIsSmall :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Bool
+typeIsSmall d t = (typeSize d t) <= (cconfBoxThreshold ?cfg)
 
 -- put x in a box
-box :: DatalogProgram -> Type -> Doc -> Doc
+box :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc -> Doc
 box d t x | typeIsSmall d t = x
           | otherwise       = "boxed::Box::new(" <> x <> ")"
 
-boxDeref :: DatalogProgram -> Type -> Doc -> Doc
+boxDeref :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc -> Doc
 boxDeref d t x | typeIsSmall d t = x
                | otherwise       = "*" <> x
 
-mkBoxType :: (WithType a) => DatalogProgram -> a -> Doc
+mkBoxType :: (?cfg::CompilerConfig, WithType a) => DatalogProgram -> a -> Doc
 mkBoxType d x | typeIsSmall d (typ x) = mkType x
               | otherwise             = "boxed::Box<" <> mkType x <> ">"
 
@@ -418,7 +426,7 @@ mkConstructorName tname t c =
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
+compile :: (?cfg::CompilerConfig) => DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
 compile d specname rs_code toml_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
@@ -458,7 +466,7 @@ updateFile path content = do
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing
 -- the program for the Rust Datalog library
-compileLib :: DatalogProgram -> String -> Doc -> Doc
+compileLib :: (?cfg::CompilerConfig) => DatalogProgram -> String -> Doc -> Doc
 compileLib d specname rs_code =
     header specname      $+$
     rs_code              $+$
@@ -726,7 +734,7 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
     }
 }
 -}
-mkValueFromRecord :: DatalogProgram -> Doc
+mkValueFromRecord :: (?cfg::CompilerConfig) => DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
     mkRelname2Id d                                                                                  $$
     mkOutputRelname2Id d                                                                            $$
@@ -888,7 +896,7 @@ mkFunc d f@Function{..} | isJust funcDef =
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Eq + Ord + Clone + Hash + PartialEq + PartialOrd") . pp) tvs) <> ">"
 
 -- Generate Value type as an enum with one entry per type in types
-mkValType :: DatalogProgram -> S.Set Type -> Doc
+mkValType :: (?cfg::CompilerConfig) => DatalogProgram -> S.Set Type -> Doc
 mkValType d types =
     "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]" $$
     "pub enum Value {"                                                                      $$
@@ -954,7 +962,7 @@ createRuleArrangement d rule idx = do
          _                             -> return ()
 
 -- Generate Rust struct for ProgNode
-compileSCC :: DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
+compileSCC :: (?cfg::CompilerConfig) => DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
 compileSCC d dep nodes | recursive = compileSCCNode d relnames
                        | otherwise = case depnode of
                                           DepNodeRel rel -> compileRelNode d rel
@@ -964,7 +972,7 @@ compileSCC d dep nodes | recursive = compileSCCNode d relnames
     relnames = map ((\(DepNodeRel rel) -> rel) . fromJust . G.lab dep) nodes
     depnode = fromJust $ G.lab dep $ head nodes
 
-compileRelNode :: DatalogProgram -> String -> CompilerMonad ProgNode
+compileRelNode :: (?cfg::CompilerConfig) => DatalogProgram -> String -> CompilerMonad ProgNode
 compileRelNode d relname = do
     rel <- compileRelation d relname
     return $ RelNode rel
@@ -1002,7 +1010,7 @@ where
      EF: Fn(V) -> E + 'static,
      LF: Fn((N,N)) -> V + 'static
 -}
-compileApplyNode :: DatalogProgram -> Apply -> ProgNode
+compileApplyNode :: (?cfg::CompilerConfig) => DatalogProgram -> Apply -> ProgNode
 compileApplyNode d Apply{..} = ApplyNode $
     "{fn transformer() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,Value,Weight>>)> {" $$
     "    Box::new(|collections| {"                                                                                                                             $$
@@ -1022,7 +1030,7 @@ compileApplyNode d Apply{..} = ApplyNode $
     outputs = map rname applyOutputs
     update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rname o <> ");") applyOutputs
 
-extractValue :: DatalogProgram -> Type -> Doc
+extractValue :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
         "|" <> vALUE_VAR <> ": Value| {"                                                              $$
         "match" <+> vALUE_VAR <+> "{"                                                                 $$
@@ -1031,7 +1039,7 @@ extractValue d t = parens $
         "}}"
     where t' = typeNormalize d t
 
-compileSCCNode :: DatalogProgram -> [String] -> CompilerMonad ProgNode
+compileSCCNode :: (?cfg::CompilerConfig) => DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
     rels <- mapM (compileRelation d) relnames
     return $ SCCNode rels
@@ -1071,7 +1079,7 @@ let ancestor = {
     }
 };
 -}
-compileRelation :: DatalogProgram -> String -> CompilerMonad ProgRel
+compileRelation :: (?cfg::CompilerConfig) => DatalogProgram -> String -> CompilerMonad ProgRel
 compileRelation d rn = do
     let rel@Relation{..} = getRelation d rn
     -- collect all rules for this relation
@@ -1107,7 +1115,7 @@ compileRelation d rn = do
             "}"
     return ProgRel{ prelName = rn, prelCode = code, prelFacts = facts' }
 
-compileKey :: DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
+compileKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
     val <- mkValue d (CtxKey rel) keyExpr
     return $
@@ -1120,7 +1128,7 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
         "})"
 
 {- Generate Rust representation of a ground fact -}
-compileFact :: DatalogProgram -> Rule -> CompilerMonad Doc
+compileFact :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> CompilerMonad Doc
 compileFact d rl@Rule{..} = do
     let rel = atomRelation $ head ruleLHS
     val <- mkValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
@@ -1169,7 +1177,7 @@ ruleArrangeFstLiteral d rl@Rule{..} | null ruleRHS = Nothing
 -- 'input_val' - true if the relation generated by the last operator is a Value, not
 -- tuple.  This is the case when we've only encountered antijoin's so far (since antijoins
 -- do not rearrange the input relation).
-compileRule :: DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
+compileRule :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
 compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- First relation in the body of the rule
     let fstatom = rhsAtom $ head ruleRHS
@@ -1277,8 +1285,7 @@ rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ e) =
                rhsVarsAfter d rl (rhs_idx - 1))
 rhsInputArrangement _ _  _       _ = Nothing
 
-
-mkFlatMap :: DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
+mkFlatMap :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx v e = do
     vars <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
     -- Flatten
@@ -1299,7 +1306,7 @@ mkFlatMap d prefix rl idx v e = do
         "    next: Box::new(" <> next <> ")"                                                                               $$
         "}"
 
-mkAggregate :: DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
+mkAggregate :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
 mkAggregate d filters input_val rl@Rule{..} idx = do
     let rhs@RHSAggregate{..} = ruleRHS !! idx
     let ctx = CtxRuleRAggregate rl idx
@@ -1343,7 +1350,7 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
 --     Value::Rel1(v1,v2) => (v1,v2),
 --     _ => return None
 -- };
-openAtom :: DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> CompilerMonad Doc
+openAtom :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> CompilerMonad Doc
 openAtom d var rl idx Atom{..} on_error = do
     let rel = getRelation d atomRelation
     let t = relType rel
@@ -1362,7 +1369,7 @@ openAtom d var rl idx Atom{..} on_error = do
         "};"
 
 -- Generate Rust code to open up tuples and bring variables into scope.
-openTuple :: DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
+openTuple :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vs = do
     let t = tTuple $ map typ vs
     cons <- mkValConstructorName d t
@@ -1406,28 +1413,28 @@ mkValConstructorName' d t =
                     [] -> empty
                     as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName' d) as)
 
-mkValue :: DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
+mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue d ctx e = do
     let t = exprType d ctx e
     constructor <- mkValConstructorName d t
     return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal)
 
-mkValue' :: DatalogProgram -> Doc -> Type -> Doc
+mkValue' :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
 mkValue' d v t = "Value::" <> mkValConstructorName' d (typeNormalize d t) <> (parens $ box d t v)
 
-mkTupleValue :: DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
+mkTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
 mkTupleValue d es = do
     let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
     constructor <- mkValConstructorName d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
 
-mkVarsTupleValue :: DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     let t = tTuple $ map typ vs
     constructor <- mkValConstructorName d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
-mkVarsTuple :: DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTuple :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTuple d vs = do
     let t = tTuple $ map typ vs
     constructor <- mkValConstructorName d t
@@ -1471,7 +1478,7 @@ mkCondFilter d ctx e =
 
 -- Generate the ffun field of `XFormArrangement::Join/Semijoin/Aggregate`.
 -- This field is used if input to the operator is an arranged relation.
-mkFFun :: DatalogProgram -> Rule -> [Int] -> CompilerMonad Doc
+mkFFun :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> [Int] -> CompilerMonad Doc
 mkFFun d rl@Rule{..} [] = return "None"
 mkFFun d rl@Rule{..} input_filters = do
    open <- openAtom d ("*" <> vALUE_VAR) rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
@@ -1485,7 +1492,7 @@ mkFFun d rl@Rule{..} input_filters = do
 -- Compile XForm::Join or XForm::Semijoin
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
-mkJoin :: DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkJoin :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
@@ -1558,7 +1565,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "}"
 
 -- Compile XForm::Antijoin
-mkAntijoin :: DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkAntijoin :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
@@ -1728,7 +1735,7 @@ arrangeInput d rl fstatom arrange_input_by = do
     normalize' _  e                                                = E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
-mkHead :: DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
+mkHead :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
 mkHead d prefix rl = do
     v <- mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
     let fmfun = braces' $ prefix $$
@@ -1780,7 +1787,7 @@ mkNode (SCCNode rels) =
 mkNode (ApplyNode fun) =
     "ProgNode::Apply{tfun:" <+> fun <> "}"
 
-mkArrangement :: DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
+mkArrangement :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
 mkArrangement d rel (ArrangementMap pattern) = do
     filter_key <- mkArrangementKey d rel pattern
     let afun = braces' $
@@ -1809,7 +1816,7 @@ mkArrangement d rel (ArrangementSet pattern distinct) = do
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.
-mkArrangementKey :: DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
+mkArrangementKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
 mkArrangementKey d rel pattern = do
     -- extract variables with types from pattern.
     let getvars :: Type -> Expr -> [Field]

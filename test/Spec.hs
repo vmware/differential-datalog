@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, ImplicitParams #-}
 
 import Test.Tasty
 import Test.Tasty.Golden
@@ -180,7 +180,8 @@ compilerTest progress fname cli_args crate_types = do
     (prog, rs_code, toml_code) <- parseValidate fname body
     -- generate Rust project
     let rust_dir = takeDirectory fname
-    compile prog specname rs_code toml_code rust_dir crate_types
+    let ?cfg = defaultCompilerConfig in
+        compile prog specname rs_code toml_code rust_dir crate_types
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
                           cwd = Just $ rust_dir </> rustProjectDir specname
