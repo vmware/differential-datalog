@@ -19,7 +19,7 @@ path = "./ovsdb"
 [dependencies]
 differential-dataflow = "0.9"
 timely = "0.9"
-abomonation= "0.7.2"
+abomonation= "0.7"
 serde = "1.0"
 serde_derive = "1.0"
 fnv="1.0.2"
