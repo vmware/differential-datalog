@@ -59,7 +59,7 @@ fn handle_cmd(hddlog: &HDDlog,
                                 debug_assert!(*weight == 1 || *weight == -1);
                                 let _ = writeln!(stdout(),
                                                  "{}: {:+}",
-                                                 val,
+                                                 val.clone().into_record(),
                                                  *weight);
                             }
                         }
