@@ -48,7 +48,6 @@ impl HDDlog {
         relname2id(tname).ok_or_else(||format!("unknown relation {}", tname))
     }
 
-    // TODO wrap the C API on this
     pub fn run<F>(workers: usize,
                   do_store: bool,
                   cb: Option<F>) -> HDDlog
@@ -100,9 +99,8 @@ impl HDDlog {
         self.prog.lock().unwrap().transaction_start()
     }
 
-    pub fn transaction_commit_dump_changes<F>
-        (&self, cb: Option<F>) -> Result<(), String>
-    where F: FnMut(usize, &record::Record, bool)
+    pub fn transaction_commit_dump_changes
+        (&self) -> Result<DeltaMap, String>
     {
         self.record_transaction_commit(true);
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
@@ -112,9 +110,7 @@ impl HDDlog {
             Ok(()) => {
                 self.update_handler.after_commit(true);
                 let mut delta = self.deltadb.lock().unwrap();
-                Self::dump_delta(delta.as_mut().unwrap(), cb);
-                *delta = None;
-                Ok(())
+                Ok(delta.take().unwrap())
             },
             Err(e) => {
                 self.update_handler.after_commit(false);
@@ -305,22 +301,6 @@ impl HDDlog {
             deltadb,
             print_err,
             replay_file:    None}
-    }
-
-    fn dump_delta<F>(db: &mut DeltaMap,
-                     cb: Option<F>)
-    where F:FnMut(usize, &record::Record, bool)
-    {
-        if let Some(mut f) = cb {
-            for (table_id, table_data) in db.as_ref().iter() {
-                for (val, weight) in table_data.iter() {
-                    debug_assert!(*weight == 1 || *weight == -1);
-                    f(*table_id as libc::size_t,
-                      &val.clone().into_record(),
-                      *weight == 1);
-                }
-            }
-        };
     }
 
     fn db_dump_table<F>(db: &mut ValMap,
@@ -629,8 +609,19 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
     let f = cb.map(|f| move |tab, rec: &record::Record, pol|
                    f(cb_arg, tab, rec as *const record::Record, pol));
 
-    let res = prog.transaction_commit_dump_changes(f)
-        .map(|_|0)
+    let res = prog.transaction_commit_dump_changes()
+        .map(|changes| {
+            if let Some(f) = f {
+                for (table_id, table_data) in changes.as_ref().iter() {
+                    for (val, weight) in table_data.iter() {
+                        debug_assert!(*weight == 1 || *weight == -1);
+                        f(*table_id as libc::size_t,
+                          &val.clone().into_record(),
+                          *weight == 1);
+                    }
+                }
+            };
+            0})
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_transaction_commit_dump_changes: error: {}", e));
             -1
