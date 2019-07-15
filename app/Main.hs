@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts, TemplateHaskell #-}
 
 import System.Environment
 import System.FilePath.Posix
@@ -31,14 +31,12 @@ import Control.Monad
 import Data.List
 import Text.PrettyPrint
 
+import Language.DifferentialDatalog.Version
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 import Language.DifferentialDatalog.CompileJava
-
--- Keep this in sync with the binary release version on github
-dDLOG_VERSION = "v0.6.2"
 
 data TOption = Help
              | Version
@@ -135,7 +133,7 @@ main = do
                    _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
     case confAction config of
          ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-         ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION
+         ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                              putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
          ActionValidate -> do { parseValidate config; return () }
          ActionCompile -> compileProg config

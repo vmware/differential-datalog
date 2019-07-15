@@ -34,28 +34,37 @@ import Control.Monad
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.OVSDB.Compile
+import Language.DifferentialDatalog.Version
 
 data TOption = OVSFile     String
              | OutputTable String
              | ROColumn    String
              | KeyColumn   String
              | ProxyTable  String
+             | Version
+
+data Action = ActionCompile
+            | ActionVersion
+            deriving Eq
 
 options :: [OptDescr TOption]
-options = [ Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file"
-          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "mark TABLE as output"
-          , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "mark COLUMN as read-only"
-          , Option ['k'] ["key"]          (ReqArg KeyColumn   "TABLE.COLUMN") "mark COLUMN as key"
-          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "generate output proxy table for TABLE"
+options = [ Option ['v'] ["version"]      (NoArg Version)                     "Display DDlog version."
+          , Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file."
+          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
+          , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
+          , Option ['k'] ["key"]          (ReqArg KeyColumn   "TABLE.COLUMN") "Mark COLUMN as key."
+          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "Generate output proxy table for TABLE."
           ]
 
-data Config = Config { confOVSFile      :: FilePath
+data Config = Config { confAction       :: Action
+                     , confOVSFile      :: FilePath
                      , confOutputTables :: [(String, [String])]
                      , confProxyTables  :: [String]
                      , confKeys         :: M.Map String [String]
                      }
 
-defaultConfig = Config { confOVSFile      = ""
+defaultConfig = Config { confAction       = ActionCompile
+                       , confOVSFile      = ""
                        , confOutputTables = []
                        , confProxyTables  = []
                        , confKeys         = M.empty
@@ -63,6 +72,7 @@ defaultConfig = Config { confOVSFile      = ""
 
 
 addOption :: Config -> TOption -> IO Config
+addOption config Version = do return config { confAction = ActionVersion }
 addOption config (OVSFile f) = do
     when (confOVSFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
     return config {confOVSFile = f}
@@ -76,7 +86,6 @@ addOption config (KeyColumn c) = do
             return $ config{confKeys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
                                                $ confKeys config}
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
-
 addOption config (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
@@ -89,7 +98,7 @@ addOption config (ROColumn c) = do
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
-    when (confOVSFile == "") $ errorWithoutStackTrace "Input file not specified"
+    when (confOVSFile == "" && confAction == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
 
 main = do
     args <- getArgs
@@ -102,6 +111,10 @@ main = do
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables confKeys
-    putStrLn $ render dlschema
-    return ()
+    if confAction == ActionVersion
+       then do putStrLn $ "OVSDB-to-DDlog compiler " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
+               putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
+       else do
+           dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables confKeys
+           putStrLn $ render dlschema
+           return ()
