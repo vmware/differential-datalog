@@ -491,18 +491,20 @@ pub extern "C" fn ddlog_run(
     cb_arg:  libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
-    extern "C" fn no_op(_arg: libc::uintptr_t,
-                        _table: libc::size_t,
-                        _rec: *const record::Record,
-                        _pol: bool) {};
 
-    let callback = if let Some(f) = cb { f } else { no_op };
-
-    Arc::into_raw(Arc::new(
-        HDDlog::do_run(workers as usize,
-                       do_store,
-                       ExternCUpdateHandler::new(callback, cb_arg),
-                       print_err)))
+    if let Some(f) = cb {
+        Arc::into_raw(Arc::new(
+            HDDlog::do_run(workers as usize,
+                           do_store,
+                           ExternCUpdateHandler::new(f, cb_arg),
+                           print_err)))
+    } else {
+        Arc::into_raw(Arc::new(
+            HDDlog::do_run(workers as usize,
+                           do_store,
+                           NullUpdateHandler::new(),
+                           print_err)))
+    }
 }
 
 #[no_mangle]
