@@ -35,6 +35,7 @@ dependencies:
 - wide-word
 - graphviz
 - text
+- githash
 
 library:
   source-dirs: src
