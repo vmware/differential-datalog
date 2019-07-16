@@ -108,7 +108,7 @@ souffleTest testdir progress =
         [ goldenVsFiles testdir
           [testdir </> "souffle.dump.expected.gz"]
           [testdir </> "souffle.dump"]
-          $ do {convertSouffle testdir progress; compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
+          $ do {convertSouffle testdir progress; compilerTest progress (testdir </> "souffle.dl") ["-w", "1"] ["cdylib"]}]
 
 convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do

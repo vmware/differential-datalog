@@ -235,7 +235,7 @@ def run_merged_test(filename):
         lines = f.read()
     print "Running program at", datetime.datetime.now().time()
     code, result = run_command(["./" + filename + "_ddlog/target/debug/" + filename +
-                                "_cli", "--no-print"], lines)
+                                "_cli"], lines)
     if code != 0:
         print "Error running ddlog program", code
     with open(filename + ".dump", "w") as dump:
