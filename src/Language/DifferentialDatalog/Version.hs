@@ -31,7 +31,7 @@ where
 import GitHash
 
 -- Keep this in sync with the binary release version on github
-dDLOG_VERSION = "v0.6.2"
+dDLOG_VERSION = "v0.6.3"
 
 gitHash :: String
 gitHash = giHash $$tGitInfoCwd
