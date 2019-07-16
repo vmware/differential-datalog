@@ -235,7 +235,7 @@ fn test_one_relation(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     /* 1. Insertion */
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
@@ -344,7 +344,7 @@ fn test_two_relations(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     /* 1. Populate T1 */
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
@@ -490,7 +490,7 @@ fn test_semijoin(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
@@ -633,7 +633,7 @@ fn test_join(nthreads: usize) {
     };
 
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
@@ -792,7 +792,7 @@ fn test_antijoin(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
@@ -1002,7 +1002,7 @@ fn test_map(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
     let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
@@ -1205,7 +1205,7 @@ fn test_recursion(nthreads: usize) {
         init_data: vec![]
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads, true);
 
     /* 1. Populate parent relation */
     /*

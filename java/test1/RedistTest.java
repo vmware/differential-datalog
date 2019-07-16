@@ -244,12 +244,12 @@ public class RedistTest {
 
         SpanParser() {
             if (localTables) {
-                this.api = new DDlogAPI(2, r -> this.onCommit(r), false);
+                this.api = new DDlogAPI(2, r -> this.onCommit(r), true, false);
                 this.spanTableId = this.api.getTableId("Span");
                 if (debug)
                     System.err.println("Span table id " + this.spanTableId);
             } else {
-                this.api = new DDlogAPI(2, null, true);
+                this.api = new DDlogAPI(2, null, true, true);
             }
             this.command = null;
             this.exitCode = -1;

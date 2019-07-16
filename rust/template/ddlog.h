@@ -66,7 +66,22 @@ extern table_id ddlog_get_table_id(const char* tname);
  * valid, values larger than the number of cores in the system are
  * likely to hurt the performance.
  *
- * `do_store` - set to true to store the copy of output tables inside DDlog.
+ * `do_store_inputs` - set to true to store the copy of all input tables inside
+ * DDlog.  When set to false, DDlog will only store copies of tables with
+ * primary keys, but not any of the other tables and will run with reduced
+ * functionality:
+ *  - DDlog will not enforce set semantics for input tables without primary
+ *    keys.  In particular, inserting the same record twice will effectively
+ *    add two copies of the record to the input table.  Removing the record
+ *    later will leave one of these copies in the table.  Furthermore, removing
+ *    a record that does not exist will create -1 copies of the record, probably
+ *    leading to unexpected outputs.  It is therefore the client's
+ *    responsibility to avoid such situations.
+ *  - `ddlog_clear_relation` will fail for relations without a primary key.
+ *  - `ddlog_dump_input_snapshot` will fail if there is at least one input table
+ *    without a primary key in the program.
+ *
+ * `do_store_outputs` - set to true to store the copy of output tables inside DDlog.
  * When set, the client can use the following APIs to retrieve the contents of
  * tables:
  *	- `ddlog_dump_ovsdb_delta()`
@@ -88,7 +103,7 @@ extern table_id ddlog_get_table_id(const char* tname);
  *	- `table`    - table being modified
  *	- `rec`	     - record that has been inserted or deleted
  *	- `polarity` - `true` - record has been added
- *		       `false` - record has been deleted
+ *		           `false` - record has been deleted
  *
  * IMPORTANT: Thread safety: DDlog invokes the callback from its worker threads
  * without any serialization to avoid contention. Hence, if the `workers` argument
@@ -113,13 +128,14 @@ extern table_id ddlog_get_table_id(const char* tname);
  * `ddlog_transaction_commit()`, etc., or NULL in case of error.
  */
 extern ddlog_prog ddlog_run(unsigned int workers,
-			    bool do_store,
+                            bool do_store_inputs,
+                            bool do_store_outputs,
                             void (*cb)(void *arg,
                                        table_id table,
                                        const ddlog_record *rec,
                                        bool polarity),
-			    uintptr_t cb_arg,
-			    void (*print_err_msg)(const char *msg));
+                            uintptr_t cb_arg,
+                            void (*print_err_msg)(const char *msg));
 
 /*
  * Record commands issued to DDlog via this API in a file.

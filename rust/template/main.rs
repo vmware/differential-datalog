@@ -174,10 +174,11 @@ pub fn main() {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
-        opt store:bool=true, desc:"Do not store relation state (for benchmarking only)."; // --no-store
-        opt delta:bool=true, desc:"Do not record changes.";                               // --no-delta
-        opt print:bool=true, desc:"Do not print deltas.";                                 // --no-print
-        opt workers:usize=4, short:'w', desc:"The number of worker threads.";             // --workers or -w
+        opt store_outputs:bool=true, desc:"Do not store output relation state.", long:"no-store-outputs";
+        opt store_inputs:bool=true,  desc:"Do not store input relation state.",  long:"no-store-inputs";
+        opt store_delta:bool=true,   desc:"Do not record changes.",              long:"no-store-delta";
+        opt print:bool=false,        desc:"Print changes during commit.";
+        opt workers:usize=4,         desc:"The number of worker threads.",       short:'w';
     };
     let (args, rest) = parser.parse_or_exit();
 
@@ -192,9 +193,10 @@ pub fn main() {
     let cb = if args.print { record_upd } else { no_op };
 
     let hddlog = HDDlog::run(args.workers,
-                             args.store,
+                             args.store_inputs,
+                             args.store_outputs,
                              cb);
 
-    let ret = run_interactive(hddlog, args.delta);
+    let ret = run_interactive(hddlog, args.store_delta);
     exit(ret);
 }

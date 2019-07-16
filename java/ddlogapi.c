@@ -101,12 +101,12 @@ void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* r
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
-    JNIEnv *env, jobject obj, jboolean storeData, jint workers, jstring callback) {
+    JNIEnv *env, jobject obj, jboolean storeInputs, jboolean storeOutputs, jint workers, jstring callback) {
     if (workers <= 0)
         workers = 1;
 
     if (callback == NULL)
-        return (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, NULL);
+        return (jlong)ddlog_run((unsigned)workers, storeInputs, storeOutputs, NULL, 0, NULL);
 
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
     if (cbinfo == NULL)
@@ -119,7 +119,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
         return 0;
     (*env)->SetLongField(env, obj, callbackHandle, (jlong)cbinfo);
 
-    void* handle = ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
+    void* handle = ddlog_run((unsigned)workers, storeInputs, storeOutputs, commit_callback, (uintptr_t)cbinfo, NULL);
     return (jlong)handle;
 }
 

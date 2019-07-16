@@ -7,7 +7,7 @@ public class XTest {
     private final DDlogAPI api;
 
     XTest() {
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, null, true, false);
     }
 
     void onCommit(DDlogCommand command) {

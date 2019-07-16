@@ -49,12 +49,14 @@ impl HDDlog {
     }
 
     pub fn run<F>(workers: usize,
-                  do_store: bool,
+                  do_store_inputs: bool,
+                  do_store_outputs: bool,
                   cb: F) -> HDDlog
     where F: Callback
     {
         Self::do_run(workers,
-                     do_store,
+                     do_store_inputs,
+                     do_store_outputs,
                      CallbackUpdateHandler::new(cb),
                      None)
     }
@@ -64,25 +66,23 @@ impl HDDlog {
         mem::swap(&mut self.replay_file, file);
     }
 
-    pub fn dump_input_snapshot<W: io::Write>(&self, w: &mut W) -> io::Result<()>
+    pub fn dump_input_snapshot<W: io::Write>(&self, w: &mut W) -> Result<(), String>
     {
         for (rel, relname) in INPUT_RELIDMAP.iter() {
             let prog = self.prog.lock().unwrap();
-            match prog.get_input_relation_data(*rel as RelId) {
-                Ok(valset) => {
-                    for v in valset.iter() {
-                        writeln!(w, "insert {}[{}],", relname, v)?;
+            match prog.get_input_relation_index(*rel as RelId) {
+                Ok(ivalset) => {
+                    for v in ivalset.values() {
+                        writeln!(w, "insert {}[{}],", relname, v).map_err(|e|e.to_string())?;
                     }
                 },
-                _ => match prog.get_input_relation_index(*rel as RelId) {
-                    Ok(ivalset) => {
-                        for v in ivalset.values() {
-                            writeln!(w, "insert {}[{}],", relname, v)?;
+                _ => match prog.get_input_relation_data(*rel as RelId) {
+                    Ok(valset) => {
+                        for v in valset.iter() {
+                            writeln!(w, "insert {}[{}],", relname, v).map_err(|e|e.to_string())?;
                         }
                     },
-                    _ => {
-                        panic!("Unknown input relation {:?} in dump_input_snapshot", rel);
-                    }
+                    e => {e?;} // possible is `do_store_inputs` is false
                 }
             }
         };
@@ -244,7 +244,8 @@ impl HDDlog {
 /* Internals */
 impl HDDlog {
     fn do_run<UH>(workers: usize,
-                  do_store: bool,
+                  do_store_inputs: bool,
+                  do_store_outputs: bool,
                   cb: UH,
                   print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> HDDlog
     where UH: UpdateHandler<Value> + Send + 'static
@@ -265,7 +266,7 @@ impl HDDlog {
                  * actually used*/
                 let delta_handler = DeltaUpdateHandler::new(deltadb2);
 
-                let store_handler = if do_store {
+                let store_handler = if do_store_outputs {
                     nhandlers += 1;
                     Some(ValMapUpdateHandler::new(db2))
                 } else {
@@ -293,7 +294,7 @@ impl HDDlog {
 
         /* Notify handler about initial transaction */
         handler.before_commit();
-        let prog = program.run(workers as usize);
+        let prog = program.run(workers as usize, do_store_inputs);
         handler.after_commit(true);
 
         HDDlog{
@@ -483,7 +484,8 @@ pub unsafe extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::
 #[no_mangle]
 pub extern "C" fn ddlog_run(
     workers: raw::c_uint,
-    do_store: bool,
+    do_store_inputs: bool,
+    do_store_outputs: bool,
     cb: Option<extern "C" fn(arg: libc::uintptr_t,
                              table: libc::size_t,
                              rec: *const record::Record,
@@ -491,17 +493,18 @@ pub extern "C" fn ddlog_run(
     cb_arg:  libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
-
     if let Some(f) = cb {
         Arc::into_raw(Arc::new(
             HDDlog::do_run(workers as usize,
-                           do_store,
+                           do_store_inputs,
+                           do_store_outputs,
                            ExternCUpdateHandler::new(f, cb_arg),
                            print_err)))
     } else {
         Arc::into_raw(Arc::new(
             HDDlog::do_run(workers as usize,
-                           do_store,
+                           do_store_inputs,
+                           do_store_outputs,
                            NullUpdateHandler::new(),
                            print_err)))
     }

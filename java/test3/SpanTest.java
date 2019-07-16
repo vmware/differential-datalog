@@ -10,7 +10,7 @@ public class SpanTest {
     private final DDlogAPI api;
 
     SpanTest() {
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, null, true, false);
     }
 
     void onCommit(DDlogCommand command) {

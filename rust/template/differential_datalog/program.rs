@@ -743,7 +743,7 @@ enum RelationInstance<V: Val> {
     Flat {
         /* Set of all elements in the relation. Used to enforce set semantics for input relations
          * (repeated inserts and deletes are ignored). */
-        elements: ValSet<V>,
+        elements: Option<ValSet<V>>,
         /* Changes since start of transaction. */
         delta:    DeltaSet<V>
     },
@@ -823,7 +823,7 @@ enum Msg<V: Val> {
 impl<V:Val> Program<V>
 {
     /// Instantiate the program with `nworkers` timely threads.
-    pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
+    pub fn run(&self, nworkers: usize, store_inputs: bool) -> RunningProgram<V> {
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
@@ -1135,7 +1135,7 @@ impl<V:Val> Program<V>
                     None => {
                         rels.insert(relid,
                                     RelationInstance::Flat{
-                                        elements: FnvHashSet::default(),
+                                        elements: if store_inputs { Some(FnvHashSet::default()) } else { None },
                                         delta:    FnvHashMap::default()
                                     });
                     },
@@ -1637,14 +1637,19 @@ impl<V:Val> RunningProgram<V> {
         };
 
         let upds = {
-            let rel = self.relations.get_mut(&relid).ok_or_else(||format!("unknown input relation {}", relid))?;
+            let rel = self.relations.get_mut(&relid).ok_or_else(||format!("clear_relation: unknown input relation {}", relid))?;
             match rel {
                 RelationInstance::Flat{elements, ..} => {
-                    let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
-                    for v in elements.iter() {
-                        upds.push(Update::DeleteValue{relid, v: v.clone()});
-                    };
-                    upds
+                    match elements {
+                        Some(elements) => {
+                            let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
+                            for v in elements.iter() {
+                                upds.push(Update::DeleteValue{relid, v: v.clone()});
+                            };
+                            upds
+                        },
+                        None => return Err("clear_relation not supported when running with input caching disabled".to_string())
+                    }
                 },
                 RelationInstance::Indexed{elements, ..} => {
                     let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
@@ -1692,18 +1697,34 @@ impl<V:Val> RunningProgram<V> {
      * `x` is the value being inserted or deleted.
      * `insert` indicates type of update (`true` for insert, `false` for delete).
      * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
-    fn set_update(s: &mut ValSet<V>, ds: &mut DeltaSet<V>, upd: Update<V>, updates: &mut Vec<Update<V>>) -> Response<()>
+    fn set_update(s: &mut Option<ValSet<V>>, ds: &mut DeltaSet<V>, upd: Update<V>, updates: &mut Vec<Update<V>>) -> Response<()>
     {
         let ok = match &upd {
             Update::Insert{v, ..}           => {
-                let new = s.insert(v.clone());
-                if new { Self::delta_inc(ds, v); };
-                new
+                match s {
+                    Some(s) => {
+                        let new = s.insert(v.clone());
+                        if new { Self::delta_inc(ds, v); };
+                        new
+                    },
+                    None => {
+                        Self::delta_inc(ds, v);
+                        true
+                    }
+                }
             },
             Update::DeleteValue{v, ..}      => {
-                let present = s.remove(&v);
-                if present { Self::delta_dec(ds, v); };
-                present
+                match s {
+                    Some(s) => {
+                        let present = s.remove(&v);
+                        if present { Self::delta_dec(ds, v); };
+                        present
+                    },
+                    None => {
+                        Self::delta_dec(ds, v);
+                        true
+                    }
+                }
             },
             Update::DeleteKey{relid, ..}    => {
                 return Err(format!("Cannot delete by key from relation {} that does not have a primary key", relid));
@@ -1829,7 +1850,10 @@ impl<V:Val> RunningProgram<V> {
                 Err(format!("not a flat relation {}", relid))
             },
             Some(RelationInstance::Flat{elements, ..}) => {
-                Ok(elements)
+                match elements {
+                    Some(elements) => Ok(elements),
+                    None => Err("cannot extract relation contents: input relation caching disabled".to_string())
+                }
             },
         }
     }

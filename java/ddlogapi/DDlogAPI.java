@@ -15,7 +15,7 @@ public class DDlogAPI {
     /**
      * The C ddlog API
      */
-    native long ddlog_run(boolean storeData, int workers, String callbackName);
+    native long ddlog_run(boolean storeInputs, boolean storeOutputs, int workers, String callbackName);
     static native int ddlog_record_commands(long hprog, String filename, boolean append);
     static native int ddlog_stop_recording(long hprog, int fd);
     static native int ddlog_dump_input_snapshot(long hprog, String filename, boolean append);
@@ -115,11 +115,11 @@ public class DDlogAPI {
      *                  many times, on potentially different threads, when the "commit"
      *                  API function is called.
      */
-    public DDlogAPI(int workers, Consumer<DDlogCommand> callback, boolean storeData) {
+    public DDlogAPI(int workers, Consumer<DDlogCommand> callback, boolean storeInputs, boolean storeOutputs) {
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
-        this.hprog = this.ddlog_run(storeData, workers, onCommit);
+        this.hprog = this.ddlog_run(storeInputs, storeOutputs, workers, onCommit);
     }
 
     /// Callback invoked from commit.

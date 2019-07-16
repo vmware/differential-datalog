@@ -11,8 +11,8 @@ public class TwoTest {
     private final DDlogAPI api2;
 
     TwoTest() {
-        this.api1 = new DDlogAPI(1, r -> this.onCommit(r), false);
-        this.api2 = new DDlogAPI(1, r -> this.onCommit(r), false);
+        this.api1 = new DDlogAPI(1, r -> this.onCommit(r), true, false);
+        this.api2 = new DDlogAPI(1, r -> this.onCommit(r), true, false);
     }
 
     synchronized void onCommit(DDlogCommand command) {
