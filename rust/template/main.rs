@@ -178,7 +178,7 @@ pub fn main() {
         opt store_inputs:bool=true,  desc:"Do not store input relation state.",  long:"no-store-inputs";
         opt store_delta:bool=true,   desc:"Do not record changes.",              long:"no-store-delta";
         opt print:bool=false,        desc:"Print changes during commit.";
-        opt workers:usize=4,         desc:"The number of worker threads.",       short:'w';
+        opt workers:usize=2,         desc:"The number of worker threads (default: 2).",       short:'w';
     };
     let (args, rest) = parser.parse_or_exit();
 
