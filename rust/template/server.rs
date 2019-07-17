@@ -44,32 +44,16 @@ impl Observer<Update<super::Value>, String> for DDlogServer
 
     fn on_commit(&self) {
         // TODO handle errors
-        let changes = self.prog.transaction_commit_dump_changes();
-        if let Ok(changes) = changes {
-
-            // TODO actually use deltamap
+        if let Ok(changes) = self.prog.transaction_commit_dump_changes() {
             for outlet in &self.outlets {
-
-                if let Some(observer) = &outlet.observer {
-                    let upds = changes.as_ref().iter().filter_map(|(table_id, table_data)| {
-                        if outlet.tables.contains(table_id) {
-                            Some((table_id, table_data))
-                        } else {
-                            None
-                        }
-                    }).flat_map(|(table_id, table_data)| {
-                        table_data.iter().map(move |(val, weight)| {
+                if let Some(ref observer) = outlet.observer {
+                    let upds = outlet.tables.iter().flat_map(|table| {
+                        changes.as_ref().get(table).unwrap().iter().map(move |(val, weight)| {
                             debug_assert!(*weight == 1 || *weight == -1);
                             if *weight == 1 {
-                                Update::Insert{
-                                    relid: *table_id,
-                                    v: val.clone()
-                                }
+                                Update::Insert{relid: *table, v: val.clone()}
                             } else {
-                                Update::DeleteValue{
-                                    relid: *table_id,
-                                    v: val.clone()
-                                }
+                                Update::DeleteValue{relid: *table, v: val.clone()}
                             }
                         })
                     });
@@ -78,7 +62,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                     observer.on_updates(Box::new(upds));
                     observer.on_commit();
                 }
-            }
+            };
         }
     }
 
