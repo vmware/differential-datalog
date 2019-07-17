@@ -7,40 +7,36 @@ use std::iter;
 use std::iter::FromIterator;
 use std::collections::HashSet;
 
-pub struct DDlogServer<O>
-where O: Observer<Update<super::Value>, String>
+pub struct DDlogServer
 {
     prog: HDDlog,
-    outlets:  Vec<OutLet<O>>
+    outlets:  Vec<Outlet>
 }
 
-impl <O> DDlogServer<O>
-where O: Observer<Update<super::Value>, String>
+impl DDlogServer
 {
     pub fn stream(&mut self, tables: HashSet<RelId>) {
-        let outlet = OutLet{tables : tables, observer : None};
+        let outlet = Outlet{tables : tables, observer : None};
         self.outlets.push(outlet);
     }
 }
 
-pub struct OutLet<O>
-where O: Observer<Update<super::Value>, String>
+pub struct Outlet
 {
     tables: HashSet<RelId>,
-    observer: Option<O>
+    observer: Option<Box<dyn Observer<Update<super::Value>, String>>>
 }
 
-impl <O> Observable<Update<super::Value>, String, O> for OutLet<O>
-where O: Observer<Update<super::Value>, String>
+impl Observable<Update<super::Value>, String> for Outlet
 {
-    fn subscribe(&mut self, observer: O) {
+    fn subscribe(&mut self,
+                 observer: Box<dyn Observer<Update<super::Value>, String>>) {
         self.observer = Some(observer);
         // TODO more than one subscribers
     }
 }
 
-impl <O> Observer<Update<super::Value>, String> for DDlogServer<O>
-where O: Observer<Update<super::Value>, String>
+impl Observer<Update<super::Value>, String> for DDlogServer
 {
     fn on_start(&self) {
         self.prog.transaction_start();
@@ -50,24 +46,8 @@ where O: Observer<Update<super::Value>, String>
         // TODO handle errors
         let changes = self.prog.transaction_commit_dump_changes();
         if let Ok(changes) = changes {
-            let upds = changes.as_ref().iter().flat_map(|(table_id, table_data)| {
-                table_data.iter().map(move |(val, weight)| {
-                    debug_assert!(*weight == 1 || *weight == -1);
-                    if *weight == 1 {
-                        Update::Insert{
-                            relid: *table_id,
-                            v: val.clone()
-                        }
-                    } else {
-                        Update::DeleteValue{
-                            relid: *table_id,
-                            v: val.clone()
-                        }
-                    }
-                })
-            });
 
-
+            // TODO actually use deltamap
             for outlet in &self.outlets {
 
                 if let Some(observer) = &outlet.observer {
@@ -95,14 +75,14 @@ where O: Observer<Update<super::Value>, String>
                     });
 
                     observer.on_start();
-                    observer.on_updates(upds);
+                    observer.on_updates(Box::new(upds));
                     observer.on_commit();
                 }
             }
         }
     }
 
-    fn on_updates(&self, updates: impl Iterator<Item = Update<super::Value>>) {
+    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) {
         self.prog.apply_valupdates(updates);
     }
 

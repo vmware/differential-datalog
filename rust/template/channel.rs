@@ -12,10 +12,9 @@ use differential_datalog::record::Record;
 
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
-pub trait Observable<T, E, O>
-where O: Observer<T, E>
+pub trait Observable<T, E>
 {
-    fn subscribe(&mut self, observer: O); //Box<dyn Observer<T, E>>); // -> Subscription;
+    fn subscribe(&mut self, observer: Box<dyn Observer<T, E>>); // -> Subscription;
 }
 
 // The channel is an observer of changes from
@@ -25,7 +24,7 @@ pub trait Observer<T, E>
 {
     fn on_start(&self);
     fn on_commit(&self);
-    fn on_updates(&self, updates: impl Iterator<Item = T>);
+    fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = T> + 'a>);
     fn on_completed(self);
     // fn on_error(&self, error: ?);
 }
@@ -39,7 +38,6 @@ pub trait Subscription
 // A channel that transmits deltas. It acts as an observer of
 // changes on the consuming end, and an observable on the
 // producing end.
-pub trait Channel<T, E, O>: Observer<T, E> + Observable<T, E, O>
-where O: Observer<T, E>
+pub trait Channel<T, E>: Observer<T, E> + Observable<T, E>
 {
 }
