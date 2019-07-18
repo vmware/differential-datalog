@@ -14,10 +14,11 @@ fn main() -> Result<(), String> {
     let table_id = RelIdentifier::RelId(lr_left_Left as usize);
     let updates = &[UpdCmd::Insert(table_id, rec)];
 
-    let prog = HDDlog::run(1, false, None::<fn(usize, &Record, bool)>);
+    let prog = HDDlog::run(1, false, |_, _:&Record, _|{});
     prog.transaction_start()?;
     prog.apply_updates(updates.into_iter())?;
-    prog.transaction_commit_dump_changes(Some(transmit))?;
+    prog.transaction_commit_dump_changes()?;
+    // TODO transmit delta
     // connect to a channel and set up which relations to send over
     /*
      * let channel = TokioChannel::new(ip_addr);

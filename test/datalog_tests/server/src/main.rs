@@ -25,7 +25,8 @@ fn handle_connection(stream: TcpStream, prog: Arc<HDDlog>) -> impl Future<Item =
                     rec)];
                 prog.transaction_start().unwrap();
                 prog.apply_updates(updates.iter()).unwrap();
-                prog.transaction_commit_dump_changes(Some(show_out)).unwrap();
+                prog.transaction_commit_dump_changes().unwrap();
+                // TODO print delta
             }
             Err(e) => println!("{:?}", e),
         }
@@ -41,7 +42,7 @@ fn show_out(table: usize, rec: &Record, polarity: bool) {
 }
 
 fn main() {
-    let prog = HDDlog::run(1, false, None::<fn(usize, &Record, bool)>);
+    let prog = HDDlog::run(1, false, |_, _: &Record, _| {});
 
     let addr = "127.0.0.1:8000".parse::<SocketAddr>().unwrap();
     let listener = TcpListener::bind(&addr).unwrap();
