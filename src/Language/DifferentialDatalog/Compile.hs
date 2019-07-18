@@ -145,6 +145,8 @@ templateFiles specname =
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
+        , (dir </> "channel.rs"             , $(embedFile "rust/template/channel.rs"))
+        , (dir </> "server.rs"              , $(embedFile "rust/template/server.rs"))
         ]
     where dir = rustProjectDir specname
 
