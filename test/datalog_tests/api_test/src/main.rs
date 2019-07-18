@@ -1,45 +1,30 @@
 // The main entry point to ../copy.dl
-
+use copy_ddlog::*;
 use copy_ddlog::api::*;
 use differential_datalog::record::*;
+use differential_datalog::program::Update;
+use std::borrow::Cow;
 
-use std::ffi::CString;
+fn main() -> Result<(), String>{
 
-fn main() {
     // start the DDlog program
-    let prog = ddlog_run(1, false, None, 0, None);
+    let prog = HDDlog::run(1, false, |_, _: &Record, _| {});
 
-    unsafe {
-        // construct a singleton record
-        let b = ddlog_bool(false);
-        let table_name = CString::new("Rin").unwrap();
-        let record = ddlog_struct(table_name.as_ptr(), [b].as_ptr(), 1);
+    // the update consists of inserting a single bool
+    let table = HDDlog::get_table_id("Rin").unwrap();
+    let b = Record::Bool(false);
+    let rec = Record::PosStruct(Cow::from("Rin"), [b].to_vec());
+    let mut updates = Vec::new();
+    updates.push(Update::Insert{
+        relid: 0,
+        v: relval_from_record(table, &rec).unwrap()
+    });
 
-        // prepare the updates, which contains an insertion
-        let table_id = ddlog_get_table_id(table_name.as_ptr());
-        let updates = &[ddlog_insert_cmd(table_id, record)];
+    // an entire transaction. changes execute on commit
+    prog.transaction_start()?;
+    prog.apply_valupdates(updates.into_iter())?;
+    prog.transaction_commit_dump_changes()?;
 
-        // an entire transaction. changes execute on commit
-        ddlog_transaction_start(prog);
-        ddlog_apply_updates(prog, updates.as_ptr(), 1);
-        ddlog_transaction_commit_dump_changes(prog, Some(show_output), 0);
-
-        // stop the DDlog program
-        ddlog_stop(prog);
-    }
-}
-
-// callback on commit
-pub extern "C" fn show_output(
-    arg: libc::uintptr_t,
-    table: libc::size_t,
-    rec: *const Record,
-    polarity: bool,
-) {
-    unsafe {
-        println!(
-            "output is {:?}, {:?}, {:?}, {:?}",
-            arg, table, *rec, polarity
-        );
-    }
+    // stop the DDlog program
+    prog.stop()
 }
