@@ -23,14 +23,14 @@ use super::valmap::*;
 
 /* Single-threaded (non-thread-safe callback)
  */
-pub trait ST_CBFn<V>: Fn(RelId, &V, bool) {
+pub trait ST_CBFn<V>: Fn(RelId, &V, isize) {
     fn clone_boxed(&self) -> Box<dyn ST_CBFn<V>>;
 }
 
 impl<T, V> ST_CBFn<V> for T
 where
     V: Val,
-    T: 'static + Clone + Fn(RelId, &V, bool)
+    T: 'static + Clone + Fn(RelId, &V, isize)
 {
     fn clone_boxed(&self) -> Box<dyn ST_CBFn<V>> {
         Box::new(self.clone())
@@ -118,8 +118,8 @@ impl <V: Val> MTUpdateHandler<V> for NullUpdateHandler
 /* `UpdateHandler` implementation that invokes user-provided closure.
  */
 
-pub trait Callback:'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
-impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, bool) + Clone + Send + Sync {}
+pub trait Callback:'static + Fn(usize, &record::Record, isize) + Clone + Send + Sync {}
+impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, isize) + Clone + Send + Sync {}
 
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F:Callback>
@@ -162,7 +162,7 @@ pub struct ExternCUpdateHandler {
 type ExternCCallback = extern "C" fn(arg: libc::uintptr_t,
                                      table: libc::size_t,
                                      rec: *const record::Record,
-                                     polarity: bool);
+                                     weight: libc::ssize_t);
 
 
 impl ExternCUpdateHandler
@@ -193,16 +193,16 @@ impl <V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler
 }
 
 /* Multi-threaded `UpdateHandler` implementation that stores updates
- * in a `ValMap` and locks the map on every update.
+ * in a `DeltaMap` and locks the map on every update.
  */
 #[derive(Clone)]
 pub struct MTValMapUpdateHandler {
-    db: Arc<Mutex<valmap::ValMap>>
+    db: Arc<Mutex<valmap::DeltaMap>>
 }
 
 impl MTValMapUpdateHandler
 {
-    pub fn new(db: Arc<Mutex<valmap::ValMap>>) -> Self {
+    pub fn new(db: Arc<Mutex<valmap::DeltaMap>>) -> Self {
         Self{db}
     }
 }
@@ -226,13 +226,13 @@ impl MTUpdateHandler<Value> for MTValMapUpdateHandler
 }
 
 /* Single-threaded `UpdateHandler` implementation that stores updates
- * in a `ValMap`, locking the map for the entire duration of a commit.
+ * in a `DeltaMap`, locking the map for the entire duration of a commit.
  * After the commit is done, the map can be accessed from a different
  * thread.
  */
 #[derive(Clone)]
 pub struct ValMapUpdateHandler {
-    db: Arc<Mutex<ValMap>>,
+    db: Arc<Mutex<DeltaMap>>,
     /* Stores pointer to `MutexGuard` between `before_commit()` and
     * `after_commit()`.  This has to be unsafe, because Rust does
     * not let us express a borrow from a field of the same struct in a
@@ -243,16 +243,16 @@ pub struct ValMapUpdateHandler {
 impl Drop for ValMapUpdateHandler {
     /* Release the mutex if still held. */
     fn drop<'a>(&'a mut self) {
-        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, ValMap>;
+        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap>;
         if !guard_ptr.is_null() {
-            let _guard: Box<MutexGuard<'_, ValMap>> = unsafe { Box::from_raw(guard_ptr) };
+            let _guard: Box<MutexGuard<'_, DeltaMap>> = unsafe { Box::from_raw(guard_ptr) };
         }
     }
 }
 
 impl ValMapUpdateHandler
 {
-    pub fn new(db: Arc<Mutex<ValMap>>) -> Self {
+    pub fn new(db: Arc<Mutex<DeltaMap>>) -> Self {
         Self{db, locked: Arc::new(Cell::new(ptr::null_mut()))}
     }
 }
@@ -266,8 +266,8 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
             /* `update_cb` can also be called during rollback and stop operations.
              * Ignore those. */
             if !guard_ptr.is_null() {
-                let mut guard: Box<MutexGuard<'_, ValMap>> = unsafe {
-                    Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
+                let mut guard: Box<MutexGuard<'_, DeltaMap>> = unsafe {
+                    Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>)
                 };
                 guard.update(relid, v, w);
                 Box::into_raw(guard);
@@ -283,7 +283,7 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
         let _guard = unsafe {
-            Box::from_raw(guard_ptr as *mut MutexGuard<'_, ValMap>)
+            Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>)
         };
         /* Lock will be released when `_guard` goes out of scope. */
     }
@@ -291,9 +291,6 @@ impl UpdateHandler<Value> for ValMapUpdateHandler
 
 /* `UpdateHandler` implementation that records _changes_ to output relations
  * rather than complete state.
- *
- * The implementation is similar to `ValMapUpdateHandler`, except it keeps
- * track of the (positive or negative) weight of each record.
  */
 #[derive(Clone)]
 pub struct DeltaUpdateHandler {
@@ -443,7 +440,7 @@ impl <V: Val> MTUpdateHandler<V> for MTChainedUpdateHandler<V>
  * update, start, and commit events. */
 enum Msg<V: Val> {
     BeforeCommit,
-    Update{relid: RelId, v: V, w: bool},
+    Update{relid: RelId, v: V, w: isize},
     AfterCommit{success: bool},
     Stop
 }

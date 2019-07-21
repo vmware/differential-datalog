@@ -20,7 +20,7 @@ public class DDlogAPI {
     static native int ddlog_stop_recording(long hprog, int fd);
     static native int ddlog_dump_input_snapshot(long hprog, String filename, boolean append);
     native int dump_table(long hprog, int table, String callbackMethod);
-    static native int  ddlog_stop(long hprog, long callbackHandle);
+    static native int ddlog_stop(long hprog, long callbackHandle);
     static native int ddlog_transaction_start(long hprog);
     static native int ddlog_transaction_commit(long hprog);
     native int ddlog_transaction_commit_dump_changes(long hprog, String callbackName);
@@ -123,12 +123,14 @@ public class DDlogAPI {
     }
 
     /// Callback invoked from commit.
-    void onCommit(int tableid, long handle, boolean polarity) {
+    void onCommit(int tableid, long handle, long w) {
         if (this.commitCallback != null) {
-            DDlogCommand.Kind kind = polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-            DDlogCommand command = new DDlogCommand(kind, tableid, record);
-            this.commitCallback.accept(command);
+            DDlogCommand.Kind kind = w > 0 ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            for (long i = 0; i < java.lang.Math.abs(w); i++) {
+                DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+                DDlogCommand command = new DDlogCommand(kind, tableid, record);
+                this.commitCallback.accept(command);
+            }
         }
     }
 

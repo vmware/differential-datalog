@@ -29,6 +29,9 @@ typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: b
 typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
 typedef ConcatString = ConcatString{s: string}
 typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
+typedef DdlogBinding = DdlogBinding{tn: tnid_t, entity: entid_t}
+typedef DdlogDependency = DdlogDependency{parent: entid_t, child: entid_t}
+typedef DdlogNode = DdlogNode{id: entid_t}
 typedef Disaggregate = Disaggregate{x: string, y: string}
 typedef Edge = Edge{from: bigint, to: bigint}
 typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
@@ -78,6 +81,7 @@ typedef Ris_true = Ris_true{_s: TB}
 typedef S = S{f1: (bool, bool), f2: bit<32>}
 typedef Sib = Sib{s1: person, s2: person}
 typedef Signed = Signed{n: signed<32>}
+typedef Span = Span{entity: entid_t, tns: std.Set<tnid_t>}
 typedef String2 = String2{s: string}
 typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
@@ -113,6 +117,7 @@ typedef YX = YX{y: bigint, x: bigint}
 typedef YZX = YZX{y: bigint, z: bigint, x: bigint}
 typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
+typedef entid_t = bit<32>
 #[size = 4]
 extern type intern.IObj<'A>
 typedef intern.IString = intern.IObj<string>
@@ -155,6 +160,7 @@ typedef t15 = Const15{f: bigint}
 typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
 typedef t19 = C000{f0: bigint} | C111{f0: bigint} | C222{f0: bigint}
 typedef t20 = signed<32>
+typedef tnid_t = bit<16>
 function a0 (): bigint =
     1
 function a1 (): bigint =
@@ -524,6 +530,9 @@ output relation Cast_u256 [Cast_u256]
 output relation Cast_u32 [Cast_u32]
 output relation ConcatString [ConcatString]
 output relation DMethod [DMethod]
+input relation DdlogBinding [DdlogBinding]
+input relation DdlogDependency [DdlogDependency]
+input relation DdlogNode [DdlogNode]
 output relation Disaggregate [Disaggregate]
 input relation Edge [Edge]
 output relation ExternalId [ExternalId]
@@ -571,6 +580,7 @@ relation Ris_true [Ris_true]
 output relation SCCLabel [(bigint, bigint)]
 output relation Sib [Sib]
 output relation Signed [Signed]
+output relation Span [Span]
 input relation String2 [String2]
 output relation StringOrd [StringOrd]
 input relation Strings [Strings]
@@ -843,4 +853,6 @@ UMinus_s32(.description="-32768", .n=(- 32'sd32768)).
 UMinus_bigint(.description="-100", .n=(- 100)).
 UMinus_bigint(.description="- -100", .n=(- (- 100))).
 UMinus_bigint(.description="-32768", .n=(- 32768)).
+Span(.entity=(entity: entid_t), .tns=bindings) :- DdlogNode(.id=entity), DdlogBinding(.tn=tn, .entity=entity), var bindings = Aggregate((entity), std.group2set(tn)).
+Span(.entity=parent, .tns=tns) :- DdlogNode(.id=parent), DdlogDependency(.parent=child, .child=parent), Span(.entity=child, .tns=child_tns), var tns = Aggregate((parent), std.group_set_unions(child_tns)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

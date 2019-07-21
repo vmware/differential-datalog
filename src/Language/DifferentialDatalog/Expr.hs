@@ -349,6 +349,9 @@ exprIsInjective d vs e =
 exprIsInjective' :: DatalogProgram -> ExprNode Bool -> Bool
 exprIsInjective' _ EVar{}        = True
 exprIsInjective' d EApply{..}    =
+    -- FIXME: once we add support for recursive functions, be careful to avoid
+    -- infinite recursion.  The simple thing to do is just to return False for
+    -- recursive functions, as reasoning about them seems tricky otherwise.
     and exprArgs && (maybe False (exprIsInjective d (S.fromList $ map name funcArgs)) $ funcDef)
     where Function{..} = getFunc d exprFunc
 exprIsInjective' _ EBool{}       = True
