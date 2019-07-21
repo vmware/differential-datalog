@@ -96,6 +96,27 @@ impl DeltaMap {
         Ok(())
     }
 
+    pub fn format_as_sets(&self, w: &mut io::Write) -> io::Result<()> {
+       for (relid, map) in &self.map {
+           w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
+           for (val,weight) in map {
+                w.write_fmt(format_args!("{}\n", *val))?;
+                assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
+           };
+           w.write_fmt(format_args!("\n"))?;
+       };
+       Ok(())
+    }
+
+    pub fn format_rel_as_set(&mut self, relid: RelId, w: &mut io::Write) -> io::Result<()> {
+        let map = self.get_rel(relid);
+        for (val, weight) in map {
+            w.write_fmt(format_args!("{}\n", *val))?;
+            assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
+        };
+        Ok(())
+    }
+
     pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<Value, isize> {
         self.map.entry(relid).or_insert_with(BTreeMap::default)
     }

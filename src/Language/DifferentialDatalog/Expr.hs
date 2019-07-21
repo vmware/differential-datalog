@@ -49,6 +49,7 @@ module Language.DifferentialDatalog.Expr (
     exprIsDeconstruct,
     exprIsVarOrFieldLVal,
     exprIsVarOrField,
+    exprIsInjective,
     exprTypeMapM
     ) where
 
@@ -56,6 +57,7 @@ import Data.List
 import Data.Maybe
 import Control.Monad
 import Control.Monad.Identity
+import qualified Data.Set as S
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Ops
@@ -335,6 +337,30 @@ exprIsVarOrField' (EVar _ v)       = True
 exprIsVarOrField' (EField _ e _)   = e
 exprIsVarOrField' (ETyped _ e _)   = e
 exprIsVarOrField' _                = False
+
+-- | Expression maps distinct assignments to input variables 'vs'
+-- to distinct outputs.
+exprIsInjective :: DatalogProgram -> S.Set String -> Expr -> Bool
+exprIsInjective d vs e =
+    S.fromList (exprVars e) == vs &&
+    exprFold (exprIsInjective' d) e
+
+-- No clever analysis here; just the obvious cases.
+exprIsInjective' :: DatalogProgram -> ExprNode Bool -> Bool
+exprIsInjective' _ EVar{}        = True
+exprIsInjective' d EApply{..}    =
+    and exprArgs && (maybe False (exprIsInjective d (S.fromList $ map name funcArgs)) $ funcDef)
+    where Function{..} = getFunc d exprFunc
+exprIsInjective' _ EBool{}       = True
+exprIsInjective' _ EInt{}        = True
+exprIsInjective' _ EString{}     = True
+exprIsInjective' _ EBit{}        = True
+exprIsInjective' _ ESigned{}     = True
+exprIsInjective' _ EStruct{..}   = all snd exprStructFields
+exprIsInjective' _ ETuple{..}    = and exprTupleFields
+exprIsInjective' _ EUnOp{..}     = (elem exprUOp [Not, BNeg, UMinus]) && exprOp
+exprIsInjective' _ ETyped{..}    = exprExpr
+exprIsInjective' _ _             = False
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr

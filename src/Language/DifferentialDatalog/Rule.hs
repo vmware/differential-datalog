@@ -129,12 +129,11 @@ atomVarOccurrences ctx e =
 
 atomVars :: Expr -> [String]
 atomVars e =
-    exprCollect (\e' ->
-                  case e' of
-                       EVar _ v       -> [v]
-                       EBinding _ v _ -> [v]
-                       _              -> [])
-                   (++) e
+    exprCollect (\case
+                  EVar _ v       -> [v]
+                  EBinding _ v _ -> [v]
+                  _              -> [])
+                (++) e
 
 atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
 atomVarDecls d rl i = S.fromList $ atomVarTypes d (CtxRuleRAtom rl i) (atomVal $ rhsAtom $ ruleRHS rl !! i)

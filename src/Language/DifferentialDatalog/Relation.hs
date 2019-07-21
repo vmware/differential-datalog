@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.Relation (
 ) 
 where
 
+import qualified Data.Set                       as S
 import qualified Data.Graph.Inductive           as G
 import qualified Data.Graph.Inductive.Query.DFS as G
 import Data.Maybe
@@ -80,8 +81,8 @@ relIsDistinctByConstruction d rel
      length rules == 1 && length heads == 1 &&
      -- The first atom in the body of the rule is a distinct relation and does not contain wildcards
      length (ruleRHS rule) >= 1 && relIsDistinct d baserel && (not $ exprContainsPHolders $ atomVal atom1) &&
-     -- The head of the rule contains all the variables from the first atom
-     (null $ (nub $ atomVars $ atomVal atom1) \\ (nub $ atomVars $ atomVal head_atom)) &&
+     -- The head of the rule is an injective function of all the variables from the first atom
+     exprIsInjective d (S.fromList $ atomVars $ atomVal atom1) (atomVal head_atom) && 
      -- The rule only contains clauses that filter the collection
      all (\case
            RHSLiteral True a -> relIsDistinct d (getRelation d $ atomRelation a) &&
