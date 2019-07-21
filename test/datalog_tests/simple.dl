@@ -999,3 +999,25 @@ output relation UMinus_bigint(description: string, n: bigint)
 UMinus_bigint("-100", -100).
 UMinus_bigint("- -100", - -100).
 UMinus_bigint("-32768", -32768).
+
+typedef entid_t = bit<32>
+typedef tnid_t = bit<16>
+
+/* Recursion + aggregation */
+input relation DdlogNode(id: entid_t)
+input relation DdlogBinding(tn: tnid_t, entity: entid_t)
+input relation DdlogDependency(parent: entid_t, child: entid_t)
+
+output relation Span(entity: entid_t, tns: Set<tnid_t>)
+
+Span(entity: entid_t, bindings) :-
+    DdlogNode(entity),
+    DdlogBinding(tn, entity),
+    var bindings = Aggregate((entity), group2set(tn)).
+
+/* Recursive step: propagate span along graph edges */
+Span(parent, tns) :-
+    DdlogNode(parent),
+    DdlogDependency(child, parent),
+    Span(child, child_tns),
+    var tns = Aggregate((parent), group_set_unions(child_tns)).

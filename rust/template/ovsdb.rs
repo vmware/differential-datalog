@@ -105,7 +105,7 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
     res
 }
 
-fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_char) -> Result<CString, String>
+fn dump_delta(db: &mut valmap::DeltaMap, module: *const c_char, table: *const c_char) -> Result<CString, String>
 {
     let table_str: &str = unsafe {CStr::from_ptr(table)}.to_str().map_err(|e|format!("{}", e))?;
     let module_str: &str = unsafe {CStr::from_ptr(module)}.to_str().map_err(|e|format!("{}", e))?;
@@ -117,7 +117,10 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
     let plus_cmds: Result<Vec<String>, String> = {
         let plus_table_id = relname2id(&plus_table_name).ok_or_else(||format!("unknown table {}", plus_table_name))?;
         db.get_rel(plus_table_id as RelId)
-          .iter().map(|v| record_into_insert_str(v.clone().into_record(), table_str)).collect()
+          .iter().map(|(v,w)| {
+              assert!(*w == 1);
+              record_into_insert_str(v.clone().into_record(), table_str)
+          }).collect()
     };
     let plus_cmds = plus_cmds?;
 
@@ -125,7 +128,10 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
     let minus_cmds: Result<Vec<String>, String> = {
         let minus_table_id = relname2id(&minus_table_name).ok_or_else(||format!("unknown table {}", minus_table_name))?;
         db.get_rel(minus_table_id as RelId)
-          .iter().map(|v| record_into_delete_str(v.clone().into_record(), table_str)).collect()
+          .iter().map(|(v,w)| {
+              assert!(*w == 1);
+              record_into_delete_str(v.clone().into_record(), table_str)
+          }).collect()
     };
     let mut minus_cmds = minus_cmds?;
 
@@ -134,7 +140,10 @@ fn dump_delta(db: &mut valmap::ValMap, module: *const c_char, table: *const c_ch
         match relname2id(&upd_table_name) {
             Some(upd_table_id) => {
                 db.get_rel(upd_table_id as RelId)
-                   .iter().map(|v| record_into_update_str(v.clone().into_record(), table_str)).collect()
+                   .iter().map(|(v,w)| {
+                       assert!(*w == 1);
+                       record_into_update_str(v.clone().into_record(), table_str)
+                   }).collect()
             },
             None => Ok(vec![])
         }

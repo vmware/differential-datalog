@@ -936,3 +936,29 @@ UMinus_bigint
 UMinus_bigint{"- -100",100}
 UMinus_bigint{"-100",-100}
 UMinus_bigint{"-32768",-32768}
+Span:
+Span{.entity = 0, .tns = [0, 1, 2]}: +1
+Span{.entity = 1, .tns = [0, 1, 2]}: +1
+Span{.entity = 2, .tns = [0, 1, 2]}: +1
+Span{.entity = 3, .tns = [0, 1, 2]}: +1
+Span{.entity = 4, .tns = [0, 1, 2]}: +1
+Span{.entity = 5, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 6, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 7, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 8, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 9, .tns = [0]}: +1
+Span{.entity = 10, .tns = [1]}: +1
+Span{.entity = 11, .tns = [2]}: +1
+Span{.entity = 12, .tns = [3]}: +1
+Span{.entity = 13, .tns = [4]}: +1
+Span:
+Span{.entity = 0, .tns = [0, 1, 2]}: -1
+Span{.entity = 0, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 1, .tns = [0, 1, 2]}: -1
+Span{.entity = 1, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 2, .tns = [0, 1, 2]}: -1
+Span{.entity = 2, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 3, .tns = [0, 1, 2]}: -1
+Span{.entity = 3, .tns = [0, 1, 2, 3, 4]}: +1
+Span{.entity = 4, .tns = [0, 1, 2]}: -1
+Span{.entity = 4, .tns = [0, 1, 2, 3, 4]}: +1

@@ -21,7 +21,7 @@ use super::*;
 pub struct HDDlog {
     pub prog: Mutex<RunningProgram<Value>>,
     pub update_handler: Box<dyn IMTUpdateHandler<Value>>,
-    pub db: Option<Arc<Mutex<ValMap>>>,
+    pub db: Option<Arc<Mutex<DeltaMap>>>,
     pub deltadb: Arc<Mutex<Option<DeltaMap>>>,
     pub print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     /* When set, all commands sent to the program are recorded in
@@ -251,7 +251,7 @@ impl HDDlog {
     {
         let workers = if workers == 0 { 1 } else { workers };
 
-        let db: Arc<Mutex<ValMap>> = Arc::new(Mutex::new(ValMap::new()));
+        let db: Arc<Mutex<DeltaMap>> = Arc::new(Mutex::new(DeltaMap::new()));
         let db2 = db.clone();
 
         let deltadb: Arc<Mutex<Option<DeltaMap>>> = Arc::new(Mutex::new(None));
@@ -305,13 +305,14 @@ impl HDDlog {
             replay_file:    None}
     }
 
-    fn db_dump_table<F>(db: &mut ValMap,
+    fn db_dump_table<F>(db: &mut DeltaMap,
                         table: libc::size_t,
                         cb: Option<F>)
     where F:Fn(&record::Record) -> bool
     {
         if let Some(f) = cb {
-            for val in db.get_rel(table) {
+            for (val,w) in db.get_rel(table) {
+                assert!(*w == 1);
                 if !f(&val.clone().into_record()) {
                     break;
                 }
@@ -487,7 +488,7 @@ pub extern "C" fn ddlog_run(
     cb: Option<extern "C" fn(arg: libc::uintptr_t,
                              table: libc::size_t,
                              rec: *const record::Record,
-                             polarity: bool)>,
+                             w: libc::ssize_t)>,
     cb_arg:  libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>) -> *const HDDlog
 {
@@ -625,7 +626,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
             if let Some(f) = f {
                 for (table_id, table_data) in changes.as_ref().iter() {
                     for (val, weight) in table_data.iter() {
-                        debug_assert!(*weight == 1 || *weight == -1);
+                        assert!(*weight == 1 || *weight == -1);
                         f(*table_id as libc::size_t,
                           &val.clone().into_record(),
                           *weight == 1);

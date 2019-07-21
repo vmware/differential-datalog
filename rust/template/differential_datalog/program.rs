@@ -192,14 +192,14 @@ pub enum ProgNode<V: Val> {
     SCC{rels: Vec<Relation<V>>}
 }
 
-pub trait CBFn<V>: Fn(RelId, &V, bool) + Send {
+pub trait CBFn<V>: Fn(RelId, &V, Weight) + Send {
     fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
 }
 
 impl<T, V> CBFn<V> for T
 where
     V: Val,
-    T: 'static + Send + Clone + Fn(RelId, &V, bool)
+    T: 'static + Send + Clone + Fn(RelId, &V, Weight)
 {
     fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
         Box::new(self.clone())
@@ -1030,9 +1030,9 @@ impl<V:Val> Program<V>
                                 },
                                 Some(cb) => {
                                     let cb = cb.lock().unwrap().clone();
-                                    collection.inspect(move |x| {
-                                        debug_assert!(x.2 == 1 || x.2 == -1);
-                                        cb(relid, &x.0, x.2 == 1)
+                                    collection.consolidate().inspect(move |x| {
+                                        assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                        cb(relid, &x.0, x.2)
                                     }).probe_with(&mut probe1);
                                 }
                             }
@@ -1686,7 +1686,7 @@ impl<V:Val> RunningProgram<V> {
         }
     }
 
-    /* Update value set and delta set of an input relation before performin an update.
+    /* Update value set and delta set of an input relation before performing an update.
      * `s` is the current content of the relation.
      * `ds` is delta since start of transaction.
      * `x` is the value being inserted or deleted.

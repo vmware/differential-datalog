@@ -90,7 +90,7 @@ fn handle_cmd(hddlog: &HDDlog,
             Ok(())
         },
         Command::Dump(None) => {
-            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format(&mut stdout()));
+            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format_as_sets(&mut stdout()));
             Ok(())
         },
         Command::Dump(Some(rname)) => {
@@ -101,7 +101,7 @@ fn handle_cmd(hddlog: &HDDlog,
                 },
                 Some(rid) => rid as RelId
             };
-            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format_rel(relid, &mut stdout()));
+            let _ = hddlog.db.as_ref().map(|db|db.lock().unwrap().format_rel_as_set(relid, &mut stdout()));
             Ok(())
         },
         Command::Clear(rname) => {
@@ -185,10 +185,10 @@ pub fn main() {
         panic!("Invalid command line arguments; try -h for help");
     }
 
-    fn record_upd(table:usize, rec: &Record, pol: bool) {
-        eprintln!("{} {:?} {}", if pol { "insert" } else { "delete" }, table, *rec);
+    fn record_upd(table:usize, rec: &Record, w: isize) {
+        eprintln!("{}({:+}) {:?} {}", if w >= 0 { "insert" } else { "delete" }, w, table, *rec);
     }
-    fn no_op(_table:usize, _rec: &Record, _pol: bool) {}
+    fn no_op(_table:usize, _rec: &Record, _w: isize) {}
     let cb = if args.print { record_upd } else { no_op };
 
     let hddlog = HDDlog::run(args.workers,

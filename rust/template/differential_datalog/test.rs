@@ -5,13 +5,14 @@ use uint::*;
 use abomonation::Abomonation;
 
 use std::sync::{Arc,Mutex};
-use fnv::{FnvHashSet, FnvHashMap};
+use fnv::{FnvHashMap};
 use std::iter::FromIterator;
 use differential_dataflow::Collection;
 use differential_dataflow::operators::Join;
 use timely::dataflow::scopes::*;
 use timely::communication::Allocator;
 use timely::worker::Worker;
+use std::collections::btree_map::{BTreeMap, Entry};
 
 const TEST_SIZE: u64 = 1000;
 
@@ -168,7 +169,7 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
     }
 }*/
 
-/*fn set_update(s: &Arc<Mutex<ValSet<Value>>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
+/*fn set_update(s: &Arc<Mutex<Delta>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
 {
     //println!("xupd {:?} {}", *x, w);
     if insert {
@@ -202,20 +203,32 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
     }
 }*/
 
-fn set_update(_rel: &str, s: &Arc<Mutex<ValSet<Value>>>, x : &Value, w: bool)
+type Delta = BTreeMap<Value, Weight>;
+
+
+fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x : &Value, w: Weight)
 {
+    let mut delta = s.lock().unwrap();
+
+    let entry = delta.entry(x.clone());
+    match entry {
+        Entry::Vacant(vacant) => { vacant.insert(w); },
+        Entry::Occupied(mut occupied) => {
+            if *occupied.get() == -w {
+                occupied.remove();
+            } else {
+                *occupied.get_mut() += w;
+            }
+        }
+    };
+
     //println!("set_update({}) {:?} {}", rel, *x, insert);
-    if w {
-        s.lock().unwrap().insert(x.clone());
-    } else {
-        s.lock().unwrap().remove(x);
-    }
 }
 
 /* Test insertion/deletion into a database with a single table and no rules
  */
 fn test_one_relation(nthreads: usize) {
-    let relset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel = {
         let relset1 = relset.clone();
         Relation {
@@ -226,7 +239,7 @@ fn test_one_relation(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
 
@@ -239,10 +252,10 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
@@ -252,7 +265,7 @@ fn test_one_relation(nthreads: usize) {
     /* 2. Deletion */
     let mut set2 = set.clone();
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         set2.remove(x);
         running.delete_value(1, x.clone()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(), set2);
@@ -280,7 +293,7 @@ fn test_one_relation(nthreads: usize) {
     /* 5. Rollback */
     let before = relset.lock().unwrap().clone();
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
     };
     //println!("delta: {:?}", *running.relation_delta(1).unwrap().lock().unwrap());
@@ -308,7 +321,7 @@ fn test_one_relation_multi() {
 /* Two tables + 1 rule that keeps the two synchronized
  */
 fn test_two_relations(nthreads: usize) {
-    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -319,10 +332,10 @@ fn test_two_relations(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
-    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -333,7 +346,7 @@ fn test_two_relations(nthreads: usize) {
             id:           2,
             rules:        vec![Rule::CollectionRule{description: "T2.R1".to_string(), rel: 1, xform: None}],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T2", &relset2, v, w)))))
         }
     };
 
@@ -348,10 +361,10 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x),1)));
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
@@ -363,7 +376,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 2. Clear T1 */
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.delete_value(1, x.clone()).unwrap();
 //        assert_eq!(running.relation_clone_content(1).unwrap(),
 //                   running.relation_clone_content(2).unwrap());
@@ -375,7 +388,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 3. Rollback */
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
@@ -403,7 +416,7 @@ fn test_two_relations_multi() {
 /* Semijoin
  */
 fn test_semijoin(nthreads: usize) {
-    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -414,7 +427,7 @@ fn test_semijoin(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
     fn fmfun1(v: Value) -> Option<Value> {
@@ -430,7 +443,7 @@ fn test_semijoin(nthreads: usize) {
         }
     }
 
-    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -445,14 +458,14 @@ fn test_semijoin(nthreads: usize) {
                 fmfun: &(fmfun1 as FilterMapFunc<Value>),
                 distinct: false
             }],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T2", &relset2, v, w)))))
         }
     };
     fn jfun(_key: &Value, v1: &Value, _v2: &()) -> Option<Value> {
         Some(Value::Tuple2(Box::new(v1.clone()), Box::new(v1.clone())))
     }
 
-    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -479,7 +492,7 @@ fn test_semijoin(nthreads: usize) {
                         })
                 }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T3", &relset3, v, w)))))
         }
     };
 
@@ -493,10 +506,10 @@ fn test_semijoin(nthreads: usize) {
     let mut running = prog.run(nthreads);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x))), 1)));
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
         running.insert(2, x.clone()).unwrap();
     };
@@ -522,7 +535,7 @@ fn test_semijoin_multi() {
 /* Inner join
  */
 fn test_join(nthreads: usize) {
-    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -533,7 +546,7 @@ fn test_join(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -542,7 +555,7 @@ fn test_join(nthreads: usize) {
             _ => None
         }
     }
-    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -556,14 +569,14 @@ fn test_join(nthreads: usize) {
                 name: "arrange2.0".to_string(),
                 afun: &(afun1 as ArrangeFunc<Value>)
             }],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T2", &relset2, v, w)))))
         }
     };
     fn jfun(_key: &Value, v1: &Value, v2: &Value) -> Option<Value> {
         Some(Value::Tuple2(Box::new(v1.clone()), Box::new(v2.clone())))
     }
 
-    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -590,11 +603,11 @@ fn test_join(nthreads: usize) {
                         })
                 }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T3", &relset3, v, w)))))
         }
     };
 
-    let relset4: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset4: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
@@ -605,7 +618,7 @@ fn test_join(nthreads: usize) {
             id:           4,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T4", &relset4, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T4", &relset4, v, w)))))
         }
     };
 
@@ -636,10 +649,10 @@ fn test_join(nthreads: usize) {
     let mut running = prog.run(nthreads);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x))), 1)));
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
         running.insert(2, x.clone()).unwrap();
     };
@@ -666,7 +679,7 @@ fn test_join_multi() {
 /* Antijoin
  */
 fn test_antijoin(nthreads: usize) {
-    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -677,7 +690,7 @@ fn test_antijoin(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
     fn afun1(v: Value) -> Option<(Value, Value)> {
@@ -696,7 +709,7 @@ fn test_antijoin(nthreads: usize) {
         Some((Value::bool(*v1),Value::bool(*v2)))
     }
 
-    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -707,7 +720,7 @@ fn test_antijoin(nthreads: usize) {
             id:           2,
             rules:        Vec::new(),
             arrangements: vec![],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T2", &relset2, v, w)))))
         }
     };
 
@@ -722,7 +735,7 @@ fn test_antijoin(nthreads: usize) {
         Some(v)
     }
 
-    let relset21: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset21: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel21 = {
         let relset21 = relset21.clone();
         Relation {
@@ -748,11 +761,11 @@ fn test_antijoin(nthreads: usize) {
                     fmfun: &(fmnull_fun as FilterMapFunc<Value>),
                     distinct: true
                 }],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T21", &relset21, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T21", &relset21, v, w)))))
         }
     };
 
-    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -779,7 +792,7 @@ fn test_antijoin(nthreads: usize) {
                         })
                 }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T3", &relset3, v, w)))))
         }
     };
 
@@ -795,11 +808,11 @@ fn test_antijoin(nthreads: usize) {
     let mut running = prog.run(nthreads);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x)))));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::Tuple2(Box::new(Value::u64(*x)),Box::new(Value::u64(*x))), 1)));
 
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
         running.insert(2, x.clone()).unwrap();
     };
@@ -809,7 +822,7 @@ fn test_antijoin(nthreads: usize) {
 
     /* 1. T2 is empty; antijoin is identical to T1 */
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.delete_value(2, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
@@ -832,7 +845,7 @@ fn test_antijoin_multi() {
 /* Maps and filters
  */
 fn test_map(nthreads: usize) {
-    let relset1: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -843,7 +856,7 @@ fn test_map(nthreads: usize) {
             id:           1,
             rules:        Vec::new(),
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T1", &relset1, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T1", &relset1, v, w)))))
         }
     };
 
@@ -897,7 +910,7 @@ fn test_map(nthreads: usize) {
         }
     }
 
-    let relset2: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -932,10 +945,10 @@ fn test_map(nthreads: usize) {
                     })
             }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T2", &relset2, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T2", &relset2, v, w)))))
         }
     };
-    let relset3: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -960,11 +973,11 @@ fn test_map(nthreads: usize) {
                     })
             }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T3", &relset3, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T3", &relset3, v, w)))))
         }
     };
 
-    let relset4: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let relset4: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
@@ -989,7 +1002,7 @@ fn test_map(nthreads: usize) {
                     })
             }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("T4", &relset4, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("T4", &relset4, v, w)))))
         }
     };
 
@@ -1005,18 +1018,19 @@ fn test_map(nthreads: usize) {
     let mut running = prog.run(nthreads);
 
     let vals:Vec<u64> = (0..TEST_SIZE).collect();
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| Value::u64(*x)));
-    let expected2 = FnvHashSet::from_iter(vals.iter().
-                                          map(|x| Value::u64(*x)).
-                                          map(|x| mfun(x)).
-                                          filter(|x| ffun(&x)).
-                                          filter_map(|x| fmfun(x)).
-                                          flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ));
-    let mut expected3 = FnvHashSet::default();
-    expected3.insert(Value::u64(expected2.len() as u64));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
+    let expected2 = BTreeMap::from_iter(vals.iter().
+                                        map(|x| Value::u64(*x)).
+                                        map(|x| mfun(x)).
+                                        filter(|x| ffun(&x)).
+                                        filter_map(|x| fmfun(x)).
+                                        flat_map(|x| match flatmapfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())} ).
+                                        map(|x|(x,1)));
+    let mut expected3 = BTreeMap::default();
+    expected3.insert(Value::u64(expected2.len() as u64), 1);
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
@@ -1080,7 +1094,7 @@ fn test_recursion(nthreads: usize) {
         Some(v)
     }
 
-    let parentset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let parentset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let parent = {
         let parentset = parentset.clone();
         Relation {
@@ -1094,11 +1108,11 @@ fn test_recursion(nthreads: usize) {
                 name: "arrange_by_parent".to_string(),
                 afun: &(arrange_by_fst as ArrangeFunc<Value>)
             }],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("parent", &parentset, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("parent", &parentset, v, w)))))
         }
     };
 
-    let ancestorset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let ancestorset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let ancestor = {
         let ancestorset = ancestorset.clone();
         Relation {
@@ -1139,7 +1153,7 @@ fn test_recursion(nthreads: usize) {
                     afun: &(arrange_by_snd as ArrangeFunc<Value>)
                 }
             ],
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("ancestor", &ancestorset, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("ancestor", &ancestorset, v, w)))))
         }
     };
 
@@ -1150,7 +1164,7 @@ fn test_recursion(nthreads: usize) {
         }
     }
 
-    let common_ancestorset: Arc<Mutex<ValSet<Value>>> = Arc::new(Mutex::new(FnvHashSet::default()));
+    let common_ancestorset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
     let common_ancestor = {
         let common_ancestorset = common_ancestorset.clone();
         Relation {
@@ -1194,7 +1208,7 @@ fn test_recursion(nthreads: usize) {
                     }
                 }],
             arrangements: Vec::new(),
-            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,pol| set_update("common_ancestor", &common_ancestorset, v, pol)))))
+            change_cb:    Some(Arc::new(Mutex::new(Box::new(move |_,v,w| set_update("common_ancestor", &common_ancestorset, v, w)))))
         }
     };
 
@@ -1218,7 +1232,7 @@ fn test_recursion(nthreads: usize) {
                     Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
                     Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("D".to_string()))),
                     Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("E".to_string())))];
-    let set = FnvHashSet::from_iter(vals.iter().map(|x| x.clone()));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (x.clone(),1)));
 
     let expect_vals = vec![Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("B".to_string()))),
                            Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
@@ -1227,7 +1241,7 @@ fn test_recursion(nthreads: usize) {
                            Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("D".to_string()))),
                            Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("C".to_string())))];
 
-    let expect_set = FnvHashSet::from_iter(expect_vals.iter().map(|x| x.clone()));
+    let expect_set = BTreeMap::from_iter(expect_vals.iter().map(|x| (x.clone(),1)));
 
     let expect_vals2 = vec![Value::Tuple2(Box::new(Value::String("C".to_string())), Box::new(Value::String("D".to_string()))),
                             Value::Tuple2(Box::new(Value::String("D".to_string())), Box::new(Value::String("C".to_string()))),
@@ -1237,10 +1251,10 @@ fn test_recursion(nthreads: usize) {
                             Value::Tuple2(Box::new(Value::String("E".to_string())), Box::new(Value::String("D".to_string()))),
                             Value::Tuple2(Box::new(Value::String("E".to_string())), Box::new(Value::String("B".to_string()))),
                             Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("E".to_string())))];
-    let expect_set2 = FnvHashSet::from_iter(expect_vals2.iter().map(|x| x.clone()));
+    let expect_set2 = BTreeMap::from_iter(expect_vals2.iter().map(|x| (x.clone(),1)));
 
     running.transaction_start().unwrap();
-    for x in &set {
+    for (x,_) in &set {
         running.insert(1, x.clone()).unwrap();
     };
     running.transaction_commit().unwrap();
@@ -1258,13 +1272,13 @@ fn test_recursion(nthreads: usize) {
     let expect_vals3 = vec![Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("C".to_string()))),
                             Value::Tuple2(Box::new(Value::String("B".to_string())), Box::new(Value::String("D".to_string()))),
                             Value::Tuple2(Box::new(Value::String("A".to_string())), Box::new(Value::String("E".to_string())))];
-    let expect_set3 = FnvHashSet::from_iter(expect_vals3.iter().map(|x| x.clone()));
+    let expect_set3 = BTreeMap::from_iter(expect_vals3.iter().map(|x| (x.clone(),1)));
 
     assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
 
     let expect_vals4 = vec![Value::Tuple2(Box::new(Value::String("C".to_string())), Box::new(Value::String("D".to_string()))),
                             Value::Tuple2(Box::new(Value::String("D".to_string())), Box::new(Value::String("C".to_string())))];
-    let expect_set4 = FnvHashSet::from_iter(expect_vals4.iter().map(|x| x.clone()));
+    let expect_set4 = BTreeMap::from_iter(expect_vals4.iter().map(|x| (x.clone(),1)));
 
     assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
 
@@ -1273,9 +1287,9 @@ fn test_recursion(nthreads: usize) {
     running.clear_relation(1).unwrap();
     running.transaction_commit().unwrap();
 
-    assert_eq!(*parentset.lock().unwrap(), FnvHashSet::default());
-    assert_eq!(*ancestorset.lock().unwrap(), FnvHashSet::default());
-    assert_eq!(*common_ancestorset.lock().unwrap(), FnvHashSet::default());
+    assert_eq!(*parentset.lock().unwrap(), BTreeMap::default());
+    assert_eq!(*ancestorset.lock().unwrap(), BTreeMap::default());
+    assert_eq!(*common_ancestorset.lock().unwrap(), BTreeMap::default());
 
 
     running.stop().unwrap();

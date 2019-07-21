@@ -87,8 +87,14 @@ extern table_id ddlog_get_table_id(const char* tname);
  *	- `arg`	     - opaque used-defined value
  *	- `table`    - table being modified
  *	- `rec`	     - record that has been inserted or deleted
- *	- `polarity` - `true` - record has been added
- *		       `false` - record has been deleted
+ *	- `weight`   - change in the multiplicity of the record.  The same record can
+ *	               be inserted (callback invoked with positive weight) and deleted
+ *	               (callback invoked with negative weight) multiple times during
+ *                 transaction commit.  In order to determine how the membership of
+ *                 the value in the relation was changed by the transaction, sum up
+ *                 all its weights.  The result of +1 means that the record was
+ *                 inserted; -1 - record was deleted; 0 - record's membership
+ *                 did not change.
  *
  * IMPORTANT: Thread safety: DDlog invokes the callback from its worker threads
  * without any serialization to avoid contention. Hence, if the `workers` argument
@@ -117,7 +123,7 @@ extern ddlog_prog ddlog_run(unsigned int workers,
                             void (*cb)(void *arg,
                                        table_id table,
                                        const ddlog_record *rec,
-                                       bool polarity),
+                                       ssize_t weight),
 			    uintptr_t cb_arg,
 			    void (*print_err_msg)(const char *msg));
 

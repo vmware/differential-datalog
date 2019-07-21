@@ -90,14 +90,14 @@ static void deleteCallback(struct CallbackInfo* cbinfo) {
     free(cbinfo);
 }
 
-void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, ssize_t w) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     if (cbi == NULL || cbi->jvm == NULL)
         return;
     JNIEnv* env;
     (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
     (*env)->CallVoidMethod(
-        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
+        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jlong)w);
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
@@ -108,7 +108,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     if (callback == NULL)
         return (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, NULL);
 
-    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJJ)V");
     if (cbinfo == NULL)
         return 0;
 
@@ -193,6 +193,16 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
     return ddlog_transaction_commit((ddlog_prog)handle);
 }
 
+void commit_dump_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
+    if (cbi == NULL || cbi->jvm == NULL)
+        return;
+    JNIEnv* env;
+    (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
+    (*env)->CallVoidMethod(
+        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
+}
+
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes(
     JNIEnv * env, jobject obj, jlong handle, jstring callback) {
 
@@ -204,7 +214,7 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
         return -1;
 
     int result = ddlog_transaction_commit_dump_changes((ddlog_prog)handle,
-                                                       commit_callback,
+                                                       commit_dump_callback,
                                                        (uintptr_t)cbinfo);
     free(cbinfo);
     return (jint)result;

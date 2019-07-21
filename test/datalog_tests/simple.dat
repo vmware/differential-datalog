@@ -554,3 +554,51 @@ dump UMinus_s32;
 
 echo UMinus_bigint;
 dump UMinus_bigint;
+
+
+start;
+insert DdlogNode[DdlogNode{0}],
+insert DdlogNode[DdlogNode{1}],
+insert DdlogNode[DdlogNode{2}],
+insert DdlogNode[DdlogNode{3}],
+insert DdlogNode[DdlogNode{4}],
+insert DdlogNode[DdlogNode{5}],
+insert DdlogNode[DdlogNode{6}],
+insert DdlogNode[DdlogNode{7}],
+insert DdlogNode[DdlogNode{8}],
+insert DdlogNode[DdlogNode{9}],
+insert DdlogBinding[DdlogBinding{0, 9}],
+insert DdlogNode[DdlogNode{10}],
+insert DdlogBinding[DdlogBinding{1, 10}],
+insert DdlogNode[DdlogNode{11}],
+insert DdlogBinding[DdlogBinding{2, 11}],
+insert DdlogNode[DdlogNode{12}],
+insert DdlogBinding[DdlogBinding{3, 12}],
+insert DdlogNode[DdlogNode{13}],
+insert DdlogBinding[DdlogBinding{4, 13}],
+insert DdlogDependency[DdlogDependency{1, 2}],
+insert DdlogDependency[DdlogDependency{2, 1}],
+insert DdlogDependency[DdlogDependency{3, 4}],
+insert DdlogDependency[DdlogDependency{4, 3}],
+insert DdlogDependency[DdlogDependency{5, 6}],
+insert DdlogDependency[DdlogDependency{6, 5}],
+insert DdlogDependency[DdlogDependency{7, 8}],
+insert DdlogDependency[DdlogDependency{8, 7}],
+insert DdlogDependency[DdlogDependency{0, 1}],
+insert DdlogDependency[DdlogDependency{1, 0}],
+insert DdlogDependency[DdlogDependency{2, 3}],
+insert DdlogDependency[DdlogDependency{3, 2}],
+insert DdlogDependency[DdlogDependency{6, 7}],
+insert DdlogDependency[DdlogDependency{7, 6}],
+insert DdlogDependency[DdlogDependency{0, 8}],
+insert DdlogDependency[DdlogDependency{11, 1}],
+insert DdlogDependency[DdlogDependency{3, 5}],
+insert DdlogDependency[DdlogDependency{9, 0}],
+insert DdlogDependency[DdlogDependency{10, 4}],
+insert DdlogDependency[DdlogDependency{12, 5}],
+insert DdlogDependency[DdlogDependency{13, 7}];
+commit dump_changes;
+start;
+insert DdlogDependency[DdlogDependency{1, 6}],
+insert DdlogDependency[DdlogDependency{6, 1}];
+commit dump_changes;
