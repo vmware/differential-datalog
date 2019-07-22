@@ -27,11 +27,11 @@ module Language.DifferentialDatalog.Version (
     dDLOG_VERSION,
     gitHash)
 where
- 
+
 import GitHash
 
 -- Keep this in sync with the binary release version on github
-dDLOG_VERSION = "v0.6.3"
+dDLOG_VERSION = "v0.7.0"
 
 gitHash :: String
 gitHash = giHash $$tGitInfoCwd
