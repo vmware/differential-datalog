@@ -1,11 +1,13 @@
-use channel::*;
-
 use differential_datalog::program::{RelId, Update, Response};
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
-use api::*;
 
-use std::collections::HashSet;
+use api::*;
+use channel::*;
+
+use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
+use std::fmt::{Debug, Formatter};
+use std::fmt;
 
 pub struct UpdatesSubscription<'a> {
     observer: &'a mut Option<Arc<dyn Observer<Update<super::Value>, String>>>,
@@ -20,14 +22,26 @@ impl <'a> Subscription<'a> for UpdatesSubscription<'a> {
 pub struct DDlogServer
 {
     prog: HDDlog,
-    outlets:  Vec<Outlet>
+    outlets: Vec<Outlet>,
+    redirect: HashMap<RelId, RelId>
+}
+
+impl Debug for DDlogServer {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "DDlogServer")
+    }
 }
 
 impl DDlogServer
 {
-    pub fn stream(&mut self, tables: HashSet<RelId>) {
+    pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
+        DDlogServer{prog: prog, outlets: Vec::new(), redirect: redirect}
+    }
+
+    pub fn stream(&mut self, tables: HashSet<RelId>) -> &mut Outlet {
         let outlet = Outlet{tables : tables, observer : None};
         self.outlets.push(outlet);
+        self.outlets.last_mut().unwrap()
     }
 }
 
@@ -56,6 +70,9 @@ impl Observer<Update<super::Value>, String> for DDlogServer
 
     fn on_commit(&self) -> Response<()> {
         let changes = self.prog.transaction_commit_dump_changes()?;
+        for change in changes.as_ref().iter() {
+            println!{"Got {:?}", change};
+        }
         for outlet in &self.outlets {
             if let Some(ref observer) = outlet.observer {
                 let upds = outlet.tables.iter().flat_map(|table| {
@@ -78,7 +95,25 @@ impl Observer<Update<super::Value>, String> for DDlogServer
     }
 
     fn on_updates<'a>(&self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
-        self.prog.apply_valupdates(updates)
+        self.prog.apply_valupdates(updates.map(|upd| match upd {
+            Update::Insert{relid: relid, v: v} =>
+                Update::Insert{
+                    relid: *self.redirect.get(&relid).unwrap(),
+                    v: v},
+            Update::DeleteValue{relid: relid, v: v} =>
+                Update::DeleteValue{
+                    relid: *self.redirect.get(&relid).unwrap(),
+                    v: v},
+            Update::DeleteKey{relid: relid, k: k} =>
+                Update::DeleteKey{
+                    relid: *self.redirect.get(&relid).unwrap(),
+                    k: k},
+            Update::Modify{relid: relid, k: k, m: m} =>
+                Update::Modify{
+                    relid: *self.redirect.get(&relid).unwrap(),
+                    k: k,
+                    m: m},
+        }))
     }
 
     fn on_completed(self) -> Response<()> {

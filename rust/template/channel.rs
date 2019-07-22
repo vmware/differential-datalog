@@ -1,6 +1,5 @@
-use fallible_iterator::FallibleIterator;
-use differential_datalog::record::Record;
 use differential_datalog::program::Response;
+use differential_datalog::record::Record;
 use std::sync::Arc;
 
 // The consumer can subscribe to the channel
@@ -28,6 +27,4 @@ pub trait Subscription<'a> {
 // A channel that transmits deltas. It acts as an observer of
 // changes on the consuming end, and an observable on the
 // producing end.
-pub trait Channel<T, E>: Observer<T, E> + Observable<T, E>
-{
-}
+pub trait Channel<T, E>: Observer<T, E> + Observable<T, E> {}
