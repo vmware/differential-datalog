@@ -5,9 +5,10 @@ use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
 use api::*;
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 pub struct UpdatesSubscription<'a> {
-    observer: &'a mut Option<Box<dyn Observer<Update<super::Value>, String>>>,
+    observer: &'a mut Option<Arc<dyn Observer<Update<super::Value>, String>>>,
 }
 
 impl <'a> Subscription<'a> for UpdatesSubscription<'a> {
@@ -33,13 +34,13 @@ impl DDlogServer
 pub struct Outlet
 {
     tables: HashSet<RelId>,
-    observer: Option<Box<dyn Observer<Update<super::Value>, String>>>
+    observer: Option<Arc<dyn Observer<Update<super::Value>, String>>>
 }
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
     fn subscribe<'a>(&'a mut self,
-                     observer: Box<dyn Observer<Update<super::Value>, String>>)
+                     observer: Arc<dyn Observer<Update<super::Value>, String>>)
                      -> Box<dyn Subscription + 'a>
     {
         self.observer = Some(observer);

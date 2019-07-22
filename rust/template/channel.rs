@@ -1,12 +1,13 @@
 use fallible_iterator::FallibleIterator;
 use differential_datalog::record::Record;
 use differential_datalog::program::Response;
+use std::sync::Arc;
 
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
 pub trait Observable<T, E>
 {
-    fn subscribe<'a>(&'a mut self, observer: Box<dyn Observer<T, E>>) -> Box<dyn Subscription + 'a>;
+    fn subscribe<'a>(&'a mut self, observer: Arc<dyn Observer<T, E>>) -> Box<dyn Subscription + 'a>;
 }
 
 // The channel is an observer of changes from
