@@ -54,7 +54,6 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
-import Language.DifferentialDatalog.CompileJava
 import Language.DifferentialDatalog.FlatBuffer
 import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
@@ -187,22 +186,13 @@ compilerTest progress java fname cli_args crate_types = do
     (prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultCompilerConfig in
-        compile prog specname rs_code toml_code dir crate_types
+    let ?cfg = defaultCompilerConfig
+    compile prog specname rs_code toml_code dir crate_types
     when java $
-        compileJavaBindings prog specname (dir </> rustProjectDir specname)
-    -- compile FlatBuffer schema
-    let flatc_proc = (proc "flatc" (["-j", "-r", specname ++ ".fbs"])) {
-                          cwd = Just $ dir </> rustProjectDir specname </> "java"
-                     }
-    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
+        compileFlatBufferBindings prog specname (dir </> rustProjectDir specname)
     -- compile generated Java code
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
-                            cwd = Just $ dir </> rustProjectDir specname </> "java"
+                          cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java"
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode javac_proc ""
     when (code /= ExitSuccess) $ do
@@ -211,7 +201,7 @@ compilerTest progress java fname cli_args crate_types = do
                                  "\n\nstdout:\n" ++ stdo
 
     -- compile it with Cargo
-    let cargo_proc = (proc "cargo" (["build"] ++ cargo_build_flag)) {
+    let cargo_proc = (proc "cargo" (["build", "--features=flatbuf"] ++ cargo_build_flag)) {
                           cwd = Just $ dir </> rustProjectDir specname
                      }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""

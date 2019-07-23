@@ -50,6 +50,9 @@ impl Uint {
     pub fn from_u128(v: u128) -> Uint {
         Uint{x: BigUint::from(v)}
     }
+    pub fn from_bytes_be(bytes: &[u8]) -> Uint {
+        Uint{x: BigUint::from_bytes_be(bytes)}
+    }
     pub fn to_u8(&self) -> Option<u8> {
         self.x.to_u8()
     }

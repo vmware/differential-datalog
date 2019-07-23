@@ -36,6 +36,7 @@ dependencies:
 - graphviz
 - text
 - githash
+- process
 
 library:
   source-dirs: src
@@ -90,6 +91,5 @@ tests:
     - HUnit
     - tasty-golden
     - filepath
-    - process
     - deepseq
     - zlib

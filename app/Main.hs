@@ -37,7 +37,6 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
-import Language.DifferentialDatalog.CompileJava
 import Language.DifferentialDatalog.FlatBuffer
 
 data TOption = Help
@@ -161,7 +160,7 @@ compileProg conf@Config{..} = do
     let dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold } in
-        compile prog specname rs_code toml_code dir crate_types
+    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold }
+    compile prog specname rs_code toml_code dir crate_types
     when confJava $
-        compileJavaBindings prog specname (dir </> rustProjectDir specname)
+        compileFlatBufferBindings prog specname (dir </> rustProjectDir specname)

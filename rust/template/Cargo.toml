@@ -31,8 +31,14 @@ cpuprofiler = "0.0.3"
 num-traits = "0.2"
 lazy_static = "1.3"
 
+# FlatBuffers dependency enabled by the `flatbuf` feature.
+# flatbuffers crate version must be in sync with the flatc compiler and Java
+# libraries: flatbuffers "0.6" <-> FlatBuffers "1.11.0".
+flatbuffers = {version = "0.6", optional = true }
+
 [features]
 default = []
+flatbuf = ["flatbuffers"]
 
 [profile.release]
 opt-level = 2
@@ -46,7 +52,8 @@ debug-assertions = false
 name = "datalog_example_cli"
 path = "./main.rs"
 
-# [lib] section must be in the ned
+
+# [lib] section must be in the end
 
 [lib]
 name = "datalog_example_ddlog"

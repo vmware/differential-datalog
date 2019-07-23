@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use abomonation::Abomonation;
-use num::bigint::{BigInt};
+use num::bigint::{BigInt, Sign};
 #[cfg(test)]
 use num::bigint::{ToBigInt};
 use std::str::FromStr;
@@ -62,6 +62,9 @@ impl Int {
     }
     pub fn from_Uint(v: uint::Uint) -> Int {
         v.to_Int().unwrap()
+    }
+    pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Int {
+        Int{x: BigInt::from_bytes_be(if sign {Sign::Plus} else {Sign::Minus}, bytes)}
     }
     pub fn to_i8(&self) -> Option<i8> {
         self.x.to_i8()
