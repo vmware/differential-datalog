@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -eux
+set -ex
 
 travis_retry() {
   cmd=$*

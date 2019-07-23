@@ -60,6 +60,7 @@ before_install:
 - export PATH=$HOME/.local/bin:$PATH
 - ./.travis/install-stack.sh
 - ./.travis/install-flatbuf.sh
+- export CLASSPATH=$CLASSPATH:$HOME/flatbuffers/java
 - if [ x$BUILD_BINARY = x1 ]; then cargo install cargo-vendor || true; fi
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
