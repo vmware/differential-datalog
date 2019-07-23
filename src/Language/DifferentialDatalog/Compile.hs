@@ -37,7 +37,9 @@ module Language.DifferentialDatalog.Compile (
     mkValConstructorName',
     mkConstructorName,
     mkType,
-    rname
+    mkValue',
+    rname,
+    box
 ) where
 
 import Prelude hiding((<>))
@@ -2166,11 +2168,11 @@ mkType' TBit{..} | typeWidth <= 8  = "u8"
                  | typeWidth <= 128= "u128"
                  | otherwise       = "Uint"
 mkType' t@TSigned{..} | typeWidth == 8  = "i8"
-                    | typeWidth == 16 = "i16"
-                    | typeWidth == 32 = "i32"
-                    | typeWidth == 64 = "i64"
-                    | typeWidth == 128= "i128"
-                    | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
+                      | typeWidth == 16 = "i16"
+                      | typeWidth == 32 = "i32"
+                      | typeWidth == 64 = "i64"
+                      | typeWidth == 128= "i128"
+                      | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>

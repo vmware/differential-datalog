@@ -25,13 +25,11 @@ SOFTWARE.
 
 -- FIXME: add generated code examples
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, OverloadedStrings, ImplicitParams #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, OverloadedStrings, ImplicitParams, TemplateHaskell #-}
 
 module Language.DifferentialDatalog.FlatBuffer(
     flatBufferValidate,
-    compileFlatBufferSchema,
-    compileFlatBufferRustBindings,
-    compileFlatBufferJavaBindings)
+    compileFlatBufferBindings)
 where
 
 -- FIXME: support `DeleteKey` and `Modify` commands.  The former require collecting
@@ -44,12 +42,16 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import Data.String.Utils
+import Data.FileEmbed
 import Control.Monad.State
 import Text.PrettyPrint
 import Control.Monad.Except
 import Prelude hiding((<>))
 import System.FilePath
+import System.Process
+import GHC.IO.Exception
 import Debug.Trace
+import qualified Data.ByteString.Char8 as BS
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Type
@@ -59,6 +61,35 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
+import qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
+
+compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
+compileFlatBufferBindings prog specname dir = do
+    let flatbuf_dir = dir </> "flatbuf"
+    let java_dir = dir </> "flatbuf" </> "java"
+    --updateFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
+    updateFile (flatbuf_dir </> "flatbuf.fbs") (render $ compileFlatBufferSchema prog specname)
+    mapM_ (\(fname, doc) -> updateFile (java_dir </> fname) $ render doc)
+          $ compileFlatBufferJavaBindings prog specname
+    compileFlatBufferRustBindings prog specname dir
+    -- compile Java bindings for FlatBuffer schema
+    let flatc_proc = (proc "flatc" (["-j", "-o", "java/", "flatbuf.fbs"])) {
+                          cwd = Just $ dir </> "flatbuf"
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
+                                 "\nstdout:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
+    -- compile Rust bindings for FlatBuffer schema
+    let flatc_proc = (proc "flatc" (["-r", "-o", "../", "flatbuf.fbs"])) {
+                          cwd = Just $ dir </> "flatbuf"
+                     }
+    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
+    when (code /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
+                                 "\nstdout:\n" ++ stde ++
+                                 "\n\nstdout:\n" ++ stdo
 
 -- | Checks that we are able to generate FlatBuffer schema for all types used in
 -- program's input and output relations.
@@ -124,15 +155,20 @@ compileFlatBufferSchema d prog_name =
     "root_type __Commands;"
 
 -- | Generate FlatBuffer Rust bindings.
-compileFlatBufferRustBindings :: DatalogProgram -> String -> Doc
-compileFlatBufferRustBindings d prog_name =
-    let ?d = d in
+compileFlatBufferRustBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath ->  IO ()
+compileFlatBufferRustBindings d prog_name dir = do
+    let ?d = d
     let rels = progIORelations
-        -- `FromFlatBuf/ToFlatBuf` implementation for all program types visible from outside
-        types = map typeFlatbufRustBinding progTypesToSerialize
-    in
-    "// FlatBuffers serialization/deserialization logic for program types"      $$
-    (vcat $ intersperse "" types)
+    -- `FromFlatBuf/ToFlatBuf` implementation for all program types visible from outside
+    let types = map typeFlatbufRustBinding progTypesToSerialize
+    let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/flatbuf.rs")
+    updateFile (dir </> "flatbuf.rs") $ render $
+        (pp rust_template)                                      $$
+        rustValueFromFlatbuf                                    $$
+        (vcat $ map rustTypeFromFlatbuf progTypesToSerialize)
+
+    --"// FlatBuffers serialization/deserialization logic for program types"      $$
+    --(vcat $ intersperse "" types)
     -- `FromFlatBuf/ToFlatBuf` implementation for `Value`
     -- `FromFlatBuf/ToFlatBuf` for `Update`
 
@@ -150,6 +186,8 @@ compileFlatBufferJavaBindings d prog_name =
     -- `Constructors/accessors` for DDlog types visible from outside.
     -- `FromFlatBuf/ToFlatBuf` implementation for `Value`
     -- `FromFlatBuf/ToFlatBuf` for `Update`
+
+{- Helpers -}
 
 jFBPackage :: (?prog_name :: String) => Doc
 jFBPackage = "ddlog.__" <> pp ?prog_name
@@ -171,6 +209,15 @@ typeHasUniqueConstructor x =
          TStruct{..} -> length typeCons == 1
          _           -> True
 
+-- Type is stored inline as a primitive FlatBuffer type.
+typeIsScalar :: (WithType a, ?d::DatalogProgram) => a -> Bool
+typeIsScalar x =
+    case typeNormalizeForFlatBuf x of
+         TBool{}     -> True
+         TBit{..}    -> typeWidth <= 64
+         TSigned{..} -> typeWidth <= 64
+         _           -> False
+
 -- Table name to the type of 'a'.  Defined even if 'a' is of a type
 -- that is not declared as a table, in which case this is the name of the
 -- wrapper table.
@@ -186,7 +233,7 @@ typeTableName x =
                        -> "__BigUint"
          TSigned{..} | typeWidth <= 64
                        -> "__Signed" <> pp typeWidth
-                     | otherwise    
+                     | otherwise
                        -> "__BigInt"
          TTuple{..}    -> fbTupleName typeTupArgs
          TUser{..} | typeHasUniqueConstructor x
@@ -207,7 +254,6 @@ typeIsVector x =
 -- must be generated.  This includes all types that occur in input and output
 -- relations, except for primitive types, unless the primitive type is used as
 -- relation type, in which case we still need a table for it.
--- 
 progTypesToSerialize :: (?d::DatalogProgram) => [Type]
 progTypesToSerialize =
     nub
@@ -352,7 +398,7 @@ fbType x =
          t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
                             -> -- unions and arrays are not allowed in FlatBuffers arrays
                                "[" <> (if typeHasUniqueConstructor elemType && not (typeIsVector elemType)
-                                          then fbType elemType 
+                                          then fbType elemType
                                           else typeTableName elemType) <> "]"
          TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
                             -> "[" <> fbTupleName [keyType, valType] <> "]"
@@ -397,8 +443,8 @@ capitalize str = (toUpper (head str) : tail str)
 
 -- convert a DDlog identifier (possibly including namespaces) into a Java identifier
 legalize :: String -> String
-legalize n = 
-    map legalizeChar 
+legalize n =
+    map legalizeChar
     $ replace "]" ""
     $ replace "[" "_Array_" n
 
@@ -411,7 +457,7 @@ legalizeChar c = if isAlphaNum c then c else '_'
 typeNormalizeForFlatBuf :: (WithType a, ?d::DatalogProgram) => a -> Type
 typeNormalizeForFlatBuf x =
     case typeNormalize ?d x of
-         TOpaque{typeArgs = [innerType],..} | elem typeName [rEF_TYPE,  iNTERNED_TYPE] 
+         TOpaque{typeArgs = [innerType],..} | elem typeName [rEF_TYPE,  iNTERNED_TYPE]
                                             -> typeNormalizeForFlatBuf innerType
          t'                                 -> t'
 
@@ -424,7 +470,7 @@ typeFlatbufRustBinding _ = error "typeFlatbufRustBinding is not implemented"
 
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
 jFBCallConstructor table [] = "0"
-jFBCallConstructor table args = 
+jFBCallConstructor table args =
     jFBPackage <> "." <> table <> ".create" <> table <>
            (parens $ commaSep $ "this.fbbuilder" : args)
 
@@ -761,7 +807,7 @@ mkJavaBuilder prog_name =
         (braces' $ "return new" <+> tname <> "(" <>
                    jFBPackage <> "." <> fbtname <> "." <> cname <> "," <+>
                    (jFBCallConstructor cname $ map (\a -> jConv2FBType (FBField cname (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
-        where 
+        where
         tname = jConvType t
         cname = fbConstructorName (typeArgs t) c
         fbtname = fbType t
@@ -796,3 +842,113 @@ typeFlatbufJavaBinding t@TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render 
                       "protected int offset;")
 
 typeFlatbufJavaBinding _ = Nothing
+
+{- Rust bindings -}
+
+rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
+rustValueFromFlatbuf =
+    "impl <'a> FromFlatBuffer<(fb::__Value, fbrt::Table<'a>)> for Value {"              $$
+    "    fn from_flatbuf(v: (fb::__Value, fbrt::Table<'a>)) -> Response<Self> {"        $$
+    "        match v.0 {"                                                               $$
+    (nest' $ nest' $ nest' $ vcat enums)                                                $$
+    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"     $$
+    "        }"                                                                         $$
+    "    }"                                                                             $$
+    "}"
+    where
+    enums = map (\rel@Relation{..} ->
+                    "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
+                        R.mkValue' ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
+                progIORelations
+
+-- Deserialize struct with unique constructor.  Such structs are stored in
+-- tables.
+rustTypeFromFlatbuf :: (?d::DatalogProgram) => Type -> Doc
+rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
+    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{" $$
+    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"     $$
+    "        Ok(" <> R.rname typeName <> (braces $ commaSep args) <> ")"                $$
+    "    }"                                                                             $$
+    "}"
+    where
+    rtype = R.mkType t
+    tstruct = typ' ?d t
+    args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
+               $ consArgs $ head $ typeCons tstruct
+
+-- Deserialize struct with multiple constructor.  Such structs are stored in
+-- unions and can be additionally wrapped in a table if the struct occurs inside
+-- the Value union or vector.  We therefore generate to FromFlatBuffer
+-- implementations: one to deserialize the struct from union, represented as a
+-- (type, table) pair, and one to deserialize it from a table.
+rustTypeFromFlatbuf t@TUser{..} =
+    "impl <'a> FromFlatBuffer<(" <> fbstruct <> ", fbrt::Table<'a>)> for" <+> rtype <+> "{"                                                     $$
+    "    fn from_flatbuf(v: (" <> fbstruct <> ", fbrt::Table<'a>)) -> Response<Self> {"                                                         $$
+    "        match v.0 {"                                                                                                                       $$
+    (nest' $ nest' $ nest' $ vcat cons)                                                                                                         $$
+    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                                                             $$
+    "        }"                                                                                                                                 $$
+    "    }"                                                                                                                                     $$
+    "}"                                                                                                                                         $$
+    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{"                                                         $$
+    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"                                                             $$
+    "        let v_type = v.v_type();"                                                                                                          $$
+    "        let v_table = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested table\"))?;"    $$
+    "        <" <> rtype <> ">::from_flatbuf((v_type,v_table))"                                                                                 $$
+    "    }"                                                                                                                                     $$
+    "}"
+    where
+    rtype = R.mkType t
+    fbstruct = "fb::" <> fbStructName typeName typeArgs
+    tstruct = typ' ?d t
+    cons = map (\c -> let fbcname = fbConstructorName typeArgs c
+                          cname = R.rname (name typeName) <> "::" <> R.rname (name c)
+                          args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
+                                     $ consArgs c
+                      in fbstruct <> "::" <> fbcname <+> "=> {"                                $$
+                         "    let v = fb::" <> fbcname <> "::init_from_table(v.1);"            $$
+                         "    Ok(" <> cname <> (braces $ commaSep args) <> ")"                 $$
+                         "},")
+               $ typeCons tstruct
+
+-- Deserialize Tuples.
+rustTypeFromFlatbuf t@TTuple{..} =
+    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{" $$
+    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"     $$
+    "        Ok((" <> commaSep args <> "))"                                             $$
+    "    }"                                                                             $$
+    "}"
+    where
+    rtype = R.mkType t
+    tstruct = typ' ?d t
+    args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos ("a" ++ show i) a) <> ")?")
+                  $ typeTupArgs
+
+-- Container types (vectors, sets, maps).  We implement 'FromFlatBuffer<fb::Vector>' for
+-- containers in their corresponding libraries.  Here we additionally generate
+-- 'FromFlatBuffer<fb::>' for wrapper tables.
+rustTypeFromFlatbuf t@TOpaque{} =
+    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{"                                                         $$
+    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"                                                             $$
+    "        let vec = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested vector\"))?;"       $$
+    "        <" <> rtype <> ">::from_flatbuf(vec)"                                                                                              $$
+    "    }"                                                                                                                                     $$
+    "}"
+    where
+    rtype = R.mkType t
+
+-- For builtin types ('bool', 'bit<>', 'signed', 'string', 'bigint'),
+-- 'FromFlatBuffer<>' is implemented in the 'flatbuf.rs' template.
+-- For library types (containers, 'Ref<>', etc), 'FromFlatBuffer<>' is
+-- implemented in their corresponding library modules.
+rustTypeFromFlatbuf _ = empty
+
+extract_field :: (?d::DatalogProgram) => Doc -> Field -> Doc
+extract_field container f | typeIsScalar f = "v." <> pp (name f) <> "()"
+                          | typeHasUniqueConstructor f =
+    "v." <> pp (name f) <>
+    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> pp (name f) <> "\"))?"
+                          | otherwise =
+    "(v." <> pp (name f) <> "_type()," <+>
+    "v." <> pp (name f) <>
+    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> pp (name f) <> "\"))?)"
