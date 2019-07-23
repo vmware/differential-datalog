@@ -1,46 +1,109 @@
+extern crate serde_json;
+
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
+use differential_datalog::program::{RelId, Update, Response};
 
 use ddd_ddlog::api::*;
 use ddd_ddlog::Relations::*;
-use ddd_ddlog::channel::{Observable, Observer};
-use ddd_ddlog::server;
+use ddd_ddlog::channel::{Observable, Observer, Channel, Subscription};
+use ddd_ddlog::server::{UpdatesSubscription};
+use ddd_ddlog::*;
 
-use std::collections::{HashSet, HashMap};
-use std::sync::Arc;
+use tokio::net::{TcpStream, TcpListener};
+use tokio::net::tcp::ConnectFuture;
+use tokio::prelude::*;
+use tokio::io;
 
-fn main() -> Result<(), String> {
-    // Construct left server with no redirect
-    let prog1 = HDDlog::run(1, false, |_,_:&Record, _| {});
-    let mut redirect1 = HashMap::new();
-    redirect1.insert(lr_left_Left as usize, lr_left_Left as usize);
-    let mut s1 = server::DDlogServer::new(prog1, redirect1);
+use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
 
-    // Construct right server, redirect Middle table
-    let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});
-    let mut redirect2 = HashMap::new();
-    redirect2.insert(lr_left_Middle as usize, lr_right_Middle as usize);
-    let s2 = server::DDlogServer::new(prog2, redirect2);
+pub struct TCPChannel{
+    stream: Option<ConnectFuture>,
+    listener: Option<TcpListener>,
 
-    // Stream Middle table from left server
-    let mut tables = HashSet::new();
-    tables.insert(lr_left_Middle as usize);
-    let outlet = s1.stream(tables);
+    client: Option<Box<dyn Future<Item = (), Error = ()> + Send>>,
+    server: Option<Box<dyn Future<Item = (), Error = ()> + Send>>,
 
-    // Right server subscribes to the stream
-    let s2_a = Arc::new(s2);
-    outlet.subscribe(s2_a.clone());
+    addr: SocketAddr,
+    output: Option<Arc<Mutex<dyn Observer<Update<Value>, String>>>>,
+}
 
-    // Insert `true` to Left in left server
-    let rec = Record::Bool(true);
-    let table_id = RelIdentifier::RelId(lr_left_Left as usize);
-    let updates = &[UpdCmd::Insert(table_id, rec)];
+fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
+    let buf = Vec::new();
+    let res = io::read_to_end(stream, buf);
 
-    // Execute and transmit the update
-    s1.on_start()?;
-    s1.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())))?;
-    s1.on_commit()?;
-    s1.on_completed()?;
+    let work = res.then(move |result| {
+        match result {
+            Ok((_socket, buf)) => {
+                let s = String::from_utf8(buf).unwrap();
+                let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
 
-    // Shut down right server
-    Arc::try_unwrap(s2_a).unwrap().on_completed()
+                let updates = &[UpdCmd::Insert(
+                    RelIdentifier::RelId(lr_right_Middle as usize),
+                    rec)];
+                println!("{:?}", updates);
+                // TODO pass on the updates to the observer
+            }
+            Err(e) => println!("{:?}", e),
+        }
+
+        Ok(())
+    });
+
+    work
+}
+
+impl Observer<Update<Value>, String> for TCPChannel {
+    fn on_start(&mut self) -> Response<()> {
+        self.stream = Some(TcpStream::connect(&self.addr));
+        self.listener = Some(TcpListener::bind(&self.addr).unwrap());
+        Ok(())
+    }
+
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Response<()> {
+        if let Some(stream) = self.stream.take() {
+            self.client = Some(Box::new(stream.and_then(move |stream| {
+                // TODO transmit the updates through the channel
+                io::write_all(stream, "TODO").then(|_| Ok(()))
+            }).map_err(|err| {
+                println!("connection error = {:?}", err);
+            })));
+        };
+
+        if let Some(listener) = self.listener.take() {
+            self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
+                tokio::spawn(handle_connection(socket));
+                Ok(())
+            }).map_err(|err| {
+                println!("accept error = {:?}", err);
+            })))
+        }
+
+        Ok(())
+    }
+
+    fn on_commit(&mut self) -> Response<()> {
+        if let Some(client) = self.client.take() {
+            tokio::run(client);
+        }
+        Ok(())
+    }
+
+    fn on_completed(self) -> Response<()> {
+        // TODO Disconnect channel
+        Ok(())
+    }
+}
+
+impl Observable<Update<Value>, String> for TCPChannel {
+    fn subscribe<'a>(&'a mut self, observer: Arc<Mutex<dyn Observer<Update<Value>, String>>>) -> Box<dyn Subscription + 'a> {
+        self.output = Some(observer);
+        Box::new(UpdatesSubscription::new(&mut self.output))
+    }
+}
+
+impl Channel<Update<Value>, String> for TCPChannel {}
+
+fn main() {
+    println!("Hello, world!");
 }

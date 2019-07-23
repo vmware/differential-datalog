@@ -25,7 +25,10 @@ fn handle_connection(stream: TcpStream, prog: Arc<HDDlog>) -> impl Future<Item =
                     rec)];
                 prog.transaction_start().unwrap();
                 prog.apply_updates(updates.iter()).unwrap();
-                prog.transaction_commit_dump_changes().unwrap();
+                let delta = prog.transaction_commit_dump_changes().unwrap();
+                for change in delta.as_ref().iter(){
+                    println!("{:?}", change);
+                }
                 // TODO print delta
             }
             Err(e) => println!("{:?}", e),
