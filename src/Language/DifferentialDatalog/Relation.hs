@@ -32,11 +32,13 @@ module Language.DifferentialDatalog.Relation (
     relApplys,
     relIsRecursive,
     relIsDistinctByConstruction,
-    relIsDistinct
+    relIsDistinct,
+    relIdentifier
 ) 
 where
 
 import qualified Data.Set                       as S
+import qualified Data.Map                       as M
 import qualified Data.Graph.Inductive           as G
 import qualified Data.Graph.Inductive.Query.DFS as G
 import Data.Maybe
@@ -105,3 +107,7 @@ relIsDistinctByConstruction _ _ = False
 -- case we will explicitly enforce distinctness
 relIsDistinct :: DatalogProgram -> Relation -> Bool
 relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOutput)
+
+-- | Unique id, assigned to the relation in the generated dataflow graph
+relIdentifier :: DatalogProgram -> Relation -> Int
+relIdentifier d rel = M.findIndex (name rel) $ progRelations d
