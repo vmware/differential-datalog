@@ -16,6 +16,7 @@ use tokio::io;
 
 use std::sync::{Arc, Mutex};
 use std::net::SocketAddr;
+use std::iter;
 
 pub struct TCPChannel{
     stream: Option<ConnectFuture>,
@@ -28,6 +29,19 @@ pub struct TCPChannel{
     output: Option<Arc<Mutex<dyn Observer<Update<Value>, String>>>>,
 }
 
+impl TCPChannel{
+    pub fn new(socket: SocketAddr) -> Self {
+        TCPChannel{
+            addr: socket,
+            listener: None,
+            stream: None,
+            client: None,
+            server: None,
+            output: None,
+        }
+    }
+}
+
 fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
     let buf = Vec::new();
     let res = io::read_to_end(stream, buf);
@@ -36,12 +50,13 @@ fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
         match result {
             Ok((_socket, buf)) => {
                 let s = String::from_utf8(buf).unwrap();
-                let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
+                println!("{}", s);
+                // let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
 
-                let updates = &[UpdCmd::Insert(
-                    RelIdentifier::RelId(lr_right_Middle as usize),
-                    rec)];
-                println!("{:?}", updates);
+                // let updates = &[UpdCmd::Insert(
+                //     RelIdentifier::RelId(lr_right_Middle as usize),
+                //     rec)];
+                // println!("{:?}", updates);
                 // TODO pass on the updates to the observer
             }
             Err(e) => println!("{:?}", e),
@@ -55,21 +70,12 @@ fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
 
 impl Observer<Update<Value>, String> for TCPChannel {
     fn on_start(&mut self) -> Response<()> {
-        self.stream = Some(TcpStream::connect(&self.addr));
         self.listener = Some(TcpListener::bind(&self.addr).unwrap());
+        self.stream = Some(TcpStream::connect(&self.addr));
         Ok(())
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Response<()> {
-        if let Some(stream) = self.stream.take() {
-            self.client = Some(Box::new(stream.and_then(move |stream| {
-                // TODO transmit the updates through the channel
-                io::write_all(stream, "TODO").then(|_| Ok(()))
-            }).map_err(|err| {
-                println!("connection error = {:?}", err);
-            })));
-        };
-
         if let Some(listener) = self.listener.take() {
             self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
                 tokio::spawn(handle_connection(socket));
@@ -79,12 +85,24 @@ impl Observer<Update<Value>, String> for TCPChannel {
             })))
         }
 
+        if let Some(stream) = self.stream.take() {
+            self.client = Some(Box::new(stream.and_then(move |stream| {
+                // TODO transmit the updates through the channel
+                io::write_all(stream, "TODO").then(|_| Ok(()))
+            }).map_err(|err| {
+                println!("connection error = {:?}", err);
+            })));
+        };
+
         Ok(())
     }
 
     fn on_commit(&mut self) -> Response<()> {
         if let Some(client) = self.client.take() {
             tokio::run(client);
+            if let Some(server) = self.server.take() {
+                tokio::run(server);
+            }
         }
         Ok(())
     }
@@ -104,6 +122,13 @@ impl Observable<Update<Value>, String> for TCPChannel {
 
 impl Channel<Update<Value>, String> for TCPChannel {}
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Response<()> {
+    let addr_s = "127.0.0.1:8000";
+    let addr = addr_s.parse::<SocketAddr>().unwrap();
+    let mut chan = TCPChannel::new(addr);
+    let upds: Box<dyn Iterator<Item = Update<Value>>> = Box::new(iter::empty());
+
+    chan.on_start()?;
+    chan.on_updates(upds)?;
+    chan.on_commit()
 }
