@@ -58,6 +58,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
+import Language.DifferentialDatalog.Relation
 
 -- | Checks that we are able to generate FlatBuffer schema for all types used in
 -- program's input and output relations.
@@ -68,8 +69,10 @@ import Language.DifferentialDatalog.NS
 -- If this function succeeds, then `compileFlatBufferSchema` must be guaranteed
 -- to succeed.
 flatBufferValidate :: (MonadError String me) => DatalogProgram -> me ()
-flatBufferValidate d =
-    let ?d = d in
+flatBufferValidate d = do
+    let ?d = d
+    check (not $ null progIORelations) nopos
+        $ "Program has no input or output relations; cannot generate FlatBuffers schema"
     mapM_ (\case
             t@TOpaque{..} ->
                 check (elem typeName $ [rEF_TYPE, mAP_TYPE, iNTERNED_TYPE] ++ sET_TYPES) (pos t) $
@@ -89,6 +92,7 @@ compileFlatBufferSchema d prog_name =
         relenum_type | length rels <= 256    = "uint8"
                      | length rels <= 65536  = "uint16"
                      | otherwise             = "uint32"
+        default_relid = pp $ relIdentifier ?d $ head rels
     in
     "namespace" <+> jFBPackage <> ";"                                           $$
     "table __BigUint { bytes: [uint8]; }"                                       $$
@@ -99,7 +103,9 @@ compileFlatBufferSchema d prog_name =
     ""                                                                          $$
     "// Relation identifiers"                                                   $$
     "enum __RelId:" <+> relenum_type                                            $$
-    (braces' $ vcommaSep $ map mkRelId rels)                                    $$
+    (braces' $ vcommaSep
+             -- values must match DDlog relation identifiers.
+             $ map  (\r -> mkRelId r <+> "=" <+> pp (relIdentifier ?d r)) rels) $$
     ""                                                                          $$
     "// Union of all program relation types"                                    $$
     "union __Value"                                                             $$
@@ -109,7 +115,7 @@ compileFlatBufferSchema d prog_name =
     "enum __CommandKind: uint8 { Insert, Delete }"                              $$
     "table __Command {"                                                         $$
     "   kind: __CommandKind;"                                                   $$
-    "   relid: __RelId;"                                                        $$
+    "   relid: __RelId =" <+> default_relid <> ";"                              $$
     "   val:  __Value;"                                                         $$
     "}"                                                                         $$
     "table __Commands {"                                                        $$
@@ -382,8 +388,8 @@ fbConstructorName args c | consIsUnique ?d (name c) = fbStructName (name $ consT
     where
     targs = hcat $ map (("__" <>) . mkTypeIdentifier) args
 
-mkRelId :: Relation -> Doc
-mkRelId Relation{..} = pp $ legalize relName
+mkRelId :: (?d::DatalogProgram) => Relation -> Doc
+mkRelId rel@Relation{..} = pp $ legalize relName
 
 -- capitalize the first letter of a string
 capitalize :: String -> String

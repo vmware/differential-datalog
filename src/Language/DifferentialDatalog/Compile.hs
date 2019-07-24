@@ -305,9 +305,9 @@ rname = pp . replace "." "_"
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =
-    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                $$
-    "pub enum Relations {"                                                                                         $$
-    (nest' $ vcat $ punctuate comma $ mapIdx (\rel i -> rname rel <+> "=" <+> pp i) $ M.keys $ progRelations d)    $$
+    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
+    "pub enum Relations {"                                                                                                                $$
+    (nest' $ vcat $ punctuate comma $ map (\rel -> rname (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d)    $$
     "}"
 
 relId :: String -> Doc
@@ -807,9 +807,9 @@ mkRelId2Relations d =
     "   }"                                                  $$
     "}"
     where
-    entries = mapIdx mkrel $ M.elems $ progRelations d
-    mkrel :: Relation -> Int -> Doc
-    mkrel rel i = pp i <+> "=> Some(Relations::" <> rname (name rel) <> "),"
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = pp (relIdentifier d rel) <+> "=> Some(Relations::" <> rname (name rel) <> "),"
 
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
@@ -820,9 +820,9 @@ mkRelId2Name d =
     "   }"                                                    $$
     "}"
     where
-    entries = mapIdx mkrel $ M.elems $ progRelations d
-    mkrel :: Relation -> Int -> Doc
-    mkrel rel i = pp i <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = pp (relIdentifier d rel) <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
 
 mkRelIdMap :: DatalogProgram -> Doc
 mkRelIdMap d =
