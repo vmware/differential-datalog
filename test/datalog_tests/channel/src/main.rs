@@ -76,6 +76,17 @@ impl Observer<Update<Value>, String> for TCPChannel {
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Response<()> {
+
+        let upds: Vec<_> = updates.map(|upd| {
+            match upd {
+                Update::Insert{relid, v} =>
+                    serde_json::to_string(&(relid, v)).unwrap(),
+                Update::DeleteValue{relid, v} =>
+                    serde_json::to_string(&(relid, v)).unwrap(),
+                _ => panic!("Committed update is neither insert or delete")
+            }
+        }).collect();
+
         if let Some(listener) = self.listener.take() {
             self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
                 tokio::spawn(handle_connection(socket));
@@ -88,7 +99,10 @@ impl Observer<Update<Value>, String> for TCPChannel {
         if let Some(stream) = self.stream.take() {
             self.client = Some(Box::new(stream.and_then(move |stream| {
                 // TODO transmit the updates through the channel
-                io::write_all(stream, "TODO").then(|_| Ok(()))
+                stream::iter_ok(upds).fold(stream, |writer, buf| {
+                    tokio::io::write_all(writer, buf)
+                        .map(|(writer, _buf)| writer)
+                }).then(|_: Result<_, std::io::Error>| Ok(()))
             }).map_err(|err| {
                 println!("connection error = {:?}", err);
             })));
@@ -126,7 +140,11 @@ fn main() -> Response<()> {
     let addr_s = "127.0.0.1:8000";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut chan = TCPChannel::new(addr);
-    let upds: Box<dyn Iterator<Item = Update<Value>>> = Box::new(iter::empty());
+    let updates = vec![
+        Update::Insert{relid: 3, v: Value::bool(false)},
+        Update::DeleteValue{relid: 2, v: Value::bool(true)},
+    ];
+    let upds: Box<dyn Iterator<Item = Update<Value>>> = Box::new(updates.into_iter());
 
     chan.on_start()?;
     chan.on_updates(upds)?;
