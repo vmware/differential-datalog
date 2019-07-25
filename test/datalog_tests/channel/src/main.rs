@@ -15,8 +15,9 @@ use tokio::prelude::*;
 use tokio::io;
 
 use std::sync::{Arc, Mutex};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, Shutdown};
 use std::iter;
+use std::io::BufReader;
 
 pub struct TCPChannel{
     stream: Option<ConnectFuture>,
@@ -44,14 +45,15 @@ impl TCPChannel{
 
 fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
     let buf = Vec::new();
-    let res = io::read_to_end(stream, buf);
+    let mut stream = BufReader::new(stream);
+    let res = io::read_until(stream, b'\n', buf);
 
     let work = res.then(move |result| {
         match result {
-            Ok((_socket, buf)) => {
+            Ok((socket, buf)) => {
                 let s = String::from_utf8(buf).unwrap();
-                println!("{}", s);
-                // let (rec, _table): (Record, usize) = serde_json::from_str(&s).unwrap();
+                let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&s).unwrap();
+                println!("{:?}", (v, relid, pol));
 
                 // let updates = &[UpdCmd::Insert(
                 //     RelIdentifier::RelId(lr_right_Middle as usize),
@@ -80,14 +82,16 @@ impl Observer<Update<Value>, String> for TCPChannel {
         let upds: Vec<_> = updates.map(|upd| {
             match upd {
                 Update::Insert{relid, v} =>
-                    serde_json::to_string(&(relid, v)).unwrap(),
+                    serde_json::to_string(&(relid, v, true)).unwrap() + "\n", // TODO what's the right way to do this?
                 Update::DeleteValue{relid, v} =>
-                    serde_json::to_string(&(relid, v)).unwrap(),
+                    serde_json::to_string(&(relid, v, false)).unwrap() + "\n", // TODO what's the right way to do this?
                 _ => panic!("Committed update is neither insert or delete")
             }
         }).collect();
 
         if let Some(listener) = self.listener.take() {
+            // TODO FIX: if we allow multiple on_update calls between on_commit,
+            // this will only execute the last call
             self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
                 tokio::spawn(handle_connection(socket));
                 Ok(())
@@ -97,8 +101,10 @@ impl Observer<Update<Value>, String> for TCPChannel {
         }
 
         if let Some(stream) = self.stream.take() {
+            // TODO FIX: if we allow multiple on_update calls between on_commit,
+            // this will only execute the last call
             self.client = Some(Box::new(stream.and_then(move |stream| {
-                // TODO transmit the updates through the channel
+                // TODO check buffering
                 stream::iter_ok(upds).fold(stream, |writer, buf| {
                     tokio::io::write_all(writer, buf)
                         .map(|(writer, _buf)| writer)
@@ -114,15 +120,16 @@ impl Observer<Update<Value>, String> for TCPChannel {
     fn on_commit(&mut self) -> Response<()> {
         if let Some(client) = self.client.take() {
             tokio::run(client);
-            if let Some(server) = self.server.take() {
-                tokio::run(server);
-            }
+        }
+        if let Some(server) = self.server.take() {
+            tokio::run(server);
         }
         Ok(())
     }
 
     fn on_completed(self) -> Response<()> {
-        // TODO Disconnect channel
+        // TODO Properly shutdown client and server. This might
+        // involve calling shutdown on client and dropping the server.
         Ok(())
     }
 }
@@ -149,4 +156,5 @@ fn main() -> Response<()> {
     chan.on_start()?;
     chan.on_updates(upds)?;
     chan.on_commit()
+    // chan.on_completed()
 }
