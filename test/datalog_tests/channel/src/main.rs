@@ -43,8 +43,25 @@ impl TCPChannel{
     }
 }
 
+fn handle_conn(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
+    let stream = std::io::BufReader::new(stream);
+    tokio::io::lines(stream).for_each(|line| {
+        // This closure is called for each line we receive,
+        // and returns a Future that represents the work we
+        // want to do before accepting the next line.
+        // In this case, we just wanted to print, so we
+        // don't need to do anything more.
+        let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&line).unwrap();
+        println!("{:?}", (v, relid, pol));
+        Ok(())
+    }).map_err(|err| {
+        println!("accept error = {:?}", err);
+    })
+}
+
 fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
     let buf = Vec::new();
+
     let mut stream = BufReader::new(stream);
     let res = io::read_until(stream, b'\n', buf);
 
@@ -93,7 +110,7 @@ impl Observer<Update<Value>, String> for TCPChannel {
             // TODO FIX: if we allow multiple on_update calls between on_commit,
             // this will only execute the last call
             self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
-                tokio::spawn(handle_connection(socket));
+                tokio::spawn(handle_conn(socket));
                 Ok(())
             }).map_err(|err| {
                 println!("accept error = {:?}", err);
