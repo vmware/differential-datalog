@@ -43,48 +43,23 @@ impl TCPChannel{
     }
 }
 
-fn handle_conn(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
+fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
+    let mut upds = Vec::new();
     let stream = std::io::BufReader::new(stream);
-    tokio::io::lines(stream).for_each(|line| {
+    tokio::io::lines(stream).for_each(move |line| {
         // This closure is called for each line we receive,
         // and returns a Future that represents the work we
         // want to do before accepting the next line.
         // In this case, we just wanted to print, so we
         // don't need to do anything more.
         let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&line).unwrap();
-        println!("{:?}", (v, relid, pol));
+        // println!("{:?}", (v, relid, pol));
+        upds.push((v, relid, pol));
+        println!("{:?}", upds);
         Ok(())
     }).map_err(|err| {
         println!("accept error = {:?}", err);
     })
-}
-
-fn handle_connection(stream: TcpStream) -> impl Future<Item = (), Error = ()> {
-    let buf = Vec::new();
-
-    let mut stream = BufReader::new(stream);
-    let res = io::read_until(stream, b'\n', buf);
-
-    let work = res.then(move |result| {
-        match result {
-            Ok((socket, buf)) => {
-                let s = String::from_utf8(buf).unwrap();
-                let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&s).unwrap();
-                println!("{:?}", (v, relid, pol));
-
-                // let updates = &[UpdCmd::Insert(
-                //     RelIdentifier::RelId(lr_right_Middle as usize),
-                //     rec)];
-                // println!("{:?}", updates);
-                // TODO pass on the updates to the observer
-            }
-            Err(e) => println!("{:?}", e),
-        }
-
-        Ok(())
-    });
-
-    work
 }
 
 impl Observer<Update<Value>, String> for TCPChannel {
@@ -110,7 +85,7 @@ impl Observer<Update<Value>, String> for TCPChannel {
             // TODO FIX: if we allow multiple on_update calls between on_commit,
             // this will only execute the last call
             self.server = Some(Box::new(listener.incoming().for_each(move |socket| {
-                tokio::spawn(handle_conn(socket));
+                tokio::spawn(handle_connection(socket));
                 Ok(())
             }).map_err(|err| {
                 println!("accept error = {:?}", err);
@@ -166,6 +141,9 @@ fn main() -> Response<()> {
     let mut chan = TCPChannel::new(addr);
     let updates = vec![
         Update::Insert{relid: 3, v: Value::bool(false)},
+        Update::DeleteValue{relid: 2, v: Value::bool(true)},
+        Update::DeleteValue{relid: 2, v: Value::bool(true)},
+        Update::DeleteValue{relid: 2, v: Value::bool(true)},
         Update::DeleteValue{relid: 2, v: Value::bool(true)},
     ];
     let upds: Box<dyn Iterator<Item = Update<Value>>> = Box::new(updates.into_iter());
