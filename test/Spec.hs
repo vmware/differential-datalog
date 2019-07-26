@@ -191,8 +191,10 @@ compilerTest progress java fname cli_args crate_types = do
     when java $
         compileFlatBufferBindings prog specname (dir </> rustProjectDir specname)
     -- compile generated Java code
+    classpath <- (maybe "" (":" ++ )) <$> lookupEnv "CLASSPATH"
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
-                          cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java"
+                          cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
+                          env = Just [("CLASSPATH", (dir </> "../../java") ++ classpath)]
                      }
     (code, stdo, stde) <- readCreateProcessWithExitCode javac_proc ""
     when (code /= ExitSuccess) $ do

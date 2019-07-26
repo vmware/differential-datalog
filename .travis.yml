@@ -29,13 +29,13 @@ cache:
 env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
    - TOOL=run_souffle_tests
-   - TOOL=stack TEST_SUITE='-p span_uuid' JAVA=1
+   - TOOL=stack TEST_SUITE='-p redist' JAVA=1
+   - TOOL=stack TEST_SUITE='-p span_uuid'
    - TOOL=stack TEST_SUITE='-p souffle0'
    - TOOL=stack TEST_SUITE='-p simple'
    - TOOL=stack TEST_SUITE='-p path'
    - TOOL=stack TEST_SUITE='-p ovn'
    - TOOL=stack TEST_SUITE='-p modules'
-   - TOOL=stack TEST_SUITE='-p redist'
 
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -76,7 +76,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
 - if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py -s 0 -r 17; fi
-- if [ x${JAVA} = x1 ]; then stack install && cd java/test && ./run.sh; fi
+- if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
 
 before_deploy:
     # add date and OS name to the tag

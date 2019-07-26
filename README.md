@@ -55,18 +55,19 @@ C/C++ or Java program (bindings for other languages can be easily added).  This 
 but somewhat limits the flexibility, as
 changes to the relational schema or rules require re-compilation.
 
-Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
+## Documentation
 
-DDlog language reference can be found [here](doc/language_reference/language_reference.md).
-
-Instructions for writing and testing your own Datalog programs are [here](doc/testing/testing.md).
+- Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
+- DDlog [language reference](doc/language_reference/language_reference.md).
+- [Instructions](doc/testing/testing.md) for writing and testing your own Datalog programs.
+- [How to](doc/java_api.md) use DDlog from Java.
 
 [Differential Datalog](doc/datalog2.0-workshop/paper.pdf), Leonid Ryzhyk and Mihai Budiu
 Datalog 2.0, Philadelphia, PA, June 4-5, 2019.
 
-# Installing from sources
+## Installing from sources
 
-## Prerequisites
+### Prerequisites
 We have tested our software on Ubuntu Linux and MacOS.
 
 The compilers are written in Haskell.  One needs the Glasgow Haskell
@@ -90,7 +91,13 @@ shell run `source $HOME/.cargo/env`.
 
 Finally, you will need static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`, `libdl.a`, `libgmp.a`, which can be installed from distro-specific packages.
 
-## Building
+If you plan to use DDlog Java bindings, you will additionally need the Google
+FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
+[github](https://github.com/google/flatbuffers/releases/tag/v1.11.0).  Make sure
+that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
+Java classes are in your `$CLASSPATH`.
+
+### Building
 
 To build the software:
 
@@ -119,16 +126,16 @@ of disk space):
 stack test
 ```
 
-# Binary installation
+## Binary installation
 
 To install a precompiled version of DDlog, download the [latest binary release](https://github.com/ryzhyk/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [above](#prerequisites))
 
-# vim syntax highlighting
+## vim syntax highlighting
 
 Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential
 datalog syntax highlighting in `.dl` files.
 
-# Debugging with GHCi
+## Debugging with GHCi
 
 To run the test suite with the GHCi debugger:
 
@@ -138,7 +145,7 @@ stack ghci --ghci-options -isrc --ghci-options -itest differential-datalog:diffe
 
 and type `do main` in the command prompt.
 
-# Building with profiling info enabled
+## Building with profiling info enabled
 
 ```
 stack clean

@@ -239,6 +239,19 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates(
     return (jint)result;
 }
 
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates_1from_1flatbuf(
+    JNIEnv *env, jclass obj, jlong progHandle, jbyteArray bytes, jint position) {
+    jbyte *buf = (*env)->GetByteArrayElements(env, bytes, NULL);
+    size_t size = (*env)->GetArrayLength(env, bytes);
+
+    int result = ddlog_apply_updates_from_flatbuf(
+        (ddlog_prog)progHandle, ((const unsigned char *) buf) + position, size);
+
+    (*env)->ReleaseByteArrayElements(env, bytes, buf, JNI_ABORT);
+
+    return (jint)result;
+}
+
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1id(
     JNIEnv *env, jclass class, jstring table) {
     const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
