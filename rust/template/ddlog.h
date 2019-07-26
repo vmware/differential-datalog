@@ -306,6 +306,22 @@ extern void ddlog_free_json(char *json);
 extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
 
 /*
+ * Apply updates, serialized into a FlatBuffer, to DDlog tables.
+ *
+ * The FlatBuffer schema is auto-generated from DDlog code and is stored in
+ * `flatbuf/flatbuf.rs`.
+ *
+ * `buf` - pointer to FlatBuffer of size `n`.
+ *
+ * On success, returns `0`. On error, returns a negative value and
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ */
+extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
+                                            const unsigned char *buf,
+                                            size_t n);
+
+/*
  * Remove all records from an input relation.
  *
  * Fails if there is no transaction in progress.

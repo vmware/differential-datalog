@@ -157,7 +157,7 @@ compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
     (prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
-    let dir = takeDirectory confDatalogFile
+    dir <- makeAbsolute $ takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold }
