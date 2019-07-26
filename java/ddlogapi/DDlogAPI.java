@@ -2,6 +2,7 @@ package ddlogapi;
 
 import java.util.*;
 import java.util.function.*;
+import java.nio.ByteBuffer;
 
 /**
  * Java wrapper around Differential Datalog C API that manipulates
@@ -26,6 +27,7 @@ public class DDlogAPI {
     native int ddlog_transaction_commit_dump_changes(long hprog, String callbackName);
     static native int ddlog_transaction_rollback(long hprog);
     static native int ddlog_apply_updates(long hprog, long[] upds);
+    static native int ddlog_apply_updates_from_flatbuf(long hprog, byte[] bytes, int position);
     static native String ddlog_profile(long hprog);
     static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
@@ -213,6 +215,10 @@ public class DDlogAPI {
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
         return ddlog_apply_updates(this.hprog, handles);
+    }
+
+    public int applyUpdatesFromFlatBuf(ByteBuffer buf) {
+        return ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
     }
 
     /// Callback invoked from dump.
