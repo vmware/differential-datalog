@@ -87,51 +87,6 @@ impl Observer<Update<Value>, String> for TCPChannel {
             }
         }).collect();
 
-        if let Some(listener) = self.listener.take() {
-            // TODO FIX: if we allow multiple on_update calls between on_commit,
-            // this will only execute the last call
-            // TODO move all of this to commit
-            self.server = Some(Box::new(listener.incoming().for_each(move |stream| {
-                // tokio::spawn(handle_connection(socket));
-                // let mut upds: Vec<Update<Value>> = Vec::new();
-                let stream = std::io::BufReader::new(stream);
-                let process_stream = tokio::io::lines(stream).map(|line| {
-                    let (relid, v, pol): (RelId, Value, bool)
-                        = serde_json::from_str(&line).unwrap();
-                    if pol {
-                        Update::Insert{relid: relid, v: v}
-                    } else {
-                        Update::DeleteValue{relid: relid, v: v}
-                    }
-                }).collect().and_then(|v| {
-                    println!("{:?}", v.len());
-                    //if let Some(observer) = self.output {
-                    //    observer.lock().unwrap().on_start();
-                    //}
-                    Ok(())
-                }).map_err(|err| {
-                    println!("error = {:?}", err);
-                });
-                //    .then(|r: Result<_, std::io::Error>| {
-                //    if let Ok(v) = r {
-                //        println!("{:?}", v.len());
-                //    }
-                //    Ok(())
-                //});
-                //    .for_each(move |line| {
-                //    let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&line).unwrap();
-                //    upds.push((v, relid, pol));
-                //    println!("{:?}", upds);
-                //    Ok(())
-                //}).map_err(|err| {
-                //    println!("accept error = {:?}", err);
-                //});
-                tokio::spawn(process_stream);
-                Ok(())
-            }).map_err(|err| {
-                println!("accept error = {:?}", err);
-            })))
-        }
 
         if let Some(stream) = self.stream.take() {
             // TODO FIX: if we allow multiple on_update calls between on_commit,
@@ -154,9 +109,36 @@ impl Observer<Update<Value>, String> for TCPChannel {
         if let Some(client) = self.client.take() {
             tokio::run(client);
         }
-        if let Some(server) = self.server.take() {
-            tokio::run(server);
+
+        if let Some(observer) = &self.output {
+
+            if let Some(listener) = self.listener.take() {
+                let work = listener.incoming().for_each(move |stream| {
+                    // tokio::spawn(handle_connection(socket));
+                    // let mut upds: Vec<Update<Value>> = Vec::new();
+                    let stream = std::io::BufReader::new(stream);
+                    let upds = tokio::io::lines(stream).map(|line| {
+                        let (relid, v, pol): (RelId, Value, bool)
+                            = serde_json::from_str(&line).unwrap();
+                        if pol {
+                            Update::Insert{relid: relid, v: v}
+                        } else {
+                            Update::DeleteValue{relid: relid, v: v}
+                        }
+                    }).wait();
+
+                    let observer = observer.lock().unwrap();
+                    // observer.on_completed();
+
+                    Ok(())
+                }).map_err(|err| {
+                    println!("yay");
+                });
+
+                // tokio::run(work);
+            }
         }
+
         Ok(())
     }
 
