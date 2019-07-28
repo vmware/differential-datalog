@@ -118,7 +118,7 @@ fUNCS_RETURN_REF = ["std.deref"]
 header :: String -> Doc
 header specname =
     let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/" 
-                 $ BS.unpack $ $(embedFile "rust/template/lib.rs") of
+                 $ BS.unpack $ $(embedFile "rust/template/src/lib.rs") of
                 []  -> error "Missing separator in lib.rs"
                 h:_ -> h
     in pp $ replace "datalog_example" specname h
@@ -137,14 +137,14 @@ rustProjectDir specname = specname ++ "_ddlog"
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
-        [ (dir </> "build.rs"               , $(embedFile "rust/template/build.rs"))
-        , (dir </> "main.rs"                , $(embedFile "rust/template/main.rs"))
-        , (dir </> "api.rs"                 , $(embedFile "rust/template/api.rs"))
-        , (dir </> "ovsdb.rs"               , $(embedFile "rust/template/ovsdb.rs"))
-        , (dir </> "valmap.rs"              , $(embedFile "rust/template/valmap.rs"))
-        , (dir </> "update_handler.rs"      , $(embedFile "rust/template/update_handler.rs"))
-        , (dir </> "ddlog.h"                , $(embedFile "rust/template/ddlog.h"))
-        , (dir </> "ddlog_ovsdb_test.c"     , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
+        [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
+        , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
+        , (dir </> "src/api.rs"                 , $(embedFile "rust/template/src/api.rs"))
+        , (dir </> "src/ovsdb.rs"               , $(embedFile "rust/template/src/ovsdb.rs"))
+        , (dir </> "src/valmap.rs"              , $(embedFile "rust/template/src/valmap.rs"))
+        , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
+        , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
+        , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
     where dir = rustProjectDir specname
 
@@ -449,7 +449,7 @@ compile d specname rs_code toml_code dir crate_types = do
          $ rustLibFiles specname
     -- Generate lib.rs file if changed.
     updateFile (dir </> rustProjectDir specname </> "Cargo.toml") (render $ cargo specname toml_code crate_types)
-    updateFile (dir </> rustProjectDir specname </> "lib.rs") (render lib)
+    updateFile (dir </> rustProjectDir specname </> "src/lib.rs") (render lib)
     return ()
 
 -- | Compile Datalog program into Rust code that creates 'struct Program' representing

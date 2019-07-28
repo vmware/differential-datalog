@@ -1,8 +1,8 @@
 [package]
 name = "datalog_example"
 version = "0.1.0"
-
-build = "build.rs"
+autobins = false
+build = "src/build.rs"
 
 [build-dependencies]
 libtool = "0.1"
@@ -50,13 +50,12 @@ debug-assertions = false
 [[bin]]
 
 name = "datalog_example_cli"
-path = "./main.rs"
+path = "src/main.rs"
 
 
 # [lib] section must be in the end
 
 [lib]
 name = "datalog_example_ddlog"
-path = "./lib.rs"
 # Compiler will append the crate-type attribute here
 # crate-type = ["rlib", "staticlib"]

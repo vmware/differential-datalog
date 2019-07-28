@@ -30,7 +30,7 @@ flatc --java --rust ${PROG}.fbs
 # Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
 # $CLASSPATH)
 javac `ls ddlog/__${PROG}/*.java`
-javac `ls ddlog/${PROG}/*.java`
+javac -cp "../../../../../java:$CLASSPATH" `ls ddlog/${PROG}/*.java`
 popd
 popd
 # Build the Java library with the DDlog API
