@@ -5,6 +5,15 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/api.rs");
+    println!("cargo:rerun-if-changed=src/flatbuf.rs");
+    println!("cargo:rerun-if-changed=src/flatbuf_generated.rs");
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=src/main.rs");
+    println!("cargo:rerun-if-changed=src/ovsdb.rs");
+    println!("cargo:rerun-if-changed=src/update_handler.rs");
+    println!("cargo:rerun-if-changed=src/valmap.rs");
+
     let lib = "libdatalog_example_ddlog";
 
     /* Start: fixup for a bug in libtool, which does not correctly

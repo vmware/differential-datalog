@@ -90,6 +90,10 @@ compileFlatBufferBindings prog specname dir = do
         errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
                                  "\nstdout:\n" ++ stde ++
                                  "\n\nstdout:\n" ++ stdo
+    -- Copy generated file if it's changed (we could generate it in place, but
+    -- flatc always overwrites its output, forcing Rust re-compilation)
+    fbgenerated <- readFile $ flatbuf_dir </> "flatbuf_generated.rs"
+    updateFile (dir </> "src" </> "flatbuf_generated.rs") fbgenerated
 
 -- | Checks that we are able to generate FlatBuffer schema for all types used in
 -- program's input and output relations.
@@ -161,8 +165,8 @@ compileFlatBufferRustBindings d prog_name dir = do
     let rels = progIORelations
     -- `FromFlatBuf/ToFlatBuf` implementation for all program types visible from outside
     let types = map typeFlatbufRustBinding progTypesToSerialize
-    let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/flatbuf.rs")
-    updateFile (dir </> "flatbuf.rs") $ render $
+    let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/src/flatbuf.rs")
+    updateFile (dir </> "src/flatbuf.rs") $ render $
         (pp rust_template)                                      $$
         rustValueFromFlatbuf                                    $$
         (vcat $ map rustTypeFromFlatbuf progTypesToSerialize)
