@@ -1,0 +1,13 @@
+[package]
+name = "receiver"
+version = "0.1.0"
+authors = ["remysucre <remy.sucre@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ddd = {path = "../ddd_ddlog"}
+differential_datalog = {path = "../ddd_ddlog/differential_datalog"}
+tokio = "0.1"
+serde_json = "1.0"
