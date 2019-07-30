@@ -5,7 +5,7 @@ use differential_datalog::program::{RelId, Update, Response};
 
 use ddd_ddlog::api::*;
 use ddd_ddlog::Relations::*;
-use ddd_ddlog::channel::{Observable, Observer, Channel, Subscription};
+use ddd_ddlog::channel::{Observable, Observer, Subscription};
 use ddd_ddlog::server::{UpdatesSubscription};
 use ddd_ddlog::*;
 
@@ -67,16 +67,18 @@ impl TcpReceiver {
     pub fn listen(&mut self) {
         let listener = TcpListener::bind(&self.addr).unwrap();
         if let Some(observer) = self.observer.take() {
-            let fun = observer.lock().unwrap().on_start();
-            let server = listener.incoming().for_each(move |socket| {
-                let obs = &fun;
+            let server = listener.incoming().for_each(move |_socket| {
+                let mut obs = observer.lock().unwrap();
+                obs.on_start();
+                obs.on_commit();
+                // obs.lock().unwrap().on_start();
                 // tokio::spawn(handle_connection(observer.clone(), socket));
                 Ok(())
             }).map_err(|err| {
                 println!("accept error = {:?}", err);
             });
 
-            tokio::spawn(server);
+            tokio::run(server);
         }
     }
 }
@@ -85,15 +87,18 @@ struct TestObserver{}
 
 impl Observer<Update<Value>, String> for TestObserver {
     fn on_start(&mut self) -> Response<()> {
+        println!("startin!");
         Ok(())
     }
     fn on_commit(&mut self) -> Response<()> {
+        println!("commiting!");
         Ok(())
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Response<()> {
         Ok(())
     }
     fn on_completed(self) -> Response<()> {
+        println!("completing!");
         Ok(())
     }
 }
@@ -106,7 +111,7 @@ fn main() {
 
     let obs = Arc::new(Mutex::new(TestObserver{}));
 
-    receiver.subscribe(obs);
+    receiver.subscribe(obs.clone());
 
     receiver.listen();
 }

@@ -5,13 +5,15 @@ use std::sync::{Arc, Mutex};
 // The consumer can subscribe to the channel
 // which acts as an observable of deltas.
 pub trait Observable<T, E>
+where T: Send, E:Send
 {
     fn subscribe<'a>(&'a mut self, observer: Arc<Mutex<dyn Observer<T, E>>>) -> Box<dyn Subscription + 'a>;
 }
 
 // The channel is an observer of changes from
 // a producer
-pub trait Observer<T, E>
+pub trait Observer<T, E>: Send
+where T: Send, E:Send
 {
     fn on_start(&mut self) -> Response<()>;
     fn on_commit(&mut self) -> Response<()>;
@@ -27,4 +29,4 @@ pub trait Subscription<'a> {
 // A channel that transmits deltas. It acts as an observer of
 // changes on the consuming end, and an observable on the
 // producing end.
-pub trait Channel<T, E>: Observer<T, E> + Observable<T, E> {}
+//pub trait Channel<T, E>: Observer<T, E> + Observable<T, E> {}

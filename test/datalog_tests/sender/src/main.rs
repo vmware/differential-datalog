@@ -5,7 +5,7 @@ use differential_datalog::program::{RelId, Update, Response};
 
 use ddd_ddlog::api::*;
 use ddd_ddlog::Relations::*;
-use ddd_ddlog::channel::{Observable, Observer, Channel, Subscription};
+use ddd_ddlog::channel::{Observable, Observer, Subscription};
 use ddd_ddlog::server::{UpdatesSubscription};
 use ddd_ddlog::*;
 
