@@ -113,7 +113,7 @@ souffleTest testdir progress =
 
 convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
-    dir <- makeAbsolute $ testdir
+    dir <- makeAbsolute testdir
     let inputDl = dir </> "test.dl"  -- input file always called test.dl
         convert_proc = (proc (dir </> "../../tools/souffle_converter.py") [inputDl, "souffle", "--convert-dnf"]) { cwd = Just dir }
     (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""

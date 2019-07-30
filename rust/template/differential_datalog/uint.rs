@@ -53,6 +53,9 @@ impl Uint {
     pub fn from_bytes_be(bytes: &[u8]) -> Uint {
         Uint{x: BigUint::from_bytes_be(bytes)}
     }
+    pub fn to_bytes_be(&self) -> Vec<u8> {
+        self.x.to_bytes_be()
+    }
     pub fn to_u8(&self) -> Option<u8> {
         self.x.to_u8()
     }

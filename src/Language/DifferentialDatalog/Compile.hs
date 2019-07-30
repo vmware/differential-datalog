@@ -1381,9 +1381,8 @@ mkValConstructorName d t = do
     addType t'
     return $ "Value::" <> mkValConstructorName' d t'
 
--- Assumes that t is normalized
 mkValConstructorName' :: DatalogProgram -> Type -> Doc
-mkValConstructorName' d t =
+mkValConstructorName' d t' =
     case t of
          TTuple{..}  -> "tuple" <> pp (length typeTupArgs) <> "__" <>
                         (hcat $ punctuate "_" $ map (mkValConstructorName' d) typeTupArgs)
@@ -1396,6 +1395,7 @@ mkValConstructorName' d t =
          TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
     where
+    t = typeNormalize d t'
     consuser = rname (typeName t) <>
                case typeArgs t of
                     [] -> empty
