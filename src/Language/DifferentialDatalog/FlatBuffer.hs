@@ -136,12 +136,6 @@ compileFlatBufferSchema d prog_name =
     "// Program type declarations"                                              $$
     (vcat $ intersperse "" types)                                               $$
     ""                                                                          $$
-    "// Relation identifiers"                                                   $$
-    "enum __RelId:" <+> relenum_type                                            $$
-    (braces' $ vcommaSep
-             -- values must match DDlog relation identifiers.
-             $ map  (\r -> mkRelId r <+> "=" <+> pp (relIdentifier ?d r)) rels) $$
-    ""                                                                          $$
     "// Union of all program relation types"                                    $$
     "union __Value"                                                             $$
     (braces' $ vcommaSep $ nub $ map typeTableName rels)                        $$
@@ -150,7 +144,7 @@ compileFlatBufferSchema d prog_name =
     "enum __CommandKind: uint8 { Insert, Delete }"                              $$
     "table __Command {"                                                         $$
     "   kind: __CommandKind;"                                                   $$
-    "   relid: __RelId =" <+> default_relid <> ";"                              $$
+    "   relid: uint64 =" <+> default_relid <> ";"                               $$
     "   val:  __Value;"                                                         $$
     "}"                                                                         $$
     "table __Commands {"                                                        $$
@@ -163,18 +157,11 @@ compileFlatBufferRustBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> S
 compileFlatBufferRustBindings d prog_name dir = do
     let ?d = d
     let rels = progIORelations
-    -- `FromFlatBuf/ToFlatBuf` implementation for all program types visible from outside
-    let types = map typeFlatbufRustBinding progTypesToSerialize
     let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "src/flatbuf.rs") $ render $
         (pp rust_template)                                      $$
         rustValueFromFlatbuf                                    $$
         (vcat $ map rustTypeFromFlatbuf progTypesToSerialize)
-
-    --"// FlatBuffers serialization/deserialization logic for program types"      $$
-    --(vcat $ intersperse "" types)
-    -- `FromFlatBuf/ToFlatBuf` implementation for `Value`
-    -- `FromFlatBuf/ToFlatBuf` for `Update`
 
 -- | Generate Java convenience API that provides a type-safe way to serialize/deserialize
 -- commands to a FlatBuffer.
@@ -186,10 +173,6 @@ compileFlatBufferJavaBindings d prog_name =
     in
     ("ddlog" </> prog_name </> builderClass <.> "java", mkJavaBuilder prog_name):
     types
-    --rels = progIORelations d
-    -- `Constructors/accessors` for DDlog types visible from outside.
-    -- `FromFlatBuf/ToFlatBuf` implementation for `Value`
-    -- `FromFlatBuf/ToFlatBuf` for `Update`
 
 {- Helpers -}
 
@@ -329,10 +312,11 @@ typeSubtypes t =
 typeFlatbufSchema :: (?d::DatalogProgram) => Type -> Doc
 typeFlatbufSchema x =
     case typeNormalizeForFlatBuf x of
+         t | typeIsScalar t
+                     -> tdecl
+         TString{}   -> empty
          TBit{}      -> empty
          TSigned{}   -> empty
-         TString{}   -> empty
-         TBool{}     -> empty
          TInt{}      -> empty
          TTuple{..}  -> tupleFlatBufferSchema typeTupArgs
          t@TUser{..} ->
@@ -349,8 +333,10 @@ typeFlatbufSchema x =
                         else "union" <+> fbStructName typeName typeArgs <+> (braces $ commaSep $ map (fbConstructorName typeArgs) $ typeCons tstruct) $$
                              "table" <+> typeTableName t $$
                              (braces' $ "v:" <+> fbType t <> ";")
-         t -> "table" <+> typeTableName t $+$
-              (braces' $ "v:" <+> fbType t <> ";")
+         t -> tdecl
+    where
+    tdecl= "table" <+> typeTableName x $+$
+           (braces' $ "v:" <+> fbType x <> ";")
 
 -- Generate FlatBuffer "table" declaration for a constructor
 -- Constructor arguments may _not_ be normalized.
@@ -750,7 +736,7 @@ mkJavaBuilder prog_name =
                 "public void" <+> lcmd <> "_" <> mkRelId rel <> "(" <> commaSep args <> ")" $$
                 (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
                                            [ jFBPackage <> ".__CommandKind." <> pp cmd
-                                           , jFBPackage <> ".__RelId." <> mkRelId rel
+                                           , (pp $ relIdentifier ?d rel)
                                            , jFBPackage <> ".__Value." <> typeTableName relType
                                            , jConvCreateTable relType Nothing] <> ";"  $$
                            "this.commands.add(Integer.valueOf(cmd));")
@@ -763,7 +749,7 @@ mkJavaBuilder prog_name =
                          "(" <> (commaSep $ map (\a -> jConvType a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
                                                 [ jFBPackage <> ".__CommandKind." <> pp cmd
-                                                , jFBPackage <> ".__RelId." <> mkRelId rel
+                                                , (pp $ relIdentifier ?d rel)
                                                 , jFBPackage <> ".__Value." <> typeTableName relType
                                                 , jConvCreateTable relType (Just c)] <> ";"  $$
                                 "this.commands.add(Integer.valueOf(cmd));"))
@@ -866,62 +852,128 @@ typeFlatbufJavaBinding _ = Nothing
 
 rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
 rustValueFromFlatbuf =
-    "impl <'a> FromFlatBuffer<(fb::__Value, fbrt::Table<'a>)> for Value {"              $$
-    "    fn from_flatbuf(v: (fb::__Value, fbrt::Table<'a>)) -> Response<Self> {"        $$
-    "        match v.0 {"                                                               $$
-    (nest' $ nest' $ nest' $ vcat enums)                                                $$
-    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"     $$
-    "        }"                                                                         $$
-    "    }"                                                                             $$
+    "impl <'a> FromFlatBuffer<(fb::__Value, fbrt::Table<'a>)> for Value {"                          $$
+    "    fn from_flatbuf(v: (fb::__Value, fbrt::Table<'a>)) -> Response<Self> {"                    $$
+    "        match v.0 {"                                                                           $$
+    (nest' $ nest' $ nest' $ vcat enums)                                                            $$
+    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                 $$
+    "        }"                                                                                     $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBuffer<'b> for Value {"                                                        $$
+    "    type Target = (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>);"                       $$
+    "    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"             $$
+    "        match self {"                                                                          $$
+    (nest' $ nest' $ nest' $ vcat to_enums)                                                         $$
+    "            val => panic!(\"Value::to_flatbuf: invalid value {}\", val)"                       $$
+    "        }"                                                                                     $$
+    "    }"                                                                                         $$
     "}"
     where
     enums = map (\rel@Relation{..} ->
-                    "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
-                        R.mkValue' ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
+                 "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
+                     R.mkValue' ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
                 progIORelations
+    to_enums = map (\rel@Relation{..} ->
+                    "Value::" <> R.mkValConstructorName' ?d relType <> "(v) => {"                                   $$
+                    "    (fb::__Value::" <> typeTableName relType <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
+                    "},")
+                   progIORelations
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.
 rustTypeFromFlatbuf :: (?d::DatalogProgram) => Type -> Doc
 rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
-    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{" $$
-    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"     $$
-    "        Ok(" <> R.rname typeName <> (braces $ commaSep args) <> ")"                $$
-    "    }"                                                                             $$
+    "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
+    "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
+    "        Ok(" <> R.rname typeName <> (braces $ commaSep from_args) <> ")"                       $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                   $$
+    "    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"             $$
+    (nest' $ nest' $ vcat to_args)                                                                  $$
+    "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{"                            $$
+    (nest' $ nest' $ nest' $ vcommaSep arg_names)                                                   $$
+    "        })"                                                                                    $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                         $$
+    "   type Target = fb::" <> tname <> "<'b>;"                                                     $$
+    "   fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {" $$
+    "       self.to_flatbuf(fbb)"                                                                   $$
+    "   }"                                                                                          $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferVectorElement<'b> for" <+> rtype <+> "{"                                 $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                   $$
+    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"   $$
+    "        self.to_flatbuf(fbb)"                                                                  $$
+    "    }"                                                                                         $$
     "}"
     where
     rtype = R.mkType t
+    tname = typeTableName t
     tstruct = typ' ?d t
-    args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
-               $ consArgs $ head $ typeCons tstruct
+    arg_names = map (\a -> let n = pp $ name a in
+                           if typeHasUniqueConstructor a
+                              then n
+                              else n <> "_type," <+> n)
+                    $ consArgs $ head $ typeCons tstruct
+    from_args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
+                    $ consArgs $ head $ typeCons tstruct
+    to_args = map (\a -> serialize_field "self." a (pp $ name a))
+                  $ consArgs $ head $ typeCons tstruct
 
--- Deserialize struct with multiple constructor.  Such structs are stored in
+-- Deserialize struct with multiple constructors.  Such structs are stored in
 -- unions and can be additionally wrapped in a table if the struct occurs inside
 -- the Value union or vector.  We therefore generate to FromFlatBuffer
 -- implementations: one to deserialize the struct from union, represented as a
 -- (type, table) pair, and one to deserialize it from a table.
 rustTypeFromFlatbuf t@TUser{..} =
-    "impl <'a> FromFlatBuffer<(" <> fbstruct <> ", fbrt::Table<'a>)> for" <+> rtype <+> "{"                                                     $$
-    "    fn from_flatbuf(v: (" <> fbstruct <> ", fbrt::Table<'a>)) -> Response<Self> {"                                                         $$
-    "        match v.0 {"                                                                                                                       $$
-    (nest' $ nest' $ nest' $ vcat cons)                                                                                                         $$
-    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                                                             $$
-    "        }"                                                                                                                                 $$
-    "    }"                                                                                                                                     $$
-    "}"                                                                                                                                         $$
-    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{"                                                         $$
-    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"                                                             $$
-    "        let v_type = v.v_type();"                                                                                                          $$
-    "        let v_table = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested table\"))?;"    $$
-    "        <" <> rtype <> ">::from_flatbuf((v_type,v_table))"                                                                                 $$
-    "    }"                                                                                                                                     $$
+    "impl <'a> FromFlatBuffer<(" <> fbstruct <> ", fbrt::Table<'a>)> for" <+> rtype <+> "{"                 $$
+    "    fn from_flatbuf(v: (" <> fbstruct <> ", fbrt::Table<'a>)) -> Response<Self> {"                     $$
+    "        match v.0 {"                                                                                   $$
+    (nest' $ nest' $ nest' $ vcat cons)                                                                     $$
+    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                         $$
+    "        }"                                                                                             $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
+    "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
+    "        let v_type = v.v_type();"                                                                      $$
+    "        let v_table = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested table\"))?;" $$
+    "        <" <> rtype <> ">::from_flatbuf((v_type,v_table))"                                             $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                                      $$
+    "    type Target = (" <> fbstruct <> ", fbrt::WIPOffset<fbrt::UnionWIPOffset>);"                        $$
+    "    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"                     $$
+    "        match self {"                                                                                  $$
+    (nest' $ nest' $ nest' $ vcommaSep to_cons)                                                             $$
+    "        }"                                                                                             $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                                 $$
+    "    type Target = fb::" <+> tname <> "<'b>;"                                                           $$
+    "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"    $$
+    "        let (v_type, v) = self.to_flatbuf(fbb);"                                                      $$
+    "        let v = Some(v);"                                                                              $$
+    "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{v_type, v})"                         $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBufferVectorElement<'b> for" <+> rtype <+> "{"                                         $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                           $$
+    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"      $$
+    "       self.to_flatbuf_table(fbb)"                                                                     $$
+    "    }"                                                                                                 $$
     "}"
     where
     rtype = R.mkType t
+    tname = typeTableName t
     fbstruct = "fb::" <> fbStructName typeName typeArgs
     tstruct = typ' ?d t
     cons = map (\c -> let fbcname = fbConstructorName typeArgs c
-                          cname = R.rname (name typeName) <> "::" <> R.rname (name c)
+                          cname = R.rname typeName <> "::" <> R.rname (name c)
                           args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
                                      $ consArgs c
                       in fbstruct <> "::" <> fbcname <+> "=> {"                                $$
@@ -929,37 +981,117 @@ rustTypeFromFlatbuf t@TUser{..} =
                          "    Ok(" <> cname <> (braces $ commaSep args) <> ")"                 $$
                          "},")
                $ typeCons tstruct
+    to_cons = map (\c -> let fbcname = fbConstructorName typeArgs c
+                             cname = R.rname typeName <> "::" <> R.rname (name c)
+                             args = map (\a -> serialize_field "" a (pp $ name a)) $ consArgs c
+                             arg_names = map (\a -> let n = pp $ name a in
+                                               if typeHasUniqueConstructor a
+                                                  then n
+                                                  else n <> "_type," <+> n)
+                                             $ consArgs c
+                             tab = "let __tab = fb::" <> fbcname <> "::create(fbb, &fb::" <> fbcname <> "Args{"   $$
+                                   (nest' $ vcommaSep arg_names)                                                  $$
+                                   "});"
+                         in cname <> "{"<> (commaSep $ map (pp . name) $ consArgs c) <> "} => {"        $$
+                            (nest' $ vcat args)                                                         $$
+                            nest' tab                                                                   $$
+                            "    (" <> fbstruct <> "::" <> fbcname <> ", __tab.as_union_value())"       $$
+                            "}")
+              $ typeCons tstruct
 
 -- Deserialize Tuples.
 rustTypeFromFlatbuf t@TTuple{..} =
-    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{" $$
-    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"     $$
-    "        Ok((" <> commaSep args <> "))"                                             $$
-    "    }"                                                                             $$
+    "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
+    "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
+    "        Ok((" <> commaSep from_args <> "))"                                                    $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                   $$
+    "    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"             $$
+    (nest' $ nest' $ vcat to_args)                                                                  $$
+    "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{"                            $$
+    (nest' $ nest' $ nest' $ vcommaSep arg_names)                                                   $$
+    "        })"                                                                                    $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                         $$
+    "   type Target = fb::" <> tname <> "<'b>;"                                                     $$
+    "   fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {" $$
+    "       self.to_flatbuf(fbb)"                                                                   $$
+    "   }"                                                                                          $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferVectorElement<'b> for" <+> rtype <+> "{"                                 $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                   $$
+    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"   $$
+    "        self.to_flatbuf(fbb)"                                                                  $$
+    "    }"                                                                                         $$
     "}"
     where
+    tname = typeTableName t
     rtype = R.mkType t
     tstruct = typ' ?d t
-    args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos ("a" ++ show i) a) <> ")?")
-                  $ typeTupArgs
+    arg_names = mapIdx (\a i -> let n = pp $ "a" ++ show i in
+                           if typeHasUniqueConstructor a
+                              then n
+                              else n <> "_type," <+> n)
+                       typeTupArgs
+    from_args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos ("a" ++ show i) a) <> ")?")
+                typeTupArgs
+    to_args = mapIdx (\a i -> serialize_field "self." (Field nopos (show i) a) ("a" <> pp i))
+                     typeTupArgs
 
--- Container types (vectors, sets, maps).  We implement 'FromFlatBuffer<fb::Vector>' for
--- containers in their corresponding libraries.  Here we additionally generate
--- 'FromFlatBuffer<fb::>' for wrapper tables.
+-- Container types (vectors, sets, maps).  We implement 'FromFlatBuffer<fb::Vector>'
+-- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
+-- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
+-- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
 rustTypeFromFlatbuf t@TOpaque{} =
-    "impl <'a> FromFlatBuffer<fb::" <> typeTableName t <> "<'a>> for" <+> rtype <+> "{"                                                         $$
-    "    fn from_flatbuf(v: fb::" <> typeTableName t <> "<'a>) -> Response<Self> {"                                                             $$
+    "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
+    "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
     "        let vec = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested vector\"))?;"       $$
-    "        <" <> rtype <> ">::from_flatbuf(vec)"                                                                                              $$
-    "    }"                                                                                                                                     $$
+    "        <" <> rtype <> ">::from_flatbuf(vec)"                                                          $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                                 $$
+    "    type Target = fb::" <+> tname <> "<'b>;"                                                           $$
+    "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"    $$
+    "        let v = self.to_flatbuf(fbb);"                                                                 $$
+    "        let v = Some(v);"                                                                              $$
+    "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{v})"                                 $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBufferVectorElement<'b> for" <+> rtype <+> "{"                                         $$
+    "    type Target = fbrt::WIPOffset<fb::" <> tname <> "<'b>>;"                                           $$
+    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"      $$
+    "       self.to_flatbuf_table(fbb)"                                                                     $$
+    "    }"                                                                                                 $$
     "}"
     where
     rtype = R.mkType t
+    tname = typeTableName t
 
 -- For builtin types ('bool', 'bit<>', 'signed', 'string', 'bigint'),
 -- 'FromFlatBuffer<>' is implemented in the 'flatbuf.rs' template.
 -- For library types (containers, 'Ref<>', etc), 'FromFlatBuffer<>' is
 -- implemented in their corresponding library modules.
+rustTypeFromFlatbuf t | typeIsScalar t =
+    "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
+    "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
+    "        let v = v.v();"                                                                                $$
+    "        <" <> rtype <> ">::from_flatbuf(v)"                                                            $$
+    "    }"                                                                                                 $$
+    "}"                                                                                                     $$
+    "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                                 $$
+    "    type Target = fb::" <+> tname <> "<'b>;"                                                           $$
+    "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"    $$
+    "        let v = self.to_flatbuf(fbb);"                                                                $$
+    "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{v})"                                 $$
+    "    }"                                                                                                 $$
+    "}"
+    where
+    rtype = R.mkType t
+    tname = typeTableName t
+
 rustTypeFromFlatbuf _ = empty
 
 extract_field :: (?d::DatalogProgram) => Doc -> Field -> Doc
@@ -971,3 +1103,13 @@ extract_field container f | typeIsScalar f = "v." <> pp (name f) <> "()"
     "(v." <> pp (name f) <> "_type()," <+>
     "v." <> pp (name f) <>
     "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> pp (name f) <> "\"))?)"
+
+serialize_field :: (?d::DatalogProgram) => Doc -> Field -> Doc -> Doc
+serialize_field prefix f to_name | typeIsScalar f =
+    "let" <+> to_name <+> "=" <+> from_name <> ".to_flatbuf(fbb);"
+                                 | typeHasUniqueConstructor f =
+    "let" <+> to_name <+> "= Some(" <> from_name <> ".to_flatbuf(fbb));"
+                                 | otherwise =
+    "let (" <> to_name <> "_type," <+> to_name <> ") =" <+> from_name <> ".to_flatbuf(fbb);" $$
+    "let" <+> to_name <+> "= Some(" <> to_name <> ");"
+    where from_name = prefix <> (pp $ name f)

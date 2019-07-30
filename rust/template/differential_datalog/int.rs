@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use abomonation::Abomonation;
-use num::bigint::{BigInt, Sign};
+use num::bigint::{BigInt};
 #[cfg(test)]
 use num::bigint::{ToBigInt};
 use std::str::FromStr;
@@ -15,6 +15,7 @@ use std::os::raw::c_char;
 use super::record::{FromRecord, IntoRecord, Record, Mutator};
 use super::uint;
 use num::ToPrimitive;
+pub use num::bigint::Sign;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int{x:BigInt}
@@ -65,6 +66,9 @@ impl Int {
     }
     pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Int {
         Int{x: BigInt::from_bytes_be(if sign {Sign::Plus} else {Sign::Minus}, bytes)}
+    }
+    pub fn to_bytes_be(&self) -> (Sign, Vec<u8>) {
+        self.x.to_bytes_be()
     }
     pub fn to_i8(&self) -> Option<i8> {
         self.x.to_i8()

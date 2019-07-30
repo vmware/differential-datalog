@@ -447,6 +447,7 @@ typedef R7 = R7{f1: bigint, f2: bit<16>}
            | R7Other
 
 output relation R7[R7]
+input relation R8[bit<32>]
 
 R7(1,2).
 R7[R7{1,3}].
