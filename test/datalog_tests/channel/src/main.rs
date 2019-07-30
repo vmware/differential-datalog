@@ -127,15 +127,15 @@ impl Observer<Update<Value>, String> for TCPChannel {
                         }
                     }).wait();
 
-                    let observer = observer.lock().unwrap();
-                    // observer.on_completed();
+                    let obs = observer.clone(); //observer.lock().unwrap();
+                    // observer.on_start();
 
                     Ok(())
                 }).map_err(|err| {
                     println!("yay");
                 });
 
-                // tokio::run(work);
+                tokio::run(work);
             }
         }
 

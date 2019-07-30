@@ -19,6 +19,8 @@ use std::net::{SocketAddr, Shutdown};
 use std::iter;
 use std::io::BufReader;
 
+use std::boxed::*;
+
 pub struct TcpReceiver{
     addr: SocketAddr,
     server: Option<Box<dyn Future<Item = (), Error = ()> + Send>>,
@@ -44,35 +46,33 @@ impl Observable<Update<Value>, String> for TcpReceiver {
     }
 }
 
-fn handle_connection(observer: Arc<Mutex<dyn Observer<Update<Value>, String>>>, stream: TcpStream) -> impl Future<Item = (), Error = ()> {
-    let mut upds = Vec::new();
-    let stream = std::io::BufReader::new(stream);
-    tokio::io::lines(stream).for_each(move |line| {
-        // This closure is called for each line we receive,
-        // and returns a Future that represents the work we
-        // want to do before accepting the next line.
-        // In this case, we just wanted to print, so we
-        // don't need to do anything more.
-        let (v, relid, pol): (RelId, Value, bool) = serde_json::from_str(&line).unwrap();
-        println!("{:?}", (v, pol));
-        upds.push((v, relid, pol));
-        println!("{:?}", upds);
-        Ok(())
-    }).map_err(|err| {
-        println!("accept error = {:?}", err);
-    })
-}
-
 impl TcpReceiver {
     pub fn listen(&mut self) {
         let listener = TcpListener::bind(&self.addr).unwrap();
         if let Some(observer) = self.observer.take() {
-            let server = listener.incoming().for_each(move |_socket| {
-                let mut obs = observer.lock().unwrap();
-                obs.on_start();
-                obs.on_commit();
-                // obs.lock().unwrap().on_start();
-                // tokio::spawn(handle_connection(observer.clone(), socket));
+            let server = listener.incoming().for_each(move |socket| {
+
+                let observer = observer.clone();
+
+                let stream = std::io::BufReader::new(socket);
+
+                let work = tokio::io::lines(stream).map(move |line| {
+                    let (relid, v, pol): (RelId, Value, bool) = serde_json::from_str(&line).unwrap();
+                    if pol {
+                        Update::Insert{relid: relid, v: v}
+                    } else {
+                        Update::DeleteValue{relid: relid, v: v}
+                    }
+                }).collect().and_then(move |upds| {
+                    let mut obs = observer.lock().unwrap();
+                    obs.on_start();
+                    obs.on_updates(Box::new(upds.into_iter()));
+                    Ok(())
+                }).map_err(|err| {
+                    print!("error {:?}", err)
+                });
+
+                tokio::spawn(work);
                 Ok(())
             }).map_err(|err| {
                 println!("accept error = {:?}", err);
@@ -95,6 +95,8 @@ impl Observer<Update<Value>, String> for TestObserver {
         Ok(())
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Response<()> {
+        let upds:Vec<_> = updates.collect();
+        println!("{:?}", upds.len());
         Ok(())
     }
     fn on_completed(self) -> Response<()> {
