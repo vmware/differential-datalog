@@ -24,6 +24,7 @@ cache:
         - $HOME/.cabal
         - $HOME/.stack
         - $HOME/.cargo
+        - $HOME/flatbuffers
         - .stack-work
 
 env:
