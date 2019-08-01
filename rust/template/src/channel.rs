@@ -22,8 +22,8 @@ where T: Send, E:Send
 }
 
 // Stop listening to changes from the observable
-pub trait Subscription<'a> {
-    fn unsubscribe(&'a mut self);
+pub trait Subscription {
+    fn unsubscribe(self: Box<Self>);
 }
 
 // A channel that transmits deltas. It acts as an observer of

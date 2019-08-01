@@ -19,8 +19,9 @@ impl <'a> UpdatesSubscription<'a> {
     }
 }
 
-impl <'a> Subscription<'a> for UpdatesSubscription<'a> {
-    fn unsubscribe(&'a mut self) {
+impl <'a> Subscription for UpdatesSubscription<'a> {
+    fn unsubscribe(self: Box<Self>) {
+        println!("unsubscribing");
         *self.observer = None;
     }
 }

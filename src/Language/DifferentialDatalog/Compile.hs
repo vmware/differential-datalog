@@ -143,10 +143,10 @@ templateFiles specname =
         , (dir </> "src/ovsdb.rs"               , $(embedFile "rust/template/src/ovsdb.rs"))
         , (dir </> "src/valmap.rs"              , $(embedFile "rust/template/src/valmap.rs"))
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
+        , (dir </> "src/channel.rs"             , $(embedFile "rust/template/src/channel.rs"))
+        , (dir </> "src/server.rs"              , $(embedFile "rust/template/src/server.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
-        , (dir </> "channel.rs"             , $(embedFile "rust/template/channel.rs"))
-        , (dir </> "server.rs"              , $(embedFile "rust/template/server.rs"))
         ]
     where dir = rustProjectDir specname
 
