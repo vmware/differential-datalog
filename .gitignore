@@ -57,3 +57,4 @@ java/test*/*_ddlog
 souffle-grammar.pgt
 # idea project files
 *.iml
+flatbuffers*

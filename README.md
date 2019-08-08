@@ -67,7 +67,11 @@ Datalog 2.0, Philadelphia, PA, June 4-5, 2019.
 
 ## Installing from sources
 
+To install the required dependencies for buidling DDlog run `. ./install-dependencies.sh`
+
 ### Prerequisites
+
+This section describes the manual installation of dependencies.
 We have tested our software on Ubuntu Linux and MacOS.
 
 The compilers are written in Haskell.  One needs the Glasgow Haskell
