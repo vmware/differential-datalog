@@ -1,0 +1,105 @@
+input relation BI(b: bool)
+output relation BO(b: bool)
+BO(b) :- BI(b).
+
+input relation CI(c: bit<8>)
+output relation CO(c: bit<8>)
+CO(c) :- CI(c).
+
+input relation DI(d: signed<16>)
+output relation DO(d: signed<16>)
+DO(d) :- DI(d).
+
+input relation EI(e: bigint)
+output relation EO(e: bigint)
+EO(e) :- EI(e).
+
+input relation FI(s: string)
+output relation FO(s: string)
+FO(s) :- FI(s).
+
+input relation GI(d: bit<64>)
+output relation GO(d: bit<64>)
+GO(d) :- GI(d).
+
+input relation HI(d: bit<128>)
+output relation HO(d: bit<128>)
+HO(d) :- HI(d).
+
+input relation II(d: bit<12>)
+output relation IO(d: bit<12>)
+IO(d) :- II(d).
+
+typedef tuple = (bool, bit<8>, string)
+input relation JI(a: (bool, bit<8>, string))
+output relation JO(a: (bool, bit<8>, string))
+JO(a) :- JI(a).
+
+input relation KI(t: tuple)
+output relation KO(t: tuple)
+KO(t) :- KI(t).
+
+input relation LI[tuple]
+output relation LO[tuple]
+LO[t] :- LI[t].
+
+input relation L0I(a: bool, b: bit<8>, s: string)
+output relation L0O(a: bool, b: bit<8>, s: string)
+L0O(a, b, c) :- L0I(a, b, c).
+
+input relation MI(v: Vec<bool>)
+output relation MO(v: Vec<bool>)
+MO(v) :- MI(v).
+
+input relation NI(v: Vec<tuple>)
+output relation NO(v: Vec<tuple>)
+NO(v) :- NI(v).
+
+input relation OI(v: Vec<Vec<bool>>)
+output relation OO(v: Vec<Vec<bool>>)
+OO(v) :- OI(v).
+
+input relation PI(s: Set<bit<32>>)
+output relation PO(s: Set<bit<32>>)
+PO(s) :- PI(s).
+
+input relation QI(m: Map<bit<32>, string>)
+output relation QO(m: Map<bit<32>, string>)
+QO(m) :- QI(m).
+
+input relation RI(m: Ref<bit<32>>)
+output relation RO(m: Ref<bit<32>>)
+RO(x) :- RI(x).
+
+typedef C = C{x: string}
+input relation SI(m: C)
+output relation SO(m: C)
+SO(m) :- SI(m).
+
+input relation TI(m: Option<bit<32>>)
+output relation TO(m: Option<bit<32>>)
+TO(m) :- TI(m).
+
+typedef Many = A{x: string}
+             | B{b: bool}
+             | D{t: tuple}
+input relation UI[Many]
+output relation UO[Many]
+UO[m] :- UI[m].
+
+input relation VI(a: bool, b: Many)
+output relation VO(a: bool, b: Many)
+VO(a, b) :- VI(a, b).
+
+input relation WI(m: Option<Many>)
+output relation WO(m: Option<Many>)
+WO(m) :- WI(m).
+
+input relation XI(m: Vec<Many>)
+output relation XO(m: Vec<Many>)
+XO(m) :- XI(m).
+
+typedef VOT = Vec<Option<tuple>>
+input relation YI(v: VOT)
+output relation YO(v: VOT)
+YO(v) :- YI(v).

@@ -117,7 +117,7 @@ fUNCS_RETURN_REF = ["std.deref"]
 -- Rust imports
 header :: String -> Doc
 header specname =
-    let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/" 
+    let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/"
                  $ BS.unpack $ $(embedFile "rust/template/src/lib.rs") of
                 []  -> error "Missing separator in lib.rs"
                 h:_ -> h
