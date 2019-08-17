@@ -44,9 +44,7 @@ import Text.Printf
 import Text.PrettyPrint
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
-import GHC.Conc.Sync
 import qualified Data.Set as S
-import qualified Data.Map as M
 import qualified Codec.Compression.GZip as GZ
 
 import Language.DifferentialDatalog.Parse
@@ -55,7 +53,6 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 import Language.DifferentialDatalog.FlatBuffer
-import qualified Language.DifferentialDatalog.OVSDB.Compile as OVS
 
 main :: IO ()
 main = do
@@ -63,9 +60,11 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
+bUILD_TYPE :: String
 --bUILD_TYPE = "debug"
 bUILD_TYPE = "release"
 
+cargo_build_flag :: [String]
 cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
 
 goldenTests :: Bool -> IO TestTree
@@ -90,9 +89,12 @@ goldenTests progress = do
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
   return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
 
+sOUFFLE_BASE :: String
 sOUFFLE_BASE = "./test"
+
 -- These should be all directories, but currently some tests do not work with
 -- the Souffle translator
+sOUFFLE_DIRS :: [String]
 sOUFFLE_DIRS = ["souffle0", -- large Doop example
                 "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
                  -- "souffle7", -- uses a recursive type
@@ -140,6 +142,7 @@ compileFailingProgram file program =
     (show <$> parseValidate file False program) `catch`
              (\e -> return $ show (e::SomeException))
 
+shouldFail :: String -> Bool
 shouldFail fname = ".fail." `isInfixOf` fname
 
 -- Test Datalog parser on spec in 'fname'.
@@ -179,8 +182,8 @@ parserTest fname = do
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
 compilerTest :: Bool -> Bool -> FilePath -> [String] -> [String] -> IO ()
-compilerTest progress java fname cli_args crate_types = do
-    fname <- makeAbsolute fname
+compilerTest progress java file cli_args crate_types = do
+    fname <- makeAbsolute file
     body <- readFile fname
     let specname = takeBaseName fname
     (prog, rs_code, toml_code) <- parseValidate fname java body
@@ -194,21 +197,21 @@ compilerTest progress java fname cli_args crate_types = do
                           cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
                           env = Just [("CLASSPATH", (dir </> "../../java") ++ classpath)]
                      }
-    (code, stdo, stde) <- readCreateProcessWithExitCode javac_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "javac failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
+    (jcode, jstdo, jstde) <- readCreateProcessWithExitCode javac_proc ""
+    when (jcode /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "javac failed with exit code " ++ show jcode ++
+                                 "\nstdout:\n" ++ jstde ++
+                                 "\n\nstdout:\n" ++ jstdo
 
     -- compile it with Cargo
     let cargo_proc = (proc "cargo" (["build", "--features=flatbuf"] ++ cargo_build_flag)) {
                           cwd = Just $ dir </> rustProjectDir specname
                      }
-    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "cargo build failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
+    (ccode, cstdo, cstde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
+    when (ccode /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "cargo build failed with exit code " ++ show ccode ++
+                                 "\nstdout:\n" ++ cstde ++
+                                 "\n\nstdout:\n" ++ cstdo
     {-let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
                           cwd = Just $ dir </> specname
                      }
@@ -308,12 +311,12 @@ findByExtensionNonRec extsList = go where
     allEntries <- getDirectoryContents dir
     let entries = filter (not . (`elem` [".", ".."])) allEntries
     liftM concat $ forM entries $ \e -> do
-      let path = dir ++ "/" ++ e
-      isDir <- doesDirectoryExist path
+      let fpath = dir ++ "/" ++ e
+      isDir <- doesDirectoryExist fpath
       if isDir
         then return []
         else
           return $
-            if takeExtension path `S.member` exts
-              then [path]
+            if takeExtension fpath `S.member` exts
+              then [fpath]
               else []

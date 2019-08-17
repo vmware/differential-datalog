@@ -43,6 +43,8 @@ library:
   ghc-options:
   - -optl-static
   - -optl-pthread
+  - -Wall
+  - -Werror
 executables:
   ddlog:
     main:                Main.hs
@@ -57,11 +59,15 @@ executables:
               - -with-rtsopts=-N
               - -optl-static
               - -optl-pthread
+              - -Wall
+              - -Werror
       else:
           ghc-options:
               - -threaded
               - -rtsopts
               - -with-rtsopts=-N
+              - -Wall
+              - -Werror
     dependencies:
     - differential-datalog
     - filepath
@@ -72,6 +78,8 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -Werror
     dependencies:
     - differential-datalog
     - filepath
@@ -85,6 +93,8 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -Werror
     dependencies:
     - differential-datalog
     - tasty

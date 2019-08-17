@@ -22,6 +22,7 @@ SOFTWARE.
 -}
 
 {-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, LambdaCase #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Language.DifferentialDatalog.Parse (
     parseDatalogString,
@@ -30,7 +31,6 @@ module Language.DifferentialDatalog.Parse (
     reservedNames) where
 
 import Control.Applicative hiding (many,optional,Const)
-import qualified Control.Exception as E
 import Control.Monad.Except
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.Expr
@@ -38,15 +38,13 @@ import Text.Parsec.Language
 import qualified Text.Parsec.Token as T
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Either
 import Data.List
 import Data.Char
 import Numeric
-import Debug.Trace
+--import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Statement
-import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
@@ -127,7 +125,7 @@ colon        = T.colon lexer
 commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
 symbol       = T.symbol lexer
-semi         = T.semi lexer
+--semi         = T.semi lexer
 comma        = T.comma lexer
 braces       = T.braces lexer
 parens       = T.parens lexer
@@ -238,13 +236,13 @@ spec = do
                                          , progRules        = rules
                                          , progApplys       = applys}
     case res of
-         Left err   -> errorWithoutStackTrace err
+         Left e     -> errorWithoutStackTrace e
          Right prog -> return prog
 
 attributes = reservedOp "#" *> (brackets $ many attribute)
 attribute = withPos $ Attribute nopos <$> attrIdent <*> (reservedOp "=" *>  expr)
 
-decl =  do attributes <- optionMaybe attributes
+decl =  do attrs <- optionMaybe attributes
            items <- (withPosMany $
                          (return . SpImport)         <$> imprt
                      <|> (return . SpType)           <$> typeDef
@@ -255,9 +253,9 @@ decl =  do attributes <- optionMaybe attributes
                      <|> (return . SpApply)          <$> apply)
                    <|> (map SpRule . convertStatement) <$> parseForStatement
            case items of
-                [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attributes}]
+                [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attrs}]
                 _          -> do
-                    when (isJust attributes) $ fail "#-attributes are currently only supported for type declarations"
+                    when (isJust attrs) $ fail "#-attributes are currently only supported for type declarations"
                     return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -525,14 +523,14 @@ epattern_string = do
 -- interpolated expressions.
 
 equoted_string = do
-    p <- try $ lookAhead $ do {string "\""; getPosition}
+    p <- try $ lookAhead $ do {_ <- string "\""; getPosition}
     str <- concat <$> many1 stringLit
     case parse (interpolate p) "" str of
          Left  er -> fail $ show er
          Right ex -> return ex
 
 einterpolated_raw_string  = do
-    try $ string "$[|"
+    _ <- try $ string "$[|"
     p <- getPosition
     str <- manyTill anyChar (try $ string "|]" *> whiteSpace)
     case parse (interpolate p) "" str of
@@ -544,14 +542,14 @@ interpolate p = do
     interpolate' Nothing
 
 interpolate' mprefix = do
-    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {try $ lookAhead $ string "${"; return ()})
+    str <- withPos $ (E . EString nopos) <$> manyTill anyChar (eof <|> do {_ <- try $ lookAhead $ string "${"; return ()})
     let prefix' = maybe str
                         (\prefix ->
                           if exprString (enode str) == ""
                              then prefix
                              else case prefix of
-                                       E (EString _ s) -> str
-                                       _               -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
+                                       E EString{} -> str
+                                       _           -> E $ EBinOp (fst $ pos prefix, snd $ pos str) Concat prefix str)
                         mprefix
     (do eof
         return prefix'
@@ -571,7 +569,7 @@ stripUnder :: String -> String
 stripUnder = filter (/= '_')
 
 digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
-digitPrefix digit = (:) <$> digit <*> (many (digit <|> char '_'))
+digitPrefix dig = (:) <$> dig <*> (many (dig <|> char '_'))
 
 eite = do reserved "if"
           cond <- term
@@ -614,9 +612,9 @@ mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
 
 etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
          ,[pref  $ choice [preRef]]
-         ,[pref  $ choice [prefix "-" UMinus]]
-         ,[pref  $ choice [prefix "~" BNeg]]
-         ,[pref  $ choice [prefix "not" Not]]
+         ,[pref  $ choice [prefixOp "-" UMinus]]
+         ,[pref  $ choice [prefixOp "~" BNeg]]
+         ,[pref  $ choice [prefixOp "not" Not]]
          ,[binary "%" Mod AssocLeft,
            binary "*" Times AssocLeft,
            binary "/" Div AssocLeft]
@@ -665,7 +663,7 @@ etype = reservedOp ":" *> typeSpecSimple
 eAsType = reserved "as" *> typeSpecSimple
 
 preRef = (\start e -> E $ ERef (start, snd $ pos e) e) <$> getPosition <* reservedOp "&"
-prefix n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n
+prefixOp n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n
 binary n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reservedOp n
 sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ reservedOp n
 

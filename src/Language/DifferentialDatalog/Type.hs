@@ -60,7 +60,6 @@ module Language.DifferentialDatalog.Type(
 import Data.Maybe
 import Data.List
 import Control.Monad.Except
-import qualified Data.Graph.Inductive as G
 import qualified Data.Map as M
 --import Debug.Trace
 
@@ -74,11 +73,19 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
 
+sET_TYPES :: [String]
 sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
+
+gROUP_TYPE :: String
 gROUP_TYPE = "std.Group"
 
+rEF_TYPE :: String
 rEF_TYPE = "std.Ref"
+
+mAP_TYPE :: String
 mAP_TYPE = "std.Map"
+
+iNTERNED_TYPE :: String
 iNTERNED_TYPE = "intern.IObj"
 
 -- | An object with type
@@ -133,13 +140,14 @@ typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
 unifyTypes d p ctx ts = do
     m0 <- M.unionsWith (++) <$> mapM ((M.map return <$>) . unifyTypes' d p ctx) ts
-    M.traverseWithKey (\v ts -> checkConflicts d p ctx v ts) m0
+    M.traverseWithKey (\v ts' -> checkConflicts d p ctx v ts') m0
 
 checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
 checkConflicts d p ctx v (t:ts) = do
-    mapM (\t' -> when (not $ typesMatch d t t')
-                      $ err p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
+    mapM_ (\t' -> when (not $ typesMatch d t t')
+                       $ err p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
     return t
+checkConflicts _ _ _ _ [] = error $ "Type.checkConflicts: invalid input"
 
 unifyTypes' :: (MonadError String me) => DatalogProgram -> Pos -> String -> (Type, Type) -> me (M.Map String Type)
 unifyTypes' d p ctx (a, c) =
@@ -212,12 +220,12 @@ structTypeArgs d p ctx cname argtypes = do
     let TypeDef{..} = consType d cname
         Constructor{..} = getConstructor d cname
     let -- Try to extract type variable bindings from expected type;
-        exp = case ctxExpectType'' d ctx of
-                   Just (TUser _ n as) | n == tdefName
-                                       -> zip (map tVar tdefArgs) as
-                   _                   -> []
+        expect = case ctxExpectType'' d ctx of
+                      Just (TUser _ n as) | n == tdefName
+                                          -> zip (map tVar tdefArgs) as
+                      _                   -> []
     subst <- unifyTypes d p ("in type constructor " ++ cname)
-                        $ exp ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
+                        $ expect ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
     mapM (\a -> case M.lookup a subst of
                      Nothing -> err p $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++
                                         " to a concrete type in a call to type constructor " ++ cname
@@ -232,7 +240,7 @@ mtype2me p ctx Nothing  = err p $ "Expression has unknown type in " ++ show ctx
 mtype2me _ _   (Just t) = return t
 
 exprNodeType' :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> me Type
-exprNodeType' d ctx e@(EVar p v)            =
+exprNodeType' d ctx (EVar p v)            =
     let (lvs, rvs) = ctxMVars d ctx in
     case lookup v $ lvs ++ rvs of
          Just mt -> mtype2me p ctx mt
@@ -255,7 +263,7 @@ exprNodeType' d ctx (EApply p f mas)      = do
             (intercalate ", " $ map ("'" ++) $ funcTypeVars func \\ M.keys subst)
     return $ typeSubstTypeArgs subst t
 
-exprNodeType' d ctx (EField p Nothing f)  = eunknown p ctx
+exprNodeType' _ ctx (EField p Nothing _)  = eunknown p ctx
 
 exprNodeType' d _   (EField p (Just e) f) = do
     case typ' d e of
@@ -289,11 +297,11 @@ exprNodeType' d ctx (EStruct p c mas)     = do
 
 exprNodeType' _ ctx (ETuple p fs)         = fmap tTuple $ mapM (mtype2me p ctx) fs
 exprNodeType' _ _   (ESlice _ _ h l)      = return $ tBit $ h - l + 1
-exprNodeType' d ctx (EMatch p _ cs)       = mtype2me p ctx $ (fromJust . snd) <$> find (isJust . snd) cs
+exprNodeType' _ ctx (EMatch p _ cs)       = mtype2me p ctx $ (fromJust . snd) <$> find (isJust . snd) cs
 exprNodeType' d ctx (EVarDecl p _)        = mtype2me p ctx $ ctxExpectType d ctx
 exprNodeType' _ ctx (ESeq p _ e2)         = mtype2me p ctx e2
-exprNodeType' d ctx (EITE p _ Nothing e)  = mtype2me p ctx e
-exprNodeType' d ctx (EITE _ _ (Just t) e) = return t
+exprNodeType' _ ctx (EITE p _ Nothing e)  = mtype2me p ctx e
+exprNodeType' _ _   (EITE _ _ (Just t) _) = return t
 exprNodeType' _ _   (EFor _ _ _ _)        = return $ tTuple []
 exprNodeType' _ _   (ESet _ _ _)          = return $ tTuple []
 
@@ -334,7 +342,7 @@ exprNodeType' d _   (EUnOp _ BNeg (Just e))= return $ typ' d e
 exprNodeType' d _   (EUnOp _ UMinus (Just e)) = return $ typ' d e
 exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
 exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
-exprNodeType' d ctx (EBinding p _ e)       = mtype2me p ctx e
+exprNodeType' _ ctx (EBinding p _ e)       = mtype2me p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
 exprNodeType' _ _   (EAs _ _ t)            = return t
 exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t]
@@ -452,6 +460,7 @@ typeNormalize' d t =
          TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TVar{}             -> t'
+         _                  -> error $ "Type.typeNormalize': unexpected type " ++ show t'
     where t' = typ'' d t
 
 -- User-defined types that appear in type expression
@@ -529,8 +538,8 @@ ctxExpectType d (CtxSeq2 _ ctx)                      = ctxExpectType d ctx
 ctxExpectType _ (CtxITEIf _ _)                       = Just tBool
 ctxExpectType d (CtxITEThen _ ctx)                   = ctxExpectType d ctx
 ctxExpectType d (CtxITEElse _ ctx)                   = ctxExpectType d ctx
-ctxExpectType d (CtxForIter _ _)                     = Nothing
-ctxExpectType d (CtxForBody _ _)                     = Just $ tTuple []
+ctxExpectType _ (CtxForIter _ _)                     = Nothing
+ctxExpectType _ (CtxForBody _ _)                     = Just $ tTuple []
 ctxExpectType d (CtxSetL e@(ESet _ _ rhs) ctx)       = exprTypeMaybe d (CtxSetR e ctx) rhs
 ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = -- avoid infinite recursion by evaluating lhs standalone
                                                        exprTypeMaybe d (CtxSeq1 (ESeq nopos lhs (error "ctxExpectType: should be unreachable")) ctx) lhs
@@ -586,10 +595,11 @@ ctxExpectType d (CtxUnOp (EUnOp _ UMinus _) ctx)     = ctxExpectType d ctx
 ctxExpectType d (CtxBinding _ ctx)                   = ctxExpectType d ctx
 ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
 ctxExpectType _ CtxAs{}                              = Nothing
-ctxExpectType d (CtxRef (ERef _ e) ctx)              =
+ctxExpectType d (CtxRef ERef{} ctx)                  =
     case ctxExpectType' d ctx of
-         Just (TOpaque _ rEF_TYPE [t]) -> Just t
+         Just (TOpaque _ rt [t]) | rt == rEF_TYPE -> Just t
          _ -> Nothing
+ctxExpectType _ ctx                                  = error $ "Type.ctxExpectType: invalid context " ++ show ctx
 
 ctxExpectType'' :: DatalogProgram -> ECtx -> Maybe Type
 ctxExpectType'' d ctx = typ'' d <$> ctxExpectType d ctx
@@ -613,8 +623,8 @@ consTreeEmpty (CT _ []) = True
 consTreeEmpty _         = False
 
 -- | Build constructor tree of a type
-typeConsTree :: DatalogProgram -> Type -> ConsTree
-typeConsTree d t = CT t [EPHolder nopos]
+typeConsTree :: Type -> ConsTree
+typeConsTree t = CT t [EPHolder nopos]
 
 consTreeNodeExpand :: DatalogProgram -> Type -> [CTreeNode]
 consTreeNodeExpand d t =
@@ -624,7 +634,8 @@ consTreeNodeExpand d t =
                                                   $ consArgs c) cs
          TTuple _ fs                -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
          TBool{}                    -> [EBool nopos False, EBool nopos True]
-         TOpaque _ rEF_TYPE [t']    -> [ERef nopos $ CT t' [EPHolder nopos]]
+         TOpaque _ rt [t'] | rt == rEF_TYPE
+                                    -> [ERef nopos $ CT t' [EPHolder nopos]]
          _                          -> [EPHolder nopos]
 
 -- | Abduct a pattern from constructor tree. Returns the remaining
@@ -638,8 +649,8 @@ consTreeNodeExpand d t =
 consTreeAbduct :: DatalogProgram -> ConsTree -> Expr -> (ConsTree, ConsTree)
 
 -- wildcard (_), var decl abduct the entire tree
-consTreeAbduct d (CT t cts) (E EPHolder{}) = (CT t [], CT t cts)
-consTreeAbduct d (CT t cts) (E EVarDecl{}) = (CT t [], CT t cts)
+consTreeAbduct _ (CT t cts) (E EPHolder{}) = (CT t [], CT t cts)
+consTreeAbduct _ (CT t cts) (E EVarDecl{}) = (CT t [], CT t cts)
 
 -- expand the tree if necessary
 consTreeAbduct d (CT t [EPHolder{}]) e =
@@ -656,17 +667,18 @@ consTreeAbduct' d ct@(CT t nodes) (E e) =
          EString p s    -> (ct, CT t [EString p s])
          EBit p w v     -> (ct, CT t [EBit p w v])
          ESigned p w v  -> (ct, CT t [ESigned p w v])
-         EStruct p c fs ->
+         EStruct _ _ _ ->
              let (leftover, abducted) = unzip $ map (\nd -> abductStruct d e nd) nodes
              in (CT t $ concat leftover, CT t $ concat abducted)
-         ETuple p es    ->
+         ETuple _ es    ->
              let (leftover, abducted) = unzip $ map (\(ETuple _ ts) -> abductTuple d es ts) nodes
              in (CT t $ concat leftover, CT t $ concat abducted)
-         ETyped p x _   -> consTreeAbduct d ct x
-         ERef p x       ->
+         ETyped _ x _   -> consTreeAbduct d ct x
+         ERef _ x       ->
              let [ERef _ ct'] = nodes in
              let (leftover, abducted) = consTreeAbduct d ct' x in
              (CT t [ERef nopos leftover], CT t [ERef nopos abducted])
+         _              -> error $ "Type.consTreeAbduct': invalid pattern " ++ show e
 
 
 abductTuple :: DatalogProgram -> [Expr] -> [ConsTree] -> ([CTreeNode], [CTreeNode])
@@ -680,10 +692,10 @@ abductStruct d (EStruct _ c fs) (EStruct _ c' ts) | c == c' =
     where
     (fnames, fvals) = unzip fs
     (leftover, abducted) = abductMany d fvals (map snd ts)
-abductStruct d _ nd  = ([nd], [])
+abductStruct _ _ nd  = ([nd], [])
 
 abductMany :: DatalogProgram -> [Expr] -> [ConsTree] -> ([[ConsTree]], [[ConsTree]])
-abductMany d []     []       = ([], [[]])
+abductMany _ []     []       = ([], [[]])
 abductMany d (e:es) (ct:cts) =
     let (CT t leftover, CT _ abducted) = consTreeAbduct d ct e
         (leftover', abducted') = abductMany d es cts
@@ -691,7 +703,7 @@ abductMany d (e:es) (ct:cts) =
                      map (\l' -> ct : l') leftover'
         abducted'' = concatMap (\a -> map ((CT t [a]) :) abducted') abducted
     in (leftover'', abducted'')
-
+abductMany _ _ _ = error "NS.abductMany: invalid arguments"
 
 -- | Visitor pattern for types
 typeMapM :: (Monad m) => (Type -> m Type) -> Type -> m Type
@@ -732,7 +744,7 @@ typeIsIterable d x =
          TOpaque _ tname _     | tname == gROUP_TYPE  -> True
          _                                            -> False
 
-checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> ECtx -> a -> me ()
-checkIterable prefix p d ctx x =
+checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
+checkIterable prefix p d x =
     check (typeIsIterable d x) p $
           prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or " ++ mAP_TYPE ++ " but its type is " ++ show (typ x)

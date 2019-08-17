@@ -43,14 +43,10 @@ module Language.DifferentialDatalog.Compile (
 import Prelude hiding((<>))
 import Control.Monad.State
 import Text.PrettyPrint
-import Data.Tuple
 import Data.Tuple.Select
 import Data.Maybe
 import Data.List
-import Data.Int
-import Data.Word
 import Data.Bits hiding (isSigned)
-import Data.Char
 import Data.List.Split
 import Data.FileEmbed
 import Data.String.Utils
@@ -61,11 +57,8 @@ import Numeric
 import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
-import qualified Data.Graph.Inductive.Query.DFS as G
-import Debug.Trace
-import Text.RawString.QQ
 import Data.WideWord
-import Debug.Trace
+--import Debug.Trace
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
@@ -79,7 +72,6 @@ import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Optimize
-import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
@@ -116,10 +108,10 @@ fUNCS_RETURN_REF = ["std.deref"]
 -- Rust imports
 header :: String -> Doc
 header specname =
-    let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/" 
+    let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/"
                  $ BS.unpack $ $(embedFile "rust/template/src/lib.rs") of
                 []  -> error "Missing separator in lib.rs"
-                h:_ -> h
+                x:_ -> x
     in pp $ replace "datalog_example" specname h
 
 -- Cargo.toml
@@ -249,6 +241,7 @@ data CompilerConfig = CompilerConfig {
     cconfJava         :: Bool
 }
 
+defaultCompilerConfig :: CompilerConfig
 defaultCompilerConfig = CompilerConfig {
     cconfBoxThreshold = 16,
     cconfJava = False
@@ -290,8 +283,6 @@ nodeRels (ApplyNode _)  = []
 
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
-
-type ArrId = Int
 
 data CompilerState = CompilerState {
     cTypes        :: S.Set Type,
@@ -487,7 +478,7 @@ compileLib d specname rs_code =
                                   createArrangements d
                                   -- Second pass: compile relations
                                   nodes <- mapM (compileSCC d depgraph) sccs
-                                  mkProg d nodes)
+                                  mkProg nodes)
                               $ emptyCompilerState { cArrangements = arrs
                                                    , cTypes        = types }
     -- Type declarations
@@ -915,8 +906,6 @@ mkValType d types =
     mkdisplay :: Type -> Doc
     mkdisplay t | isString d t = "Value::" <> consname t <+> "(v) => record::format_ddlog_str(v.as_ref(), f)"
                 | otherwise    = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
-    mkintorec :: Type -> Doc
-    mkintorec t = "Value::" <> consname t <+> "(v) => v.into_record()"
 
 -- Iterate through all rules in the program; precompute the set of arrangements for each
 -- relation.  This is done as a separate compiler pass to maximize arrangement sharing
@@ -942,13 +931,13 @@ createRuleArrangement d rule idx = do
     let rhs = ruleRHS rule !! idx
     let ctx = CtxRuleRAtom rule idx
     let rel = getRelation d $ atomRelation $ rhsAtom rhs
-    let (arr, _) = normalizeArrangement d rel ctx $ atomVal $ rhsAtom rhs
+    let (arr, _) = normalizeArrangement d ctx $ atomVal $ rhsAtom rhs
     -- If the literal does not introduce new variables, it's a semijoin
     let is_semi = null $ ruleRHSNewVars d rule idx
     case rhs of
-         RHSLiteral True a | is_semi   -> addSemijoinArrangement (name rel) arr
+         RHSLiteral True _ | is_semi   -> addSemijoinArrangement (name rel) arr
                            | otherwise -> addJoinArrangement (name rel) arr
-         RHSLiteral False a            -> addAntijoinArrangement (name rel) arr
+         RHSLiteral False _            -> addAntijoinArrangement (name rel) arr
          _                             -> return ()
 
 -- Generate Rust struct for ProgNode
@@ -1107,13 +1096,13 @@ compileRelation d rn = do
 
 compileKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
-    val <- mkValue' d (CtxKey rel) keyExpr
+    v <- mkValue' d (CtxKey rel) keyExpr
     return $
         "(|" <> kEY_VAR <> ": &Value|"                                                                $$
         "match" <+> kEY_VAR <+> "{"                                                                   $$
         "    Value::" <> mkValConstructorName d relType <> "(__" <> pp keyVar <> ") => {"            $$
         "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                   $$
-        "       " <> val <> "},"                                                                      $$
+        "       " <> v <> "},"                                                                      $$
         "    _ => unreachable!()"                                                                     $$
         "})"
 
@@ -1121,8 +1110,8 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
 compileFact :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> CompilerMonad Doc
 compileFact d rl@Rule{..} = do
     let rel = atomRelation $ head ruleLHS
-    val <- mkValue' d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
-    return $ "(" <> relId rel <> "," <+> val <> ") /*" <> pp rl <> "*/"
+    v <- mkValue' d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
+    return $ "(" <> relId rel <> "," <+> v <> ") /*" <> pp rl <> "*/"
 
 
 -- If the rule contains a join, antijoin, or aggregation operator then its first literal
@@ -1150,7 +1139,7 @@ ruleArrangeFstLiteral d rl@Rule{..} | null ruleRHS = Nothing
     -- If we're at the start of the rule and need to arrange the input relation, generate
     -- arrangement pattern.
     input_arrangement = if all (rhsIsFilterCondition . (ruleRHS !!)) conds
-                           then maybe Nothing (arrangeInput d rl (rhsAtom $ head ruleRHS) . fst) arrange_input_by
+                           then maybe Nothing (arrangeInput d (rhsAtom $ head ruleRHS) . fst) arrange_input_by
                            else Nothing
 
 
@@ -1196,11 +1185,11 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
     let filters = mkFilters d rl last_rhs_idx
     let prefix = open $+$ vcat filters
     -- Generate XFormCollection or XFormArrangement for the 'rhs' operator.
-    let mkArrangedOperator conds inpval =
+    let mkArrangedOperator conditions inpval =
             case rhs of
-                 RHSLiteral True a  -> mkJoin d conds inpval a rl rhs_idx
-                 RHSLiteral False a -> mkAntijoin d conds inpval a rl rhs_idx
-                 RHSAggregate{}     -> mkAggregate d conds inpval rl rhs_idx
+                 RHSLiteral True a  -> mkJoin d conditions inpval a rl rhs_idx
+                 RHSLiteral False a -> mkAntijoin d conditions inpval a rl rhs_idx
+                 RHSAggregate{}     -> mkAggregate d conditions inpval rl rhs_idx
                  _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
                              = mkHead d prefix rl
@@ -1263,12 +1252,11 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
 rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe ([(Expr, ECtx)], [Field])
 rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     let ctx = CtxRuleRAtom rl rhs_idx
-        rel = getRelation d $ atomRelation atom
-        (_, vmap) = normalizeArrangement d rel ctx $ atomVal atom
+        (_, vmap) = normalizeArrangement d ctx $ atomVal atom
     in Just $ (map (\(_,e,c) -> (e,c)) vmap,
                -- variables visible before join that are still in use after it
                (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
-rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ e) =
+rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ _) =
     let ctx = CtxRuleRAggregate rl rhs_idx
     in Just $ (map (\v -> (eVar v, ctx)) vs,
                -- all visible variables to preserve multiset semantics
@@ -1426,17 +1414,6 @@ mkVarsTupleValue d vs = do
     constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
-mkVarsTuple :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
-mkVarsTuple d vs = do
-    let t = tTuple $ map typ vs
-    constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ box d t $ tupleStruct $ map (pp . name) vs)
-
-mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
-mkVarsTupleValuePat d vs = do
-    constructor <- mkValConstructorName' d $ tTuple $ map typ vs
-    return $ (constructor <> (parens $ tupleStruct $ map (("ref" <+>) . pp . name) vs), constructor)
-
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
 mkFilters d rl@Rule{..} last_idx =
@@ -1463,6 +1440,7 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     varnames = map (pp . fst) $ exprVarDecls (CtxSetL e ctx) l
     vars = tuple varnames
     vardecls = tuple $ map ("ref" <+>) varnames
+mkAssignFilter _ _ e = error $ "Compile.mkAssignFilter: unexpected expression " ++ show e
 
 mkCondFilter :: DatalogProgram -> ECtx -> Expr -> Doc
 mkCondFilter d ctx e =
@@ -1471,7 +1449,7 @@ mkCondFilter d ctx e =
 -- Generate the ffun field of `XFormArrangement::Join/Semijoin/Aggregate`.
 -- This field is used if input to the operator is an arranged relation.
 mkFFun :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> [Int] -> CompilerMonad Doc
-mkFFun d rl@Rule{..} [] = return "None"
+mkFFun _ Rule{} [] = return "None"
 mkFFun d rl@Rule{..} input_filters = do
    open <- openAtom d ("*" <> vALUE_VAR) rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
    let checks = hsep $ punctuate " &&"
@@ -1488,14 +1466,13 @@ mkJoin :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Atom -> R
 mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
-    let rel = getRelation d $ atomRelation atom
-    let (arr, _) = normalizeArrangement d rel ctx $ atomVal atom
+    let (arr, _) = normalizeArrangement d ctx $ atomVal atom
     -- If the operator does not introduce new variables then it's a semijoin
-    let semi = null $ ruleRHSNewVars d rl join_idx
+    let semijoin = null $ ruleRHSNewVars d rl join_idx
     semi_arr_idx <- getSemijoinArrangement (atomRelation atom) arr
     join_arr_idx <- getJoinArrangement (atomRelation atom) arr
     -- Treat semijoin as normal join if we only have a map arrangement for it
-    let (aid, is_semi) = if semi
+    let (aid, is_semi) = if semijoin
                             then maybe (fromJust join_arr_idx, False) (,True) semi_arr_idx
                             else (fromJust join_arr_idx, False)
     -- Variables from previous terms that will be used in terms
@@ -1510,19 +1487,19 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- Filter inputs using 'input_filters'
     ffun <- mkFFun d rl input_filters
     -- simplify pattern to only extract new variables from it
-    let strip (E e@EStruct{..})  = E e{exprStructFields = map (\(n,v) -> (n, strip v)) exprStructFields}
-        strip (E e@ETuple{..})   = E e{exprTupleFields = map strip exprTupleFields}
-        strip (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar
+    let simplify (E e@EStruct{..})  = E e{exprStructFields = map (\(n,v) -> (n, simplify v)) exprStructFields}
+        simplify (E e@ETuple{..})   = E e{exprTupleFields = map simplify exprTupleFields}
+        simplify (E e@EVar{..}) | isNothing $ lookupVar d ctx exprVar
                                  = E e
-        strip (E e@EBinding{..}) = E e{exprPattern = strip exprPattern}
-        strip (E e@ETyped{..})   = E e{exprExpr = strip exprExpr}
-        strip (E e@ERef{..})     = E e{exprPattern = strip exprPattern}
-        strip _                  = ePHolder
+        simplify (E e@EBinding{..}) = E e{exprPattern = simplify exprPattern}
+        simplify (E e@ETyped{..})   = E e{exprExpr = simplify exprExpr}
+        simplify (E e@ERef{..})     = E e{exprPattern = simplify exprPattern}
+        simplify _                  = ePHolder
     -- Join function: open up both values, apply filters.
     open <- if is_semi
                then open_input ("*" <> vALUE_VAR1)
                else liftM2 ($$) (open_input ("*" <> vALUE_VAR1))
-                           (openAtom d ("*" <> vALUE_VAR2) rl join_idx (atom{atomVal = strip $ atomVal atom}) "return None")
+                           (openAtom d ("*" <> vALUE_VAR2) rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None")
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
@@ -1561,8 +1538,7 @@ mkAntijoin :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Atom 
 mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
-    let rel = getRelation d atomRelation
-    let (arr, _) = normalizeArrangement d rel ctx atomVal
+    let (arr, _) = normalizeArrangement d ctx atomVal
     -- Filter inputs using 'input_filters'
     ffun <- mkFFun d rl input_filters
     Just aid <- getAntijoinArrangement atomRelation arr
@@ -1597,11 +1573,11 @@ mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
 -- Normalize pattern expression for use in arrangement:
 -- * Eliminate parts of the pattern that do not constrain its value
 -- * Replace subexpressions with variables.
-normalizeArrangement :: DatalogProgram -> Relation -> ECtx -> Expr -> (Expr, [(String, Expr, ECtx)])
-normalizeArrangement d rel ctx pat = (renamed, vmap)
+normalizeArrangement :: DatalogProgram -> ECtx -> Expr -> (Expr, [(String, Expr, ECtx)])
+normalizeArrangement d patctx pat = (renamed, vmap)
     where
-    pat' = exprFoldCtx (normalizePattern d) ctx pat
-    (renamed, (_, vmap)) = runState (rename ctx pat') (0, [])
+    pat' = exprFoldCtx (normalizePattern d) patctx pat
+    (renamed, (_, vmap)) = runState (rename patctx pat') (0, [])
     rename :: ECtx -> Expr -> State (Int, [(String, Expr, ECtx)]) Expr
     rename ctx (E e) =
         case e of
@@ -1623,11 +1599,11 @@ normalizeArrangement d rel ctx pat = (renamed, vmap)
              ERef{..}                -> do
                 e' <- rename (CtxRef e ctx) exprPattern
                 return $ E e{exprPattern = e'}
-             e | exprIsConst (E e)   -> return $ E e
+             _ | exprIsConst (E e)   -> return $ E e
              _                       -> do
                 vid <- gets fst
                 let vname = "_" ++ show vid
-                modify $ \(_, vmap) -> (vid + 1, vmap ++ [(vname, E e, ctx)])
+                modify $ \(_, _vmap) -> (vid + 1, _vmap ++ [(vname, E e, ctx)])
                 return $ eVar vname
 
 -- Simplify away parts of the pattern that do not constrain its value.
@@ -1659,8 +1635,8 @@ normalizePattern d ctx e =
 --
 -- Step 1: replace each expression in 'arrange_input_by' by '_n' variables
 -- Step 2: eliminate all other variables and patterns that do not constrain the value
-arrangeInput :: DatalogProgram -> Rule -> Atom -> [(Expr, ECtx)] -> Maybe Expr
-arrangeInput d rl fstatom arrange_input_by = do
+arrangeInput :: DatalogProgram -> Atom -> [(Expr, ECtx)] -> Maybe Expr
+arrangeInput d fstatom arrange_input_by = do
     fstatom' <- foldIdxM subst (atomVal fstatom) arrange_input_by
     let vars = map (\i -> "_" ++ show i) [0..length arrange_input_by - 1]
     return $ normalize vars fstatom'
@@ -1668,7 +1644,7 @@ arrangeInput d rl fstatom arrange_input_by = do
     subst :: Expr -> (Expr, ECtx) -> Int -> Maybe Expr
     subst e arrange_by i =
         if exprIsVarOrField $ fst arrange_by
-           then let (e', found) = runState (exprFoldM (\e' -> subst' e' arrange_by i) e) False
+           then let (e', found) = runState (exprFoldM (\x -> subst' x arrange_by i) e) False
                 -- 'found' can only be false here if 'fstatom' contains a binding 'x@expr',
                 -- where both x and some field in 'expr' occur in 'arrange_input_by'.
                 in if found then Just e' else Nothing
@@ -1703,7 +1679,7 @@ arrangeInput d rl fstatom arrange_input_by = do
     substVar ab i = substVar' ab (eVar $ "_" ++ show i)
 
     substVar' :: (Expr, ECtx) -> Expr -> Expr
-    substVar' (E (EVar _ v'), _)          e' = e'
+    substVar' (E EVar{}, _)          e' = e'
     substVar' (E par@(EField _ e f), ctx) e' = substVar' (e, ctx') e''
         where ctx' = CtxField par ctx
               TStruct _ [cons] = exprType' d ctx' e
@@ -1719,9 +1695,9 @@ arrangeInput d rl fstatom arrange_input_by = do
     normalize' :: [String] -> ENode -> Expr
     normalize' vs e@EVar{..}   | elem exprVar vs                   = E e
                                | otherwise                         = ePHolder
-    normalize' vs EStruct{..}  | consIsUnique d exprConstructor && all ((== ePHolder) . snd) exprStructFields
+    normalize' _  EStruct{..}  | consIsUnique d exprConstructor && all ((== ePHolder) . snd) exprStructFields
                                = ePHolder
-    normalize' vs ETuple{..}   | all (== ePHolder) exprTupleFields = ePHolder
+    normalize' _  ETuple{..}   | all (== ePHolder) exprTupleFields = ePHolder
     normalize' _  EBinding{..} = exprPattern
     normalize' _  ERef{..}     | exprPattern == ePHolder           = ePHolder
     normalize' _  e                                                = E e
@@ -1751,8 +1727,8 @@ rhsVarsAfter d rl i =
                                           (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
            $ ruleRHSVars d rl (i+1)
 
-mkProg :: DatalogProgram -> [ProgNode] -> CompilerMonad Doc
-mkProg d nodes = do
+mkProg :: [ProgNode] -> CompilerMonad Doc
+mkProg nodes = do
     let rels = vcat $
                map (\ProgRel{..} -> "let" <+> rname prelName <+> "=" <+> prelCode <> ";")
                    (concatMap nodeRels nodes)
@@ -1791,19 +1767,19 @@ mkArrangement d rel (ArrangementMap pattern) = do
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
         "}"
 
-mkArrangement d rel (ArrangementSet pattern distinct) = do
-    filter_key <- mkArrangementKey d rel pattern
+mkArrangement d rel ArrangementSet{..} = do
+    filter_key <- mkArrangementKey d rel arngPattern
     let fmfun = braces' filter_key
     -- Arrangement contains distinct elements by construction and does
     -- not require expensive `distinct()` or `distinct_total()` applied to
     -- it if it is defined over all fields of a distinct relation (i.e.,
     -- the pattern expression does not contain placeholders).
-    let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders pattern)
+    let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     return $
         "Arrangement::Set{"                                                                            $$
-        "    name: r###\"" <> pp pattern <> "\"###.to_string(),"                                       $$
+        "    name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                   $$
         (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")   $$
-        "    distinct:" <+> (if distinct && not distinct_by_construction then "true" else "false")     $$
+        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false") $$
         "}"
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
@@ -1813,16 +1789,16 @@ mkArrangementKey d rel pattern = do
     -- extract variables with types from pattern.
     let getvars :: Type -> Expr -> [Field]
         getvars t (E EStruct{..}) =
-            concatMap (\(e,t) -> getvars t e)
+            concatMap (\(e,t') -> getvars t' e)
             $ zip (map snd exprStructFields) (map typ $ consArgs $ fromJust $ find ((== exprConstructor) . name) cs)
             where TStruct _ cs = typ' d t
         getvars t (E ETuple{..})  =
-            concatMap (\(e,t) -> getvars t e) $ zip exprTupleFields ts
+            concatMap (\(e,t') -> getvars t' e) $ zip exprTupleFields ts
             where TTuple _ ts = typ' d t
         getvars t (E ETyped{..})  = getvars t exprExpr
         getvars t (E ERef{..})    =
             getvars t' exprPattern
-            where TOpaque _ rEF_TYPE [t'] = typ' d t
+            where TOpaque _ _ [t'] = typ' d t
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
     let t = relType rel
@@ -1948,9 +1924,11 @@ mkPatExpr' d inkind ctx e               varkind   = do
 -- be dereferenced before use or cloned when passed to a constructor,
 -- assigned to another variable or returned.
 mkExpr :: DatalogProgram -> ECtx -> Expr -> EKind -> Doc
-mkExpr d ctx e k | k == EVal       = val e'
-                 | k == EReference = ref e'
-                 | k == ELVal      = lval e'
+mkExpr d ctx e k =
+    case k of
+         EVal       -> val e'
+         EReference -> ref e'
+         ELVal      -> lval e'
     where
     e' = exprFoldCtx (mkExpr_ d) ctx e
 
@@ -2050,10 +2028,10 @@ mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
     -- Iterator over group produces owned values, not references
-    ref = if isGroup d $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
-             then "ref"
-             else empty
-    doc = ("for" <+> ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
+    opt_ref = if isGroup d $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
+                 then "ref"
+                 else empty
+    doc = ("for" <+> opt_ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
           (nest' $ val exprBody)                                                   $$
           "}"
 
@@ -2104,11 +2082,11 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
 -- keep type ascriptions in LHS of assignment and in integer constants
-mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat)
-                         | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, cat)
-                         | otherwise     = (e', cat)
+mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
+                         | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
+                         | otherwise     = (e', categ)
     where
-    (e', cat, e) = exprExpr
+    (e', categ, e) = exprExpr
     isint = case e of
                  EInt{} -> True
                  _      -> False
@@ -2157,6 +2135,8 @@ mkExpr' d ctx EAs{..} | narrow_from && narrow_to && width_cmp /= GT
                    else if isInt d from_type && isInt d to_type
                            then EQ
                            else if isInt d to_type then LT else GT
+
+mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (pos e)
 
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' $ typ x
@@ -2326,6 +2306,7 @@ mkBinOp d op (e1, t1) (e2, t2) =
 
 -- These operators require truncating the output value to correct
 -- width.
+bopsRequireTruncation :: [BOp]
 bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 
 -- Produce code to cast bitvector to a different-width BV.

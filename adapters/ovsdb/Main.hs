@@ -63,13 +63,13 @@ data Config = Config { confAction       :: Action
                      , confKeys         :: M.Map String [String]
                      }
 
+defaultConfig :: Config
 defaultConfig = Config { confAction       = ActionCompile
                        , confOVSFile      = ""
                        , confOutputTables = []
                        , confProxyTables  = []
                        , confKeys         = M.empty
                        }
-
 
 addOption :: Config -> TOption -> IO Config
 addOption config Version = do return config { confAction = ActionVersion }
@@ -100,6 +100,7 @@ validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
     when (confOVSFile == "" && confAction == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
 
+main :: IO ()
 main = do
     args <- getArgs
     prog <- getProgName
