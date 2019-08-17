@@ -31,7 +31,7 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 module Language.DifferentialDatalog.Module(
     parseDatalogProgram) where
 
-import Prelude hiding((<>))
+import Prelude hiding((<>),mod)
 import Control.Monad.State.Lazy
 import Control.Monad.Except
 import qualified Data.Map as M
@@ -41,11 +41,9 @@ import System.FilePath.Posix
 import Data.List
 import Data.String.Utils
 import Data.Maybe
-import Data.Either
 import Data.Char
-import Debug.Trace
+--import Debug.Trace
 import Text.PrettyPrint
-import qualified Text.Parsec as Parsec
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
@@ -68,6 +66,7 @@ stdname :: ModuleName
 stdname = ModuleName ["std"]
 
 -- import standard library
+stdimp :: Import
 stdimp = Import nopos stdname (ModuleName [])
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
@@ -171,14 +170,14 @@ parseImport roots mod Import{..} = do
 findModule :: [FilePath] -> DatalogModule -> ModuleName -> IO FilePath
 findModule roots mod imp = do
     let fpath = (F.joinPath $ modulePath imp) F.<.> ".dl"
-    let candidates = map (F.</> fpath) roots
-    mods <- filterM doesFileExist candidates
+    let candidate_paths = map (F.</> fpath) roots
+    mods <- filterM doesFileExist candidate_paths
     case mods of
          [m]   -> return m
          []    -> errorWithoutStackTrace $
                      "Module " ++ show imp ++ " imported by " ++ moduleFile mod ++
                      " not found. Paths searched:\n" ++
-                     (intercalate "\n" candidates)
+                     (intercalate "\n" candidate_paths)
          _     -> errorWithoutStackTrace $
                     "Found multiple candidates for module " ++ show imp ++ " imported by " ++ moduleFile mod ++ ":\n" ++
                     (intercalate "\n" mods)
@@ -243,12 +242,12 @@ scoped :: ModuleName -> String -> String
 scoped mod n = intercalate "." (modulePath mod ++ [n])
 
 candidates :: (MonadError String me) => DatalogModule -> Pos -> String -> me [ModuleName]
-candidates DatalogModule{..} pos n = do
+candidates DatalogModule{..} p n = do
     let mod = nameScope n
     let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++
                (if mod == ModuleName [] then [moduleName] else [])
     when (null mods) $
-        err pos $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
+        err p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
     return mods
 
 flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me String

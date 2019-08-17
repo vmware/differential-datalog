@@ -51,7 +51,6 @@ import Data.Maybe
 import Data.List
 
 import Language.DifferentialDatalog.Syntax
-import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 
 -- | List all ancestor contexts by recursively calling 'ctxParent'
 ctxAncestors :: ECtx -> [ECtx]
@@ -124,14 +123,13 @@ ctxInRuleRHSPositivePattern _                     = False
 -- rule, in a pattern expression, i.e., an expression where new
 -- variables can be declared.
 ctxInRuleRHSPattern :: ECtx -> Bool
-ctxInRuleRHSPattern (CtxRuleRAtom rl idx) = True
+ctxInRuleRHSPattern CtxRuleRAtom{}        = True
 ctxInRuleRHSPattern CtxStruct{..}         = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTuple{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxTyped{..}          = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxBinding{..}        = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern CtxRef{..}            = ctxInRuleRHSPattern ctxPar
 ctxInRuleRHSPattern _                     = False
-
 
 ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True

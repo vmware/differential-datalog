@@ -62,6 +62,8 @@ posInside p (p1, p2) = sourceLine p >= sourceLine p1 && sourceLine p <= sourceLi
                            then sourceColumn p <= sourceColumn p2
                            else True)
 
-
+withPos :: (WithPos b, Monad m) => ParsecT s u m b -> ParsecT s u m b
 withPos x = (\ s a e -> atPos a (s,e)) <$> getPosition <*> x <*> getPosition
+
+withPosMany :: (WithPos b, Monad m) => ParsecT s u m [b] -> ParsecT s u m [b]
 withPosMany x = (\ s as e -> map (\a -> atPos a (s,e)) as) <$> getPosition <*> x <*> getPosition

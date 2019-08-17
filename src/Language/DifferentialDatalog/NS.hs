@@ -121,7 +121,11 @@ getRelation d n = fromJust $ lookupRelation d n
 
 -- All variables available in the scope: (l-vars, read-only vars)
 type MField = (String, Maybe Type)
+
+f2mf :: Field -> MField
 f2mf f = (name f, Just $ fieldType f)
+
+arg2mf :: FuncArg -> MField
 arg2mf a = (name a, Just $ argType a)
 
 ctxAllVars :: DatalogProgram -> ECtx -> [Field]
@@ -167,6 +171,7 @@ ctxMVars d ctx =
                                            plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars
                                            prvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) prvars
                                        in (plvars_not_iter, prvars_not_iter ++ [loopvar])
+         CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> ([], plvars ++ prvars)
          CtxBinOpL _ _            -> ([], plvars ++ prvars)

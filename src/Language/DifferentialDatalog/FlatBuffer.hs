@@ -36,7 +36,6 @@ where
 -- primary key types; the latter requires adding support for type-erased value
 -- representation (aka `Record`).
 
-import qualified Data.Set as S
 import qualified Data.Map as M
 import Data.List
 import Data.Char
@@ -50,7 +49,7 @@ import Prelude hiding((<>))
 import System.FilePath
 import System.Process
 import GHC.IO.Exception
-import Debug.Trace
+--import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 
 import Language.DifferentialDatalog.Syntax
@@ -73,23 +72,23 @@ compileFlatBufferBindings prog specname dir = do
           $ compileFlatBufferJavaBindings prog specname
     compileFlatBufferRustBindings prog specname dir
     -- compile Java bindings for FlatBuffer schema
-    let flatc_proc = (proc "flatc" (["-j", "-o", "java/", "flatbuf.fbs"])) {
+    let flatcj_proc = (proc "flatc" (["-j", "-o", "java/", "flatbuf.fbs"])) {
                           cwd = Just $ dir </> "flatbuf"
                      }
-    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
+    (jcode, jstdo, jstde) <- readCreateProcessWithExitCode flatcj_proc ""
+    when (jcode /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "flatc failed with exit code " ++ show jcode ++
+                                 "\nstdout:\n" ++ jstde ++
+                                 "\n\nstdout:\n" ++ jstdo
     -- compile Rust bindings for FlatBuffer schema
-    let flatc_proc = (proc "flatc" (["-r", "flatbuf.fbs"])) {
+    let flatcr_proc = (proc "flatc" (["-r", "flatbuf.fbs"])) {
                           cwd = Just $ dir </> "flatbuf"
                      }
-    (code, stdo, stde) <- readCreateProcessWithExitCode flatc_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "flatc failed with exit code " ++ show code ++
-                                 "\nstdout:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
+    (rcode, rstdo, rstde) <- readCreateProcessWithExitCode flatcr_proc ""
+    when (rcode /= ExitSuccess) $ do
+        errorWithoutStackTrace $ "flatc failed with exit code " ++ show rcode ++
+                                 "\nstdout:\n" ++ rstde ++
+                                 "\n\nstdout:\n" ++ rstdo
     -- Copy generated file if it's changed (we could generate it in place, but
     -- flatc always overwrites its output, forcing Rust re-compilation)
     fbgenerated <- readFile $ flatbuf_dir </> "flatbuf_generated.rs"
@@ -124,9 +123,6 @@ compileFlatBufferSchema d prog_name =
     let rels = progIORelations
         -- Schema for all program types visible from outside
         types = map typeFlatbufSchema progTypesToSerialize
-        relenum_type | length rels <= 256    = "uint8"
-                     | length rels <= 65536  = "uint16"
-                     | otherwise             = "uint32"
         default_relid = pp $ relIdentifier ?d $ head rels
     in
     "namespace" <+> jFBPackage <> ";"                                           $$
@@ -156,7 +152,6 @@ compileFlatBufferSchema d prog_name =
 compileFlatBufferRustBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath ->  IO ()
 compileFlatBufferRustBindings d prog_name dir = do
     let ?d = d
-    let rels = progIORelations
     let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "src/flatbuf.rs") $ render $
         (pp rust_template)                                      $$
@@ -324,16 +319,16 @@ typeFlatbufSchema x =
              -- constructor; otherwise, create a table whose name matches the name of the
              -- struct (not the name of the constructor).
              vcat constructors $+$
-             union
+             opt_union
              where
              tstruct = typ' ?d t
              constructors = map (constructorFlatbufSchema typeArgs) $ typeCons tstruct
-             union = if typeHasUniqueConstructor t
-                        then empty
-                        else "union" <+> fbStructName typeName typeArgs <+> (braces $ commaSep $ map (fbConstructorName typeArgs) $ typeCons tstruct) $$
-                             "table" <+> typeTableName t $$
-                             (braces' $ "v:" <+> fbType t <> ";")
-         t -> tdecl
+             opt_union = if typeHasUniqueConstructor t
+                            then empty
+                            else "union" <+> fbStructName typeName typeArgs <+> (braces $ commaSep $ map (fbConstructorName typeArgs) $ typeCons tstruct) $$
+                                 "table" <+> typeTableName t $$
+                                 (braces' $ "v:" <+> fbType t <> ";")
+         _ -> tdecl
     where
     tdecl= "table" <+> typeTableName x $+$
            (braces' $ "v:" <+> fbType x <> ";")
@@ -384,9 +379,9 @@ fbType x =
                             -> "int64"
          TSigned{..}        -> "__BigInt"
          TTuple{..}         -> fbTupleName typeTupArgs
-         t@TUser{..}        -> fbStructName typeName typeArgs
-         t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                            -> -- unions and arrays are not allowed in FlatBuffers arrays
+         TUser{..}              -> fbStructName typeName typeArgs
+         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
+                             -> -- unions and arrays are not allowed in FlatBuffers arrays
                                "[" <> (if typeHasUniqueConstructor elemType && not (typeIsVector elemType)
                                           then fbType elemType
                                           else typeTableName elemType) <> "]"
@@ -425,7 +420,7 @@ fbConstructorName args c | consIsUnique ?d (name c) = fbStructName (name $ consT
     targs = hcat $ map (("__" <>) . mkTypeIdentifier) args
 
 mkRelId :: (?d::DatalogProgram) => Relation -> Doc
-mkRelId rel@Relation{..} = pp $ legalize relName
+mkRelId Relation{..} = pp $ legalize relName
 
 -- capitalize the first letter of a string
 capitalize :: String -> String
@@ -451,19 +446,13 @@ typeNormalizeForFlatBuf x =
                                             -> typeNormalizeForFlatBuf innerType
          t'                                 -> t'
 
-{- Rust serialization/deserialization logic. -}
-
-typeFlatbufRustBinding :: (?d::DatalogProgram) => Type -> Doc
-typeFlatbufRustBinding _ = error "typeFlatbufRustBinding is not implemented"
-
 {- Functions to work with the FlatBuffers-generate Java API. -}
 
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
-jFBCallConstructor table [] = "0"
+jFBCallConstructor _ [] = "0"
 jFBCallConstructor table args =
     jFBPackage <> "." <> table <> ".create" <> table <>
            (parens $ commaSep $ "this.fbbuilder" : args)
-
 
 {- Java convenience API. -}
 
@@ -499,7 +488,7 @@ jFBType nested x =
                            -> if nested
                                  then "int"
                                  else jFBType True elemType <> "[]"
-        TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
+        TOpaque{typeArgs = [_,_],..} | typeName == mAP_TYPE
                            -> if nested
                                  then "int"
                                  else "int []"
@@ -588,8 +577,8 @@ jConv2FBType fbctx e t =
                 | otherwise
                 -> jFBCallConstructor (typeTableName t) [jConv2FBType (FBField (typeTableName t) "v") e t]
         -- FlatBuffers has a special method for embedding vectors in a buffer
-        FBField table fld | typeIsVector t
-                -> jFBPackage <> "." <> table <> ".create" <> pp (capitalize fld) <> "Vector(this.fbbuilder," <> e' <> ")"
+        FBField{..} | typeIsVector t
+                -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize fbctxField) <> "Vector(this.fbbuilder," <> e' <> ")"
                           | otherwise
                 -> e'
     where
@@ -612,7 +601,7 @@ jConv2FBType fbctx e t =
                                -> e
                                                   | otherwise
                                -> "this.create_" <> mkTypeIdentifier ot <> parens e
-            ot@TOpaque{typeArgs = [keyType,valType], ..} | typeName == mAP_TYPE
+            ot@TOpaque{typeArgs = [_,_], ..} | typeName == mAP_TYPE
                                -> "this.create_" <> mkTypeIdentifier ot <> parens e
             t'                 -> error $ "FlatBuffer.jConv2FBType: unsupported type " ++ show t'
     bigint = jFBPackage <> ".__BigInt.create__BigInt(this.fbbuilder,"
@@ -837,9 +826,9 @@ typeFlatbufJavaBinding t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render c
                    "protected" <+> type_type <+> "type;"                                                                              $$
                    "protected int offset;")
 
-typeFlatbufJavaBinding t@TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
-                                           , "package ddlog." <> pp ?prog_name <> ";" $$
-                                             code)
+typeFlatbufJavaBinding TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                         , "package ddlog." <> pp ?prog_name <> ";" $$
+                                           code)
     where
     class_name = fbTupleName typeTupArgs
     code = "public class" <+> class_name $$
@@ -874,7 +863,7 @@ rustValueFromFlatbuf =
                  "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
                      R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
                 progIORelations
-    to_enums = map (\rel@Relation{..} ->
+    to_enums = map (\Relation{..} ->
                     "Value::" <> R.mkValConstructorName ?d relType <> "(v) => {"                                   $$
                     "    (fb::__Value::" <> typeTableName relType <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
                     "},")
@@ -1030,7 +1019,6 @@ rustTypeFromFlatbuf t@TTuple{..} =
     where
     tname = typeTableName t
     rtype = R.mkType t
-    tstruct = typ' ?d t
     arg_names = mapIdx (\a i -> let n = pp $ "a" ++ show i in
                            if typeHasUniqueConstructor a
                               then n

@@ -18,6 +18,6 @@ exprType :: DatalogProgram -> ECtx -> Expr -> Type
 exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 sET_TYPES :: [String]
 gROUP_TYPE :: String
-checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> ECtx -> a -> me ()
+checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
 typeIterType :: DatalogProgram -> Type -> Maybe Type
 exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type

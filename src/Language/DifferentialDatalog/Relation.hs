@@ -40,7 +40,6 @@ where
 import qualified Data.Set                       as S
 import qualified Data.Map                       as M
 import qualified Data.Graph.Inductive           as G
-import qualified Data.Graph.Inductive.Query.DFS as G
 import Data.Maybe
 import Data.List
 

@@ -22,6 +22,7 @@ SOFTWARE.
 -}
 
 {-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 -- This file is incorrectly named; it does not have anything to do with syntax.
 -- In fact, this file contains the definition of the program intermediate representation:
@@ -97,6 +98,7 @@ module Language.DifferentialDatalog.Syntax (
         eBinding,
         eTyped,
         eAs,
+        eRef,
         FuncArg(..),
         Function(..),
         funcMutArgs,
