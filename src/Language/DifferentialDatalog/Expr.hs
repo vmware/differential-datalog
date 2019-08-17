@@ -55,7 +55,6 @@ module Language.DifferentialDatalog.Expr (
 
 import Data.List
 import Data.Maybe
-import Control.Monad
 import Control.Monad.Identity
 import qualified Data.Set as S
 --import Debug.Trace
@@ -127,7 +126,7 @@ exprMapM g e = case e of
                    EString p s         -> return $ EString p s
                    EBit p w v          -> return $ EBit p w v
                    ESigned p w v       -> return $ ESigned p w v
-                   EStruct p s fs      -> EStruct p s <$> mapM (\(fname, e) -> (fname,) <$> g e) fs
+                   EStruct p s fs      -> EStruct p s <$> mapM (\(fname, e') -> (fname,) <$> g e') fs
                    ETuple p fs         -> ETuple p <$> mapM g fs
                    ESlice p v h l      -> (\v' -> ESlice p v' h l) <$> g v
                    EMatch p m cs       -> EMatch p <$> g m <*> mapM (\(e1, e2) -> (,) <$> g e1 <*> g e2) cs
@@ -178,14 +177,14 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EString _ _           -> x'
                                      EBit _ _ _            -> x'
                                      ESigned _ _ _         -> x'
-                                     EStruct _ _ fs        -> foldl' (\a (_, x) -> op a x) x' fs
+                                     EStruct _ _ fs        -> foldl' (\a (_, _x) -> op a _x) x' fs
                                      ETuple _ fs           -> foldl' op x' fs
                                      ESlice _ v _ _        -> x' `op` v
                                      EMatch _ m cs         -> foldl' (\a (p,v) -> a `op` p `op` v) (x' `op` m) cs
                                      EVarDecl _ _          -> x'
                                      ESeq _ l r            -> x' `op` l `op` r
                                      EITE _ i t el         -> x' `op` i `op` t `op` el
-                                     EFor _ v i b          -> x' `op` i `op` b
+                                     EFor _ _ i b          -> x' `op` i `op` b
                                      ESet _ l r            -> x' `op` l `op` r
                                      EBinOp _ _ l r        -> x' `op` l `op` r
                                      EUnOp _ _ v           -> x' `op` v
@@ -333,7 +332,7 @@ exprIsVarOrField :: Expr -> Bool
 exprIsVarOrField e = exprFold exprIsVarOrField' e
 
 exprIsVarOrField' :: ExprNode Bool -> Bool
-exprIsVarOrField' (EVar _ v)       = True
+exprIsVarOrField' (EVar _ _)       = True
 exprIsVarOrField' (EField _ e _)   = e
 exprIsVarOrField' (ETyped _ e _)   = e
 exprIsVarOrField' _                = False
@@ -369,6 +368,6 @@ exprIsInjective' _ _             = False
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprTypeMapM fun e = exprFoldM fun' e
     where
-    fun' (ETyped p e t) = (E . ETyped p e) <$> typeMapM fun t
-    fun' (EAs p e t)    = (E . EAs p e) <$> typeMapM fun t
-    fun' e              = return $ E e
+    fun' (ETyped p e' t) = (E . ETyped p e') <$> typeMapM fun t
+    fun' (EAs p e' t)    = (E . EAs p e') <$> typeMapM fun t
+    fun' e'              = return $ E e'

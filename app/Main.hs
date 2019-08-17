@@ -25,7 +25,6 @@ SOFTWARE.
 
 import System.Environment
 import System.FilePath.Posix
-import System.Directory
 import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
@@ -83,6 +82,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confBoxThreshold  :: Int
                      }
 
+defaultConfig :: Config
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionCompile
                        , confLibDirs       = []
@@ -121,6 +121,7 @@ validateConfig Config{..} = do
     when (confDatalogFile == "" && confAction /= ActionHelp && confAction /= ActionVersion)
          $ errorWithoutStackTrace "input file not specified"
 
+main :: IO ()
 main = do
     args <- getArgs
     prog <- getProgName
@@ -136,7 +137,8 @@ main = do
          ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
          ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                              putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
-         ActionValidate -> do { parseValidate config; return () }
+         ActionValidate -> do _ <- parseValidate config
+                              return ()
          ActionCompile -> compileProg config
 
 parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)

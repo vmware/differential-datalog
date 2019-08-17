@@ -40,8 +40,7 @@ module Language.DifferentialDatalog.Rule (
 import qualified Data.Set as S
 import qualified Data.Map as M
 import Data.List
-import Control.Monad.Except
-import Debug.Trace
+--import Debug.Trace
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Pos
@@ -49,7 +48,6 @@ import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
-import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Validate
@@ -75,10 +73,10 @@ ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
 
 -- Variables visible _after_ 'i'th conjunct.
 ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Field
-ruleRHSVarSet' _ rl i | i < 0 = S.empty
+ruleRHSVarSet' _ _  i | i < 0 = S.empty
 ruleRHSVarSet' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> vs `S.union` (atomVarDecls d rl i)
+         RHSLiteral True  _            -> vs `S.union` (atomVarDecls d rl i)
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
          RHSCondition (E e@(ESet _ l _)) -> vs `S.union` exprDecls d (CtxSetL e (CtxRuleRCond rl i)) l
@@ -86,13 +84,14 @@ ruleRHSVarSet' d rl i =
          RHSCondition _                -> vs
          -- FlatMap introduces a variable
          RHSFlatMap v e                -> let t = case exprType' d (CtxRuleRFlatMap rl i) e of
-                                                       TOpaque _ _         [t]     -> t
+                                                       TOpaque _ _         [t']    -> t'
                                                        TOpaque _ tname     [kt,vt] | tname == mAP_TYPE
                                                                                    -> tTuple [kt,vt]
+                                                       t' -> error $ "Rule.ruleRHSVarSet': unexpected FlatMap type " ++ show t'
                                           in S.insert (Field nopos v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate avar gvars fname e -> let ctx = CtxRuleRAggregate rl i
+         RHSAggregate avar gvars fname _ -> let ctx = CtxRuleRAggregate rl i
                                                 gvars' = map (getVar d ctx) gvars
                                                 f = getFunc d fname
                                                 tmap = ruleAggregateTypeParams d rl i
@@ -116,7 +115,7 @@ exprDecls d ctx e =
 
 atomVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
 atomVarTypes d ctx e =
-    map (\(v, ctx) -> Field nopos v $ exprType d ctx (eVar v))
+    map (\(v, ctx') -> Field nopos v $ exprType d ctx' (eVar v))
         $ atomVarOccurrences ctx e
 
 atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]

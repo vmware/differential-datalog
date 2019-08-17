@@ -56,7 +56,6 @@ import qualified Data.GraphViz.Attributes.Complete as GV
 import qualified Data.GraphViz.Printing            as GV
 
 import Language.DifferentialDatalog.Util
-import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
@@ -71,29 +70,29 @@ progExprMapCtxM d fun = do
                                        Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
                              return f{funcDef = e})
                    $ progFunctions d
-    rules' <- mapM (\r -> do lhs <- mapIdxM (\a i -> atomExprMapCtxM d fun (CtxRuleL r i) a) $ ruleLHS r
-                             rhs <- mapIdxM (\x i -> rhsExprMapCtxM d fun r i x) $ ruleRHS r
+    rules' <- mapM (\r -> do lhs <- mapIdxM (\a i -> atomExprMapCtxM fun (CtxRuleL r i) a) $ ruleLHS r
+                             rhs <- mapIdxM (\x i -> rhsExprMapCtxM fun r i x) $ ruleRHS r
                              return r{ruleLHS = lhs, ruleRHS = rhs})
                    $ progRules d
     return d{ progFunctions = funcs'
             , progRules     = rules'}
 
-atomExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
-atomExprMapCtxM d fun ctx a = do
+atomExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
+atomExprMapCtxM fun ctx a = do
     v <- exprFoldCtxM fun ctx $ atomVal a
     return a{atomVal = v}
 
-rhsExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> Rule -> Int -> RuleRHS -> m RuleRHS
-rhsExprMapCtxM d fun r rhsidx l@RHSLiteral{}   = do
-    a <- atomExprMapCtxM d fun (CtxRuleRAtom r rhsidx) (rhsAtom l)
+rhsExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> Rule -> Int -> RuleRHS -> m RuleRHS
+rhsExprMapCtxM fun r rhsidx l@RHSLiteral{}   = do
+    a <- atomExprMapCtxM fun (CtxRuleRAtom r rhsidx) (rhsAtom l)
     return l{rhsAtom = a}
-rhsExprMapCtxM d fun r rhsidx c@RHSCondition{} = do
+rhsExprMapCtxM fun r rhsidx c@RHSCondition{} = do
     e <- exprFoldCtxM fun (CtxRuleRCond r rhsidx) (rhsExpr c)
     return c{rhsExpr = e}
-rhsExprMapCtxM d fun r rhsidx a@RHSAggregate{} = do
+rhsExprMapCtxM fun r rhsidx a@RHSAggregate{} = do
     e <- exprFoldCtxM fun (CtxRuleRAggregate r rhsidx) (rhsAggExpr a)
     return a{rhsAggExpr = e}
-rhsExprMapCtxM d fun r rhsidx m@RHSFlatMap{}   = do
+rhsExprMapCtxM fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
 
@@ -106,9 +105,9 @@ progTypeMapM :: (Monad m) => DatalogProgram -> (Type -> m Type) -> m DatalogProg
 progTypeMapM d@DatalogProgram{..} fun = do
     ts <- M.traverseWithKey (\_ (TypeDef p atrs n a t) -> TypeDef p atrs n a <$> mapM (typeMapM fun) t) progTypedefs
     fs <- M.traverseWithKey (\_ f -> do ret <- typeMapM fun $ funcType f
-                                        as  <- mapM (\f -> setType f <$> (typeMapM fun $ typ f)) $ funcArgs f
-                                        d   <- mapM (exprTypeMapM fun) $ funcDef f
-                                        return f{ funcType = ret, funcArgs = as, funcDef = d }) progFunctions
+                                        as  <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ funcArgs f
+                                        def <- mapM (exprTypeMapM fun) $ funcDef f
+                                        return f{ funcType = ret, funcArgs = as, funcDef = def }) progFunctions
     trans <- M.traverseWithKey (\_ t -> do inputs  <- mapM (\i -> do t' <- hotypeTypeMapM (hofType i) fun
                                                                      return i{hofType = t'}) $ transInputs t
                                            outputs <- mapM (\o -> do t' <- hotypeTypeMapM (hofType o) fun

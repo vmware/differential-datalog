@@ -28,14 +28,12 @@ module Language.DifferentialDatalog.Validate (
     ruleCheckAggregate) where
 
 import qualified Data.Map as M
-import qualified Data.Set as S
 import Control.Monad.Except
 import Data.Maybe
 import Data.List
 import Data.Char
 import qualified Data.Graph.Inductive as G
-import qualified Data.Graph.Inductive.Query as G
-import Debug.Trace
+--import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
@@ -136,7 +134,7 @@ exprDesugar d _ e =
                     return $ zip (map name consArgs) (map snd as)
             let desugarNamed = do
                     uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
-                    mapM (\(n,e) -> check (isJust $ find ((==n) . name) consArgs) (pos e)
+                    mapM_ (\(n,e') -> check (isJust $ find ((==n) . name) consArgs) (pos e')
                                            $ "Unknown field " ++ n) as
                     return $ map (\f -> (name f, maybe (E $ EPHolder p) id $ lookup (name f) as)) consArgs
             as' <- case as of
@@ -168,7 +166,7 @@ typedefValidate d@DatalogProgram{..} tdef@TypeDef{..} = do
     mapM_ (typedefValidateAttr d tdef) tdefAttrs
 
 typedefValidateAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> Attribute -> me ()
-typedefValidateAttr d tdef@TypeDef{..} attr = do
+typedefValidateAttr _ tdef@TypeDef{..} attr = do
     case name attr of
          "size" -> do
             check (isNothing tdefType) (pos attr)
@@ -201,7 +199,7 @@ typeValidate d tvars (TUser p n args) = do
            "Expected " ++ show expect ++ " type arguments to " ++ n ++ ", found " ++ show actual
     mapM_ (typeValidate d tvars) args
     return ()
-typeValidate d tvars (TVar p v)       =
+typeValidate _ tvars (TVar p v)       =
     check (elem v tvars) p $ "Unknown type variable " ++ v
 typeValidate _ _     t                = error $ "typeValidate " ++ show t
 
@@ -211,7 +209,7 @@ consValidate d tvars Constructor{..} = do
     mapM_ (typeValidate d tvars . fieldType) $ consArgs
 
 checkAcyclicTypes :: (MonadError String me) => DatalogProgram -> me ()
-checkAcyclicTypes d@DatalogProgram{..} = do
+checkAcyclicTypes DatalogProgram{..} = do
     let g0 :: G.Gr String ()
         g0 = G.insNodes (mapIdx (\(t,_) i -> (i, t)) $ M.toList progTypedefs) G.empty
         typIdx t = M.findIndex t progTypedefs
@@ -276,13 +274,13 @@ ruleValidate d rl@Rule{..} = do
     when (not $ null ruleRHS) $ do
         case head ruleRHS of
              RHSLiteral True _ -> return ()
-             x                 -> err (pos rl) "Rule must start with positive literal"
+             _                 -> err (pos rl) "Rule must start with positive literal"
     mapIdxM_ (ruleRHSValidate d rl) ruleRHS
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
 ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
-    checkRelation (pos atom) d $ atomRelation atom
+    _ <- checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] (CtxRuleRAtom rl idx) $ atomVal atom
     let vars = ruleRHSVars d rl idx
     -- variable cannot be declared and used in the same atom
@@ -293,12 +291,12 @@ ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx = do
 ruleRHSValidate d rl@Rule{..} (RHSCondition e) idx = do
     exprValidate d [] (CtxRuleRCond rl idx) e
 
-ruleRHSValidate d rl@Rule{..} (RHSFlatMap v e) idx = do
+ruleRHSValidate d rl@Rule{..} (RHSFlatMap _ e) idx = do
     let ctx = CtxRuleRFlatMap rl idx
     exprValidate d [] ctx e
-    checkIterable "FlatMap expression" (pos e) d ctx $ exprType d ctx e
+    checkIterable "FlatMap expression" (pos e) d $ exprType d ctx e
 
-ruleRHSValidate d rl (RHSAggregate v vs fname e) idx = do
+ruleRHSValidate d rl RHSAggregate{} idx = do
     _ <- ruleCheckAggregate d rl idx
     return ()
 
@@ -323,7 +321,7 @@ ruleCheckAggregate d rl idx = do
     let ctx = CtxRuleRAggregate rl idx
     exprValidate d [] ctx e
     -- group-by variables are visible in this scope
-    mapM (checkVar (pos e) d ctx) vs
+    mapM_ (checkVar (pos e) d ctx) vs
     check (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
     -- aggregation function exists and takes a group as its sole argument
     f <- checkFunc (pos e) d fname
@@ -367,7 +365,7 @@ applyValidate d a@Apply{..} = do
             show (length applyOutputs) ++ " outputs are provided"
     types <- mapM (\(decl, conc) ->
             case hofType decl of
-                 hot@HOTypeFunction{..} -> do
+                 HOTypeFunction{..} -> do
                      f@Function{..} <- checkFunc (pos a) d conc
                      -- FIXME: we don't have a proper unification checker; therefore insist on transformer arguments
                      -- using no type variables.
@@ -384,7 +382,7 @@ applyValidate d a@Apply{..} = do
                                              " differs in mutability from argument " ++ name carg ++ " of function " ++ name f)
                            $ zip hotArgs funcArgs
                      return $ (zip (map typ hotArgs) (map typ funcArgs)) ++ [(hotType, funcType)]
-                 hot@HOTypeRelation{..} -> do
+                 HOTypeRelation{..} -> do
                      rel <- checkRelation (pos a) d conc
                      return [(hotType, relType rel)]
                   ) $ zip (transInputs ++ transOutputs) (applyInputs ++ applyOutputs)
@@ -392,7 +390,7 @@ applyValidate d a@Apply{..} = do
     mapM_ (\ta -> case M.lookup ta bindings of
                        Nothing -> err (pos a) $ "Unable to bind type argument '" ++ ta ++
                                                 " to a concrete type in transformer application " ++ show a
-                       Just t  -> return ())
+                       Just _  -> return ())
           $ transformerTypeVars trans
     mapM_ (\o -> check (relRole (getRelation d o) /= RelInput) (pos a)
                  $ "Transformer output cannot be bound to input relation " ++ o
@@ -483,7 +481,7 @@ exprValidate d tvars ctx e = {-trace ("exprValidate " ++ show e ++ " in \n" ++ s
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
-exprValidate1 d _ ctx e@EVar{..} | ctxInRuleRHSPositivePattern ctx
+exprValidate1 _ _ ctx EVar{..} | ctxInRuleRHSPositivePattern ctx
                                           = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
@@ -625,8 +623,8 @@ exprValidate2 d _   (EUnOp _ UMinus e)    =
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
-exprValidate2 d ctx (EFor p _ i _)       = checkIterable "iterator" p d ctx i
-exprValidate2 d ctx (EAs p e t)          = do
+exprValidate2 d _   (EFor p _ i _)       = checkIterable "iterator" p d i
+exprValidate2 d _   (EAs p e t)          = do
     check (isBit d e || isSigned d e) p
         $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for bit<> and signed<> types."
     check (isBit d t || isSigned d t || isInt d t) p
@@ -651,7 +649,7 @@ checkLExpr d ctx e | ctxIsRuleRCond ctx =
 exprCheckMatchPatterns :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Expr -> me ()
 exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do
     let t = exprType d (CtxMatchExpr e ctx) x
-        ct0 = typeConsTree d t
+        ct0 = typeConsTree t
     ct <- foldM (\ct pat -> do let (leftover, abducted) = consTreeAbduct d ct pat
                                check (not $ consTreeEmpty abducted) (pos pat)
                                       "Unsatisfiable match pattern"
@@ -693,14 +691,14 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
            "string conversion function must return \"string\""
     check ((length $ funcArgs f) == 1) (pos f)
            "string conversion function must take exactly one argument"
-    unifyTypes d p
+    _ <- unifyTypes d p
            ("in the call to string conversion function \"" ++ name f ++ "\"")
            [(typ arg0, tr)]
     let r' = E $ EApply (pos r) fname [r]
     return $ E $ EBinOp p Concat l r'
     where te = exprType'' d ctx $ E e
           tr = exprType'' d (CtxBinOpR e ctx) r
-          mk2string_func (c:cs) = ((toLower c) : cs) ++ tOSTRING_FUNC_SUFFIX
+          mk2string_func cs = ((toLower $ head cs) : tail cs) ++ tOSTRING_FUNC_SUFFIX
 
 exprInjectStringConversions _ _   e = return $ E e
 

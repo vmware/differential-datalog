@@ -34,14 +34,12 @@ import Prelude hiding((<>))
 import qualified Data.Map as M
 import Text.PrettyPrint
 import Text.RawString.QQ
-import Data.Either
 import Data.Word
 import Data.Maybe
 import Data.Char
 import Data.List
 
 import Language.DifferentialDatalog.OVSDB.Parse
-import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
@@ -152,8 +150,8 @@ tableNeedsOutputProxy t = elem (name t) ?with_oproxies
 tableMaxRows :: Table -> Maybe Int
 tableMaxRows t = fmap (\(MaxRows n) -> n)
                  $ find (\case
-                          MaxRows n -> True
-                          _ -> False)
+                          MaxRows _ -> True
+                          _         -> False)
                  $ tableProperties t
 
 -- Column is a key column
@@ -171,6 +169,7 @@ colIsRef c =
          ColumnTypeAtomic{}   -> False
          ColumnTypeComplex ct -> isref (keyComplexType ct) ||
                                  maybe False isref (valueComplexType ct)
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colIsRef: undefined column type"
     where
     isref (BaseTypeComplex cbt) =
         (isJust $ refTableBaseType cbt) &&
@@ -182,24 +181,27 @@ colIsSet :: TableColumn -> Bool
 colIsSet col =
     case columnType col of
          ColumnTypeAtomic{}   -> False
-         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
-                                 in max > min && isNothing (valueComplexType ct)
+         ColumnTypeComplex ct -> let (min_bound, max_bound) = complexTypeBounds ct
+                                 in max_bound > min_bound && isNothing (valueComplexType ct)
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colIsSet: undefined column type"
 
 -- column is of type map
 colIsMap :: TableColumn -> Bool
 colIsMap col =
     case columnType col of
          ColumnTypeAtomic{}   -> False
-         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
-                                 in max > min && isJust (valueComplexType ct)
+         ColumnTypeComplex ct -> let (min_bound, max_bound) = complexTypeBounds ct
+                                 in max_bound > min_bound && isJust (valueComplexType ct)
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colIsMap: undefined column type"
 
 -- scalar column
 colIsScalar :: TableColumn -> Bool
 colIsScalar col =
     case columnType col of
          ColumnTypeAtomic{}   -> True
-         ColumnTypeComplex ct -> let (min, max) = complexTypeBounds ct
-                                 in max == min
+         ColumnTypeComplex ct -> let (min_bound, max_bound) = complexTypeBounds ct
+                                 in max_bound == min_bound
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colIsScalar: undefined column type"
 
 -- table referenced by the column (or the key component of a set of map column)
 colRefTable :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => TableColumn -> Maybe String
@@ -210,6 +212,7 @@ colRefTable col =
              case keyComplexType ct of
                   BaseTypeComplex bt -> refTableBaseType bt
                   _ -> Nothing
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colRefTable: undefined column type"
 
 -- table referenced by the value component of a map column
 colRefTableVal :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => TableColumn -> Maybe String
@@ -220,6 +223,7 @@ colRefTableVal col =
              case valueComplexType ct of
                   Just (BaseTypeComplex bt) -> refTableBaseType bt
                   _ -> Nothing
+         ColumnTypeUndefined  -> error "OVSDB.Compile.colRefTableVal: undefined column type"
 
 -- Convert uuid_or_string_t, Set<uuid_or_string_t> or Map<_, uuid_or_string_t>
 -- to, respectively, uuid, Set<uuid>, Map<_,uuid>.
@@ -241,8 +245,8 @@ compileSchemaFile fname outputs with_oproxies keys = do
 compileSchema :: (MonadError String me) => OVSDBSchema -> [(String, [String])] -> [String] -> M.Map String [String] -> me Doc
 compileSchema schema outputs with_oproxies keys = do
     let tables = schemaTables schema
-    mapM_ (\(o, ro) -> do let t = find ((==o) . name) tables
-                          when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
+    mapM_ (\(o, _) -> do let t = find ((==o) . name) tables
+                         when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
     uniqNames ("Multiple declarations of table " ++ ) tables
     let ?schema = schema
     let ?outputs = outputs
@@ -279,7 +283,7 @@ mkTable isinput t@Table{..} key_cols = do
                delta_minus      <- mkTable' TableDeltaMinus     t keys
                let delta_minus_rules = mkDeltaMinusRules        t keys
                delta_update     <- mkTable' TableDeltaUpdate    t keys
-               let delta_update_rules = mkDeltaUpdateRules      t keys
+               let delta_update_rules = mkDeltaUpdateRules      t $ fromJust keys
                swizzled         <- mkTable' TableOutputSwizzled t keys
                swizzle_rules    <- mkSwizzleRules               t
                return $ (empty,
@@ -380,8 +384,8 @@ mkDeltaMinusRules t@Table{..} mkeys =
     realcols = "_uuid": map (\c -> if colIsKey t c mkeys then mkColName c else "_") ovscols
 
 -- DeltaUpdate(uuid, key, new) :- Swizzled(_, key, new), Realized(uuid, key, old), old != new.
-mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String]) => Table -> Maybe [String] -> Doc
-mkDeltaUpdateRules t@Table{..} (Just keys) =
+mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], ?with_oproxies::[String]) => Table -> [String] -> Doc
+mkDeltaUpdateRules t@Table{..} keys =
     (mkTableName t TableDeltaUpdate) <> "(" <> commaSep headcols <> ") :-"                   $$
     (nest' $ mkTableName t TableOutputProxy <> "(" <> commaSep outcols <> "),")              $$
     (nest' $ mkTableName t TableRealized <> "(" <> commaSep realcols <> "),")                $$
@@ -516,8 +520,10 @@ mkCol tkind tname c@TableColumn{..} = do
     t <- case columnType of
               ColumnTypeAtomic at  -> mkAtomicType at
               ColumnTypeComplex ct -> mkComplexType tkind ct
+              ColumnTypeUndefined  -> error "OVSDB.Compile.mkCol: undefine column type"
     return $ mkColName c <> ":" <+> t
 
+__reservedNames :: [String]
 __reservedNames = map (("__" ++) . map toLower) $ reservedNames
 
 mkColName :: TableColumn -> Doc
@@ -532,17 +538,18 @@ mkColName' c =
 
 
 mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
-mkAtomicType IntegerType{} = return "integer"
-mkAtomicType (RealType p)  = err p "\"real\" types are not supported"
-mkAtomicType BooleanType{} = return "bool"
-mkAtomicType StringType{}  = return "string"
-mkAtomicType UUIDType{}    = return "uuid"
+mkAtomicType IntegerType{}          = return "integer"
+mkAtomicType (RealType p)           = err p "\"real\" types are not supported"
+mkAtomicType BooleanType{}          = return "bool"
+mkAtomicType StringType{}           = return "string"
+mkAtomicType UUIDType{}             = return "uuid"
+mkAtomicType UndefinedAtomicType{}  = error "OVSDB.Compile.mkAtomicType: undefined atomic type"
 
 complexTypeBounds :: ComplexType -> (Integer, Integer)
-complexTypeBounds ComplexType{..} = (min, max)
+complexTypeBounds ComplexType{..} = (min_bound, max_bound)
     where
-    min = maybe 1 id minComplexType
-    max = maybe 1
+    min_bound = maybe 1 id minComplexType
+    max_bound = maybe 1
                 (\case
                   Some x    -> x
                   Unlimited -> fromIntegral (maxBound::Word64))
@@ -550,14 +557,14 @@ complexTypeBounds ComplexType{..} = (min, max)
 
 mkComplexType :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> ComplexType -> me Doc
 mkComplexType tkind t@ComplexType{..} = do
-    let (min, max) = complexTypeBounds t
-    check (max >= min) (pos t) $ "min bound exceeds max bound"
-    check (min == 0 || min == 1) (pos t) $ "min bound must be 0 or 1"
-    check (max > 0) (pos t) $ "max bound must be greater than 0"
-    check (max /= 1 || isNothing valueComplexType) (pos t)
+    let (min_bound, max_bound) = complexTypeBounds t
+    check (max_bound >= min_bound) (pos t) $ "min bound exceeds max bound"
+    check (min_bound == 0 || min_bound == 1) (pos t) $ "min bound must be 0 or 1"
+    check (max_bound > 0) (pos t) $ "max bound must be greater than 0"
+    check (max_bound /= 1 || isNothing valueComplexType) (pos t)
           $ "Cannot handle key-value pairs when max bound is 1"
     key <- mkBaseType tkind keyComplexType
-    case (min, max) of
+    case (min_bound, max_bound) of
          (1,1) -> return key
          --(0,1) -> return $ "option_t<" <> key <> ">"
          _     -> do
@@ -568,13 +575,14 @@ mkComplexType tkind t@ComplexType{..} = do
 
 mkBaseType :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) =>  TableKind -> BaseType -> me Doc
 mkBaseType _     (BaseTypeSimple at)   = mkAtomicType at
-mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && isNothing (lookup (fromJust $ refTableBaseType cbt) ?outputs)
+mkBaseType _     (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && isNothing (lookup (fromJust $ refTableBaseType cbt) ?outputs)
                                        = return "uuid"
 mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && tkind == TableOutput
                                        = return "string"
 mkBaseType tkind (BaseTypeComplex cbt) | isJust (refTableBaseType cbt) && elem tkind [TableDeltaPlus, TableDeltaUpdate, TableOutputSwizzled, TableOutputProxy]
                                        = return "uuid_or_string_t"
 mkBaseType _     (BaseTypeComplex cbt) = mkAtomicType $ typeBaseType cbt
+mkBaseType _     BaseTypeUndefined     = error "OVSDB.Compile.mkBaseType: undefined base type"
 
 tableCheckCols :: (MonadError String me) => Table -> me [TableColumn]
 tableCheckCols t@Table{..} = do
@@ -587,7 +595,7 @@ tableCheckCols t@Table{..} = do
     return ovscols
 
 tableGetCols :: Table -> [TableColumn]
-tableGetCols t@Table{..} = ovscols
+tableGetCols Table{..} = ovscols
     where
     (ColumnsProperty ovscols) : _ = filter (\case
                                              ColumnsProperty{} -> True

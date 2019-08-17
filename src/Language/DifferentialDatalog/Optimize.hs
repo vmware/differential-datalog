@@ -35,7 +35,7 @@ where
 import Data.List
 import Control.Monad.State
 import qualified Data.Map as M
-import Debug.Trace
+--import Debug.Trace
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
@@ -92,7 +92,7 @@ expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
                                            $ Atom nopos relname 
                                            $ eTuple $ map (eVar . name) lhsvars]})
                 $ ruleLHS rl
-expandMultiheadRule d rl ruleidx = (Nothing, rules)
+expandMultiheadRule _ rl _ = (Nothing, rules)
     where
     rules = map (\atom -> Rule { rulePos = pos rl
                                , ruleLHS = [atom]
@@ -181,9 +181,9 @@ replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
                     , ruleRHS      = pref
                     }
     -- replace prefix in all rules
-    let rules' = map (\rule -> if isPrefixOf pref $ ruleRHS rule
-                                  then rule {ruleRHS = RHSLiteral True atom : (drop pref_len $ ruleRHS rule)}
-                                  else rule)
+    let rules' = map (\rule' -> if isPrefixOf pref $ ruleRHS rule'
+                                  then rule' {ruleRHS = RHSLiteral True atom : (drop pref_len $ ruleRHS rule')}
+                                  else rule')
                  $ progRules d
     return d{ progRules = rule:rules'
             , progRelations = M.insert relname rel $ progRelations d}
