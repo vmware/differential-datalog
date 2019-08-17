@@ -64,7 +64,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["action"]           (ReqArg Action   "ACTION")        "Action: [validate, compile]"
           , Option ['L'] []                   (ReqArg LibDir   "PATH")          "Extra DDlog library directory."
           , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
-          , Option ['j'] ["java"]             (NoArg Java)                      "Generate a Java file with helper APIs."
+          , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings."
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
@@ -160,7 +160,6 @@ compileProg conf@Config{..} = do
     let dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold }
+    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold
+                             , cconfJava = confJava }
     compile prog specname rs_code toml_code dir crate_types
-    when confJava $
-        compileFlatBufferBindings prog specname (dir </> rustProjectDir specname)

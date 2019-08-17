@@ -186,10 +186,8 @@ compilerTest progress java fname cli_args crate_types = do
     (prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultCompilerConfig
+    let ?cfg = defaultCompilerConfig { cconfJava = java }
     compile prog specname rs_code toml_code dir crate_types
-    when java $
-        compileFlatBufferBindings prog specname (dir </> rustProjectDir specname)
     -- compile generated Java code
     classpath <- (maybe "" (":" ++ )) <$> lookupEnv "CLASSPATH"
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
