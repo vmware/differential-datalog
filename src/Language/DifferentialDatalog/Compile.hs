@@ -33,13 +33,11 @@ module Language.DifferentialDatalog.Compile (
     defaultCompilerConfig,
     compile,
     rustProjectDir,
-    isStructType,
-    mkValConstructorName',
+    mkValConstructorName,
     mkConstructorName,
     mkType,
-    mkValue',
-    rname,
-    box
+    mkValue,
+    rname
 ) where
 
 import Prelude hiding((<>))
@@ -85,6 +83,7 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.FlatBuffer
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -243,12 +242,16 @@ lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " +
 -- Threshold value depends on the smallest granularity at which malloc allocates memory (including
 -- internal fragmentation and malloc metadata) and the number of records of each type allocated by
 -- the program.
+--
+-- 'cconfJava' - generate Java bindings to the DDlog program
 data CompilerConfig = CompilerConfig {
-    cconfBoxThreshold :: Int
+    cconfBoxThreshold :: Int,
+    cconfJava         :: Bool
 }
 
 defaultCompilerConfig = CompilerConfig {
-    cconfBoxThreshold = 16
+    cconfBoxThreshold = 16,
+    cconfJava = False
 }
 
 -- Type width is <= pointer size and therefore does not need to be boxed
@@ -429,13 +432,17 @@ mkConstructorName tname t c =
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: (?cfg::CompilerConfig) => DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
-compile d specname rs_code toml_code dir crate_types = do
+compile d_unoptimized specname rs_code toml_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
     -- dump dependency graph to file
     updateFile (dir </> rustProjectDir specname </> specname <.> "dot")
-               (depGraphToDot $ progDependencyGraph d)
+               (depGraphToDot $ progDependencyGraph d_unoptimized)
+    -- Apply optimizations; make sure the program has at least one relation.
+    let d = addDummyRel $ optimize d_unoptimized
     let lib = compileLib d specname rs_code
+    when (cconfJava ?cfg) $
+        compileFlatBufferBindings d specname (dir </> rustProjectDir specname)
     -- Substitute specname template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
@@ -459,42 +466,37 @@ compileLib d specname rs_code =
     header specname      $+$
     rs_code              $+$
     typedefs             $+$
-    mkValueFromRecord d' $+$ -- Function to convert cmd_parser::Record to Value
-    mkRelEnum d'         $+$ -- Relations enum
+    mkValueFromRecord d  $+$ -- Function to convert cmd_parser::Record to Value
+    mkRelEnum d          $+$ -- Relations enum
     valtype              $+$
     funcs                $+$
     prog
     where
-    -- Massage program to Rust-friendly form:
-    -- * Rename program entities to Rust-friendly names
-    -- * Transform away rules with multiple heads
-    -- * Make sure the program has at least one relation
-    d' = addDummyRel $ optimize d
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
-    depgraph = progDependencyGraph d'
+    depgraph = progDependencyGraph d
     sccs = G.topsort' $ G.condensation depgraph
     -- Initialize arrangements map
-    arrs = M.fromList $ map (, []) $ M.keys $ progRelations d'
+    arrs = M.fromList $ map (, []) $ M.keys $ progRelations d
     -- Initialize types
     -- Make sure that empty tuple is always in Value, so it can be
     -- used to implement Value::default()
-    types = S.fromList $ (tTuple []) : (map (typeNormalize d' . relType) $ M.elems $ progRelations d')
+    types = S.fromList $ (tTuple []) : (map (typeNormalize d . relType) $ M.elems $ progRelations d)
     -- Compile SCCs
     (prog, cstate) = runState (do -- First pass: compute arrangements
-                                  createArrangements d'
+                                  createArrangements d
                                   -- Second pass: compile relations
-                                  nodes <- mapM (compileSCC d' depgraph) sccs
-                                  mkProg d' nodes)
+                                  nodes <- mapM (compileSCC d depgraph) sccs
+                                  mkProg d nodes)
                               $ emptyCompilerState { cArrangements = arrs
                                                    , cTypes        = types }
     -- Type declarations
-    typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d'
+    typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d
     -- Functions
-    (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d'
-    funcs = vcat $ (map (mkFunc d') fextern ++ map (mkFunc d') fdef)
+    (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d
+    funcs = vcat $ (map (mkFunc d) fextern ++ map (mkFunc d) fdef)
     -- 'Value' enum type
-    valtype = mkValType d' (cTypes cstate)
+    valtype = mkValType d (cTypes cstate)
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -748,14 +750,14 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                  $$
-        "    Ok(Value::" <> mkValConstructorName' d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)") $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)") $$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
@@ -904,12 +906,12 @@ mkValType d types =
     "decl_val_enum_into_record!(Value, <>," <+> decl_enum_entries <> ");"                   $$
     "decl_record_mutator_val_enum!(Value, <>," <+> decl_mutator_entries <> ");"
     where
-    consname t = mkValConstructorName' d t
+    consname t = mkValConstructorName d t
     decl_enum_entries = commaSep $ map (\t -> consname t <> "(x)") $ S.toList types
     decl_mutator_entries = commaSep $ map (\t -> consname t <> "(" <> mkType t <> ")") $ S.toList types
     mkValCons :: Type -> Doc
     mkValCons t = consname t <> (parens $ mkBoxType d t)
-    tuple0 = "Value::" <> mkValConstructorName' d (tTuple []) <> (parens $ box d (tTuple []) "()")
+    tuple0 = "Value::" <> mkValConstructorName d (tTuple []) <> (parens $ box d (tTuple []) "()")
     mkdisplay :: Type -> Doc
     mkdisplay t | isString d t = "Value::" <> consname t <+> "(v) => record::format_ddlog_str(v.as_ref(), f)"
                 | otherwise    = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
@@ -1014,7 +1016,7 @@ compileApplyNode d Apply{..} = ApplyNode $
                             else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
                        (zip applyInputs transInputs)
              ++
-             map (\o -> parens $ "|v|" <> mkValue' d "v" (relType $ getRelation d o)) applyOutputs
+             map (\o -> parens $ "|v|" <> mkValue d "v" (relType $ getRelation d o)) applyOutputs
     outputs = map rname applyOutputs
     update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rname o <> ");") applyOutputs
 
@@ -1022,7 +1024,7 @@ extractValue :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
         "|" <> vALUE_VAR <> ": Value| {"                                                              $$
         "match" <+> vALUE_VAR <+> "{"                                                                 $$
-        "    Value::" <> mkValConstructorName' d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"      $$
+        "    Value::" <> mkValConstructorName d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"      $$
         "    _ => unreachable!()"                                                                     $$
         "}}"
     where t' = typeNormalize d t
@@ -1105,11 +1107,11 @@ compileRelation d rn = do
 
 compileKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
 compileKey d rel@Relation{..} KeyExpr{..} = do
-    val <- mkValue d (CtxKey rel) keyExpr
+    val <- mkValue' d (CtxKey rel) keyExpr
     return $
         "(|" <> kEY_VAR <> ": &Value|"                                                                $$
         "match" <+> kEY_VAR <+> "{"                                                                   $$
-        "    Value::" <> mkValConstructorName' d relType <> "(__" <> pp keyVar <> ") => {"            $$
+        "    Value::" <> mkValConstructorName d relType <> "(__" <> pp keyVar <> ") => {"            $$
         "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                   $$
         "       " <> val <> "},"                                                                      $$
         "    _ => unreachable!()"                                                                     $$
@@ -1119,7 +1121,7 @@ compileKey d rel@Relation{..} KeyExpr{..} = do
 compileFact :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> CompilerMonad Doc
 compileFact d rl@Rule{..} = do
     let rel = atomRelation $ head ruleLHS
-    val <- mkValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
+    val <- mkValue' d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
     return $ "(" <> relId rel <> "," <+> val <> ") /*" <> pp rl <> "*/"
 
 
@@ -1342,7 +1344,7 @@ openAtom :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Rule -> Int -> At
 openAtom d var rl idx Atom{..} on_error = do
     let rel = getRelation d atomRelation
     let t = relType rel
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     let varnames = map pp $ atomVars atomVal
         vars = tuple varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
@@ -1360,7 +1362,7 @@ openAtom d var rl idx Atom{..} on_error = do
 openTuple :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
 openTuple d var vs = do
     let t = tTuple $ map typ vs
-    cons <- mkValConstructorName d t
+    cons <- mkValConstructorName' d t
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     let vars = tuple $ map (pp . name) vs
     return $
@@ -1374,18 +1376,20 @@ openTuple d var vs = do
         "    _ => unreachable!()"                                                                       $$
         "};"
 
--- Generate Rust constructor name for a type
-mkValConstructorName :: DatalogProgram -> Type -> CompilerMonad Doc
-mkValConstructorName d t = do
+-- Generate Rust constructor name for a type;
+-- add type to CompilerMonad
+mkValConstructorName' :: DatalogProgram -> Type -> CompilerMonad Doc
+mkValConstructorName' d t = do
     let t' = typeNormalize d t
     addType t'
-    return $ "Value::" <> mkValConstructorName' d t'
+    return $ "Value::" <> mkValConstructorName d t'
 
-mkValConstructorName' :: DatalogProgram -> Type -> Doc
-mkValConstructorName' d t' =
+-- Generate Rust constructor name for a type
+mkValConstructorName :: DatalogProgram -> Type -> Doc
+mkValConstructorName d t' =
     case t of
          TTuple{..}  -> "tuple" <> pp (length typeTupArgs) <> "__" <>
-                        (hcat $ punctuate "_" $ map (mkValConstructorName' d) typeTupArgs)
+                        (hcat $ punctuate "_" $ map (mkValConstructorName d) typeTupArgs)
          TBool{}     -> "bool"
          TInt{}      -> "int"
          TString{}   -> "string"
@@ -1393,44 +1397,44 @@ mkValConstructorName' d t' =
          TSigned{..} -> "signed" <> pp typeWidth
          TUser{}     -> consuser
          TOpaque{}   -> consuser
-         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName"
+         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
     where
     t = typeNormalize d t'
     consuser = rname (typeName t) <>
                case typeArgs t of
                     [] -> empty
-                    as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName' d) as)
+                    as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName d) as)
 
-mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
-mkValue d ctx e = do
+mkValue' :: (?cfg::CompilerConfig) => DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
+mkValue' d ctx e = do
     let t = exprType d ctx e
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal)
 
-mkValue' :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
-mkValue' d v t = "Value::" <> mkValConstructorName' d (typeNormalize d t) <> (parens $ box d t v)
+mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
+mkValue d v t = "Value::" <> mkValConstructorName d (typeNormalize d t) <> (parens $ box d t v)
 
 mkTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
 mkTupleValue d es = do
     let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
 
 mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     let t = tTuple $ map typ vs
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
 
 mkVarsTuple :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTuple d vs = do
     let t = tTuple $ map typ vs
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ box d t $ tupleStruct $ map (pp . name) vs)
 
 mkVarsTupleValuePat :: DatalogProgram -> [Field] -> CompilerMonad (Doc, Doc)
 mkVarsTupleValuePat d vs = do
-    constructor <- mkValConstructorName d $ tTuple $ map typ vs
+    constructor <- mkValConstructorName' d $ tTuple $ map typ vs
     return $ (constructor <> (parens $ tupleStruct $ map (("ref" <+>) . pp . name) vs), constructor)
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
@@ -1524,7 +1528,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- If we're at the end of the rule, generate head atom; otherwise
     -- return all live variables in a tuple
     (ret, next) <- if last_idx == length ruleRHS - 1
-        then (, "None") <$> mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
+        then (, "None") <$> mkValue' d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
         else do ret <- mkVarsTupleValue d $ rhsVarsAfter d rl last_idx
                 next <- compileRule d rl last_idx False
                 return (ret, next)
@@ -1725,7 +1729,7 @@ arrangeInput d rl fstatom arrange_input_by = do
 -- Compile XForm::FilterMap that generates the head of the rule
 mkHead :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
 mkHead d prefix rl = do
-    v <- mkValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
+    v <- mkValue' d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     return $
@@ -1824,7 +1828,7 @@ mkArrangementKey d rel pattern = do
     let t = relType rel
     -- order variables alphabetically: '_0', '_1', ...
     patvars <- mkVarsTupleValue d $ sortBy (\f1 f2 -> compare (name f1) (name f2)) $ getvars t pattern
-    constructor <- mkValConstructorName d t
+    constructor <- mkValConstructorName' d t
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
     return $ braces' $

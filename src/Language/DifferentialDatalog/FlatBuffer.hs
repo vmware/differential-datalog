@@ -61,7 +61,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
-import qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
+import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
 compileFlatBufferBindings prog specname dir = do
@@ -872,10 +872,10 @@ rustValueFromFlatbuf =
     where
     enums = map (\rel@Relation{..} ->
                  "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
-                     R.mkValue' ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
+                     R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
                 progIORelations
     to_enums = map (\rel@Relation{..} ->
-                    "Value::" <> R.mkValConstructorName' ?d relType <> "(v) => {"                                   $$
+                    "Value::" <> R.mkValConstructorName ?d relType <> "(v) => {"                                   $$
                     "    (fb::__Value::" <> typeTableName relType <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
                     "},")
                    progIORelations
@@ -956,7 +956,7 @@ rustTypeFromFlatbuf t@TUser{..} =
     "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                                 $$
     "    type Target = fb::" <+> tname <> "<'b>;"                                                           $$
     "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"    $$
-    "        let (v_type, v) = self.to_flatbuf(fbb);"                                                      $$
+    "        let (v_type, v) = self.to_flatbuf(fbb);"                                                       $$
     "        let v = Some(v);"                                                                              $$
     "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{v_type, v})"                         $$
     "    }"                                                                                                 $$
