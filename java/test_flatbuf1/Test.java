@@ -85,10 +85,8 @@ public class Test {
         {
             std_Option__bit_32_ b = builder.create_std_Some__bit_32_(10);
             builder.insert_TI(b);
-            /* issue 322
             std_Option__bit_32_ b1 = builder.create_std_None__bit_32_();
             builder.insert_TI(b1);
-            */
         }
         builder.insert_UI_A("a");
         builder.insert_UI_B(false);

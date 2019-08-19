@@ -449,7 +449,10 @@ typeNormalizeForFlatBuf x =
 {- Functions to work with the FlatBuffers-generated Java API. -}
 
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
-jFBCallConstructor _ [] = "0"
+jFBCallConstructor table [] =
+    "((Supplier<Integer>) (() -> " $$
+    (braces' $ jFBPackage <> "." <> table <> ".start" <> table <> "(this.fbbuilder);"            $$
+              "return Integer.valueOf(" <+> jFBPackage <> "." <> table <> ".end" <> table <> "(this.fbbuilder));") <> ")).get()"
 jFBCallConstructor table args =
     jFBPackage <> "." <> table <> ".create" <> table <>
            (parens $ commaSep $ "this.fbbuilder" : args)
@@ -680,6 +683,7 @@ mkJavaBuilder prog_name =
     "import ddlogapi.DDlogAPI;"                                         $$
     "import com.google.flatbuffers.*;"                                  $$
     "import java.math.BigInteger;"                                      $$
+    "import java.util.function.Supplier;"                               $$
     "public class" <+> builder_class                                    $$
     (braces' $ "private FlatBufferBuilder fbbuilder;"                   $$
                "private java.util.Vector<Integer> commands;"            $$
@@ -1076,7 +1080,7 @@ rustTypeFromFlatbuf t | typeIsScalar t =
     "impl <'b> ToFlatBufferTable<'b> for" <+> rtype <+> "{"                                                 $$
     "    type Target = fb::" <+> tname <> "<'b>;"                                                           $$
     "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"    $$
-    "        let v = self.to_flatbuf(fbb);"                                                                $$
+    "        let v = self.to_flatbuf(fbb);"                                                                 $$
     "        fb::" <> tname <> "::create(fbb, &fb::" <> tname <> "Args{v})"                                 $$
     "    }"                                                                                                 $$
     "}"
