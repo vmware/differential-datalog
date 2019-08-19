@@ -61,7 +61,7 @@ T: ToFlatBuffer<'b>,
     type Target = T::Target;
 
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf(fbb)
+        self.deref().to_flatbuf(fbb)
     }
 }
 
@@ -73,7 +73,7 @@ T: ToFlatBufferTable<'b>,
     type Target = T::Target;
 
     fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {
-        self.to_flatbuf_table(fbb)
+        self.deref().to_flatbuf_table(fbb)
     }
 }
 
@@ -85,7 +85,7 @@ T: ToFlatBufferVectorElement<'b>,
     type Target = T::Target;
 
     fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf_vector_element(fbb)
+        self.deref().to_flatbuf_vector_element(fbb)
     }
 }
 
