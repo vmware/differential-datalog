@@ -1,9 +1,7 @@
-/* First DDlog example */
-
+// Simple test for distributed DDlog. See ../ddd.dl
 input relation Left[bool]
 output relation Up[bool]
 output relation Down[bool]
 
-// Rule
 Up[b] :- Left[b].
 Down[b] :- Left[b].

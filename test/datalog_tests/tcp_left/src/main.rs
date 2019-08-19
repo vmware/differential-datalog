@@ -18,16 +18,6 @@ fn main() -> Result<(), String> {
     redirect1.insert(lr_left_Left as usize, lr_left_Left as usize);
     let mut s1 = server::DDlogServer::new(prog1, redirect1);
 
-    // Stream Up table from left server
-    let mut tup = HashSet::new();
-    tup.insert(lr_left_Up as usize);
-    let outlet_up = s1.add_stream(tup);
-
-    // Stream Down table from left server
-    let mut tdown = HashSet::new();
-    tdown.insert(lr_left_Down as usize);
-    let outlet_down = s1.add_stream(tdown);
-
     // First TCP channel
     let addr_s = "127.0.0.1:8001";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
@@ -40,14 +30,24 @@ fn main() -> Result<(), String> {
     let chan2 = TcpSender::new(addr);
     let adapter2 = Adapter{observer: Box::new(chan2)};
 
-    // TcpSender subscribes to the stream
+    // Stream Up table from left server
+    let mut tup = HashSet::new();
+    tup.insert(lr_left_Up as usize);
+    let outlet_up = s1.add_stream(tup);
+
+    // First TcpSender subscribes to the stream
     let _sub1 = {
         let stream = outlet_up.clone();
         let mut stream = stream.lock().unwrap();
         stream.subscribe(Box::new(adapter1))
     };
 
-    // TcpSender subscribes to the stream
+    // Stream Down table from left server
+    let mut tdown = HashSet::new();
+    tdown.insert(lr_left_Down as usize);
+    let outlet_down = s1.add_stream(tdown);
+
+    // Second TcpSender subscribes to the stream
     let _sub2 = {
         let stream = outlet_down.clone();
         let mut stream = stream.lock().unwrap();
@@ -64,8 +64,15 @@ fn main() -> Result<(), String> {
     s1.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())))?;
     s1.on_commit()?;
     s1.on_completed()?;
+
     s1.shutdown()
 }
+
+// We need the following Adapters to transform observables until
+// `Observable::map` is implemented. `map` is challenging because
+// it is a generic method, but we want to have trait objects of
+// `Observable`. Generics are not object safe. We can take notes
+// of the Rust Iterator implementation to address the dilemma.
 
 struct Adapter {
     observer: Box<dyn Observer<(usize, Value, bool), String>>

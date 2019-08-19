@@ -14,12 +14,15 @@ use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
 use std::fmt::Debug;
 
+// The receiving end of a TCP channel has an address
+// and streams data to an observer
 pub struct TcpReceiver<T> {
     addr: SocketAddr,
     observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>
 }
 
 impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
+    // Create a new TCP receiver with no observer
     pub fn new(addr: SocketAddr) -> Self {
         TcpReceiver {
             addr: addr,
@@ -27,6 +30,7 @@ impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
         }
     }
 
+    // Start listening to incoming data and pass it on to the observer
     pub fn listen(&mut self) -> JoinHandle<Result<(), String>> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let observer = self.observer.clone();
@@ -49,10 +53,13 @@ impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
 }
 
 struct TcpSubscription<T> {
+    // Points to the observer field of a TcpReceiver and sets it to None
+    // upon unsubscribe
     observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>
 }
 
 impl <T> Subscription for TcpSubscription<T> {
+    // Cancel the subscription so that the observer stops receiving data
     fn unsubscribe(self: Box<Self>) {
         let obs = self.observer.clone();
         let mut obs = obs.lock().unwrap();
@@ -61,6 +68,8 @@ impl <T> Subscription for TcpSubscription<T> {
 }
 
 impl <T: 'static+ Send> Observable<T, String> for TcpReceiver<T> {
+    // An observer subscribes to the receiving end of a TCP channel to
+    // listen to incoming data
     fn subscribe(&mut self, observer: Box<dyn Observer<T, String> + Send>) -> Box<dyn Subscription> {
         let obs = self.observer.clone();
         let mut obs = obs.lock().unwrap();
@@ -72,13 +81,15 @@ impl <T: 'static+ Send> Observable<T, String> for TcpReceiver<T> {
     }
 }
 
-
+// The sending end of a TCP channel with a specified address
+// and a TCP connection
 pub struct TcpSender {
     addr: SocketAddr,
     stream: Option<TcpStream>,
 }
 
 impl TcpSender {
+    // Create a new TcpSender but without starting the connection
     pub fn new(socket: SocketAddr) -> Self {
         TcpSender {
             addr: socket,
@@ -88,6 +99,7 @@ impl TcpSender {
 }
 
 impl<T: Serialize + Send> Observer<T, String> for TcpSender {
+    // Connect to the specified TCP address
     fn on_start(&mut self) -> Result<(), String> {
         if let None = &self.stream {
             self.stream = Some(
@@ -100,6 +112,7 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
         Ok(())
     }
 
+    // Send a single item over the TCP channel
     fn on_next(&mut self, upd: T) -> Result<(), String> {
         if let Some(ref mut stream) = self.stream {
             let s = to_string(&upd).unwrap() + "\n";
@@ -109,7 +122,7 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
         Ok(())
     }
 
-    // Write the updates to the TCP stream
+    // Send a series of items over the TCP channel
     fn on_updates<'a>(&mut self,
                       updates: Box<dyn Iterator<Item = T> + 'a>)
                       -> Result<(), String> {

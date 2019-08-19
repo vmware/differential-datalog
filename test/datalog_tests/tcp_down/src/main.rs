@@ -22,18 +22,18 @@ fn main() -> Result<(), String> {
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let sender = TcpSender::new(addr);
 
-    // Construct up server, redirect table
+    // Construct down server, redirect table
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
     let mut redirect = HashMap::new();
     redirect.insert(lr_left_Down as usize, lr_down_Left as usize);
     let mut s = server::DDlogServer::new(prog, redirect);
 
-    // Stream right table from up server
+    // Stream right table from down server
     let mut table = HashSet::new();
     table.insert(lr_down_Right as usize);
     let outlet = s.add_stream(table);
 
-    // Right server subscribes to the stream
+    // Server subscribes to the upstream TCP channel
     let s = Arc::new(Mutex::new(s));
     let sub1 = {
         let s_a = server::ADDlogServer(s.clone());
@@ -41,7 +41,7 @@ fn main() -> Result<(), String> {
         receiver.subscribe(Box::new(adapter))
     };
 
-    // TcpSender subscribes to the stream
+    // Downstream TCP channel subscribes to the server
     let _sub2 = {
         let stream = outlet.clone();
         let mut stream = stream.lock().unwrap();
@@ -49,9 +49,11 @@ fn main() -> Result<(), String> {
         stream.subscribe(Box::new(adapter))
     };
 
+    // Listen for updates on the upstream channel
     let handle = receiver.listen();
     handle.join();
 
+    // Shutdown server
     s.lock().unwrap().shutdown()?;
     Ok(())
 }

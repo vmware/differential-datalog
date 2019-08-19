@@ -11,17 +11,15 @@ use std::sync::{Arc, Mutex};
 fn main() -> Result<(), String> {
     // Construct left server with no redirect
     let prog1 = HDDlog::run(1, false, |_,_:&Record, _| {});
-    let mut redirect1 = HashMap::new();
-    redirect1.insert(lr_left_Left as usize, lr_left_Left as usize);
-    let mut s1 = server::DDlogServer::new(prog1, redirect1);
+    let mut s1 = server::DDlogServer::new(prog1, HashMap::new());
 
-    // Construct right server, redirect Middle table
+    // Construct right server, redirect Up table
     let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});
     let mut redirect2 = HashMap::new();
     redirect2.insert(lr_left_Up as usize, lr_right_Up as usize);
     let s2 = server::DDlogServer::new(prog2, redirect2);
 
-    // Stream table from left server
+    // Stream Up table from left server
     let mut tables = HashSet::new();
     tables.insert(lr_left_Up as usize);
     let outlet = s1.add_stream(tables);
@@ -46,7 +44,7 @@ fn main() -> Result<(), String> {
     s1.on_commit()?;
     s1.on_completed()?;
 
-    // Test unsubscribe
+    // Test `unsubscribe`
     sub.unsubscribe();
 
     let rec2 = Record::Bool(true);
@@ -58,6 +56,7 @@ fn main() -> Result<(), String> {
     s1.on_commit()?;
     s1.on_completed()?;
 
+    // Shutdown and clean up resources
     s1.remove_stream(outlet);
     s1.shutdown()?;
     s2.lock().unwrap().shutdown()?;

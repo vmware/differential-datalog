@@ -11,17 +11,22 @@ use std::fmt;
 
 pub struct UpdatesSubscription {
     // This points to the observer field in the outlet,
-    // and sets it to `None` upon unsubscribing.
+    // and sets it to `None` upon unsubscribing
     observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
 }
 
 impl Subscription for UpdatesSubscription {
+    // Cancel a subscription so that the observer stops listening
+    // to the observable
     fn unsubscribe(self: Box<Self>) {
         let mut observer = self.observer.lock().unwrap();
         *observer = None;
     }
 }
 
+// A DDlog server wraps a DDlog progam, and writes deltas to
+// the outlets. The redirect map redirects input deltas to
+// local tables
 pub struct DDlogServer
 {
     prog: Option<HDDlog>,
@@ -29,18 +34,14 @@ pub struct DDlogServer
     redirect: HashMap<RelId, RelId>
 }
 
-impl Debug for DDlogServer {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "DDlogServer")
-    }
-}
-
 impl DDlogServer
 {
+    // Create a new server with no outlets
     pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
         DDlogServer{prog: Some(prog), outlets: Vec::new(), redirect: redirect}
     }
 
+    // Add a new outlet that streams a subset of the tables
     pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
         let outlet = Arc::new(Mutex::new(Outlet{
             tables : tables,
@@ -50,10 +51,12 @@ impl DDlogServer
         outlet.clone()
     }
 
+    // Remove an outlet
     pub fn remove_stream(&mut self, outlet: Arc<Mutex<Outlet>>) {
         self.outlets.retain(|o| !Arc::ptr_eq(&o, &outlet));
     }
 
+    // Shutdown the DDlog program and notify listeners of completion
     pub fn shutdown(&mut self) -> Response<()> {
         if let Some(prog) = self.prog.take() {
             prog.stop()?;
@@ -70,6 +73,7 @@ impl DDlogServer
     }
 }
 
+// An outlet streams a subset of DDlog tables to an observer
 pub struct Outlet
 {
     tables: HashSet<RelId>,
@@ -78,6 +82,7 @@ pub struct Outlet
 
 impl Observable<Update<super::Value>, String> for Outlet
 {
+    // An observer subscribes to the delta stream from an outlet
     fn subscribe(&mut self,
                      observer: Box<dyn Observer<Update<super::Value>, String> + Send>)
                      -> Box<dyn Subscription>
@@ -91,6 +96,7 @@ impl Observable<Update<super::Value>, String> for Outlet
     }
 }
 
+// Newtype to for interior mutability of the observer
 pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
 
 impl Observer<Update<super::Value>, String> for ADDlogServer {
@@ -133,6 +139,7 @@ impl Observer<Update<super::Value>, String> for ADDlogServer {
 
 impl Observer<Update<super::Value>, String> for DDlogServer
 {
+    // Start a transaction when deltas start coming in
     fn on_start(&mut self) -> Response<()> {
         if let Some(ref mut prog) = self.prog {
             prog.transaction_start()
@@ -141,6 +148,8 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         }
     }
 
+    // Commit input deltas to local tables and pass on output
+    // deltas to the listeners on the outlets
     fn on_commit(&mut self) -> Response<()> {
         if let Some(ref mut prog) = self.prog {
             let changes = prog.transaction_commit_dump_changes()?;
@@ -177,6 +186,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         }
     }
 
+    // Apply a single update
     fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
         let upd = vec![match upd {
             Update::Insert{relid: relid, v: v} =>
@@ -196,6 +206,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
         }
     }
 
+    // Apply a series of updates
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
