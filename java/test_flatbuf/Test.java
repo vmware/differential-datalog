@@ -15,6 +15,7 @@ public class Test {
     Test() {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
+        api.record_commands("replay.dat", false);
     }
 
     void onCommit(DDlogCommand command) {
@@ -32,6 +33,7 @@ public class Test {
             /* Create a builder object that will be used to serialize DDlog commands
              * into a buffer. */
             redistUpdateBuilder builder = new redistUpdateBuilder();
+
 
             /* Create several DDlog commands.  Commands are stored inside the
              * builder. */
