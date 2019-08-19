@@ -29,14 +29,14 @@ cache:
 
 env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
-   - TOOL=run_souffle_tests
-   - TOOL=stack TEST_SUITE='-p redist' JAVA=1
-   - TOOL=stack TEST_SUITE='-p span_uuid'
-   - TOOL=stack TEST_SUITE='-p souffle0'
-   - TOOL=stack TEST_SUITE='-p simple'
-   - TOOL=stack TEST_SUITE='-p path'
-   - TOOL=stack TEST_SUITE='-p ovn'
-   - TOOL=stack TEST_SUITE='-p modules'
+     #   - TOOL=run_souffle_tests
+     #- TOOL=stack TEST_SUITE='-p redist' JAVA=1
+     #- TOOL=stack TEST_SUITE='-p span_uuid'
+     #- TOOL=stack TEST_SUITE='-p souffle0'
+     #- TOOL=stack TEST_SUITE='-p simple'
+     #- TOOL=stack TEST_SUITE='-p path'
+     #- TOOL=stack TEST_SUITE='-p ovn'
+     #- TOOL=stack TEST_SUITE='-p modules'
 
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
@@ -95,7 +95,9 @@ before_deploy:
     # Include Rust dependencies for offline build
     - cd rust/template
     - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
-    - cargo vendor -s Cargo.full.toml --relative-path > config
+    - cargo vendor -s Cargo.full.toml > config.tmp
+    - head -n -1 config.tmp > config
+    - echo "directory = \"vendor\"" >> config
     - cp -r vendor "../../$DIST_DIR/"
     - mkdir "../../$DIST_DIR/.cargo" 
     - cp config "../../$DIST_DIR/.cargo/"
