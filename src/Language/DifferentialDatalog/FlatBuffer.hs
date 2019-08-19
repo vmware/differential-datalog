@@ -446,7 +446,7 @@ typeNormalizeForFlatBuf x =
                                             -> typeNormalizeForFlatBuf innerType
          t'                                 -> t'
 
-{- Functions to work with the FlatBuffers-generate Java API. -}
+{- Functions to work with the FlatBuffers-generated Java API. -}
 
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
 jFBCallConstructor _ [] = "0"
@@ -859,15 +859,15 @@ rustValueFromFlatbuf =
     "    }"                                                                                         $$
     "}"
     where
-    enums = map (\rel@Relation{..} ->
-                 "fb::__Value::" <> typeTableName rel <+> "=> Ok(" <>
-                     R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName rel <> "::init_from_table(v.1))?") relType <> "),")
-                progIORelations
-    to_enums = map (\Relation{..} ->
-                    "Value::" <> R.mkValConstructorName ?d relType <> "(v) => {"                                   $$
-                    "    (fb::__Value::" <> typeTableName relType <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
+    enums = map (\t ->
+                 "fb::__Value::" <> typeTableName t <+> "=> Ok(" <>
+                     R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v.1))?") t <> "),")
+                $ nub $ map relType progIORelations
+    to_enums = map (\t ->
+                    "Value::" <> R.mkValConstructorName ?d t <> "(v) => {"                                   $$
+                    "    (fb::__Value::" <> typeTableName t <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
                     "},")
-                   progIORelations
+                   $ nub $ map relType progIORelations
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.
@@ -965,10 +965,14 @@ rustTypeFromFlatbuf t@TUser{..} =
                           cname = R.rname typeName <> "::" <> R.rname (name c)
                           args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
                                      $ consArgs c
-                      in fbstruct <> "::" <> fbcname <+> "=> {"                                $$
-                         "    let v = fb::" <> fbcname <> "::init_from_table(v.1);"            $$
-                         "    Ok(" <> cname <> (braces $ commaSep args) <> ")"                 $$
-                         "},")
+                      in if null args
+                            then fbstruct <> "::" <> fbcname <+> "=> {"                                $$
+                                 "    Ok(" <> cname <> ")"                                             $$
+                                 "},"
+                            else fbstruct <> "::" <> fbcname <+> "=> {"                                $$
+                                 "    let v = fb::" <> fbcname <> "::init_from_table(v.1);"            $$
+                                 "    Ok(" <> cname <> (braces $ commaSep args) <> ")"                 $$
+                                 "},")
                $ typeCons tstruct
     to_cons = map (\c -> let fbcname = fbConstructorName typeArgs c
                              cname = R.rname typeName <> "::" <> R.rname (name c)
