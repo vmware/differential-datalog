@@ -50,7 +50,7 @@ impl <'b> ToFlatBuffer<'b> for bool {
 impl <'b> ToFlatBufferVectorElement<'b> for bool {
     type Target = bool;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -67,7 +67,7 @@ impl <'b> ToFlatBuffer<'b> for u8 {
 impl <'b> ToFlatBufferVectorElement<'b> for u8 {
     type Target = u8;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -85,7 +85,7 @@ impl <'b> ToFlatBuffer<'b> for u16
 impl <'b> ToFlatBufferVectorElement<'b> for u16 {
     type Target = u16;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -103,7 +103,7 @@ impl <'b> ToFlatBuffer<'b> for u32
 impl <'b> ToFlatBufferVectorElement<'b> for u32 {
     type Target = u32;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -121,7 +121,7 @@ impl <'b> ToFlatBuffer<'b> for u64
 impl <'b> ToFlatBufferVectorElement<'b> for u64 {
     type Target = u64;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -183,7 +183,7 @@ impl <'b> ToFlatBuffer<'b> for i8
 impl <'b> ToFlatBufferVectorElement<'b> for i8 {
     type Target = i8;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -201,7 +201,7 @@ impl <'b> ToFlatBuffer<'b> for i16
 impl <'b> ToFlatBufferVectorElement<'b> for i16 {
     type Target = i16;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -219,7 +219,7 @@ impl <'b> ToFlatBuffer<'b> for i32
 impl <'b> ToFlatBufferVectorElement<'b> for i32 {
     type Target = i32;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -237,7 +237,7 @@ impl <'b> ToFlatBuffer<'b> for i64
 impl <'b> ToFlatBufferVectorElement<'b> for i64 {
     type Target = i64;
 
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target
     { *self }
 }
 
@@ -402,9 +402,6 @@ impl <'a> FromFlatBuffer<fb::__Command<'a>> for Update<Value> {
             },
             fb::__CommandKind::Delete => {
                 Ok(Update::DeleteValue{relid: cmd.relid() as RelId, v: val})
-            },
-            k => {
-                Err(format!("Update::from_flatbuf: invalid command kind {:?}", k))
             }
         }
     }
@@ -470,7 +467,7 @@ pub fn updates_to_flatbuf(delta: &DeltaMap) -> (Vec<u8>, usize)
     /* Pre-compute size of delta. */
     let mut delta_size: usize = 0;
 
-    for (relid, rel) in delta.as_ref().iter() {
+    for (_, rel) in delta.as_ref().iter() {
         delta_size += rel.len();
     };
 
