@@ -62,7 +62,6 @@ before_install:
 - ./.travis/install-stack.sh
 - ./.travis/install-flatbuf.sh
 - export CLASSPATH=$CLASSPATH:$HOME/flatbuffers/java
-- if [ x$BUILD_BINARY = x1 ]; then cargo install cargo-vendor || true; fi
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
 - if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
@@ -95,7 +94,10 @@ before_deploy:
     # Include Rust dependencies for offline build
     - cd rust/template
     - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
-    - cargo vendor -s Cargo.full.toml --relative-path > config
+    # Set relative path to vendor directory in `.cargo/config`
+    - cargo vendor -s Cargo.full.toml > config.tmp
+    - head -n -1 config.tmp > config
+    - echo "directory = \"vendor\"" >> config
     - cp -r vendor "../../$DIST_DIR/"
     - mkdir "../../$DIST_DIR/.cargo" 
     - cp config "../../$DIST_DIR/.cargo/"
