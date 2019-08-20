@@ -70,21 +70,6 @@ impl <T: tinyset::Fits64> tinyset_Set64<T> {
     }
 }
 
-impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[")?;
-        let len = self.x.len();
-        for (i, x) in self.iter().enumerate() {
-            if i == len - 1 {
-                write!(f, "{:?}", x)?;
-            } else {
-                write!(f, "{:?}, ", x)?;
-            }
-        };
-        write!(f, "]")
-    }
-}
-
 impl<T: u64set::Fits64 + Ord> Ord for tinyset_Set64<T> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         let size_cmp = self.x.len().cmp(&other.x.len());
@@ -184,6 +169,21 @@ impl<T: Display + u64set::Fits64 + Ord> Display for tinyset_Set64<T> {
         formatter.write_str("[")?;
         for (i, v) in self.iter().enumerate() {
             formatter.write_fmt(format_args!("{}", v))?;
+            if i < len-1 {
+                formatter.write_str(",")?;
+            }
+        }
+        formatter.write_str("]")?;
+        Ok(())
+    }
+}
+
+impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let len = self.x.len();
+        formatter.write_str("[")?;
+        for (i, v) in self.iter().enumerate() {
+            formatter.write_fmt(format_args!("{:?}", v))?;
             if i < len-1 {
                 formatter.write_str(",")?;
             }

@@ -16,6 +16,7 @@ public class Test {
     Test() {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
+        api.record_commands("replay.dat", false);
     }
 
     void check(int exit) {
@@ -34,7 +35,11 @@ public class Test {
         builder.insert_BI(true);
         builder.insert_CI((byte)8);
         builder.insert_DI((short)-5);
+        builder.insert_DI((short)-1);
+        builder.insert_DI((short)-2);
+        builder.insert_DI((short)-3);
         builder.insert_DI((short)5);
+        builder.insert_DI((short)1000);
         builder.insert_DI((short)Short.MAX_VALUE);
         builder.insert_DI((short)Short.MIN_VALUE);
         builder.insert_EI(BigInteger.ZERO.subtract(BigInteger.ONE));
