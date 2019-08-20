@@ -334,14 +334,19 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1bool(
     return (jlong)ddlog_bool(b);
 }
 
-JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1u64(
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1i64(
     JNIEnv *env, jclass obj, jlong l) {
-    return (jlong)ddlog_u64(l);
+    return (jlong)ddlog_i64(l);
 }
 
-JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1u128(
-    JNIEnv *env, jclass obj, jlong hi, jlong lo) {
-    return (jlong)ddlog_u128((((__uint128_t)hi) << 64) | ((__uint128_t)lo));
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1int(
+    JNIEnv *env, jclass obj, jbyteArray v) {
+    jboolean isCopy;
+    jbyte* b = (*env)->GetByteArrayElements(env, v, &isCopy);
+    jsize size = (*env)->GetArrayLength(env, v);
+    jlong res = (jlong)ddlog_int((unsigned char*)b, size);
+    (*env)->ReleaseByteArrayElements(env, v, b, JNI_ABORT);
+    return res;
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1string(
@@ -424,21 +429,24 @@ JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1int(
     return (jboolean)ddlog_is_int((ddlog_record*)handle);
 }
 
-JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1u64(
-    JNIEnv *env, jclass obj, long handle) {
-    return (jlong)ddlog_get_u64((ddlog_record*)handle);
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1int(
+    JNIEnv *env, jclass obj, long handle, jbyteArray buf) {
+    jlong res;
+    if (buf != NULL) {
+        jboolean isCopy;
+        jbyte* b = (*env)->GetByteArrayElements(env, buf, &isCopy);
+        jsize capacity = (*env)->GetArrayLength(env, buf);
+        res = (jlong)ddlog_get_int((ddlog_record*)handle, (unsigned char*)b, capacity);
+        (*env)->ReleaseByteArrayElements(env, buf, b, 0);
+    } else {
+        res = (jlong)ddlog_get_int((ddlog_record*)handle, NULL, 0);
+    }
+    return res;
 }
 
-JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1u128(
-    JNIEnv *env, jclass obj, long handle, jlongArray data) {
-    __uint128_t value = ddlog_get_u128((ddlog_record*)handle);
-    jlong *a = (*env)->GetLongArrayElements(env, data, NULL);
-    if (a == NULL)
-        return false;
-    a[0] = (jlong)value;
-    a[1] = (jlong)(value >> 64);
-    (*env)->ReleaseLongArrayElements(env, data, a, 0);
-    return true;
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1i64(
+    JNIEnv *env, jclass obj, long handle) {
+    return (jlong)ddlog_get_i64((ddlog_record*)handle);
 }
 
 JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1string(

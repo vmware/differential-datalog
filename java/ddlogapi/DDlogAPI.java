@@ -36,8 +36,8 @@ public class DDlogAPI {
     static public native void ddlog_free(long handle);
     // Constructors
     static public native long ddlog_bool(boolean b);
-    static public native long ddlog_u64(long v);
-    static public native long ddlog_u128(long hi, long lo);
+    static public native long ddlog_i64(long v);
+    static public native long ddlog_int(byte[] v);
     static public native long ddlog_string(String s);
     static public native long ddlog_tuple(long[] handles);
     static public native long ddlog_vector(long[] handles);
@@ -50,8 +50,8 @@ public class DDlogAPI {
     static public native boolean ddlog_is_bool(long handle);
     static public native boolean ddlog_get_bool(long handle);
     static public native boolean ddlog_is_int(long handle);
-    static public native long ddlog_get_u64(long handle);
-    static public native boolean ddlog_get_u128(long handle, long[] output);  // true for success
+    static public native long ddlog_get_int(long handle, byte[] buf);
+    static public native long ddlog_get_i64(long handle);
     static public native boolean ddlog_is_string(long handle);
     static public native String ddlog_get_str(long handle);
     static public native boolean ddlog_is_tuple(long handle);

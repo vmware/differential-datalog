@@ -2,13 +2,14 @@
 
 use num::{ToPrimitive, BigInt, BigUint};
 use std::vec;
+use std::slice;
 use std::collections::{btree_map, BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::borrow::Cow;
 use std::ptr::{null_mut, null};
 use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
-use libc::size_t;
+use std::os::raw;
+use libc;
 use std::fmt;
 use std::fmt::Write;
 use std::string::ToString;
@@ -154,7 +155,7 @@ pub enum UpdCmd {
  */
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_record(rec: *const Record) -> *mut c_char
+pub unsafe extern "C" fn ddlog_dump_record(rec: *const Record) -> *mut raw::c_char
 {
     match rec.as_ref() {
         Some(rec) => CString::new(rec.to_string()).unwrap().into_raw(),
@@ -202,10 +203,52 @@ pub unsafe extern "C" fn ddlog_is_int(rec: *const Record) -> bool
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_int_bits(rec: *const Record) -> size_t
+pub unsafe extern "C" fn ddlog_int(v: *const raw::c_uchar, size: libc::size_t) -> *mut Record
+{
+    Box::into_raw(Box::new(Record::Int(BigInt::from_signed_bytes_be(
+                    slice::from_raw_parts(v as *const u8, size as usize)))))
+}
+
+/* `buf`        - buffer to store the big-endian byte representation of the integer value
+ * `capacity`   - buffer capacity
+ *
+ * Return value: if `capacity` is 0, returns the minimal buffer capacity necessary to
+ * represent the value otherwise returns the number of bytes stored in `buf` or `-1` if `buf`
+ * is not big enough.
+ */
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_int(
+    rec: *const Record,
+    buf: *mut raw::c_uchar,
+    capacity: libc::size_t) -> libc::ssize_t
 {
     match rec.as_ref() {
-        Some(Record::Int(bigint)) => bigint.bits() as size_t,
+        Some(Record::Int(i)) => {
+            let bytes = i.to_signed_bytes_be();
+            if capacity == 0 {
+                bytes.len() as libc::ssize_t
+            } else if capacity >= bytes.len() {
+                for (i, b) in bytes.iter().enumerate() {
+                    if let Some(p) = buf.offset(i as isize).as_mut() {
+                        *p = *b;
+                    };
+                }
+                bytes.len() as libc::ssize_t
+            } else {
+                -1
+            }
+        },
+        _ => 0
+    }
+}
+
+/* Determines the fewest bits necessary to express the integer value, not including the sign.
+ */
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_int_bits(rec: *const Record) -> libc::size_t
+{
+    match rec.as_ref() {
+        Some(Record::Int(bigint)) => bigint.bits() as libc::size_t,
         _ => 0
     }
 }
@@ -226,6 +269,21 @@ pub unsafe extern "C" fn ddlog_get_u64(rec: *const Record) -> u64
 }
 
 #[no_mangle]
+pub extern "C" fn ddlog_i64(v: i64) -> *mut Record
+{
+    Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_i64(rec: *const Record) -> i64
+{
+    match rec.as_ref() {
+        Some(Record::Int(i)) => i.to_i64().unwrap_or(0),
+        _ => 0
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn ddlog_u128(v: u128) -> *mut Record
 {
     Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
@@ -240,9 +298,24 @@ pub unsafe extern "C" fn ddlog_get_u128(rec: *const Record) -> u128
     }
 }
 
+#[no_mangle]
+pub extern "C" fn ddlog_i128(v: i128) -> *mut Record
+{
+    Box::into_raw(Box::new(Record::Int(BigInt::from(v))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_i128(rec: *const Record) -> i128
+{
+    match rec.as_ref() {
+        Some(Record::Int(i)) => i.to_i128().unwrap_or(0),
+        _ => 0
+    }
+}
+
 /// Returns NULL if s is not a valid UTF8 string.
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_string(s: *const c_char) -> *mut Record
+pub unsafe extern "C" fn ddlog_string(s: *const raw::c_char) -> *mut Record
 {
     let s = match CStr::from_ptr(s).to_str() {
         Ok(s) => s,
@@ -261,25 +334,25 @@ pub unsafe extern "C" fn ddlog_is_string(rec: *const Record) -> bool
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_strlen(rec: *const Record) -> size_t
+pub unsafe extern "C" fn ddlog_get_strlen(rec: *const Record) -> libc::size_t
 {
     match rec.as_ref() {
-        Some(Record::String(s)) => s.len() as size_t,
+        Some(Record::String(s)) => s.len() as libc::size_t,
         _ => 0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_str_non_nul(rec: *const Record) -> *const c_char
+pub unsafe extern "C" fn ddlog_get_str_non_nul(rec: *const Record) -> *const raw::c_char
 {
     match rec.as_ref() {
-        Some(Record::String(s)) => s.as_ptr() as *const c_char,
+        Some(Record::String(s)) => s.as_ptr() as *const raw::c_char,
         _ => null()
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_tuple(fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_tuple(fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
     Box::into_raw(Box::new(Record::Tuple(fields)))
 }
@@ -293,15 +366,15 @@ pub unsafe extern "C" fn ddlog_is_tuple(rec: *const Record) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_tuple_size(rec: *const Record) -> size_t {
+pub unsafe extern "C" fn ddlog_get_tuple_size(rec: *const Record) -> libc::size_t {
     match rec.as_ref() {
-        Some(Record::Tuple(recs)) => recs.len() as size_t,
+        Some(Record::Tuple(recs)) => recs.len() as libc::size_t,
         _ => 0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_tuple_field(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_tuple_field(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::Tuple(recs)) => recs.get(idx).map(|r|r as *const Record).unwrap_or(null_mut()),
         _ => null_mut()
@@ -328,7 +401,7 @@ pub unsafe extern "C" fn ddlog_tuple_push(tup: *mut Record, rec: *mut Record) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_vector(fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_vector(fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
     Box::into_raw(Box::new(Record::Array(CollectionKind::Vector, fields)))
 }
@@ -342,15 +415,15 @@ pub unsafe extern "C" fn ddlog_is_vector(rec: *const Record) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_vector_size(rec: *const Record) -> size_t {
+pub unsafe extern "C" fn ddlog_get_vector_size(rec: *const Record) -> libc::size_t {
     match rec.as_ref() {
-        Some(Record::Array(CollectionKind::Vector, recs)) => recs.len() as size_t,
+        Some(Record::Array(CollectionKind::Vector, recs)) => recs.len() as libc::size_t,
         _ => 0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_vector_elem(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_vector_elem(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::Array(CollectionKind::Vector, recs)) => recs.get(idx).map(|r|r as *const Record).unwrap_or(null_mut()),
         _ => null_mut()
@@ -369,7 +442,7 @@ pub unsafe extern "C" fn ddlog_vector_push(vec: *mut Record, rec: *mut Record) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_set(fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_set(fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
     Box::into_raw(Box::new(Record::Array(CollectionKind::Set, fields)))
 }
@@ -383,15 +456,15 @@ pub unsafe extern "C" fn ddlog_is_set(rec: *const Record) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_set_size(rec: *const Record) -> size_t {
+pub unsafe extern "C" fn ddlog_get_set_size(rec: *const Record) -> libc::size_t {
     match rec.as_ref() {
-        Some(Record::Array(CollectionKind::Set, recs)) => recs.len() as size_t,
+        Some(Record::Array(CollectionKind::Set, recs)) => recs.len() as libc::size_t,
         _ => 0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_set_elem(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_set_elem(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::Array(CollectionKind::Set, recs)) => recs.get(idx).map(|r|r as *const Record).unwrap_or(null_mut()),
         _ => null_mut()
@@ -410,7 +483,7 @@ pub unsafe extern "C" fn ddlog_set_push(set: *mut Record, rec: *mut Record) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_map(fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_map(fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
     Box::into_raw(Box::new(Record::Array(CollectionKind::Map, fields)))
 }
@@ -424,15 +497,15 @@ pub unsafe extern "C" fn ddlog_is_map(rec: *const Record) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_map_size(rec: *const Record) -> size_t {
+pub unsafe extern "C" fn ddlog_get_map_size(rec: *const Record) -> libc::size_t {
     match rec.as_ref() {
-        Some(Record::Array(CollectionKind::Map, recs)) => recs.len() as size_t,
+        Some(Record::Array(CollectionKind::Map, recs)) => recs.len() as libc::size_t,
         _ => 0
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_map_key(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_map_key(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::Array(CollectionKind::Map, recs)) => {
             recs.get(idx).map(|r| match r {
@@ -445,7 +518,7 @@ pub unsafe extern "C" fn ddlog_get_map_key(rec: *const Record, idx: size_t) -> *
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_map_val(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_map_val(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::Array(CollectionKind::Map, recs)) => {
             recs.get(idx).map(|r| match r {
@@ -471,7 +544,7 @@ pub unsafe extern "C" fn ddlog_map_push(map: *mut Record, key: *mut Record, val:
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_struct(constructor: *const c_char, fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_struct(constructor: *const raw::c_char, fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
     let constructor = match CStr::from_ptr(constructor).to_str() {
         Ok(s) => s,
@@ -483,7 +556,11 @@ pub unsafe extern "C" fn ddlog_struct(constructor: *const c_char, fields: *const
 /// Similar to `ddlog_struct()`, but expects `constructor` to be static string.
 /// Doesn't allocate memory for a local copy of the string.
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_struct_static_cons(constructor: *const c_char, fields: *const *mut Record, len: size_t) -> *mut Record {
+pub unsafe extern "C" fn ddlog_struct_static_cons(
+    constructor: *const raw::c_char,
+    fields: *const *mut Record,
+    len: libc::size_t) -> *mut Record
+{
     let fields = mk_record_vec(fields, len);
     let constructor = match CStr::from_ptr(constructor).to_str() {
         Ok(s) => s,
@@ -502,7 +579,7 @@ pub unsafe extern "C" fn ddlog_is_struct(rec: *const Record) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_struct_field(rec: *const Record, idx: size_t) -> *const Record {
+pub unsafe extern "C" fn ddlog_get_struct_field(rec: *const Record, idx: libc::size_t) -> *const Record {
     match rec.as_ref() {
         Some(Record::PosStruct(_, fields)) => fields.get(idx).map(|r|r as *const Record).unwrap_or(null_mut()),
         Some(Record::NamedStruct(_, fields)) => fields.get(idx).map(|(_, r)|r as *const Record).unwrap_or(null_mut()),
@@ -512,16 +589,16 @@ pub unsafe extern "C" fn ddlog_get_struct_field(rec: *const Record, idx: size_t)
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_get_constructor_non_null(rec: *const Record,
-                                                        len: *mut size_t) -> *const c_char
+                                                        len: *mut libc::size_t) -> *const raw::c_char
 {
     match rec.as_ref() {
         Some(Record::PosStruct(cons, _)) => {
             *len = cons.len();
-            cons.as_ref().as_ptr() as *const c_char
+            cons.as_ref().as_ptr() as *const raw::c_char
         },
         Some(Record::NamedStruct(cons, _)) => {
             *len = cons.len();
-            cons.as_ref().as_ptr() as *const c_char
+            cons.as_ref().as_ptr() as *const raw::c_char
         },
         _ => {
             *len = 0;
@@ -530,7 +607,7 @@ pub unsafe extern "C" fn ddlog_get_constructor_non_null(rec: *const Record,
     }
 }
 
-unsafe fn mk_record_vec(fields: *const *mut Record, len: size_t) -> Vec<Record> {
+unsafe fn mk_record_vec(fields: *const *mut Record, len: libc::size_t) -> Vec<Record> {
     let mut tfields = Vec::with_capacity(len as usize);
     for i in 0..len {
         tfields.push(*Box::from_raw(*fields.offset(i as isize)));

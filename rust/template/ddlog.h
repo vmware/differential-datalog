@@ -494,13 +494,38 @@ extern bool ddlog_is_int(const ddlog_record *rec);
 extern size_t ddlog_int_bits(const ddlog_record *rec);
 
 /*
- * Create an integer value.  Can be used to populate any ddlog field
+ * Create an integer value with arbitrary width and signedness.  Can be used to
+ * populate any ddlog field of type `bit<N>`, `signed<N>` or `bigint`.
+ *
+ * `v` - byte array containing big endian two's complement representation of the number
+ * `size` - size of `v` in bytes
+ */
+extern ddlog_record* ddlog_int(unsigned char * v, size_t size);
+
+/*
+ * Extract big-endian byte representation of arbitrary integer value.
+ *
+ * `buf`        - buffer to store the big-endian two's complement byte representation
+ *                of the integer value
+ * `capacity`   - buffer capacity
+ *
+ * Return value: if `capacity` is 0, returns the minimal buffer capacity necessary to
+ * represent the value; otherwise returns the number of bytes stored in `buf` or `-1` if `buf`
+ * is not big enough.
+ */
+extern ssize_t ddlog_get_int(
+        const ddlog_record *rec,
+        unsigned char *buf,
+        size_t capacity);
+
+/*
+ * Create an unsigned integer value.  Can be used to populate any ddlog field
  * of type `bit<N>`, `N<=64`
  */
 extern ddlog_record* ddlog_u64(uint64_t v);
 
 /*
- * Retrieves the value of an integer.
+ * Retrieves the value of an unsigned integer.
  *
  * Returns `0` if `rec` is not an integer or if its value does not
  * fit into 64 bits.
@@ -508,7 +533,21 @@ extern ddlog_record* ddlog_u64(uint64_t v);
 extern uint64_t ddlog_get_u64(const ddlog_record *rec);
 
 /*
- * Create an integer value.  Can be used to populate any ddlog field
+ * Create a signed integer value.  Can be used to populate any ddlog field
+ * of type `signed<N>`, `N<=64`
+ */
+extern ddlog_record* ddlog_i64(int64_t v);
+
+/*
+ * Retrieves the value of a signed integer.
+ *
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 64 bits.
+ */
+extern int64_t ddlog_get_i64(const ddlog_record *rec);
+
+/*
+ * Create an unsigned integer value.  Can be used to populate any ddlog field
  * of type `bit<N>`, `N<=128`
  */
 extern ddlog_record* ddlog_u128(__uint128_t v);
@@ -520,6 +559,20 @@ extern ddlog_record* ddlog_u128(__uint128_t v);
  * fit into 128 bits.
  */
 extern __uint128_t ddlog_get_u128(const ddlog_record *rec);
+
+/*
+ * Create a signed integer value.  Can be used to populate any ddlog field
+ * of type `signed<N>`, `N<=128`
+ */
+extern ddlog_record* ddlog_i128(__int128_t v);
+
+/*
+ * Retrieves the value of a signed integer.
+ *
+ * Returns `0` if `rec` is not an integer or if its value does not
+ * fit into 128 bits.
+ */
+extern __int128_t ddlog_get_i128(const ddlog_record *rec);
 
 /*
  * Create a string value.  This function copies `s` to an internal
