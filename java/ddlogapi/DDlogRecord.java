@@ -75,7 +75,12 @@ public class DDlogRecord {
     }
 
     public DDlogRecord(long v) {
-        this.handle = DDlogAPI.ddlog_u64(v);
+        this.handle = DDlogAPI.ddlog_i64(v);
+        this.shared = false;
+    }
+
+    public DDlogRecord(BigInteger v) {
+        this.handle = DDlogAPI.ddlog_int(v.toByteArray());
         this.shared = false;
     }
 
@@ -85,18 +90,6 @@ public class DDlogRecord {
     }
 
     static BigInteger mask64 = new BigInteger("FFFFFFFFFFFFFFFF", 16);
-
-    public DDlogRecord(BigInteger v) {
-        // Big integers should be used for values that are longer than a long.
-        // Currently we only support up to 128 bits in the C interface.
-        long low = v.and(mask64).longValue();
-        long high = v.shiftRight(64).and(mask64).longValue();
-        BigInteger rest = v.shiftRight(128);
-        if (!rest.equals(BigInteger.ZERO))
-            throw new RuntimeException("Only 128-bit numbers supported: " + v);
-        this.handle = DDlogAPI.ddlog_u128(high, low);
-        this.shared = false;
-    }
 
     private static void getAllFields(Class clazz, List<Field> result) {
         while (clazz != null) {
@@ -143,13 +136,13 @@ public class DDlogRecord {
         if (!type.isPrimitive())
             throw new RuntimeException("Field " + field.getName() + " of type " + type + " not supported");
         if (long.class.equals(type))
-            return new DDlogRecord((long)value);
+            return new DDlogRecord(BigInteger.valueOf((long)value));
         else if (int.class.equals(type))
-            return new DDlogRecord((long)(int)value);
+            return new DDlogRecord(BigInteger.valueOf((int)value));
         else if (short.class.equals(type))
-            return new DDlogRecord((long)(short)value);
+            return new DDlogRecord(BigInteger.valueOf((short)value));
         else if (byte.class.equals(type))
-            return new DDlogRecord((long)(byte)value);
+            return new DDlogRecord(BigInteger.valueOf((byte)value));
         else if (boolean.class.equals(type))
             return new DDlogRecord((boolean)value);
         throw new RuntimeException("Field " + field.getName() + " of type " + type + " not supported");
@@ -203,20 +196,20 @@ public class DDlogRecord {
                     String s = field.getString();
                     f.set(instance, s);
                 } else if (BigInteger.class.equals(type)) {
-                    BigInteger bi = field.getU128();
+                    BigInteger bi = field.getInt();
                     f.set(instance, bi);
                 } else if (long.class.equals(type)) {
-                    long l = field.getLong();
+                    long l = field.getInt().longValueExact();
                     f.set(instance, l);
                 } else if (int.class.equals(type)) {
-                    long l = field.getLong();
-                    f.set(instance, (int)l);
+                    int x = field.getInt().intValueExact();
+                    f.set(instance, x);
                 } else if (short.class.equals(type)) {
-                    long l = field.getLong();
-                    f.set(instance, (short)l);
+                    short s = field.getInt().shortValueExact();
+                    f.set(instance, s);
                 } else if (byte.class.equals(type)) {
-                    long l = field.getLong();
-                    f.set(instance, (byte)l);
+                    byte b = field.getInt().byteValueExact();
+                    f.set(instance, b);
                 } else if (boolean.class.equals(type)) {
                     boolean b = field.getBoolean();
                     f.set(instance, b);
@@ -278,24 +271,16 @@ public class DDlogRecord {
         return DDlogAPI.ddlog_get_bool(this.handle);
     }
 
-    public BigInteger getU128() {
+    public BigInteger getInt() {
         this.checkHandle();
         if (!DDlogAPI.ddlog_is_int(this.handle))
-            throw new RuntimeException("Value is not u128");
-        long[] data = new long[2];
-        boolean success = DDlogAPI.ddlog_get_u128(this.handle, data);
-        if (!success)
-            throw new RuntimeException("Could not get 128-bit value");
-        BigInteger lo = BigInteger.valueOf(data[0]);
-        BigInteger hi = BigInteger.valueOf(data[1]);
-        return lo.add(hi.shiftLeft(64));
-    }
-
-    public long getLong() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_int(this.handle))
-            throw new RuntimeException("Value is not long");
-        return DDlogAPI.ddlog_get_u64(this.handle);
+            throw new RuntimeException("Value is not an integer");
+        long sz = DDlogAPI.ddlog_get_int(this.handle, null);
+        byte [] buf = new byte[(int)sz];
+        sz = DDlogAPI.ddlog_get_int(this.handle, buf);
+        if (sz < 0)
+            throw new RuntimeException("Value is not an integer");
+        return new BigInteger(buf);
     }
 
     public int getTupleSize() {
@@ -394,8 +379,8 @@ public class DDlogRecord {
         }
 
         if (DDlogAPI.ddlog_is_int(this.handle)) {
-            long l = DDlogAPI.ddlog_get_u64(this.handle);
-            return Long.toString(l);
+            BigInteger i = this.getInt();
+            return i.toString(10);
         }
 
         if (DDlogAPI.ddlog_is_string(this.handle)) {

@@ -48,8 +48,8 @@ public class SpanTest {
         protected SpanBase(DDlogRecord r) {
             DDlogRecord entity = r.getStructField(0);
             DDlogRecord tn = r.getStructField(1);
-            this.entity = entity.getU128();
-            this.tn = tn.getU128();
+            this.entity = entity.getInt();
+            this.tn = tn.getInt();
         }
 
         @Override
@@ -182,7 +182,7 @@ public class SpanTest {
             if (command.table == this.ruleSpanTableId) {
                 DDlogRecord entity = record.getStructField(0);
                 DDlogRecord tn = record.getStructField(1);
-                RuleSpan span = new RuleSpan(entity.getU128(), tn.getU128());
+                RuleSpan span = new RuleSpan(entity.getInt(), tn.getInt());
                 if (command.kind == DDlogCommand.Kind.Insert)
                     this.ruleSpan.add(span);
                 else if (command.kind == DDlogCommand.Kind.DeleteVal)
@@ -192,7 +192,7 @@ public class SpanTest {
             } else if (command.table == this.containerSpanTableId) {
                 DDlogRecord entity = record.getStructField(0);
                 DDlogRecord tn = record.getStructField(1);
-                ContainerSpan span = new ContainerSpan(entity.getU128(), tn.getU128());
+                ContainerSpan span = new ContainerSpan(entity.getInt(), tn.getInt());
                 if (command.kind == DDlogCommand.Kind.Insert)
                     this.containerSpan.add(span);
                 else if (command.kind == DDlogCommand.Kind.DeleteVal)

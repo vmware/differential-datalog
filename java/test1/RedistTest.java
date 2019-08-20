@@ -56,7 +56,7 @@ public class RedistTest {
         }
 
         public Span(DDlogRecord r) {
-            super((int)r.getStructField(0).getLong());
+            super(r.getStructField(0).getInt().intValueExact());
             DDlogRecord tn = r.getStructField(1);
             int elements = tn.getSetSize();
             List<Integer> set = new ArrayList<Integer>();
