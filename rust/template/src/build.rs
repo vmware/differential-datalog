@@ -2,12 +2,20 @@ extern crate libtool;
 
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 
 fn main() {
+    let topdir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let fbufpath = format!("{}/src/flatbuf.rs", topdir);
+
+    /* Only include flatbuf files as dependencies if the project was
+     * compiled with flatbuf support.
+     */
+    if Path::new(fbufpath.as_str()).exists() {
+        println!("cargo:rerun-if-changed=src/flatbuf.rs");
+        println!("cargo:rerun-if-changed=src/flatbuf_generated.rs");
+    }
     println!("cargo:rerun-if-changed=src/api.rs");
-    println!("cargo:rerun-if-changed=src/flatbuf.rs");
-    println!("cargo:rerun-if-changed=src/flatbuf_generated.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/main.rs");
     println!("cargo:rerun-if-changed=src/ovsdb.rs");
@@ -21,8 +29,7 @@ fn main() {
      * libtool crate is available.
      *
      * See: https://github.com/kanru/libtool-rs/issues/2#issue-440212008
-     *
-     * */
+     */
     let topdir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap();
     let target_dir = format!("{}/target/{}", topdir, profile);
