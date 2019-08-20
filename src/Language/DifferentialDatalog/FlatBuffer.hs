@@ -106,8 +106,6 @@ compileFlatBufferBindings prog specname dir = do
 flatBufferValidate :: (MonadError String me) => DatalogProgram -> me ()
 flatBufferValidate d = do
     let ?d = d
-    check (not $ null progIORelations) nopos
-        $ "Program has no input or output relations; cannot generate FlatBuffers schema"
     mapM_ (\case
             t@TOpaque{..} ->
                 check (elem typeName $ [rEF_TYPE, mAP_TYPE, iNTERNED_TYPE] ++ sET_TYPES) (pos t) $
@@ -124,7 +122,7 @@ compileFlatBufferSchema d prog_name =
     let rels = progIORelations
         -- Schema for all program types visible from outside
         types = map typeFlatbufSchema progTypesToSerialize
-        default_relid = pp $ relIdentifier ?d $ head rels
+        default_relid = if null rels then "0" else (pp $ relIdentifier ?d $ head rels)
     in
     "namespace" <+> jFBPackage <> ";"                                           $$
     "table __BigUint { bytes: [uint8]; }"                                       $$
