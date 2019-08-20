@@ -132,7 +132,7 @@ pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(from: &A, t
 
 // Vector
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct std_Vec<T> {
     pub x: Vec<T>
 }
@@ -210,6 +210,21 @@ impl<T: Display> Display for std_Vec<T> {
         formatter.write_str("[")?;
         for (i, v) in self.x.iter().enumerate() {
             formatter.write_fmt(format_args!("{}", *v))?;
+            if i < len-1 {
+                formatter.write_str(",")?;
+            }
+        }
+        formatter.write_str("]")?;
+        Ok(())
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for std_Vec<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let len = self.x.len();
+        formatter.write_str("[")?;
+        for (i, v) in self.x.iter().enumerate() {
+            formatter.write_fmt(format_args!("{:?}", *v))?;
             if i < len-1 {
                 formatter.write_str(",")?;
             }
@@ -309,7 +324,7 @@ pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
 
 // Set
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct std_Set<T: Ord> {
     pub x: BTreeSet<T>
 }
@@ -394,6 +409,21 @@ impl<T: Display + Ord> Display for std_Set<T> {
         formatter.write_str("[")?;
         for (i, v) in self.x.iter().enumerate() {
             formatter.write_fmt(format_args!("{}", *v))?;
+            if i < len-1 {
+                formatter.write_str(",")?;
+            }
+        }
+        formatter.write_str("]")?;
+        Ok(())
+    }
+}
+
+impl<T: fmt::Debug + Ord> fmt::Debug for std_Set<T> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let len = self.x.len();
+        formatter.write_str("[")?;
+        for (i, v) in self.x.iter().enumerate() {
+            formatter.write_fmt(format_args!("{:?}", *v))?;
             if i < len-1 {
                 formatter.write_str(",")?;
             }
@@ -503,7 +533,7 @@ pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> 
 
 // Map
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct std_Map<K: Ord,V> {
     pub x: BTreeMap<K,V>
 }
@@ -588,6 +618,21 @@ impl<K: Display+Ord, V: Display> Display for std_Map<K,V> {
         formatter.write_str("[")?;
         for (i, (k,v)) in self.x.iter().enumerate() {
             formatter.write_fmt(format_args!("({},{})", *k, *v))?;
+            if i < len-1 {
+                formatter.write_str(",")?;
+            }
+        }
+        formatter.write_str("]")?;
+        Ok(())
+    }
+}
+
+impl<K: fmt::Debug+Ord, V: fmt::Debug> fmt::Debug for std_Map<K,V> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        let len = self.x.len();
+        formatter.write_str("[")?;
+        for (i, (k,v)) in self.x.iter().enumerate() {
+            formatter.write_fmt(format_args!("({:?},{:?})", *k, *v))?;
             if i < len-1 {
                 formatter.write_str(",")?;
             }
