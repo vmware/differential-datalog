@@ -96,7 +96,7 @@ before_deploy:
     - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
     # Set relative path to vendor directory in `.cargo/config`
     - cargo vendor -s Cargo.full.toml > config.tmp
-    - head -n -1 config.tmp > config
+    - if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
     - echo "directory = \"vendor\"" >> config
     - cp -r vendor "../../$DIST_DIR/"
     - mkdir "../../$DIST_DIR/.cargo" 
