@@ -20,7 +20,7 @@ if [ x$CLASSPATH == "x" ]; then
     exit 1;
 fi
 
-PROG=flatbuf_test
+PROG=flatbufTest
 
 # Build the Java library with the DDlog API.
 make -C ..

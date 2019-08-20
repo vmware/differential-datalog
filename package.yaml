@@ -37,6 +37,7 @@ dependencies:
 - text
 - githash
 - process
+- casing
 
 library:
   source-dirs: src

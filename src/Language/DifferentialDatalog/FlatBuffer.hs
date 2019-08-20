@@ -49,6 +49,7 @@ import Prelude hiding((<>))
 import System.FilePath
 import System.Process
 import GHC.IO.Exception
+import qualified Text.Casing as Casing
 --import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 
@@ -152,10 +153,12 @@ compileFlatBufferSchema d prog_name =
 compileFlatBufferRustBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath ->  IO ()
 compileFlatBufferRustBindings d prog_name dir = do
     let ?d = d
+    let ?prog_name = prog_name
     let rust_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "src/flatbuf.rs") $ render $
-        (pp rust_template)                                      $$
-        rustValueFromFlatbuf                                    $$
+        (pp rust_template)                                              $$
+        "use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
+        rustValueFromFlatbuf                                            $$
         (vcat $ map rustTypeFromFlatbuf progTypesToSerialize)
 
 -- | Generate Java convenience API that provides a type-safe way to serialize/deserialize
@@ -173,6 +176,9 @@ compileFlatBufferJavaBindings d prog_name =
 
 jFBPackage :: (?prog_name :: String) => Doc
 jFBPackage = "ddlog.__" <> pp ?prog_name
+
+rustFBModule :: (?prog_name :: String) => Doc
+rustFBModule = "__" <> (pp $ Casing.quietSnake ?prog_name)
 
 -- True if 'a' is of a type that is declared as a table and therefore does not
 -- need to be wrapped in another table in order to be used inside a vector or

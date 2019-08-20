@@ -4,7 +4,6 @@ use super::*;
 use valmap::DeltaMap;
 use differential_datalog::program::{Response, Update, RelId};
 use flatbuffers as fbrt;
-use flatbuf_generated::ddlog::__datalog_example as fb;
 
 use std::iter;
 
