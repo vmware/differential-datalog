@@ -1,0 +1,8 @@
+// Simple test for distributed DDlog. See ../roundtrip.dl
+input relation In[bool]
+output relation ToB[bool]
+input relation FromB[bool]
+output relation Out[bool]
+
+ToB[b] :- In[b].
+Out[b] :- FromB[b].

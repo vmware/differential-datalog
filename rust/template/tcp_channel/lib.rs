@@ -39,12 +39,20 @@ impl <T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
             if let Some(ref mut observer) = *observer {
                 let (stream, _) = listener.accept().unwrap();
                 let reader = BufReader::new(stream);
-                let upds = reader.lines().map(|line| {
-                    let v: T = from_str(&line.unwrap()).unwrap();
-                    v
-                });
+                // TODO put reading in a loop
+                let upds = reader.lines()
+                    .map(|line| line.unwrap())
+                    .take_while(|line| line != "commit")
+                    .map(|line| {
+                        println!("asdfkjh");
+                        let v: T = from_str(&line).unwrap();
+                        v
+                    });
+                println!("got stuff");
                 observer.on_start()?;
+                println!("before u");
                 observer.on_updates(Box::new(upds))?;
+                println!("after u");
                 observer.on_commit()?;
             }
             Ok(())
@@ -105,6 +113,7 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
             self.stream = Some(
                 TcpStream::connect(self.addr).unwrap()
             );
+            println!("connected yo");
         } else {
             panic!("Attempting to start another transaction \
                     while one is already in progress");
@@ -139,6 +148,8 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
     // Flush the TCP stream
     fn on_commit(&mut self) -> Result<(), String> {
         if let Some(ref mut stream) = self.stream {
+            stream.write_all(b"commit\n")
+                .map_err(|e| format!("{:?}", e))?;
             stream.flush()
                 .map_err(|e| format!("{:?}", e))?;
         }

@@ -102,7 +102,9 @@ pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
 impl Observer<Update<super::Value>, String> for ADDlogServer {
     fn on_start(&mut self) -> Response<()> {
         let s = self.0.clone();
+        println!("trying to lock");
         let mut s = s.lock().unwrap();
+        println!("locked");
         s.on_start()
     }
 
