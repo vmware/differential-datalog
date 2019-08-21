@@ -6,26 +6,20 @@ echo "This script should be invoked with '. ./install-dependencies.sh' to set up
 
 case "$OSTYPE" in
     linux*) ;;
+    osx*) ;;
     *) echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
 
 
 echo "Installing Haskell"
-curl -sSL https://get.haskellstack.org/ | sh
+./tools/install-stack.sh
 
 echo "Installing Rust"
 curl https://sh.rustup.rs -sSf | sh -s - -y
 export PATH=$HOME/.cargo/bin:$PATH
 
-echo "Installing Flatbuf"
-if [ ! -d flatbuffers-1.11.0 ]; then
-    wget https://github.com/google/flatbuffers/archive/v1.11.0.tar.gz
-    tar xvfz v1.11.0.tar.gz
-    rm -rf v1.11.0.tar.gz
-fi
-pushd flatbuffers-1.11.0
-cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-make -j3
+./tools/install-flatbuf.sh
+pushd flatbuffers
 export CLASSPATH=`pwd`"/java":$CLASSPATH
 export PATH=`pwd`:$PATH
 popd
