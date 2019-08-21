@@ -19,7 +19,7 @@ curl https://sh.rustup.rs -sSf | sh -s - -y
 export PATH=$HOME/.cargo/bin:$PATH
 
 ./tools/install-flatbuf.sh
-pushd flatbuffers
+cd flatbuffers
 export CLASSPATH=`pwd`"/java":$CLASSPATH
 export PATH=`pwd`:$PATH
-popd
+cd ..
