@@ -274,12 +274,12 @@ public class DDlogRecord {
     public BigInteger getInt() {
         this.checkHandle();
         if (!DDlogAPI.ddlog_is_int(this.handle))
-            throw new RuntimeException("Value is not an integer");
+            throw new RuntimeException("Value is not an integer type (bigint, bit<>, or signed<>)");
         long sz = DDlogAPI.ddlog_get_int(this.handle, null);
         byte [] buf = new byte[(int)sz];
         sz = DDlogAPI.ddlog_get_int(this.handle, buf);
         if (sz < 0)
-            throw new RuntimeException("Value is not an integer");
+            throw new RuntimeException("Unexpected error in DDlogAPI.ddlog_get_int()");
         return new BigInteger(buf);
     }
 
