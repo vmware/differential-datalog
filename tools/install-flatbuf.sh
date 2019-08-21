@@ -13,8 +13,6 @@ fetch_flatbuf() {
     curl -L https://github.com/google/flatbuffers/archive/v1.11.0.tar.gz | tar -zx -C flatbuffers --strip-components 1
 }
 
-cd $HOME
-
 if [ "x`flatbuffers/flatc --version`" != "xflatc version 1.11.0" ]; then
     echo "Installing Flatbuf"
     retry fetch_flatbuf

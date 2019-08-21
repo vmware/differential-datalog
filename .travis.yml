@@ -24,7 +24,7 @@ cache:
         - $HOME/.cabal
         - $HOME/.stack
         - $HOME/.cargo
-        - $HOME/flatbuffers
+        - ./flatbuffers
         - .stack-work
 
 env:
@@ -61,7 +61,7 @@ before_install:
 - export PATH=$HOME/.local/bin:$PATH
 - ./tools/install-stack.sh
 - ./tools/install-flatbuf.sh
-- export CLASSPATH=$CLASSPATH:$HOME/flatbuffers/java
+- export CLASSPATH=$CLASSPATH:./flatbuffers/java
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
 - if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
