@@ -22,14 +22,12 @@ fn main() -> Result<(), String> {
     // Stream Up table from left server
     let mut tables = HashSet::new();
     tables.insert(lr_left_Up as usize);
-    let outlet = s1.add_stream(tables);
+    let mut stream = s1.add_stream(tables);
 
     // Right server subscribes to the stream
     let s2 = Arc::new(Mutex::new(s2));
     let sub = {
         let s2_a = server::ADDlogServer(s2.clone());
-        let stream = outlet.clone();
-        let mut stream = stream.lock().unwrap();
         stream.subscribe(Box::new(s2_a))
     };
 
@@ -57,7 +55,7 @@ fn main() -> Result<(), String> {
     s1.on_completed()?;
 
     // Shutdown and clean up resources
-    s1.remove_stream(outlet);
+    s1.remove_stream(stream);
     s1.shutdown()?;
     s2.lock().unwrap().shutdown()?;
     Ok(())
