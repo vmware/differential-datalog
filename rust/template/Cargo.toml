@@ -32,7 +32,8 @@ path = "./ovsdb"
 [dependencies]
 abomonation = "0.7"
 cpuprofiler = "0.0.3"
-differential-dataflow = "0.9"
+#differential-dataflow = "0.9"
+differential-dataflow = { git = "https://github.com/TimelyDataflow/differential-dataflow" }
 fnv="1.0.2"
 lazy_static = "1.3"
 libc = "0.2"
@@ -40,7 +41,8 @@ num-traits = "0.2"
 rustop = "1.0.2"
 serde = {version = "1.0", features = ["derive"]}
 time = "0.1"
-timely = "0.9"
+#timely = "0.9"
+timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
 twox-hash = "1.1"
 
 # FlatBuffers dependency enabled by the `flatbuf` feature.
