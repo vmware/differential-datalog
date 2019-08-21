@@ -13,14 +13,16 @@ rand="0.3.13"
 serde_derive = "1.0"
 
 [dependencies]
+#differential-dataflow = "0.9"
+differential-dataflow = { git = "https://github.com/TimelyDataflow/differential-dataflow" }
 abomonation = "0.7"
-differential-dataflow = "0.9"
+#timely = "0.9"
+timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
 fnv="1.0.2"
 libc = "0.2"
 num = { version = "0.2", features = ["serde"] }
 sequence_trie = "0.3"
 serde = { version = "1.0", features = ["derive"] }
-timely = "0.9"
 
 [features]
 default = []

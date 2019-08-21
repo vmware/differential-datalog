@@ -28,8 +28,10 @@ path = "./ovsdb"
 path = "./observe"
 
 [dependencies]
-differential-dataflow = "0.9"
-timely = "0.9"
+#differential-dataflow = "0.9"
+differential-dataflow = { git = "https://github.com/TimelyDataflow/differential-dataflow" }
+#timely = "0.9"
+timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
 abomonation= "0.7"
 serde = { version = "1.0", features = ["derive"] }
 fnv="1.0.2"

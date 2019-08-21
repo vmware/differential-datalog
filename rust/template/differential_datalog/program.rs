@@ -36,6 +36,7 @@ use serde::ser::*;
 
 use differential_dataflow::difference::Diff;
 use differential_dataflow::difference::Monoid;
+use differential_dataflow::difference::Semigroup;
 use differential_dataflow::hashable::Hashable;
 use differential_dataflow::input::{Input, InputSession};
 use differential_dataflow::lattice::Lattice;
@@ -45,7 +46,7 @@ use differential_dataflow::operators::*;
 use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKeyTrace;
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
-use differential_dataflow::trace::TraceReader;
+use differential_dataflow::trace::{Cursor,TraceReader,BatchReader};
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
@@ -65,25 +66,11 @@ use profile::*;
 use record::Mutator;
 use variable::*;
 
-type TValAgent<S, V> = TraceAgent<
-    V,
-    V,
-    <S as ScopeParent>::Timestamp,
-    Weight,
-    DefaultValTrace<V, V, <S as ScopeParent>::Timestamp, Weight>,
->;
-type TKeyAgent<S, V> = TraceAgent<
-    V,
-    (),
-    <S as ScopeParent>::Timestamp,
-    Weight,
-    DefaultKeyTrace<V, <S as ScopeParent>::Timestamp, Weight>,
->;
+type TValAgent<S,V> = TraceAgent<DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight>>;
+type TKeyAgent<S,V> = TraceAgent<DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight>>;
 
-type TValEnter<'a, P, T, V> =
-    TraceEnter<V, V, <P as ScopeParent>::Timestamp, Weight, TValAgent<P, V>, T>;
-type TKeyEnter<'a, P, T, V> =
-    TraceEnter<V, (), <P as ScopeParent>::Timestamp, Weight, TKeyAgent<P, V>, T>;
+type TValEnter<'a,P,T,V> = TraceEnter<TValAgent<P,V>,T>;
+type TKeyEnter<'a,P,T,V> = TraceEnter<TKeyAgent<P,V>,T>;
 
 /* 16-bit timestamp.
  * TODO: get rid of this and use `u16` directly when/if differential implements
@@ -708,16 +695,20 @@ impl<V: Val> Arrangement<V> {
     }
 }
 
-enum ArrangedCollection<S, V, T1, T2>
+enum ArrangedCollection<S,V,T1,T2>
 where
-    S: Scope,
-    V: Val,
-    S::Timestamp: Lattice + Ord,
-    T1: TraceReader<V, V, S::Timestamp, Weight> + Clone,
-    T2: TraceReader<V, (), S::Timestamp, Weight> + Clone,
+    S:Scope,
+    V:Val,
+    S::Timestamp: Lattice+Ord,
+    T1: TraceReader<Key=V, Val=V, Time=S::Timestamp, R=Weight> + Clone,
+    T1::Batch: BatchReader<V, V, S::Timestamp, Weight>,
+    T1::Cursor: Cursor<V, V, S::Timestamp, Weight>,
+    T2: TraceReader<Key=V, Val=(), Time=S::Timestamp, R=Weight> + Clone,
+    T2::Batch: BatchReader<V, (), S::Timestamp, Weight>,
+    T2::Cursor: Cursor<V, (), S::Timestamp, Weight>,
 {
-    Map(Arranged<S, V, V, Weight, T1>),
-    Set(Arranged<S, V, (), Weight, T2>),
+    Map ( Arranged<S,T1> ),
+    Set ( Arranged<S,T2> ),
 }
 
 impl<S, V> ArrangedCollection<S, V, TValAgent<S, V>, TKeyAgent<S, V>>
@@ -1585,16 +1576,16 @@ impl<V: Val> Program<V> {
         }
     }
 
-    fn xform_arrangement<'a, 'b, P, T, TR>(
-        arr: &Arranged<Child<'a, P, T>, V, V, Weight, TR>,
-        xform: &XFormArrangement<V>,
-        arrangements: &Arrangements<'a, 'b, V, P, T>,
-    ) -> Collection<Child<'a, P, T>, V, Weight>
+    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,TR>,
+                                       xform       : &XFormArrangement<V>,
+                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
     where
         P: ScopeParent,
-        P::Timestamp: Lattice,
-        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        TR: TraceReader<V, V, T, Weight> + Clone + 'static,
+        P::Timestamp : Lattice,
+        T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
+        TR: TraceReader<Key=V, Val=V, Time=T, R=Weight> + Clone + 'static,
+        TR::Batch: BatchReader<V, V, T, Weight>,
+        TR::Cursor: Cursor<V, V, T, Weight>
     {
         match xform {
             XFormArrangement::FlatMap {
@@ -2244,17 +2235,20 @@ impl<V: Val> Drop for RunningProgram<V> {
     }
 }
 
+
 // Versions of semijoin and antijoin operators that take arrangement instead of collection.
-fn semijoin_arranged<G, K, V, R1, R2, T1, T2>(
-    arranged: &Arranged<G, K, V, R1, T1>,
-    other: &Arranged<G, K, (), R2, T2>,
-) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
+fn semijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
+                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
 where
-    G: Scope,
-    G::Timestamp: Lattice + Ord,
-    T1: TraceReader<K, V, G::Timestamp, R1> + Clone + 'static,
-    T2: TraceReader<K, (), G::Timestamp, R2> + Clone + 'static,
-    K: Data + Hashable,
+    G:Scope,
+    G::Timestamp: Lattice+Ord,
+    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
+    K: Data+Hashable,
     V: Data,
     R2: Diff,
     R1: Diff + Mul<R2>,
@@ -2263,16 +2257,18 @@ where
     arranged.join_core(other, |k, v, _| Some((k.clone(), v.clone())))
 }
 
-fn antijoin_arranged<G, K, V, R1, R2, T1, T2>(
-    arranged: &Arranged<G, K, V, R1, T1>,
-    other: &Arranged<G, K, (), R2, T2>,
-) -> Collection<G, (K, V), R1>
+fn antijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
+                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), R1>
 where
     G: Scope,
-    G::Timestamp: Lattice + Ord,
-    T1: TraceReader<K, V, G::Timestamp, R1> + Clone + 'static,
-    T2: TraceReader<K, (), G::Timestamp, R2> + Clone + 'static,
-    K: Data + Hashable,
+    G::Timestamp: Lattice+Ord,
+    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
+    K: Data+Hashable,
     V: Data,
     R2: Diff,
     R1: Diff + Mul<R2, Output = R1>,
