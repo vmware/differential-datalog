@@ -24,13 +24,31 @@ impl Subscription for UpdatesSubscription {
     }
 }
 
+pub struct UpdatesObservable {
+    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
+}
+
+impl Observable<Update<super::Value>, String> for UpdatesObservable
+{
+    // An observer subscribes to the delta stream from an outlet
+    fn subscribe(&mut self,
+                 observer: Box<dyn Observer<Update<super::Value>, String> + Send>)
+                     -> Box<dyn Subscription>
+    {
+        *self.observer.lock().unwrap() = Some(observer);
+        Box::new(UpdatesSubscription{
+            observer: self.observer.clone()
+        })
+    }
+}
+
 // A DDlog server wraps a DDlog progam, and writes deltas to
 // the outlets. The redirect map redirects input deltas to
 // local tables
 pub struct DDlogServer
 {
     prog: Option<HDDlog>,
-    outlets: Vec<Arc<Mutex<Outlet>>>,
+    outlets: Vec<Outlet>,
     redirect: HashMap<RelId, RelId>
 }
 
@@ -42,18 +60,19 @@ impl DDlogServer
     }
 
     // Add a new outlet that streams a subset of the tables
-    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> Arc<Mutex<Outlet>> {
-        let outlet = Arc::new(Mutex::new(Outlet{
+    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> UpdatesObservable {
+        let observer = Arc::new(Mutex::new(None));
+        let outlet = Outlet{
             tables : tables,
-            observer : Arc::new(Mutex::new(None))
-        }));
-        self.outlets.push(outlet.clone());
-        outlet.clone()
+            observer : observer.clone()
+        };
+        self.outlets.push(outlet);
+        UpdatesObservable{ observer }
     }
 
     // Remove an outlet
-    pub fn remove_stream(&mut self, outlet: Arc<Mutex<Outlet>>) {
-        self.outlets.retain(|o| !Arc::ptr_eq(&o, &outlet));
+    pub fn remove_stream(&mut self, stream: UpdatesObservable) {
+        self.outlets.retain(|o| !Arc::ptr_eq(&o.observer, &stream.observer));
     }
 
     // Shutdown the DDlog program and notify listeners of completion
@@ -62,9 +81,7 @@ impl DDlogServer
             prog.stop()?;
         }
         for outlet in &self.outlets {
-            let outlet = outlet.lock().unwrap();
-            let observer = outlet.observer.clone();
-            let mut observer = observer.lock().unwrap();
+            let mut observer = outlet.observer.lock().unwrap();
             if let Some(ref mut observer) = *observer {
                 observer.on_completed()?;
             }
@@ -80,62 +97,35 @@ pub struct Outlet
     observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>
 }
 
-impl Observable<Update<super::Value>, String> for Outlet
-{
-    // An observer subscribes to the delta stream from an outlet
-    fn subscribe(&mut self,
-                     observer: Box<dyn Observer<Update<super::Value>, String> + Send>)
-                     -> Box<dyn Subscription>
-    {
-        let obs = self.observer.clone();
-        let mut obs = obs.lock().unwrap();
-        *obs = Some(observer);
-        Box::new(UpdatesSubscription{
-            observer: self.observer.clone()
-        })
-    }
-}
-
 // Newtype to for interior mutability of the observer
 pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
 
 impl Observer<Update<super::Value>, String> for ADDlogServer {
     fn on_start(&mut self) -> Response<()> {
-        let s = self.0.clone();
         println!("trying to lock");
-        let mut s = s.lock().unwrap();
+        let mut s = self.0.lock().unwrap();
         println!("locked");
         s.on_start()
     }
 
     fn on_commit(&mut self) -> Response<()> {
-        let s = self.0.clone();
-        let mut s = s.lock().unwrap();
-        s.on_commit()
+        self.0.lock().unwrap().on_commit()
     }
 
     fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
-        let s = self.0.clone();
-        let mut s = s.lock().unwrap();
-        s.on_next(upd)
+        self.0.lock().unwrap().on_next(upd)
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>) -> Response<()> {
-        let s = self.0.clone();
-        let mut s = s.lock().unwrap();
-        s.on_updates(updates)
+        self.0.lock().unwrap().on_updates(updates)
     }
 
     fn on_error(&self, error: String) {
-        let s = self.0.clone();
-        let s = s.lock().unwrap();
-        s.on_error(error)
+        self.0.lock().unwrap().on_error(error)
     }
 
     fn on_completed(&mut self) -> Response<()> {
-        let s = self.0.clone();
-        let mut s = s.lock().unwrap();
-        s.on_completed()
+        self.0.lock().unwrap().on_completed()
     }
 }
 
@@ -159,10 +149,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                 println!{"Got {:?}", change};
             }
             for outlet in &self.outlets {
-                let outlet = outlet.clone();
-                let outlet = outlet.lock().unwrap();
-                let observer = outlet.observer.clone();
-                let mut observer = observer.lock().unwrap();
+                let mut observer = outlet.observer.lock().unwrap();
                 if let Some(ref mut observer) = *observer {
                     let upds = outlet.tables.iter().flat_map(|table| {
                         changes.as_ref().get(table).map(|t| {
