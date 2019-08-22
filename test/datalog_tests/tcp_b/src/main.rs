@@ -1,7 +1,7 @@
 use differential_datalog::program::{RelId, Update, Response};
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
 use observe::{Observer, Observable, Subscription};
-use tcp_channel::{TcpReceiver, TcpSender};
+use tcp_channel::{TcpReceiver, ATcpSender, TcpSender};
 
 use roundtrip_ddlog::*;
 use roundtrip_ddlog::api::*;
@@ -17,10 +17,19 @@ fn main() -> Result<(), String> {
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut receiver = TcpReceiver::new(addr);
 
+    let rec_con = receiver.connect();
+
     // Write to this port
     let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let sender = TcpSender::new(addr);
+    let mut sender = TcpSender::new(addr);
+
+    sender.connect();
+
+    let sender = Arc::new(Mutex::new(sender));
+    let a_sender = ATcpSender(sender.clone());
+
+    rec_con.join();
 
     // Construct up server, redirect input table
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
@@ -31,14 +40,12 @@ fn main() -> Result<(), String> {
     // Stream right table from up server
     let mut table = HashSet::new();
     table.insert(rt_b_Out as usize);
-    let outlet = s.add_stream(table);
+    let mut outlet = s.add_stream(table);
 
     // Downstream TCP channel subscribes to the server
     let _sub2 = {
-        let stream = outlet.clone();
-        let mut stream = stream.lock().unwrap();
-        let adapter = AdapterL{observer: Box::new(sender)};
-        stream.subscribe(Box::new(adapter))
+        let adapter = AdapterL{observer: Box::new(a_sender)};
+        outlet.subscribe(Box::new(adapter))
     };
 
     // Server subscribes to the upstream TCP channel
@@ -51,7 +58,10 @@ fn main() -> Result<(), String> {
 
     // Listen for updates on the upstream channel
     let handle = receiver.listen();
+
     handle.join();
+
+    //sender.lock().unwrap().disconnect();
 
     // Shutdown server
     s.lock().unwrap().shutdown()?;
@@ -100,7 +110,6 @@ impl Observer<(usize, Value, bool), String> for AdapterR {
         self.observer.on_next(item)
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = (usize, Value, bool)> + 'a>) -> Result<(), String> {
-        println!("coming through!");
         self.observer.on_updates(Box::new(updates.map(|(relid, v, b)| {
             if b {
                 Update::Insert{relid, v}
@@ -144,7 +153,6 @@ impl Observer<Update<Value>, String> for AdapterL {
         })
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Result<(), String> {
-        println!("coming through!");
         self.observer.on_updates(Box::new( updates.map(|upd| match upd {
             Update::Insert{relid, v} => (relid, v, true),
             Update::DeleteValue{relid, v} => (relid, v, false),

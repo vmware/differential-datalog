@@ -102,9 +102,7 @@ pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
 
 impl Observer<Update<super::Value>, String> for ADDlogServer {
     fn on_start(&mut self) -> Response<()> {
-        println!("trying to lock");
         let mut s = self.0.lock().unwrap();
-        println!("locked");
         s.on_start()
     }
 
@@ -134,7 +132,15 @@ impl Observer<Update<super::Value>, String> for DDlogServer
     // Start a transaction when deltas start coming in
     fn on_start(&mut self) -> Response<()> {
         if let Some(ref mut prog) = self.prog {
-            prog.transaction_start()
+            prog.transaction_start()?;
+
+            for outlet in &self.outlets {
+                let mut observer = outlet.observer.lock().unwrap();
+                if let Some(ref mut observer) = *observer {
+                    observer.on_start()?;
+                }
+            };
+            Ok(())
         } else {
             Ok(())
         }
@@ -164,7 +170,6 @@ impl Observer<Update<super::Value>, String> for DDlogServer
                         })
                     }).flatten();
 
-                    observer.on_start()?;
                     observer.on_updates(Box::new(upds))?;
                     observer.on_commit()?;
                 }

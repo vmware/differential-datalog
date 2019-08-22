@@ -90,18 +90,12 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-input relation lr.down.Left [bool]
-output relation lr.down.Right [bool]
-output relation lr.left.Down [bool]
-input relation lr.left.Left [bool]
-output relation lr.left.Up [bool]
-input relation lr.right.Down [bool]
-output relation lr.right.Right [bool]
-input relation lr.right.Up [bool]
-input relation lr.up.Left [bool]
-output relation lr.up.Right [bool]
-lr.left.Up[b] :- lr.left.Left[b].
-lr.left.Down[b] :- lr.left.Left[b].
-lr.right.Right[b] :- lr.right.Up[b], lr.right.Down[b].
-lr.up.Right[b] :- lr.up.Left[b].
-lr.down.Right[b] :- lr.down.Left[b].
+input relation rt.a.FromB [bool]
+input relation rt.a.In [bool]
+output relation rt.a.Out [bool]
+output relation rt.a.ToB [bool]
+input relation rt.b.In [bool]
+output relation rt.b.Out [bool]
+rt.a.ToB[b] :- rt.a.In[b].
+rt.a.Out[b] :- rt.a.FromB[b].
+rt.b.Out[b] :- rt.b.In[b].

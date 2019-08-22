@@ -1,7 +1,7 @@
 use differential_datalog::program::Update;
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
 use observe::{Observer, Observable, Subscription};
-use tcp_channel::{TcpSender, TcpReceiver};
+use tcp_channel::{TcpSender, ATcpSender, TcpReceiver};
 
 use roundtrip_ddlog::*;
 use roundtrip_ddlog::api::*;
@@ -19,20 +19,29 @@ fn main() -> Result<(), String> {
     redirect.insert(rt_b_Out as usize, rt_a_FromB as usize);
     let mut s = server::DDlogServer::new(prog, redirect);
 
-    // Sending TCP channel
-    let addr_s = "127.0.0.1:8001";
-    let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let sender = TcpSender::new(addr);
-
     // Receiving TCP channel
     let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut receiver = TcpReceiver::new(addr);
 
+    let rec_con = receiver.connect();
+
+    // Sending TCP channel
+    let addr_s = "127.0.0.1:8001";
+    let addr = addr_s.parse::<SocketAddr>().unwrap();
+    let mut sender = TcpSender::new(addr);
+
+    sender.connect();
+
+    let sender = Arc::new(Mutex::new(sender));
+    let a_sender = ATcpSender(sender.clone());
+
+    rec_con.join();
+
     // Stream table from left server
     let mut tup = HashSet::new();
     tup.insert(rt_a_ToB as usize);
-    let outlet = s.add_stream(tup);
+    let mut outlet = s.add_stream(tup);
 
     // Server subscribes to the upstream TCP channel
     let s = Arc::new(Mutex::new(s));
@@ -43,17 +52,19 @@ fn main() -> Result<(), String> {
     };
 
     // Downstream TCP channel subscribes to the stream
-    let _sub2 = {
-        let stream = outlet.clone();
-        let mut stream = stream.lock().unwrap();
-        let adapter = AdapterL{observer: Box::new(sender)};
-        stream.subscribe(Box::new(adapter))
+    let sub2 = {
+        //let stream = outlet.clone();
+        //let mut stream = outlet.stream.lock().unwrap();
+        let adapter = AdapterL{observer: Box::new(a_sender)};
+        outlet.subscribe(Box::new(adapter))
     };
 
     // Insert `true` to Left in left server
     let rec = Record::Bool(true);
     let table_id = RelIdentifier::RelId(rt_a_In as usize);
     let updates = &[UpdCmd::Insert(table_id, rec)];
+
+    let handle = receiver.listen();
 
     // Execute and transmit the update
     {
@@ -63,12 +74,13 @@ fn main() -> Result<(), String> {
         s.on_start()?;
         s.on_updates(Box::new(updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap())))?;
         s.on_commit()?;
-        s.on_completed()?;
+        //s.on_completed()?;
     }
 
-    let handle = receiver.listen();
-
+    //sender.lock().unwrap().disconnect();
     handle.join();
+
+    //receiver.disconnect();
 
     let mut s = s.lock().unwrap();
     s.shutdown()
@@ -100,13 +112,10 @@ impl Observable<Update<Value>, String>  for AdapterR {
 
 impl Observer<(usize, Value, bool), String> for AdapterR {
     fn on_start(&mut self) -> Result<(), String> {
-        println!("Rstart");
         self.observer.on_start()?;
-        println!("Rstart done");
         Ok(())
     }
     fn on_commit(&mut self) -> Result<(), String> {
-        println!("Rcommit");
         self.observer.on_commit()
     }
     fn on_next(&mut self, item: (usize, Value, bool)) -> Result<(), String> {
@@ -119,7 +128,6 @@ impl Observer<(usize, Value, bool), String> for AdapterR {
         self.observer.on_next(item)
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = (usize, Value, bool)> + 'a>) -> Result<(), String> {
-        println!("coming through!");
         self.observer.on_updates(Box::new(updates.map(|(relid, v, b)| {
             if b {
                 Update::Insert{relid, v}
@@ -163,7 +171,6 @@ impl Observer<Update<Value>, String> for AdapterL {
         })
     }
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = Update<Value>> + 'a>) -> Result<(), String> {
-        println!("coming through!");
         self.observer.on_updates(Box::new( updates.map(|upd| match upd {
             Update::Insert{relid, v} => (relid, v, true),
             Update::DeleteValue{relid, v} => (relid, v, false),

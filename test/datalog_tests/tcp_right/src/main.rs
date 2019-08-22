@@ -16,10 +16,12 @@ fn main() -> Result<(), String> {
     let addr_s = "127.0.0.1:8010";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut r1 = TcpReceiver::new(addr);
+    r1.connect().join();
 
     let addr_s = "127.0.0.1:8020";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut r2 = TcpReceiver::new(addr);
+    r2.connect().join();
 
     // Construct right server, redirect tables
     let prog2 = HDDlog::run(1, false, |_,_:&Record, _| {});

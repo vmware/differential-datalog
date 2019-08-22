@@ -21,37 +21,35 @@ fn main() -> Result<(), String> {
     // First TCP channel
     let addr_s = "127.0.0.1:8001";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let chan1 = TcpSender::new(addr);
+    let mut chan1 = TcpSender::new(addr);
+    chan1.connect();
     let adapter1 = Adapter{observer: Box::new(chan1)};
 
     // Second TCP channel
     let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let chan2 = TcpSender::new(addr);
+    let mut chan2 = TcpSender::new(addr);
+    chan2.connect();
     let adapter2 = Adapter{observer: Box::new(chan2)};
 
     // Stream Up table from left server
     let mut tup = HashSet::new();
     tup.insert(lr_left_Up as usize);
-    let outlet_up = s1.add_stream(tup);
+    let mut outlet_up = s1.add_stream(tup);
 
     // First TcpSender subscribes to the stream
     let _sub1 = {
-        let stream = outlet_up.clone();
-        let mut stream = stream.lock().unwrap();
-        stream.subscribe(Box::new(adapter1))
+        outlet_up.subscribe(Box::new(adapter1))
     };
 
     // Stream Down table from left server
     let mut tdown = HashSet::new();
     tdown.insert(lr_left_Down as usize);
-    let outlet_down = s1.add_stream(tdown);
+    let mut outlet_down = s1.add_stream(tdown);
 
     // Second TcpSender subscribes to the stream
     let _sub2 = {
-        let stream = outlet_down.clone();
-        let mut stream = stream.lock().unwrap();
-        stream.subscribe(Box::new(adapter2))
+        outlet_down.subscribe(Box::new(adapter2))
     };
 
     // Insert `true` to Left in left server

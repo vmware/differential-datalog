@@ -16,11 +16,13 @@ fn main() -> Result<(), String> {
     let addr_s = "127.0.0.1:8002";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
     let mut receiver = TcpReceiver::new(addr);
+    receiver.connect().join();
 
     // Write to this port
     let addr_s = "127.0.0.1:8020";
     let addr = addr_s.parse::<SocketAddr>().unwrap();
-    let sender = TcpSender::new(addr);
+    let mut sender = TcpSender::new(addr);
+    sender.connect();
 
     // Construct down server, redirect table
     let prog = HDDlog::run(1, false, |_,_:&Record, _| {});
@@ -31,7 +33,7 @@ fn main() -> Result<(), String> {
     // Stream right table from down server
     let mut table = HashSet::new();
     table.insert(lr_down_Right as usize);
-    let outlet = s.add_stream(table);
+    let mut outlet = s.add_stream(table);
 
     // Server subscribes to the upstream TCP channel
     let s = Arc::new(Mutex::new(s));
@@ -43,10 +45,8 @@ fn main() -> Result<(), String> {
 
     // Downstream TCP channel subscribes to the server
     let _sub2 = {
-        let stream = outlet.clone();
-        let mut stream = stream.lock().unwrap();
         let adapter = AdapterL{observer: Box::new(sender)};
-        stream.subscribe(Box::new(adapter))
+        outlet.subscribe(Box::new(adapter))
     };
 
     // Listen for updates on the upstream channel
