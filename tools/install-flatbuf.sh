@@ -20,5 +20,6 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version 1.11.0" ]; then
     cmake -G "Unix Makefiles"
     make
     cd ..
-    ln -f -s `pwd`/flatbuffers/flatc ~/.local/bin/flatc
 fi
+
+ln -f -s `pwd`/flatbuffers/flatc ~/.local/bin/flatc
