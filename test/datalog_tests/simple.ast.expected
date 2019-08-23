@@ -504,7 +504,9 @@ function vars (): () =
 function x (): Alt =
     C0{.x=32'd5}
 extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
+extern transformer graph.ConnectedComponents64(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
+extern transformer graph.UnsafeBidirectionalEdges(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (BiEdges: relation[('N, 'N)])
 input relation AMethod [AMethod]
 input relation Address [Address]
 output relation Adjusted [Adjusted]
