@@ -43,3 +43,46 @@ extern transformer ConnectedComponents(Edges:   relation['E],
                                        from:    function(e: 'E): 'N,
                                        to:      function(e: 'E): 'N)
     -> (CCLabels: relation [('N, 'N)])
+
+/* Optimized version of `ConnectedComponents` for graph with nodes of type
+ * `bit<n>`, n <= 64.
+ */
+extern transformer ConnectedComponents64(Edges:   relation['E],
+                                         from:    function(e: 'E): 'N,
+                                         to:      function(e: 'E): 'N)
+    -> (CCLabels: relation [('N, 'N)])
+
+/* Compute a subset of bidirectional graph edges, i.e., all edges `(x,y)` such
+ * that `(y,x)` is also an edge in the graph.
+ *
+ * This transformer is equivalent to the following DDlog rule, but can be more
+ * memory efficient, as it only computes one arrangement of `Edges` instead of two
+ * (note, however, that if your program already uses at least one of the
+ * two arrangements elsewhere then this transformer will not improve on its
+ * memory footprint).
+ * ```
+ * BiEdges(x,y) :- Edges(x,y), Edges(y,x).
+ * ```
+ *
+ * WARNING: This transformer assumes that the `Edges` relation is distinct,
+ * e.g., it is an input relation.  It will return INCORRECT result otherwise;
+ * hence the `Unsafe` prefix.
+ *
+ * Type variables:
+ * - `'E`  - graph edge
+ * - `'N`  - graph node id
+ *
+ * Arguments:
+ * - `Edges`  - relation that stores graph edges
+ * - `from`   - extracts the source node of an edge
+ * - `to`     - extracts the destination node of an edge
+ *
+ * Output:
+ * - `BiEdges` - the subset of all bidirectional edges of the graph.
+ *   Note: this subset will contain edges in both directions, i.e., for every
+ *   `(x,y)` it also contains a `(y,x)`
+ */
+extern transformer UnsafeBidirectionalEdges(Edges:   relation['E],
+                                            from:    function(e: 'E): 'N,
+                                            to:      function(e: 'E): 'N)
+    -> (BiEdges: relation [('N, 'N)])
