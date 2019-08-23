@@ -193,11 +193,11 @@ compilerTest progress java file cli_args crate_types = do
     compile prog specname rs_code toml_code dir crate_types
     -- compile generated Java code
     classpath <- (maybe "" (":" ++ )) <$> lookupEnv "CLASSPATH"
-    path <- (maybe "" id) <$> lookupEnv "PATH"
+    p <- (maybe "" id) <$> lookupEnv "PATH"
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
                           cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
                           env = Just [("CLASSPATH", (dir </> "../../java") ++ classpath),
-                                      ("PATH", path)]
+                                      ("PATH", p)]
                      }
     (jcode, jstdo, jstde) <- readCreateProcessWithExitCode javac_proc ""
     when (jcode /= ExitSuccess) $ do
