@@ -50,6 +50,7 @@ use differential_dataflow::trace::{Cursor,TraceReader,BatchReader};
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
+use timely;
 use timely::communication::initialize::Configuration;
 use timely::communication::Allocator;
 use timely::dataflow::operators::*;
@@ -65,8 +66,8 @@ use crate::profile::*;
 use crate::record::Mutator;
 use crate::variable::*;
 
-type TValAgent<S,V> = TraceAgent<DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight>>;
-type TKeyAgent<S,V> = TraceAgent<DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight>>;
+type TValAgent<S,V> = TraceAgent<DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight,u32>>;
+type TKeyAgent<S,V> = TraceAgent<DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight,u32>>;
 
 type TValEnter<'a,P,T,V> = TraceEnter<TValAgent<P,V>,T>;
 type TKeyEnter<'a,P,T,V> = TraceEnter<TKeyAgent<P,V>,T>;
@@ -161,7 +162,7 @@ impl PathSummary<TS16> for TS16 {
 }
 
 /* Outer timestamp */
-pub type TS = u64;
+pub type TS = u32;
 
 /* Timestamp for the nested scope
  * Use 16-bit timestamps for inner scopes to save memory
@@ -169,7 +170,7 @@ pub type TS = u64;
 pub type TSNested = TS16;
 
 // Diff associated with records in differential dataflow
-pub type Weight = isize;
+pub type Weight = i32;
 
 /* Message buffer for communication with timely threads */
 const MSG_BUF_SIZE: usize = 500;
@@ -645,21 +646,16 @@ impl<V: Val> Arrangement<V> {
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
         match self {
-            Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
-            }
-            Arrangement::Set {
-                fmfun, distinct, ..
-            } => {
+            Arrangement::Map{afun, ..} => {
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange())
+            },
+            Arrangement::Set{fmfun, distinct, ..} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(
-                        filtered
-                            .threshold_total(|_, c| if c.is_zero() { 0 } else { 1 })
-                            .arrange_by_self(),
-                    )
+                    ArrangedCollection::Set(filtered.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 })
+                                                    .map(|k| (k, ())).arrange() /* arrange_by_self() */)
                 } else {
-                    ArrangedCollection::Set(filtered.arrange_by_self())
+                    ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
                 }
             }
         }
@@ -674,21 +670,16 @@ impl<V: Val> Arrangement<V> {
         S::Timestamp: Lattice + Ord,
     {
         match self {
-            Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(*afun).arrange_by_key())
-            }
-            Arrangement::Set {
-                fmfun, distinct, ..
-            } => {
+            Arrangement::Map{afun, ..} => {
+                ArrangedCollection::Map(collection.flat_map(*afun).arrange())
+            },
+            Arrangement::Set{fmfun, distinct, ..} => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(
-                        filtered
-                            .threshold(|_, c| if c.is_zero() { 0 } else { 1 })
-                            .arrange_by_self(),
-                    )
+                    ArrangedCollection::Set(filtered.threshold(|_,c| if c.is_zero() { 0 } else { 1 })
+                                                    .map(|k| (k, ())).arrange())
                 } else {
-                    ArrangedCollection::Set(filtered.arrange_by_self())
+                    ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
                 }
             }
         }

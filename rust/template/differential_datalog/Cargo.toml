@@ -16,6 +16,7 @@ serde_derive = "1.0"
 [dependencies]
 #differential-dataflow = "0.9"
 differential-dataflow = { git = "https://github.com/TimelyDataflow/differential-dataflow" }
+#differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow"}
 abomonation = "0.7"
 fnv = "1.0.2"
 #timely = "0.9"
