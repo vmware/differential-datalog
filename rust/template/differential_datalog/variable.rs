@@ -20,9 +20,9 @@ use program::{TSNested, Weight};
 pub struct Variable<'a, G: Scope, D: ExchangeData+Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
     feedback: Option<Handle<Child<'a, G, Product<G::Timestamp, TSNested>>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
-    current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D>,
-    cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D>,
-    name: String,
+    current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
+    cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
+    name: String
 }
 
 impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
