@@ -186,21 +186,37 @@ ruleHasJoins rule =
 -- | Checks if a rule (more precisely, the specified head of the rule) yields a
 -- relation with distinct elements.
 ruleIsDistinctByConstruction :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
-ruleIsDistinctByConstruction d rhs head_atom
-    | -- The first atom in the body of the rule is a distinct relation and does not contain wildcards
-      length rhs >= 1 && relIsDistinct d baserel && (not $ exprContainsPHolders $ atomVal atom1) &&
-      -- The head of the rule is an injective function of all the variables from the first atom
-      exprIsInjective d (S.fromList $ atomVars $ atomVal atom1) (atomVal head_atom) && 
-      -- The rule only contains clauses that filter the collection
-      all (\case
-            RHSLiteral True a -> relIsDistinct d (getRelation d $ atomRelation a) &&
-                                 (not $ exprContainsPHolders $ atomVal a) &&
-                                 (null $ (nub $ atomVars $ atomVal a) \\ (nub $ atomVars $ atomVal head_atom))
-            RHSCondition{}    -> True
-            _                 -> False)
-          (tail rhs)
-    = True
-    | otherwise = False
+ruleIsDistinctByConstruction d rhs head_atom = f (Just S.empty) rhs
     where
-    RHSLiteral _ atom1 = head rhs
-    baserel = getRelation d $ atomRelation atom1
+    headrel = atomRelation head_atom
+    -- Relation is distinct wrt 'headrel'.
+    relIsDistinct' :: String -> Bool
+    relIsDistinct' rel =
+        -- ..and we _are_ using 'rel' from the top-level scope.
+        not (relsAreMutuallyRecursive d rel headrel) &&
+        -- 'rel' is distinct in the top-level scope..
+        relIsDistinct d (getRelation d rel)
+
+    -- Recurse over the body of the rule, checking if the output of each
+    -- prefix is a distinct relation.
+    --
+    -- If the first argument is 'Just vs', then the prefix of the body generates
+    -- a distincts relation over 'vs'; if it is 'Nothing' then the prefix of the
+    -- rule outputs a non-distinct relation.
+    f :: Maybe (S.Set String) -> [RuleRHS] -> Bool
+    f Nothing []                        = False
+    f (Just vs) []                      =
+        -- The head of the rule is an injective function of all the variables in its body
+        exprIsInjective d vs (atomVal head_atom)
+    -- FIXME: if RHSCondition is assignment, add assigned variables to mvs?
+    f mvs (RHSCondition{}:ls)           = f mvs ls
+    -- Aggregate operator returns a distinct collection over group-by and aggregate
+    -- variables even if the prefix before isn't distinct.
+    f _   (RHSAggregate{..}:ls)         = f (Just $ S.fromList $ rhsVar : rhsGroupBy) ls
+    f (Just vs) ((RHSLiteral True a):ls)=
+        -- 'a' is a distinct relation and does not contain wildcards
+        if relIsDistinct' (atomRelation a) && (not $ exprContainsPHolders $ atomVal a)
+           then f (Just $ vs `S.union` (S.fromList $ atomVars $ atomVal a)) ls
+           else f Nothing ls
+    -- FIXME: antijoins also preserve dinstinctness, don't they?
+    f _ (_:ls)                          = f Nothing ls
