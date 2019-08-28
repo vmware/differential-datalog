@@ -17,12 +17,17 @@ use crate::program::{TSNested, Weight};
 /// A `Variable` names a collection that may be used in mutually recursive rules. This implementation
 /// is like the `Variable` defined in `iterate.rs` optimized for Datalog rules: it supports repeated
 /// addition of collections, and a final `distinct` operator applied before connecting the definition.
+///
+/// When the `distinct` flag is `true`, the `threshold` operator will be applied to the collection
+/// before closing the loop to ensure convergence.  Set to `false` when the body of the cycle
+/// bounds weights by construction.
 pub struct Variable<'a, G: Scope, D: ExchangeData+Default+Data+Hashable>
 where G::Timestamp: Lattice+Ord {
     feedback: Option<Handle<Child<'a, G, Product<G::Timestamp, TSNested>>, (D, Product<G::Timestamp, TSNested>, Weight)>>,
     current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
     cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
-    name: String
+    name: String,
+    pub distinct: bool
 }
 
 impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
@@ -34,18 +39,10 @@ impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Variable<'a, G, D> whe
         result.add(source);
         result
     }*/
-    pub fn from(
-        source: &Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
-        name: &str,
-    ) -> Variable<'a, G, D> {
+    pub fn from(source: &Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>, distinct: bool, name: &str) -> Variable<'a, G, D> {
         let (feedback, cycle) = source.inner.scope().loop_variable(TSNested::one());
         let cycle_col = Collection::new(cycle);
-        let mut result = Variable {
-            feedback: Some(feedback),
-            current: cycle_col.clone().filter(|_| false),
-            cycle: cycle_col,
-            name: name.to_string(),
-        };
+        let mut result = Variable { feedback: Some(feedback), current: cycle_col.clone().filter(|_| false), cycle: cycle_col, name: name.to_string(), distinct };
         result.add(source);
         result
     }
@@ -69,13 +66,23 @@ impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> ::std::ops::Deref for 
 impl<'a, G: Scope, D: ExchangeData+Default+Data+Hashable> Drop for Variable<'a, G, D> where G::Timestamp: Lattice+Ord {
     fn drop(&mut self) {
         if let Some(feedback) = self.feedback.take() {
-            with_prof_context(&format!("Variable: {}", self.name), || {
-                self.current
-                    .threshold(|_, c| if c.is_zero() { 0 } else { 1 })
-                    .inner
-                    .map(|(x, t, d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
-                    .connect_loop(feedback)
-            });
+            with_prof_context(
+                &format!("Variable: {}", self.name),
+                ||
+                {
+                    if self.distinct {
+                        self.current
+                        .threshold(|_,c| if c.is_zero() { 0 } else { 1 })
+                        .inner
+                        .map(|(x,t,d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
+                        .connect_loop(feedback)
+                    } else {
+                        self.current
+                        .inner
+                        .map(|(x,t,d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
+                        .connect_loop(feedback)
+                    }
+                });
         }
     }
 }
