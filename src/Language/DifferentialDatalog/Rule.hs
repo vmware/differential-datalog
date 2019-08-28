@@ -34,7 +34,8 @@ module Language.DifferentialDatalog.Rule (
     ruleHasJoins,
     ruleAggregateTypeParams,
     atomVarOccurrences,
-    atomVars
+    atomVars,
+    ruleIsDistinctByConstruction
 ) where
 
 import qualified Data.Set as S
@@ -51,6 +52,7 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Validate
+import Language.DifferentialDatalog.Relation
 
 -- | Pretty-print the first 'len' literals of a rule. 
 rulePPPrefix :: Rule -> Int -> Doc
@@ -180,3 +182,25 @@ ruleHasJoins rule =
           RHSLiteral{} -> True
           _            -> False)
     $ tail $ ruleRHS rule
+
+-- | Checks if a rule (more precisely, the specified head of the rule) yields a
+-- relation with distinct elements.
+ruleIsDistinctByConstruction :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
+ruleIsDistinctByConstruction d rhs head_atom
+    | -- The first atom in the body of the rule is a distinct relation and does not contain wildcards
+      length rhs >= 1 && relIsDistinct d baserel && (not $ exprContainsPHolders $ atomVal atom1) &&
+      -- The head of the rule is an injective function of all the variables from the first atom
+      exprIsInjective d (S.fromList $ atomVars $ atomVal atom1) (atomVal head_atom) && 
+      -- The rule only contains clauses that filter the collection
+      all (\case
+            RHSLiteral True a -> relIsDistinct d (getRelation d $ atomRelation a) &&
+                                 (not $ exprContainsPHolders $ atomVal a) &&
+                                 (null $ (nub $ atomVars $ atomVal a) \\ (nub $ atomVars $ atomVal head_atom))
+            RHSCondition{}    -> True
+            _                 -> False)
+          (tail rhs)
+    = True
+    | otherwise = False
+    where
+    RHSLiteral _ atom1 = head rhs
+    baserel = getRelation d $ atomRelation atom1
