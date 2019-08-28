@@ -37,7 +37,6 @@ module Language.DifferentialDatalog.Relation (
 ) 
 where
 
-import qualified Data.Set                       as S
 import qualified Data.Map                       as M
 import qualified Data.Graph.Inductive           as G
 import Data.Maybe
@@ -45,8 +44,6 @@ import Data.List
 
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.NS
-import Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
 
@@ -79,30 +76,18 @@ relIsDistinctByConstruction _ Relation{relRole = RelInput, ..}  = True
 relIsDistinctByConstruction d rel | relIsRecursive d (name rel) = True
 relIsDistinctByConstruction d rel 
     | -- There's only one rule for this relation
-     length rules == 1 && length heads == 1 &&
-     -- The first atom in the body of the rule is a distinct relation and does not contain wildcards
-     length (ruleRHS rule) >= 1 && relIsDistinct d baserel && (not $ exprContainsPHolders $ atomVal atom1) &&
-     -- The head of the rule is an injective function of all the variables from the first atom
-     exprIsInjective d (S.fromList $ atomVars $ atomVal atom1) (atomVal head_atom) && 
-     -- The rule only contains clauses that filter the collection
-     all (\case
-           RHSLiteral True a -> relIsDistinct d (getRelation d $ atomRelation a) &&
-                                (not $ exprContainsPHolders $ atomVal a) &&
-                                (null $ (nub $ atomVars $ atomVal a) \\ (nub $ atomVars $ atomVal head_atom))
-           RHSCondition{}    -> True
-           _                 -> False)
-         (tail $ ruleRHS rule)
+      length rules == 1 && length heads == 1 &&
+      -- And this rule produces distinct outputs
+      ruleIsDistinctByConstruction d (ruleRHS rule) head_atom
     = True
     where
     rules = relRules d $ name rel
     [rule] = rules
     heads = filter (\lhs -> atomRelation lhs == name rel) $ ruleLHS rule
     [head_atom] = heads
-    RHSLiteral _ atom1 = head $ ruleRHS rule
-    baserel = getRelation d $ atomRelation atom1
 relIsDistinctByConstruction _ _ = False
 
--- | Relation is either distinct by construction or if it is an output relation, in which
+-- | Relation is either distinct by construction or it is an output relation, in which
 -- case we will explicitly enforce distinctness
 relIsDistinct :: DatalogProgram -> Relation -> Bool
 relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOutput)
