@@ -35,7 +35,8 @@ module Language.DifferentialDatalog.Rule (
     ruleAggregateTypeParams,
     atomVarOccurrences,
     atomVars,
-    ruleIsDistinctByConstruction
+    ruleIsDistinctByConstruction,
+    ruleIsRecursive
 ) where
 
 import qualified Data.Set as S
@@ -183,7 +184,7 @@ ruleHasJoins rule =
           _            -> False)
     $ tail $ ruleRHS rule
 
--- | Checks if a rule (more precisely, the specified head of the rule) yields a
+-- | Checks if a rule (more precisely, the given head of the rule) yields a
 -- relation with distinct elements.
 ruleIsDistinctByConstruction :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
 ruleIsDistinctByConstruction d rhs head_atom = f (Just S.empty) rhs
@@ -220,3 +221,11 @@ ruleIsDistinctByConstruction d rhs head_atom = f (Just S.empty) rhs
            else f Nothing ls
     -- FIXME: antijoins also preserve dinstinctness, don't they?
     f _ (_:ls)                          = f Nothing ls
+
+-- | Checks if a rule (more precisely, the given head of the rule) is part of a
+-- recursive fragment of the program.
+ruleIsRecursive :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
+ruleIsRecursive d rhs head_atom =
+    any (relsAreMutuallyRecursive d (atomRelation head_atom))
+        $ map (atomRelation . rhsAtom)
+        $ filter rhsIsLiteral rhs

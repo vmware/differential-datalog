@@ -1034,8 +1034,11 @@ extractValue d t = parens $
 
 compileSCCNode :: (?cfg::CompilerConfig) => DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
-    rels <- mapM (compileRelation d) relnames
-    return $ SCCNode $ map (\rel -> RecProgRel rel True) rels
+    prels <- mapM (\rel -> do prel <- compileRelation d rel
+                              -- Only `distinct` relation if its weights can grow
+                              -- unboundedly inside fixed point computation.
+                              return $ RecProgRel prel $ not $ relIsBounded d rel) relnames
+    return $ SCCNode prels
 
 {- Generate Rust representation of relation and associated rules.
 
