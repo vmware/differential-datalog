@@ -34,7 +34,8 @@ module Language.DifferentialDatalog.Relation (
     relIsDistinctByConstruction,
     relIsDistinct,
     relIdentifier,
-    relsAreMutuallyRecursive
+    relsAreMutuallyRecursive,
+    relIsBounded
 ) 
 where
 
@@ -74,10 +75,12 @@ relIsRecursive d rel =
 -- reflect the distinctness of the relation inside the nested scope where it is
 -- being computed.
 relIsDistinctByConstruction :: DatalogProgram -> Relation -> Bool
--- distinctness is enforced on input relations
+-- Distinctness is enforced on input relations.
 relIsDistinctByConstruction _ Relation{relRole = RelInput, ..}  = True
--- recursive collection are distinct in differential dataflow 
-relIsDistinctByConstruction d rel | relIsRecursive d (name rel) = True
+-- For recursive relations, we enforce distinctness of the relation is
+-- _not_ bounded.
+relIsDistinctByConstruction d rel | relIsRecursive d (name rel) =
+    not $ relIsBounded d (name rel)
 relIsDistinctByConstruction d rel 
     | -- There's only one rule for this relation
       length rules == 1 && length heads == 1 &&
@@ -92,12 +95,20 @@ relIsDistinctByConstruction d rel
 relIsDistinctByConstruction _ _ = False
 
 -- | Relation is either distinct by construction or it is an output relation, in which
--- case we will explicitly enforce distinctness
+-- case we will explicitly enforce distinctness.
 relIsDistinct :: DatalogProgram -> Relation -> Bool
 relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOutput)
 
--- | All _recursive_ rules for this relation are distinct and hence 
---relBounded
+-- | All _recursive_ rules for this relation are distinct; hence
+-- their output weights are bounded and there is no need to distinct
+-- this relation to ensure that fixed-point computation convergence.
+relIsBounded :: DatalogProgram -> String -> Bool
+relIsBounded d rel =
+    all (\Rule{..} -> all (ruleIsDistinctByConstruction d ruleRHS)
+                          $ filter (ruleIsRecursive d ruleRHS)
+                          $ filter (\lhs -> atomRelation lhs == rel)
+                      ruleLHS)
+        $ relRules d rel
 
 -- | Unique id, assigned to the relation in the generated dataflow graph
 relIdentifier :: DatalogProgram -> Relation -> Int
