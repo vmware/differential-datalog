@@ -1403,16 +1403,10 @@ fn test_recursion(nthreads: usize) {
     };
 
     let prog: Program<Value> = Program {
-        nodes: vec![
-            ProgNode::Rel { rel: parent },
-            ProgNode::SCC {
-                rels: vec![ancestor],
-            },
-            ProgNode::Rel {
-                rel: common_ancestor,
-            },
-        ],
-        init_data: vec![],
+        nodes: vec![ProgNode::Rel{rel: parent},
+                    ProgNode::SCC{rels: vec![RecursiveRelation{rel: ancestor, distinct: true}]},
+                    ProgNode::Rel{rel: common_ancestor}],
+        init_data: vec![]
     };
 
     let mut running = prog.run(nthreads);
