@@ -33,7 +33,8 @@ module Language.DifferentialDatalog.Relation (
     relIsRecursive,
     relIsDistinctByConstruction,
     relIsDistinct,
-    relIdentifier
+    relIdentifier,
+    relsAreMutuallyRecursive
 ) 
 where
 
@@ -66,9 +67,12 @@ relIsRecursive d rel =
                                   DepNodeRel r -> r == rel
                                   _            -> False) . snd) $ G.labNodes g
     scc = fromJust $ find (elem nd) $ G.scc g
-    
+
 -- | Relation only contains records with weight 1 by construction and does not require
 -- distinct() or distinct_total() to convert it to that form.
+-- NOTE: this only applies in the top-level scope; this function does not
+-- reflect the distinctness of the relation inside the nested scope where it is
+-- being computed.
 relIsDistinctByConstruction :: DatalogProgram -> Relation -> Bool
 -- distinctness is enforced on input relations
 relIsDistinctByConstruction _ Relation{relRole = RelInput, ..}  = True
@@ -92,6 +96,24 @@ relIsDistinctByConstruction _ _ = False
 relIsDistinct :: DatalogProgram -> Relation -> Bool
 relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOutput)
 
+-- | All _recursive_ rules for this relation are distinct and hence 
+--relBounded
+
 -- | Unique id, assigned to the relation in the generated dataflow graph
 relIdentifier :: DatalogProgram -> Relation -> Int
 relIdentifier d rel = M.findIndex (name rel) $ progRelations d
+
+-- Relations are mutually recursive, i.e., belong to the same stronly connected
+-- component of the dependency graph.
+relsAreMutuallyRecursive :: DatalogProgram -> String -> String -> Bool
+relsAreMutuallyRecursive d rel1 rel2 | rel1 == rel2 = relIsRecursive d rel1
+                                     | otherwise = elem nd2 scc
+    where
+    g = progDependencyGraph d
+    nd1 = fst $ fromJust $ find ((\case
+                                  DepNodeRel r -> r == rel1
+                                  _            -> False) . snd) $ G.labNodes g
+    nd2 = fst $ fromJust $ find ((\case
+                                  DepNodeRel r -> r == rel2
+                                  _            -> False) . snd) $ G.labNodes g
+    scc = fromJust $ find (elem nd1) $ G.scc g
