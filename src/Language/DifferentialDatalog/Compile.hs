@@ -283,13 +283,21 @@ data ProgRel = ProgRel {
     prelFacts   :: [Doc]
 }
 
+-- Recursive relation contains additional flag that indicates whether the
+-- `distinct` operator should be applied to the relation before each fixed
+-- point iteration to ensure convergence.
+data RecProgRel = RecProgRel {
+    rprelRel      :: ProgRel,
+    rprelDistinct :: Bool
+}
+
 -- Compiled program node: individual relation or a recursive fragment
-data ProgNode = SCCNode   [ProgRel]
+data ProgNode = SCCNode   [RecProgRel]
               | ApplyNode Doc
               | RelNode   ProgRel
 
 nodeRels :: ProgNode -> [ProgRel]
-nodeRels (SCCNode rels) = rels
+nodeRels (SCCNode rels) = map rprelRel rels
 nodeRels (RelNode rel)  = [rel]
 nodeRels (ApplyNode _)  = []
 
@@ -1056,7 +1064,7 @@ extractValue d t = parens $
 compileSCCNode :: (?cfg::CompilerConfig) => DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
     rels <- mapM (compileRelation d) relnames
-    return $ SCCNode rels
+    return $ SCCNode $ map (\rel -> RecProgRel rel True) rels
 
 {- Generate Rust representation of relation and associated rules.
 
@@ -1787,7 +1795,10 @@ mkNode :: ProgNode -> Doc
 mkNode (RelNode (ProgRel rel _ _)) =
     "ProgNode::Rel{rel:" <+> rname rel <> "}"
 mkNode (SCCNode rels) =
-    "ProgNode::SCC{rels: vec![" <> (commaSep $ map (rname . prelName) rels) <> "]}"
+    "ProgNode::SCC{rels: vec![" <>
+    (commaSep $ map (\RecProgRel{..} ->
+                      "RecursiveRelation{rel: " <> (rname $ prelName rprelRel) <> 
+                      ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"
 mkNode (ApplyNode fun) =
     "ProgNode::Apply{tfun:" <+> fun <> "}"
 
