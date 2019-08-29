@@ -89,7 +89,8 @@ xfail = [
     "sort",             # 202
     "tak",              # 197
     "tic-tac-toe",      # 197
-    "weighted_distances" # 197
+    "weighted_distances", # 197
+    "floydwarshall" # ?
 ]
 
 def exit(code):
