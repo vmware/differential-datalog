@@ -14,11 +14,14 @@ extern crate time;
 
 #[macro_use]
 extern crate rustop;
+extern crate num_traits;
 
 use std::io::stdout;
 use std::process::exit;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::thread::sleep;
+use std::time::Duration;
 
 use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
@@ -26,6 +29,7 @@ use datalog_example_ddlog::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
 use std::io::Write;
+use num_traits::cast::ToPrimitive;
 use time::precise_time_ns;
 
 // uncomment to enable profiling
@@ -125,7 +129,11 @@ fn handle_cmd(
         Command::Echo(txt) => {
             println!("{}", txt);
             Ok(())
-        }
+        },
+        Command::Sleep(ms) => {
+            sleep(Duration::from_millis(ms.to_u64().unwrap()));
+            Ok(())
+        },
         Command::Update(upd, last) => {
             match updcmd2upd(&upd) {
                 Ok(u) => upds.push(u),
