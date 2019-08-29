@@ -24,7 +24,8 @@ pub enum Command {
     Clear(String),
     Exit,
     Echo(String),
-    Update(UpdCmd, bool),
+    Sleep(BigInt),
+    Update(UpdCmd, bool)
 }
 
 named!(spaces<&[u8], ()>,
@@ -80,6 +81,10 @@ named!(pub parse_command<&[u8], Command>,
                             rel: identifier         >>
                             apply!(sym,";")         >>
                             (Command::Clear(rel)))                                              |
+                  do_parse!(apply!(sym,"mssleep")   >>
+                            ms: dec_val             >>
+                            apply!(sym,";")         >>
+                            (Command::Sleep(ms)))                                               |
                   do_parse!(apply!(sym,"exit")      >> apply!(sym,";") >> (Command::Exit))      |
                   do_parse!(apply!(sym,"echo")      >>
                             txt: take_until!(";")   >>
