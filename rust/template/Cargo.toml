@@ -29,7 +29,7 @@ path = "./observe"
 
 [dependencies]
 #differential-dataflow = "0.9"
-differential-dataflow = { git = "https://github.com/TimelyDataflow/differential-dataflow" }
+differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow", branch="continual_merge" }
 #timely = "0.9"
 timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
 abomonation= "0.7"
