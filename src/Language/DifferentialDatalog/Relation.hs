@@ -45,6 +45,7 @@ import Data.Maybe
 import Data.List
 
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
@@ -85,13 +86,13 @@ relIsDistinctByConstruction d rel
     | -- There's only one rule for this relation
       length rules == 1 && length heads == 1 &&
       -- And this rule produces distinct outputs
-      ruleIsDistinctByConstruction d (ruleRHS rule) head_atom
+      ruleIsDistinctByConstruction d rule head_atom
     = True
     where
     rules = relRules d $ name rel
     [rule] = rules
-    heads = filter (\lhs -> atomRelation lhs == name rel) $ ruleLHS rule
-    [head_atom] = heads
+    heads = filter (\(lhs,_) -> atomRelation lhs == name rel) $ mapIdx (,) $ ruleLHS rule
+    [(_,head_atom)] = heads
 relIsDistinctByConstruction _ _ = False
 
 -- | Relation is either distinct by construction or it is an output relation, in which
@@ -104,10 +105,10 @@ relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOu
 -- this relation to ensure that fixed-point computation convergence.
 relIsBounded :: DatalogProgram -> String -> Bool
 relIsBounded d rel =
-    all (\Rule{..} -> all (ruleIsDistinctByConstruction d ruleRHS)
-                          $ filter (ruleIsRecursive d ruleRHS)
-                          $ filter (\lhs -> atomRelation lhs == rel)
-                      ruleLHS)
+    all (\rule@Rule{..} -> all (\(_,i) -> ruleIsDistinctByConstruction d rule i)
+                           $ filter (\(_,i) -> ruleIsRecursive d rule i)
+                           $ filter (\(lhs,_) -> atomRelation lhs == rel)
+                           $ mapIdx (,) ruleLHS)
         $ relRules d rel
 
 -- | Unique id, assigned to the relation in the generated dataflow graph

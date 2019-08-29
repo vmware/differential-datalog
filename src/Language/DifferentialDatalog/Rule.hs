@@ -47,6 +47,7 @@ import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
+import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -186,9 +187,10 @@ ruleHasJoins rule =
 
 -- | Checks if a rule (more precisely, the given head of the rule) yields a
 -- relation with distinct elements.
-ruleIsDistinctByConstruction :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
-ruleIsDistinctByConstruction d rhs head_atom = f (Just S.empty) rhs
+ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
+ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     where
+    head_atom = ruleLHS !! head_idx
     headrel = atomRelation head_atom
     -- Relation is distinct wrt 'headrel'.
     relIsDistinct' :: String -> Bool
@@ -204,28 +206,33 @@ ruleIsDistinctByConstruction d rhs head_atom = f (Just S.empty) rhs
     -- If the first argument is 'Just vs', then the prefix of the body generates
     -- a distincts relation over 'vs'; if it is 'Nothing' then the prefix of the
     -- rule outputs a non-distinct relation.
-    f :: Maybe (S.Set String) -> [RuleRHS] -> Bool
-    f Nothing []                        = False
-    f (Just vs) []                      =
+    f :: Bool -> Int -> Bool
+    f False i | i == length ruleRHS         = False
+    f True  i | i == length ruleRHS         =
         -- The head of the rule is an injective function of all the variables in its body
-        exprIsInjective d vs (atomVal head_atom)
-    -- FIXME: if RHSCondition is assignment, add assigned variables to mvs?
-    f mvs (RHSCondition{}:ls)           = f mvs ls
+        exprIsInjective d (S.fromList $ map name $ ruleVars d rl) (atomVal head_atom)
+    f True i | rhsIsCondition (ruleRHS !! i)
+                                            = f True (i + 1)
     -- Aggregate operator returns a distinct collection over group-by and aggregate
     -- variables even if the prefix before isn't distinct.
-    f _   (RHSAggregate{..}:ls)         = f (Just $ S.fromList $ rhsVar : rhsGroupBy) ls
-    f (Just vs) ((RHSLiteral True a):ls)=
+    f _    i | rhsIsAggregate (ruleRHS !! i)= f True (i + 1)
+    f True i | rhsIsPositiveLiteral (ruleRHS !! i)
+                                            =
+        let a = rhsAtom $ ruleRHS !! i in
         -- 'a' is a distinct relation and does not contain wildcards
         if relIsDistinct' (atomRelation a) && (not $ exprContainsPHolders $ atomVal a)
-           then f (Just $ vs `S.union` (S.fromList $ atomVars $ atomVal a)) ls
-           else f Nothing ls
-    -- FIXME: antijoins also preserve dinstinctness, don't they?
-    f _ (_:ls)                          = f Nothing ls
+           then f True (i+1)
+           else f False (i+1)
+    -- Antijoins preserve distinctness
+    f True i | rhsIsNegativeLiteral (ruleRHS !! i)
+                                            = f True (i + 1)
+    f _ i                                   = f False (i + 1)
 
 -- | Checks if a rule (more precisely, the given head of the rule) is part of a
 -- recursive fragment of the program.
-ruleIsRecursive :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
-ruleIsRecursive d rhs head_atom =
+ruleIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
+ruleIsRecursive d Rule{..} head_idx =
+    let head_atom = ruleLHS !! head_idx in
     any (relsAreMutuallyRecursive d (atomRelation head_atom))
         $ map (atomRelation . rhsAtom)
-        $ filter rhsIsLiteral rhs
+        $ filter rhsIsLiteral ruleRHS

@@ -63,8 +63,11 @@ module Language.DifferentialDatalog.Syntax (
         Relation(..),
         RuleRHS(..),
         rhsIsLiteral,
+        rhsIsPositiveLiteral,
+        rhsIsNegativeLiteral,
         rhsIsCondition,
         rhsIsFilterCondition,
+        rhsIsAssignment,
         rhsIsAggregate,
         Atom(..),
         Rule(..),
@@ -513,6 +516,14 @@ rhsIsLiteral :: RuleRHS -> Bool
 rhsIsLiteral RHSLiteral{} = True
 rhsIsLiteral _            = False
 
+rhsIsPositiveLiteral :: RuleRHS -> Bool
+rhsIsPositiveLiteral RHSLiteral{..} | rhsPolarity = True
+rhsIsPositiveLiteral _                            = False
+
+rhsIsNegativeLiteral :: RuleRHS -> Bool
+rhsIsNegativeLiteral RHSLiteral{..} | not rhsPolarity = True
+rhsIsNegativeLiteral _                                = False
+
 rhsIsAggregate :: RuleRHS -> Bool
 rhsIsAggregate RHSAggregate{} = True
 rhsIsAggregate _              = False
@@ -525,6 +536,9 @@ rhsIsFilterCondition :: RuleRHS -> Bool
 rhsIsFilterCondition (RHSCondition (E ESet{..})) = False
 rhsIsFilterCondition (RHSCondition _)            = True
 rhsIsFilterCondition _                           = False
+
+rhsIsAssignment :: RuleRHS -> Bool
+rhsIsAssignment rhs = rhsIsCondition rhs && not (rhsIsFilterCondition rhs)
 
 data Rule = Rule { rulePos :: Pos
                  , ruleLHS :: [Atom]

@@ -10,5 +10,5 @@ ruleTypeMapM :: (Monad m) => (Type -> m Type) -> Rule -> m Rule
 ruleHasJoins :: Rule -> Bool
 atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
 atomVars :: Expr -> [String]
-ruleIsDistinctByConstruction :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
-ruleIsRecursive :: DatalogProgram -> [RuleRHS] -> Atom -> Bool
+ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
+ruleIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
