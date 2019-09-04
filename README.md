@@ -96,6 +96,9 @@ curl https://sh.rustup.rs -sSf | sh
 to `~/.profile`, so that it becomes effective at the next login attempt.  To configure your current
 shell run `source $HOME/.cargo/env`.
 
+If you intend to run the test suite or want to generate [Java bindings](doc/java_api.md), you will
+also need a Java installation containing `javac`.
+
 Finally, you will need static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`, `libdl.a`, `libgmp.a`, which can be installed from distro-specific packages.
 
 If you plan to use DDlog Java bindings, you will additionally need the Google
