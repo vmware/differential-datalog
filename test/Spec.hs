@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2019 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -271,7 +271,7 @@ cliTest progress fname specname rust_dir extra_args = do
                                      "\n\nstdout written to:\n" ++ dumpfile
 
 -- A version of golden test that supports multiple output files.
--- Uses strict evluation to avoid errors lazily reading and then writing the
+-- Uses strict evaluation to avoid errors lazily reading and then writing the
 -- same file.
 goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
 goldenVsFiles name ref new act =

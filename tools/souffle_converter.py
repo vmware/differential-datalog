@@ -538,7 +538,7 @@ class SouffleConverter(object):
             fields = line.rstrip('\n').split(inDelimiter)
             result = []
             # Special handling for the empty tuple, which seems
-            # to be written as () in Souffle, instead of the emtpy string
+            # to be written as () in Souffle, instead of the empty string
             if len(converter) == 0 and len(fields) == 1 and fields[0] == "()":
                 fields = []
             elif len(fields) != len(converter):
