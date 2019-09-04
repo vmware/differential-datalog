@@ -217,7 +217,7 @@ We can delete records from input relations:
 
 ```
 start;
-delete Word2("World", CategoryOther);
+delete Word2("world!", CategoryOther);
 commit;
 
 dump Prases;
