@@ -15,11 +15,18 @@ public class Test {
     Test() {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
-        api.record_commands("replay.dat", false);
+        api.recordCommands("replay.dat", false);
     }
 
-    void onCommit(DDlogCommand command) {
-        System.out.println(command.toString());
+    void onCommit(DDlogCommand<Object> command) {
+        int relid = command.relid();
+        switch (relid) {
+            case redistRelation.Span:
+                SpanReader span = (SpanReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " Span{" + span.entity() + "," + span.tns() + "}");
+                break;
+            default: throw new IllegalArgumentException("Unknown relation id " + relid);
+        }
     }
 
     void run() {
@@ -46,7 +53,7 @@ public class Test {
 
             /* Commit transaction, triggering the `onCommit` callback for every
              * record in an output relation modified by the transaction. */
-            this.api.commit_dump_changes(r -> this.onCommit(r));
+            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
         }
 
         /* Second transaction */
@@ -60,7 +67,7 @@ public class Test {
 
             int res = builder.applyUpdates(this.api);
 
-            this.api.commit_dump_changes(r -> this.onCommit(r));
+            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
             this.api.stop();
         }
     }

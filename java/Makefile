@@ -1,5 +1,8 @@
 JAR=ddlogapi.jar
-CLASS = ddlogapi/DDlogAPI.class ddlogapi/DDlogCommand.class ddlogapi/DDlogRecord.class
+CLASS = ddlogapi/DDlogAPI.class \
+		ddlogapi/DDlogCommand.class \
+		ddlogapi/DDlogRecord.class \
+		ddlogapi/DDlogRecCommand.class
 
 all: ${JAR}
 

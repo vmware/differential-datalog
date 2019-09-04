@@ -759,6 +759,70 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
     res
 }
 
+#[cfg(feature = "flatbuf")]
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
+    prog: *const HDDlog,
+    buf: *mut *const u8,
+    buf_size: *mut libc::size_t,
+    buf_capacity: *mut libc::size_t,
+    buf_offset: *mut libc::size_t,
+) -> raw::c_int {
+    if prog.is_null() || buf_size.is_null() || buf_capacity.is_null() || buf_offset.is_null() {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+
+    let res = prog
+        .transaction_commit_dump_changes()
+        .map(|changes| {
+            let (fbvec, fboffset) = flatbuf::updates_to_flatbuf(&changes);
+            *buf = fbvec.as_ptr();
+            *buf_size = fbvec.len() as libc::size_t;
+            *buf_capacity = fbvec.capacity() as libc::size_t;
+            *buf_offset = fboffset as libc::size_t;
+            mem::forget(fbvec);
+            0
+        })
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!(
+                "ddlog_transaction_commit_dump_changes_to_flatbuf: error: {}",
+                e
+            ));
+            -1
+        });
+
+    Arc::into_raw(prog);
+    res
+}
+
+#[cfg(not(feature = "flatbuf"))]
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
+    prog: *const HDDlog,
+    _buf: *mut *const u8,
+    _buf_size: *mut libc::size_t,
+    _buf_capacity: *mut libc::size_t,
+    _buf_offset: *mut libc::size_t,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+    prog.eprintln("ddlog_transaction_commit_dump_changes_to_flatbuf(): error: DDlog was compiled without FlatBuffers support");
+    Arc::into_raw(prog);
+    -1
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_flatbuf_free(
+    buf: *mut u8,
+    buf_size: libc::size_t,
+    buf_capacity: libc::size_t,
+) {
+    Vec::from_raw_parts(buf, buf_size as usize, buf_capacity as usize);
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c_int {
     if prog.is_null() {

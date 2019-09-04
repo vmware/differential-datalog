@@ -220,6 +220,52 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
     return (jint)result;
 }
 
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes_1to_1flatbuf(
+    JNIEnv * env, jobject obj, jlong handle, jobject fbdescr)
+{
+    unsigned char *buf_addr = NULL;
+    size_t buf_size         = 0;
+    size_t buf_capacity     = 0;
+    size_t buf_offset       = 0;
+
+    jclass cls = (*env)->FindClass(env, "ddlogapi/DDlogAPI$FlatBufDescr");
+    if(cls == NULL) {
+        return -1;
+    }
+    jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
+    if(setMethod == NULL) {
+        return -1;
+    }
+
+    int res = ddlog_transaction_commit_dump_changes_to_flatbuf(
+            (ddlog_prog)handle,
+            &buf_addr,
+            &buf_size,
+            &buf_capacity,
+            &buf_offset);
+
+    if (res < 0) {
+        return res;
+    }
+
+    jobject direct_buf = (*env)->NewDirectByteBuffer(env, buf_addr + buf_offset, (jlong)(buf_capacity - buf_offset));
+
+    (*env)->CallVoidMethod(env, fbdescr, setMethod,
+            direct_buf, (jlong)buf_size, (jlong)buf_offset);
+
+    return 0;
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1flatbuf_1free(
+    JNIEnv * env, jobject obj, jobject buf, jlong size, jlong offset)
+{
+    ddlog_flatbuf_free(
+            (unsigned char*)(((size_t)(*env)->GetDirectBufferAddress(env, buf)) - offset),
+            (size_t)size,
+            ((size_t)(*env)->GetDirectBufferCapacity(env, buf)) + offset);
+}
+
+
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(
     JNIEnv * env, jobject obj, jlong handle) {
     return ddlog_transaction_rollback((ddlog_prog)handle);

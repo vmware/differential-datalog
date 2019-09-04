@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.util.*;
 import java.lang.RuntimeException;
 import java.math.BigInteger;
+import java.util.Arrays;
 
 /* Generic DDlog API shared by all programs. */
 import ddlogapi.DDlogAPI;
@@ -16,7 +17,7 @@ public class Test {
     Test() {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
-        api.record_commands("replay.dat", false);
+        api.recordCommands("replay.dat", false);
     }
 
     void check(int exit) {
@@ -24,8 +25,238 @@ public class Test {
             throw new RuntimeException("Exit code shows error" + exit);
     }
 
-    void onCommit(DDlogCommand command) {
-        System.out.println(command.toString());
+    
+    // typedef tuple = (bool, bit<8>, string)
+    private String printTuple(Tuple3__bool__bit_8___stringReader t) {
+        return "(" + t.a0() + ", " + t.a1() + ", \"" + t.a2() + "\")";
+    }
+ 
+    // typedef Many = A{x: string}
+    //              | B{b: bool}
+    //              | D{t: tuple}
+    private String printMany(ManyReader m) {
+        if (m instanceof ManyReader.A) {
+            return "A{\"" + ((ManyReader.A)m).x() + "\"}";
+        } else if (m instanceof ManyReader.B) {
+            return "B{" + ((ManyReader.B)m).b() + "}";
+        } else if (m instanceof ManyReader.D) {
+            return "D{" + printTuple(((ManyReader.D)m).t()) + "}";
+        } else {
+            throw new IllegalArgumentException("Invalid Many value " + m.toString());
+        }
+    }
+
+    void onCommit(DDlogCommand<Object> command) {
+        int relid = command.relid();
+        switch (relid) {
+            // output relation BO(b: bool)
+            case flatbufTestRelation.BO: {
+                BOReader v = (BOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " BO{" + v.b() + "}");
+                break;
+            }
+
+            // output relation CO(c: bit<32>)
+            case flatbufTestRelation.CO: {
+                COReader v = (COReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " CO{" + v.c() + "}");
+                break;
+            }
+
+            // output relation DO(d: signed<16>)
+            case flatbufTestRelation.DO: {
+                DOReader v = (DOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " DO{" + v.d() + "}");
+                break;
+            }
+
+            // output relation EO(e: bigint)
+            case flatbufTestRelation.EO: {
+                EOReader v = (EOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " EO{" + v.e() + "}");
+                break;
+            }
+            
+            // output relation FO(s: string)
+            case flatbufTestRelation.FO: {
+                FOReader v = (FOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " FO{\"" + v.s() + "\"}");
+                break;
+            }
+            
+            // output relation GO(d: bit<64>)
+            case flatbufTestRelation.GO: {
+                GOReader v = (GOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " GO{" + v.d() + "}");
+                break;
+            }
+            
+            // output relation HO(d: bit<128>)
+            case flatbufTestRelation.HO: {
+                HOReader v = (HOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " HO{" + v.d() + "}");
+                break;
+            }
+
+            // output relation IO(d: bit<12>)
+            case flatbufTestRelation.IO: {
+                IOReader v = (IOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " IO{" + v.d() + "}");
+                break;
+            }
+
+            // output relation JO(a: (bool, bit<8>, string))
+            case flatbufTestRelation.JO: {
+                JOReader v = (JOReader)command.value();
+                Tuple3__bool__bit_8___stringReader a = v.a();
+                System.out.println("From " + relid + " " + command.kind() + " JO{" + printTuple(a) + "}");
+                break;
+            }
+            
+            // output relation KO(t: tuple)
+            case flatbufTestRelation.KO: {
+                KOReader v = (KOReader)command.value();
+                Tuple3__bool__bit_8___stringReader t = v.t();
+                System.out.println("From " + relid + " " + command.kind() + " KO{" + printTuple(t) + "}");
+                break;
+            }
+
+            // output relation LO[tuple]
+            case flatbufTestRelation.LO: {
+                Tuple3__bool__bit_8___stringReader v = (Tuple3__bool__bit_8___stringReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " " + printTuple(v));
+                break;
+            }
+
+            // output relation L0O(a: bool, b: bit<8>, s: string)
+            case flatbufTestRelation.L0O: {
+                L0OReader v = (L0OReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " L0O{" + v.a() + ", " + v.b() + ", \"" + v.s() + "\"}");
+                break;
+            }
+            
+            // output relation MO(v: Vec<bool>)
+            case flatbufTestRelation.MO: {
+                MOReader v = (MOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " MO{" + v.v() + "}");
+                break;
+            }
+
+            // output relation NO(v: Vec<tuple>)
+            case flatbufTestRelation.NO: {
+                NOReader v = (NOReader)command.value();
+                List<Tuple3__bool__bit_8___stringReader> vs = v.v();
+                ArrayList<String> strings = new ArrayList<String>(vs.size());
+                vs.forEach((t) -> strings.add(printTuple(t)));
+                System.out.println("From " + relid + " " + command.kind() + " NO{[" + String.join(",",strings) + "]}");
+                break;
+            }
+
+            // output relation OO(v: Vec<Vec<bool>>)
+            case flatbufTestRelation.OO: {
+                OOReader v = (OOReader)command.value();
+                List<List<Boolean>> vs = v.v();
+                System.out.println("From " + relid + " " + command.kind() + " OO{" + vs + "}");
+                break;
+            }
+
+            // output relation PO(s: Set<bit<32>>)
+            case flatbufTestRelation.PO: {
+                POReader v = (POReader)command.value();
+                List<Integer> vs = v.s();
+                System.out.println("From " + relid + " " + command.kind() + " PO{" + vs + "}");
+                break;
+            }
+
+            // output relation QO(m: Map<bit<32>, string>)
+            case flatbufTestRelation.QO: {
+                QOReader v = (QOReader)command.value();
+                Map<Integer,String> vs = v.m();
+                System.out.println("From " + relid + " " + command.kind() + " QO{" + vs + "}");
+                break;
+            }
+
+            // output relation QO(m: Map<bit<32>, string>)
+            case flatbufTestRelation.RO: {
+                ROReader v = (ROReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " RO{" + v.m() + "}");
+                break;
+            }
+
+            // output relation SO(m: C)
+            case flatbufTestRelation.SO: {
+                SOReader v = (SOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " SO{C{\"" + v.m().x() + "\"}}");
+                break;
+            }
+
+            // output relation TO(m: Option<bit<32>>)
+            case flatbufTestRelation.TO: {
+                std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)((TOReader)command.value()).m();
+                if (m instanceof std_Option__bit_32_Reader.std_Some) {
+                    System.out.println("From " + relid + " " + command.kind() +
+                            " TO{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}");
+                } else {
+                    System.out.println("From " + relid + " " + command.kind() + " TO{std_None{}}");
+                }
+                break;
+            }
+
+            // output relation UO[Many]
+            case flatbufTestRelation.UO: {
+                ManyReader m = (ManyReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " " + printMany(m));
+                break;
+            }
+
+            //output relation VO(a: bool, b: Many)
+            case flatbufTestRelation.VO: {
+                VOReader v = (VOReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " VO{" + v.a() + ", " + printMany(v.b()));
+                break;
+            }
+
+            // output relation WO(m: Option<Many>)
+            case flatbufTestRelation.WO: {
+                std_Option__ManyReader m = (std_Option__ManyReader)((WOReader)command.value()).m();
+                if (m instanceof std_Option__ManyReader.std_Some) {
+                    System.out.println("From " + relid + " " + command.kind() +
+                            " WO{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}");
+                } else {
+                    System.out.println("From " + relid + " " + command.kind() + " WO{std_None{}}");
+                }
+                break;
+            }
+
+            //output relation XO(m: Vec<Many>)
+            case flatbufTestRelation.XO: {
+                List<ManyReader> m = ((XOReader)command.value()).m();
+                ArrayList<String> strings = new ArrayList<String>(m.size());
+                m.forEach((x) -> strings.add(printMany(x)));
+                System.out.println("From " + relid + " " + command.kind() + " XO{[" + String.join(",",strings) + "]}");
+                break;
+            }
+
+            //typedef VOT = Vec<Option<tuple>>
+            // output relation YO(v: VOT)
+            case flatbufTestRelation.YO: {
+                List<std_Option___bool__bit_8___string_Reader> v = ((YOReader)command.value()).v();
+                ArrayList<String> strings = new ArrayList<String>(v.size());
+                v.forEach((x) -> {
+                    if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
+                        strings.add("std_Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
+                    } else {
+                        strings.add("std_None{}");
+                    }
+                });
+                System.out.println("From " + relid + " " + command.kind() + " YO{[" + String.join(",", strings) + "]}");
+                break;
+            }
+            default: 
+                System.out.println("Unknown output relation " + relid);
+                //throw new IllegalArgumentException("Unknown relation id " + relid);
+        }
+
     }
 
     void run() {
@@ -48,32 +279,35 @@ public class Test {
         builder.insert_HI(new BigInteger("0ABACABA0ABACABA", 16));
         builder.insert_II((short)7);
         {
-            Tuple3__bool__bit_8___string ji = builder.create_Tuple3__bool__bit_8___string(true, (byte)10, "string");
+            Tuple3__bool__bit_8___stringWriter ji = builder.create_Tuple3__bool__bit_8___string(true, (byte)10, "string");
             builder.insert_JI(ji);
         }
         {
-            Tuple3__bool__bit_8___string ki = builder.create_Tuple3__bool__bit_8___string(false, (byte)9, "text");
+            Tuple3__bool__bit_8___stringWriter ki = builder.create_Tuple3__bool__bit_8___string(false, (byte)9, "text");
             builder.insert_KI(ki);
         }
         builder.insert_LI(true, (byte)-1, "something");
         builder.insert_L0I(false, (byte)-2, "else");
         {
-            boolean[] v = { true, false, true };
-            builder.insert_MI(v);
+            Boolean[] v = new Boolean[] {true, false, true};
+            builder.insert_MI(Arrays.asList(v));
         }
         {
-            Tuple3__bool__bit_8___string[] vec = {
-                builder.create_Tuple3__bool__bit_8___string(true, (byte)-1, "check"),
-                builder.create_Tuple3__bool__bit_8___string(false, (byte)1, "fails")
-            };
+            ArrayList<Tuple3__bool__bit_8___stringWriter> vec = new ArrayList<Tuple3__bool__bit_8___stringWriter>(2);
+            vec.add(builder.create_Tuple3__bool__bit_8___string(true, (byte)-1, "check"));
+            vec.add(builder.create_Tuple3__bool__bit_8___string(false, (byte)1, "fails"));
             builder.insert_NI(vec);
         }
         {
-            boolean[][] nest = { { false, false }, { true, true } };
+            List<Boolean> l1 = Arrays.asList(new Boolean[] {false, false});
+            List<Boolean> l2 = Arrays.asList(new Boolean[] {true, true});
+            List<List<Boolean>> nest = new ArrayList<List<Boolean>>(2);
+            nest.add(l1);
+            nest.add(l2);
             builder.insert_OI(nest);
         }
         {
-            int[] pi = { 2, 3, 2, 3 };
+            List<Integer> pi = Arrays.asList(new Integer[]{ 2, 3, 2, 3 });
             builder.insert_PI(pi);
         }
         {
@@ -84,53 +318,53 @@ public class Test {
         }
         builder.insert_RI(2);
         {
-            C c = builder.create_C("s");
+            CWriter c = builder.create_C("s");
             builder.insert_SI(c);
         }
         {
-            std_Option__bit_32_ b = builder.create_std_Some__bit_32_(10);
+            std_Option__bit_32_Writer b = builder.create_std_Some__bit_32_(10);
             builder.insert_TI(b);
-            std_Option__bit_32_ b1 = builder.create_std_None__bit_32_();
+            std_Option__bit_32_Writer b1 = builder.create_std_None__bit_32_();
             builder.insert_TI(b1);
         }
         builder.insert_UI_A("a");
         builder.insert_UI_B(false);
         builder.insert_UI_D(builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "zz"));
         {
-            Many a = builder.create_A("aa");
-            Many b = builder.create_B(false);
-            Many d = builder.create_D(builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"));
+            ManyWriter a = builder.create_A("aa");
+            ManyWriter b = builder.create_B(false);
+            ManyWriter d = builder.create_D(builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"));
             builder.insert_VI(false, a);
             builder.insert_VI(true, b);
             builder.insert_VI(false, d);
         }
         {
-            std_Option__Many om0 = builder.create_std_None__Many();
+            std_Option__ManyWriter om0 = builder.create_std_None__Many();
             builder.insert_WI(om0);
-            std_Option__Many om1 = builder.create_std_Some__Many(builder.create_B(true));
+            std_Option__ManyWriter om1 = builder.create_std_Some__Many(builder.create_B(true));
             builder.insert_WI(om1);
         }
         {
-            Many[] m = {
+            ManyWriter[] m = {
                 builder.create_A("aa"),
                 builder.create_B(false),
                 builder.create_D(builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"))
             };
-            builder.insert_XI(m);
+            builder.insert_XI(Arrays.asList(m));
         }
         {
-            std_Option___bool__bit_8___string_[] v = {
+            std_Option___bool__bit_8___string_Writer[] v = {
                 builder.create_std_Some___bool__bit_8___string_(
                     builder.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
                 builder.create_std_Some___bool__bit_8___string_(
                     builder.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!"))
                 //builder.create_std_None___bool__bit_8___string_()
             };
-            builder.insert_YI(v);
+            builder.insert_YI(Arrays.asList(v));
         }
         int res = builder.applyUpdates(this.api);
         check(res);
-        this.api.commit_dump_changes(r -> this.onCommit(r));
+        flatbufTestUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
     }
 
     public static void main(String[] args) throws IOException {

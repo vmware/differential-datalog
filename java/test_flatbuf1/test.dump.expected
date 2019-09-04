@@ -15,13 +15,13 @@ From 13 Insert HO{773153186440202938}
 From 15 Insert IO{7}
 From 17 Insert JO{(true, 10, "string")}
 From 19 Insert KO{(false, 9, "text")}
-From 21 Insert L0O{false,254,"else"}
-From 23 Insert (true, 255, "something")
+From 21 Insert L0O{false, -2, "else"}
+From 23 Insert (true, -1, "something")
 From 25 Insert MO{[true, false, true]}
-From 27 Insert NO{[(true, 255, "check"), (false, 1, "fails")]}
+From 27 Insert NO{[(true, -1, "check"),(false, 1, "fails")]}
 From 29 Insert OO{[[false, false], [true, true]]}
 From 31 Insert PO{[2, 3]}
-From 33 Insert QO{{2=>"here", 3=>"there"}}
+From 33 Insert QO{{2=here, 3=there}}
 From 35 Insert RO{2}
 From 37 Insert SO{C{"s"}}
 From 39 Insert TO{std_Some{10}}
@@ -29,10 +29,10 @@ From 39 Insert TO{std_None{}}
 From 41 Insert A{"a"}
 From 41 Insert B{false}
 From 41 Insert D{(false, 2, "zz")}
-From 43 Insert VO{false,A{"aa"}}
-From 43 Insert VO{false,D{(false, 2, "string")}}
-From 43 Insert VO{true,B{false}}
+From 43 Insert VO{false, A{"aa"}
+From 43 Insert VO{false, D{(false, 2, "string")}
+From 43 Insert VO{true, B{false}
 From 45 Insert WO{std_Some{B{true}}}
 From 45 Insert WO{std_None{}}
-From 47 Insert XO{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
-From 49 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}]}
+From 47 Insert XO{[A{"aa"},B{false},D{(false, 2, "string")}]}
+From 49 Insert YO{[std_Some{(false, -1, "")},std_Some{(true, -2, "!")}]}

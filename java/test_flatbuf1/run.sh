@@ -36,10 +36,10 @@ ddlog -i ${PROG}.dl -j -L../../lib
 
 # Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
 # $CLASSPATH)
-(cd ${PROG}_ddlog/flatbuf/java && javac `ls ddlog/__${PROG}/*.java` && javac `ls ddlog/${PROG}/*.java`)
+(cd ${PROG}_ddlog/flatbuf/java && javac -Xlint:unchecked `ls ddlog/__${PROG}/*.java` && javac -Xlint:unchecked `ls ddlog/${PROG}/*.java`)
 
 # Compile Test.java and the generated Java file
-javac Test.java
+javac -Xlint:unchecked Test.java
 
 # Create a shared library containing all the native code: ddlogapi.c, lib${PROG}_ddlog.a
 ${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L${PROG}_ddlog/target/release/ -l${PROG}_ddlog -o libddlogapi.${SHLIBEXT}

@@ -118,14 +118,15 @@ extern table_id ddlog_get_table_id(const char* tname);
  * `ddlog_transaction_start()`,
  * `ddlog_transaction_commit()`, etc., or NULL in case of error.
  */
-extern ddlog_prog ddlog_run(unsigned int workers,
-			    bool do_store,
-                            void (*cb)(void *arg,
-                                       table_id table,
-                                       const ddlog_record *rec,
-                                       ssize_t weight),
-			    uintptr_t cb_arg,
-			    void (*print_err_msg)(const char *msg));
+extern ddlog_prog ddlog_run(
+        unsigned int workers,
+        bool do_store,
+        void (*cb)(void *arg,
+                   table_id table,
+                   const ddlog_record *rec,
+                   ssize_t weight),
+        uintptr_t cb_arg,
+        void (*print_err_msg)(const char *msg));
 
 /*
  * Record commands issued to DDlog via this API in a file.
@@ -232,12 +233,38 @@ extern int ddlog_transaction_commit(ddlog_prog hprog);
  * This function will fail if there is no transaction in progress.
  */
 extern int
-ddlog_transaction_commit_dump_changes(ddlog_prog hprog,
-                                      void (*cb)(void *arg,
-                                                 table_id table,
-                                                 const ddlog_record *rec,
-                                                 bool polarity),
-                                      uintptr_t cb_arg);
+ddlog_transaction_commit_dump_changes(
+        ddlog_prog hprog,
+        void (*cb)(void *arg,
+                   table_id table,
+                   const ddlog_record *rec,
+                   bool polarity),
+        uintptr_t cb_arg);
+
+/*
+ * Same as `ddlog_transaction_commit_dump_changes`, but serializes changes to a
+ * FlatBuffer.  On success, returns pointer to FlatBuffer, size and capacity of
+ * the buffer, and offset where valid data starts inside the buffer.
+ */
+extern int
+ddlog_transaction_commit_dump_changes_to_flatbuf(
+        ddlog_prog hprog,
+        unsigned char** buf,
+        size_t* buf_size,
+        size_t* buf_capacity,
+        size_t* buf_offset);
+
+/*
+ * Deallocate a FlatBuffer returned by
+ * `ddlog_transaction_commit_dump_changes_to_flatbuf`.  Must be called once for
+ * each buffer returned by a successful invocation of
+ * `ddlog_transaction_commit_dump_changes_to_flatbuf`.
+ */
+extern void
+ddlog_flatbuf_free(
+        unsigned char* buf,
+        size_t size,
+        size_t capacity);
 
 /*
  * Discard all buffered updates and abort the current transaction.

@@ -14,6 +14,7 @@ import java.math.BigInteger;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
+import ddlogapi.DDlogRecCommand;
 
 public class SpanTest {
     public static abstract class ParentChild {
@@ -103,7 +104,7 @@ public class SpanTest {
         /// Terminator for current command.
         String terminator;
         /// List of commands to execute
-        List<DDlogCommand> commands;
+        List<DDlogRecCommand> commands;
         /// `true` when command recording is enabled
         boolean recording;
 
@@ -124,11 +125,11 @@ public class SpanTest {
         SpanParser() {
             /* LOGGING: Log level definitions should be imported from log4j. We use magic
              * numbers instead to avoid extra dependencies. */
-            DDlogAPI.log_set_callback(
+            DDlogAPI.logSetCallback(
                     MOD_SPAN_UUID1,
                     (msg, level) -> System.err.println("Log msg from module1 (" + level + "): " + msg),
                     2147483647/*log4j.ALL*/);
-            DDlogAPI.log_set_callback(
+            DDlogAPI.logSetCallback(
                     MOD_SPAN_UUID2,
                     (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
                     100/*log4j.FATAL*/);
@@ -145,27 +146,27 @@ public class SpanTest {
             this.command = null;
             this.exitCode = -1;
             this.terminator = "";
-            this.commands = new ArrayList<DDlogCommand>();
+            this.commands = new ArrayList<DDlogRecCommand>();
         }
 
         // Note that this method is synchronized, since it can be invoked concurrently
         // on multiple background threads.  Alternatively, we could use concurrent
         // collections for ruleSpan and containerSpan.
-        synchronized void onCommit(DDlogCommand command) {
+        synchronized void onCommit(DDlogRecCommand command) {
             try {
-                if (command.table == this.ruleSpanTableId) {
+                if (command.relid() == this.ruleSpanTableId) {
                     RuleSpan span = command.getValue(RuleSpan.class);
-                    if (command.kind == DDlogCommand.Kind.Insert)
+                    if (command.kind() == DDlogCommand.Kind.Insert)
                         this.ruleSpan.add(span);
-                    else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                    else if (command.kind() == DDlogCommand.Kind.DeleteVal)
                         this.ruleSpan.remove(span);
                     else
                         throw new RuntimeException("Unexpected command " + this.command);
-                } else if (command.table == this.containerSpanTableId) {
+                } else if (command.relid() == this.containerSpanTableId) {
                     ContainerSpan span = command.getValue(ContainerSpan.class);
-                    if (command.kind == DDlogCommand.Kind.Insert)
+                    if (command.kind() == DDlogCommand.Kind.Insert)
                         this.containerSpan.add(span);
-                    else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                    else if (command.kind() == DDlogCommand.Kind.DeleteVal)
                         this.containerSpan.remove(span);
                     else
                         throw new RuntimeException("Unexpected command " + this.command);
@@ -177,25 +178,25 @@ public class SpanTest {
         }
 
         // Alternative implementation of onCommit which does not use reflection.
-        void onCommitDirect(DDlogCommand command) {
-            DDlogRecord record = command.value;
-            if (command.table == this.ruleSpanTableId) {
+        void onCommitDirect(DDlogCommand<DDlogRecord> command) {
+            DDlogRecord record = command.value();
+            if (command.relid() == this.ruleSpanTableId) {
                 DDlogRecord entity = record.getStructField(0);
                 DDlogRecord tn = record.getStructField(1);
                 RuleSpan span = new RuleSpan(entity.getInt(), tn.getInt());
-                if (command.kind == DDlogCommand.Kind.Insert)
+                if (command.kind() == DDlogCommand.Kind.Insert)
                     this.ruleSpan.add(span);
-                else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                else if (command.kind() == DDlogCommand.Kind.DeleteVal)
                     this.ruleSpan.remove(span);
                 else
                     throw new RuntimeException("Unexpected command " + this.command);
-            } else if (command.table == this.containerSpanTableId) {
+            } else if (command.relid() == this.containerSpanTableId) {
                 DDlogRecord entity = record.getStructField(0);
                 DDlogRecord tn = record.getStructField(1);
                 ContainerSpan span = new ContainerSpan(entity.getInt(), tn.getInt());
-                if (command.kind == DDlogCommand.Kind.Insert)
+                if (command.kind() == DDlogCommand.Kind.Insert)
                     this.containerSpan.add(span);
-                else if (command.kind == DDlogCommand.Kind.DeleteVal)
+                else if (command.kind() == DDlogCommand.Kind.DeleteVal)
                     this.containerSpan.remove(span);
                 else
                     throw new RuntimeException("Unexpected command " + this.command);
@@ -229,7 +230,7 @@ public class SpanTest {
                 throw new RuntimeException("Expected " + size + " arguments, got " + array.length);
         }
 
-        private DDlogCommand createCommand(String command, String arguments)
+        private DDlogRecCommand createCommand(String command, String arguments)
                 throws IllegalAccessException, InstantiationException {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
@@ -258,12 +259,12 @@ public class SpanTest {
                 throw new RuntimeException("Unexpected class: " + relation);
             }
             DDlogCommand.Kind kind = command.equals("insert") ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            return new DDlogCommand(kind, id, o);
+            return new DDlogRecCommand(kind, id, o);
         }
 
         // Alternative implementation of createCommand which does not
         // use reflection and is more efficient.
-        private DDlogCommand createCommandDirect(String command, String arguments) {
+        private DDlogRecCommand createCommandDirect(String command, String arguments) {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
                 throw new RuntimeException("Cannot parse arguments for " + command);
@@ -287,7 +288,7 @@ public class SpanTest {
                 throw new RuntimeException("Unexpected class: " + relation);
             }
             DDlogCommand.Kind kind = command.equals("insert") ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            return new DDlogCommand(kind, id, o);
+            return new DDlogRecCommand(kind, id, o);
         }
 
         void parseLine(String line)
@@ -320,8 +321,8 @@ public class SpanTest {
                     /* LOGGING: Change logging settings after the first commit.
                      * Disable logging for the first module completely; raise
                      * logging level to DEBUG for the second module */
-                    DDlogAPI.log_set_callback(MOD_SPAN_UUID1, null, 0/*log4j.OFF*/);
-                    DDlogAPI.log_set_callback(
+                    DDlogAPI.logSetCallback(MOD_SPAN_UUID1, null, 0/*log4j.OFF*/);
+                    DDlogAPI.logSetCallback(
                             MOD_SPAN_UUID2,
                             (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
                             500/*log4j.DEBUG*/);
@@ -331,9 +332,9 @@ public class SpanTest {
                     if (!this.recording) {
                         try {
                             Files.write(Paths.get("./replay.dat"), "start;\n".getBytes());
-                            this.api.dump_input_snapshot("replay.dat", true);
+                            this.api.dumpInputSnapshot("replay.dat", true);
                             Files.write(Paths.get("./replay.dat"), "commit;\n".getBytes(), StandardOpenOption.APPEND);
-                            this.api.record_commands("replay.dat", true);
+                            this.api.recordCommands("replay.dat", true);
                             this.recording = true;
                         }  catch (Exception ex) {
                             ex.printStackTrace();
@@ -343,10 +344,10 @@ public class SpanTest {
                     break;
                 case "insert":
                 case "delete":
-                    DDlogCommand c = this.createCommandDirect(command, rest);
+                    DDlogRecCommand c = this.createCommandDirect(command, rest);
                     this.commands.add(c);
                     if (this.terminator.equals(";")) {
-                        DDlogCommand[] ca = this.commands.toArray(new DDlogCommand[0]);
+                        DDlogRecCommand[] ca = this.commands.toArray(new DDlogRecCommand[0]);
                         if (debug)
                             System.err.println("Executing " + ca.length + " commands");
                         this.exitCode = this.api.applyUpdates(ca);
@@ -356,10 +357,10 @@ public class SpanTest {
                     break;
                 case "profile":
                     if (rest.equals(" cpu on")) {
-                        this.exitCode = this.api.enable_cpu_profiling(true);
+                        this.exitCode = this.api.enableCpuProfiling(true);
                         this.checkExitCode();
                     } else if (rest.equals(" cpu off")) {
-                        this.exitCode = this.api.enable_cpu_profiling(false);
+                        this.exitCode = this.api.enableCpuProfiling(false);
                         this.checkExitCode();
                     } else if (rest.equals("")) {
                         String profile = this.api.profile();
