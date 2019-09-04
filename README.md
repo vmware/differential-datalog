@@ -65,14 +65,15 @@ changes to the relational schema or rules require re-compilation.
 [Differential Datalog](doc/datalog2.0-workshop/paper.pdf), Leonid Ryzhyk and Mihai Budiu
 Datalog 2.0, Philadelphia, PA, June 4-5, 2019.
 
-## Installing from sources
+## Installation
 
+### From sources
 To install the required dependencies for buidling DDlog run
 `. ./install-dependencies.sh` (If you want to use other versions of
 the Rust or Haskell tools you can manually install the required
 dependencies, as described below.)
 
-### Prerequisites
+#### Prerequisites
 
 This section describes the manual installation of dependencies.
 We have tested our software on Ubuntu Linux and MacOS.
@@ -107,7 +108,7 @@ FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
 that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
 Java classes are in your `$CLASSPATH`.
 
-### Building
+#### Building
 
 To build the software:
 
@@ -136,11 +137,11 @@ of disk space):
 stack test
 ```
 
-## Binary installation
+### Binary
 
 To install a precompiled version of DDlog, download the [latest binary release](https://github.com/ryzhyk/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [above](#prerequisites))
 
-## vim syntax highlighting
+### vim syntax highlighting
 
 Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential
 datalog syntax highlighting in `.dl` files.

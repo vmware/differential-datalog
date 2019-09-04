@@ -36,7 +36,7 @@ program -> | compiler |-> code -> | compiler |--> executable
 
 ## Installing DDlog
 
-Installation instructions are found in the [README](../../README.md).
+Installation instructions are found in the [README](../../README.md#Installation).
 
 ## "Hello, World!" in DDlog
 
@@ -48,8 +48,6 @@ If you add a file called `playpen.dl`, in the `test/datalog_tests`
 directory, it will be executed automatically when you run the DDlog tests, by
 typing `stack test`.  You can execute just this file by typing `stack
 test --ta '-p playpen'`.
-
-**TODO: replace these instructions once issue #64 has been fixed**
 
 You should create the following `playpen.dl` file:
 
