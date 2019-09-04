@@ -165,10 +165,10 @@ compileFlatBufferJavaBindings :: DatalogProgram -> String -> [(FilePath, Doc)]
 compileFlatBufferJavaBindings d prog_name =
     let ?d = d
         ?prog_name = prog_name in
-    let types = mapMaybe typeFlatbufJavaBinding progTypesToSerialize
+    let writers = mapMaybe typeFlatbufJavaWriter progTypesToSerialize
+        readers = mapMaybe typeFlatbufJavaReader progTypesToSerialize
     in
-    ("ddlog" </> prog_name </> builderClass <.> "java", mkJavaBuilder prog_name):
-    types
+    mkJavaRelEnum : mkJavaBuilder : mkJavaParser : mkCommandReader : writers ++ readers
 
 {- Helpers -}
 
@@ -178,16 +178,39 @@ jFBPackage = "ddlog.__" <> pp ?prog_name
 rustFBModule :: (?prog_name :: String) => Doc
 rustFBModule = "__" <> (pp $ Casing.quietSnake ?prog_name)
 
+-- Convert DDlog field name to Java accessor method name,
+-- replicating the following logic from the `flatc` compiler.
+{-
+std::string MakeCamel(const std::string &in, bool first) {
+  std::string s;
+  for (size_t i = 0; i < in.length(); i++) {
+    if (!i && first)
+      s += static_cast<char>(toupper(in[0]));
+    else if (in[i] == '_' && i + 1 < in.length())
+      s += static_cast<char>(toupper(in[++i]));
+    else
+      s += in[i];
+  }
+  return s;
+}
+-}
+jAccessorName :: String -> Doc
+jAccessorName ""        = ""
+jAccessorName "_"       = "_"
+jAccessorName ('_':x:s) = char (toUpper x) <> jAccessorName s
+jAccessorName (x:s)     = char x <> jAccessorName s
+
 -- True if 'a' is of a type that is declared as a table and therefore does not
 -- need to be wrapped in another table in order to be used inside a vector or
 -- union.
 typeIsTable :: (WithType a, ?d::DatalogProgram) => a -> Bool
 typeIsTable x =
+    let t = typeNormalizeForFlatBuf x in
     -- struct with unique constructor.
-    isStruct ?d x && typeHasUniqueConstructor x ||
-    isTuple ?d x                                ||
-    fbType (typ x) == "__BigInt"                ||
-    fbType (typ x) == "__BigUint"
+    isStruct ?d t && typeHasUniqueConstructor t ||
+    isTuple ?d t                                ||
+    fbType t == "__BigInt"                      ||
+    fbType t == "__BigUint"
 
 typeHasUniqueConstructor :: (WithType a, ?d::DatalogProgram) => a -> Bool
 typeHasUniqueConstructor x =
@@ -454,7 +477,7 @@ typeNormalizeForFlatBuf x =
 
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
 jFBCallConstructor table [] =
-    "((Supplier<Integer>) (() -> " $$
+    "((java.util.function.Supplier<Integer>) (() -> " $$
     (braces' $ jFBPackage <> "." <> table <> ".start" <> table <> "(this.fbbuilder);"            $$
               "return Integer.valueOf(" <+> jFBPackage <> "." <> table <> ".end" <> table <> "(this.fbbuilder));") <> ")).get()"
 jFBCallConstructor table args =
@@ -463,10 +486,10 @@ jFBCallConstructor table args =
 
 {- Java convenience API. -}
 
--- Java types used in the FlafBuffers-generated API
+-- Java types used in the FlafBuffers-generated _serialization_ API
 -- (primitive types are passed as is, tables are passed as offsets)
-jFBType :: (WithType a, ?d::DatalogProgram) => Bool -> a -> Doc
-jFBType nested x =
+jFBWriteType :: (WithType a, ?d::DatalogProgram) => Bool -> a -> Doc
+jFBWriteType nested x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
         TInt{}             -> "int"
@@ -494,19 +517,38 @@ jFBType nested x =
         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
                            -> if nested
                                  then "int"
-                                 else jFBType True elemType <> "[]"
+                                 else jFBWriteType True elemType <> "[]"
         TOpaque{typeArgs = [_,_],..} | typeName == mAP_TYPE
                            -> if nested
                                  then "int"
                                  else "int []"
-        t'                 -> error $ "FlatBuffer.jConvType: unsupported type " ++ show t'
+        t'                 -> error $ "FlatBuffer.jFBWriteType: unsupported type " ++ show t'
 
--- Types used in the convenience API.
-jConvType :: (WithType a, ?d::DatalogProgram) => a -> Doc
-jConvType x =
+-- Java types used in the FlafBuffers-generated _de-serialization_ API
+jFBReadType :: (WithType a, ?d::DatalogProgram, ?prog_name::String) => a -> Doc
+jFBReadType x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
-        TInt{}             -> "BigInteger"
+        TInt{}             -> "int"
+        TString{}          -> "String"
+        TBit{..} | typeWidth <= 16
+                           -> "int"
+        TBit{..} | typeWidth <= 64
+                           -> "long"
+        TSigned{..} | typeWidth <= 32
+                           -> "int"
+        TSigned{..} | typeWidth <= 64
+                           -> "long"
+        t                  -> jFBPackage <> "." <> typeTableName t
+
+data RW = Read | Write deriving (Eq)
+
+-- Types used in the convenience API.
+jConvType :: (WithType a, ?d::DatalogProgram) => RW -> a -> Doc
+jConvType rw x =
+    case typeNormalizeForFlatBuf x of
+        TBool{}            -> "boolean"
+        TInt{}             -> "java.math.BigInteger"
         TString{}          -> "String"
         TBit{..} | typeWidth <= 8
                            -> "byte"
@@ -516,7 +558,7 @@ jConvType x =
                            -> "int"
         TBit{..} | typeWidth <= 64
                            -> "long"
-        TBit{..}           -> "BigInteger"
+        TBit{..}           -> "java.math.BigInteger"
         TSigned{..} | typeWidth <= 8
                            -> "byte"
         TSigned{..} | typeWidth <= 16
@@ -525,19 +567,32 @@ jConvType x =
                            -> "int"
         TSigned{..} | typeWidth <= 64
                            -> "long"
-        TSigned{..}        -> "BigInteger"
-        TTuple{..}         -> fbTupleName typeTupArgs
-        TUser{..}          -> fbStructName typeName typeArgs
+        TSigned{..}        -> "java.math.BigInteger"
+        TTuple{..} | rw == Read
+                           -> fbTupleName typeTupArgs <> "Reader"
+                   | rw == Write
+                           -> fbTupleName typeTupArgs <> "Writer"
+        TUser{..}  | rw == Read
+                           -> fbStructName typeName typeArgs <> "Reader"
+                   | rw == Write
+                           -> fbStructName typeName typeArgs <> "Writer"
         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                           -> jConvType elemType <> "[]"
+                           -> "java.util.List<" <> jConvObjType rw elemType <> ">"
         TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
-                           -> "java.util.Map<" <> jConvObjType keyType <> "," <+> jConvObjType valType <> ">"
+                           -> "java.util.Map<" <> jConvObjType rw keyType <> "," <+> jConvObjType rw valType <> ">"
         t'                 -> error $ "FlatBuffer.jConvType: unsupported type " ++ show t'
+
+
+jConvTypeW :: (WithType a, ?d::DatalogProgram) => a -> Doc
+jConvTypeW = jConvType Write
+
+jConvTypeR :: (WithType a, ?d::DatalogProgram) => a -> Doc
+jConvTypeR = jConvType Read
 
 -- Like jConvType, but returns Java object types instead of scalars for
 -- primitive types.
-jConvObjType :: (WithType a, ?d::DatalogProgram) => a -> Doc
-jConvObjType x =
+jConvObjType :: (WithType a, ?d::DatalogProgram) => RW -> a -> Doc
+jConvObjType rw x =
     case typeNormalizeForFlatBuf x of
          TBool{}            -> "Boolean"
          TBit{..} | typeWidth <= 8
@@ -556,7 +611,14 @@ jConvObjType x =
                             -> "Integer"
          TSigned{..} | typeWidth <= 64
                             -> "Long"
-         _                  -> jConvType x
+         _                  -> jConvType rw x
+
+
+jConvObjTypeW :: (WithType a, ?d::DatalogProgram) => a -> Doc
+jConvObjTypeW = jConvObjType Write
+
+jConvObjTypeR :: (WithType a, ?d::DatalogProgram) => a -> Doc
+jConvObjTypeR = jConvObjType Read
 
 -- Context where generated value is to be written.
 data FBCtx = -- value to be stored in field 'fbctxField' of 'fbctxTable'
@@ -586,7 +648,7 @@ jConv2FBType fbctx e t =
         -- FlatBuffers has a special method for embedding vectors in a buffer
         FBField{..} | typeIsVector t
                 -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize fbctxField) <> "Vector(this.fbbuilder," <> e' <> ")"
-                          | otherwise
+                    | otherwise
                 -> e'
     where
     e' = case typeNormalizeForFlatBuf t of
@@ -604,9 +666,7 @@ jConv2FBType fbctx e t =
                                -> e <> ".offset"
                          | otherwise
                                -> e <> ".type," <+> e <> ".offset"
-            ot@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES && (jConvType elemType == jFBType True elemType)
-                               -> e
-                                                  | otherwise
+            ot@TOpaque{typeArgs = [_], ..}
                                -> "this.create_" <> mkTypeIdentifier ot <> parens e
             ot@TOpaque{typeArgs = [_,_], ..} | typeName == mAP_TYPE
                                -> "this.create_" <> mkTypeIdentifier ot <> parens e
@@ -642,7 +702,7 @@ jConvObj2FBType fbctx e t =
          _                  -> jConv2FBType fbctx e t
 
 -- Call FlatBuffers API to create a table instance for the given type.
-jConvCreateTable :: (?d::DatalogProgram, ?prog_name::String) =>Type -> Maybe Constructor -> Doc
+jConvCreateTable :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe Constructor -> Doc
 jConvCreateTable t cons =
     case typeNormalizeForFlatBuf t of
          TBool{}            -> prim
@@ -678,21 +738,38 @@ jConvCreateTable t cons =
 builderClass :: (?prog_name::String) => String
 builderClass = ?prog_name ++ "UpdateBuilder"
 
+parserClass :: (?prog_name::String) => String
+parserClass = ?prog_name ++ "UpdateParser"
+
+relEnum :: (?prog_name::String) => String
+relEnum = ?prog_name ++ "Relation"
+
 -- Create builder class with methods to create FlatBuffer-backed instances of DDlog
 -- types.
-mkJavaBuilder :: (?d::DatalogProgram, ?prog_name::String) => String -> Doc
-mkJavaBuilder prog_name =
+mkJavaRelEnum :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkJavaRelEnum = ("ddlog" </> ?prog_name </> relEnum <.> "java",
     "// Automatically generated by the DDlog compiler."                 $$
-    "package ddlog." <> pp prog_name <> ";"                             $$
+    "package ddlog." <> pp ?prog_name <> ";"                            $$
+    "public final class" <+> pp relEnum                                 $$
+    (braces' $ vcat rels))
+    where
+    rels = map (\rel -> "public static final int" <+> mkRelId rel <+>
+                        "=" <+> pp (relIdentifier ?d rel) <> ";")
+               progIORelations
+
+-- Create builder class with methods to create FlatBuffer-backed instances of DDlog
+-- types.
+mkJavaBuilder :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
+    "// Automatically generated by the DDlog compiler."                 $$
+    "package ddlog." <> pp ?prog_name <> ";"                             $$
     "import ddlogapi.DDlogAPI;"                                         $$
     "import com.google.flatbuffers.*;"                                  $$
-    "import java.math.BigInteger;"                                      $$
-    "import java.util.function.Supplier;"                               $$
-    "public class" <+> builder_class                                    $$
+    "public class" <+> pp builderClass                                  $$
     (braces' $ "private FlatBufferBuilder fbbuilder;"                   $$
                "private java.util.Vector<Integer> commands;"            $$
                "private boolean finished;"                              $$
-               "public" <+> builder_class <> "() {"                     $$
+               "public" <+> pp builderClass <> "() {"                   $$
                "    this.fbbuilder = new FlatBufferBuilder();"          $$
                "    this.commands = new java.util.Vector<Integer>();"   $$
                "    this.finished = false;"                             $$
@@ -712,10 +789,8 @@ mkJavaBuilder prog_name =
                (vcat $ map mk_command_constructors
                      $ filter ((== RelInput) . relRole)
                      $ M.elems $ progRelations ?d)                      $$
-               (vcat $ map mk_type_factory progTypesToSerialize))
+               (vcat $ map mk_type_factory progTypesToSerialize)))
     where
-    builder_class = pp builderClass
-
     mk_command_constructors :: Relation -> Doc
     mk_command_constructors rel =
         mk_command_constructor "Insert" rel $$
@@ -727,9 +802,9 @@ mkJavaBuilder prog_name =
            then -- Relation type has a unique constructor (e.g., it's a struct with a
                 -- unique constructor, a tuple or a primitive type).
                 let args = case typ' ?d $ typeNormalizeForFlatBuf relType of
-                                TStruct{..} -> map (\a -> jConvType a <+> pp (name a)) $ consArgs $ typeCons !! 0
-                                TTuple{..}  -> mapIdx (\a i -> jConvType a <+> "a" <> pp i) typeTupArgs
-                                _           -> [jConvType relType <+> "v"] in
+                                TStruct{..} -> map (\a -> jConvTypeW a <+> pp (name a)) $ consArgs $ typeCons !! 0
+                                TTuple{..}  -> mapIdx (\a i -> jConvTypeW a <+> "a" <> pp i) typeTupArgs
+                                _           -> [jConvTypeW relType <+> "v"] in
                 "public void" <+> lcmd <> "_" <> mkRelId rel <> "(" <> commaSep args <> ")" $$
                 (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
                                            [ jFBPackage <> ".__CommandKind." <> pp cmd
@@ -740,10 +815,8 @@ mkJavaBuilder prog_name =
            else -- Relation type is a struct with multiple constructors
                 vcat $
                 map (\c@Constructor{..} ->
-                     -- Relation type has a unique constructor (e.g., it's a struct with a
-                     -- unique constructor, a tuple or a primitive type).
                      "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> pp (name c) <>
-                         "(" <> (commaSep $ map (\a -> jConvType a <+> pp (name a)) consArgs) <> ")" $$
+                         "(" <> (commaSep $ map (\a -> jConvTypeW a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
                                                 [ jFBPackage <> ".__CommandKind." <> pp cmd
                                                 , (pp $ relIdentifier ?d rel)
@@ -756,7 +829,7 @@ mkJavaBuilder prog_name =
     mk_type_factory t@TUser{..} | typeHasUniqueConstructor t =
         -- Unique constructor: generate a single 'create_XXX' method with the
         -- name that matches type name, not constructor name.
-        "public" <+> tname <+> "create_" <> typeTableName t <> "(" <> commaSep (map (\arg -> jConvType arg <+> pp (name arg)) consArgs) <> ")" $$
+        "public" <+> tname <+> "create_" <> typeTableName t <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
         (braces' $ "return new" <+> tname <> "(" <>
                    (jFBCallConstructor (typeTableName t) $ map (\a -> jConv2FBType (FBField (fbType t) (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
                                 | otherwise =
@@ -764,29 +837,28 @@ mkJavaBuilder prog_name =
         -- matching constructor name.
         vcat (map (mk_cons_factory t) $ typeCons tstruct)
         where
-        tname = jConvType t
+        tname = jConvTypeW t
         tstruct = typ' ?d t
         Constructor{..} = head $ typeCons tstruct
 
     mk_type_factory t@TTuple{..}  =
-        "public" <+> jConvType t <+> "create_" <> typeTableName t <> "(" <> commaSep (mapIdx (\a i -> jConvType a <+> "a" <> pp i) typeTupArgs) <> ")" $$
-        (braces' $ "return new" <+> jConvType t <> "(" <>
+        "public" <+> jConvTypeW t <+> "create_" <> typeTableName t <> "(" <> commaSep (mapIdx (\a i -> jConvTypeW a <+> "a" <> pp i) typeTupArgs) <> ")" $$
+        (braces' $ "return new" <+> jConvTypeW t <> "(" <>
                    (jFBCallConstructor (typeTableName t) $ mapIdx (\a i -> jConv2FBType (FBField (fbType t) ("a" ++ show i)) ("a" <> pp i) a) typeTupArgs) <> ");")
 
-    mk_type_factory t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES && (jConvType elemType == jFBType True elemType) = empty
-                                                         | elem typeName sET_TYPES =
+    mk_type_factory t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES =
         -- Generate a private method to convert vector of 'elemType'
         -- into vector of offsets (the method is only used by code generated by
         -- 'jConv2FBType')
-        "private" <+> jFBType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvType t <+> "v") $$
-        (braces' $ jFBType False t <+> "res = new" <+> jFBType True elemType <> "[v.length];"   $$
-                   "for (int __i = 0; __i < v.length; __i++)"                                   $$
-                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v[__i]" elemType <> ";")   $$
+        "private" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvTypeW t <+> "v")    $$
+        (braces' $ jFBWriteType False t <+> "res = new" <+> jFBWriteType True elemType <> "[v.size()];"             $$
+                   "for (int __i = 0; __i < v.size(); __i++)"                                                       $$
+                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v.get(__i)" elemType <> ";")                   $$
                    "return res;")
 
     mk_type_factory t@TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE =
         -- Generate a private method to Map<keyType,valType> into vector of offsets
-        "private" <+> jFBType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvType t <+> "v") $$
+        "private" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvTypeW t <+> "v")                $$
         (braces' $ "int [] res = new int[v.size()];"                                                                            $$
                    "int __i = 0;"                                                                                               $$
                    "java.util.Iterator<" <> tentry <> "> it = v.entrySet().iterator();"                                         $$
@@ -799,51 +871,282 @@ mkJavaBuilder prog_name =
                    "}"                                                                                                          $$
                    "return res;")
         where
-        tentry = "java.util.Map.Entry<" <> jConvObjType keyType <> "," <+> jConvObjType valType <> ">"
+        tentry = "java.util.Map.Entry<" <> jConvObjTypeW keyType <> "," <+> jConvObjTypeW valType <> ">"
         entry_table = typeTableName $ tTuple [keyType, valType]
 
     mk_type_factory _ = empty
 
     mk_cons_factory t c@Constructor{..} =
-        "public" <+> tname <+> "create_" <> cname <> "(" <> commaSep (map (\arg -> jConvType arg <+> pp (name arg)) consArgs) <> ")" $$
+        "public" <+> tname <+> "create_" <> cname <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
         (braces' $ "return new" <+> tname <> "(" <>
                    jFBPackage <> "." <> fbtname <> "." <> cname <> "," <+>
                    (jFBCallConstructor cname $ map (\a -> jConv2FBType (FBField cname (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
         where
-        tname = jConvType t
+        tname = jConvTypeW t
         cname = fbConstructorName (typeArgs t) c
         fbtname = fbType t
 
-typeFlatbufJavaBinding :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe (FilePath, Doc)
-typeFlatbufJavaBinding t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
-                                          , "package ddlog." <> pp ?prog_name <> ";" $$
-                                            code)
+
+-- Create parser class with methods to extract updates from FlatBuffer
+mkJavaParser :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkJavaParser = ("ddlog" </> ?prog_name </> parserClass <.> "java",
+    "// Automatically generated by the DDlog compiler."                                                                 $$
+    "package ddlog." <> pp ?prog_name <> ";"                                                                            $$
+    "import ddlogapi.DDlogAPI;"                                                                                         $$
+    "import ddlogapi.DDlogCommand;"                                                                                     $$
+    "import com.google.flatbuffers.*;"                                                                                  $$
+    "public class" <+> pp parserClass                                                                                   $$
+    (braces' $ "public" <+> pp parserClass <> "(java.nio.ByteBuffer bb) {"                                              $$
+               "    this.commands =" <+> jFBPackage <> ".__Commands.getRootAs__Commands(bb);"                           $$
+               "}"                                                                                                      $$
+               "private" <+> jFBPackage <> ".__Commands commands;"                                                      $$
+               "public static byte[] byteBufferToArray(java.nio.ByteBuffer buf) {"                                      $$
+               "    byte[] arr = new byte[buf.remaining()];"                                                            $$
+               "    buf.get(arr);"                                                                                      $$
+               "    return arr;"                                                                                        $$
+               "}"                                                                                                      $$
+               "public int numCommands() {"                                                                             $$
+               "    return this.commands.commandsLength();"                                                             $$
+               "}"                                                                                                      $$
+               "public CommandReader command(int i){"                                                                   $$
+               "    if (i >= this.numCommands() || i < 0) {"                                                            $$
+               "        throw new IndexOutOfBoundsException(\"Command index \" + i + \" out of bounds\");"              $$
+               "    }"                                                                                                  $$
+               "    return new CommandReader(this.commands.commands(i));"                                               $$
+               "}"                                                                                                      $$
+               "public static int commitDumpChanges(DDlogAPI hddlog,"                                                   $$
+               "        java.util.function.Consumer<DDlogCommand<Object>> callback){"                                   $$
+               "    DDlogAPI.FlatBufDescr fb = new DDlogAPI.FlatBufDescr();"                                            $$
+               "    int res = hddlog.commitDumpChangesToFlatbuf(fb);"                                                   $$
+               "    if (res < 0) { return res; }"                                                                       $$
+               "    try {"                                                                                              $$
+               "        " <> pp parserClass <+> "parser = new" <+> pp parserClass <> "(fb.buf);"                        $$
+               "        int ncmds = parser.numCommands();"                                                              $$
+               "        for (int i = 0; i < ncmds; i++) {"                                                              $$
+               "            callback.accept(parser.command(i));"                                                        $$
+               "        }"                                                                                              $$
+               "    } finally { hddlog.flatbufFree(fb); }"                                                              $$
+               "    return 0;"                                                                                          $$
+               "}"))
+
+mkCommandReader :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkCommandReader = ("ddlog" </> ?prog_name </> "CommandReader" <.> "java",
+    "// Automatically generated by the DDlog compiler."                                                         $$
+    "package ddlog." <> pp ?prog_name <> ";"                                                                    $$
+    "import com.google.flatbuffers.*;"                                                                          $$
+    "import ddlogapi.DDlogCommand;"                                                                             $$
+    "public final class CommandReader implements DDlogCommand<Object>"                                          $$
+    (braces' $ "protected CommandReader (" <> jFBPackage <> ".__Command inner) { this.inner = inner; }"         $$
+               "private" <+> jFBPackage <> ".__Command inner;"                                                  $$
+               "public final Kind kind(){"                                                                      $$
+               "    if (inner.kind() ==" <+> jFBPackage <> ".__CommandKind.Insert) {"                           $$
+               "        return DDlogCommand.Kind.Insert;"                                                       $$
+               "    } if (inner.kind() ==" <+> jFBPackage <> ".__CommandKind.Delete) {"                         $$
+               "        return DDlogCommand.Kind.DeleteVal;"                                                    $$
+               "    } else {"                                                                                   $$
+               "        throw new IllegalArgumentException(\"Unsupported command kind\" + inner.kind());"       $$
+               "    }"                                                                                          $$
+               "}"                                                                                              $$
+               "public final int relid() { return (int)this.inner.relid(); }"                                   $$
+               "public final Object value() {"                                                                  $$
+               "    switch (this.relid()) {"                                                                    $$
+               (nest' $ nest' $ vcat cases)                                                                     $$
+               "        default: throw new IllegalArgumentException(\"Invalid relation id\" + this.relid());"   $$
+               "    }"                                                                                          $$
+               "}"))
     where
-    class_name = fbStructName typeName typeArgs
+    cases = map (\rel -> let t = relType rel
+                             jt = jFBPackage <> "." <> typeTableName t in
+                         "case" <+> pp (relIdentifier ?d rel) <> ": {"                                      $$
+                         "    " <> jt <+> "val =" <+> parens jt <> "this.inner.val(new" <+> jt <> "());"    $$
+                         "    return (Object)" <+> jReadField 0 FBUnion "val" t <> ";"                      $$
+                         "}")
+                progIORelations
+
+typeFlatbufJavaWriter :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe (FilePath, Doc)
+typeFlatbufJavaWriter t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                         , "// Automatically generated by the DDlog compiler."  $$
+                                           "package ddlog." <> pp ?prog_name <> ";"             $$
+                                           code)
+    where
+    class_name = jConvTypeW t
     type_type = if length (typeCons $ typ' ?d t) <= 127
                    then "byte"
                    else "short"
 
     code | typeHasUniqueConstructor t =
-        "public class" <+> class_name $$
+        "public final class" <+> class_name $$
         (braces' $ "protected" <+> class_name <> "(int offset) { this.offset = offset; }" $$
                    "protected int offset;")
+
          | otherwise =
-        "public class " <> class_name $$
+        "public final class" <+> class_name $$
         (braces' $ "protected" <+> class_name <> "(" <> type_type <+> "type, int offset) { this.type = type; this.offset = offset; }" $$
                    "protected" <+> type_type <+> "type;"                                                                              $$
                    "protected int offset;")
 
-typeFlatbufJavaBinding TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+typeFlatbufJavaWriter t@TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
                                          , "package ddlog." <> pp ?prog_name <> ";" $$
                                            code)
     where
-    class_name = fbTupleName typeTupArgs
-    code = "public class" <+> class_name $$
+    class_name = jConvTypeW t
+    code = "public final class" <+> class_name $$
            (braces' $ "protected" <+> class_name <> "(int offset) { this.offset = offset; }" $$
                       "protected int offset;")
 
-typeFlatbufJavaBinding _ = Nothing
+typeFlatbufJavaWriter _ = Nothing
+
+typeFlatbufJavaReader :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe (FilePath, Doc)
+typeFlatbufJavaReader t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                         , "// Automatically generated by the DDlog compiler."  $$
+                                           "package ddlog." <> pp ?prog_name <> ";"             $$
+                                           "import com.google.flatbuffers.*;"                   $$
+                                           code)
+    where
+    class_name = jConvTypeR t
+    fb_class_name = jFBPackage <> "." <> fbStructName typeName typeArgs
+    t' = typ' ?d t
+    type_type = if length (typeCons t') <= 127
+                   then "byte"
+                   else "short"
+
+    code | typeHasUniqueConstructor t =
+        "public final class" <+> class_name $$
+        (braces' $ "protected" <+> class_name <> "(" <> fb_class_name <+> "inner) { this.inner = inner; }" $$
+                   "private" <+> fb_class_name <+> "inner;"                                                $$
+                   (accessors $ head $ typeCons t'))
+
+         | otherwise =
+        "public class" <+> class_name $$
+        (braces' $
+            "protected static" <+> class_name <+> "init(" <> type_type <+> "type, java.util.function.UnaryOperator<Table> inner)" $$
+            (braces' $
+                "switch (type)" $$
+                (braces' $ vcat
+                 $ map (\c -> let cname = fbConstructorName typeArgs c
+                                  fb_cname = jFBPackage <> "." <> cname in
+                              "case" <+> fb_class_name <> "." <> cname <> ": return new" <+>
+                              pp (legalize $ name c) <> "((" <> fb_cname <> ") inner.apply(new" <+> fb_cname <> "()));")
+                 $ typeCons t')                                            $$
+                 ("throw new RuntimeException(\"Invalid type \" + type + \" in" <+> class_name <> "\");")) $$
+        (vcat $ map subclass $ typeCons t'))
+
+    subclass :: Constructor -> Doc
+    subclass c =
+        "public static final class" <+> pp (legalize $ name c) <+> "extends" <+> class_name $$
+        (braces' $ "protected" <+> pp (legalize $ name c) <> "(" <> fb_cons_name <+> "inner) { this.inner = inner; }" $$
+                   "private" <+> fb_cons_name <+> "inner;"                                            $$
+                   (accessors c))
+        where fb_cons_name = jFBPackage <> "." <> fbConstructorName typeArgs c
+
+    accessors :: Constructor -> Doc
+    accessors Constructor{..} = vcat $ map accessor consArgs
+
+    accessor :: Field -> Doc
+    accessor f =
+        "public" <+> jConvTypeR f <+> pp (name f) <+> "()" $$
+        (braces' $ "return" <+> jReadField 0 (FBField class_name (name f)) "this.inner" (typ f) <> ";")
+
+typeFlatbufJavaReader tt@TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                           , "// Automatically generated by the DDlog compiler."    $$
+                                             "package ddlog." <> pp ?prog_name <> ";"               $$
+                                             "import com.google.flatbuffers.*;"                     $$
+                                             code)
+    where
+    class_name = jConvTypeR tt
+    fb_class_name = jFBPackage <> "." <> fbTupleName typeTupArgs
+    code = "public final class" <+> class_name $$
+           (braces' $ "protected" <+> class_name <> "(" <> fb_class_name <+> "inner) { this.inner = inner; }" $$
+                      "private" <+> fb_class_name <+> "inner;"                                                $$
+                      accessors)
+    accessors = vcat $ mapIdx accessor typeTupArgs
+
+    accessor :: Type -> Int -> Doc
+    accessor t i =
+        "public" <+> jConvTypeR t <+> "a" <> pp i <+> "()" $$
+        (braces' $ "return" <+> jReadField 0 (FBField class_name ("a" ++ show i)) "this.inner" t <> ";")
+
+typeFlatbufJavaReader _ = Nothing
+
+-- Extract value from context.
+-- Java expression 'e' contains a FlatBuffers-native Java type that represents
+-- 'fbctx' context.  Convert it to the corresponding convenience type.
+jReadField :: (?d::DatalogProgram, ?prog_name::String) => Int -> FBCtx -> Doc -> Type -> Doc
+jReadField nesting fbctx e t =
+    case fbctx of
+         -- Anything that's not a table must be wrapped in a table to be stored
+         -- in a union
+         FBUnion     | typeIsTable t
+                     -> do_read e
+                     | otherwise
+                     -> jReadField (nesting+1) (FBField (typeTableName t) "v") e t
+         -- Anything that's not a union or array can be stored in an array; unions and arrays must be
+         -- wrapped in a table first.
+         FBArray     | typeHasUniqueConstructor t && not (typeIsVector t)
+                     -> do_read e
+                     | otherwise
+                     -> jReadField (nesting+1) (FBField (typeTableName t) "v") e t
+         -- Vectors are representedFlatBuffers has a special method for embedding vectors in a buffer
+         FBField{..} | typeIsVector t
+                     -> do_read (e <> "." <> pp ( fbctxField))
+                     | not (typeHasUniqueConstructor t)
+                     -> do_read (e <> "." <> jAccessorName fbctxField <> "Type()," <+>
+                                 "(Table t) ->" <+> e <> "." <> jAccessorName fbctxField <> "(t)")
+                     | otherwise
+                     -> do_read (e <> "." <> jAccessorName fbctxField <> "()")
+    where
+    do_read e' = case typeNormalizeForFlatBuf t of
+                      TBool{}            -> e'
+                      TInt{}             -> bigint
+                      TString{}          -> e'
+                      TBit{..} | typeWidth <= 64
+                                         -> (parens $ jConvTypeR t) <> e'
+                      TBit{..}           -> biguint
+                      TSigned{..} | typeWidth <= 64
+                                         -> (parens $ jConvTypeR t) <> e'
+                      TSigned{..}        -> bigint
+                      TTuple{..}         -> "new" <+> jConvTypeR t <> parens e'
+                      TUser{..} |typeHasUniqueConstructor t
+                                         -> "new" <+> jConvTypeR t <> parens e'
+                                | otherwise
+                                         -> jConvTypeR t <> ".init" <> parens e'
+                      TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES ->
+                          let elem_type = jConvObjTypeR elemType
+                              ltype = "java.util.List<" <> elem_type <> ">"
+                              -- Add nesting depth to local variables inside lambda so that they don't
+                              -- clash with variables from containing scopes.
+                              vlen = "len" <> pp nesting
+                              vlst = "lst" <> pp nesting
+                              vi   = "i"   <> pp nesting
+                              vx   = "x"   <> pp nesting in
+                          "((java.util.function.Supplier<" <> ltype <> ">) (() ->"                                          $$
+                          (braces' $ "int" <+> vlen <+> "=" <+> e' <> "Length();"                                           $$
+                                     ltype <+> vlst <+> "= new java.util.ArrayList<" <> elem_type <> ">(" <> vlen <> ");"   $$
+                                     "for (int" <+> vi <+> "= 0;" <+> vi <+> "<" <+> vlen <> ";" <+> vi <> "++)"            $$
+                                     (braces' $
+                                        jFBReadType elemType <+> vx <+> "=" <+> e' <> parens vi <> ";" $$
+                                        vlst <> ".add(" <> jReadField (nesting+1) FBArray vx elemType <> ");")  $$
+                                     "return" <+> vlst <> ";") <> ")).get()"
+
+                      TOpaque{typeArgs = [keyType,valType], ..} | typeName == mAP_TYPE ->
+                          let ktype = jConvObjTypeR keyType
+                              vtype = jConvObjTypeR valType
+                              mtype = "java.util.Map<" <> ktype <> "," <+> vtype <> ">"
+                              ttable = typeTableName $ tTuple [keyType, valType]
+                              vmap = "map" <> pp nesting
+                              vi   = "i"   <> pp nesting in
+                          "((java.util.function.Supplier<" <> mtype <> ">) (() -> "         $$
+                          (braces' $ mtype <+> vmap <+> "= new java.util.HashMap<" <> ktype <> "," <+> vtype <> ">();"  $$
+                                     "for (int" <+> vi <+> "= 0;" <+> vi <+> "<" <+> e' <> "Length();" <+> vi <> "++)"  $$
+                                     (braces' $ vmap <> ".put(" <>
+                                        (jReadField (nesting+1) (FBField ttable "a0") (e' <> parens vi) keyType) <> "," <+>
+                                        (jReadField (nesting+1) (FBField ttable "a1") (e' <> parens vi) valType) <> ");") $$
+                                     "return" <+> vmap <> ";") <> ")).get()"
+                      t'                 -> error $ "FlatBuffer.jReadField: unsupported type " ++ show t'
+        where
+        bigint = "new java.math.BigInteger(" <> e' <> ".sign() ? 1 : -1," <+>
+                    pp parserClass <> ".byteBufferToArray(" <> e' <> ".bytesAsByteBuffer()))"
+        biguint = "new java.math.BigInteger(" <> pp parserClass <> ".byteBufferToArray(" <> e' <> ".bytesAsByteBuffer()))"
 
 {- Rust bindings -}
 

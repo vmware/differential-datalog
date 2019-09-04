@@ -13,7 +13,7 @@ compile DDlog Java bindings.
 ## Compile DDlog Java bindings
 
 Skip this step if you are using a binary release of DDlog, where pre-compiled
-Java bindings can be found in `java/ddlogapi.jar`.  To compile this them from
+Java bindings can be found in `java/ddlogapi.jar`.  To compile them from
 source:
 
 ```
@@ -82,37 +82,61 @@ public class Test {
     Test() {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
+        api.recordCommands("replay.dat", false);
     }
 
-    void onCommit(DDlogCommand command) {
-        System.out.println(command.toString());
+    void onCommit(DDlogCommand<Object> command) {
+        int relid = command.relid();
+        switch (relid) {
+            case redistRelation.Span:
+                SpanReader span = (SpanReader)command.value();
+                System.out.println("From " + relid + " " + command.kind() + " Span{" + span.entity() + "," + span.tns() + "}");
+                break;
+            default: throw new IllegalArgumentException("Unknown relation id " + relid);
+        }
     }
 
     void run() {
 
-        /* Start transaction.  All DDlog table updates must be made in the
-         * context of a transaction. */
-        this.api.start();
+        /* First transaction */
+        {
+            /* Start transaction.  All DDlog table updates must be made in the
+             * context of a transaction. */
+            this.api.start();
 
-        /* Create a builder object that will be used to serialize DDlog commands
-         * into a buffer. */
-        redistUpdateBuilder builder = new redistUpdateBuilder();
+            /* Create a builder object that will be used to serialize DDlog commands
+             * into a buffer. */
+            redistUpdateBuilder builder = new redistUpdateBuilder();
 
-        /* Create several DDlog commands.  Commands are stored inside the
-         * builder. */
-        builder.insert_DdlogNode(10000);
-        builder.insert_DdlogBinding((short)100, 10000);
-        builder.insert_DdlogDependency(10000, 20000);
 
-        /* Apply commands serialized by the builder to the DDlog program. */
-        int res = builder.applyUpdates(this.api);
+            /* Create several DDlog commands.  Commands are stored inside the
+             * builder. */
+            builder.insert_DdlogNode(10000);
+            builder.insert_DdlogBinding((short)100, 10000);
+            builder.insert_DdlogDependency(10000, 20000);
 
-        /* Commit transaction, triggering the `onCommit` callback for every
-         * record in an output relation modified by the transaction. */
-        this.api.commit_dump_changes(r -> this.onCommit(r));
+            /* Apply commands serialized by the builder to the DDlog program. */
+            int res = builder.applyUpdates(this.api);
 
-        /* Terminate the DDlog program. */
-        this.api.stop();
+            /* Commit transaction, triggering the `onCommit` callback for every
+             * record in an output relation modified by the transaction. */
+            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+        }
+
+        /* Second transaction */
+        {
+            this.api.start();
+            /* each applyUpdates requires its own builder */
+            redistUpdateBuilder builder = new redistUpdateBuilder();
+            builder.insert_DdlogNode(20000);
+            builder.insert_DdlogBinding((short)200, 20000);
+            builder.delete_DdlogNode(10000);
+
+            int res = builder.applyUpdates(this.api);
+
+            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+            this.api.stop();
+        }
     }
 
     public static void main(String[] args) throws IOException {

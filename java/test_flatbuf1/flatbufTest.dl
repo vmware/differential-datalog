@@ -2,8 +2,8 @@ input relation BI(b: bool)
 output relation BO(b: bool)
 BO(b) :- BI(b).
 
-input relation CI(c: bit<8>)
-output relation CO(c: bit<8>)
+input relation CI(c: bit<32>)
+output relation CO(c: bit<32>)
 CO(c) :- CI(c).
 
 input relation DI(d: signed<16>)
