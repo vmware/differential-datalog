@@ -1221,17 +1221,12 @@ impl<V: Val> Program<V> {
 
                         for (relid, collection) in collections {
                             /* notify client about changes */
-                            match &prog.get_relation(relid).change_cb {
-                                None => {
-                                    collection.probe_with(&mut probe1);
-                                },
-                                Some(cb) => {
-                                    let mut cb = cb.lock().unwrap().clone();
-                                    collection.consolidate().inspect(move |x| {
-                                        assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                        cb(relid, &x.0, x.2)
-                                    }).probe_with(&mut probe1);
-                                }
+                            if let Some(cb) = &prog.get_relation(relid).change_cb {
+                                let cb = cb.lock().unwrap().clone();
+                                collection.consolidate().inspect(move |x| {
+                                    assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                    cb(relid, &x.0, x.2)
+                                }).probe_with(&mut probe1);
                             }
                         };
                         sessions
