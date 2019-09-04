@@ -19,9 +19,6 @@ path = "./ovsdb"
 [dependencies.observe]
 path = "./observe"
 
-[dependencies.tcp_channel]
-path = "./tcp_channel"
-
 [dependencies]
 differential-dataflow = "0.9"
 timely = "0.9"
