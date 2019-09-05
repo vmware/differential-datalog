@@ -65,7 +65,10 @@ named!(pub parse_command<&[u8], Command>,
                             apply!(sym,";")         >>
                             (Command::Commit(delta.is_some())))                                 |
                   do_parse!(apply!(sym,"timestamp") >> apply!(sym,";") >> (Command::Timestamp)) |
-                  do_parse!(apply!(sym,"#")         >> take_until!("\n") >> (Command::Comment)) |
+                  do_parse!(apply!(sym,"#")         >>
+                            take_until!("\n")       >>
+                            apply!(sym,"\n")        >>
+                            (Command::Comment))                                                 |
                   do_parse!(apply!(sym,"profile")   >>
                             cmd: opt!(profile_cmd)  >>
                             apply!(sym,";")         >>
@@ -94,8 +97,8 @@ named!(pub parse_command<&[u8], Command>,
 #[test]
 fn test_command() {
     assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
-    assert_eq!(parse_command(br"# comment") , Ok((&br""[..], Command::Comment)));
-    assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit)));
+    assert_eq!(parse_command(b"# comment\n"), Ok((&br""[..], Command::Comment)));
+    assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit(false))));
     assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
     assert_eq!(parse_command(br"profile cpu on;") , Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true))))));
     assert_eq!(parse_command(br"profile cpu off;"), Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(false))))));
