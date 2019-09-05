@@ -33,7 +33,7 @@ impl DeltaMap {
         DeltaMap{map: BTreeMap::default()}
     }
 
-    pub fn format(&self, w: &mut io::Write) -> io::Result<()> {
+    pub fn format(&self, w: &mut dyn io::Write) -> io::Result<()> {
        for (relid, relmap) in &self.map {
            w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
            for (val, weight) in relmap {
@@ -44,7 +44,7 @@ impl DeltaMap {
        Ok(())
     }
 
-    pub fn format_rel(&mut self, relid: RelId, w: &mut io::Write) -> io::Result<()> {
+    pub fn format_rel(&mut self, relid: RelId, w: &mut dyn io::Write) -> io::Result<()> {
         let map = self.get_rel(relid);
         for (val, weight) in map {
             w.write_fmt(format_args!("{}: {}\n", *val, *weight))?;
@@ -52,7 +52,7 @@ impl DeltaMap {
         Ok(())
     }
 
-    pub fn format_as_sets(&self, w: &mut io::Write) -> io::Result<()> {
+    pub fn format_as_sets(&self, w: &mut dyn io::Write) -> io::Result<()> {
        for (relid, map) in &self.map {
            w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
            for (val,weight) in map {
@@ -64,7 +64,7 @@ impl DeltaMap {
        Ok(())
     }
 
-    pub fn format_rel_as_set(&mut self, relid: RelId, w: &mut io::Write) -> io::Result<()> {
+    pub fn format_rel_as_set(&mut self, relid: RelId, w: &mut dyn io::Write) -> io::Result<()> {
         let map = self.get_rel(relid);
         for (val, weight) in map {
             w.write_fmt(format_args!("{}\n", *val))?;
