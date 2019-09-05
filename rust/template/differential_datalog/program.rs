@@ -16,10 +16,10 @@ use std::collections::hash_map;
 use std::fmt::{self, Debug, Formatter};
 use std::hash::Hash;
 use std::ops::{Add, Deref, Mul};
+use std::sync::atomic::{Ordering, AtomicBool, AtomicU32};
 use std::result::Result;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::{Arc, Barrier, Mutex, RwLock};
+use std::sync::{Arc, Barrier, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -163,6 +163,7 @@ impl PathSummary<TS16> for TS16 {
 
 /* Outer timestamp */
 pub type TS = u32;
+type TSAtomic = AtomicU32;
 
 /* Timestamp for the nested scope
  * Use 16-bit timestamps for inner scopes to save memory
@@ -1049,7 +1050,7 @@ impl<V: Val> Program<V> {
         let profile_cpu2 = profile_cpu.clone();
 
         /* Shared timestamp managed by worker 0 and read by all other workers */
-        let progress_lock = Arc::new(RwLock::new(0));
+        let frontier_ts = TSAtomic::new(0);
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
         /* We must run the timely computation from a separate thread, since we need this thread to
@@ -1060,6 +1061,20 @@ impl<V: Val> Program<V> {
             /* Start up timely computation. */
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker_index = worker.index();
+
+                /* Peer workers thread handles; only used by worker 0. */
+                let mut peers: FnvHashMap<usize, thread::Thread> = FnvHashMap::default();
+                if worker_index != 0 {
+                    /* Send worker's thread handle to worker 0. */
+                    thandle_send.send((worker_index, thread::current())).unwrap();
+                } else {
+                    /* Worker 0: receive `nworkers-1` handles. */
+                    let thandle_recv = thandle_recv.lock().unwrap();
+                    for _ in 1..nworkers {
+                        let (worker, thandle) = thandle_recv.recv().unwrap();
+                        peers.insert(worker, thandle);
+                    }
+                }
                 let probe = probe::Handle::new();
                 {
                     let mut probe1 = probe.clone();
@@ -1274,7 +1289,7 @@ impl<V: Val> Program<V> {
                         }
                         epoch += 1;
                         Self::advance(&mut all_sessions, epoch);
-                        Self::flush(&mut all_sessions, &probe, worker, &*progress_lock, &progress_barrier);
+                        Self::flush(&mut all_sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
                         flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
@@ -1290,7 +1305,7 @@ impl<V: Val> Program<V> {
                                 Err(_)  => {
                                     /* Sender hung */
                                     eprintln!("Sender hung");
-                                    Self::stop_workers(&progress_lock, &progress_barrier);
+                                    Self::stop_workers(&frontier_ts, &progress_barrier);
                                     break;
                                 },
                                 Ok(Msg::Update(mut updates)) => {
@@ -1324,12 +1339,12 @@ impl<V: Val> Program<V> {
                                 },
                                 Ok(Msg::Flush) => {
                                     //println!("flushing");
-                                    Self::flush(&mut sessions, &probe, worker, &progress_lock, &progress_barrier);
+                                    Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
                                     //println!("flushed");
                                     flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
                                 },
                                 Ok(Msg::Stop) => {
-                                    Self::stop_workers(&progress_lock, &progress_barrier);
+                                    Self::stop_workers(&frontier_ts, &progress_barrier);
                                     break;
                                 }
                             };
@@ -1339,7 +1354,7 @@ impl<V: Val> Program<V> {
                 if worker_index != 0 {
                     loop {
                         progress_barrier.wait();
-                        let time = *progress_lock.read().unwrap();
+                        let time = frontier_ts.load(Ordering::SeqCst);
                         if time == /*0xffffffffffffffff*/TS::max_value() {
                             return Ok(())
                         };
@@ -1434,26 +1449,34 @@ impl<V: Val> Program<V> {
         sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
         probe: &ProbeHandle<TS>,
         worker: &mut Worker<Allocator>,
-        progress_lock: &RwLock<TS>,
-        progress_barrier: &Barrier,
-    ) {
-        for (_, r) in sessions.iter_mut() {
+        peers: &FnvHashMap<usize, thread::Thread>,
+        frontier_ts: &TSAtomic,
+        progress_barrier: &Barrier)
+    {
+        for (_,r) in sessions.into_iter() {
             //print!("flush\n");
             r.flush();
-        }
-        if let Some((_, session)) = sessions.iter_mut().nth(0) {
-            *progress_lock.write().unwrap() = *session.time();
-            progress_barrier.wait();
-            while probe.less_than(session.time()) {
-                //println!("flush.step");
-                worker.step();
+        };
+        if let Some((_,session)) = sessions.into_iter().nth(0) {
+            /* Do nothing if timestamp has not advanced since the last
+             * transaction (i.e., no updates have arrived). */
+            if frontier_ts.load(Ordering::SeqCst) < *session.time() {
+                frontier_ts.store(*session.time(), Ordering::SeqCst);
+                //Self::unpark_peers(peers);
+                progress_barrier.wait();
+                while probe.less_than(session.time()) {
+                    //println!("flush.step");
+                    worker.step();
+                };
+                progress_barrier.wait();
             }
-            progress_barrier.wait();
         }
     }
 
-    fn stop_workers(progress_lock: &RwLock<TS>, progress_barrier: &Barrier) {
-        *progress_lock.write().unwrap() = TS::max_value();
+    fn stop_workers(frontier_ts: &TSAtomic,
+                    progress_barrier: &Barrier)
+    {
+        frontier_ts.store(TS::max_value(), Ordering::SeqCst);
         progress_barrier.wait();
     }
 
