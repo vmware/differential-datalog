@@ -173,9 +173,6 @@ pub type TSNested = TS16;
 // Diff associated with records in differential dataflow
 pub type Weight = i32;
 
-/* Message buffer for communication with timely threads */
-const MSG_BUF_SIZE: usize = 500;
-
 /* Message buffer for profiling messages */
 const PROF_MSG_BUF_SIZE: usize = 10000;
 
@@ -818,9 +815,11 @@ pub type DeltaSet<V> = FnvHashMap<V, bool>;
 /// of scope. Error occurring as part of that operation are silently
 /// ignored. If you want to handle such errors, call `stop` manually.
 pub struct RunningProgram<V: Val> {
-    /* producer side of the channel used to send commands to workers */
-    sender: mpsc::SyncSender<Msg<V>>,
-    /* channel to signal completion of flush requests */
+    /* Producer side of the channel used to send commands to workers.
+     * We use async channel to avoid deadlocks when worker 0 is blocked
+     * in `step_or_park`. */
+    sender: mpsc::Sender<Msg<V>>,
+    /* Channel to signal completion of flush requests. */
     flush_ack: mpsc::Receiver<()>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     /* Join handle of the thread running timely computaiton. */
@@ -829,12 +828,12 @@ pub struct RunningProgram<V: Val> {
     worker0: thread::Thread,
     transaction_in_progress: bool,
     need_to_flush: bool,
-    /* CPU profiling enabled (can be expensive) */
+    /* CPU profiling enabled (can be expensive). */
     profile_cpu: Arc<AtomicBool>,
-    /* profiling thread */
+    /* Profiling thread. */
     prof_thread_handle: Option<thread::JoinHandle<()>>,
-    /* profiling statistics */
-    pub profile: Arc<Mutex<Profile>>,
+    /* Profiling statistics. */
+    pub profile: Arc<Mutex<Profile>>
 }
 
 // Right now this Debug implementation is more or less a short cut.
@@ -1019,10 +1018,11 @@ impl<V: Val> Program<V> {
         let prog = self.clone();
 
         /* Setup channel to communicate with the dataflow.
-         * We use sync channel with buffer size 0 to ensure that the receiver finishes
-         * processing commands by the time send() returns.
+         * We use async channel to avoid deadlocks when worker 0 is parked in
+         * `step_or_park`.  This has the downside of introducing an unbounded buffer
+         * that is only guaranteed to be fully flushed when the transaction commits.
          */
-        let (tx, rx) = mpsc::sync_channel::<Msg<V>>(MSG_BUF_SIZE);
+        let (tx, rx) = mpsc::channel::<Msg<V>>();
         let rx = Arc::new(Mutex::new(rx));
 
         /* Channel to send flush acknowledgements. */
@@ -1301,11 +1301,19 @@ impl<V: Val> Program<V> {
                     if worker_index == 0 {
                         let rx = rx.lock().unwrap();
                         loop {
-                            match rx.recv() {
-                                Err(_)  => {
+                            /* Non-blocking receive, so that we can do some garbage collecting
+                             * when there is no real work to do. */
+                            match rx.try_recv() {
+                                Err(mpsc::TryRecvError::Empty) => {
+                                    /* Command channel empty: use idle time to work on garbage collection.
+                                     * This will block when there is no more compaction left to do.
+                                     * The sender must unpark worker 0 after sending to the channel. */
+                                    worker.step_or_park(None);
+                                },
+                                Err(mpsc::TryRecvError::Disconnected)  => {
                                     /* Sender hung */
                                     eprintln!("Sender hung");
-                                    Self::stop_workers(&frontier_ts, &progress_barrier);
+                                    Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
                                     break;
                                 },
                                 Ok(Msg::Update(mut updates)) => {
@@ -1344,7 +1352,7 @@ impl<V: Val> Program<V> {
                                     flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
                                 },
                                 Ok(Msg::Stop) => {
-                                    Self::stop_workers(&frontier_ts, &progress_barrier);
+                                    Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
                                     break;
                                 }
                             };
@@ -1353,17 +1361,35 @@ impl<V: Val> Program<V> {
                 }
                 if worker_index != 0 {
                     loop {
+                        /* Differential does not require any synchronization between workers: as
+                         * long as we keep calling `step_or_park`, all workers will eventually
+                         * process all inputs.  Barriers in the following code are needed so that
+                         * worker 0 can know exactly when all other workers have processed all data
+                         * for the `frontier_ts` timestamp, so that it knows when a transaction has
+                         * been fully committed and produced all its outputs. */
                         progress_barrier.wait();
                         let time = frontier_ts.load(Ordering::SeqCst);
                         if time == /*0xffffffffffffffff*/TS::max_value() {
                             return Ok(())
                         };
                         while probe.less_than(&time) {
-                            if !worker.step() {
+                            if !worker.step_or_park(None) {
+                                /* Dataflow terminated. */
                                 return Ok(())
                             };
                         };
                         progress_barrier.wait();
+                        /* We're all caught up with `frontier_ts` and can now spend some time
+                         * garbage collecting.  The `step_or_park` call below will block if there
+                         * is no more garbage collecting left to do.  It will wake up when one of
+                         * the following conditions occurs: (1) there is more garbage collecting to
+                         * do as a result of other threads making progress, (2) new inputs have
+                         * been received, (3) worker 0 unparked the thread.  We check if the
+                         * frontier has been advanced by worker 0 and, if so, go back to the
+                         * barrier to synchrnonize with other workers. */
+                        while frontier_ts.load(Ordering::SeqCst) == time {
+                            worker.step_or_park(None);
+                        }
                     }
                 }
                 Ok(())
@@ -1462,22 +1488,31 @@ impl<V: Val> Program<V> {
              * transaction (i.e., no updates have arrived). */
             if frontier_ts.load(Ordering::SeqCst) < *session.time() {
                 frontier_ts.store(*session.time(), Ordering::SeqCst);
-                //Self::unpark_peers(peers);
+                Self::unpark_peers(peers);
                 progress_barrier.wait();
                 while probe.less_than(session.time()) {
                     //println!("flush.step");
-                    worker.step();
+                    worker.step_or_park(None);
                 };
                 progress_barrier.wait();
             }
         }
     }
 
-    fn stop_workers(frontier_ts: &TSAtomic,
+    fn stop_workers(peers: &FnvHashMap<usize, thread::Thread>,
+                    frontier_ts: &TSAtomic,
                     progress_barrier: &Barrier)
     {
         frontier_ts.store(TS::max_value(), Ordering::SeqCst);
+        Self::unpark_peers(peers);
         progress_barrier.wait();
+    }
+
+    fn unpark_peers(peers: &FnvHashMap<usize, thread::Thread>)
+    {
+        for (_, t) in peers.iter() {
+            t.unpark();
+        }
     }
 
     /* Lookup relation by id */
