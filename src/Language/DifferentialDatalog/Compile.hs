@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2019 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -628,13 +628,13 @@ mkFromRecord t@TypeDef{..} =
     "impl" <+> targs_bounds <+> "record::FromRecord for" <+> rname (name t) <> targs <+> "{"                                    $$
     "    fn from_record(val: &record::Record) -> Result<Self, String> {"                                                        $$
     "        match val {"                                                                                                       $$
-    "            record::Record::PosStruct(constr, args) => {"                                                                  $$
+    "            record::Record::PosStruct(constr, _args) => {"                                                                 $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' pos_constructors)                                                                    $$
     "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
-    "            record::Record::NamedStruct(constr, args) => {"                                                                $$
+    "            record::Record::NamedStruct(constr, _args) => {"                                                               $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' named_constructors)                                                                  $$
     "                    c => Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
@@ -652,12 +652,12 @@ mkFromRecord t@TypeDef{..} =
     pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
     mkposcons :: Constructor -> Doc
     mkposcons c@Constructor{..} =
-        "\"" <> pp (name c) <> "\"" <+> "if args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
+        "\"" <> pp (name c) <> "\"" <+> "if _args.len() ==" <+> (pp $ length consArgs) <+> "=> {" $$
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&args[" <> pp i <> "])?") consArgs
+        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&_args[" <> pp i <> "])?") consArgs
     named_constructors = vcat $ map mknamedcons $ typeCons $ fromJust tdefType
     mknamedcons :: Constructor -> Doc
     mknamedcons c@Constructor{..} =
@@ -666,7 +666,7 @@ mkFromRecord t@TypeDef{..} =
         "},"
         where
         cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": record::arg_extract::<" <> mkType f <> ">(args, \"" <> (pp $ unddname f) <> "\")?") consArgs
+        fields = map (\f -> pp (name f) <> ": record::arg_extract::<" <> mkType f <> ">(_args, \"" <> (pp $ unddname f) <> "\")?") consArgs
 
 mkStructIntoRecord :: TypeDef -> Doc
 mkStructIntoRecord t@TypeDef{..} =
@@ -725,12 +725,12 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkRelIdMap d                                                                                    $$
     mkInputRelIdMap d                                                                               $$
     mkOutputRelIdMap d                                                                              $$
-    "pub fn relval_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
+    "pub fn relval_from_record(rel: Relations, _rec: &record::Record) -> Result<Value, String> {"   $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                                $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn relkey_from_record(rel: Relations, rec: &record::Record) -> Result<Value, String> {"    $$
+    "pub fn relkey_from_record(rel: Relations, _rec: &record::Record) -> Result<Value, String> {"   $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcat $ key_entries)                                                            $$
     "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"                 $$
@@ -741,14 +741,14 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)")    $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")   $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
         "Relations::" <> rname(name rel) <+> "=> {"                                                                  $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(rec)?)") $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")$$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
