@@ -145,7 +145,7 @@ ddlog -i playpen.dl -L../../lib
 ```
 and call the Rust toolchain to compile the program:
 ```
-cd playpen; cargo build --release
+cd playpen_ddlog; cargo build --release
 ```
 
 ### Running the "Hello, world!" program
