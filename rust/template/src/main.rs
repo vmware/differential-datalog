@@ -36,6 +36,7 @@ use time::precise_time_ns;
 fn handle_cmd(
     hddlog: &HDDlog,
     print_deltas: bool,
+    interactive: bool,
     upds: &mut Vec<Update<Value>>,
     cmd: Command,
 ) -> (i32, bool) {
@@ -98,7 +99,7 @@ fn handle_cmd(
             let relid = match output_relname_to_id(&rname) {
                 None => {
                     eprintln!("Error: Unknown output relation {}", rname);
-                    return (-1, false);
+                    return (-1, interactive);
                 }
                 Some(rid) => rid as RelId,
             };
@@ -131,7 +132,7 @@ fn handle_cmd(
                 Err(e) => {
                     upds.clear();
                     eprintln!("Error: {}", e);
-                    return (-1, false);
+                    return (-1, interactive);
                 }
             };
             if last {
@@ -145,7 +146,7 @@ fn handle_cmd(
         Ok(_) => (0, true),
         Err(e) => {
             eprintln!("Error: {}", e);
-            (-1, false)
+            (-1, interactive)
         }
     }
 }
@@ -165,9 +166,17 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-pub fn run_interactive(hddlog: HDDlog, print_deltas: bool) -> i32 {
+fn run(hddlog: HDDlog, print_deltas: bool) -> i32 {
     let upds = Arc::new(Mutex::new(Vec::new()));
-    let ret = interact(|cmd| handle_cmd(&hddlog, print_deltas, &mut upds.lock().unwrap(), cmd));
+    let ret = interact(|cmd, interactive| {
+        handle_cmd(
+            &hddlog,
+            print_deltas,
+            interactive,
+            &mut upds.lock().unwrap(),
+            cmd,
+        )
+    });
     let stop_res = hddlog.stop();
     if ret != 0 {
         ret
@@ -208,6 +217,6 @@ pub fn main() {
 
     let hddlog = HDDlog::run(args.workers, args.store, cb);
 
-    let ret = run_interactive(hddlog, args.delta);
+    let ret = run(hddlog, args.delta);
     exit(ret);
 }
