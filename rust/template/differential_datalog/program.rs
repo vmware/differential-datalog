@@ -821,8 +821,10 @@ pub struct RunningProgram<V: Val> {
     /* channel to signal completion of flush requests */
     flush_ack: mpsc::Receiver<()>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
-    /* timely worker threads */
+    /* Join handle of the thread running timely computaiton. */
     thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
+    /* Timely worker 0. */
+    worker0: thread::Thread,
     transaction_in_progress: bool,
     need_to_flush: bool,
     /* CPU profiling enabled (can be expensive) */
@@ -1028,6 +1030,13 @@ impl<V: Val> Program<V> {
         /* Profiling channel */
         let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
 
+        /* Channel used by workers 1..n to send their thread handles to worker 0. */
+        let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
+        let thandle_recv = Arc::new(Mutex::new(thandle_recv));
+
+        /* Channel used by the main timely thread to send worker 0 handle to the caller. */
+        let (w0send, w0recv) = mpsc::sync_channel::<thread::Thread>(0);
+
         /* Profile data structure */
         let profile = Arc::new(Mutex::new(Profile::new()));
         let profile2 = profile.clone();
@@ -1042,8 +1051,12 @@ impl<V: Val> Program<V> {
         let progress_lock = Arc::new(RwLock::new(0));
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
+        /* We must run the timely computation from a separate thread, since we need this thread to
+         * take the ownership of `WorkerGuards`, returned by `timely::execute`.  `WorkerGuards` cannot
+         * be sent across threads (i.e., they do not implement `Send` and therefore cannot be
+         * safely stored in `RunningProgram`). */
         let h = thread::spawn(move ||
-            /* start up timely computation */
+            /* Start up timely computation. */
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| {
                 let worker_index = worker.index();
                 let probe = probe::Handle::new();
@@ -1222,7 +1235,7 @@ impl<V: Val> Program<V> {
                         for (relid, collection) in collections {
                             /* notify client about changes */
                             if let Some(cb) = &prog.get_relation(relid).change_cb {
-                                let cb = cb.lock().unwrap().clone();
+                                let mut cb = cb.lock().unwrap().clone();
                                 collection.consolidate().inspect(move |x| {
                                     assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
                                     cb(relid, &x.0, x.2)
@@ -1314,8 +1327,13 @@ impl<V: Val> Program<V> {
                     }
                 }
             }
-        ).map(|g| {g.join();}));
+        ).map(|g| {
+            w0send.send(g.guards()[0].thread().clone()).unwrap();
+            g.join();
+        })
+        );
 
+        let w0 = w0recv.recv().unwrap();
         //println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
@@ -1353,6 +1371,7 @@ impl<V: Val> Program<V> {
             flush_ack: flush_ack_recv,
             relations: rels,
             thread_handle: Some(h),
+            worker0: w0,
             transaction_in_progress: false,
             need_to_flush: false,
             profile_cpu,
@@ -2163,8 +2182,13 @@ impl<V: Val> RunningProgram<V> {
     /* Send message to worker thread */
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
-            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
-            Ok(()) => Ok(()),
+            Err(_) => Err(format!("failed to communicate with timely dataflow thread")),
+            Ok(()) => {
+                /* Worker 0 may be blocked in `step_or_park`.  Unpark to ensure receipt of the
+                 * message. */
+                self.worker0.unpark();
+                Ok(())
+            }
         }
     }
 
