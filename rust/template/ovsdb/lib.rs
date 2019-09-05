@@ -85,7 +85,7 @@ fn cmd_from_row_update(table: &str, uuid: String, update: Value, cmds: &mut Vec<
 
             match m.remove("modify") {
                 Some(v) => {
-                    let mut insert = row_from_obj(v)?;
+                    let insert = row_from_obj(v)?;
                     cmds.push(UpdCmd::Modify(RelIdentifier::RelName(Cow::from(table.to_owned())),
                                              uuid,
                                              Record::NamedStruct(Cow::from(table.to_owned()), insert)));
