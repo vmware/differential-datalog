@@ -32,17 +32,13 @@ where
 {
     let mut buf: Vec<u8> = Vec::new();
 
-    let mut input = if unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0 {
+    let istty = unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0;
+    let mut input = if istty {
         let mut rl = Editor::<()>::new();
         let _ = rl.load_history(HISTORY_FILE);
         Input::TTY(rl)
     } else {
         Input::Pipe(BufReader::new(io::stdin()))
-    };
-
-    let istty = match &input {
-        Input::TTY(_) => true,
-        _ => false,
     };
 
     loop {
@@ -128,10 +124,7 @@ where
 
 fn err_str<E>(e: &Err<&[u8], E>) -> String {
     match e {
-        Err::Error(Context::Code(s, _)) => {
-            String::from_utf8(s.to_vec()).unwrap_or_else(|_| "not a UTF8 string".to_string())
-        }
-        Err::Failure(Context::Code(s, _)) => {
+        Err::Error(Context::Code(s, _)) | Err::Failure(Context::Code(s, _)) => {
             String::from_utf8(s.to_vec()).unwrap_or_else(|_| "not a UTF8 string".to_string())
         }
         _ => "".to_string(),
