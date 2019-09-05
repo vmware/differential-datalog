@@ -28,7 +28,7 @@ enum Input {
 /// Parse commands from stdio.
 pub fn interact<F>(cb: F) -> i32
 where
-    F: Fn(Command) -> (i32, bool),
+    F: Fn(Command, bool) -> (i32, bool),
 {
     let mut buf: Vec<u8> = Vec::new();
 
@@ -90,13 +90,16 @@ where
         buf.extend_from_slice(line.as_bytes());
 
         loop {
+            let interactive = istty;
             let (rest, more) = match parse_command(buf.as_slice()) {
                 Ok((rest, cmd)) => {
-                    let (status, cont) = cb(cmd);
+                    let (status, cont) = cb(cmd, interactive);
                     if !cont {
                         return status;
                     };
-                    (Some(rest.to_owned()), true)
+                    let rest = rest.to_owned();
+                    let more = !rest.is_empty();
+                    (Some(rest), more)
                 }
                 Err(Err::Incomplete(_)) => (None, false),
                 Err(e) => {
