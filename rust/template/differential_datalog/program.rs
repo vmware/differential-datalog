@@ -181,7 +181,7 @@ pub struct Program<V: Val> {
 /// set, adding new collections.  Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
 /// transformer in monotonic and thus it may not converge if used in a nested scope.
-pub type TransformerFunc<V> = fn() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,V,Weight>>)>;
+pub type TransformerFunc<V> = fn() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>,V,Weight>>)>;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
 /// a vector of one or more mutually recursive relations.
@@ -248,7 +248,7 @@ pub struct Relation<V: Val> {
 pub type MapFunc<V> = fn(V) -> V;
 
 /// (see `XFormCollection::FlatMap`).
-pub type FlatMapFunc<V> = fn(V) -> Option<Box<Iterator<Item=V>>>;
+pub type FlatMapFunc<V> = fn(V) -> Option<Box<dyn Iterator<Item=V>>>;
 
 /// Function type used to filter a relation
 /// (see `XForm*::Filter`).
