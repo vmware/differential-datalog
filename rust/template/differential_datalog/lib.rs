@@ -5,8 +5,8 @@ extern crate num;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
 extern crate libc;
+extern crate serde;
 
 extern crate timely;
 //extern crate timely_communication;
@@ -15,14 +15,14 @@ extern crate fnv;
 extern crate sequence_trie;
 
 mod profile;
-mod variable;
 #[cfg(test)]
 mod test;
+mod variable;
 
+pub mod arcval;
+pub mod int;
 pub mod program;
 pub mod uint;
-pub mod int;
-pub mod arcval;
 
 #[macro_use]
 pub mod record;

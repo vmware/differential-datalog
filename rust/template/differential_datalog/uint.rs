@@ -1,57 +1,75 @@
 #![allow(non_snake_case)]
 
-use abomonation::Abomonation;
-use num::bigint::{BigUint, BigInt};
-use std::str::FromStr;
-use std::ops::*;
-use serde::ser::*;
-use serde::de::*;
-use serde::de::Error;
-use std::fmt;
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use super::record::{FromRecord, IntoRecord, Record, Mutator};
 use super::int;
-use num::ToPrimitive;
+use super::record::{FromRecord, IntoRecord, Mutator, Record};
+use abomonation::Abomonation;
 use num::bigint::ToBigInt;
+use num::bigint::{BigInt, BigUint};
+use num::ToPrimitive;
+use serde::de::Error;
+use serde::de::*;
+use serde::ser::*;
+use std::ffi::CStr;
+use std::fmt;
+use std::ops::*;
+use std::os::raw::c_char;
+use std::str::FromStr;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
-pub struct Uint{x:BigUint}
+pub struct Uint {
+    x: BigUint,
+}
 
 impl Default for Uint {
     fn default() -> Uint {
-        Uint{x: BigUint::default()}
+        Uint {
+            x: BigUint::default(),
+        }
     }
 }
 unsafe_abomonate!(Uint);
 
 impl Uint {
     pub fn from_biguint(v: BigUint) -> Uint {
-        Uint{x: v}
+        Uint { x: v }
     }
     pub fn from_bigint(v: BigInt) -> Uint {
-        Uint{x: v.to_biguint().unwrap()}
+        Uint {
+            x: v.to_biguint().unwrap(),
+        }
     }
     pub fn from_Int(v: int::Int) -> Uint {
         v.to_Uint().unwrap()
-    }    
+    }
     pub fn from_u8(v: u8) -> Uint {
-        Uint{x: BigUint::from(v)}
+        Uint {
+            x: BigUint::from(v),
+        }
     }
     pub fn from_u16(v: u16) -> Uint {
-        Uint{x: BigUint::from(v)}
+        Uint {
+            x: BigUint::from(v),
+        }
     }
     pub fn from_u32(v: u32) -> Uint {
-        Uint{x: BigUint::from(v)}
+        Uint {
+            x: BigUint::from(v),
+        }
     }
     pub fn from_u64(v: u64) -> Uint {
-        Uint{x: BigUint::from(v)}
+        Uint {
+            x: BigUint::from(v),
+        }
     }
     pub fn from_u128(v: u128) -> Uint {
-        Uint{x: BigUint::from(v)}
+        Uint {
+            x: BigUint::from(v),
+        }
     }
     pub fn from_bytes_be(bytes: &[u8]) -> Uint {
-        Uint{x: BigUint::from_bytes_be(bytes)}
+        Uint {
+            x: BigUint::from_bytes_be(bytes),
+        }
     }
     pub fn to_bytes_be(&self) -> Vec<u8> {
         self.x.to_bytes_be()
@@ -72,10 +90,12 @@ impl Uint {
         self.x.to_u128()
     }
     pub fn to_Int(&self) -> Option<int::Int> {
-        self.x.to_bigint().map(|x|int::Int::from_bigint(x))
+        self.x.to_bigint().map(|x| int::Int::from_bigint(x))
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
-        Uint{x: BigUint::parse_bytes(buf, radix).unwrap()}
+        Uint {
+            x: BigUint::parse_bytes(buf, radix).unwrap(),
+        }
     }
 }
 
@@ -98,7 +118,6 @@ pub unsafe extern "C" fn uint_free(x: *mut Uint) {
     Box::from_raw(x);
 }
 
-
 impl fmt::Display for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.x)
@@ -111,7 +130,6 @@ impl fmt::LowerHex for Uint {
     }
 }
 
-
 impl fmt::Debug for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self, f)
@@ -120,7 +138,8 @@ impl fmt::Debug for Uint {
 
 impl Serialize for Uint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.x.to_str_radix(10))
     }
@@ -128,14 +147,15 @@ impl Serialize for Uint {
 
 impl<'de> Deserialize<'de> for Uint {
     fn deserialize<D>(deserializer: D) -> Result<Uint, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         match String::deserialize(deserializer) {
             Ok(s) => match BigUint::from_str(&s) {
-                        Ok(i)  => Ok(Uint{x:i}),
-                        Err(_) => Err(D::Error::custom(format!("invalid integer value: {}", s)))
-                     },
-            Err(e) => Err(e)
+                Ok(i) => Ok(Uint { x: i }),
+                Err(_) => Err(D::Error::custom(format!("invalid integer value: {}", s))),
+            },
+            Err(e) => Err(e),
         }
     }
 }
@@ -161,9 +181,11 @@ impl Mutator<Uint> for Record {
 #[test]
 fn test_fromrecord() {
     let v = (25_u64).to_bigint().unwrap();
-    assert_eq!(Uint::from_record(&Record::Int(v.clone())), Ok(Uint::from_bigint(v)));
+    assert_eq!(
+        Uint::from_record(&Record::Int(v.clone())),
+        Ok(Uint::from_bigint(v))
+    );
 }
-
 
 /*
 impl Uint {
@@ -180,7 +202,9 @@ impl Shr<u32> for Uint {
 
     #[inline]
     fn shr(self, rhs: u32) -> Uint {
-        Uint{x: self.x.shr(rhs as usize)}
+        Uint {
+            x: self.x.shr(rhs as usize),
+        }
     }
 }
 
@@ -189,7 +213,9 @@ impl Shl<u32> for Uint {
 
     #[inline]
     fn shl(self, rhs: u32) -> Uint {
-        Uint{x: self.x.shl(rhs as usize)}
+        Uint {
+            x: self.x.shl(rhs as usize),
+        }
     }
 }
 
@@ -201,10 +227,12 @@ macro_rules! forward_binop {
             #[inline]
             fn $method(self, other: $res) -> $res {
                 // forward to val-ref
-                Uint{x: $imp::$method(self.x, other.x)}
+                Uint {
+                    x: $imp::$method(self.x, other.x),
+                }
             }
         }
-    }
+    };
 }
 
 forward_binop!(impl Add for Uint, add);
@@ -223,7 +251,7 @@ impl num::One for Uint {
 
 impl num::Zero for Uint {
     fn zero() -> Uint {
-        Uint{ x: BigUint::zero() }
+        Uint { x: BigUint::zero() }
     }
 
     fn is_zero(&self) -> bool {
