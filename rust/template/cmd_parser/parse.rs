@@ -338,7 +338,7 @@ fn test_string() {
 
 named!(tuple_val<&[u8], Record>,
     delimited!(apply!(sym,"("),
-               map!(separated_list!(apply!(sym,","), record), |v|Record::Tuple(v)),
+               map!(separated_list!(apply!(sym,","), record), Record::Tuple),
                apply!(sym,")"))
 );
 

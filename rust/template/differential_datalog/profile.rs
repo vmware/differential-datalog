@@ -82,11 +82,7 @@ impl Profile {
         size_vec
             .iter()
             .map(|(operator, size)| {
-                let name = self
-                    .names
-                    .get(operator)
-                    .map(|s| s.as_ref())
-                    .unwrap_or("???");
+                let name = self.names.get(operator).map(AsRef::as_ref).unwrap_or("???");
                 let msg = format!("{} {}", name, operator);
                 writeln!(f, "{}      {}", size, msg)
             })
@@ -105,11 +101,11 @@ impl Profile {
             let dur1 = child1
                 .value()
                 .map(|opid| self.durations.get(opid).cloned().unwrap_or_default().0)
-                .unwrap_or(Duration::default());
+                .unwrap_or_default();
             let dur2 = child2
                 .value()
                 .map(|opid| self.durations.get(opid).cloned().unwrap_or_default().0)
-                .unwrap_or(Duration::default());
+                .unwrap_or_default();
             dur1.cmp(&dur2).reverse()
         });
 
@@ -120,13 +116,13 @@ impl Profile {
                     writeln!(f, "Unknown operator")?;
                 }
                 Some(opid) => {
-                    let name = self.names.get(opid).map(|s| s.as_ref()).unwrap_or("???");
+                    let name = self.names.get(opid).map(AsRef::as_ref).unwrap_or("???");
                     let duration = self.durations.get(opid).cloned().unwrap_or_default();
                     let msg = format!("{} {}", name, opid);
                     let offset = (0..depth * 2).map(|_| " ").collect::<String>();
-                    write!(
+                    writeln!(
                         f,
-                        "{}{: >6}s{:0>6}us ({: >9}calls)     {}\n",
+                        "{}{: >6}s{:0>6}us ({: >9}calls)     {}",
                         offset,
                         duration.0.as_secs(),
                         duration.0.subsec_micros(),
@@ -170,7 +166,7 @@ impl Profile {
                                 Duration::new(0,0)
                             });
                             *total += *ts - start;
-                            *ncalls = *ncalls + 1;
+                            *ncalls += 1;
                         }
                     }
                 }

@@ -1037,7 +1037,7 @@ impl Mutator<String> for Record {
 impl FromRecord for () {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Tuple(args) if args.len() == 0 => Ok(()),
+            Record::Tuple(args) if args.is_empty() => Ok(()),
             v => Result::Err(format!("not a 0-tuple {:?}", *v)),
         }
     }
@@ -1147,7 +1147,7 @@ impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
     fn into_record(self) -> Record {
         Record::Array(
             CollectionKind::Vector,
-            self.into_iter().map(|x| x.into_record()).collect(),
+            self.into_iter().map(IntoRecord::into_record).collect(),
         )
     }
 }
@@ -1174,7 +1174,7 @@ macro_rules! decl_arr_from_record {
                 let mut idx = 0;
                 for v in vec.into_iter() {
                     arr[idx] = v;
-                    idx = idx + 1;
+                    idx += 1;
                 }
                 Ok(arr)
             }
@@ -1235,7 +1235,7 @@ decl_arr_from_record!(32);
 
 impl<K: FromRecord + Ord, V: FromRecord> FromRecord for BTreeMap<K, V> {
     fn from_record(val: &Record) -> Result<Self, String> {
-        vec::Vec::from_record(val).map(|v| BTreeMap::from_iter(v))
+        vec::Vec::from_record(val).map(BTreeMap::from_iter)
     }
 }
 
@@ -1243,7 +1243,7 @@ impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for BTreeMap<K, V> {
     fn into_record(self) -> Record {
         Record::Array(
             CollectionKind::Map,
-            self.into_iter().map(|x| x.into_record()).collect(),
+            self.into_iter().map(IntoRecord::into_record).collect(),
         )
     }
 }
@@ -1276,7 +1276,7 @@ impl<K: FromRecord + Ord, V: FromRecord + PartialEq> Mutator<BTreeMap<K, V>> for
 
 impl<T: FromRecord + Ord> FromRecord for BTreeSet<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
-        vec::Vec::from_record(val).map(|v| BTreeSet::from_iter(v))
+        vec::Vec::from_record(val).map(BTreeSet::from_iter)
     }
 }
 
@@ -1284,7 +1284,7 @@ impl<T: IntoRecord + Ord> IntoRecord for BTreeSet<T> {
     fn into_record(self) -> Record {
         Record::Array(
             CollectionKind::Set,
-            self.into_iter().map(|x| x.into_record()).collect(),
+            self.into_iter().map(IntoRecord::into_record).collect(),
         )
     }
 }
@@ -1340,14 +1340,14 @@ macro_rules! decl_record_mutator_struct {
         impl<$($targ),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
-            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
+            fn mutate(&self, _x: &mut $n<$($targ),*>) -> Result<(), String> {
                 match self {
                     $crate::record::Record::PosStruct(..) => {
                         return Err(format!("Cannot use positional struct as mutator"));
                     },
-                    $crate::record::Record::NamedStruct(_, args) => {
-                        $(if let Some(arg_upd) = $crate::record::arg_find(args, stringify!($arg)) {
-                            <$crate::record::Mutator<$type>>::mutate(arg_upd, &mut x.$arg)?;
+                    $crate::record::Record::NamedStruct(_, _args) => {
+                        $(if let Some(arg_upd) = $crate::record::arg_find(_args, stringify!($arg)) {
+                            <dyn $crate::record::Mutator<$type>>::mutate(arg_upd, &mut _x.$arg)?;
                           };)*
                     },
                     _ => {
@@ -1377,7 +1377,7 @@ macro_rules! decl_record_mutator_enum {
                                 ($n::$cons{$($arg),*}, stringify!($cons)) => {
                                     $(
                                         if let Some(arg_upd) = $crate::record::arg_find(args, stringify!($arg)) {
-                                            <Mutator<$type>>::mutate(arg_upd, $arg)?;
+                                            <dyn Mutator<$type>>::mutate(arg_upd, $arg)?;
                                         };
                                      )*
                                 },

@@ -90,7 +90,7 @@ impl Uint {
         self.x.to_u128()
     }
     pub fn to_Int(&self) -> Option<int::Int> {
-        self.x.to_bigint().map(|x| int::Int::from_bigint(x))
+        self.x.to_bigint().map(int::Int::from_bigint)
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
         Uint {

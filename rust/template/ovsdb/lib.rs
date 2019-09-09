@@ -131,7 +131,7 @@ fn cmd_from_row_update(
 
             /* None of update-2 fields found; try update-1 format */
             let old = m.contains_key("old");
-            let new = m.remove("new").map(|v| row_from_obj(v));
+            let new = m.remove("new").map(row_from_obj);
             if new.is_none() && !old {
                 return Err(format!(
                     "row is not in <row-update> format: {}",
@@ -174,12 +174,12 @@ fn record_from_array(mut src: Vec<Value>) -> Result<Record, String> {
             ("named-uuid", Value::String(uuid_name)) => Ok(Record::String(uuid_name)),
             ("set", Value::Array(atoms)) => {
                 let elems: Result<Vec<Record>, String> =
-                    atoms.into_iter().map(|a| record_from_val(a)).collect();
+                    atoms.into_iter().map(record_from_val).collect();
                 Ok(Record::Array(CollectionKind::Set, elems?))
             }
             ("map", Value::Array(pairs)) => {
                 let elems: Result<Vec<(Record, Record)>, String> =
-                    pairs.into_iter().map(|p| pair_from_val(p)).collect();
+                    pairs.into_iter().map(pair_from_val).collect();
                 Ok(Record::Array(
                     CollectionKind::Map,
                     elems?
@@ -273,7 +273,7 @@ pub fn record_into_delete_str(rec: Record, table: &str) -> Result<String, String
             fields
                 .into_iter()
                 .find(|(f, _)| f == "_uuid")
-                .ok_or_else(|| format!("Record does not have _uuid field"))?
+                .ok_or_else(|| "Record does not have _uuid field".to_string())?
                 .1
         }
         _ => Err(format!(
@@ -293,7 +293,7 @@ pub fn record_into_update_str(rec: Record, table: &str) -> Result<String, String
         Record::NamedStruct(_, ref fields) => fields
             .iter()
             .find(|(f, _)| f == "_uuid")
-            .ok_or_else(|| format!("Record does not have _uuid field"))?
+            .ok_or_else(|| "Record does not have _uuid field".to_string())?
             .1
             .clone(),
         _ => Err(format!(
@@ -399,8 +399,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             }
         }
         Record::Array(CollectionKind::Set, v) => {
-            let elems: Result<Vec<Value>, String> =
-                v.into_iter().map(|x| record_into_field(x)).collect();
+            let elems: Result<Vec<Value>, String> = v.into_iter().map(record_into_field).collect();
             Ok(Value::Array(vec![
                 Value::String("set".to_owned()),
                 Value::Array(elems?),
