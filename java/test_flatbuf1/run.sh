@@ -3,6 +3,7 @@
 
 set -ex
 
+stack install
 if command clang -v 2>/dev/null; then
     export CC=clang
 else
