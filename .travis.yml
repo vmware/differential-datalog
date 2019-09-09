@@ -37,7 +37,7 @@ env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
      # We piggy back on what has historically been one of the shorter
      # runs to also check formatting of the Rust code.
-   - TOOL=run_souffle_tests RUSTFMT=1
+   - TOOL=run_souffle_tests RUSTFMT=1 CLIPPY=1
    - TOOL=stack TEST_SUITE='-p redist' JAVA=1
    - TOOL=stack TEST_SUITE='-p span_uuid'
    - TOOL=stack TEST_SUITE='-p souffle0'
@@ -64,6 +64,7 @@ addons:
 
 before_install:
 - rustup component add rustfmt
+- rustup component add clippy
 - pip install --user parglare
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
@@ -88,6 +89,36 @@ script:
       (cd rust/template/cmd_parser/ && cargo fmt --all -- --check) &&
       (cd rust/template/differential_datalog/ && cargo fmt --all -- --check) &&
       (cd rust/template/ovsdb/ && cargo fmt --all -- --check)
+  fi
+- if [ -n "${CLIPPY}" ]; then
+      CLIPPYFLAGS="
+          -A clippy::char_lit_as_u8
+          -A clippy::many_single_char_names
+          -A clippy::enum_variant_names
+          -A clippy::expect_fun_call
+          -A clippy::extra_unused_lifetimes
+          -A clippy::for_kv_map
+          -A clippy::get_unwrap
+          -A clippy::into_iter_on_ref
+          -A clippy::just_underscores_and_digits
+          -A clippy::let_and_return
+          -A clippy::map_clone
+          -A clippy::needless_return
+          -A clippy::new_without_default
+          -A clippy::ptr_arg
+          -A clippy::ptr_offset_with_cast
+          -A clippy::redundant_closure
+          -A clippy::should_implement_trait
+          -A clippy::trivially_copy_pass_by_ref
+          -A clippy::single_match
+          -A clippy::type_complexity
+          -A clippy::unreadable_literal
+          -D warnings"
+
+      (cd rust/template/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
+      (cd rust/template/cmd_parser/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
+      (cd rust/template/differential_datalog/ && cargo clippy --all-targets -- ${CLIPPYFLAGS}) &&
+      (cd rust/template/ovsdb/ && cargo clippy --all-targets -- ${CLIPPYFLAGS})
   fi
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
 - if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py -s 0 -r 17; fi
