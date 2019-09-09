@@ -83,12 +83,7 @@ impl Default for Value {
 
 fn _filter_fun1(v: &Value) -> bool {
     match &v {
-        Value::S(S::S1 {
-            f1: _,
-            f2: _,
-            f3: _,
-            f4: _,
-        }) => true,
+        Value::S(S::S1 { .. }) => true,
         _ => false,
     }
 }
@@ -198,7 +193,7 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
         } = p.f1.clone();
         *qf1 = true;
         let ref mut neq = Q {
-            f1: qf1.clone(),
+            f1: *qf1,
             f2: qf2.clone(),
         };
         *z = true;
@@ -221,14 +216,8 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
             f4: Uint::from_u64(10),
         };
         match s {
-            S::S1 {
-                f1,
-                f2: _,
-                f3: _,
-                f4: _,
-            } => {
+            S::S1 { f1, .. } => {
                 *f1 = 2;
-                ()
             }
             _ => return None,
         };
@@ -258,7 +247,7 @@ fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
         return None;
     };
     match *_2 {
-        Q { f1: true, f2: _ } => {}
+        Q { f1: true, .. } => {}
         _ => return None,
     }
     Some((
@@ -752,7 +741,7 @@ fn test_join(nthreads: usize) {
     };
 
     fn join_transformer() -> Box<
-        for<'a> Fn(
+        dyn for<'a> Fn(
             &mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, Value, Weight>>,
         ),
     > {
@@ -1052,7 +1041,7 @@ fn test_map(nthreads: usize) {
         }
     }
 
-    fn flatmapfun(v: Value) -> Option<Box<Iterator<Item = Value>>> {
+    fn flatmapfun(v: Value) -> Option<Box<dyn Iterator<Item = Value>>> {
         match &v {
             Value::u64(i) => {
                 if *i > 12 {

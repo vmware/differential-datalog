@@ -97,13 +97,13 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcVal<T> {
     where
         D: Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|x| Self::from(x))
+        T::deserialize(deserializer).map(Self::from)
     }
 }
 
 impl<T: FromRecord> FromRecord for ArcVal<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
-        T::from_record(val).map(|x| Self::from(x))
+        T::from_record(val).map(Self::from)
     }
 }
 

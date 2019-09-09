@@ -16,7 +16,7 @@ fn test_parser() {
     visit_dirs(&test_data_dir, &parse_json_file);
 }
 
-fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) {
+fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) {
     //println!("parsing directory {}", dir.to_str().unwrap());
     if dir.is_dir() {
         for entry in fs::read_dir(dir).unwrap() {

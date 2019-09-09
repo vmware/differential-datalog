@@ -982,14 +982,14 @@ impl<V: Val> Program<V> {
                             TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire),
                             _ => false
                         }).map(|x|(x, get_prof_context())).collect();
-                        if filtered.len() > 0 {
+                        if !filtered.is_empty() {
                             //eprintln!("timely event {:?}", filtered);
                             prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect())).unwrap();
                         }
                     });
 
                     worker.log_register().insert::<DifferentialEvent,_>("differential/arrange", move |_time, data| {
-                        if data.len() == 0 {
+                        if data.is_empty() {
                             return;
                         }
                         /* Send update to profiling channel */
@@ -1097,7 +1097,7 @@ impl<V: Val> Program<V> {
                                             for rule in &rel.rules {
                                                 let c = prog.mk_rule(
                                                     rule,
-                                                    |rid| vars.get(&rid).map(|v|&(**v)).or(inner_collections.get(&rid)),
+                                                    |rid| vars.get(&rid).map(|v|&(**v)).or_else(|| inner_collections.get(&rid)),
                                                     Arrangements{arrangements1: &local_arrangements,
                                                                  arrangements2: &inner_arrangements});
                                                 vars.get_mut(&rel.id).unwrap().add(&c);
@@ -1154,7 +1154,7 @@ impl<V: Val> Program<V> {
                         for (relid, v) in prog.init_data.iter() {
                             all_sessions.get_mut(relid).unwrap().update(v.clone(), 1);
                         }
-                        epoch = epoch + 1;
+                        epoch += 1;
                         Self::advance(&mut all_sessions, epoch);
                         Self::flush(&mut all_sessions, &probe, worker, &*progress_lock, &progress_barrier);
                         flush_ack_send.send(()).unwrap();
@@ -1194,7 +1194,7 @@ impl<V: Val> Program<V> {
                                             }
                                         }
                                     };
-                                    epoch = epoch+1;
+                                    epoch += 1;
                                     //print!("epoch: {}\n", epoch);
                                     Self::advance(&mut sessions, epoch);
                                 },
@@ -1709,10 +1709,10 @@ impl<V: Val> RunningProgram<V> {
         self.flush()
             .and_then(|_| self.send(Msg::Stop))
             .and_then(|_| match self.thread_handle.join() {
-                Err(_) => Err(format!("timely thread terminated with an error")),
+                Err(_) => Err("timely thread terminated with an error".to_string()),
                 Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
                 Ok(Ok(())) => match self.prof_thread_handle.join() {
-                    Err(_) => Err(format!("profiling thread terminated with an error")),
+                    Err(_) => Err("profiling thread terminated with an error".to_string()),
                     Ok(_) => Ok(()),
                 },
             })
@@ -1723,7 +1723,7 @@ impl<V: Val> RunningProgram<V> {
     /// if there is already a transaction in progress.
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
-            return Err(format!("transaction already in progress"));
+            return Err("transaction already in progress".to_string());
         };
 
         self.transaction_in_progress = true;
@@ -1733,7 +1733,7 @@ impl<V: Val> RunningProgram<V> {
     /// Commit a transaction.
     pub fn transaction_commit(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("transaction_commit: no transaction in progress"));
+            return Err("transaction_commit: no transaction in progress".to_string());
         };
 
         self.flush()
@@ -1747,7 +1747,7 @@ impl<V: Val> RunningProgram<V> {
     /// Rollback the transaction, undoing all changes.
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("transacion_rollback: no transaction in progress"));
+            return Err("transacion_rollback: no transaction in progress".to_string());
         }
 
         self.flush().and_then(|_| self.delta_undo()).and_then(|_| {
@@ -1793,7 +1793,7 @@ impl<V: Val> RunningProgram<V> {
     /// Updates can only be applied to input relations (see `struct Relation`).
     pub fn apply_updates<I: Iterator<Item = Update<V>>>(&mut self, updates: I) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("apply_updates: no transaction in progress"));
+            return Err("apply_updates: no transaction in progress".to_string());
         };
 
         /* Remove no-op updates to maintain set semantics */
@@ -1830,7 +1830,7 @@ impl<V: Val> RunningProgram<V> {
     /// Deletes all values in an input table
     pub fn clear_relation(&mut self, relid: RelId) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err(format!("clear_relation: no transaction in progress"));
+            return Err("clear_relation: no transaction in progress".to_string());
         };
 
         let upds = {
@@ -1873,7 +1873,7 @@ impl<V: Val> RunningProgram<V> {
         let e = ds.entry(x.clone());
         match e {
             hash_map::Entry::Occupied(mut oe) => {
-                debug_assert!(*oe.get_mut() == false);
+                debug_assert!(!*oe.get_mut());
                 oe.remove_entry();
             }
             hash_map::Entry::Vacant(ve) => {
@@ -1887,7 +1887,7 @@ impl<V: Val> RunningProgram<V> {
         let e = ds.entry(key.clone());
         match e {
             hash_map::Entry::Occupied(mut oe) => {
-                debug_assert!(*oe.get_mut() == true);
+                debug_assert!(*oe.get_mut());
                 oe.remove_entry();
             }
             hash_map::Entry::Vacant(ve) => {
@@ -2066,7 +2066,7 @@ impl<V: Val> RunningProgram<V> {
     /* Send message to worker thread */
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
-            Err(_) => Err(format!("failed to communicate with timely dataflow thread")),
+            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
             Ok(()) => Ok(()),
         }
     }
@@ -2124,9 +2124,9 @@ impl<V: Val> RunningProgram<V> {
         self.send(Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
             match self.flush_ack.recv() {
-                Err(_) => Err(format!(
-                    "failed to receive flush ack message from timely dataflow thread"
-                )),
+                Err(_) => Err(
+                    "failed to receive flush ack message from timely dataflow thread".to_string(),
+                ),
                 Ok(()) => Ok(()),
             }
         })

@@ -90,7 +90,7 @@ impl HDDlog {
     }
 
     pub fn stop(self) -> Result<(), String> {
-        self.prog.into_inner().map(|p| p.stop()).unwrap()
+        self.prog.into_inner().map(RunningProgram::stop).unwrap()
     }
 
     pub fn transaction_start(&self) -> Result<(), String> {
@@ -846,9 +846,7 @@ pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
         return -1;
     };
     let prog = Arc::from_raw(prog);
-    prog.eprintln(&format!(
-        "ddlog_apply_updates_from_flatbuf(): error: DDlog was compiled without FlatBuffers support"
-    ));
+    prog.eprintln(&"ddlog_apply_updates_from_flatbuf(): error: DDlog was compiled without FlatBuffers support");
     Arc::into_raw(prog);
     -1
 }
