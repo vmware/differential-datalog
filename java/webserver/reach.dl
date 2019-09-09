@@ -1,0 +1,25 @@
+typedef Node = bit<16>
+
+input relation Edge(source: Node, dest: Node)
+
+relation Nodes(node: Node)
+Nodes(n) :- Edge(n, _).
+Nodes(n) :- Edge(_, n).
+
+relation SimEdge(source: Node, dest: Node)
+SimEdge(n, m) :- Edge(n, m).
+SimEdge(n, m) :- Edge(m, n).
+
+relation Reach(from: Node, to: Node)
+Reach(n, m) :- Nodes(n), var m = n.
+// Treat graph as undirected
+Reach(n, m) :- SimEdge(n, m).
+Reach(n, m) :- SimEdge(n, x), Reach(x, m).
+
+// Canonical representative of a conncted component
+output relation Canonical(node: Node, repr: Node)
+Canonical(n, r) :- Reach(n, m), var r = Aggregate( (n), group_min(m) ).
+
+// copy of Edge
+output relation Edges(source: Node, dest: Node)
+Edges(s, d) :- Edge(s, d).

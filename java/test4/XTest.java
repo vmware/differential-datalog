@@ -1,7 +1,7 @@
 import java.util.*;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
-import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
+import ddlogapi.DDlogRecord;
 
 public class XTest {
     private final DDlogAPI api;

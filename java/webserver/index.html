@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><title>DDlog demo</title></head>
+
+<body>
+    <p>This animation shows the connected components of a  graph that changes dynamically.
+    The connected components are computed incrementally incrementally by a <a
+    href="https://github.com/github/differential-datalog">Differential
+    Datalog</a> program.<br>
+
+    <svg width="600" height="400"></svg>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+// Animation based on https://bl.ocks.org/mbostock/1095795
+
+// Graph data structure: nodes, edges, colors
+var nodeCount = 20;  // keep in sync with Main.java Graph.N
+var graph = { nodes: [], edges: [], color: [] };
+for (var i = 0; i < nodeCount; i++) {
+    graph.nodes.push({ id: i.toString() });
+    // we expect that at all times (after the first update is received)
+    // for node i the color array has exactly 1 element - the "color" of the node
+    graph.color.push([]);
+}
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height"),
+    color = d3.scaleOrdinal(d3.schemeCategory20);
+
+var simulation = d3.forceSimulation(graph.nodes)
+    .force("charge", d3.forceManyBody().strength(-100))
+    .force("link", d3.forceLink(graph.edges).distance(100))
+    .force("x", d3.forceX())
+    .force("y", d3.forceY())
+    .alphaTarget(1)
+    .on("tick", ticked);
+
+function restart() {
+    // Apply the general update pattern to the nodes.
+    node = node.data(graph.nodes, function(d) { return d.id;});
+    node.exit().remove();
+    node = node.enter().append("circle")
+         .attr("r", 10)
+         .attr("id", function(d) { return d.index.toString(); })
+         .merge(node);
+
+    // Apply the general update pattern to the links.
+    link = link.data(graph.edges, function(d) { return d.source.id + "-" + d.target.id; });
+    link.exit().remove();
+    link = link.enter().append("line").merge(link);
+
+    // Update and restart the simulation.
+    simulation.nodes(graph.nodes);
+    simulation.force("link").links(graph.edges);
+    simulation.alpha(.5).restart();
+}
+
+function ticked() {
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+        .attr("fill", function(d) { return color(graph.color[d.index][0]); });
+
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+}
+
+var g = svg.append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")"),
+    link = g.append("g").attr("stroke", "#000").attr("stroke-width", 1.5).selectAll(".link"),
+    node = g.append("g").attr("stroke", "#fff").attr("stroke-width", 1.5).selectAll(".node");
+
+function main() {
+    x.onreadystatechange = changesReceived;
+    setTimeout(requestChanges, 1000);
+}
+
+var x = new XMLHttpRequest();
+function requestChanges() {
+    x.open("GET", "http://localhost:8082/g", true);
+    x.send();
+}
+
+// Process graph changes
+function process(j) {
+    // console.log(j);
+    var data = JSON.parse(j);
+    for (var d of data) {
+        if (d.table == "Edges") {
+            if (d.insert) {
+                var edge = { source: d.source.toString(), target: d.dest.toString() }
+                graph.edges.push(edge);
+            } else {
+                var found = false;
+                for (var i = 0; i < graph.edges.length; i++) {
+                    if (graph.edges[i].source.index == d.source &&
+                        graph.edges[i].target.index == d.dest) {
+                        graph.edges.splice(i, 1);
+                        found = true;
+                        break;
+                    }
+                }
+                console.assert(found);
+            }
+        } else {
+            if (d.insert) {
+                graph.color[d.node].push(d.repr);
+            } else {
+                var index = graph.color[d.node].indexOf(d.repr);
+                graph.color[d.node].splice(index, 1);
+            }
+        }
+    }
+    restart();
+}
+
+// invoked when changes to the graph have been received from the website
+function changesReceived() {
+    if (x.readyState == 4 && x.status == 200) {
+        process(x.responseText);
+        setTimeout(requestChanges, 1000);
+    }
+}
+
+main();
+</script>
+</body>
+</html>
