@@ -1,18 +1,18 @@
 //! nom-based parser for Datalog values.
 
+use differential_datalog::record::*;
+use nom::*;
 use num::bigint::*;
 #[cfg(test)]
 use num::Num;
-use nom::*;
-use differential_datalog::record::*;
 use std::borrow::Cow;
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ProfileCmd {
-    CPU(bool)
+    CPU(bool),
 }
 
-#[derive(Debug,PartialEq,Eq,Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Command {
     Start,
     Commit(bool),
@@ -24,7 +24,7 @@ pub enum Command {
     Clear(String),
     Exit,
     Echo(String),
-    Update(UpdCmd, bool)
+    Update(UpdCmd, bool),
 }
 
 named!(spaces<&[u8], ()>,
@@ -47,7 +47,6 @@ named!(identifier<&[u8], String>,
               spaces >>
               (String::from_utf8(first.to_vec()).unwrap() + &bytes))
 );
-
 
 named!(pub profile_cmd<&[u8], ProfileCmd>,
        do_parse!(apply!(sym,"cpu") >>
@@ -96,52 +95,145 @@ named!(pub parse_command<&[u8], Command>,
 
 #[test]
 fn test_command() {
-    assert_eq!(parse_command(br"start;")    , Ok((&br""[..], Command::Start)));
-    assert_eq!(parse_command(b"# comment\n"), Ok((&br""[..], Command::Comment)));
-    assert_eq!(parse_command(br"commit;")   , Ok((&br""[..], Command::Commit(false))));
-    assert_eq!(parse_command(br"timestamp;"), Ok((&br""[..], Command::Timestamp)));
-    assert_eq!(parse_command(br"profile cpu on;") , Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true))))));
-    assert_eq!(parse_command(br"profile cpu off;"), Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(false))))));
-    assert_eq!(parse_command(br"profile;")  , Ok((&br""[..], Command::Profile(None))));
-    assert_eq!(parse_command(br"dump;")     , Ok((&br""[..], Command::Dump(None))));
-    assert_eq!(parse_command(br"dump Tab;") , Ok((&br""[..], Command::Dump(Some("Tab".to_string())))));
-    assert_eq!(parse_command(br"clear Tab;"), Ok((&br""[..], Command::Clear("Tab".to_string()))));
-    assert_eq!(parse_command(br"exit;")     , Ok((&br""[..], Command::Exit)));
-    assert_eq!(parse_command(br"echo test;"), Ok((&br""[..], Command::Echo("test".to_string()))));
-    assert_eq!(parse_command(br"echo;")     , Ok((&br""[..], Command::Echo("".to_string()))));
-    assert_eq!(parse_command(br"rollback;") , Ok((&br""[..], Command::Rollback)));
-    assert_eq!(parse_command(br"insert Rel1(true);"),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::Insert(RelIdentifier::RelName(Cow::from("Rel1")), Record::PosStruct(Cow::from("Rel1"), vec![Record::Bool(true)])),
-                   true
-               ))));
-    assert_eq!(parse_command(br" insert Rel1[true];"),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::Insert(RelIdentifier::RelName(Cow::from("Rel1")), Record::Bool(true)), true
-               ))));
-    assert_eq!(parse_command(br"delete Rel1[(true,false)];"),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::Delete(RelIdentifier::RelName(Cow::from("Rel1")), Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])), true
-               ))));
-    assert_eq!(parse_command(br"delete_key Rel1 true;"),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::DeleteKey(RelIdentifier::RelName(Cow::from("Rel1")), Record::Bool(true)), true
-               ))));
-    assert_eq!(parse_command(br"modify Rel1 true <- Rel1{.f1 = 5};"),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::Modify(RelIdentifier::RelName(Cow::from("Rel1")), Record::Bool(true),
-                                  Record::NamedStruct(Cow::from("Rel1"),
-                                  vec![(Cow::from("f1"), Record::Int(5.to_bigint().unwrap()))])), true
-               ))));
-    assert_eq!(parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
-               Ok((&br""[..], Command::Update(
-                   UpdCmd::Delete(RelIdentifier::RelName(Cow::from("NB.Logical_Router")),
-                                  Record::PosStruct(Cow::from("NB.Logical_Router"),
-                                                    vec![Record::String("foo".to_string()),
-                                                         Record::Int(0xabcdef1.to_bigint().unwrap()),
-                                                         Record::Bool(true)])),
-                   false
-               ))));
+    assert_eq!(parse_command(br"start;"), Ok((&br""[..], Command::Start)));
+    assert_eq!(
+        parse_command(b"# comment\n"),
+        Ok((&br""[..], Command::Comment))
+    );
+    assert_eq!(
+        parse_command(br"commit;"),
+        Ok((&br""[..], Command::Commit(false)))
+    );
+    assert_eq!(
+        parse_command(br"timestamp;"),
+        Ok((&br""[..], Command::Timestamp))
+    );
+    assert_eq!(
+        parse_command(br"profile cpu on;"),
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true)))))
+    );
+    assert_eq!(
+        parse_command(br"profile cpu off;"),
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(false)))))
+    );
+    assert_eq!(
+        parse_command(br"profile;"),
+        Ok((&br""[..], Command::Profile(None)))
+    );
+    assert_eq!(
+        parse_command(br"dump;"),
+        Ok((&br""[..], Command::Dump(None)))
+    );
+    assert_eq!(
+        parse_command(br"dump Tab;"),
+        Ok((&br""[..], Command::Dump(Some("Tab".to_string()))))
+    );
+    assert_eq!(
+        parse_command(br"clear Tab;"),
+        Ok((&br""[..], Command::Clear("Tab".to_string())))
+    );
+    assert_eq!(parse_command(br"exit;"), Ok((&br""[..], Command::Exit)));
+    assert_eq!(
+        parse_command(br"echo test;"),
+        Ok((&br""[..], Command::Echo("test".to_string())))
+    );
+    assert_eq!(
+        parse_command(br"echo;"),
+        Ok((&br""[..], Command::Echo("".to_string())))
+    );
+    assert_eq!(
+        parse_command(br"rollback;"),
+        Ok((&br""[..], Command::Rollback))
+    );
+    assert_eq!(
+        parse_command(br"insert Rel1(true);"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::Insert(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::PosStruct(Cow::from("Rel1"), vec![Record::Bool(true)])
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
+        parse_command(br" insert Rel1[true];"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::Insert(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::Bool(true)
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
+        parse_command(br"delete Rel1[(true,false)];"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::Delete(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
+        parse_command(br"delete_key Rel1 true;"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::DeleteKey(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::Bool(true)
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
+        parse_command(br"modify Rel1 true <- Rel1{.f1 = 5};"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::Modify(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::Bool(true),
+                    Record::NamedStruct(
+                        Cow::from("Rel1"),
+                        vec![(Cow::from("f1"), Record::Int(5.to_bigint().unwrap()))]
+                    )
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
+        parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::Delete(
+                    RelIdentifier::RelName(Cow::from("NB.Logical_Router")),
+                    Record::PosStruct(
+                        Cow::from("NB.Logical_Router"),
+                        vec![
+                            Record::String("foo".to_string()),
+                            Record::Int(0xabcdef1.to_bigint().unwrap()),
+                            Record::Bool(true)
+                        ]
+                    )
+                ),
+                false
+            )
+        ))
+    );
 }
 
 named!(update<&[u8], UpdCmd>,
@@ -190,7 +282,7 @@ named!(bool_val<&[u8], Record>,
 fn test_bool() {
     assert_eq!(bool_val(br"true "), Ok((&br""[..], Record::Bool(true))));
     assert_eq!(bool_val(br"false"), Ok((&br""[..], Record::Bool(false))));
-    assert_eq!(record(br"false ") , Ok((&br""[..], Record::Bool(false))));
+    assert_eq!(record(br"false "), Ok((&br""[..], Record::Bool(false))));
 }
 
 named!(string_val<&[u8], Record>,
@@ -226,10 +318,22 @@ named!(string_val<&[u8], Record>,
 
 #[test]
 fn test_string() {
-    assert_eq!(string_val(br###""foo""###), Ok((&br""[..], Record::String("foo".to_string()))));
-    assert_eq!(string_val(br###""" "###), Ok((&br""[..], Record::String("".to_string()))));
-    assert_eq!(string_val(br###""foo\nbar" "###), Ok((&br""[..], Record::String("foo\nbar".to_string()))));
-    assert_eq!(string_val(br###""foo\tbar\t\a" "###), Ok((&br""[..], Record::String("foo\tbar\t\x07".to_string()))));
+    assert_eq!(
+        string_val(br###""foo""###),
+        Ok((&br""[..], Record::String("foo".to_string())))
+    );
+    assert_eq!(
+        string_val(br###""" "###),
+        Ok((&br""[..], Record::String("".to_string())))
+    );
+    assert_eq!(
+        string_val(br###""foo\nbar" "###),
+        Ok((&br""[..], Record::String("foo\nbar".to_string())))
+    );
+    assert_eq!(
+        string_val(br###""foo\tbar\t\a" "###),
+        Ok((&br""[..], Record::String("foo\tbar\t\x07".to_string())))
+    );
 }
 
 named!(tuple_val<&[u8], Record>,
@@ -240,7 +344,13 @@ named!(tuple_val<&[u8], Record>,
 
 #[test]
 fn test_tuple() {
-    assert_eq!(tuple_val(br"( true, false)"), Ok((&br""[..], Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]))));
+    assert_eq!(
+        tuple_val(br"( true, false)"),
+        Ok((
+            &br""[..],
+            Record::Tuple(vec![Record::Bool(true), Record::Bool(false)])
+        ))
+    );
 }
 
 named!(array_val<&[u8], Record>,
@@ -251,9 +361,19 @@ named!(array_val<&[u8], Record>,
 
 #[test]
 fn test_array() {
-    assert_eq!(array_val(br"[ (true, false), (false, false)]"), Ok((&br""[..], Record::Array(CollectionKind::Unknown,
-                                                                                             vec![Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]),
-                                                                                                  Record::Tuple(vec![Record::Bool(false), Record::Bool(false)])]))));
+    assert_eq!(
+        array_val(br"[ (true, false), (false, false)]"),
+        Ok((
+            &br""[..],
+            Record::Array(
+                CollectionKind::Unknown,
+                vec![
+                    Record::Tuple(vec![Record::Bool(true), Record::Bool(false)]),
+                    Record::Tuple(vec![Record::Bool(false), Record::Bool(false)])
+                ]
+            )
+        ))
+    );
 }
 
 named!(struct_val<&[u8], Record>,
@@ -268,25 +388,72 @@ named!(struct_val<&[u8], Record>,
 
 #[test]
 fn test_struct() {
-    assert_eq!(struct_val(br"Constructor { true, false }"),
-               Ok((&br""[..], Record::PosStruct(Cow::from("Constructor"),
-                                            vec![Record::Bool(true), Record::Bool(false)]))));
-    assert_eq!(struct_val(br"Constructor { .f1 = true, .f2 = false }"),
-               Ok((&br""[..], Record::NamedStruct(Cow::from("Constructor"),
-                                            vec![(Cow::from("f1"), Record::Bool(true)), (Cow::from("f2"), Record::Bool(false))]))));
-    assert_eq!(struct_val(br"_Constructor{true, false}"),
-               Ok((&br""[..], Record::PosStruct(Cow::from("_Constructor"),
-                                            vec![Record::Bool(true), Record::Bool(false)]))));
-    assert_eq!(struct_val(br"_Constructor{.f1 = true, .f2=false}"),
-               Ok((&br""[..], Record::NamedStruct(Cow::from("_Constructor"),
-                                            vec![(Cow::from("f1"), Record::Bool(true)), (Cow::from("f2"),Record::Bool(false))]))));
-    assert_eq!(struct_val(br###"Constructor1 { true, C{Constructor3, 25, "foo\nbar"} }"###),
-               Ok((&br""[..], Record::PosStruct(Cow::from("Constructor1"),
-                                            vec![Record::Bool(true),
-                                                 Record::PosStruct(Cow::from("C"),
-                                                               vec![Record::PosStruct(Cow::from("Constructor3"), vec![]),
-                                                                    Record::Int(25_i32.to_bigint().unwrap()),
-                                                                    Record::String("foo\nbar".to_string())])]))));
+    assert_eq!(
+        struct_val(br"Constructor { true, false }"),
+        Ok((
+            &br""[..],
+            Record::PosStruct(
+                Cow::from("Constructor"),
+                vec![Record::Bool(true), Record::Bool(false)]
+            )
+        ))
+    );
+    assert_eq!(
+        struct_val(br"Constructor { .f1 = true, .f2 = false }"),
+        Ok((
+            &br""[..],
+            Record::NamedStruct(
+                Cow::from("Constructor"),
+                vec![
+                    (Cow::from("f1"), Record::Bool(true)),
+                    (Cow::from("f2"), Record::Bool(false))
+                ]
+            )
+        ))
+    );
+    assert_eq!(
+        struct_val(br"_Constructor{true, false}"),
+        Ok((
+            &br""[..],
+            Record::PosStruct(
+                Cow::from("_Constructor"),
+                vec![Record::Bool(true), Record::Bool(false)]
+            )
+        ))
+    );
+    assert_eq!(
+        struct_val(br"_Constructor{.f1 = true, .f2=false}"),
+        Ok((
+            &br""[..],
+            Record::NamedStruct(
+                Cow::from("_Constructor"),
+                vec![
+                    (Cow::from("f1"), Record::Bool(true)),
+                    (Cow::from("f2"), Record::Bool(false))
+                ]
+            )
+        ))
+    );
+    assert_eq!(
+        struct_val(br###"Constructor1 { true, C{Constructor3, 25, "foo\nbar"} }"###),
+        Ok((
+            &br""[..],
+            Record::PosStruct(
+                Cow::from("Constructor1"),
+                vec![
+                    Record::Bool(true),
+                    Record::PosStruct(
+                        Cow::from("C"),
+                        vec![
+                            Record::PosStruct(Cow::from("Constructor3"), vec![]),
+                            Record::Int(25_i32.to_bigint().unwrap()),
+                            Record::String("foo\nbar".to_string())
+                        ]
+                    )
+                ]
+            )
+        ))
+    );
     assert_eq!(struct_val(br###"Constructor1 { .bfield = true, .cons = C{.cfield = Constructor3, .ifield = 25, .sfield="foo\nbar"} }"###),
                Ok((&br""[..], Record::NamedStruct(Cow::from("Constructor1"),
                                             vec![(Cow::from("bfield"),Record::Bool(true)),
@@ -327,16 +494,38 @@ named!(dec_val<&[u8], BigInt>,
 
 #[test]
 fn test_int() {
-    assert_eq!(dec_val(br"1 ")     , Ok((&br""[..], 1_i32.to_bigint().unwrap())));
-    assert_eq!(int_val(br"1 ")     , Ok((&br""[..], Record::Int(1_i32.to_bigint().unwrap()))));
-    assert_eq!(record(br"-5 ")     , Ok((&br""[..], Record::Int(-5_i32.to_bigint().unwrap()))));
-    assert_eq!(hex_val(br"0xabcd "), Ok((&br""[..], 0xabcd.to_bigint().unwrap())));
-    assert_eq!(int_val(br"0xabcd "), Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
-    assert_eq!(record(br"0xabcd ") , Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap()))));
-    assert_eq!(record(br"0xc3226515_018c_48e6_957d_afee358a8a10 ")
-                                   , Ok((&br""[..], Record::Int(BigInt::from_str_radix("c3226515018c48e6957dafee358a8a10",16).unwrap()))));
-    assert_eq!(record(br"1_000_000_ ")
-                                   , Ok((&br""[..], Record::Int( 1000000.to_bigint().unwrap() ))));
+    assert_eq!(dec_val(br"1 "), Ok((&br""[..], 1_i32.to_bigint().unwrap())));
+    assert_eq!(
+        int_val(br"1 "),
+        Ok((&br""[..], Record::Int(1_i32.to_bigint().unwrap())))
+    );
+    assert_eq!(
+        record(br"-5 "),
+        Ok((&br""[..], Record::Int(-5_i32.to_bigint().unwrap())))
+    );
+    assert_eq!(
+        hex_val(br"0xabcd "),
+        Ok((&br""[..], 0xabcd.to_bigint().unwrap()))
+    );
+    assert_eq!(
+        int_val(br"0xabcd "),
+        Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap())))
+    );
+    assert_eq!(
+        record(br"0xabcd "),
+        Ok((&br""[..], Record::Int(0xabcd.to_bigint().unwrap())))
+    );
+    assert_eq!(
+        record(br"0xc3226515_018c_48e6_957d_afee358a8a10 "),
+        Ok((
+            &br""[..],
+            Record::Int(BigInt::from_str_radix("c3226515018c48e6957dafee358a8a10", 16).unwrap())
+        ))
+    );
+    assert_eq!(
+        record(br"1_000_000_ "),
+        Ok((&br""[..], Record::Int(1000000.to_bigint().unwrap())))
+    );
 }
 
 named_args!(constructor_args(constructor: Name)<Record>,
