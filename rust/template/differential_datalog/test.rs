@@ -1,4 +1,16 @@
-#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals, dead_code)]
+#![allow(
+    non_snake_case,
+    non_camel_case_types,
+    non_upper_case_globals,
+    dead_code,
+    clippy::block_in_if_condition_stmt,
+    clippy::clone_on_copy,
+    clippy::eq_op,
+    clippy::cmp_owned,
+    clippy::nonminimal_bool,
+    clippy::toplevel_ref_arg,
+    clippy::trivially_copy_pass_by_ref,
+)]
 
 use abomonation::Abomonation;
 use program::*;
