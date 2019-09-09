@@ -177,10 +177,10 @@ def run_remote_tests():
     for tg in testgroups:
         code, _ = run_command(["mkdir", "-p", tg])
         if code != 0:
-            return
+            return []
         code, dirs = run_command(["svn", "ls", url + tg])
         if code != 0:
-            return
+            return []
         for test in dirs.split("/\n"):
             directory = tg + "/" + test
             if not should_run(test):
