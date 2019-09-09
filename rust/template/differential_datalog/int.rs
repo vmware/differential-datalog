@@ -1,71 +1,77 @@
 #![allow(non_snake_case)]
 
-use abomonation::Abomonation;
-use num::bigint::{BigInt};
-#[cfg(test)]
-use num::bigint::{ToBigInt};
-use std::str::FromStr;
-use std::ops::*;
-use serde::ser::*;
-use serde::de::*;
-use serde::de::Error;
-use std::fmt;
-use std::ffi::CStr;
-use std::os::raw::c_char;
-use super::record::{FromRecord, IntoRecord, Record, Mutator};
+use super::record::{FromRecord, IntoRecord, Mutator, Record};
 use super::uint;
-use num::ToPrimitive;
+use abomonation::Abomonation;
+use num::bigint::BigInt;
 pub use num::bigint::Sign;
+#[cfg(test)]
+use num::bigint::ToBigInt;
+use num::ToPrimitive;
+use serde::de::Error;
+use serde::de::*;
+use serde::ser::*;
+use std::ffi::CStr;
+use std::fmt;
+use std::ops::*;
+use std::os::raw::c_char;
+use std::str::FromStr;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
-pub struct Int{x:BigInt}
+pub struct Int {
+    x: BigInt,
+}
 
 impl Default for Int {
     fn default() -> Int {
-        Int{x: BigInt::default()}
+        Int {
+            x: BigInt::default(),
+        }
     }
 }
 unsafe_abomonate!(Int);
 
 impl Int {
     pub fn from_bigint(v: BigInt) -> Int {
-        Int{x: v}
+        Int { x: v }
     }
     pub fn from_u8(v: u8) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_i8(v: i8) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_u16(v: u16) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_i16(v: i16) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_u32(v: u32) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_i32(v: i32) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_u64(v: u64) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_i64(v: i64) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_u128(v: u128) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_i128(v: i128) -> Int {
-        Int{x: BigInt::from(v)}
+        Int { x: BigInt::from(v) }
     }
     pub fn from_Uint(v: uint::Uint) -> Int {
         v.to_Int().unwrap()
     }
     pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Int {
-        Int{x: BigInt::from_bytes_be(if sign {Sign::Plus} else {Sign::Minus}, bytes)}
+        Int {
+            x: BigInt::from_bytes_be(if sign { Sign::Plus } else { Sign::Minus }, bytes),
+        }
     }
     pub fn to_bytes_be(&self) -> (Sign, Vec<u8>) {
         self.x.to_bytes_be()
@@ -89,7 +95,9 @@ impl Int {
         self.x.to_biguint().map(|x| uint::Uint::from_biguint(x))
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Int {
-        Int{x: BigInt::parse_bytes(buf, radix).unwrap()}
+        Int {
+            x: BigInt::parse_bytes(buf, radix).unwrap(),
+        }
     }
 }
 
@@ -117,7 +125,6 @@ pub unsafe extern "C" fn int_free(x: *mut Int) {
     Box::from_raw(x);
 }
 
-
 impl fmt::Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.x)
@@ -136,10 +143,10 @@ impl fmt::Debug for Int {
     }
 }
 
-
 impl Serialize for Int {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_str(&self.x.to_str_radix(10))
     }
@@ -147,18 +154,18 @@ impl Serialize for Int {
 
 impl<'de> Deserialize<'de> for Int {
     fn deserialize<D>(deserializer: D) -> Result<Int, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         match String::deserialize(deserializer) {
             Ok(s) => match BigInt::from_str(&s) {
-                        Ok(i)  => Ok(Int{x:i}),
-                        Err(_) => Err(D::Error::custom(format!("invalid integer value: {}", s)))
-                     },
-            Err(e) => Err(e)
+                Ok(i) => Ok(Int { x: i }),
+                Err(_) => Err(D::Error::custom(format!("invalid integer value: {}", s))),
+            },
+            Err(e) => Err(e),
         }
     }
 }
-
 
 impl FromRecord for Int {
     fn from_record(val: &Record) -> Result<Self, String> {
@@ -178,11 +185,13 @@ impl Mutator<Int> for Record {
     }
 }
 
-
 #[test]
 fn test_fromrecord() {
     let v = (-25_i64).to_bigint().unwrap();
-    assert_eq!(Int::from_record(&Record::Int(v.clone())), Ok(Int::from_bigint(v)));
+    assert_eq!(
+        Int::from_record(&Record::Int(v.clone())),
+        Ok(Int::from_bigint(v))
+    );
 }
 
 impl Shr<usize> for Int {
@@ -190,7 +199,7 @@ impl Shr<usize> for Int {
 
     #[inline]
     fn shr(self, rhs: usize) -> Int {
-        Int{x: self.x.shr(rhs)}
+        Int { x: self.x.shr(rhs) }
     }
 }
 
@@ -199,7 +208,7 @@ impl Shl<usize> for Int {
 
     #[inline]
     fn shl(self, rhs: usize) -> Int {
-        Int{x: self.x.shl(rhs)}
+        Int { x: self.x.shl(rhs) }
     }
 }
 
@@ -208,7 +217,7 @@ impl Neg for Int {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        Int{x: self.x.neg()}
+        Int { x: self.x.neg() }
     }
 }
 
@@ -220,10 +229,12 @@ macro_rules! forward_binop {
             #[inline]
             fn $method(self, other: $res) -> $res {
                 // forward to val-ref
-                Int{x: $imp::$method(self.x, other.x)}
+                Int {
+                    x: $imp::$method(self.x, other.x),
+                }
             }
         }
-    }
+    };
 }
 
 forward_binop!(impl Add for Int, add);
@@ -240,7 +251,7 @@ impl num::One for Int {
 
 impl num::Zero for Int {
     fn zero() -> Int {
-        Int{ x: BigInt::zero() }
+        Int { x: BigInt::zero() }
     }
 
     fn is_zero(&self) -> bool {
