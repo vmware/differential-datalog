@@ -1,10 +1,9 @@
 use super::*;
 
-use std::{io,env};
-use std::io::BufRead;
 use std::fs::{self, DirEntry};
+use std::io::BufRead;
 use std::path::Path;
-
+use std::{env, io};
 
 /* test_data was copied from OVN test directory using:
  * `find ~/Downloads/ovs-reviews/tests/testsuite.dir/ -name '*.rawsync' | cpio -pdm ./test_data/`
