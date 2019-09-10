@@ -994,7 +994,7 @@ where
 -}
 compileApplyNode :: (?cfg::CompilerConfig) => DatalogProgram -> Apply -> ProgNode
 compileApplyNode d Apply{..} = ApplyNode $
-    "{fn transformer() -> Box<for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,Value,Weight>>)> {" $$
+    "{fn transformer() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,Value,Weight>>)> {" $$
     "    Box::new(|collections| {"                                                                                                                             $$
     "        let (" <> commaSep outputs <> ") =" <+> rname applyTransformer <> (parens $ commaSep inputs) <> ";"                                               $$
     (nest' $ nest' $ vcat update_collections)                                                                                                                  $$
@@ -1281,10 +1281,10 @@ mkFlatMap d prefix rl idx v e = do
                   "Some(Box::new(__flattened.into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
     next <- compileRule d rl idx False
     return $
-        "XFormCollection::FlatMap{"                                                                                        $$
-        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                          $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<Iterator<Item=Value>>>" $$ fmfun $$ "__f},")   $$
-        "    next: Box::new(" <> next <> ")"                                                                               $$
+        "XFormCollection::FlatMap{"                                                                                         $$
+        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<dyn Iterator<Item=Value>>>" $$ fmfun $$ "__f},")$$
+        "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
 mkAggregate :: (?cfg::CompilerConfig) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
