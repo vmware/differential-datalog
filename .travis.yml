@@ -81,7 +81,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
-- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py -s 0 -r 17; fi
+- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
 
 before_deploy:
