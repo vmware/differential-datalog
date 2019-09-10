@@ -1,15 +1,15 @@
 //! OVSDB JSON interface to RunningProgram
 
+use super::api::{record_update, updcmd2upd, HDDlog};
+use super::valmap;
+use super::{relname2id, Value};
+use ddlog_ovsdb_adapter::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, UpdCmd};
 use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_int};
-use super::{Value, relname2id};
-use ddlog_ovsdb_adapter::*;
-use super::valmap;
-use std::sync;
 use std::io::Write;
-use super::api::{HDDlog, updcmd2upd, record_update};
+use std::os::raw::{c_char, c_int};
+use std::sync;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -27,36 +27,46 @@ use super::api::{HDDlog, updcmd2upd, record_update};
 pub unsafe extern "C" fn ddlog_apply_ovsdb_updates(
     prog: *const HDDlog,
     prefix: *const c_char,
-    updates: *const c_char) -> c_int
-{
+    updates: *const c_char,
+) -> c_int {
     if prog.is_null() || prefix.is_null() || updates.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = apply_updates(&prog, prefix, updates).map(|_|0).unwrap_or_else(|e|{
-        prog.eprintln(&format!("ddlog_apply_ovsdb_updates(): error: {}", e));
-        -1
-    });
+    let res = apply_updates(&prog, prefix, updates)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_apply_ovsdb_updates(): error: {}", e));
+            -1
+        });
     sync::Arc::into_raw(prog);
     res
 }
 
-fn apply_updates(prog: &sync::Arc<HDDlog>, prefix: *const c_char, updates_str: *const c_char) -> Result<(), String>
-{
-    let prefix: &str = unsafe{ CStr::from_ptr(prefix) }.to_str()
-        .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
-    let updates_str: &str = unsafe{ CStr::from_ptr(updates_str) }.to_str()
-        .map_err(|e|format!("invalid UTF8 string in prefix: {}", e))?;
+fn apply_updates(
+    prog: &sync::Arc<HDDlog>,
+    prefix: *const c_char,
+    updates_str: *const c_char,
+) -> Result<(), String> {
+    let prefix: &str = unsafe { CStr::from_ptr(prefix) }
+        .to_str()
+        .map_err(|e| format!("invalid UTF8 string in prefix: {}", e))?;
+    let updates_str: &str = unsafe { CStr::from_ptr(updates_str) }
+        .to_str()
+        .map_err(|e| format!("invalid UTF8 string in prefix: {}", e))?;
     let commands = cmds_from_table_updates_str(prefix, updates_str)?;
 
     record_updatecmds(prog, &commands);
 
-    let updates: Result<Vec<Update<Value>>, String> = commands.iter().map(|c|updcmd2upd(c)).collect();
-    prog.prog.lock().unwrap().apply_updates(updates?.into_iter())
+    let updates: Result<Vec<Update<Value>>, String> =
+        commands.iter().map(|c| updcmd2upd(c)).collect();
+    prog.prog
+        .lock()
+        .unwrap()
+        .apply_updates(updates?.into_iter())
 }
 
-fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
-{
+fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>) {
     if let Some(ref f) = prog.replay_file {
         let mut file = f.lock().unwrap();
         let n = upds.len();
@@ -64,7 +74,9 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
             let sep = if i == n - 1 { ";" } else { "," };
             record_update(&mut *file, upd);
             if writeln!(&mut *file, "{}", sep).is_err() {
-                prog.eprintln("ddlog_transaction_start(): failed to record invocation in replay file");
+                prog.eprintln(
+                    "ddlog_transaction_start(): failed to record invocation in replay file",
+                );
             }
         }
     }
@@ -77,11 +89,12 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>)
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
-                                         module: *const c_char,
-                                         table:  *const c_char,
-                                         json:   *mut *mut c_char) -> c_int
-{
+pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(
+    prog: *const HDDlog,
+    module: *const c_char,
+    table: *const c_char,
+    json: *mut *mut c_char,
+) -> c_int {
     if json.is_null() || prog.is_null() || module.is_null() || table.is_null() {
         return -1;
     };
@@ -91,7 +104,7 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
             Ok(json_string) => {
                 *json = json_string.into_raw();
                 0
-            },
+            }
             Err(e) => {
                 prog.eprintln(&format!("ddlog_dump_ovsdb_delta(): error: {}", e));
                 -1
@@ -105,47 +118,61 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(prog:   *const HDDlog,
     res
 }
 
-fn dump_delta(db: &mut valmap::DeltaMap, module: *const c_char, table: *const c_char) -> Result<CString, String>
-{
-    let table_str: &str = unsafe {CStr::from_ptr(table)}.to_str().map_err(|e|format!("{}", e))?;
-    let module_str: &str = unsafe {CStr::from_ptr(module)}.to_str().map_err(|e|format!("{}", e))?;
+fn dump_delta(
+    db: &mut valmap::DeltaMap,
+    module: *const c_char,
+    table: *const c_char,
+) -> Result<CString, String> {
+    let table_str: &str = unsafe { CStr::from_ptr(table) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    let module_str: &str = unsafe { CStr::from_ptr(module) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
     let plus_table_name = format!("{}.DeltaPlus_{}", module_str, table_str);
     let minus_table_name = format!("{}.DeltaMinus_{}", module_str, table_str);
     let upd_table_name = format!("{}.Update_{}", module_str, table_str);
 
     /* DeltaPlus */
     let plus_cmds: Result<Vec<String>, String> = {
-        let plus_table_id = relname2id(&plus_table_name).ok_or_else(||format!("unknown table {}", plus_table_name))?;
+        let plus_table_id = relname2id(&plus_table_name)
+            .ok_or_else(|| format!("unknown table {}", plus_table_name))?;
         db.get_rel(plus_table_id as RelId)
-          .iter().map(|(v,w)| {
-              assert!(*w == 1);
-              record_into_insert_str(v.clone().into_record(), table_str)
-          }).collect()
+            .iter()
+            .map(|(v, w)| {
+                assert!(*w == 1);
+                record_into_insert_str(v.clone().into_record(), table_str)
+            })
+            .collect()
     };
     let plus_cmds = plus_cmds?;
 
     /* DeltaMinus */
     let minus_cmds: Result<Vec<String>, String> = {
-        let minus_table_id = relname2id(&minus_table_name).ok_or_else(||format!("unknown table {}", minus_table_name))?;
+        let minus_table_id = relname2id(&minus_table_name)
+            .ok_or_else(|| format!("unknown table {}", minus_table_name))?;
         db.get_rel(minus_table_id as RelId)
-          .iter().map(|(v,w)| {
-              assert!(*w == 1);
-              record_into_delete_str(v.clone().into_record(), table_str)
-          }).collect()
+            .iter()
+            .map(|(v, w)| {
+                assert!(*w == 1);
+                record_into_delete_str(v.clone().into_record(), table_str)
+            })
+            .collect()
     };
     let mut minus_cmds = minus_cmds?;
 
     /* Update */
     let upd_cmds: Result<Vec<String>, String> = {
         match relname2id(&upd_table_name) {
-            Some(upd_table_id) => {
-                db.get_rel(upd_table_id as RelId)
-                   .iter().map(|(v,w)| {
-                       assert!(*w == 1);
-                       record_into_update_str(v.clone().into_record(), table_str)
-                   }).collect()
-            },
-            None => Ok(vec![])
+            Some(upd_table_id) => db
+                .get_rel(upd_table_id as RelId)
+                .iter()
+                .map(|(v, w)| {
+                    assert!(*w == 1);
+                    record_into_update_str(v.clone().into_record(), table_str)
+                })
+                .collect(),
+            None => Ok(vec![]),
         }
     };
     let mut upd_cmds = upd_cmds?;
@@ -153,12 +180,14 @@ fn dump_delta(db: &mut valmap::DeltaMap, module: *const c_char, table: *const c_
     let mut cmds = plus_cmds;
     cmds.append(&mut minus_cmds);
     cmds.append(&mut upd_cmds);
-    Ok(unsafe{ CString::from_vec_unchecked(cmds.join(",").into_bytes()) } )
+    Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
 }
 
 /// Deallocates strings returned by other functions in this API.
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free_json(str: *mut c_char) {
-    if str.is_null() { return; }
+    if str.is_null() {
+        return;
+    }
     let _ = CString::from_raw(str);
 }
