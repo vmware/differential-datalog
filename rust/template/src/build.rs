@@ -2,7 +2,7 @@ extern crate libtool;
 
 use std::env;
 use std::fs;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 fn main() {
     let topdir = env::var("CARGO_MANIFEST_DIR").unwrap();
