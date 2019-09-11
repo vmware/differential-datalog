@@ -107,9 +107,8 @@ where
                     //return -1;
                 }
             };
-            match rest {
-                Some(rest) => buf = rest,
-                _ => {}
+            if let Some(rest) = rest {
+                buf = rest
             };
             if !more {
                 break;

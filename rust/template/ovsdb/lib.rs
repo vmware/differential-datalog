@@ -95,30 +95,24 @@ fn cmd_from_row_update(
     match update {
         Value::Object(mut m) => {
             /* Handle update-2 format */
-            match m.remove("insert").or_else(|| m.remove("initial")) {
-                Some(v) => {
-                    let mut insert = row_from_obj(v)?;
-                    insert.push((Cow::from("_uuid"), uuid));
-                    cmds.push(UpdCmd::Insert(
-                        RelIdentifier::RelName(Cow::from(table.to_owned())),
-                        Record::NamedStruct(Cow::from(table.to_owned()), insert),
-                    ));
-                    return Ok(());
-                }
-                None => (),
+            if let Some(v) = m.remove("insert").or_else(|| m.remove("initial")) {
+                let mut insert = row_from_obj(v)?;
+                insert.push((Cow::from("_uuid"), uuid));
+                cmds.push(UpdCmd::Insert(
+                    RelIdentifier::RelName(Cow::from(table.to_owned())),
+                    Record::NamedStruct(Cow::from(table.to_owned()), insert),
+                ));
+                return Ok(());
             };
 
-            match m.remove("modify") {
-                Some(v) => {
-                    let insert = row_from_obj(v)?;
-                    cmds.push(UpdCmd::Modify(
-                        RelIdentifier::RelName(Cow::from(table.to_owned())),
-                        uuid,
-                        Record::NamedStruct(Cow::from(table.to_owned()), insert),
-                    ));
-                    return Ok(());
-                }
-                None => (),
+            if let Some(v) = m.remove("modify") {
+                let insert = row_from_obj(v)?;
+                cmds.push(UpdCmd::Modify(
+                    RelIdentifier::RelName(Cow::from(table.to_owned())),
+                    uuid,
+                    Record::NamedStruct(Cow::from(table.to_owned()), insert),
+                ));
+                return Ok(());
             };
 
             if m.contains_key("delete") {

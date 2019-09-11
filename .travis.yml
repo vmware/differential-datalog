@@ -107,7 +107,6 @@ script:
           -A clippy::redundant_closure
           -A clippy::should_implement_trait
           -A clippy::trivially_copy_pass_by_ref
-          -A clippy::single_match
           -A clippy::type_complexity
           -A clippy::unreadable_literal
           -D warnings"
