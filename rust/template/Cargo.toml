@@ -4,6 +4,14 @@ version = "0.1.0"
 autobins = false
 build = "src/build.rs"
 
+[workspace]
+members = [
+  "cmd_parser",
+  "differential_datalog",
+  "observe",
+  "ovsdb",
+]
+
 [build-dependencies]
 libtool = "0.1"
 

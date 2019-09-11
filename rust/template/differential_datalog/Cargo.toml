@@ -25,13 +25,6 @@ timely = "0.9"
 [features]
 default = []
 
-[profile.release]
-opt-level = 2
-debug = false
-rpath = false
-lto = false
-debug-assertions = false
-
 [lib]
 name = "differential_datalog"
 path = "./lib.rs"
