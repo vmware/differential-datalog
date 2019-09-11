@@ -385,9 +385,8 @@ pub unsafe extern "C" fn ddlog_pair(v1: *mut Record, v2: *mut Record) -> *mut Re
 pub unsafe extern "C" fn ddlog_tuple_push(tup: *mut Record, rec: *mut Record) {
     let rec = Box::from_raw(rec);
     let mut tup = Box::from_raw(tup);
-    match tup.as_mut() {
-        Record::Tuple(recs) => recs.push(*rec),
-        _ => {}
+    if let Record::Tuple(recs) = tup.as_mut() {
+        recs.push(*rec)
     };
     Box::into_raw(tup);
 }
@@ -435,9 +434,8 @@ pub unsafe extern "C" fn ddlog_get_vector_elem(
 pub unsafe extern "C" fn ddlog_vector_push(vec: *mut Record, rec: *mut Record) {
     let rec = Box::from_raw(rec);
     let mut vec = Box::from_raw(vec);
-    match vec.as_mut() {
-        Record::Array(CollectionKind::Vector, recs) => recs.push(*rec),
-        _ => {}
+    if let Record::Array(CollectionKind::Vector, recs) = vec.as_mut() {
+        recs.push(*rec)
     };
     Box::into_raw(vec);
 }
@@ -482,9 +480,8 @@ pub unsafe extern "C" fn ddlog_get_set_elem(
 pub unsafe extern "C" fn ddlog_set_push(set: *mut Record, rec: *mut Record) {
     let rec = Box::from_raw(rec);
     let mut set = Box::from_raw(set);
-    match set.as_mut() {
-        Record::Array(CollectionKind::Set, recs) => recs.push(*rec),
-        _ => {}
+    if let Record::Array(CollectionKind::Map, recs) = set.as_mut() {
+        recs.push(*rec)
     };
     Box::into_raw(set);
 }
@@ -545,9 +542,8 @@ pub unsafe extern "C" fn ddlog_map_push(map: *mut Record, key: *mut Record, val:
     let val = Box::from_raw(val);
     let tup = Record::Tuple(vec![*key, *val]);
     let mut map = Box::from_raw(map);
-    match map.as_mut() {
-        Record::Array(CollectionKind::Map, recs) => recs.push(tup),
-        _ => {}
+    if let Record::Array(CollectionKind::Map, recs) = map.as_mut() {
+        recs.push(tup)
     };
     Box::into_raw(map);
 }
