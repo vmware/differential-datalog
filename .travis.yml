@@ -85,11 +85,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - if [ -n "${RUSTFMT}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
-      (cd rust/template/ && cargo fmt --all -- --check) &&
-      (cd rust/template/cmd_parser/ && cargo fmt --all -- --check) &&
-      (cd rust/template/differential_datalog/ && cargo fmt --all -- --check) &&
-      (cd rust/template/observe/ && cargo fmt --all -- --check) &&
-      (cd rust/template/ovsdb/ && cargo fmt --all -- --check)
+      (cd rust/template/ && cargo fmt --all -- --check)
   fi
 - if [ -n "${CLIPPY}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
       CLIPPYFLAGS="
@@ -116,11 +112,7 @@ script:
           -A clippy::unreadable_literal
           -D warnings"
 
-      (cd rust/template/ && cargo clippy -- ${CLIPPYFLAGS}) &&
-      (cd rust/template/cmd_parser/ && cargo clippy -- ${CLIPPYFLAGS}) &&
-      (cd rust/template/differential_datalog/ && cargo clippy -- ${CLIPPYFLAGS}) &&
-      (cd rust/template/observe/ && cargo clippy -- ${CLIPPYFLAGS}) &&
-      (cd rust/template/ovsdb/ && cargo clippy -- ${CLIPPYFLAGS})
+      (cd rust/template/ && cargo clippy --all -- ${CLIPPYFLAGS})
   fi
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
 - if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
