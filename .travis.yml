@@ -37,7 +37,7 @@ env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
      # We piggy back on what has historically been one of the shorter
      # runs to also check formatting of the Rust code.
-   - TOOL=run_souffle_tests RUSTFMT=1 CLIPPY=1
+   - TOOL=run_souffle_tests RUSTFMT=1 CLIPPY=1 CARGO_TEST=1
    - TOOL=stack TEST_SUITE='-p redist' JAVA=1
    - TOOL=stack TEST_SUITE='-p span_uuid'
    - TOOL=stack TEST_SUITE='-p souffle0'
@@ -113,6 +113,9 @@ script:
           -D warnings"
 
       (cd rust/template/ && cargo clippy --all -- ${CLIPPYFLAGS})
+  fi
+- if [ -n "${CARGO_TEST}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
+      (cd rust/template/ && cargo test --all)
   fi
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
 - if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
