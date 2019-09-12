@@ -275,34 +275,24 @@ impl HDDlog {
 
         let handler: Box<dyn IMTUpdateHandler<Value>> = {
             let handler_generator = move || {
-                let mut nhandlers: usize = 1;
-
                 /* Always use delta handler, which costs nothing unless it is
                  * actually used*/
                 let delta_handler = DeltaUpdateHandler::new(deltadb2);
 
                 let store_handler = if do_store {
-                    nhandlers += 1;
                     Some(ValMapUpdateHandler::new(db2))
                 } else {
                     None
                 };
 
                 let cb_handler = Box::new(cb) as Box<dyn UpdateHandler<Value> + Send>;
-                nhandlers += 1;
-
-                let handler: Box<dyn UpdateHandler<Value>> = if nhandlers == 1 {
-                    Box::new(delta_handler)
-                } else {
-                    let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
-                    handlers.push(Box::new(delta_handler));
-                    if let Some(h) = store_handler {
-                        handlers.push(Box::new(h))
-                    };
-                    handlers.push(cb_handler);
-                    Box::new(ChainedUpdateHandler::new(handlers))
+                let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
+                handlers.push(Box::new(delta_handler));
+                if let Some(h) = store_handler {
+                    handlers.push(Box::new(h))
                 };
-                handler
+                handlers.push(cb_handler);
+                Box::new(ChainedUpdateHandler::new(handlers)) as Box<dyn UpdateHandler<Value>>
             };
             Box::new(ThreadUpdateHandler::new(handler_generator))
         };
