@@ -88,30 +88,7 @@ script:
       (cd rust/template/ && cargo fmt --all -- --check)
   fi
 - if [ -n "${CLIPPY}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
-      CLIPPYFLAGS="
-          -A clippy::char_lit_as_u8
-          -A clippy::many_single_char_names
-          -A clippy::enum_variant_names
-          -A clippy::expect_fun_call
-          -A clippy::extra_unused_lifetimes
-          -A clippy::for_kv_map
-          -A clippy::get_unwrap
-          -A clippy::into_iter_on_ref
-          -A clippy::just_underscores_and_digits
-          -A clippy::let_and_return
-          -A clippy::map_clone
-          -A clippy::needless_return
-          -A clippy::new_without_default
-          -A clippy::ptr_arg
-          -A clippy::ptr_offset_with_cast
-          -A clippy::redundant_closure
-          -A clippy::should_implement_trait
-          -A clippy::trivially_copy_pass_by_ref
-          -A clippy::type_complexity
-          -A clippy::unreadable_literal
-          -D warnings"
-
-      (cd rust/template/ && cargo clippy --all -- ${CLIPPYFLAGS})
+      (cd rust/template/ && cargo clippy --all -- -D warnings)
   fi
 - if [ -n "${CARGO_TEST}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
       (cd rust/template/ && cargo test --all)

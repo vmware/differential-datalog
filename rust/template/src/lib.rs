@@ -7,7 +7,11 @@
     non_shorthand_field_patterns,
     dead_code,
     overflowing_literals,
-    clippy::ptr_arg
+    clippy::extra_unused_lifetimes,
+    clippy::ptr_arg,
+    clippy::ptr_offset_with_cast,
+    clippy::redundant_closure,
+    clippy::type_complexity
 )]
 
 extern crate differential_dataflow;
