@@ -133,18 +133,3 @@ fn err_str<E>(e: &Err<&[u8], E>) -> String {
         _ => "".to_string(),
     }
 }
-
-// uncomment to test command line interaction
-
-/*
-#[cfg(test)]
-fn echo_cb(cmd: Command) {
-    eprintln!("Command: {:?}", cmd)
-}
-
-#[test]
-fn test_interactive() {
-    let res = interact(echo_cb);
-    assert_eq!(res, 0);
-}
-*/
