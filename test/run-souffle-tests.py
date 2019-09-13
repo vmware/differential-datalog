@@ -37,6 +37,7 @@ xfail = [
     "factorial",   # 221
     "grid",        # 221
     "2sat",      # issue 197 - bind and use variable
+    "floydwarshall", # 197
     "independent_body3", # issue 224 - requires many iterations
     "aliases",   # assignments to tuples containing variables
     "cellular_automata", # issue 198 - order of clauses

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 # Tomcat version 9.X does not seem to work correctly as an embedded web server
 TOMCATVERSION="8.5.2"
@@ -52,10 +52,12 @@ CLASSPATH=`pwd`/${PROG}_ddlog/flatbuf/java:`pwd`/../ddlogapi.jar:$CLASSPATH
 # $CLASSPATH)
 (cd ${PROG}_ddlog/flatbuf/java && javac `ls ddlog/__${PROG}/*.java` && javac `ls ddlog/${PROG}/*.java`)
 
+set +x
 for L in ${TOMCATLIB}/*.jar; do
     CLASSPATH=$L:$CLASSPATH
 done
 
+set -x
 javac Main.java
 
 ${OPEN} http://localhost:8082/index.html

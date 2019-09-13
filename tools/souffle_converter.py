@@ -536,6 +536,10 @@ class SouffleConverter(object):
         output = []
         for line in data:
             fields = line.rstrip('\n').split(inDelimiter)
+            # I have seen cases where there's a redundant \t at the end of the line.  So check for an
+            # empty field at the end
+            if len(fields) > 0 and fields[-1] == "" and len(fields) == len(converter) + 1:
+                fields.pop()
             result = []
             # Special handling for the empty tuple, which seems
             # to be written as () in Souffle, instead of the empty string
@@ -582,10 +586,18 @@ class SouffleConverter(object):
 
     @staticmethod
     def get_relid(decl):
+        """Return the RelId non-terminal as a relation name"""
         # print decl.tree_str()
-        lst = getListField(decl, "Identifier", "RelId")
+        lst = getList(decl, "Identifier", "RelId")
         values = [e.value for e in lst]
         return "_".join(values)
+
+    @staticmethod
+    def get_orig_relid(decl):
+        """Return the original name of the relation"""
+        lst = getList(decl, "Identifier", "RelId")
+        values = [e.value for e in lst]
+        return ".".join(values)
 
     def generateFilenames(self, rel):
         """
@@ -600,77 +612,73 @@ class SouffleConverter(object):
 
     def process_input(self, inputdecl):
         directives = getField(inputdecl, "IodirectiveList")
-        body = getField(directives, "IodirectiveBody")
-        rel = self.get_relid(body)
-        ri = Relation.get(rel, self.getCurrentComponentLegalName())
-        ri.mark_as_input()
+        rels = getListField(directives, "RelId", "IoRelationList")
 
-        if self.conversion_options.skip_files or self.preprocessing:
-            return
+        for r in rels:
+            rel = self.get_relid(r)
+            origrel = self.get_orig_relid(r)
+            ri = Relation.get(rel, self.getCurrentComponentLegalName())
+            ri.mark_as_input()
 
-        kvpf = getOptField(body, "KeyValuePairs")
-        if kvpf is not None:
-            kvp = self.get_kvp(kvpf)
-        else:
-            kvp = dict()
+            if self.conversion_options.skip_files or self.preprocessing:
+                continue
 
-        if ("IO" in kvp) and (kvp["IO"] != "file"):
-            raise Exception("Unexpected IO source " + kvp["IO"])
+            kvpf = getOptField(directives, "KeyValuePairs")
+            if kvpf is not None:
+                kvp = self.get_kvp(kvpf)
+            else:
+                kvp = dict()
 
-        if "filename" not in kvp:
-            filenames = [f + ".facts" for f in self.generateFilenames(rel)]
-        else:
-            filenames = [kvp["filename"]]
+            if ("IO" in kvp) and (kvp["IO"] != "file"):
+                raise Exception("Unexpected IO source " + kvp["IO"])
 
-        if "delimiter" not in kvp:
-            delimiter = '\t'
-        else:
-            delimiter = kvp["delimiter"]
+            if "filename" not in kvp:
+                filenames = [f + ".facts" for f in self.generateFilenames(origrel)]
+            else:
+                filenames = [kvp["filename"]]
 
-        global verbose
-        if verbose:
-            print "Reading", rel + "_shadow"
-        data = None
-        for directory in ["./", "./facts/"]:
-            for suffix in ["", ".gz"]:
-                for filename in filenames:
-                    tryFile = directory + filename + suffix
-                    if os.path.isfile(tryFile):
-                        data = tryFile
-                        break
-        if data is None:
-            print "** Cannot find input file for " + rel
-            return
-        output = self.process_file(rel, data, delimiter, False)
-        for row in output:
-            self.files.outputData(
-                "insert " + self.conversion_options.relationPrefix + \
-                ri.name + "_shadow(" + ",".join(row) + ")", ",")
+            if "delimiter" not in kvp:
+                delimiter = '\t'
+            else:
+                delimiter = kvp["delimiter"]
+
+            global verbose
+            if verbose:
+                print "Reading", rel + "_shadow"
+            data = None
+            for directory in ["./", "./facts/"]:
+                for suffix in ["", ".gz"]:
+                    for filename in filenames:
+                        tryFile = directory + filename + suffix
+                        if os.path.isfile(tryFile):
+                            data = tryFile
+                            break
+            if data is None:
+                print "** Cannot find input file for " + rel
+                return
+            output = self.process_file(rel, data, delimiter, False)
+            for row in output:
+                self.files.outputData(
+                    "insert " + self.conversion_options.relationPrefix + \
+                    ri.name + "_shadow(" + ",".join(row) + ")", ",")
 
     def process_output(self, outputdecl):
         if getOptField(outputdecl, "OUTPUT") is None:
             return
         directives = getField(outputdecl, "IodirectiveList")
-        rels = []
-        while True:
-            body = getOptField(directives, "IodirectiveBody")
-            if body is not None:
-                rel = self.get_relid(body)
-                rels.append(rel)
-                break
-            else:
-                relid = getIdentifier(directives)
-                rels.append(relid)
-                directives = getField(directives, "IodirectiveList")
+        rels = getListField(directives, "RelId", "IoRelationList")
+        # TODO: ignoring KeyValuePairs
 
-        for rel in rels:
+        for r in rels:
+            rel = self.get_relid(r)
+            origrel = self.get_orig_relid(r)
             ri = Relation.get(rel, self.getCurrentComponentLegalName())
             ri.isoutput = True
             if self.conversion_options.skip_files or self.preprocessing:
                 Relation.dumpOrder.append(ri.name)
                 return
 
-            filenames = self.generateFilenames(rel)
+            filenames = self.generateFilenames(origrel)
             global verbose
             if verbose:
                 print "Reading output relation", rel

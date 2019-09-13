@@ -127,13 +127,13 @@ OutputDecl: OUTPUT IodirectiveList
           | PRINTSIZE IodirectiveList
           ;
 
-IodirectiveList : IodirectiveBody
-                | Identifier "," IodirectiveList
+IodirectiveList : IoRelationList
+                | IoRelationList "(" KeyValuePairs ")"
                 ;
 
-IodirectiveBody : RelId
-                | RelId "(" KeyValuePairs ")"
-                ;
+IoRelationList : RelId
+               | RelId "," IoRelationList
+               ;
 
 ParameterList: Parameter "," ParameterList
              | Parameter
