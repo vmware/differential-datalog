@@ -50,9 +50,12 @@ where
             Input::TTY(rl) => {
                 let readline = rl.readline(">> ");
                 match readline {
-                    Ok(line) => {
+                    Ok(mut line) => {
                         rl.add_history_entry(line.as_ref());
                         //println!("Line: {}", line);
+                        // If `line` happens to be a comment, it must contain an `\n`, so that the
+                        // parser can recognize its end.
+                        line.push('\n');
                         line
                     }
                     Err(ReadlineError::Interrupted) => {
