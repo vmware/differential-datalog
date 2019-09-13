@@ -82,7 +82,8 @@ We have tested our software on Ubuntu Linux and MacOS.
 The compilers are written in Haskell.  One needs the Glasgow Haskell
 Compiler.  The Haskell compiler is managed by the
 [stack](https://github.com/commercialhaskell/stack) tool.
-To download stack (if you don't already have it) use:
+DDlog requires `stack` version 1.9.3 or later.
+To download `stack` (if you don't already have it) use:
 
 ```
 wget -qO- https://get.haskellstack.org/ | sh
