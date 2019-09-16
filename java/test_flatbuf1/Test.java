@@ -1,8 +1,19 @@
+/*
+ * FlatBuffers-based serialization API test.
+ *
+ * Perform the same set of updates twice, once using the DDlogRecord-based
+ * commit method, and once using FlatBuffers-based commit.  Write updates to
+ * two different files that can be diffed by the test script.
+ */
+
 import java.io.IOException;
 import java.util.*;
 import java.lang.RuntimeException;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.io.PrintStream;
+import java.io.UncheckedIOException;
+
 
 /* Generic DDlog API shared by all programs. */
 import ddlogapi.DDlogAPI;
@@ -13,11 +24,16 @@ import ddlog.flatbufTest.*;
 
 public class Test {
     private final DDlogAPI api;
+    private final PrintStream fb_file;
+    private final PrintStream rec_file;
 
-    Test() {
+    Test() throws IOException {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
         api.recordCommands("replay.dat", false);
+
+        this.fb_file  = new PrintStream("fb.dump");    
+        this.rec_file = new PrintStream("rec.dump");    
     }
 
     void check(int exit) {
@@ -46,62 +62,66 @@ public class Test {
         }
     }
 
-    void onCommit(DDlogCommand<Object> command) {
+    void onRecCommit(DDlogCommand command) throws IOException {
+        rec_file.println(command.toString());
+    }
+
+    void onFBCommit(DDlogCommand<Object> command) throws IOException {
         int relid = command.relid();
         switch (relid) {
             // output relation BO(b: bool)
             case flatbufTestRelation.BO: {
                 BOReader v = (BOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " BO{" + v.b() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " BO{" + v.b() + "}");
                 break;
             }
 
             // output relation CO(c: bit<32>)
             case flatbufTestRelation.CO: {
                 COReader v = (COReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " CO{" + v.c() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " CO{" + v.c() + "}");
                 break;
             }
 
             // output relation DO(d: signed<16>)
             case flatbufTestRelation.DO: {
                 DOReader v = (DOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " DO{" + v.d() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " DO{" + v.d() + "}");
                 break;
             }
 
             // output relation EO(e: bigint)
             case flatbufTestRelation.EO: {
                 EOReader v = (EOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " EO{" + v.e() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " EO{" + v.e() + "}");
                 break;
             }
             
             // output relation FO(s: string)
             case flatbufTestRelation.FO: {
                 FOReader v = (FOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " FO{\"" + v.s() + "\"}");
+                fb_file.println("From " + relid + " " + command.kind() + " FO{\"" + v.s() + "\"}");
                 break;
             }
             
             // output relation GO(d: bit<64>)
             case flatbufTestRelation.GO: {
                 GOReader v = (GOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " GO{" + v.d() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " GO{" + v.d() + "}");
                 break;
             }
             
             // output relation HO(d: bit<128>)
             case flatbufTestRelation.HO: {
                 HOReader v = (HOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " HO{" + v.d() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " HO{" + v.d() + "}");
                 break;
             }
 
             // output relation IO(d: bit<12>)
             case flatbufTestRelation.IO: {
                 IOReader v = (IOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " IO{" + v.d() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " IO{" + v.d() + "}");
                 break;
             }
 
@@ -109,7 +129,7 @@ public class Test {
             case flatbufTestRelation.JO: {
                 JOReader v = (JOReader)command.value();
                 Tuple3__bool__bit_8___stringReader a = v.a();
-                System.out.println("From " + relid + " " + command.kind() + " JO{" + printTuple(a) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " JO{" + printTuple(a) + "}");
                 break;
             }
             
@@ -117,28 +137,28 @@ public class Test {
             case flatbufTestRelation.KO: {
                 KOReader v = (KOReader)command.value();
                 Tuple3__bool__bit_8___stringReader t = v.t();
-                System.out.println("From " + relid + " " + command.kind() + " KO{" + printTuple(t) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " KO{" + printTuple(t) + "}");
                 break;
             }
 
             // output relation LO[tuple]
             case flatbufTestRelation.LO: {
                 Tuple3__bool__bit_8___stringReader v = (Tuple3__bool__bit_8___stringReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " " + printTuple(v));
+                fb_file.println("From " + relid + " " + command.kind() + " " + printTuple(v));
                 break;
             }
 
             // output relation L0O(a: bool, b: bit<8>, s: string)
             case flatbufTestRelation.L0O: {
                 L0OReader v = (L0OReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " L0O{" + v.a() + ", " + v.b() + ", \"" + v.s() + "\"}");
+                fb_file.println("From " + relid + " " + command.kind() + " L0O{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
                 break;
             }
             
             // output relation MO(v: Vec<bool>)
             case flatbufTestRelation.MO: {
                 MOReader v = (MOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " MO{" + v.v() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " MO{" + v.v() + "}");
                 break;
             }
 
@@ -148,7 +168,7 @@ public class Test {
                 List<Tuple3__bool__bit_8___stringReader> vs = v.v();
                 ArrayList<String> strings = new ArrayList<String>(vs.size());
                 vs.forEach((t) -> strings.add(printTuple(t)));
-                System.out.println("From " + relid + " " + command.kind() + " NO{[" + String.join(",",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " NO{[" + String.join(", ",strings) + "]}");
                 break;
             }
 
@@ -156,37 +176,73 @@ public class Test {
             case flatbufTestRelation.OO: {
                 OOReader v = (OOReader)command.value();
                 List<List<Boolean>> vs = v.v();
-                System.out.println("From " + relid + " " + command.kind() + " OO{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " OO{" + vs + "}");
                 break;
             }
 
-            // output relation PO(s: Set<bit<32>>)
-            case flatbufTestRelation.PO: {
-                POReader v = (POReader)command.value();
+            // output relation PO1(s: Set<bit<8>>)
+            case flatbufTestRelation.PO1: {
+                PO1Reader v = (PO1Reader)command.value();
                 List<Integer> vs = v.s();
-                System.out.println("From " + relid + " " + command.kind() + " PO{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PO1{" + vs + "}");
+                break;
+            }
+
+            // output relation PO2(s: Set<bit<16>>)
+            case flatbufTestRelation.PO2: {
+                PO2Reader v = (PO2Reader)command.value();
+                List<Integer> vs = v.s();
+                fb_file.println("From " + relid + " " + command.kind() + " PO2{" + vs + "}");
+                break;
+            }
+
+            // output relation PO3(s: Set<bit<32>>)
+            case flatbufTestRelation.PO3: {
+                PO3Reader v = (PO3Reader)command.value();
+                List<Long> vs = v.s();
+                fb_file.println("From " + relid + " " + command.kind() + " PO3{" + vs + "}");
+                break;
+            }
+
+            // output relation PO4(s: Set<bit<64>>)
+            case flatbufTestRelation.PO4: {
+                PO4Reader v = (PO4Reader)command.value();
+                List<Long> vs = v.s();
+                fb_file.println("From " + relid + " " + command.kind() + " PO4{" + vs + "}");
+                break;
+            }
+
+            // output relation PO5(s: Set<bit<128>>)
+            case flatbufTestRelation.PO5: {
+                PO5Reader v = (PO5Reader)command.value();
+                List<BigInteger> vs = v.s();
+                fb_file.println("From " + relid + " " + command.kind() + " PO5{" + vs + "}");
                 break;
             }
 
             // output relation QO(m: Map<bit<32>, string>)
             case flatbufTestRelation.QO: {
                 QOReader v = (QOReader)command.value();
-                Map<Integer,String> vs = v.m();
-                System.out.println("From " + relid + " " + command.kind() + " QO{" + vs + "}");
+                Map<Long,String> vs = v.m();
+                ArrayList<String> vs_strs = new ArrayList<String>(vs.size());
+                for (Map.Entry<Long,String> entry : vs.entrySet()) {
+                    vs_strs.add(entry.getKey() + "=>\"" + entry.getValue() + "\"");
+                }
+                fb_file.println("From " + relid + " " + command.kind() + " QO{{" + String.join(", ", vs_strs) + "}}");
                 break;
             }
 
-            // output relation QO(m: Map<bit<32>, string>)
+            // output relation RO(m: Ref<bit<32>>)
             case flatbufTestRelation.RO: {
                 ROReader v = (ROReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " RO{" + v.m() + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " RO{" + v.m() + "}");
                 break;
             }
 
             // output relation SO(m: C)
             case flatbufTestRelation.SO: {
                 SOReader v = (SOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " SO{C{\"" + v.m().x() + "\"}}");
+                fb_file.println("From " + relid + " " + command.kind() + " SO{C{\"" + v.m().x() + "\"}}");
                 break;
             }
 
@@ -194,10 +250,10 @@ public class Test {
             case flatbufTestRelation.TO: {
                 std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)((TOReader)command.value()).m();
                 if (m instanceof std_Option__bit_32_Reader.std_Some) {
-                    System.out.println("From " + relid + " " + command.kind() +
+                    fb_file.println("From " + relid + " " + command.kind() +
                             " TO{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}");
                 } else {
-                    System.out.println("From " + relid + " " + command.kind() + " TO{std_None{}}");
+                    fb_file.println("From " + relid + " " + command.kind() + " TO{std_None{}}");
                 }
                 break;
             }
@@ -205,14 +261,14 @@ public class Test {
             // output relation UO[Many]
             case flatbufTestRelation.UO: {
                 ManyReader m = (ManyReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " " + printMany(m));
+                fb_file.println("From " + relid + " " + command.kind() + " " + printMany(m));
                 break;
             }
 
             //output relation VO(a: bool, b: Many)
             case flatbufTestRelation.VO: {
                 VOReader v = (VOReader)command.value();
-                System.out.println("From " + relid + " " + command.kind() + " VO{" + v.a() + ", " + printMany(v.b()));
+                fb_file.println("From " + relid + " " + command.kind() + " VO{" + v.a() + "," + printMany(v.b()) + "}");
                 break;
             }
 
@@ -220,10 +276,10 @@ public class Test {
             case flatbufTestRelation.WO: {
                 std_Option__ManyReader m = (std_Option__ManyReader)((WOReader)command.value()).m();
                 if (m instanceof std_Option__ManyReader.std_Some) {
-                    System.out.println("From " + relid + " " + command.kind() +
+                    fb_file.println("From " + relid + " " + command.kind() +
                             " WO{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}");
                 } else {
-                    System.out.println("From " + relid + " " + command.kind() + " WO{std_None{}}");
+                    fb_file.println("From " + relid + " " + command.kind() + " WO{std_None{}}");
                 }
                 break;
             }
@@ -233,7 +289,7 @@ public class Test {
                 List<ManyReader> m = ((XOReader)command.value()).m();
                 ArrayList<String> strings = new ArrayList<String>(m.size());
                 m.forEach((x) -> strings.add(printMany(x)));
-                System.out.println("From " + relid + " " + command.kind() + " XO{[" + String.join(",",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " XO{[" + String.join(", ",strings) + "]}");
                 break;
             }
 
@@ -249,19 +305,17 @@ public class Test {
                         strings.add("std_None{}");
                     }
                 });
-                System.out.println("From " + relid + " " + command.kind() + " YO{[" + String.join(",", strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " YO{[" + String.join(", ", strings) + "]}");
                 break;
             }
             default: 
-                System.out.println("Unknown output relation " + relid);
+                fb_file.println("Unknown output relation " + relid);
                 //throw new IllegalArgumentException("Unknown relation id " + relid);
         }
 
     }
 
-    void run() {
-        this.api.start();
-
+    void update() {
         flatbufTestUpdateBuilder builder = new flatbufTestUpdateBuilder();
         builder.insert_BI(true);
         builder.insert_CI((byte)8);
@@ -307,13 +361,34 @@ public class Test {
             builder.insert_OI(nest);
         }
         {
-            List<Integer> pi = Arrays.asList(new Integer[]{ 2, 3, 2, 3 });
-            builder.insert_PI(pi);
+            List<Byte> pi = Arrays.asList(new Byte[]{ -2, 3, 2, 3 });
+            builder.insert_PI1(pi);
         }
         {
-            Map<Integer, String> map = new HashMap<Integer, String>();
-            map.put(2, "here");
-            map.put(3, "there");
+            List<Short> pi = Arrays.asList(new Short[]{ 10000, 3, -2, 3 });
+            builder.insert_PI2(pi);
+        }
+        {
+            List<Integer> pi = Arrays.asList(new Integer[]{ 0xffffffff, 3, -2, 3 });
+            builder.insert_PI3(pi);
+        }
+        {
+            List<Long> pi = Arrays.asList(new Long[]{ 2L, 3L, 2L, 3L });
+            builder.insert_PI4(pi);
+        }
+        {
+            List<BigInteger> pi = Arrays.asList(new BigInteger[]{
+                BigInteger.valueOf(0xffffffffffffffL),
+                BigInteger.valueOf(3),
+                BigInteger.valueOf(2),
+                BigInteger.valueOf(3)
+            });
+            builder.insert_PI5(pi);
+        }
+        {
+            Map<Long, String> map = new HashMap<Long, String>();
+            map.put(Long.valueOf(2), "here");
+            map.put(Long.valueOf(3), "there");
             builder.insert_QI(map);
         }
         builder.insert_RI(2);
@@ -364,7 +439,69 @@ public class Test {
         }
         int res = builder.applyUpdates(this.api);
         check(res);
-        flatbufTestUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+    }
+
+    void clear() {
+        this.api.clearRelation(flatbufTestRelation.BI);
+        this.api.clearRelation(flatbufTestRelation.CI);
+        this.api.clearRelation(flatbufTestRelation.DI);
+        this.api.clearRelation(flatbufTestRelation.EI);
+        this.api.clearRelation(flatbufTestRelation.FI);
+        this.api.clearRelation(flatbufTestRelation.GI);
+        this.api.clearRelation(flatbufTestRelation.HI);
+        this.api.clearRelation(flatbufTestRelation.II);
+        this.api.clearRelation(flatbufTestRelation.JI);
+        this.api.clearRelation(flatbufTestRelation.KI);
+        this.api.clearRelation(flatbufTestRelation.LI);
+        this.api.clearRelation(flatbufTestRelation.L0I);
+        this.api.clearRelation(flatbufTestRelation.MI);
+        this.api.clearRelation(flatbufTestRelation.NI);
+        this.api.clearRelation(flatbufTestRelation.OI);
+        this.api.clearRelation(flatbufTestRelation.PI1);
+        this.api.clearRelation(flatbufTestRelation.PI2);
+        this.api.clearRelation(flatbufTestRelation.PI3);
+        this.api.clearRelation(flatbufTestRelation.PI4);
+        this.api.clearRelation(flatbufTestRelation.PI5);
+        this.api.clearRelation(flatbufTestRelation.QI);
+        this.api.clearRelation(flatbufTestRelation.RI);
+        this.api.clearRelation(flatbufTestRelation.SI);
+        this.api.clearRelation(flatbufTestRelation.TI);
+        this.api.clearRelation(flatbufTestRelation.UI);
+        this.api.clearRelation(flatbufTestRelation.VI);
+        this.api.clearRelation(flatbufTestRelation.WI);
+        this.api.clearRelation(flatbufTestRelation.XI);
+        this.api.clearRelation(flatbufTestRelation.YI);
+    }
+
+    void run() throws IOException {
+        /* DDlogRecord-based coommit */
+        this.api.start();
+        this.update();
+        this.api.commitDumpChanges(r -> {
+            try {
+                this.onRecCommit(r);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+        this.rec_file.close();
+
+        /* Clear all input relations */
+        this.api.start();
+        this.clear();
+        this.api.commit();
+
+        /* FlatBuffers-based coommit */
+        this.api.start();
+        this.update();
+        flatbufTestUpdateParser.commitDumpChanges(this.api, r -> {
+            try {
+                this.onFBCommit(r);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
+        this.fb_file.close();
     }
 
     public static void main(String[] args) throws IOException {

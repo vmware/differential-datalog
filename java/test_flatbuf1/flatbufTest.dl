@@ -59,9 +59,25 @@ input relation OI(v: Vec<Vec<bool>>)
 output relation OO(v: Vec<Vec<bool>>)
 OO(v) :- OI(v).
 
-input relation PI(s: Set<bit<32>>)
-output relation PO(s: Set<bit<32>>)
-PO(s) :- PI(s).
+input relation PI1(s: Set<bit<8>>)
+output relation PO1(s: Set<bit<8>>)
+PO1(s) :- PI1(s).
+
+input relation PI2(s: Set<bit<16>>)
+output relation PO2(s: Set<bit<16>>)
+PO2(s) :- PI2(s).
+
+input relation PI3(s: Set<bit<32>>)
+output relation PO3(s: Set<bit<32>>)
+PO3(s) :- PI3(s).
+
+input relation PI4(s: Set<bit<64>>)
+output relation PO4(s: Set<bit<64>>)
+PO4(s) :- PI4(s).
+
+input relation PI5(s: Set<bit<128>>)
+output relation PO5(s: Set<bit<128>>)
+PO5(s) :- PI5(s).
 
 input relation QI(m: Map<bit<32>, string>)
 output relation QO(m: Map<bit<32>, string>)

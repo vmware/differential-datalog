@@ -46,7 +46,8 @@ ${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I..
 
 # Run the java program pointing to the created shared library
 java -Djava.library.path=. Test > test.dump
-diff test.dump test.dump.expected
+diff fb.dump rec.dump
+diff fb.dump fb.dump.expected
 
 # Cleanup generated files
 rm -rf *.class

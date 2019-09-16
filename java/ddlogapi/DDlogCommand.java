@@ -6,7 +6,7 @@ package ddlogapi;
  * <p>
  * DDlogCommand interface describes an update to a single record of a DDlog
  * relation, which can be one of three kinds (1) insert a new record, (2) delete
- * an existing record specifie by value, (3) delete an existing record specified
+ * an existing record specified by value, (3) delete an existing record specified
  * by the record's primary key.
  * </p>
  *
@@ -16,9 +16,9 @@ package ddlogapi;
  * </p>
  *
  * <p>
- * The interface is parameterized by record type, which can be either DDlogRecord,
- * used to represent any DDlog datatype in a generic way, or Object, when
- * relation-specific class is used (the caller must then cast the Object to
+ * The interface is parameterized by record type.  The record type can be either
+ * DDlogRecord, used to represent any DDlog datatype in a generic way, or Object,
+ * when relation-specific class is used (the caller must then cast the Object to
  * an appropriate class, depending on relation id).
  * </p>
  *
