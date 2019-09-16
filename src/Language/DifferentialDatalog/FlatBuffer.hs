@@ -494,11 +494,20 @@ jFBWriteType nested x =
         TBool{}            -> "boolean"
         TInt{}             -> "int"
         TString{}          -> "int"
-        TBit{..} | typeWidth <= 8
+        -- FlatBuffers currently have what I think is a bug, where 'uint' types
+        -- are represented differently in array and non-array context on the
+        -- write path only:
+        -- (https://github.com/google/flatbuffers/issues/5513)
+        TBit{..} | nested && typeWidth <= 8
                            -> "byte"
-        TBit{..} | typeWidth <= 16
+        TBit{..} | nested && typeWidth <= 16
                            -> "short"
-        TBit{..} | typeWidth <= 32
+        TBit{..} | nested && typeWidth <= 32
+                           -> "int"
+        TBit{..} | nested && typeWidth <= 64
+                           -> "long"
+        -- Not in array context:
+        TBit{..} | typeWidth <= 16
                            -> "int"
         TBit{..} | typeWidth <= 64
                            -> "long"
@@ -550,11 +559,7 @@ jConvType rw x =
         TBool{}            -> "boolean"
         TInt{}             -> "java.math.BigInteger"
         TString{}          -> "String"
-        TBit{..} | typeWidth <= 8
-                           -> "byte"
         TBit{..} | typeWidth <= 16
-                           -> "short"
-        TBit{..} | typeWidth <= 32
                            -> "int"
         TBit{..} | typeWidth <= 64
                            -> "long"
@@ -577,9 +582,9 @@ jConvType rw x =
                    | rw == Write
                            -> fbStructName typeName typeArgs <> "Writer"
         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                           -> "java.util.List<" <> jConvObjType rw elemType <> ">"
+                           -> "java.util.List<" <> jConvObjType True rw elemType <> ">"
         TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
-                           -> "java.util.Map<" <> jConvObjType rw keyType <> "," <+> jConvObjType rw valType <> ">"
+                           -> "java.util.Map<" <> jConvObjType False rw keyType <> "," <+> jConvObjType False rw valType <> ">"
         t'                 -> error $ "FlatBuffer.jConvType: unsupported type " ++ show t'
 
 
@@ -591,15 +596,23 @@ jConvTypeR = jConvType Read
 
 -- Like jConvType, but returns Java object types instead of scalars for
 -- primitive types.
-jConvObjType :: (WithType a, ?d::DatalogProgram) => RW -> a -> Doc
-jConvObjType rw x =
+jConvObjType :: (WithType a, ?d::DatalogProgram) => Bool -> RW -> a -> Doc
+jConvObjType in_array_context rw x =
     case typeNormalizeForFlatBuf x of
          TBool{}            -> "Boolean"
-         TBit{..} | typeWidth <= 8
+         -- FlatBuffers currently have what I think is a bug, where 'uint' types
+         -- are represented differently in array and non-array context on the
+         -- write path only:
+         -- (https://github.com/google/flatbuffers/issues/5513)
+         TBit{..} | rw == Write && in_array_context && typeWidth <= 8
                             -> "Byte"
-         TBit{..} | typeWidth <= 16
+         TBit{..} | rw == Write && in_array_context && typeWidth <= 16
                             -> "Short"
-         TBit{..} | typeWidth <= 32
+         TBit{..} | rw == Write && in_array_context && typeWidth <= 32
+                            -> "Integer"
+         TBit{..} | rw == Write && in_array_context && typeWidth <= 64
+                            -> "Long"
+         TBit{..} | typeWidth <= 16
                             -> "Integer"
          TBit{..} | typeWidth <= 64
                             -> "Long"
@@ -615,10 +628,10 @@ jConvObjType rw x =
 
 
 jConvObjTypeW :: (WithType a, ?d::DatalogProgram) => a -> Doc
-jConvObjTypeW = jConvObjType Write
+jConvObjTypeW = jConvObjType False Write
 
 jConvObjTypeR :: (WithType a, ?d::DatalogProgram) => a -> Doc
-jConvObjTypeR = jConvObjType Read
+jConvObjTypeR = jConvObjType False Read
 
 -- Context where generated value is to be written.
 data FBCtx = -- value to be stored in field 'fbctxField' of 'fbctxTable'
@@ -1086,9 +1099,10 @@ jReadField nesting fbctx e t =
                      -> do_read e
                      | otherwise
                      -> jReadField (nesting+1) (FBField (typeTableName t) "v") e t
-         -- Vectors are representedFlatBuffers has a special method for embedding vectors in a buffer
+         -- Vectors are accessed via a pair of methods: `e.<field>Size` and
+         -- `e.<field>(i)`
          FBField{..} | typeIsVector t
-                     -> do_read (e <> "." <> pp ( fbctxField))
+                     -> do_read (e <> "." <> pp fbctxField)
                      | not (typeHasUniqueConstructor t)
                      -> do_read (e <> "." <> jAccessorName fbctxField <> "Type()," <+>
                                  "(Table t) ->" <+> e <> "." <> jAccessorName fbctxField <> "(t)")
@@ -1106,7 +1120,7 @@ jReadField nesting fbctx e t =
                                          -> (parens $ jConvTypeR t) <> e'
                       TSigned{..}        -> bigint
                       TTuple{..}         -> "new" <+> jConvTypeR t <> parens e'
-                      TUser{..} |typeHasUniqueConstructor t
+                      TUser{..} | typeHasUniqueConstructor t
                                          -> "new" <+> jConvTypeR t <> parens e'
                                 | otherwise
                                          -> jConvTypeR t <> ".init" <> parens e'

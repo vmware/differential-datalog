@@ -1,0 +1,42 @@
+From 1 Insert BO{true}
+From 3 Insert CO{8}
+From 5 Insert DO{-32768}
+From 5 Insert DO{-5}
+From 5 Insert DO{-3}
+From 5 Insert DO{-2}
+From 5 Insert DO{-1}
+From 5 Insert DO{5}
+From 5 Insert DO{1000}
+From 5 Insert DO{32767}
+From 7 Insert EO{-1}
+From 9 Insert FO{"string"}
+From 11 Insert GO{100}
+From 13 Insert HO{773153186440202938}
+From 15 Insert IO{7}
+From 17 Insert JO{(true, 10, "string")}
+From 19 Insert KO{(false, 9, "text")}
+From 21 Insert L0O{false,254,"else"}
+From 23 Insert (true, 255, "something")
+From 25 Insert MO{[true, false, true]}
+From 27 Insert NO{[(true, 255, "check"), (false, 1, "fails")]}
+From 29 Insert OO{[[false, false], [true, true]]}
+From 35 Insert PO1{[2, 3, 254]}
+From 36 Insert PO2{[3, 10000, 65534]}
+From 37 Insert PO3{[3, 4294967294, 4294967295]}
+From 38 Insert PO4{[2, 3]}
+From 39 Insert PO5{[2, 3, 72057594037927935]}
+From 41 Insert QO{{2=>"here", 3=>"there"}}
+From 43 Insert RO{2}
+From 45 Insert SO{C{"s"}}
+From 47 Insert TO{std_Some{10}}
+From 47 Insert TO{std_None{}}
+From 49 Insert A{"a"}
+From 49 Insert B{false}
+From 49 Insert D{(false, 2, "zz")}
+From 51 Insert VO{false,A{"aa"}}
+From 51 Insert VO{false,D{(false, 2, "string")}}
+From 51 Insert VO{true,B{false}}
+From 53 Insert WO{std_Some{B{true}}}
+From 53 Insert WO{std_None{}}
+From 55 Insert XO{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
+From 57 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}]}

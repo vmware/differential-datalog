@@ -30,6 +30,7 @@ public class DDlogAPI {
     static native int ddlog_transaction_rollback(long hprog);
     static native int ddlog_apply_updates(long hprog, long[] upds);
     static native int ddlog_apply_updates_from_flatbuf(long hprog, byte[] bytes, int position);
+    static native int ddlog_clear_relation(long hprog, int relid);
     static native String ddlog_profile(long hprog);
     static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
@@ -196,6 +197,10 @@ public class DDlogAPI {
         String onDelta = callback == null ? null : "onDelta";
         this.deltaCallback = callback;
         return this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
+    }
+
+    public int clearRelation(int relid) {
+        return ddlog_clear_relation(this.hprog, relid);
     }
 
     // Callback invoked from commit_dump_changes.
