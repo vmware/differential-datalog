@@ -268,7 +268,6 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1flatbuf_1free(
             ((size_t)(*env)->GetDirectBufferCapacity(env, buf)) + offset);
 }
 
-
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(
     JNIEnv * env, jobject obj, jlong handle) {
     return ddlog_transaction_rollback((ddlog_prog)handle);

@@ -35,48 +35,50 @@ public class DDlogAPI {
     static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
 
-    // All the following methods return in fact handles
-    static public native void ddlog_free(long handle);
-    // Constructors
-    static public native long ddlog_bool(boolean b);
-    static public native long ddlog_i64(long v);
-    static public native long ddlog_int(byte[] v);
-    static public native long ddlog_string(String s);
-    static public native long ddlog_tuple(long[] handles);
-    static public native long ddlog_vector(long[] handles);
-    static public native long ddlog_set(long[] handles);
-    static public native long ddlog_map(long[] handles);
-    static public native long ddlog_pair(long handle1, long handle2);
-    static public native long ddlog_struct(String constructor, long[] handles);
-    // Getters
-    static public native int ddlog_get_table_id(String table);
-    static public native boolean ddlog_is_bool(long handle);
-    static public native boolean ddlog_get_bool(long handle);
-    static public native boolean ddlog_is_int(long handle);
-    static public native long ddlog_get_int(long handle, byte[] buf);
-    static public native long ddlog_get_i64(long handle);
-    static public native boolean ddlog_is_string(long handle);
-    static public native String ddlog_get_str(long handle);
-    static public native boolean ddlog_is_tuple(long handle);
-    static public native int ddlog_get_tuple_size(long handle);
-    static public native long ddlog_get_tuple_field(long tup, int i);
-    static public native boolean ddlog_is_vector(long handle);
-    static public native int ddlog_get_vector_size(long handle);
-    static public native long ddlog_get_vector_elem(long vec, int idx);
-    static public native boolean ddlog_is_set(long handle);
-    static public native int ddlog_get_set_size(long handle);
-    static public native long ddlog_get_set_elem(long set, int i);
-    static public native boolean ddlog_is_map(long handle);
-    static public native int ddlog_get_map_size(long handle);
-    static public native long ddlog_get_map_key(long handle, int i);
-    static public native long ddlog_get_map_val(long handle, int i);
-    static public native boolean ddlog_is_struct(long handle);
-    static public native String ddlog_get_constructor(long handle);
-    static public native long ddlog_get_struct_field(long handle, int i);
+    static native void ddlog_free(long handle);
 
-    static public native long ddlog_insert_cmd(int table, long recordHandle);
-    static public native long ddlog_delete_val_cmd(int table, long recordHandle);
-    static public native long ddlog_delete_key_cmd(int table, long recordHandle);
+    /* All the following methods return in fact `ddlog_record` handles */
+
+    // Constructors
+    static native long ddlog_bool(boolean b);
+    static native long ddlog_i64(long v);
+    static native long ddlog_int(byte[] v);
+    static native long ddlog_string(String s);
+    static native long ddlog_tuple(long[] handles);
+    static native long ddlog_vector(long[] handles);
+    static native long ddlog_set(long[] handles);
+    static native long ddlog_map(long[] handles);
+    static native long ddlog_pair(long handle1, long handle2);
+    static native long ddlog_struct(String constructor, long[] handles);
+    // Getters
+    static native int ddlog_get_table_id(String table);
+    static native boolean ddlog_is_bool(long handle);
+    static native boolean ddlog_get_bool(long handle);
+    static native boolean ddlog_is_int(long handle);
+    static native long ddlog_get_int(long handle, byte[] buf);
+    static native long ddlog_get_i64(long handle);
+    static native boolean ddlog_is_string(long handle);
+    static native String ddlog_get_str(long handle);
+    static native boolean ddlog_is_tuple(long handle);
+    static native int ddlog_get_tuple_size(long handle);
+    static native long ddlog_get_tuple_field(long tup, int i);
+    static native boolean ddlog_is_vector(long handle);
+    static native int ddlog_get_vector_size(long handle);
+    static native long ddlog_get_vector_elem(long vec, int idx);
+    static native boolean ddlog_is_set(long handle);
+    static native int ddlog_get_set_size(long handle);
+    static native long ddlog_get_set_elem(long set, int i);
+    static native boolean ddlog_is_map(long handle);
+    static native int ddlog_get_map_size(long handle);
+    static native long ddlog_get_map_key(long handle, int i);
+    static native long ddlog_get_map_val(long handle, int i);
+    static native boolean ddlog_is_struct(long handle);
+    static native String ddlog_get_constructor(long handle);
+    static native long ddlog_get_struct_field(long handle, int i);
+
+    static native long ddlog_insert_cmd(int table, long recordHandle);
+    static native long ddlog_delete_val_cmd(int table, long recordHandle);
+    static native long ddlog_delete_key_cmd(int table, long recordHandle);
 
     // This is a handle to the program; it wraps a void*.
     private final long hprog;
