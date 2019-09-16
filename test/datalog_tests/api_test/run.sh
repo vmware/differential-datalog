@@ -5,5 +5,5 @@
 # `stack test --ta "-p copy"` with the following commands to compile the DDlog program:
 #   > ddlog -i copy.dl -L../../lib
 #   > cd copy_ddlog
-#   > cargo build --release
+#   > cargo build
 stack test --ta "-p copy" && cargo run

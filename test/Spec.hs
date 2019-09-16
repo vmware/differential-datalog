@@ -60,12 +60,9 @@ main = do
     tests <- goldenTests progress
     defaultMain tests
 
-bUILD_TYPE :: String
---bUILD_TYPE = "debug"
-bUILD_TYPE = "release"
-
-cargo_build_flag :: [String]
-cargo_build_flag = if bUILD_TYPE == "release" then ["--release"] else []
+cargo_build_flags :: IO [[Char]]
+cargo_build_flags = do
+  (maybe [] (return)) <$> lookupEnv "STACK_CARGO_FLAGS"
 
 goldenTests :: Bool -> IO TestTree
 goldenTests progress = do
@@ -206,7 +203,8 @@ compilerTest progress java file cli_args crate_types = do
                                  "\n\nstdout:\n" ++ jstdo
 
     -- compile it with Cargo
-    let cargo_proc = (proc "cargo" (["build", "--features=flatbuf"] ++ cargo_build_flag)) {
+    cargo_flags <- cargo_build_flags
+    let cargo_proc = (proc "cargo" (["build", "--features=flatbuf"] ++ cargo_flags)) {
                           cwd = Just $ dir </> rustProjectDir specname
                      }
     (ccode, cstdo, cstde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
@@ -214,15 +212,7 @@ compilerTest progress java file cli_args crate_types = do
         errorWithoutStackTrace $ "cargo build failed with exit code " ++ show ccode ++
                                  "\nstdout:\n" ++ cstde ++
                                  "\n\nstdout:\n" ++ cstdo
-    {-let cargo_proc = (proc "cargo" (["test"] ++ cargo_build_flag)) {
-                          cwd = Just $ dir </> specname
-                     }
 
-    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
-                                 "\nstderr:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo -}
     cliTest progress fname specname dir cli_args
 
 progressThread :: IO ()
@@ -253,7 +243,8 @@ cliTest progress fname specname rust_dir extra_args = do
         hout <- openFile dumpfile WriteMode
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
-        let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_build_flag ++ extra_args')) {
+        cargo_flags <- cargo_build_flags
+        let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_flags ++ extra_args')) {
                 cwd = Just $ rust_dir </> rustProjectDir specname,
                 std_in=UseHandle hdat,
                 std_out=UseHandle hout,
