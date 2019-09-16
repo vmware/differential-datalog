@@ -35,7 +35,7 @@ dependencies:
 - wide-word
 - graphviz
 - text
-- githash
+- githash >= 0.1.3.3
 - process
 - casing
 
