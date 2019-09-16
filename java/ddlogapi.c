@@ -13,6 +13,74 @@
 #include "ddlog.h"
 #include "ddlog_log.h"
 
+/* Error message returned by DDlog. */
+_Thread_local char* err_msg = NULL;
+
+/* 
+ * `vasprintf` implementation copied from
+ * https://github.com/littlstar/asprintf.c (MIT license)
+ */
+static int _vasprintf (char **str, const char *fmt, va_list args) {
+  int size = 0;
+  va_list tmpa;
+
+  va_copy(tmpa, args);
+  size = vsnprintf(NULL, 0, fmt, tmpa);
+  va_end(tmpa);
+
+  if (size < 0) { return -1; }
+
+  // alloc with size plus 1 for `\0'
+  *str = (char *) malloc(size + 1);
+
+  if (NULL == *str) { return -1; }
+
+  size = vsprintf(*str, fmt, args);
+  return size;
+}
+
+/* 
+ * Callback invoked by DDlog on error.
+ *
+ * Record error message in a thread-local variable so that it can later be
+ * wrapped in an exception.
+ */
+static void eprintln(const char* msg) {
+    if (err_msg) {
+        free(err_msg);
+    }
+    err_msg = strdup(msg);
+}
+
+/*
+ * Throw a `DDlogException` with error message in `err_msg`.
+ */
+static void throwDDlogException(JNIEnv* env) {
+    char * msg = err_msg ? err_msg : "Unknown error";
+    jclass eclass = (*env)->FindClass(env, "ddlogapi/DDlogException");
+    if (eclass) {
+        (*env)->ThrowNew(env, eclass, msg);
+    } else {
+        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), msg);
+    }
+    err_msg = NULL;
+}
+
+static void throwIOException(JNIEnv* env, const char * fmt, ...) {
+    char *msg;
+    va_list ap;
+    va_start(ap, fmt);
+    int nbytes = _vasprintf(&msg, fmt, ap);
+    va_end(ap);
+
+    if (nbytes >= 0) {
+        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/io/IOException"), msg);
+        free(msg);
+    } else {
+        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/io/IOException"), "Unable to format error message");
+    }
+}
+
 /* The _1 in all the function names below
    is the JNI translation of the _ character from Java */
 
@@ -102,11 +170,18 @@ void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* r
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     JNIEnv *env, jobject obj, jboolean storeData, jint workers, jstring callback) {
+    jlong handle = 0;
+
     if (workers <= 0)
         workers = 1;
 
-    if (callback == NULL)
-        return (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, NULL);
+    if (callback == NULL) {
+        handle = (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, eprintln);
+        if (handle == 0) {
+            throwDDlogException(env);
+        }
+        return handle;
+    }
 
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJJ)V");
     if (cbinfo == NULL)
@@ -119,8 +194,12 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
         return 0;
     (*env)->SetLongField(env, obj, callbackHandle, (jlong)cbinfo);
 
-    void* handle = ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, NULL);
-    return (jlong)handle;
+    handle = (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, eprintln);
+    if (handle == 0) {
+        throwDDlogException(env);
+    }
+
+    return handle;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
@@ -137,60 +216,69 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
     (*env)->ReleaseStringUTFChars(env, filename, c_filename);
 
     if (fd < 0) {
+        throwIOException(env, "Failed to open file %s. Error code: %d", c_filename, fd);
         return fd;
     } else if ((ret = ddlog_record_commands((ddlog_prog)handle, fd))) {
         close(fd);
+        throwDDlogException(env);
         return ret;
     } else {
         return fd;
     }
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop_1recording(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop_1recording(
     JNIEnv *env, jobject obj, jlong handle, jint fd) {
-    ddlog_record_commands((ddlog_prog)handle, -1);
+    if (ddlog_record_commands((ddlog_prog)handle, -1) < 0) {
+        throwDDlogException(env);
+    }
     close(fd);
-    return 0;
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
     JNIEnv *env, jobject obj, jlong handle, jstring filename, jboolean append) {
     int ret;
     int fd;
 
     const char *c_filename = (*env)->GetStringUTFChars(env, filename, NULL);
     if (c_filename == NULL) {
-        return -1;
+        return;
     }
     fd = open(c_filename, O_CREAT | O_WRONLY | (append ? O_APPEND : O_TRUNC),
               S_IRUSR | S_IWUSR);
     (*env)->ReleaseStringUTFChars(env, filename, c_filename);
 
     if (fd < 0) {
-        return fd;
+        throwIOException(env, "Failed to open file %s. Error code: %d", c_filename, fd);
     } else {
-        ret = ddlog_dump_input_snapshot((ddlog_prog)handle, fd);
+        if (ddlog_dump_input_snapshot((ddlog_prog)handle, fd) < 0) {
+            throwDDlogException(env);
+        }
         close(fd);
-        return ret;
     }
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
     JNIEnv *env, jobject obj, jlong handle, jlong callbackHandle) {
-
     // Delete the callback pointer stored in the parent Java object
     deleteCallback((void*)callbackHandle);
-    return ddlog_stop((ddlog_prog)handle);
+    if (ddlog_stop((ddlog_prog)handle) < 0) {
+        throwDDlogException(env);
+    }
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1start(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1start(
     JNIEnv * env, jobject obj, jlong handle) {
-    return ddlog_transaction_start((ddlog_prog)handle);
+    if (ddlog_transaction_start((ddlog_prog)handle) < 0) {
+        throwDDlogException(env);
+    }
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
     JNIEnv * env, jobject obj, jlong handle) {
-    return ddlog_transaction_commit((ddlog_prog)handle);
+    if (ddlog_transaction_commit((ddlog_prog)handle) < 0) {
+        throwDDlogException(env);
+    }
 }
 
 void commit_dump_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
@@ -203,24 +291,30 @@ void commit_dump_callback(void* callbackInfo, table_id tableid, const ddlog_reco
         env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes(
     JNIEnv * env, jobject obj, jlong handle, jstring callback) {
 
-    if (callback == NULL)
-        return ddlog_transaction_commit_dump_changes((ddlog_prog)handle, NULL, 0);
+    if (callback == NULL) {
+        if (ddlog_transaction_commit_dump_changes((ddlog_prog)handle, NULL, 0) < 0) {
+            throwDDlogException(env);
+            return;
+        }
+    }
 
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
     if (cbinfo == NULL)
-        return -1;
+        return;
 
-    int result = ddlog_transaction_commit_dump_changes((ddlog_prog)handle,
-                                                       commit_dump_callback,
-                                                       (uintptr_t)cbinfo);
+    if (ddlog_transaction_commit_dump_changes(
+                (ddlog_prog)handle,
+                commit_dump_callback,
+                (uintptr_t)cbinfo) < 0) {
+        throwDDlogException(env);
+    };
     free(cbinfo);
-    return (jint)result;
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes_1to_1flatbuf(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes_1to_1flatbuf(
     JNIEnv * env, jobject obj, jlong handle, jobject fbdescr) {
     unsigned char *buf_addr = NULL;
     size_t buf_size         = 0;
@@ -229,21 +323,21 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
 
     jclass cls = (*env)->FindClass(env, "ddlogapi/DDlogAPI$FlatBufDescr");
     if (cls == NULL) {
-        return -1;
+        return;
     }
     jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
     if(setMethod == NULL) {
-        return -1;
+        return;
     }
 
-    int res = ddlog_transaction_commit_dump_changes_to_flatbuf(
+    if (ddlog_transaction_commit_dump_changes_to_flatbuf(
             (ddlog_prog)handle,
             &buf_addr,
             &buf_size,
             &buf_capacity,
-            &buf_offset);
-    if (res < 0) {
-        return res;
+            &buf_offset) < 0) {
+        throwDDlogException(env);
+        return;
     }
 
     jobject direct_buf = (*env)->NewDirectByteBuffer(env, buf_addr + buf_offset, (jlong)(buf_capacity - buf_offset));
@@ -251,7 +345,7 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
     (*env)->CallVoidMethod(env, fbdescr, setMethod,
             direct_buf, (jlong)buf_size, (jlong)buf_offset);
 
-    return 0;
+    return;
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1flatbuf_1free(
@@ -268,36 +362,41 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1flatbuf_1free(
             ((size_t)(*env)->GetDirectBufferCapacity(env, buf)) + offset);
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1rollback(
     JNIEnv * env, jobject obj, jlong handle) {
-    return ddlog_transaction_rollback((ddlog_prog)handle);
+    if (ddlog_transaction_rollback((ddlog_prog)handle) < 0) {
+        throwDDlogException(env);
+    }
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates(
     JNIEnv *env, jclass obj, jlong progHandle, jlongArray commandHandles) {
     jlong *a = (*env)->GetLongArrayElements(env, commandHandles, NULL);
     size_t size = (*env)->GetArrayLength(env, commandHandles);
     ddlog_cmd** updates = malloc(sizeof(ddlog_cmd*) * size);
     for (size_t i = 0; i < size; i++)
         updates[i] = (ddlog_cmd*)a[i];
-    int result = ddlog_apply_updates(
-        (ddlog_prog)progHandle, updates, size);
+    if (ddlog_apply_updates((ddlog_prog)progHandle, updates, size) < 0) {
+        throwDDlogException(env);
+    }
     (*env)->ReleaseLongArrayElements(env, commandHandles, a, 0);
     free(updates);
-    return (jint)result;
+    return;
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates_1from_1flatbuf(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates_1from_1flatbuf(
     JNIEnv *env, jclass obj, jlong progHandle, jbyteArray bytes, jint position) {
     jbyte *buf = (*env)->GetByteArrayElements(env, bytes, NULL);
     size_t size = (*env)->GetArrayLength(env, bytes);
 
-    int result = ddlog_apply_updates_from_flatbuf(
-        (ddlog_prog)progHandle, ((const unsigned char *) buf) + position, size);
+    if (ddlog_apply_updates_from_flatbuf(
+        (ddlog_prog)progHandle, ((const unsigned char *) buf) + position, size) < 0) {
+        throwDDlogException(env);
+    };
 
     (*env)->ReleaseByteArrayElements(env, bytes, buf, JNI_ABORT);
 
-    return (jint)result;
+    return;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1clear_1relation(
@@ -322,15 +421,16 @@ bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
     return (bool)result;
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_dump_1table(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_dump_1table(
     JNIEnv *env, jobject obj, jlong progHandle, jint table, jstring callback) {
     struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(J)Z");
     if (cbinfo == NULL)
-        return -1;
+        return;
     cbinfo->env = env;  // the dump_callback will be called on the same thread
-    int result = ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo);
+    if (ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo) < 0) {
+        throwDDlogException(env);
+    }
     free(cbinfo);
-    return (jint)result;
 }
 
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1profile(
@@ -341,9 +441,11 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1profile(
     return result;
 }
 
-JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1cpu_1profiling(
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1cpu_1profiling(
     JNIEnv *env, jobject obj, jlong progHandle, jboolean enable) {
-    return ddlog_enable_cpu_profiling((ddlog_prog)progHandle, enable);
+    if (ddlog_enable_cpu_profiling((ddlog_prog)progHandle, enable) < 0) {
+        throwDDlogException(env);
+    }
 }
 
 void log_callback(uintptr_t callbackInfo, int level, const char *msg) {

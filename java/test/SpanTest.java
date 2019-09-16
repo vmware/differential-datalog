@@ -15,6 +15,7 @@ import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
 import ddlogapi.DDlogRecCommand;
+import ddlogapi.DDlogException;
 
 public class SpanTest {
     public static abstract class ParentChild {
@@ -99,8 +100,6 @@ public class SpanTest {
 
         /// Command that is being executed.
         String command;
-        /// Exit code of last command
-        int exitCode;
         /// Terminator for current command.
         String terminator;
         /// List of commands to execute
@@ -122,7 +121,7 @@ public class SpanTest {
         static int MOD_SPAN_UUID1 = 100;
         static int MOD_SPAN_UUID2 = 200;
 
-        SpanParser() {
+        SpanParser() throws DDlogException {
             /* LOGGING: Log level definitions should be imported from log4j. We use magic
              * numbers instead to avoid extra dependencies. */
             DDlogAPI.logSetCallback(
@@ -144,7 +143,6 @@ public class SpanTest {
                 this.api = new DDlogAPI(1, null, true);
             }
             this.command = null;
-            this.exitCode = -1;
             this.terminator = "";
             this.commands = new ArrayList<DDlogRecCommand>();
         }
@@ -201,11 +199,6 @@ public class SpanTest {
                 else
                     throw new RuntimeException("Unexpected command " + this.command);
             }
-        }
-
-        void checkExitCode() {
-            if (this.exitCode < 0)
-                throw new RuntimeException("Error executing " + this.command);
         }
 
         void checkSemicolon() {
@@ -292,7 +285,7 @@ public class SpanTest {
         }
 
         void parseLine(String line)
-                throws IllegalAccessException, InstantiationException {
+                throws IllegalAccessException, InstantiationException, DDlogException {
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
                 throw new RuntimeException("Could not isolate command");
@@ -308,15 +301,24 @@ public class SpanTest {
                     this.checkSemicolon();
                     break;
                 case "start":
-                    this.exitCode = this.api.start();
-                    this.checkExitCode();
+                    this.api.transactionStart();
                     this.checkSemicolon();
+
+                    try {
+                        this.api.transactionStart();
+                        assert false: "transactionStart inside a transaction should throw an exception";
+                    } catch (DDlogException e) {}
+
                     break;
                 case "commit":
                     //this.exitCode = this.api.commit_dump_changes(r -> System.err.println(r.toString()));
-                    this.exitCode = this.api.commit();
-                    this.checkExitCode();
+                    this.api.transactionCommit();
                     this.checkSemicolon();
+
+                    try {
+                        this.api.transactionCommit();
+                        assert false: "transactionCommit outside of transaction should throw an exception";
+                    } catch (DDlogException e) {}
 
                     /* LOGGING: Change logging settings after the first commit.
                      * Disable logging for the first module completely; raise
@@ -350,18 +352,15 @@ public class SpanTest {
                         DDlogRecCommand[] ca = this.commands.toArray(new DDlogRecCommand[0]);
                         if (debug)
                             System.err.println("Executing " + ca.length + " commands");
-                        this.exitCode = this.api.applyUpdates(ca);
-                        this.checkExitCode();
+                        this.api.applyUpdates(ca);
                         this.commands.clear();
                     }
                     break;
                 case "profile":
                     if (rest.equals(" cpu on")) {
-                        this.exitCode = this.api.enableCpuProfiling(true);
-                        this.checkExitCode();
+                        this.api.enableCpuProfiling(true);
                     } else if (rest.equals(" cpu off")) {
-                        this.exitCode = this.api.enableCpuProfiling(false);
-                        this.checkExitCode();
+                        this.api.enableCpuProfiling(false);
                     } else if (rest.equals("")) {
                         String profile = this.api.profile();
                         System.out.println("Profile:");
@@ -384,14 +383,13 @@ public class SpanTest {
                         System.out.println();
                     } else {
                         System.out.println("ContainerSpan:");
-                        this.exitCode = this.api.dump("ContainerSpan",
+                        this.api.dumpTable("ContainerSpan",
                                 r -> System.out.println(new ContainerSpan(r)));
                         System.out.println();
                         System.out.println("RuleSpan:");
-                        this.exitCode = this.api.dump("RuleSpan",
+                        this.api.dumpTable("RuleSpan",
                                 r -> System.out.println(new RuleSpan(r)));
                         System.out.println();
-                        this.checkExitCode();
                         this.checkSemicolon();
                     }
                     break;
@@ -404,7 +402,7 @@ public class SpanTest {
             }
         }
 
-        void run(String file) throws IOException {
+        void run(String file) throws IOException, DDlogException {
             Files.lines(Paths.get(file)).forEach(l -> {
                     try {
                         parseLine(l);
@@ -420,7 +418,7 @@ public class SpanTest {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, DDlogException {
         if (args.length != 1) {
             System.err.println("Usage: java -jar span.jar <dat_file_name>");
             System.exit(-1);
