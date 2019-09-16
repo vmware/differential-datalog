@@ -3,6 +3,7 @@ import java.util.*;
 import java.lang.RuntimeException;
 
 /* Generic DDlog API shared by all programs. */
+import ddlogapi.DDlogException;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 
@@ -12,7 +13,7 @@ import ddlog.redist.*;
 public class Test {
     private final DDlogAPI api;
 
-    Test() {
+    Test() throws DDlogException, IOException {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
         api.recordCommands("replay.dat", false);
@@ -29,18 +30,17 @@ public class Test {
         }
     }
 
-    void run() {
+    void run() throws DDlogException {
 
         /* First transaction */
         {
             /* Start transaction.  All DDlog table updates must be made in the
              * context of a transaction. */
-            this.api.start();
+            this.api.transactionStart();
 
             /* Create a builder object that will be used to serialize DDlog commands
              * into a buffer. */
             redistUpdateBuilder builder = new redistUpdateBuilder();
-
 
             /* Create several DDlog commands.  Commands are stored inside the
              * builder. */
@@ -49,30 +49,30 @@ public class Test {
             builder.insert_DdlogDependency(10000, 20000);
 
             /* Apply commands serialized by the builder to the DDlog program. */
-            int res = builder.applyUpdates(this.api);
+            builder.applyUpdates(this.api);
 
             /* Commit transaction, triggering the `onCommit` callback for every
              * record in an output relation modified by the transaction. */
-            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+            redistUpdateParser.transactionCommitDumpChanges(this.api, r -> this.onCommit(r));
         }
 
         /* Second transaction */
         {
-            this.api.start();
+            this.api.transactionStart();
             /* each applyUpdates requires its own builder */
             redistUpdateBuilder builder = new redistUpdateBuilder();
             builder.insert_DdlogNode(20000);
             builder.insert_DdlogBinding((short)200, 20000);
             builder.delete_DdlogNode(10000);
 
-            int res = builder.applyUpdates(this.api);
+            builder.applyUpdates(this.api);
 
-            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+            redistUpdateParser.transactionCommitDumpChanges(this.api, r -> this.onCommit(r));
             this.api.stop();
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, DDlogException {
         Test test = new Test();
         test.run();
     }

@@ -3,6 +3,7 @@ package ddlogapi;
 import java.util.*;
 import java.util.function.*;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 
 /**
  * Java wrapper around Differential Datalog C API that manipulates
@@ -16,23 +17,23 @@ public class DDlogAPI {
     /**
      * The C ddlog API
      */
-    native long ddlog_run(boolean storeData, int workers, String callbackName);
-    static native int ddlog_record_commands(long hprog, String filename, boolean append);
-    static native int ddlog_stop_recording(long hprog, int fd);
-    static native int ddlog_dump_input_snapshot(long hprog, String filename, boolean append);
-    native int dump_table(long hprog, int table, String callbackMethod);
-    static native int ddlog_stop(long hprog, long callbackHandle);
-    static native int ddlog_transaction_start(long hprog);
-    static native int ddlog_transaction_commit(long hprog);
-    native int ddlog_transaction_commit_dump_changes(long hprog, String callbackName);
-    static native int ddlog_transaction_commit_dump_changes_to_flatbuf(long hprog, FlatBufDescr fb);
+    native long ddlog_run(boolean storeData, int workers, String callbackName) throws DDlogException;
+    static native int ddlog_record_commands(long hprog, String filename, boolean append) throws DDlogException, IOException;
+    static native void ddlog_stop_recording(long hprog, int fd) throws DDlogException;
+    static native void ddlog_dump_input_snapshot(long hprog, String filename, boolean append) throws DDlogException, IOException;
+    native void dump_table(long hprog, int table, String callbackMethod) throws DDlogException;
+    static native void ddlog_stop(long hprog, long callbackHandle) throws DDlogException;
+    static native void ddlog_transaction_start(long hprog) throws DDlogException;
+    static native void ddlog_transaction_commit(long hprog) throws DDlogException;
+    native void ddlog_transaction_commit_dump_changes(long hprog, String callbackName) throws DDlogException;
+    static native void ddlog_transaction_commit_dump_changes_to_flatbuf(long hprog, FlatBufDescr fb) throws DDlogException;
     static native void ddlog_flatbuf_free(ByteBuffer buf, long size, long offset);
-    static native int ddlog_transaction_rollback(long hprog);
-    static native int ddlog_apply_updates(long hprog, long[] upds);
-    static native int ddlog_apply_updates_from_flatbuf(long hprog, byte[] bytes, int position);
+    static native void ddlog_transaction_rollback(long hprog) throws DDlogException;
+    static native void ddlog_apply_updates(long hprog, long[] upds) throws DDlogException;
+    static native void ddlog_apply_updates_from_flatbuf(long hprog, byte[] bytes, int position) throws DDlogException;
     static native int ddlog_clear_relation(long hprog, int relid);
     static native String ddlog_profile(long hprog);
-    static native int ddlog_enable_cpu_profiling(long hprog, boolean enable);
+    static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
 
     static native void ddlog_free(long handle);
@@ -88,8 +89,6 @@ public class DDlogAPI {
     // File descriptor used to record DDlog command log
     private int record_fd = -1;
 
-    public static final int success = 0;
-    public static final int error = -1;
     // Maps table names to table IDs
     private final Map<String, Integer> tableId;
     // Callback to invoke for each modified record on commit.
@@ -122,7 +121,8 @@ public class DDlogAPI {
      *                  many times, on potentially different threads, when the "commit"
      *                  API function is called.
      */
-    public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData) {
+    public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData) 
+            throws DDlogException {
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
@@ -153,52 +153,48 @@ public class DDlogAPI {
     // Record DDlog commands to file.
     // Set `filename` to `null` to stop recording.
     // Set `append` to `true` to open the file in append mode.
-    public int recordCommands(String filename, boolean append) {
+    public void recordCommands(String filename, boolean append) throws DDlogException, IOException {
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
         }
         if (filename == null) {
-            return 0;
+            return;
         }
 
         int fd = DDlogAPI.ddlog_record_commands(this.hprog, filename, append);
-        if (fd < 0) {
-            return fd;
-        } else {
-            this.record_fd = fd;
-            return 0;
-        }
+        this.record_fd = fd;
     }
 
-    public int dumpInputSnapshot(String filename, boolean append) {
-        return DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
+    public void dumpInputSnapshot(String filename, boolean append) throws DDlogException, IOException {
+        DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
     }
 
-    public int stop() {
+    public void stop() throws DDlogException {
         /* Close the file handle. */
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
         }
-        return this.ddlog_stop(this.hprog, this.callbackHandle);
+        this.ddlog_stop(this.hprog, this.callbackHandle);
     }
 
     /**
      *  Starts a transaction
      */
-    public int start() {
-        return DDlogAPI.ddlog_transaction_start(this.hprog);
+    public void transactionStart() throws DDlogException {
+        DDlogAPI.ddlog_transaction_start(this.hprog);
     }
 
-    public int commit() {
-        return DDlogAPI.ddlog_transaction_commit(this.hprog);
+    public void transactionCommit() throws DDlogException {
+        DDlogAPI.ddlog_transaction_commit(this.hprog);
     }
 
-    public int commitDumpChanges(Consumer<DDlogCommand<DDlogRecord>> callback) {
+    public void transactionCommitDumpChanges(Consumer<DDlogCommand<DDlogRecord>> callback)
+            throws DDlogException {
         String onDelta = callback == null ? null : "onDelta";
         this.deltaCallback = callback;
-        return this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
+        this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
     }
 
     public int clearRelation(int relid) {
@@ -234,27 +230,27 @@ public class DDlogAPI {
         public long offset;
     }
 
-    public int commitDumpChangesToFlatbuf(FlatBufDescr fb) {
-        return this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
+    public void transactionCommitDumpChangesToFlatbuf(FlatBufDescr fb) throws DDlogException {
+        this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
     }
 
     public void flatbufFree(FlatBufDescr fb) {
         this.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
     }
 
-    public int rollback() {
-        return DDlogAPI.ddlog_transaction_rollback(this.hprog);
+    public void transactionRollback() throws DDlogException {
+        DDlogAPI.ddlog_transaction_rollback(this.hprog);
     }
 
-    public int applyUpdates(DDlogRecCommand[] commands) {
+    public void applyUpdates(DDlogRecCommand[] commands) throws DDlogException {
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
-        return ddlog_apply_updates(this.hprog, handles);
+        ddlog_apply_updates(this.hprog, handles);
     }
 
-    public int applyUpdatesFromFlatBuf(ByteBuffer buf) {
-        return ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
+    public void applyUpdatesFromFlatBuf(ByteBuffer buf) throws DDlogException {
+        ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
     }
 
     /// Callback invoked from dump.
@@ -271,21 +267,21 @@ public class DDlogAPI {
      * For this to work the DDlogAPI must have been created with a
      * storeData parameter set to true.
      */
-    public int dump(String table, Consumer<DDlogRecord> callback) {
+    public void dumpTable(String table, Consumer<DDlogRecord> callback) throws DDlogException {
         int id = this.getTableId(table);
         if (id == -1)
             throw new RuntimeException("Unknown table " + table);
         String onDump = callback == null ? null : "dumpCallback";
         this.dumpCallback = callback;
-        return this.dump_table(this.hprog, id, onDump);
+        this.dump_table(this.hprog, id, onDump);
     }
 
     public String profile() {
         return DDlogAPI.ddlog_profile(this.hprog);
     }
 
-    public int enableCpuProfiling(boolean enable) {
-        return DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
+    public void enableCpuProfiling(boolean enable) throws DDlogException {
+        DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
     }
 
     /*
@@ -300,17 +296,12 @@ public class DDlogAPI {
      *    id and log level above `max_level` will be dropped by DDlog (i.e.,
      *    the callback will not be invoked for  those messages).
      */
-    static public synchronized int logSetCallback(int module, ObjIntConsumer<String> cb, int max_level) {
+    static public synchronized void logSetCallback(int module, ObjIntConsumer<String> cb, int max_level) {
         Long old_cbinfo = logCBInfo.remove(module);
         long new_cbinfo = ddlog_log_replace_callback(module, old_cbinfo == null ? 0 : old_cbinfo, cb, max_level);
         /* Store pointer to CallbackInfo in internal map */
         if (new_cbinfo != 0) {
             logCBInfo.put(module, new_cbinfo);
-        }
-        if (cb != null && new_cbinfo == 0) {
-            return -1;
-        } else {
-            return 0;
         }
     }
 }
