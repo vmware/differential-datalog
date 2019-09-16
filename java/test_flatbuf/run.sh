@@ -26,8 +26,8 @@ CLASSPATH=`pwd`/../../test/datalog_tests/${PROG}_ddlog/flatbuf/java:`pwd`/../ddl
 # Compile the ${PROG}.dl DDlog program; use -j switch to generate FlatBuffers schema and Java bindings for it
 ddlog -i ../../test/datalog_tests/${PROG}.dl -j -L../../lib
 
-# Compile the rust program; generates ../test/datalog_tests/${PROG}_ddlog/target/release/lib${PROG}_ddlog.a
-(cd ../../test/datalog_tests/${PROG}_ddlog; cargo build --features=flatbuf --release)
+# Compile the rust program; generates ../test/datalog_tests/${PROG}_ddlog/target/debug/lib${PROG}_ddlog.a
+(cd ../../test/datalog_tests/${PROG}_ddlog; cargo build --features=flatbuf)
 
 # Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
 # $CLASSPATH)
@@ -37,7 +37,7 @@ ddlog -i ../../test/datalog_tests/${PROG}.dl -j -L../../lib
 javac Test.java
 
 # Create a shared library containing all the native code: ddlogapi.c, lib${PROG}_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L../../test/datalog_tests/${PROG}_ddlog/target/release/ -l${PROG}_ddlog -o libddlogapi.${SHLIBEXT}
+${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L../../test/datalog_tests/${PROG}_ddlog/target/debug/ -l${PROG}_ddlog -o libddlogapi.${SHLIBEXT}
 
 # Run the java program pointing to the created shared library
 java -Djava.library.path=. Test > test.dump
