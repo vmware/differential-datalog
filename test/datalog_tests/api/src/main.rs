@@ -1,6 +1,6 @@
-// The main entry point to ../copy.dl
-use copy_ddlog::*;
-use copy_ddlog::api::*;
+// The main entry point to ../api.dl
+use api_ddlog::*;
+use api_ddlog::api::*;
 use differential_datalog::record::*;
 use differential_datalog::program::Update;
 use std::borrow::Cow;

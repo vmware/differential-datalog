@@ -5,6 +5,6 @@ authors = ["remyw"]
 edition = "2018"
 
 [dependencies]
-copy = {path = "../copy_ddlog"}
-differential_datalog = {path = "../copy_ddlog/differential_datalog"}
+api = {path = "../api_ddlog"}
+differential_datalog = {path = "../api_ddlog/differential_datalog"}
 libc = "0.2"
