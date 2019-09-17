@@ -1,9 +1,9 @@
 use differential_datalog::record::{Record, UpdCmd, RelIdentifier};
 use observe::{Observer, Observable};
 
-use ddd_ddlog::api::*;
-use ddd_ddlog::Relations::*;
-use ddd_ddlog::server;
+use server_api_ddlog::api::*;
+use server_api_ddlog::Relations::*;
+use server_api_ddlog::server;
 
 use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Mutex};
