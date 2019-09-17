@@ -99,7 +99,7 @@ tests:
     dependencies:
     - differential-datalog
     - tasty
-    - HUnit
+    - tasty-hunit
     - tasty-golden
     - filepath
     - deepseq
