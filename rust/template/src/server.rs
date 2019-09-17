@@ -9,10 +9,12 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
+type ObserverBox = Box<dyn Observer<Update<super::Value>, String>>;
+
 pub struct UpdatesSubscription {
     /// A pointer to the observer field in the outlet, and sets it to
     /// `None` upon unsubscribing.
-    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>,
+    observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
 impl Subscription for UpdatesSubscription {
@@ -25,7 +27,7 @@ impl Subscription for UpdatesSubscription {
 }
 
 pub struct UpdatesObservable {
-    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>,
+    observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
 impl Observable<Update<super::Value>, String> for UpdatesObservable {
@@ -94,7 +96,7 @@ impl DDlogServer {
 /// An outlet streams a subset of DDlog tables to an observer.
 pub struct Outlet {
     tables: HashSet<super::Relations>,
-    observer: Arc<Mutex<Option<Box<dyn Observer<Update<super::Value>, String>>>>>,
+    observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
 /// Newtype for interior mutability of the observer.
