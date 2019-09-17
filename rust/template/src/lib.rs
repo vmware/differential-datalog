@@ -10,8 +10,7 @@
     clippy::extra_unused_lifetimes,
     clippy::ptr_arg,
     clippy::ptr_offset_with_cast,
-    clippy::redundant_closure,
-    clippy::type_complexity
+    clippy::redundant_closure
 )]
 
 extern crate differential_dataflow;
