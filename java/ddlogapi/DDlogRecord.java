@@ -84,7 +84,7 @@ public class DDlogRecord {
         this.shared = false;
     }
 
-    public DDlogRecord(String s) {
+    public DDlogRecord(String s) throws DDlogException {
         this.handle = DDlogAPI.ddlog_string(s);
         this.shared = false;
     }
@@ -109,7 +109,8 @@ public class DDlogRecord {
      * Convert an object o into a DDlogRecord that represents a struct.
      * The name of the struct is the class name of o.
      */
-    public static DDlogRecord convertObject(Object o) throws IllegalAccessException {
+    public static DDlogRecord convertObject(Object o)
+            throws IllegalAccessException, DDlogException {
         String name = o.getClass().getSimpleName();
         List<Field> fields = getAllFields(o.getClass());
         DDlogRecord[] fra = new DDlogRecord[fields.size()];
@@ -122,7 +123,8 @@ public class DDlogRecord {
         return DDlogRecord.makeStruct(name, fra);
     }
 
-    private static DDlogRecord createField(Object o, Field field) throws IllegalAccessException {
+    private static DDlogRecord createField(Object o, Field field)
+            throws IllegalAccessException, DDlogException {
         field.setAccessible(true);
         Object value = field.get(o);
         if (value == null)
@@ -236,22 +238,22 @@ public class DDlogRecord {
         return toTypedObject((Class<?>)c);
     }
 
-    public static DDlogRecord makeTuple(DDlogRecord[] fields) {
+    public static DDlogRecord makeTuple(DDlogRecord[] fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_tuple(handles));
     }
 
-    public static DDlogRecord makeVector(DDlogRecord[] fields) {
+    public static DDlogRecord makeVector(DDlogRecord[] fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_vector(handles));
     }
 
-    public static DDlogRecord makeSet(DDlogRecord[] fields) {
+    public static DDlogRecord makeSet(DDlogRecord[] fields) throws DDlogException{
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_set(handles));
     }
 
-    public static DDlogRecord makeStruct(String name, DDlogRecord[] fields) {
+    public static DDlogRecord makeStruct(String name, DDlogRecord[] fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_struct(name, handles));
     }
@@ -259,7 +261,7 @@ public class DDlogRecord {
     /**
      * Creates a map from a vector of pairs.
      */
-    public static DDlogRecord makeMap(DDlogRecord[] fields) {
+    public static DDlogRecord makeMap(DDlogRecord[] fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_map(handles));
     }

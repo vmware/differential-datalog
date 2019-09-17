@@ -30,7 +30,7 @@ public class DDlogRecCommand implements DDlogCommand<DDlogRecord> {
     }
 
     public DDlogRecCommand(final Kind kind, final int relid, final Object value)
-            throws IllegalAccessException {
+            throws IllegalAccessException, DDlogException {
         this._kind = kind;
         this._relid = relid;
         this._value = DDlogRecord.convertObject(value);

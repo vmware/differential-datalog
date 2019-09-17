@@ -224,7 +224,7 @@ public class SpanTest {
         }
 
         private DDlogRecCommand createCommand(String command, String arguments)
-                throws IllegalAccessException, InstantiationException {
+                throws IllegalAccessException, InstantiationException, DDlogException {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
                 throw new RuntimeException("Cannot parse arguments for " + command);
@@ -257,7 +257,7 @@ public class SpanTest {
 
         // Alternative implementation of createCommand which does not
         // use reflection and is more efficient.
-        private DDlogRecCommand createCommandDirect(String command, String arguments) {
+        private DDlogRecCommand createCommandDirect(String command, String arguments) throws DDlogException {
             Matcher m = argsPattern.matcher(arguments);
             if (!m.find())
                 throw new RuntimeException("Cannot parse arguments for " + command);
