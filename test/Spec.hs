@@ -26,12 +26,12 @@ SOFTWARE.
 import Test.Tasty
 import Test.Tasty.Golden
 import Test.Tasty.Golden.Advanced
+import Test.Tasty.HUnit
 import System.IO
 import System.FilePath
 import System.Directory
 import System.Process
 import System.Environment
-import Test.HUnit
 import Data.List
 import Data.Maybe
 import Data.List.Split
@@ -84,7 +84,11 @@ goldenTests progress = do
             | file:files <- inFiles
             , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, souffleTests progress]
+  let unit_tests = testGroup "unit tests" $
+          [ testCase dir $ unitTest dir
+            | (file:_) <- inFiles
+            , let dir = dropExtension file]
+  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, unit_tests, souffleTests progress]
 
 sOUFFLE_BASE :: String
 sOUFFLE_BASE = "./test"
@@ -260,6 +264,21 @@ cliTest progress fname specname rust_dir extra_args = do
             errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
                                      "\nstderr:\n" ++ err ++
                                      "\n\nstdout written to:\n" ++ dumpfile
+
+unitTest :: String -> IO ()
+unitTest dir = do
+    absdir <- makeAbsolute dir
+    exists <- doesDirectoryExist absdir
+    when exists $ do
+        cargo_flags <- cargo_build_flags
+        let test_proc = (proc "cargo" (["test"] ++ cargo_flags)) {
+                cwd = Just $ absdir
+            }
+        (code, out, err) <- readCreateProcessWithExitCode test_proc ""
+        when (code /= ExitSuccess) $ do
+            errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
+                                     "\nstdout:\n" ++ out ++
+                                     "\nstderr:\n" ++ err ++ "\n"
 
 -- A version of golden test that supports multiple output files.
 -- Uses strict evaluation to avoid errors lazily reading and then writing the
