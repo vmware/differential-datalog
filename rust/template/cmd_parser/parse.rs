@@ -476,7 +476,7 @@ named!(int_val<&[u8], Record>,
 named!(hex_val<&[u8], BigInt>,
     do_parse!(tag_no_case!("0x") >>
               bs1: take_while1!(|x|is_hex_digit(x)) >>
-              bs2: take_while!(|x|is_hex_digit(x) || x == '_' as u8) >>
+              bs2: take_while!(|x|is_hex_digit(x) || x == b'_') >>
               spaces >>
               ({let mut bs = bs1.to_vec();
                 bs.extend_from_slice(bs2);
@@ -485,7 +485,7 @@ named!(hex_val<&[u8], BigInt>,
 
 named!(dec_val<&[u8], BigInt>,
     do_parse!(bs1: take_while1!(|x| is_digit(x)) >>
-              bs2: take_while!(|x| is_digit(x) || x == '_' as u8) >>
+              bs2: take_while!(|x| is_digit(x) || x == b'_') >>
               spaces >>
               ({let mut bs = bs1.to_vec();
                 bs.extend_from_slice(bs2);

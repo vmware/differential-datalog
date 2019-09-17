@@ -1,5 +1,3 @@
-#![allow(clippy::char_lit_as_u8)]
-
 extern crate libc;
 extern crate nom;
 extern crate num;
