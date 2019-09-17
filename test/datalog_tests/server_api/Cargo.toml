@@ -1,10 +1,10 @@
 [package]
-name = "server_api"
+name = "server_api_test"
 version = "0.1.0"
 authors = ["Remy Wang <remy.sucre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-ddd = {path = "../ddd_ddlog"}
-differential_datalog = {path = "../ddd_ddlog/differential_datalog"}
-observe = {path = "../ddd_ddlog/observe"}
+server_api = {path = "../server_api_ddlog"}
+differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
+observe = {path = "../server_api_ddlog/observe"}
