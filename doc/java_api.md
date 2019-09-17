@@ -70,6 +70,7 @@ import java.util.*;
 import java.lang.RuntimeException;
 
 /* Generic DDlog API shared by all programs. */
+import ddlogapi.DDlogException;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 
@@ -79,7 +80,7 @@ import ddlog.redist.*;
 public class Test {
     private final DDlogAPI api;
 
-    Test() {
+    Test() throws DDlogException, IOException {
         /* Create an instance of the DDlog program with one worker thread. */
         this.api = new DDlogAPI(1, null, false);
         api.recordCommands("replay.dat", false);
@@ -96,18 +97,17 @@ public class Test {
         }
     }
 
-    void run() {
+    void run() throws DDlogException {
 
         /* First transaction */
         {
             /* Start transaction.  All DDlog table updates must be made in the
              * context of a transaction. */
-            this.api.start();
+            this.api.transactionStart();
 
             /* Create a builder object that will be used to serialize DDlog commands
              * into a buffer. */
             redistUpdateBuilder builder = new redistUpdateBuilder();
-
 
             /* Create several DDlog commands.  Commands are stored inside the
              * builder. */
@@ -116,30 +116,30 @@ public class Test {
             builder.insert_DdlogDependency(10000, 20000);
 
             /* Apply commands serialized by the builder to the DDlog program. */
-            int res = builder.applyUpdates(this.api);
+            builder.applyUpdates(this.api);
 
             /* Commit transaction, triggering the `onCommit` callback for every
              * record in an output relation modified by the transaction. */
-            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+            redistUpdateParser.transactionCommitDumpChanges(this.api, r -> this.onCommit(r));
         }
 
         /* Second transaction */
         {
-            this.api.start();
+            this.api.transactionStart();
             /* each applyUpdates requires its own builder */
             redistUpdateBuilder builder = new redistUpdateBuilder();
             builder.insert_DdlogNode(20000);
             builder.insert_DdlogBinding((short)200, 20000);
             builder.delete_DdlogNode(10000);
 
-            int res = builder.applyUpdates(this.api);
+            builder.applyUpdates(this.api);
 
-            redistUpdateParser.commitDumpChanges(this.api, r -> this.onCommit(r));
+            redistUpdateParser.transactionCommitDumpChanges(this.api, r -> this.onCommit(r));
             this.api.stop();
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, DDlogException {
         Test test = new Test();
         test.run();
     }
@@ -153,3 +153,220 @@ java -Djava.library.path=. Test > test.dump
 
 Note the use of the `-D` switch to tell Java where to look for the `libddlogapi.so`
 dynamic library.
+
+This program uses two Java packages to interact with the DDlog program.  The
+first one is the `ddlogapi` package, which exports Java wrappers around all
+DDlog C API methods in `rust/template/ddlog.h`.  The source code of this
+package can be found in the `java/ddlogapi` directory.
+While in principle complete, this API is not particularly ergonomic when working
+with DDlog values (see below).  In order to facilitate programmer-friendly,
+type-safe manipulation of input and output records, the DDlog compiler, when
+invoked with `-j` flag, generates an additional Java package specialized to each
+particular DDlog program.  The package is called `ddlog.<prog_name>`
+(`ddlog.redist` in the above example) and can be found in the
+`<prog_name>_ddlog/flatbuf/java/redist` directory.  Below, we discuss both
+packages in more detail.
+
+### The `ddlogapi` package
+
+#### `class DDlogAPI`
+
+An instance of the `DDlogAPI` class represents a running DDlog program.  The
+`DDlogAPI` constructor starts the program.  `DDlogAPI` public methods are
+wrappers around C API functions declared in `ddlog.h` and have the same names,
+formatted in camel case instead of snake case, e.g.:
+
+- `stop` - terminate the DDlog program
+- `transactionStart` - start a transaction
+- `applyUpdates` - apply updates to output tables
+- `transactionCommit` - commit the transaction
+- `dumpTable` - dump the content of an output relation
+
+Most `DDlogAPI` methods throw an instance of `DDlogException`, containing an
+error message from DDlog.  In addition, methods that work with files, e.g.,
+`recordCommands`, are declared with `throws IOException`.
+
+#### `class DDlogCommand`
+
+The `DDlogCommand<T>` class represents an update to a DDlog relation, i.e., an
+insertion, or deletion of a record (record modifications are currently not
+supported through the Java API).  To perform a set of updates to input
+relations, the client creates an array of `DDlogCommand`'s and passes it to the
+`DDlogAPI.applyUpdates()` method.  Dually, when the client commits a transaction
+by calling `DDlogAPI.commitDumpChanges()`, they get back zero or more
+`DDlogCommand`'s, which represent changes to output relations.
+
+The `DDlogCommand<T>` class is parameterized with a class that represents DDlog
+records.  One such class, defined in the `ddlogapi` package, is `DDlogRecord`,
+which implements a self-describing representation of arbitrary DDlog values.  It
+provides constructors to instantiate primitive DDlog types (e.g.,
+`DDlogRecord(boolean b)` creates a value of type `bool`) and static methods to
+inductively build more complex data structures by assembling records into
+structs, tuples, vectors, and other container types (e.g., `public static
+DDlogRecord makeTuple(DDlogRecord[] fields)` groups multiple values in a tuple).
+It also provides methods to introspect DDlog values and extract their individual
+fields.
+
+The `DDlogRecord` class offers a program-independent way to work with DDlog
+values, including values whose types are now known ahead of time.  At the same
+time, it can be cumbersome to use, does not enforce type safety (e.g., one can
+accidentally construct a record that does not match its type declaration), and
+has suboptimal performance.
+
+These limitations are addressed by the auto-generated API presented below.
+
+### The `ddlog.<prog_name>` package
+
+The `ddlog.<prog_name>` package, generated by the DDlog compiler when invoked
+with the `-j` switch, offers a user-friendly way to read and write DDlog values.
+It is specialized to a particular DDlog program and defines type-safe bindings
+for DDlog types declared in this program, along with a convenience
+`<prog_name>Relation` class that contains symbolic bindings for program relation
+identifiers.
+
+#### `class <prog_name>Relation`
+
+A `DDlogCommand` instance contains a numeric identifier of an input or output
+relation this command modifies, accessible with the `relid()` method:
+
+```
+int relid = command.relid();
+```
+
+The `ddlogapi.DDlogAPI` class provides a
+program-independent way to map relation name to identifier via the `int
+getTableId(String table)` method.  The auto-generated `<prog_name>Relation`
+class provides a safer alternative by defining symbolic
+constants for all program's input and output relations.  The following
+snippet chooses an action to perform based on `relid` value:
+
+```
+switch (relid) {
+    case redistRelation.Span: ...
+    default: throw new IllegalArgumentException("Unknown relation id " + relid);
+}
+```
+
+#### `class <prog_name>UpdateBuilder`
+
+Internally, the `ddlog.<prog_name>` package works by serializing input updates
+into a [FlatBuffer](https://google.github.io/flatbuffers/) and deserializing
+changes received from DDlog via a FlatBuffer.  At the low level, this
+functionality is backed by FlatBuffers-enabled C APIs.
+
+The package exposes two sets of auto-generated classes responsible for
+serializing and deserializing DDlog commands respectively.  The main class in
+the serialization API is `<prog_name>UpdateBuilder`.  It supports the following
+workflow:
+
+1. Create an instance of `<prog_name>UpdateBuilder`:
+    ```
+    redistUpdateBuilder builder = new redistUpdateBuilder();
+    ```
+
+1. Use the builder to create one or more DDlog commands:
+    ```
+    builder.insert_DdlogNode(10000);
+    builder.insert_DdlogBinding((short)100, 10000);
+    builder.insert_DdlogDependency(10000, 20000);
+    ```
+    Here, the `insert_` prefix indicates that we are creating a command that
+    inserts a record to a DDlog relation; the rest of the method name is the
+    name of an input relation to insert the record to, e.g., `DdlogNode`.
+    The number and types of arguments to each `insert_XXX` method match
+    relation signature.
+
+1. Call `applyUpdates()` method of the builder to push updates to the DDlog program:
+    ```
+    builder.applyUpdates(this.api);
+    ```
+
+1. Go back to step 1 to perform new updates.  Note that this requires creating a
+   new builder instance for each new set of updates. 
+
+Additional classes are generated to facilitate the construction of more complex
+types.  For example, consider a relation that has a field whose type is a tuple:
+
+```
+typedef tuple = (bool, bit<8>, string)
+input relation JI(a: (bool, bit<8>, string))
+```
+
+In order to insert to this relation, we must first construct a tuple object and
+then use it to create a `JI` record:
+
+```
+Tuple3__bool__bit_8___stringWriter ji = builder.create_Tuple3__bool__bit_8___string(true, (byte)10, "string");
+builder.insert_JI(ji);
+```
+
+The `Tuple3__bool__bit_8___stringWriter` class is generated by DDlog.  Similar
+classes are generated for all complex DDlog types used in the program.
+
+#### `class <prog_name>UpdateParser`
+
+`<prog_name>UpdateParser` class is the dual of `<prog_name>UpdateBuilder` whose
+job is to deserialize updates received from DDlog.  Its main method
+`transactionCommitDumpChanges()` takes a `DDlogAPI` instance and a callback.  It
+commits the current transaction invokes the callback for each output relation update
+computed by DDlog.
+
+```
+redistUpdateParser.transactionCommitDumpChanges(
+    this.api, r -> this.onCommit(r));
+```
+
+Here is an example callback:
+
+```
+void onCommit(DDlogCommand<Object> command) {
+    int relid = command.relid();
+    switch (relid) {
+        case redistRelation.Span:
+            SpanReader span = (SpanReader)command.value();
+            System.out.println("From " + relid + " " + command.kind() + " Span{" + span.entity() + "," + span.tns() + "}");
+            break;
+        default: throw new IllegalArgumentException("Unknown relation id " + relid);
+    }
+}
+```
+
+The callback takes an argument of type `DDlogCommand<Object>`, where the
+`Object` contains a DDlog record.  In order to access its fields,
+we must downcast the value to the appropriate class for the relation it
+belongs to. For example, if the record belongs to a relation named `Span`,
+its actual type is `SpanReader`, which in turn provides methods to access
+its fields.
+
+#### DDlog-to-Java type mapping summary
+
+Fields of primitive types, e.g., `bit<8>`, map directly to Java primitives;
+complex types, like tuples and structs, map to their own `<type_name>Reader`
+instances.  The following table summarizes the correspondence between
+DDlog and Java types.
+
+The following table summarizes Java types used in serialization and
+deserialization APIs for each DDlog type.  In the table, `T_w` and `T_r` stands
+for serialization and deserialization types of `T` that can be looked up in
+the same table.
+
+| DDlog type             | Java serialization API               | Java deserialization API |
+| ---------------------- | ------------------------------------ | ------------------------ |
+| `bool`                 | `boolean`                            | `boolean`                |
+| `bigint`               | `BigInteger`                         | `BigInteger`             |
+| `string`               | `String`                             | `String`                 |
+| `IString`              | `String`                             | `String`                 |
+| `bit<N>, N<=16`        | `int`                                | `int`                    |
+| `bit<N>, 16<N<=64`     | `long`                               | `long`                   |
+| `bit<N>, N>64`         | `BigInteger`                         | `BigInteger`             |
+| `signed<N>, N<=8`      | `byte`                               | `byte`                   |
+| `signed<N>, 8<N<=16`   | `short`                              | `short`                  |
+| `signed<N>, 16<N<=32`  | `int`                                | `int`                    |
+| `signed<N>, 32<N<=64`  | `long`                               | `long`                   |
+| `signed<N>, N>64`      | `BigInteger`                         | `BigInteger`             |
+| Tuple: `(t1,..,tN)`    | `TupleN__t1..__tnWriter`             | `TupleN__t1..__tnReader` |
+| Struct: `S<t1,..,tN>`  | `S__t1..__tnWriter`                  | `S__t1..__tnReader`      |
+| `Vec<T>`               | `List<T_w>`                          | `List<T_r>`              |
+| `Set<T>`               | `List<T_w>`                          | `List<T_r>`              |
+| `Map<K,V>`             | `Map<K_w,V_w>`                       | `Map<K_r,V_r>`           |
+| `Ref<T>`               | `T_w`                                | `T_r`                    |

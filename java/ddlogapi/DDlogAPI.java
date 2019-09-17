@@ -141,6 +141,11 @@ public class DDlogAPI {
         }
     }
 
+    /**
+     * Get DDlog relation ID by name.
+     *
+     * See <code>ddlog.h: ddlog_get_table_id()</code> 
+     */
     public int getTableId(String table) {
         if (!this.tableId.containsKey(table)) {
             int id = ddlog_get_table_id(table);
@@ -150,9 +155,14 @@ public class DDlogAPI {
         return this.tableId.get(table);
     }
 
-    // Record DDlog commands to file.
-    // Set `filename` to `null` to stop recording.
-    // Set `append` to `true` to open the file in append mode.
+    /**
+     * Record commands issued to DDlog via this API in a file.
+     *
+     * See <code>ddlog.h: ddlog_record_commands()</code> 
+     *
+     * @param filename File to record command to or <code>null</code> to stop recording.
+     * @param append Set to <code>true</code> to open the file in append mode.
+     */
     public void recordCommands(String filename, boolean append) throws DDlogException, IOException {
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
@@ -169,7 +179,12 @@ public class DDlogAPI {
     public void dumpInputSnapshot(String filename, boolean append) throws DDlogException, IOException {
         DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
     }
-
+   
+    /**
+     * Stops the DDlog program; deallocate all resources.
+     *
+     * See <code>ddlog.h: ddlog_stop()</code> 
+     */
     public void stop() throws DDlogException {
         /* Close the file handle. */
         if (this.record_fd != -1) {
@@ -180,16 +195,28 @@ public class DDlogAPI {
     }
 
     /**
-     *  Starts a transaction
+     * Start a transaction.
+     *
+     * See <code>ddlog.h: ddlog_start()</code> 
      */
     public void transactionStart() throws DDlogException {
         DDlogAPI.ddlog_transaction_start(this.hprog);
     }
 
+    /**
+     * Commit a transaction.
+     *
+     * See <code>ddlog.h: ddlog_transaction_commit()</code> 
+     */
     public void transactionCommit() throws DDlogException {
         DDlogAPI.ddlog_transaction_commit(this.hprog);
     }
 
+    /**
+     * Commit a transaction; invoke <code>callback</code> for each inserted or deleted record in each output relation.
+     *
+     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes()</code> 
+     */
     public void transactionCommitDumpChanges(Consumer<DDlogCommand<DDlogRecord>> callback)
             throws DDlogException {
         String onDelta = callback == null ? null : "onDelta";
@@ -197,6 +224,11 @@ public class DDlogAPI {
         this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
     }
 
+    /**
+     * Remove all records from an input relation.
+     *
+     * See <code>ddlog.h: ddlog_clear_relation()</code> 
+     */
     public int clearRelation(int relid) {
         return ddlog_clear_relation(this.hprog, relid);
     }
@@ -230,18 +262,44 @@ public class DDlogAPI {
         public long offset;
     }
 
+    /**
+     * Commit transaction, serializing changes to a FlatBuffer.
+     *
+     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes_to_flatbuf()</code> 
+     *
+     * This method is for use by the <code>UpdateParser</code> class only and should not
+     * be invoked by user code.
+     */
     public void transactionCommitDumpChangesToFlatbuf(FlatBufDescr fb) throws DDlogException {
         this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
     }
 
+    /**
+     * Deallocate flabuffer returned by <code>transactionCommitDumpChangesToFlatbuf</code>.
+     *
+     * See <code>ddlog.h: ddlog_flatbuf_free()</code> 
+     *
+     * This method is for use by the <code>UpdateParser</code> class only and should not
+     * be invoked by user code.
+     */
     public void flatbufFree(FlatBufDescr fb) {
         this.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
     }
 
+    /**
+     * Discard all buffered updates and abort the current transaction.
+     *
+     * See <code>ddlog.h: ddlog_transaction_rollback()</code> 
+     */
     public void transactionRollback() throws DDlogException {
         DDlogAPI.ddlog_transaction_rollback(this.hprog);
     }
 
+    /**
+     * Apply updates to DDlog input relations.
+     *
+     * See <code>ddlog.h: ddlog_apply_updates()</code> 
+     */
     public void applyUpdates(DDlogRecCommand[] commands) throws DDlogException {
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
@@ -249,6 +307,14 @@ public class DDlogAPI {
         ddlog_apply_updates(this.hprog, handles);
     }
 
+    /**
+     * Apply updates to DDlog input relations, serialized in a FlatBuffer.
+     *
+     * See <code>ddlog.h: ddlog_apply_updates_from_flatbuf()</code>.
+     *
+     * This method is for use by the <code>UpdateBuilder</code> class only and should not
+     * be invoked by user code.
+     */
     public void applyUpdatesFromFlatBuf(ByteBuffer buf) throws DDlogException {
         ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
     }
@@ -264,6 +330,7 @@ public class DDlogAPI {
 
     /**
      * Dump the data in the specified table.
+     *
      * For this to work the DDlogAPI must have been created with a
      * storeData parameter set to true.
      */
@@ -276,25 +343,36 @@ public class DDlogAPI {
         this.dump_table(this.hprog, id, onDump);
     }
 
+    /**
+     * Returns DDlog program runtime profile as a string.
+     *
+     * See <code>ddlog.h: ddlog_profile()</code>
+     */
     public String profile() {
         return DDlogAPI.ddlog_profile(this.hprog);
     }
 
+    /**
+     * Controls recording of differential operator runtimes.
+     *
+     * See <code>ddlog.h: ddlog_enable_cpu_profiling()</code>
+     */
     public void enableCpuProfiling(boolean enable) throws DDlogException {
         DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
     }
 
-    /*
-     * Control DDlog logging behavior (see detailed explanation of the logging
-     * API in `lib/log.dl`).
+    /**
+     * Control DDlog logging behavior 
      *
-     * `module` - Module id for logging purposes.  Must match module ids
-     *    used in the DDlog program.
-     * `cb` - Logging callback that takes log message level and the message
-     *    itself.  Passing `null` disables logging for the given module.
-     * `max_level` - Maximal enabled log level.  Log messages with this module
-     *    id and log level above `max_level` will be dropped by DDlog (i.e.,
-     *    the callback will not be invoked for  those messages).
+     * See detailed explanation of the logging API in <code>lib/log.dl</code>.
+     *
+     * @param module    Module id for logging purposes.  Must match module ids
+     *                  used in the DDlog program.
+     * @param cb        Logging callback that takes log message level and the message
+     *                  itself.  Passing <code>null</code> disables logging for the given module.
+     * @param max_level Maximal enabled log level.  Log messages with this module
+     *                  id and log level above <code>max_level</code> will be dropped by DDlog
+     *                  (i.e., the callback will not be invoked for  those messages).
      */
     static public synchronized void logSetCallback(int module, ObjIntConsumer<String> cb, int max_level) {
         Long old_cbinfo = logCBInfo.remove(module);
