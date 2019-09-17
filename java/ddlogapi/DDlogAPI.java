@@ -44,13 +44,13 @@ public class DDlogAPI {
     static native long ddlog_bool(boolean b);
     static native long ddlog_i64(long v);
     static native long ddlog_int(byte[] v);
-    static native long ddlog_string(String s);
-    static native long ddlog_tuple(long[] handles);
-    static native long ddlog_vector(long[] handles);
-    static native long ddlog_set(long[] handles);
-    static native long ddlog_map(long[] handles);
+    static native long ddlog_string(String s) throws DDlogException;
+    static native long ddlog_tuple(long[] handles) throws DDlogException;
+    static native long ddlog_vector(long[] handles) throws DDlogException;
+    static native long ddlog_set(long[] handles) throws DDlogException;
+    static native long ddlog_map(long[] handles) throws DDlogException;
     static native long ddlog_pair(long handle1, long handle2);
-    static native long ddlog_struct(String constructor, long[] handles);
+    static native long ddlog_struct(String constructor, long[] handles) throws DDlogException;
     // Getters
     static native int ddlog_get_table_id(String table);
     static native boolean ddlog_is_bool(long handle);
