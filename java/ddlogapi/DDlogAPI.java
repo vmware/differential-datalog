@@ -100,7 +100,7 @@ public class DDlogAPI {
     // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
     private Consumer<DDlogCommand<DDlogRecord>> deltaCallback;
 
-    // Callback to invoke for each record on `DDlogAPI.dump()`.
+    // Callback to invoke for each record on `DDlogAPI.dumpTable()`.
     // The callback is invoked sequentially by the same DDlog worker thread.
     private Consumer<DDlogRecord> dumpCallback;
 
@@ -121,7 +121,7 @@ public class DDlogAPI {
      *                  many times, on potentially different threads, when the "commit"
      *                  API function is called.
      */
-    public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData) 
+    public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
             throws DDlogException {
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";

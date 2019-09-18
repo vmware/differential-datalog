@@ -7,11 +7,12 @@ import java.util.*;
 import java.time.Instant;
 import java.time.Duration;
 import java.lang.RuntimeException;
-import java.math.BigInteger;
 
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;
+import ddlogapi.DDlogRecCommand;
+import ddlogapi.DDlogException;
 
 import it.unimi.dsi.fastutil.ints.*;
 
@@ -35,12 +36,17 @@ public class RedistTest {
             result.append("Span{");
             result.append(this.entity);
             result.append(",[");
+            List<Integer> list = new ArrayList<Integer>();
+            for (int i : this.getTNs())
+                list.add(i);
+            Collections.sort(list);
             boolean first = true;
-            for (int s : this.getTNs()) {
+            for (int i : list) {
                 if (!first)
                     result.append(", ");
-                first = false;
-                result.append(s);
+                else
+                    first = false;
+                result.append(i);
             }
             result.append("]}");
             return result.toString();
@@ -62,7 +68,7 @@ public class RedistTest {
             List<Integer> set = new ArrayList<Integer>();
             for (int i = 0; i < elements; i++) {
                 DDlogRecord f = tn.getSetField(i);
-                set.add((int)f.getLong());
+                set.add(f.getInt().intValue());
             }
             this.tns = set;
         }
@@ -96,7 +102,7 @@ public class RedistTest {
                 return Collections.<Integer>emptyList();
             // Check that all values are 1
             if (testing) {
-                for (Integer i : values.keySet())  {
+                for (int i : values.keySet())  {
                     short s = values.get(i);
                     if (s != 1)
                         System.err.println("Entity " + this.entity + " tn " + i + " has value " + s);
@@ -169,7 +175,7 @@ public class RedistTest {
          * Add another DeltaSpan to this Delta.
          */
         synchronized public void add(DeltaSpan other) {
-            for (Integer i : other.map.keySet()) {
+            for (int i : other.map.keySet()) {
                 Int2ShortMap ov = other.map.get(i);
                 Int2ShortMap v = this.map.get(i);
                 if (v == null) {
@@ -201,6 +207,8 @@ public class RedistTest {
                             v.remove(tn);
                     }
                 }
+                if (v.isEmpty())
+                    this.map.remove(i);
             }
         }
 
@@ -220,15 +228,14 @@ public class RedistTest {
     public static class SpanParser {
         static Pattern commandPattern = Pattern.compile("^(\\S+)(.*)([;,])$");
         static Pattern argsPattern = Pattern.compile("^\\s*(\\S+)\\(([^)]*)\\)$");
+        static Pattern argsSquarePattern = Pattern.compile("^\\s*(\\S+)\\[\\S+\\{([^}]*)\\}\\]$");
 
         /// Command that is being executed.
         String command;
-        /// Exit code of last command
-        int exitCode;
         /// Terminator for current command.
         String terminator;
         /// List of commands to execute
-        List<DDlogCommand> commands;
+        List<DDlogRecCommand> commands;
 
         private final DDlogAPI api;
         private static boolean debug = true;
@@ -242,9 +249,9 @@ public class RedistTest {
         // currently committing.
         private DeltaSpan currentDelta;
 
-        SpanParser() {
+        SpanParser() throws DDlogException {
             if (localTables) {
-                this.api = new DDlogAPI(2, r -> this.onCommit(r), false);
+                this.api = new DDlogAPI(2, this::onCommit, false);
                 this.spanTableId = this.api.getTableId("Span");
                 if (debug)
                     System.err.println("Span table id " + this.spanTableId);
@@ -252,20 +259,19 @@ public class RedistTest {
                 this.api = new DDlogAPI(2, null, true);
             }
             this.command = null;
-            this.exitCode = -1;
             this.terminator = "";
-            this.commands = new ArrayList<DDlogCommand>();
+            this.commands = new ArrayList<DDlogRecCommand>();
             this.span = new DeltaSpan();
             this.currentDelta = new DeltaSpan();
         }
 
-        void onCommit(DDlogCommand command) {
-            DDlogRecord record = command.value;
-            if (command.table == this.spanTableId) {
+        void onCommit(DDlogCommand<DDlogRecord> command) {
+            DDlogRecord record = command.value();
+            if (command.relid() == this.spanTableId) {
                 Span s = new Span(record);
-                if (command.kind == DDlogCommand.Kind.Insert) {
+                if (command.kind() == DDlogCommand.Kind.Insert) {
                     this.currentDelta.add(s, true);
-                } else if (command.kind == DDlogCommand.Kind.DeleteVal) {
+                } else if (command.kind() == DDlogCommand.Kind.DeleteVal) {
                     this.currentDelta.add(s, false);
                 } else {
                     throw new RuntimeException("Unexpected command " + this.command);
@@ -273,76 +279,123 @@ public class RedistTest {
             }
         }
 
-        void checkExitCode() {
-            if (this.exitCode < 0)
-                throw new RuntimeException("Error executing " + this.command);
+        boolean printSpan = false;
+
+        void onCommitChange(DDlogCommand<DDlogRecord> command) {
+            if (printSpan) {
+                printSpan = false;
+                System.out.println("Span:");
+            }
+            this.onCommit(command);  // process change
+            DDlogRecord record = command.value();
+            if (command.relid() == this.spanTableId) {
+                Span s = new Span(record);
+                StringBuilder builder = new StringBuilder();
+                builder.append("Span{.entity = ").append(s.entity).append(", .tns = [");
+                List<Integer> list = new ArrayList<Integer>();
+                for (int i : s.getTNs())
+                    list.add(i);
+                Collections.sort(list);
+                boolean first = true;
+                for (int i : list) {
+                    if (!first)
+                        builder.append(", ");
+                    else
+                        first = false;
+                    builder.append(i);
+                }
+                builder.append("]}: ");
+
+                if (command.kind() == DDlogCommand.Kind.Insert) {
+                    builder.append("+1");
+                } else if (command.kind() == DDlogCommand.Kind.DeleteVal) {
+                    builder.append("-1");
+                } else {
+                    throw new RuntimeException("Unexpected command " + this.command);
+                }
+                System.out.println(builder.toString());
+            }
         }
 
-        void checkSemicolon() {
+        void checkSemicolon() throws DDlogException {
             if (!this.terminator.equals(";"))
                 throw new RuntimeException("Expected semicolon after " + this.command + " found " + this.terminator);
             this.runCommands();
         }
 
         private static void checkSize(String[] array, int size) {
-            if (array.length != size)
-                throw new RuntimeException("Expected " + size + " arguments, got " + array.length);
+            if (array.length != size) {
+                throw new RuntimeException("Expected " + size + " arguments, got " + array.length + ":" +
+                                           String.join(",", array));
+            }
         }
 
-        private DDlogCommand createCommand(String commang, String arguments) {
+        private DDlogRecCommand createCommand(String command, String arguments) throws DDlogException {
             Matcher m = argsPattern.matcher(arguments);
-            if (!m.find())
-                throw new RuntimeException("Cannot parse arguments for " + command);
+            if (!m.find()) {
+                m = argsSquarePattern.matcher(arguments);
+                if (!m.find())
+                    throw new RuntimeException("Cannot parse arguments for " + command);
+            }
             String relation = m.group(1);
             int tid = this.api.getTableId(relation);
             String a = m.group(2);
             String[] args = a.split(",");
             DDlogRecord o;
-            if (relation.equals("DdlogNode")) {
-                checkSize(args, 1);
-                long id = Long.parseLong(args[0]);
-                DDlogRecord s = new DDlogRecord(id);
-                DDlogRecord sa[] = { s };
-                o = DDlogRecord.makeStruct(relation, sa);
-            } else if (relation.equals("DdlogBinding")) {
-                checkSize(args, 2);
-                long tn = Long.parseLong(args[0]);
-                long entity = Long.parseLong(args[1]);
-                DDlogRecord s0 = new DDlogRecord((short)tn);
-                DDlogRecord s1 = new DDlogRecord(entity);
-                DDlogRecord sa[] = { s0, s1 };
-                o = DDlogRecord.makeStruct(relation, sa);
-            }  else if (relation.equals("DdlogDependency")) {
-                checkSize(args, 2);
-                long parent = Long.parseLong(args[0]);
-                long child = Long.parseLong(args[1]);
-                DDlogRecord s0 = new DDlogRecord(parent);
-                DDlogRecord s1 = new DDlogRecord(child);
-                DDlogRecord sa[] = { s0, s1 };
-                o = DDlogRecord.makeStruct(relation, sa);
-            } else {
-                throw new RuntimeException("Unexpected class: " + relation);
+            switch (relation) {
+                case "DdlogNode": {
+                    checkSize(args, 1);
+                    long id = Long.parseLong(args[0].trim());
+                    DDlogRecord s = new DDlogRecord(id);
+                    DDlogRecord[] sa = {s};
+                    o = DDlogRecord.makeStruct(relation, sa);
+                    break;
+                }
+                case "DdlogBinding": {
+                    checkSize(args, 2);
+                    long tn = Long.parseLong(args[0]);
+                    long entity = Long.parseLong(args[1].trim());
+                    DDlogRecord s0 = new DDlogRecord((short) tn);
+                    DDlogRecord s1 = new DDlogRecord(entity);
+                    DDlogRecord[] sa = {s0, s1};
+                    o = DDlogRecord.makeStruct(relation, sa);
+                    break;
+                }
+                case "DdlogDependency": {
+                    checkSize(args, 2);
+                    long parent = Long.parseLong(args[0].trim());
+                    long child = Long.parseLong(args[1].trim());
+                    DDlogRecord s0 = new DDlogRecord(parent);
+                    DDlogRecord s1 = new DDlogRecord(child);
+                    DDlogRecord[] sa = {s0, s1};
+                    o = DDlogRecord.makeStruct(relation, sa);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unexpected class: " + relation);
             }
             DDlogCommand.Kind kind = command.equals("insert") ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            return new DDlogCommand(kind, tid, o);
+            return new DDlogRecCommand(kind, tid, o);
         }
 
-        private void runCommands() {
+        private void runCommands() throws DDlogException {
             if (this.commands.size() == 0)
                 return;
-            DDlogCommand[] ca = this.commands.toArray(new DDlogCommand[0]);
+            DDlogRecCommand[] ca = this.commands.toArray(new DDlogRecCommand[0]);
             if (debug)
                 System.err.println("Executing " + ca.length + " commands");
-            this.exitCode = this.api.applyUpdates(ca);
-            this.checkExitCode();
+            this.api.applyUpdates(ca);
             this.commands.clear();
         }
 
         void parseLine(String line)
-                throws IllegalAccessException, InstantiationException {
+                throws DDlogException {
+            if (line.trim().length() == 0) {
+                return;
+            }
             Matcher m = commandPattern.matcher(line);
             if (!m.find())
-                throw new RuntimeException("Could not isolate command");
+                throw new RuntimeException("Could not understand command: " + line);
             this.command = m.group(1);
             String rest = m.group(2);
             this.terminator = m.group(3);
@@ -350,6 +403,11 @@ public class RedistTest {
                 System.err.println(line);
 
             switch (command) {
+                case "clear":
+                    int tid = this.api.getTableId(rest.trim());
+                    this.api.clearRelation(tid);
+                    this.checkSemicolon();
+                    break;
                 case "timestamp":
                     // TODO
                     System.out.println("Timestamp: "  + System.currentTimeMillis());
@@ -360,60 +418,68 @@ public class RedistTest {
                     this.checkSemicolon();
                     break;
                 case "start":
-                    this.exitCode = this.api.start();
-                    this.checkExitCode();
+                    this.api.transactionStart();
                     this.checkSemicolon();
                     break;
                 case "commit":
-                    // Prepare to commit Start with an empty delta;
+                    // Prepare to commit with an empty delta;
                     // the commit will insert changes in the delta.
                     this.currentDelta.clear();
-                    this.exitCode = this.api.commit();
-                    // Once the commit has returned the delta is completed.
-                    // We can add it to the span.
-                    this.span.add(this.currentDelta);
-                    this.checkExitCode();
                     this.checkSemicolon();
+                    if (rest.trim().equals("dump_changes")) {
+                        printSpan = true;
+                        this.api.transactionCommitDumpChanges(this::onCommitChange);
+                    } else {
+                        // Once the commit has returned the delta is completed.
+                        // We can add it to the span.
+                        this.api.transactionCommit();
+                    }
+                    this.span.add(this.currentDelta);
                     if (debug)
                         System.err.println("CurrentDelta:" + this.currentDelta.size() +
                                            " Span:" + this.span.size());
                     break;
                 case "insert":
                 case "delete":
-                    DDlogCommand c = this.createCommand(command, rest);
+                    DDlogRecCommand c = this.createCommand(command, rest);
                     this.commands.add(c);
                     if (this.terminator.equals(";"))
                         this.runCommands();
                     break;
                 case "profile":
-                    if (rest.equals(" cpu on")) {
-                        this.exitCode = this.api.enable_cpu_profiling(true);
-                        this.checkExitCode();
-                    } else if (rest.equals(" cpu off")) {
-                        this.exitCode = this.api.enable_cpu_profiling(false);
-                        this.checkExitCode();
-                    } else if (rest.equals("")) {
-                        String profile = this.api.profile();
-                        System.out.println("Profile:");
-                        System.out.println(profile);
-                        this.checkSemicolon();
-                    } else {
-                        throw new RuntimeException("Unexpected command " + line);
+                    switch (rest) {
+                        case " cpu on":
+                            this.api.enableCpuProfiling(true);
+                            break;
+                        case " cpu off":
+                            this.api.enableCpuProfiling(false);
+                            break;
+                        case "":
+                            String profile = this.api.profile();
+                            System.out.println("Profile:");
+                            System.out.println(profile);
+                            this.checkSemicolon();
+                            break;
+                        default:
+                            throw new RuntimeException("Unexpected command " + line);
                     }
                     break;
                 case "dump":
                     // Hardwired output relation name
                     if (this.localTables) {
+                        List<Integer> list = new ArrayList<Integer>(this.span.map.keySet());
+                        if (list.isEmpty())
+                            return;
                         System.out.println("Span:");
-                        for (int entity: this.span.map.keySet()) {
+
+                        Collections.sort(list);
+                        for (int entity: list) {
                             SpanBase s = this.span.getSpan(entity);
                             System.out.println(s);
                         }
-                    } else {
-                        System.out.println("Span:");
-                        this.exitCode = this.api.dump("Span",
-                                r -> System.out.println(new Span(r)));
                         System.out.println();
+                    } else {
+                        this.api.dumpTable("Span", r -> System.out.println(new Span(r)));
                     }
                     break;
                 case "exit":
@@ -425,7 +491,7 @@ public class RedistTest {
             }
         }
 
-        void run(String file) throws IOException {
+        void run(String file) throws IOException, DDlogException {
             Files.lines(Paths.get(file)).forEach(l -> {
                     try {
                         parseLine(l);
@@ -439,11 +505,11 @@ public class RedistTest {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, DDlogException {
         if (args.length != 1) {
             System.err.println("Usage: java -jar redist.jar <dat_file_name>");
             System.exit(-1);
-        };
+        }
         Instant start = Instant.now();
         SpanParser parser = new SpanParser();
         parser.run(args[0]);
