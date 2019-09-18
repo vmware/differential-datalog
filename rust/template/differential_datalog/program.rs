@@ -798,7 +798,7 @@ where
                 self.arrangements2
                     .get(&arrid)
                     .map(|arr| A::Arrangement2(arr))
-                    .expect(&format!("mk_rule: unknown arrangement {:?}", arrid))
+                    .unwrap_or_else(|| panic!("mk_rule: unknown arrangement {:?}", arrid))
             },
             |arr| A::Arrangement1(arr),
         )
@@ -1146,7 +1146,7 @@ impl<V: Val> Program<V> {
                                                 Dep::Arr(arrid) => {
                                                     inner_arrangements.insert(arrid,
                                                                               arrangements.get(&arrid)
-                                                                              .expect(&format!("Arr: unknown arrangement {:?}", arrid))
+                                                                              .unwrap_or_else(|| panic!("Arr: unknown arrangement {:?}", arrid))
                                                                               .enter(inner));
                                                 }
                                             }
@@ -1721,8 +1721,8 @@ impl<V: Val> Program<V> {
             Rule::CollectionRule {
                 rel, xform: None, ..
             } => {
-                let collection =
-                    lookup_collection(*rel).expect(&format!("mk_rule: unknown relation {:?}", rel));
+                let collection = lookup_collection(*rel)
+                    .unwrap_or_else(|| panic!("mk_rule: unknown relation {:?}", rel));
                 let rel_name = &self.get_relation(*rel).name;
                 with_prof_context(format!("{} clone", rel_name).as_ref(), || {
                     collection.map(|x| x)
@@ -1733,7 +1733,8 @@ impl<V: Val> Program<V> {
                 xform: Some(x),
                 ..
             } => Self::xform_collection_ref(
-                lookup_collection(*rel).expect(&format!("mk_rule: unknown relation {:?}", rel)),
+                lookup_collection(*rel)
+                    .unwrap_or_else(|| panic!("mk_rule: unknown relation {:?}", rel)),
                 x,
                 &arrangements,
             ),
