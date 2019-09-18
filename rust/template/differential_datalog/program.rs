@@ -16,8 +16,8 @@ use std::collections::hash_map;
 use std::fmt::{self, Debug, Formatter};
 use std::hash::Hash;
 use std::ops::{Add, Deref, Mul};
-use std::sync::atomic::{Ordering, AtomicBool, AtomicU32};
 use std::result::Result;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Barrier, Mutex};
 use std::thread;
@@ -43,10 +43,10 @@ use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::operators::*;
-use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKeyTrace;
+use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
-use differential_dataflow::trace::{Cursor,TraceReader,BatchReader};
+use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
@@ -66,11 +66,12 @@ use crate::profile::*;
 use crate::record::Mutator;
 use crate::variable::*;
 
-type TValAgent<S,V> = TraceAgent<DefaultValTrace<V,V,<S as ScopeParent>::Timestamp,Weight,u32>>;
-type TKeyAgent<S,V> = TraceAgent<DefaultKeyTrace<V,<S as ScopeParent>::Timestamp,Weight,u32>>;
+type TValAgent<S, V> =
+    TraceAgent<DefaultValTrace<V, V, <S as ScopeParent>::Timestamp, Weight, u32>>;
+type TKeyAgent<S, V> = TraceAgent<DefaultKeyTrace<V, <S as ScopeParent>::Timestamp, Weight, u32>>;
 
-type TValEnter<'a,P,T,V> = TraceEnter<TValAgent<P,V>,T>;
-type TKeyEnter<'a,P,T,V> = TraceEnter<TKeyAgent<P,V>,T>;
+type TValEnter<'a, P, T, V> = TraceEnter<TValAgent<P, V>, T>;
+type TKeyEnter<'a, P, T, V> = TraceEnter<TKeyAgent<P, V>, T>;
 
 /* 16-bit timestamp.
  * TODO: get rid of this and use `u16` directly when/if differential implements
@@ -252,9 +253,9 @@ pub type TransformerFunc<V> = fn() -> TransformerFuncRes<V>;
 /// a vector of one or more mutually recursive relations.
 #[derive(Clone)]
 pub enum ProgNode<V: Val> {
-    Rel{rel: Relation<V>},
-    Apply{tfun: TransformerFunc<V>},
-    SCC{rels: Vec<RecursiveRelation<V>>}
+    Rel { rel: Relation<V> },
+    Apply { tfun: TransformerFunc<V> },
+    SCC { rels: Vec<RecursiveRelation<V>> },
 }
 
 /// Relation computed in a nested scope as a fixed point.  The `distinct` flag
@@ -263,7 +264,7 @@ pub enum ProgNode<V: Val> {
 #[derive(Clone)]
 pub struct RecursiveRelation<V: Val> {
     pub rel: Relation<V>,
-    pub distinct: bool
+    pub distinct: bool,
 }
 
 pub trait CBFn<V>: FnMut(RelId, &V, Weight) + Send {
@@ -297,9 +298,9 @@ pub struct Relation<V: Val> {
     pub name: String,
     /// `true` if this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
-    pub input:        bool,
+    pub input: bool,
     /// apply distinct_total() to this relation after concatenating all its rules
-    pub distinct:     bool,
+    pub distinct: bool,
     /// if this `key_func` is present, this indicates that the relation is indexed with a unique
     /// key computed by key_func
     pub key_func: Option<fn(&V) -> V>,
@@ -630,8 +631,8 @@ pub enum Arrangement<V: Val> {
         fmfun: &'static FilterMapFunc<V>,
         /// Apply distinct_total() before arranging filtered collection.
         /// This is necessary if the arrangement is to be used in an antijoin.
-        distinct: bool
-    }
+        distinct: bool,
+    },
 }
 
 impl<V: Val> Arrangement<V> {
@@ -654,14 +655,20 @@ impl<V: Val> Arrangement<V> {
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
         match self {
-            Arrangement::Map{afun, ..} => {
+            Arrangement::Map { afun, .. } => {
                 ArrangedCollection::Map(collection.flat_map(*afun).arrange())
-            },
-            Arrangement::Set{fmfun, distinct, ..} => {
+            }
+            Arrangement::Set {
+                fmfun, distinct, ..
+            } => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(filtered.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 })
-                                                    .map(|k| (k, ())).arrange() /* arrange_by_self() */)
+                    ArrangedCollection::Set(
+                        filtered
+                            .threshold_total(|_, c| if c.is_zero() { 0 } else { 1 })
+                            .map(|k| (k, ()))
+                            .arrange(), /* arrange_by_self() */
+                    )
                 } else {
                     ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
                 }
@@ -678,14 +685,20 @@ impl<V: Val> Arrangement<V> {
         S::Timestamp: Lattice + Ord,
     {
         match self {
-            Arrangement::Map{afun, ..} => {
+            Arrangement::Map { afun, .. } => {
                 ArrangedCollection::Map(collection.flat_map(*afun).arrange())
-            },
-            Arrangement::Set{fmfun, distinct, ..} => {
+            }
+            Arrangement::Set {
+                fmfun, distinct, ..
+            } => {
                 let filtered = collection.flat_map(*fmfun);
                 if *distinct {
-                    ArrangedCollection::Set(filtered.threshold(|_,c| if c.is_zero() { 0 } else { 1 })
-                                                    .map(|k| (k, ())).arrange())
+                    ArrangedCollection::Set(
+                        filtered
+                            .threshold(|_, c| if c.is_zero() { 0 } else { 1 })
+                            .map(|k| (k, ()))
+                            .arrange(),
+                    )
                 } else {
                     ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
                 }
@@ -694,20 +707,20 @@ impl<V: Val> Arrangement<V> {
     }
 }
 
-enum ArrangedCollection<S,V,T1,T2>
+enum ArrangedCollection<S, V, T1, T2>
 where
-    S:Scope,
-    V:Val,
-    S::Timestamp: Lattice+Ord,
-    T1: TraceReader<Key=V, Val=V, Time=S::Timestamp, R=Weight> + Clone,
+    S: Scope,
+    V: Val,
+    S::Timestamp: Lattice + Ord,
+    T1: TraceReader<Key = V, Val = V, Time = S::Timestamp, R = Weight> + Clone,
     T1::Batch: BatchReader<V, V, S::Timestamp, Weight>,
     T1::Cursor: Cursor<V, V, S::Timestamp, Weight>,
-    T2: TraceReader<Key=V, Val=(), Time=S::Timestamp, R=Weight> + Clone,
+    T2: TraceReader<Key = V, Val = (), Time = S::Timestamp, R = Weight> + Clone,
     T2::Batch: BatchReader<V, (), S::Timestamp, Weight>,
     T2::Cursor: Cursor<V, (), S::Timestamp, Weight>,
 {
-    Map ( Arranged<S,T1> ),
-    Set ( Arranged<S,T2> ),
+    Map(Arranged<S, T1>),
+    Set(Arranged<S, T2>),
 }
 
 impl<S, V> ArrangedCollection<S, V, TValAgent<S, V>, TKeyAgent<S, V>>
@@ -833,7 +846,7 @@ pub struct RunningProgram<V: Val> {
     /* Profiling thread. */
     prof_thread_handle: Option<thread::JoinHandle<()>>,
     /* Profiling statistics. */
-    pub profile: Arc<Mutex<Profile>>
+    pub profile: Arc<Mutex<Profile>>,
 }
 
 // Right now this Debug implementation is more or less a short cut.
@@ -1397,8 +1410,7 @@ impl<V: Val> Program<V> {
         ).map(|g| {
             w0send.send(g.guards()[0].thread().clone()).unwrap();
             g.join();
-        })
-        );
+        }));
 
         let w0 = w0recv.recv().unwrap();
         //println!("timely computation started");
@@ -1477,13 +1489,13 @@ impl<V: Val> Program<V> {
         worker: &mut Worker<Allocator>,
         peers: &FnvHashMap<usize, thread::Thread>,
         frontier_ts: &TSAtomic,
-        progress_barrier: &Barrier)
-    {
-        for (_,r) in sessions.into_iter() {
+        progress_barrier: &Barrier,
+    ) {
+        for (_, r) in sessions.iter_mut() {
             //print!("flush\n");
             r.flush();
-        };
-        if let Some((_,session)) = sessions.into_iter().nth(0) {
+        }
+        if let Some((_, session)) = sessions.iter_mut().nth(0) {
             /* Do nothing if timestamp has not advanced since the last
              * transaction (i.e., no updates have arrived). */
             if frontier_ts.load(Ordering::SeqCst) < *session.time() {
@@ -1493,23 +1505,23 @@ impl<V: Val> Program<V> {
                 while probe.less_than(session.time()) {
                     //println!("flush.step");
                     worker.step_or_park(None);
-                };
+                }
                 progress_barrier.wait();
             }
         }
     }
 
-    fn stop_workers(peers: &FnvHashMap<usize, thread::Thread>,
-                    frontier_ts: &TSAtomic,
-                    progress_barrier: &Barrier)
-    {
+    fn stop_workers(
+        peers: &FnvHashMap<usize, thread::Thread>,
+        frontier_ts: &TSAtomic,
+        progress_barrier: &Barrier,
+    ) {
         frontier_ts.store(TS::max_value(), Ordering::SeqCst);
         Self::unpark_peers(peers);
         progress_barrier.wait();
     }
 
-    fn unpark_peers(peers: &FnvHashMap<usize, thread::Thread>)
-    {
+    fn unpark_peers(peers: &FnvHashMap<usize, thread::Thread>) {
         for (_, t) in peers.iter() {
             t.unpark();
         }
@@ -1519,14 +1531,18 @@ impl<V: Val> Program<V> {
     fn get_relation(&self, relid: RelId) -> &Relation<V> {
         for node in &self.nodes {
             match node {
-                ProgNode::Rel{rel:r} => {
-                    if r.id == relid {return r;};
-                },
-                ProgNode::Apply{..} => {},
-                ProgNode::SCC{rels:rs} => {
-                    for r in rs {
-                        if r.rel.id == relid {return &r.rel;};
+                ProgNode::Rel { rel: r } => {
+                    if r.id == relid {
+                        return r;
                     };
+                }
+                ProgNode::Apply { .. } => {}
+                ProgNode::SCC { rels: rs } => {
+                    for r in rs {
+                        if r.rel.id == relid {
+                            return &r.rel;
+                        };
+                    }
                 }
             }
         }
@@ -1550,13 +1566,11 @@ impl<V: Val> Program<V> {
 
     fn node_uses_arrangement(n: &ProgNode<V>, arrid: ArrId) -> bool {
         match n {
-            ProgNode::Rel{rel} => {
-                Self::rel_uses_arrangement(rel, arrid)
-            },
-            ProgNode::Apply{..} => { false },
-            ProgNode::SCC{rels} => {
-                rels.iter().any(|rel|Self::rel_uses_arrangement(&rel.rel, arrid))
-            }
+            ProgNode::Rel { rel } => Self::rel_uses_arrangement(rel, arrid),
+            ProgNode::Apply { .. } => false,
+            ProgNode::SCC { rels } => rels
+                .iter()
+                .any(|rel| Self::rel_uses_arrangement(&rel.rel, arrid)),
         }
     }
 
@@ -1682,16 +1696,18 @@ impl<V: Val> Program<V> {
         }
     }
 
-    fn xform_arrangement<'a,'b,P,T,TR>(arr         : &Arranged<Child<'a,P,T>,TR>,
-                                       xform       : &XFormArrangement<V>,
-                                       arrangements: &Arrangements<'a,'b,V,P,T>) -> Collection<Child<'a,P,T>,V,Weight>
+    fn xform_arrangement<'a, 'b, P, T, TR>(
+        arr: &Arranged<Child<'a, P, T>, TR>,
+        xform: &XFormArrangement<V>,
+        arrangements: &Arrangements<'a, 'b, V, P, T>,
+    ) -> Collection<Child<'a, P, T>, V, Weight>
     where
         P: ScopeParent,
-        P::Timestamp : Lattice,
-        T: Refines<P::Timestamp>+Lattice+Timestamp+Ord,
-        TR: TraceReader<Key=V, Val=V, Time=T, R=Weight> + Clone + 'static,
+        P::Timestamp: Lattice,
+        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
+        TR: TraceReader<Key = V, Val = V, Time = T, R = Weight> + Clone + 'static,
         TR::Batch: BatchReader<V, V, T, Weight>,
-        TR::Cursor: Cursor<V, V, T, Weight>
+        TR::Cursor: Cursor<V, V, T, Weight>,
     {
         match xform {
             XFormArrangement::FlatMap {
@@ -2268,7 +2284,7 @@ impl<V: Val> RunningProgram<V> {
     /* Send message to worker thread */
     fn send(&self, msg: Msg<V>) -> Response<()> {
         match self.sender.send(msg) {
-            Err(_) => Err(format!("failed to communicate with timely dataflow thread")),
+            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
             Ok(()) => {
                 /* Worker 0 may be blocked in `step_or_park`.  Unpark to ensure receipt of the
                  * message. */
@@ -2346,20 +2362,21 @@ impl<V: Val> Drop for RunningProgram<V> {
     }
 }
 
-
 // Versions of semijoin and antijoin operators that take arrangement instead of collection.
-fn semijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
-                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
+fn semijoin_arranged<G, K, V, R1, R2, T1, T2>(
+    arranged: &Arranged<G, T1>,
+    other: &Arranged<G, T2>,
+) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
 where
-    G:Scope,
-    G::Timestamp: Lattice+Ord,
-    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    G: Scope,
+    G::Timestamp: Lattice + Ord,
+    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
     T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
     T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
-    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
     T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
     T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
-    K: Data+Hashable,
+    K: Data + Hashable,
     V: Data,
     R2: Diff,
     R1: Diff + Mul<R2>,
@@ -2368,18 +2385,20 @@ where
     arranged.join_core(other, |k, v, _| Some((k.clone(), v.clone())))
 }
 
-fn antijoin_arranged<G,K,V,R1,R2,T1,T2>(arranged: &Arranged<G, T1>,
-                                        other: &Arranged<G, T2>) -> Collection<G, (K, V), R1>
+fn antijoin_arranged<G, K, V, R1, R2, T1, T2>(
+    arranged: &Arranged<G, T1>,
+    other: &Arranged<G, T2>,
+) -> Collection<G, (K, V), R1>
 where
     G: Scope,
-    G::Timestamp: Lattice+Ord,
-    T1: TraceReader<Key=K, Val=V, Time=G::Timestamp, R=R1> + Clone + 'static,
+    G::Timestamp: Lattice + Ord,
+    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
     T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
     T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
-    T2: TraceReader<Key=K, Val=(), Time=G::Timestamp, R=R2> + Clone + 'static,
+    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
     T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
     T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
-    K: Data+Hashable,
+    K: Data + Hashable,
     V: Data,
     R2: Diff,
     R1: Diff + Mul<R2, Output = R1>,

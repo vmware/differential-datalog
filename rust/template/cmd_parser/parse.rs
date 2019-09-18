@@ -25,7 +25,7 @@ pub enum Command {
     Exit,
     Echo(String),
     Sleep(BigInt),
-    Update(UpdCmd, bool)
+    Update(UpdCmd, bool),
 }
 
 named!(spaces<&[u8], ()>,
