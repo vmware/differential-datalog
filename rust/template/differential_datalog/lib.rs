@@ -2,7 +2,6 @@
     clippy::for_kv_map,
     clippy::get_unwrap,
     clippy::into_iter_on_ref,
-    clippy::let_and_return,
     clippy::needless_return,
     clippy::new_without_default,
     clippy::ptr_arg,
