@@ -2058,9 +2058,7 @@ impl<V: Val> RunningProgram<V> {
                     updates.push(Update::DeleteValue { relid, v: old });
                     Ok(())
                 }
-                hash_map::Entry::Vacant(_) => {
-                    return Err(format!("DeleteKey: key not found {:?}", k))
-                }
+                hash_map::Entry::Vacant(_) => Err(format!("DeleteKey: key not found {:?}", k)),
             },
             Update::Modify { relid, k, m } => match s.entry(k.clone()) {
                 hash_map::Entry::Occupied(mut oe) => {
@@ -2076,7 +2074,7 @@ impl<V: Val> RunningProgram<V> {
                     });
                     Ok(())
                 }
-                hash_map::Entry::Vacant(_) => return Err(format!("Modify: key not found {:?}", k)),
+                hash_map::Entry::Vacant(_) => Err(format!("Modify: key not found {:?}", k)),
             },
         }
     }
