@@ -55,14 +55,6 @@ impl<T> ArcVal<T> {
 }
 
 impl ArcVal<String> {
-    pub fn from_str(s: &str) -> Self {
-        Self {
-            x: Arc::new(s.to_string()),
-        }
-    }
-    /*pub fn string(&self) -> &String {
-        &*self.x
-    }*/
     pub fn str(&self) -> &str {
         &self.deref().as_str()
     }
