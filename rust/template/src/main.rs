@@ -28,8 +28,8 @@ use cmd_parser::*;
 use datalog_example_ddlog::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
-use std::io::Write;
 use num_traits::cast::ToPrimitive;
+use std::io::Write;
 use time::precise_time_ns;
 
 // uncomment to enable profiling
@@ -129,11 +129,11 @@ fn handle_cmd(
         Command::Echo(txt) => {
             println!("{}", txt);
             Ok(())
-        },
+        }
         Command::Sleep(ms) => {
             sleep(Duration::from_millis(ms.to_u64().unwrap()));
             Ok(())
-        },
+        }
         Command::Update(upd, last) => {
             match updcmd2upd(&upd) {
                 Ok(u) => upds.push(u),

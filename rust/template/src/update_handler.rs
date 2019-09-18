@@ -199,7 +199,14 @@ impl<V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler {
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
-        Box::new(move |relid, v, w|cb(cb_arg, relid, &v.clone().into_record() as *const record::Record, w as isize))
+        Box::new(move |relid, v, w| {
+            cb(
+                cb_arg,
+                relid,
+                &v.clone().into_record() as *const record::Record,
+                w as isize,
+            )
+        })
     }
 }
 
@@ -229,7 +236,7 @@ impl UpdateHandler<Value> for MTValMapUpdateHandler {
 impl MTUpdateHandler<Value> for MTValMapUpdateHandler {
     fn mt_update_cb(&self) -> Box<dyn CBFn<Value>> {
         let db = self.db.clone();
-        Box::new(move |relid, v, w|db.lock().unwrap().update(relid, v, w as isize))
+        Box::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w as isize))
     }
 }
 
@@ -567,7 +574,13 @@ impl<V: Val + IntoRecord> MTUpdateHandler<V> for ThreadUpdateHandler<V> {
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
         let channel = self.msg_channel.lock().unwrap().clone();
         Box::new(move |relid, v, w| {
-            channel.send(Msg::Update{relid, v: v.clone(), w: w as isize}).unwrap();
+            channel
+                .send(Msg::Update {
+                    relid,
+                    v: v.clone(),
+                    w: w as isize,
+                })
+                .unwrap();
         })
     }
 }
