@@ -1473,11 +1473,10 @@ impl<V: Val> Program<V> {
                 result = result.union(&rule.dependencies()).cloned().collect();
             }
         }
-        let filtered = result
-            .drain()
+        result
+            .into_iter()
             .filter(|d| rels.iter().all(|r| r.id != d.relid()))
-            .collect();
-        filtered
+            .collect()
     }
 
     fn xform_collection<'a, 'b, P, T>(
