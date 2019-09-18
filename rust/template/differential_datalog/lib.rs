@@ -5,7 +5,6 @@
     clippy::new_without_default,
     clippy::ptr_arg,
     clippy::ptr_offset_with_cast,
-    clippy::should_implement_trait,
     clippy::type_complexity
 )]
 
