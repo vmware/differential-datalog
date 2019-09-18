@@ -139,7 +139,7 @@ impl HDDlog {
 
     /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `Value`s.
      */
-    pub fn apply_updates<'a, V, I>(&self, upds: I) -> Result<(), String>
+    pub fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
     where
         V: Deref<Target = record::UpdCmd>,
         I: iter::Iterator<Item = V>,
