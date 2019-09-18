@@ -1,5 +1,4 @@
 #![allow(
-    clippy::expect_fun_call,
     clippy::for_kv_map,
     clippy::get_unwrap,
     clippy::into_iter_on_ref,
