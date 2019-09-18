@@ -2,7 +2,7 @@
 //! CLI), parsing them with cmd_parser crate, executing commands, and tracking database state in a
 //! map.
 
-#![allow(dead_code, non_snake_case, clippy::redundant_closure)]
+#![allow(dead_code, non_snake_case)]
 
 //#![feature(alloc_system)]
 //extern crate alloc_system;
