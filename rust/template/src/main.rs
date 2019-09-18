@@ -117,11 +117,11 @@ fn handle_cmd(
         Command::Echo(txt) => {
             println!("{}", txt);
             Ok(())
-        },
+        }
         Command::Sleep(ms) => {
             sleep(Duration::from_millis(ms.to_u64().unwrap()));
             Ok(())
-        },
+        }
         Command::Update(upd, last) => {
             match updcmd2upd(&upd) {
                 Ok(u) => upds.push(u),
