@@ -19,12 +19,12 @@ mod tests {
         // Construct right server, redirect Up table
         let prog2 = HDDlog::run(1, false, |_, _: &Record, _| {});
         let mut redirect2 = HashMap::new();
-        redirect2.insert(lr_left_Up, lr_right_Up);
+        redirect2.insert(P1Out, P2In);
         let s2 = server::DDlogServer::new(prog2, redirect2);
 
         // Stream Up table from left server
         let mut tables = HashSet::new();
-        tables.insert(lr_left_Up);
+        tables.insert(P1In);
         let mut stream = s1.add_stream(tables);
 
         // Right server subscribes to the stream
@@ -35,9 +35,10 @@ mod tests {
         };
 
         // Insert `true` to Left in left server
-        let rec = Record::Bool(true);
-        let table_id = RelIdentifier::RelId(lr_left_Left as usize);
-        let updates = &[UpdCmd::Insert(table_id, rec)];
+        let updates = &[UpdCmd::Insert(
+            RelIdentifier::RelId(P1In as usize),
+            Record::String("test".to_string()),
+        )];
 
         // Execute and transmit the update
         s1.on_start()?;
@@ -50,9 +51,10 @@ mod tests {
         // Test `unsubscribe`
         sub.unsubscribe();
 
-        let rec2 = Record::Bool(true);
-        let table_id2 = RelIdentifier::RelId(lr_left_Left as usize);
-        let updates2 = &[UpdCmd::Delete(table_id2, rec2)];
+        let updates2 = &[UpdCmd::Delete(
+            RelIdentifier::RelId(P1In as usize),
+            Record::String("test".to_string()),
+        )];
 
         s1.on_start()?;
         s1.on_updates(Box::new(

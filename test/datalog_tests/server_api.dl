@@ -1,21 +1,13 @@
 // A simple test for multiple DDlog programs communicating
-// with each other. Each program is in a file under ../lr/
+// with each other.
 
-import lr.left as l
-import lr.right as r
-import lr.up as u
-import lr.down as d
+input relation P1In[string]
+output relation P1Out[string]
 
-// The tables are connected as follows, where the output
-// of the RHS table is the input of the LHS table
+P1Out[s] :- P1In[s].
 
-// r.Up   :- u.Right
-// r.Down :- d.Right
-// u.Left :- l.Up
-// d.Left :- l.Down
 
-//     u
-//     |
-// l -< >- r
-//     |
-//     d
+input relation P2In[string]
+output relation P2Out[string]
+
+P2Out[s] :- P2In[s].
