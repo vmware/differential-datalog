@@ -113,8 +113,9 @@ before_deploy:
     # Include Rust dependencies for offline build
     - cd rust/template
     - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
+    - cp Cargo.full.toml Cargo.toml
     # Set relative path to vendor directory in `.cargo/config`
-    - cargo vendor -s Cargo.full.toml > config.tmp
+    - cargo vendor -s Cargo.toml > config.tmp
     - if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
     - echo "directory = \"vendor\"" >> config
     - cp -r vendor "../../$DIST_DIR/"
