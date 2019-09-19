@@ -1,3 +1,4 @@
+import ddlogapi.DDlogException;
 import org.apache.catalina.Context;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.util.*;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
+import ddlogapi.DDlogRecord;
 import ddlog.reach.*;
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
@@ -95,37 +97,13 @@ public class Main {
         return result;
     }
 
-    // A row of the "Edges" relation in DDlog
-    public static class Edges {
-        public int source;
-        public int dest;
-
-        public String toJson() {
-            return quote("table") + ": " + quote("Edges") + ", " +
-                    quote("source") + ": " + this.source + ", " +
-                    quote("dest") + ": " + this.dest;
-        }
-    }
-
-    // A row of the "Canonical" relation in DDlog
-    public static class Canonical {
-        public int node;
-        public int repr;
-
-        public String toJson() {
-            return quote("table") + ": " + quote("Canonical") + ", " +
-                    quote("node") + ": " + this.node + ", " +
-                    quote("repr") + ": " + this.repr;
-        }
-    }
-
     public static String quote(String s) {
         return "\"" + s + "\"";
     }
 
     // Upcall invoked by DDlog commit
     synchronized
-    private static void onCommit(DDlogCommand command) {
+    private static void onCommit(DDlogCommand<Object> command) {
         // Constructs a Json string that will be sent by the web server
         // to the client.
         try {
@@ -134,14 +112,31 @@ public class Main {
             } else {
                 Main.first = false;
             }
-            boolean insert = command.kind == DDlogCommand.Kind.Insert;
+            boolean insert = command.kind() == DDlogCommand.Kind.Insert;
             fromDDlog.append("{ " + quote("insert") + ": " + insert + ", ");
-            if (Main.ddlog.isCanonical(command.table)) {
-                Canonical c = command.getValue(Canonical.class);
-                fromDDlog.append(c.toJson());
+            if (Main.ddlog.isCanonical(command.relid())) {
+                CanonicalReader c = (CanonicalReader)command.value();
+                fromDDlog.append(quote("table"))
+                        .append(": ")
+                        .append(quote("Canonical"))
+                        .append(", ")
+                        .append(quote("node"))
+                        .append(": ")
+                        .append(c.node())
+                        .append(", ")
+                        .append(quote("repr"))
+                        .append(": ")
+                        .append(c.repr());
             } else {
-                Edges e = command.getValue(Edges.class);
-                fromDDlog.append(e.toJson());
+                EdgesReader e = (EdgesReader)command.value();
+                fromDDlog.append("\"table\": \"Edges\", ")
+                        .append(quote("source"))
+                        .append(": ")
+                        .append(e.source())
+                        .append(", ")
+                        .append(quote("dest"))
+                        .append(": ")
+                        .append(e.dest());
             }
             fromDDlog.append(" }");
         } catch (Exception ex) {
@@ -154,12 +149,12 @@ public class Main {
         private final DDlogAPI api;
         reachUpdateBuilder builder;
 
-        public DDlog() {
+        public DDlog() throws DDlogException {
             this.api = new DDlogAPI(1, null, false);
         }
 
-        void start() {
-            this.api.start();
+        void start() throws DDlogException {
+            this.api.transactionStart();
             this.builder = new reachUpdateBuilder();
         }
 
@@ -170,14 +165,12 @@ public class Main {
                 this.builder.delete_Edge((short)c.source, (short)c.destination);
         }
 
-        void commit() {
-            int res = this.builder.applyUpdates(this.api);
-            if (res != 0)
-                throw new RuntimeException("Error when applying updates");
-            this.api.commit_dump_changes(r -> Main.onCommit(r));
+        void commit() throws DDlogException {
+            this.builder.applyUpdates(this.api);
+            reachUpdateParser.transactionCommitDumpChanges(this.api, Main::onCommit);
         }
 
-        void stop() {
+        void stop() throws DDlogException {
             this.api.stop();
         }
 
@@ -189,7 +182,7 @@ public class Main {
 
     // Make a set of random changes in the graph.
     public static int counter = 0;
-    public static void randomChanges() {
+    public static void randomChanges() throws DDlogException {
         Main.ddlog.start();
         for (int i = 0; i < 1 + Main.graph.rnd.nextInt(Graph.N / 5); i++) {
             Change c = graph.generateChange(Main.counter % 2 == 0);
@@ -213,7 +206,11 @@ public class Main {
             String updates = Main.getChange();
             w.write(updates);
             // Make more random graph changes
-            Main.randomChanges();
+            try {
+                Main.randomChanges();
+            } catch (DDlogException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -230,11 +227,13 @@ public class Main {
         }
     }
 
-    public static DDlog ddlog = new DDlog();
+    public static DDlog ddlog;
     public static Graph graph;
 
     public static void main(String[] args)
-            throws LifecycleException, InterruptedException, ServletException {
+            throws LifecycleException, InterruptedException, ServletException, DDlogException {
+        Main.ddlog = new DDlog();
+
         Tomcat tomcat = new Tomcat();
         tomcat.setPort(8082);
 
