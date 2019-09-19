@@ -1,7 +1,7 @@
 package ddlogapi;
 
 /**
- * Update to an input or output relation. 
+ * Update to an input or output relation.
  *
  * <p>
  * DDlogCommand interface describes an update to a single record of a DDlog
@@ -27,11 +27,11 @@ package ddlogapi;
  * </p>
  */
 public interface DDlogCommand<R> {
-    public enum Kind {
+    enum Kind {
         DeleteVal,
         DeleteKey,
         Insert
-    };
+    }
 
     Kind kind();
 

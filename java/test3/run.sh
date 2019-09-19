@@ -10,26 +10,34 @@ else
     export CC=gcc
 fi
 
-case `uname -s` in
+PROG=span_string
+CLASSPATH=$(pwd)/../../test/datalog_tests/${PROG}_ddlog/flatbuf/java:$(pwd)/../ddlogapi.jar:$CLASSPATH
+
+case $(uname -s) in
     Darwin*)    SHLIBEXT=dylib; JDK_OS=darwin;;
     Linux*)     SHLIBEXT=so; JDK_OS=linux;;
-    *)          echo "Unsupported OS"; exit -1
+    *)          echo "Unsupported OS"; exit 1
 esac
 
-# Compile the span_uuid.dl DDlog program
-ddlog -i ../../test/datalog_tests/span_string.dl -j -L../../lib
+# Compile the ${PROG}.dl DDlog program
+ddlog -i ../../test/datalog_tests/${PROG}.dl -j -L../../lib
 # Compile the rust program; generates ../test/datalog_tests/span_ddlog/target/release/libspan_ddlog.a
-pushd ../../test/datalog_tests/span_string_ddlog
-cargo build --release
+pushd ../../test/datalog_tests/${PROG}_ddlog
+cargo build --release --features=flatbuf
 popd
+
+# Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
+# $CLASSPATH)
+(cd ../../test/datalog_tests/${PROG}_ddlog/flatbuf/java && javac $(ls ddlog/__"${PROG}"/*.java) && javac $(ls ddlog/"${PROG}"/*.java))
+
 # Build the Java library with the DDlog API
 make -C ..
-# Compile SpanTest.java and the generated Java file
-javac -cp .. SpanTest.java Span_string.java
-# Create a shared library containing all the native code: ddlogapi.c, libspan_string_ddlog.a
-${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L../../test/datalog_tests/span_string_ddlog/target/release/ -lspan_string_ddlog -o libddlogapi.${SHLIBEXT}
+# Compile SpanTest.java
+javac SpanTest.java
+# Create a shared library containing all the native code: ddlogapi.c, lib${PROG}_ddlog.a
+${CC} -shared -fPIC -I"${JAVA_HOME}"/include -I"${JAVA_HOME}"/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L../../test/datalog_tests/${PROG}_ddlog/target/release/ -l${PROG}_ddlog -o libddlogapi.${SHLIBEXT}
 # Run the java program pointing to the created shared library
-java -Djava.library.path=. -cp ../ddlogapi.jar:. SpanTest > spantest.dump
+java -Djava.library.path=. SpanTest > spantest.dump
 diff spantest.dump spantest.dump.expected
 # Cleanup generated files
-rm -rf *.class Span_string.java
+rm -rf ./*.class libddlogapi.${SHLIBEXT}

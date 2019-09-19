@@ -10,10 +10,10 @@ else
     export CC=gcc
 fi
 
-case `uname -s` in
+case $(uname -s) in
     Darwin*)    SHLIBEXT=dylib; JDK_OS=darwin;;
     Linux*)     SHLIBEXT=so; JDK_OS=linux;;
-    *)          echo "Unsupported OS"; exit -1
+    *)          echo "Unsupported OS"; exit 1
 esac
 
 if [ x$CLASSPATH == "x" ]; then
