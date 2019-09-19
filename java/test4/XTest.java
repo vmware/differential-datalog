@@ -1,12 +1,13 @@
 import java.util.*;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
-import ddlogapi.DDlogRecord;
+import ddlog.x.*;
+import ddlogapi.DDlogException;
 
 public class XTest {
     private final DDlogAPI api;
 
-    XTest() {
+    XTest() throws DDlogException {
         this.api = new DDlogAPI(1, null, false);
     }
 
@@ -14,33 +15,28 @@ public class XTest {
         System.out.println(command.toString());
     }
 
-    void run() {
-        X.R0 r0 = new X.R0(true);
-        DDlogCommand command0 = r0.createCommand(true);
+    void run() throws DDlogException {
+        xUpdateBuilder builder = new xUpdateBuilder();
+        builder.insert_R0(true);
         List<Boolean> l = Arrays.asList(true, true, false);
+        builder.insert_R1(0, l);
 
-        X.R1 r1 = new X.R1(0, l);
-        DDlogCommand command1 = r1.createCommand(true);
+        UUIDWriter u0 = builder.create_UUID(0, 1);
+        UUIDWriter u1 = builder.create_UUID(1, 2);
+        builder.insert_R2(u0, u1);
 
-        X.UUID u0 = new X.UUID(0, 1);
-        X.UUID u1 = new X.UUID(1, 2);
-        X.R2 r2 = new X.R2(u0, u1);
-        DDlogCommand command2 = r2.createCommand(true);
+        NWriter n0 = builder.create_N(true, true);
+        NWriter n1 = builder.create_N(false, false);
+        MWriter m = builder.create_M(n0, n1);
+        builder.create_R3(m);
 
-        X.N n0 = new X.N(true, true);
-        X.N n1 = new X.N(false, false);
-        X.M m = new X.M(n0, n1);
-        X.R3 r3 = new X.R3(m);
-        DDlogCommand command3 = r3.createCommand(true);
-
-        DDlogCommand[] commands = { command0, command1, command2, command3 };
-        this.api.start();
-        this.api.applyUpdates(commands);
-        this.api.commit_dump_changes(r -> this.onCommit(r));
+        this.api.transactionStart();
+        builder.applyUpdates(this.api);
+        this.api.transactionCommitDumpChanges(this::onCommit);
         this.api.stop();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws DDlogException {
         XTest test = new XTest();
         test.run();
     }
