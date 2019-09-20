@@ -1,0 +1,3 @@
+input relation R0(key: bit<16>, value: bit<16>) primary key (k) k.key
+output relation O0(key: bit<16>, value: bit<16>)
+O0(k, v) :- R0(k, v).
