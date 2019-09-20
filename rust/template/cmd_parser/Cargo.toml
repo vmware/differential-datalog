@@ -13,4 +13,4 @@ libc = "0.2.42"
 
 [lib]
 name = "cmd_parser"
-path = "./lib.rs"
+path = "lib.rs"

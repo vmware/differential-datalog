@@ -84,7 +84,7 @@ type TKeyEnter<'a, P, T, V> =
  * TODO: get rid of this and use `u16` directly when/if differential implements
  * `Lattice`, `Timestamp`, `PathSummary` traits for `u16`.
  */
-#[derive(PartialOrd, PartialEq, Eq, Debug, Default, Clone, Hash, Ord)]
+#[derive(Copy, PartialOrd, PartialEq, Eq, Debug, Default, Clone, Hash, Ord)]
 pub struct TS16 {
     pub x: u16,
 }
@@ -350,7 +350,7 @@ pub type AggFunc<V> = fn(&V, &[(&V, Weight)]) -> V;
 
 /// A Datalog relation or rule can depend on other relations and their
 /// arrangements.
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(Copy, PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Dep {
     Rel(RelId),
     Arr(ArrId),

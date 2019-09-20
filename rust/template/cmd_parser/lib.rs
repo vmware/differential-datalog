@@ -1,3 +1,5 @@
+#![warn(missing_debug_implementations)]
+
 extern crate libc;
 extern crate nom;
 extern crate num;

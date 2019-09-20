@@ -30,12 +30,13 @@ pub fn with_prof_context<T, F: FnOnce() -> T>(s: &str, f: F) -> T {
 
 /* Profiling information message sent by worker to profiling thread
  */
+#[derive(Debug)]
 pub enum ProfMsg {
     TimelyMessage(Vec<((Duration, usize, TimelyEvent), String)>),
     DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Profile {
     addresses: SequenceTrie<usize, usize>,
     names: FnvHashMap<usize, String>,

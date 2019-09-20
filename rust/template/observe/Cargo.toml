@@ -6,4 +6,4 @@ edition = "2018"
 
 [lib]
 name = "observe"
-path = "./lib.rs"
+path = "lib.rs"

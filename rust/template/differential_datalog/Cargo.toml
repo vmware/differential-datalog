@@ -27,4 +27,4 @@ default = []
 
 [lib]
 name = "differential_datalog"
-path = "./lib.rs"
+path = "lib.rs"
