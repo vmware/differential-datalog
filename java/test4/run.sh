@@ -25,12 +25,13 @@ pushd ${PROG}_ddlog
 cargo build --features=flatbuf
 popd
 
+# Build the Java library with the DDlog API
+make -C ..
+
 # Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
 # $CLASSPATH)
 (cd ${PROG}_ddlog/flatbuf/java && javac $(ls ddlog/__"${PROG}"/*.java) && javac $(ls ddlog/"${PROG}"/*.java))
 
-# Build the Java library with the DDlog API
-make -C ..
 # Compile XTest.java
 javac XTest.java
 # Create a shared library containing all the native code: ddlogapi.c, libspan_string_ddlog.a

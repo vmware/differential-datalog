@@ -10,10 +10,22 @@ def exit(code):
     sys.exit(code)
 
 def main():
-    batchsize = 5
-    start = 190
+    if len(sys.argv) >= 2:
+        start = int(sys.argv[1])
+    else:
+        start = 0
 
-    while True:
+    if len(sys.argv) >= 3:
+        end = int(sys.argv[2])
+    else:
+        end = 0xffffffff
+
+    if len(sys.argv) >= 4:
+        batchsize = int(sys.argv[3])
+    else:
+        batchsize = 5
+
+    while start <= end:
         print "Running from", start
         code = os.system("./run-souffle-tests.py -s " + str(start) + " -r " + str(batchsize))
         if code == (2 << 8):

@@ -187,6 +187,7 @@ fn run(mut hddlog: HDDlog, print_deltas: bool) -> i32 {
     }
 }
 
+#[allow(clippy::redundant_closure)]
 pub fn main() {
     //println!("sizeof(Value) = {}", mem::size_of::<Value>());
     let parser = opts! {
