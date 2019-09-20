@@ -16,7 +16,7 @@
 /* Error message returned by DDlog. */
 _Thread_local char* err_msg = NULL;
 
-/* 
+/*
  * `vasprintf` implementation copied from
  * https://github.com/littlstar/asprintf.c (MIT license)
  */
@@ -38,7 +38,7 @@ static int _vasprintf (char **str, const char *fmt, va_list args) {
   return size;
 }
 
-/* 
+/*
  * Callback invoked by DDlog on error.
  *
  * Record error message in a thread-local variable so that it can later be
@@ -60,7 +60,8 @@ static void throwDDlogException(JNIEnv* env, const char* m) {
     if (eclass) {
         (*env)->ThrowNew(env, eclass, msg);
     } else {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/Exception"), msg);
+        eclass = (*env)->FindClass(env, "java/lang/Exception");
+        (*env)->ThrowNew(env, eclass, msg);
     }
     err_msg = NULL;
 }
@@ -72,12 +73,13 @@ static void throwIOException(JNIEnv* env, const char * fmt, ...) {
     int nbytes = _vasprintf(&msg, fmt, ap);
     va_end(ap);
 
+    jclass eclass = (*env)->FindClass(env, "java/io/IOException");
     if (nbytes >= 0) {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/io/IOException"), msg);
+        (*env)->ThrowNew(env, eclass, msg);
         free(msg);
     } else {
-        (*env)->ThrowNew(env, (*env)->FindClass(env, "java/io/IOException"),
-                "IO exception occurred, but the error message could not be displayed.");
+        (*env)->ThrowNew(env, eclass,
+                         "IO exception occurred, but the error message could not be displayed.");
     }
 }
 
@@ -92,7 +94,7 @@ static void throwOutOfMemException(JNIEnv* env, const char * fmt, ...) {
         throwDDlogException(env, msg);
         free(msg);
     } else {
-        throwDDlogException(env, 
+        throwDDlogException(env,
                 "Out-of-memory exception occurred, but the error message could not be displayed.");
     }
 }
@@ -286,7 +288,8 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1start(
     JNIEnv * env, jobject obj, jlong handle) {
-    if (ddlog_transaction_start((ddlog_prog)handle) < 0) {
+    int code = ddlog_transaction_start((ddlog_prog)handle);
+    if (code < 0) {
         throwDDlogException(env, NULL);
     }
 }
