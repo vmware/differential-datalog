@@ -216,7 +216,7 @@ impl HDDlog {
         self.prog.lock().unwrap().clear_relation(table)
     }
 
-    pub fn dump_table<F>(&self, table: usize, cb: Option<F>) -> Result<(), &str>
+    pub fn dump_table<F>(&self, table: usize, cb: Option<F>) -> Result<(), &'static str>
     where
         F: Fn(&record::Record) -> bool,
     {
