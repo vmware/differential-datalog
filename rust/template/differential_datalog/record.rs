@@ -118,7 +118,7 @@ impl fmt::Display for Record {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(Copy, Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum CollectionKind {
     Unknown,
     Vector,

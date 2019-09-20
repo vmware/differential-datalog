@@ -15,5 +15,5 @@ features = ["u128"]
 
 [lib]
 name = "ddlog_ovsdb_adapter"
-path = "./lib.rs"
+path = "lib.rs"
 crate-type = ["staticlib", "rlib"]

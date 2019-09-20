@@ -7,7 +7,7 @@ use num::bigint::*;
 use num::Num;
 use std::borrow::Cow;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Copy, Debug, PartialEq, Eq, Clone)]
 pub enum ProfileCmd {
     CPU(bool),
 }

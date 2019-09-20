@@ -89,7 +89,7 @@ impl<V> Clone for Box<dyn IMTUpdateHandler<V>> {
 
 /* A no-op `UpdateHandler` implementation
  */
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct NullUpdateHandler {}
 
 impl NullUpdateHandler {
@@ -147,7 +147,7 @@ impl<V: Val + IntoRecord, F: Callback> MTUpdateHandler<V> for CallbackUpdateHand
 
 /* `UpdateHandler` implementation that invokes user-provided C function.
  */
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct ExternCUpdateHandler {
     cb: ExternCCallback,
     cb_arg: libc::uintptr_t,

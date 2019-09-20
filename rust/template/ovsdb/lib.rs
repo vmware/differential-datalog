@@ -1,6 +1,7 @@
 //! Parse OVSDB database update messages and convert them into DDlog table update commands
 
 #![allow(clippy::map_clone)]
+#![warn(missing_copy_implementations, missing_debug_implementations)]
 extern crate differential_datalog;
 extern crate num;
 extern crate serde_json;

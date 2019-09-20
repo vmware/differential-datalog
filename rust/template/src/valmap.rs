@@ -13,7 +13,7 @@ use super::*;
 
 /* Stores a set of changes to output tables.
  */
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct DeltaMap {
     map: BTreeMap<RelId, BTreeMap<Value, isize>>,
 }

@@ -1,4 +1,8 @@
-#[warn(missing_docs)]
+#![warn(
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs
+)]
 
 //! A crate providing a publish-subscribe infrastructure for
 //! differential datalog program.

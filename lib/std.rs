@@ -941,7 +941,7 @@ pub fn std_group_sum<A: ops::Add + ops::AddAssign>(g: &std_Group<A>) -> A {
 }
 
 /* Tuples */
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+#[derive(Copy, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct tuple0;
 
 impl FromRecord for tuple0 {
