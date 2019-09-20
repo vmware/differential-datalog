@@ -82,7 +82,7 @@ public class DDlogAPI {
     static native long ddlog_delete_key_cmd(int table, long recordHandle);
 
     // This is a handle to the program; it wraps a void*.
-    private final long hprog;
+    private long hprog;
     // This stores a C pointer which is deallocated when the program stops.
     public long callbackHandle;
 
@@ -109,6 +109,11 @@ public class DDlogAPI {
     // when removing on changing the callback.
     private static Map<Integer, Long> logCBInfo = new HashMap<>();
 
+    private void checkHandle() throws DDlogException {
+        if (this.hprog == 0) {
+            throw new DDlogException("DDlogAPI method invoked after the DDlog program has terminated.");
+        }
+    }
     /**
      * Create an API to access the DDlog program.
      * @param workers   number of threads the DDlog program can use
@@ -144,7 +149,7 @@ public class DDlogAPI {
     /**
      * Get DDlog relation ID by name.
      *
-     * See <code>ddlog.h: ddlog_get_table_id()</code> 
+     * See <code>ddlog.h: ddlog_get_table_id()</code>
      */
     public int getTableId(String table) {
         if (!this.tableId.containsKey(table)) {
@@ -158,12 +163,13 @@ public class DDlogAPI {
     /**
      * Record commands issued to DDlog via this API in a file.
      *
-     * See <code>ddlog.h: ddlog_record_commands()</code> 
+     * See <code>ddlog.h: ddlog_record_commands()</code>
      *
      * @param filename File to record command to or <code>null</code> to stop recording.
      * @param append Set to <code>true</code> to open the file in append mode.
      */
     public void recordCommands(String filename, boolean append) throws DDlogException, IOException {
+        checkHandle();
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
@@ -177,48 +183,54 @@ public class DDlogAPI {
     }
 
     public void dumpInputSnapshot(String filename, boolean append) throws DDlogException, IOException {
+        checkHandle();
         DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
     }
-   
+
     /**
      * Stops the DDlog program; deallocate all resources.
      *
-     * See <code>ddlog.h: ddlog_stop()</code> 
+     * See <code>ddlog.h: ddlog_stop()</code>
      */
     public void stop() throws DDlogException {
+        checkHandle();
         /* Close the file handle. */
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
         }
         this.ddlog_stop(this.hprog, this.callbackHandle);
+        this.hprog = 0;
     }
 
     /**
      * Start a transaction.
      *
-     * See <code>ddlog.h: ddlog_start()</code> 
+     * See <code>ddlog.h: ddlog_start()</code>
      */
     public void transactionStart() throws DDlogException {
+        checkHandle();
         DDlogAPI.ddlog_transaction_start(this.hprog);
     }
 
     /**
      * Commit a transaction.
      *
-     * See <code>ddlog.h: ddlog_transaction_commit()</code> 
+     * See <code>ddlog.h: ddlog_transaction_commit()</code>
      */
     public void transactionCommit() throws DDlogException {
+        checkHandle();
         DDlogAPI.ddlog_transaction_commit(this.hprog);
     }
 
     /**
      * Commit a transaction; invoke <code>callback</code> for each inserted or deleted record in each output relation.
      *
-     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes()</code> 
+     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes()</code>
      */
     public void transactionCommitDumpChanges(Consumer<DDlogCommand<DDlogRecord>> callback)
             throws DDlogException {
+        checkHandle();
         String onDelta = callback == null ? null : "onDelta";
         this.deltaCallback = callback;
         this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
@@ -227,9 +239,10 @@ public class DDlogAPI {
     /**
      * Remove all records from an input relation.
      *
-     * See <code>ddlog.h: ddlog_clear_relation()</code> 
+     * See <code>ddlog.h: ddlog_clear_relation()</code>
      */
-    public int clearRelation(int relid) {
+    public int clearRelation(int relid) throws DDlogException {
+        checkHandle();
         return ddlog_clear_relation(this.hprog, relid);
     }
 
@@ -265,19 +278,20 @@ public class DDlogAPI {
     /**
      * Commit transaction, serializing changes to a FlatBuffer.
      *
-     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes_to_flatbuf()</code> 
+     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes_to_flatbuf()</code>
      *
      * This method is for use by the <code>UpdateParser</code> class only and should not
      * be invoked by user code.
      */
     public void transactionCommitDumpChangesToFlatbuf(FlatBufDescr fb) throws DDlogException {
+        checkHandle();
         this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
     }
 
     /**
      * Deallocate flabuffer returned by <code>transactionCommitDumpChangesToFlatbuf</code>.
      *
-     * See <code>ddlog.h: ddlog_flatbuf_free()</code> 
+     * See <code>ddlog.h: ddlog_flatbuf_free()</code>
      *
      * This method is for use by the <code>UpdateParser</code> class only and should not
      * be invoked by user code.
@@ -289,18 +303,20 @@ public class DDlogAPI {
     /**
      * Discard all buffered updates and abort the current transaction.
      *
-     * See <code>ddlog.h: ddlog_transaction_rollback()</code> 
+     * See <code>ddlog.h: ddlog_transaction_rollback()</code>
      */
     public void transactionRollback() throws DDlogException {
+        checkHandle();
         DDlogAPI.ddlog_transaction_rollback(this.hprog);
     }
 
     /**
      * Apply updates to DDlog input relations.
      *
-     * See <code>ddlog.h: ddlog_apply_updates()</code> 
+     * See <code>ddlog.h: ddlog_apply_updates()</code>
      */
     public void applyUpdates(DDlogRecCommand[] commands) throws DDlogException {
+        checkHandle();
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
@@ -316,6 +332,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void applyUpdatesFromFlatBuf(ByteBuffer buf) throws DDlogException {
+        checkHandle();
         ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
     }
 
@@ -335,6 +352,7 @@ public class DDlogAPI {
      * storeData parameter set to true.
      */
     public void dumpTable(String table, Consumer<DDlogRecord> callback) throws DDlogException {
+        checkHandle();
         int id = this.getTableId(table);
         if (id == -1)
             throw new RuntimeException("Unknown table " + table);
@@ -348,7 +366,8 @@ public class DDlogAPI {
      *
      * See <code>ddlog.h: ddlog_profile()</code>
      */
-    public String profile() {
+    public String profile() throws DDlogException {
+        checkHandle();
         return DDlogAPI.ddlog_profile(this.hprog);
     }
 
@@ -358,11 +377,12 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_enable_cpu_profiling()</code>
      */
     public void enableCpuProfiling(boolean enable) throws DDlogException {
+        checkHandle();
         DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
     }
 
     /**
-     * Control DDlog logging behavior 
+     * Control DDlog logging behavior
      *
      * See detailed explanation of the logging API in <code>lib/log.dl</code>.
      *

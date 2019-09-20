@@ -438,7 +438,7 @@ public class Test {
         } catch (IllegalStateException e) {}
     }
 
-    void clear() {
+    void clear() throws DDlogException {
         this.api.clearRelation(flatbufTestRelation.BI);
         this.api.clearRelation(flatbufTestRelation.CI);
         this.api.clearRelation(flatbufTestRelation.DI);
