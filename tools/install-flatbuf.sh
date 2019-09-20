@@ -22,4 +22,5 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version 1.11.0" ]; then
     cd ..
 fi
 
+mkdir -p ~/.local/bin/
 ln -f -s `pwd`/flatbuffers/flatc ~/.local/bin/flatc

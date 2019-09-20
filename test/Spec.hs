@@ -209,7 +209,7 @@ compilerTest progress file cli_args = do
     p <- (maybe "" id) <$> lookupEnv "PATH"
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
                           cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
-                          env = Just [("CLASSPATH", (dir </> "../../java") ++ classpath),
+                          env = Just [("CLASSPATH", (dir </> "../../java:.") ++ classpath),
                                       ("PATH", p)]
                      }
     (jcode, jstdo, jstde) <- readCreateProcessWithExitCode javac_proc ""

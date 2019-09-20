@@ -1,0 +1,116 @@
+default:
+    image: ddlog/gitlab-ci:latest
+
+# Template for tests that expect ddlog to be in the $PATH.
+.install-ddlog:
+    before_script:
+        - stack install
+
+# Test Rust template only.
+test-rust:
+    script:
+        - (cd rust/template/ && cargo fmt --all -- --check)
+        - (cd rust/template/ && cargo clippy --all -- -D warnings)
+        - (cd rust/template/ && cargo test --all)
+
+# Run individual stack-based tests, when possible combining them with Java tests
+# that depend on the same DDlog program.
+test-tutorial:
+    script: stack --no-terminal test --ta "-p tutorial"
+
+test-simple:
+    script: stack --no-terminal test --ta "-p simple"
+
+test-modules:
+    script: stack --no-terminal test --ta "-p modules"
+
+test-ovn-ftl:
+    script: stack --no-terminal test --ta "-p ovn_ftl"
+
+test-ovn:
+    script: stack test --ta '--pattern "$(NF) == \"generate ovn\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"ovn\")"'
+
+test-path:
+    script:
+        - stack --no-terminal test --ta "-p fail"
+        - stack --no-terminal test --ta "-p path"
+
+test-souffle0:
+    script:
+        - stack --no-terminal test --ta "-p souffle0"
+
+test-redist:
+    extends: .install-ddlog
+    script:
+        - stack --no-terminal test --ta "-p redist"
+        - (cd java/test1 && ./run.sh)
+        - (cd java/test_flatbuf && ./run.sh)
+
+test-redist:
+    extends: .install-ddlog
+    script:
+        - stack --no-terminal test --ta "-p span_string"
+        - (cd java/test3 && ./run.sh)
+
+# All other Java tests.
+test-redist:
+    extends: .install-ddlog
+    script:
+        - stack --no-terminal test --ta "-p span_uuid"
+        - (cd java/test && ./run.sh)
+
+test-java1:
+    extends: .install-ddlog
+    script:
+        - (cd java/test2 && ./run.sh)
+        - (cd java/test4 && ./run.sh)
+
+# these tests are currently failing (#372)
+#test-java2:
+#    extends: .install-ddlog
+#    script:
+#        - (cd java/test5 && ./run.sh)
+#        - (cd java/test6 && ./run.sh)
+
+test-flatbuf:
+    extends: .install-ddlog
+    script:
+        - (cd java/test_flatbuf1 && ./run.sh)
+
+# Tests from the souffle github repo.
+test-imported-souffle-tests1:
+    extends: .install-ddlog
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 0 24)
+
+# Slow
+#test-imported-souffle-tests2:
+#    extends: .install-ddlog
+#    script:
+#        - (cd test && ./run-souffle-tests-in-batches.py 25 49)
+
+# Times out or runs out of memory on gitlab
+#test-imported-souffle-tests3:
+#    extends: .install-ddlog
+#    script:
+#        - (cd test && ./run-souffle-tests-in-batches.py 50 74)
+
+test-imported-souffle-tests4:
+    extends: .install-ddlog
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 75 99)
+
+test-imported-souffle-tests5:
+    extends: .install-ddlog
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 100 124)
+
+test-imported-souffle-tests6:
+    extends: .install-ddlog
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 125 149)
+
+test-imported-souffle-tests7:
+    extends: .install-ddlog
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 150 175)
