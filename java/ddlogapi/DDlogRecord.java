@@ -63,7 +63,7 @@ public class DDlogRecord {
      * Creates an object where the handle is shared with other
      * objects.
      */
-    public static DDlogRecord fromSharedHandle(long handle) {
+    static DDlogRecord fromSharedHandle(long handle) {
         DDlogRecord result = fromHandle(handle);
         result.shared = true;
         return result;

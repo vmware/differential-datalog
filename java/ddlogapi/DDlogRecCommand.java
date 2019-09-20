@@ -24,6 +24,8 @@ public class DDlogRecCommand implements DDlogCommand<DDlogRecord> {
     private DDlogRecord _value;
 
     public DDlogRecCommand(final Kind kind, final int relid, final DDlogRecord value) {
+        if (value == null)
+            throw new NullPointerException("DDlogRecord is null");
         this._kind = kind;
         this._relid = relid;
         this._value = value;
@@ -31,6 +33,8 @@ public class DDlogRecCommand implements DDlogCommand<DDlogRecord> {
 
     public DDlogRecCommand(final Kind kind, final int relid, final Object value)
             throws IllegalAccessException, DDlogException {
+        if (value == null)
+            throw new NullPointerException("DDlogRecord is null");
         this._kind = kind;
         this._relid = relid;
         this._value = DDlogRecord.convertObject(value);
