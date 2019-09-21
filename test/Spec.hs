@@ -57,15 +57,15 @@ import Language.DifferentialDatalog.FlatBuffer
 main :: IO ()
 main = do
     progress <- isJust <$> lookupEnv "DDLOG_TEST_PROGRESS"
-    tests <- goldenTests progress
+    tests <- allTests progress
     defaultMain tests
 
 cargo_build_flags :: IO [[Char]]
 cargo_build_flags = do
   (maybe [] (return)) <$> lookupEnv "STACK_CARGO_FLAGS"
 
-goldenTests :: Bool -> IO TestTree
-goldenTests progress = do
+allTests :: Bool -> IO TestTree
+allTests progress = do
   -- locate datalog files
   dlFiles <- findByExtensionNonRec [".dl"] "./test/datalog_tests"
   -- some of the tests may have accompanying .dat files
