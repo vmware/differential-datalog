@@ -42,9 +42,11 @@ packages:
 # extra-deps: []
 
 extra-deps:
-# We need githash 0.1.3.3 in order to have git-worktree(1) support. It
-# needs to be whitelisted here until we upgrade our resolver.
+- ansi-terminal-0.10
+- ansi-wl-pprint-0.6.9
 - githash-0.1.3.3
+- graphviz-2999.20.0.3
+- tasty-1.2.3
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

@@ -98,7 +98,7 @@ tests:
     - -Werror
     dependencies:
     - differential-datalog
-    - tasty
+    - tasty >= 1.2
     - tasty-hunit
     - tasty-golden
     - filepath
