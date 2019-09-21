@@ -27,7 +27,7 @@ public class XTest {
             System.err.println("Message=" + message);
         }
         if (message == null)
-            throw new RuntimeException("No exception receieved!");
+            throw new RuntimeException("No exception received!");
         if (!message.contains(expected))
             throw new RuntimeException("Error does not look like `" + expected + "'\n" +
                                        "error is `" + message + "'");
@@ -50,7 +50,7 @@ public class XTest {
             this.expectFail("no transaction in progress", () -> this.api.transactionCommitDumpChanges(this::onCommit) );
         }
         {
-            // Apply the same updates twice
+            // Use the same builder twice
             xUpdateBuilder builder = new xUpdateBuilder();
             this.api.transactionStart();
             builder.applyUpdates(this.api);
