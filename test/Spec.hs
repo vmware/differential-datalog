@@ -77,18 +77,33 @@ goldenTests progress = do
             | (file:_) <- inFiles
             , let expect = file -<.> "ast.expected"
             , let output = file -<.> "ast"]
-  let compiler_tests = testGroup "compiler tests" $ catMaybes $
+  let generated_tests = testGroup "generated tests" $ concat $
+          [ [testCase generate_name $ generateDDLogRust True file ["staticlib"]
+            , after AllSucceed generate_pattern $ compilerTests progress file files
+            , after AllSucceed generate_pattern $ unitTests (dropExtension file)]
+            | (file:files) <- inFiles
+            , let base = dropExtension (takeBaseName file)
+              -- the name of the "test" generating the DDLog Rust project,
+              -- which is a dependency used by other tests
+            , let generate_name = "generate " ++ base
+            , let generate_pattern = "$(NF) == \"" ++ generate_name ++ "\""
+          ]
+
+  return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
+
+compilerTests :: Bool -> FilePath -> [FilePath] -> TestTree
+compilerTests progress file files = do
+    testGroup "compiler tests" $ catMaybes $
           [ if shouldFail $ file
                then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress True file [] ["staticlib"])
-            | file:files <- inFiles
-            , let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
+               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
+            | let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
-  let unit_tests = testGroup "unit tests" $
-          [ testCase dir $ unitTest dir
-            | (file:_) <- inFiles
-            , let dir = dropExtension file]
-  return $ testGroup "ddlog tests" [parser_tests, compiler_tests, unit_tests, souffleTests progress]
+
+unitTests :: FilePath -> TestTree
+unitTests dir = do
+    testGroup "unit tests" $
+          [ testCase (takeBaseName dir) $ unitTest dir ]
 
 sOUFFLE_BASE :: String
 sOUFFLE_BASE = "./test"
@@ -112,7 +127,9 @@ souffleTest testdir progress =
         [ goldenVsFiles testdir
           [testdir </> "souffle.dump.expected.gz"]
           [testdir </> "souffle.dump"]
-          $ do {convertSouffle testdir progress; compilerTest progress True (testdir </> "souffle.dl") ["--no-print", "-w", "1"] ["cdylib"]}]
+          $ do {convertSouffle testdir progress;
+                generateDDLogRust True (testdir </> "souffle.dl") ["cdylib"];
+                compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"]}]
 
 convertSouffle :: String -> Bool -> IO ()
 convertSouffle testdir progress = do
@@ -177,21 +194,14 @@ parserTest fname = do
 
 -- Run Datalog compiler on spec in 'fname'.
 --
--- * Creates Cargo project in a directory obtained by removing file
--- extension from 'fname'.
---
 -- * If a .dat file exists for the given test, dump its content to the
 -- compiled datalog program, producing .dump and .err files
-compilerTest :: Bool -> Bool -> FilePath -> [String] -> [String] -> IO ()
-compilerTest progress java file cli_args crate_types = do
+compilerTest :: Bool -> FilePath -> [String] -> IO ()
+compilerTest progress file cli_args = do
     fname <- makeAbsolute file
-    body <- readFile fname
     let specname = takeBaseName fname
-    (prog, rs_code, toml_code) <- parseValidate fname java body
-    -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultCompilerConfig { cconfJava = java }
-    compile prog specname rs_code toml_code dir crate_types
+
     -- compile generated Java code
     classpath <- (maybe "" (":" ++ )) <$> lookupEnv "CLASSPATH"
     p <- (maybe "" id) <$> lookupEnv "PATH"
@@ -234,6 +244,21 @@ withProgress True action = do
     res <- action
     killThread hprogress
     return res
+
+-- Generate, but do not (yet) compile, a DDLog Rust project.
+--
+-- * Creates Cargo project in a directory obtained by removing file
+-- extension from 'file'.
+generateDDLogRust :: Bool -> FilePath -> [String] -> IO ()
+generateDDLogRust java file crate_types = do
+    fname <- makeAbsolute file
+    body <- readFile fname
+    let specname = takeBaseName fname
+    (prog, rs_code, toml_code) <- parseValidate fname java body
+    -- generate Rust project
+    let dir = takeDirectory fname
+    let ?cfg = defaultCompilerConfig { cconfJava = java }
+    compile prog specname rs_code toml_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists
 cliTest :: Bool -> FilePath -> String -> FilePath -> [String] -> IO ()
