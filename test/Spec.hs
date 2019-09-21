@@ -224,7 +224,7 @@ compilerTest progress file cli_args = do
     (ccode, cstdo, cstde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (ccode /= ExitSuccess) $ do
         errorWithoutStackTrace $ "cargo build failed with exit code " ++ show ccode ++
-                                 "\nstdout:\n" ++ cstde ++
+                                 "\nstderr:\n" ++ cstde ++
                                  "\n\nstdout:\n" ++ cstdo
 
     cliTest progress fname specname dir cli_args
