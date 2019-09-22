@@ -40,3 +40,23 @@ From 53 Insert WO{std_Some{B{true}}}
 From 53 Insert WO{std_None{}}
 From 55 Insert XO{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
 From 57 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}]}
+From 72 Insert "Hello, world!"
+From 72 Insert "Привіт!"
+From 73 Insert false
+From 73 Insert true
+From 74 Insert "Ref<IString>"
+From 75 Insert {A{"val2"}=>"v2"}
+From 76 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+From 77 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+From 78 Insert 0
+From 78 Insert 1000
+From 79 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+From 80 Insert ["Foo
+", "	bar"]
+From 81 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
+From 82 Insert std_Some{"ZI6"}
+From 82 Insert std_None{}
+From 83 Insert "ZI7"
+From 83 Insert "♛"
+From 84 Insert 100
+From 85 Insert 100

@@ -1,3 +1,5 @@
+import intern
+
 input relation BI(b: bool)
 output relation BO(b: bool)
 BO(b) :- BI(b).
@@ -119,3 +121,61 @@ typedef VOT = Vec<Option<tuple>>
 input relation YI(v: VOT)
 output relation YO(v: VOT)
 YO(v) :- YI(v).
+
+input relation ZI0[string]
+output relation ZO0[string]
+ZO0[v] :- ZI0[v].
+
+input relation ZI1[bool]
+output relation ZO1[bool]
+ZO1[v] :- ZI1[v].
+
+input relation ZI2[bit<32>]
+output relation ZO2[bit<32>]
+ZO2[v] :- ZI2[v].
+
+input relation ZI3[Many]
+output relation ZO3[Many]
+ZO3[v] :- ZI3[v].
+
+input relation ZI4[Vec<string>]
+output relation ZO4[Vec<string>]
+ZO4[v] :- ZI4[v].
+
+input relation ZI5[Map<string, Many>]
+output relation ZO5[Map<string, Many>]
+ZO5[v] :- ZI5[v].
+
+input relation ZI6[Option<string>]
+output relation ZO6[Option<string>]
+ZO6[v] :- ZI6[v].
+
+input relation ZI7[Ref<string>]
+output relation ZO7[Ref<string>]
+ZO7[v] :- ZI7[v].
+
+input relation ZI8[Ref<bit<25>>]
+output relation ZO8[Ref<bit<25>>]
+ZO8[v] :- ZI8[v].
+
+input relation ZI9[Ref<Ref<bit<25>>>]
+output relation ZO9[Ref<Ref<bit<25>>>]
+ZO9[v] :- ZI9[v].
+
+input relation ZI10[Ref<IString>]
+output relation ZO10[Ref<IString>]
+ZO10[v] :- ZI10[v].
+
+input relation ZI11[Map<Many, string>]
+output relation ZO11[Map<Many, string>]
+ZO11[v] :- ZI11[v].
+
+input relation ZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
+output relation ZO12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
+ZO12[v] :- ZI12[v].
+
+typedef Generic<'A, 'B> = Generic{f0: string, f1: 'A, f2: 'B}
+
+input relation ZI13[Generic<Ref<tuple>, Many>]
+output relation ZO13[Generic<Ref<tuple>, Many>]
+ZO13[v] :- ZI13[v].
