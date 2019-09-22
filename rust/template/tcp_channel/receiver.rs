@@ -3,6 +3,7 @@ use std::io::BufReader;
 use std::io::Error;
 use std::net::SocketAddr;
 use std::net::TcpListener;
+use std::net::TcpStream;
 use std::net::ToSocketAddrs;
 use std::ops::DerefMut;
 use std::os::unix::io::AsRawFd;
@@ -148,38 +149,48 @@ where
                 }
             };
 
-            let mut reader = BufReader::new(socket);
-            loop {
-                let message = match deserialize_from(&mut reader) {
-                    Ok(m) => m,
-                    Err(_) => {
-                        if let Fd::Closed = *fd.lock().unwrap() {
-                            return Ok(());
-                        }
-                        // TODO: Can/should we log the error?
-                        continue;
-                    }
-                };
+            Self::process(socket, fd, observer)
+        })
+    }
 
-                // If there is no observer we just drop the data, which
-                // is seemingly the only reasonable behavior given that
-                // observers can come and go by virtue of our API
-                // design.
-                if let Some(ref mut observer) = observer.lock().unwrap().deref_mut() {
-                    // TODO: Need to handle those errors eventually (or
-                    //       perhaps we will end up with method
-                    //       signatures that don't allow for errors?).
-                    match message {
-                        Message::Start => observer.on_start().unwrap(),
-                        Message::Updates(updates) => {
-                            observer.on_updates(Box::new(updates.into_iter())).unwrap()
-                        }
-                        Message::Commit => observer.on_commit().unwrap(),
-                        Message::Complete => observer.on_completed().unwrap(),
+    /// Process data from a `TcpSender`, relaying messages to a
+    /// connected `Observer`, if any, or dropping them.
+    fn process(
+        socket: TcpStream,
+        fd: Arc<Mutex<Fd>>,
+        observer: Arc<Mutex<Option<ObserverBox<T, String>>>>,
+    ) -> Result<(), String> {
+        let mut reader = BufReader::new(socket);
+        loop {
+            let message = match deserialize_from(&mut reader) {
+                Ok(m) => m,
+                Err(_) => {
+                    if let Fd::Closed = *fd.lock().unwrap() {
+                        return Ok(());
                     }
+                    // TODO: Can/should we log the error?
+                    continue;
+                }
+            };
+
+            // If there is no observer we just drop the data, which
+            // is seemingly the only reasonable behavior given that
+            // observers can come and go by virtue of our API
+            // design.
+            if let Some(ref mut observer) = observer.lock().unwrap().deref_mut() {
+                // TODO: Need to handle those errors eventually (or
+                //       perhaps we will end up with method
+                //       signatures that don't allow for errors?).
+                match message {
+                    Message::Start => observer.on_start().unwrap(),
+                    Message::Updates(updates) => {
+                        observer.on_updates(Box::new(updates.into_iter())).unwrap()
+                    }
+                    Message::Commit => observer.on_commit().unwrap(),
+                    Message::Complete => observer.on_completed().unwrap(),
                 }
             }
-        })
+        }
     }
 
     /// Retrieve the address we are listening on.
