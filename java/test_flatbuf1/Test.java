@@ -302,6 +302,110 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " YO{[" + String.join(", ", strings) + "]}");
                 break;
             }
+            // output relation ZO0[string]
+            case flatbufTestRelation.ZO0: {
+                String v = (String)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
+                break;
+            }
+            // output relation ZO1[bool]
+            case flatbufTestRelation.ZO1: {
+                Boolean v = (Boolean)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + v);
+                break;
+            }
+            // output relation ZO2[bit<32>]
+            case flatbufTestRelation.ZO2: {
+                Long v = (Long)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + v);
+                break;
+            }
+            // output relation ZO3[Many]
+            case flatbufTestRelation.ZO3: {
+                ManyReader v = (ManyReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printMany(v));
+                break;
+            }
+            // output relation ZO4[Vec<string>]
+            case flatbufTestRelation.ZO4: {
+                List<String> v = (List<String>)command.value();
+                List<String> quoted = new ArrayList<String>();
+                v.forEach((x) -> quoted.add("\"" + x + "\""));
+                fb_file.println("From " + relid + " " + command.kind() + " " + quoted);
+                break;
+            }
+            // output relation ZO5[Map<string, Many>]
+            case flatbufTestRelation.ZO5: {
+                Map<String, ManyReader> v = (Map<String, ManyReader>)command.value();
+                ArrayList<String> strings = new ArrayList<String>(v.size());
+                for (Map.Entry<String, ManyReader> e: v.entrySet()) {
+                    strings.add("\"" + e.getKey() + "\"=>" + printMany(e.getValue()));
+                }
+                fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
+                break;
+            }
+            // output relation ZO6[Option<string>]
+            case flatbufTestRelation.ZO6: {
+                Object v = command.value();
+                String s = "";
+                if (v instanceof std_Option__stringReader.std_Some) {
+                    s = "std_Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
+                } else {
+                    s = "std_None{}";
+                }
+                fb_file.println("From " + relid + " " + command.kind() + " " + s);
+                break;
+            }
+            // output relation ZO7[Ref<string>]
+            case flatbufTestRelation.ZO7: {
+                String v = (String)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
+                break;
+            }
+            // output relation ZO8[Ref<bit<25>>]
+            case flatbufTestRelation.ZO8: {
+                Long v = (Long)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + v);
+                break;
+            }
+            // output relation ZO9[Ref<Ref<bit<25>>>]
+            case flatbufTestRelation.ZO9: {
+                Long v = (Long)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + v);
+                break;
+            }
+            // output relation ZO10[Ref<IString>]
+            case flatbufTestRelation.ZO10: {
+                String v = (String)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
+                break;
+            }
+            // output relation ZO11[Map<Many, string>]
+            case flatbufTestRelation.ZO11: {
+                Map<ManyReader, String> v = (Map<ManyReader, String>)command.value();
+                ArrayList<String> strings = new ArrayList<String>(v.size());
+                for (Map.Entry<ManyReader, String> e: v.entrySet()) {
+                    strings.add(printMany(e.getKey()) + "=>\"" + e.getValue() + "\"");
+                }
+                fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
+                break;
+            }
+            // output relation ZO12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
+            case flatbufTestRelation.ZO12: {
+                Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader v =
+                    (Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " (\"" + v.a0() + "\", " + v.a1() +
+                        ", " + v.a2() + ", ("  + v.a3().a0() + ", " + printMany(v.a3().a1()) + "))");
+                break;
+            }
+            // output relation ZO13[Generic<Ref<tuple>, Many>]
+            case flatbufTestRelation.ZO13: {
+                Generic___bool__bit_8___string___ManyReader v =
+                    (Generic___bool__bit_8___string___ManyReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " Generic{\"" + v.f0() +
+                        "\"," + printTuple(v.f1()) + "," + printMany(v.f2()) + "}");
+                break;
+            }
             default: 
                 fb_file.println("Unknown output relation " + relid);
                 //throw new IllegalArgumentException("Unknown relation id " + relid);
@@ -431,6 +535,60 @@ public class Test {
             };
             builder.insert_YI(Arrays.asList(v));
         }
+        builder.insert_ZI0("Hello, world!");
+        builder.insert_ZI0("Привіт!");
+        builder.insert_ZI1(true);
+        builder.insert_ZI1(false);
+        builder.insert_ZI2((long)0);
+        builder.insert_ZI2((long)1000);
+        builder.insert_ZI3_A("It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω.");
+        {
+            ArrayList<String> strings = new ArrayList<String>();
+            strings.add("Foo\n");
+            strings.add("\tbar");
+            builder.insert_ZI4(strings);
+        }
+        {
+            Map<String, ManyWriter> map = new HashMap<String, ManyWriter>();
+            map.put("key1", builder.create_B(false));
+            map.put("key2", builder.create_A("val2"));
+            builder.insert_ZI5(map);
+        }
+        builder.insert_ZI6_std_Some("ZI6");
+        builder.insert_ZI6_std_None();
+        builder.insert_ZI7("♛");
+        builder.insert_ZI7("ZI7");
+        builder.insert_ZI8(100);
+        builder.insert_ZI9(100);
+        builder.insert_ZI10("Ref<IString>");
+        {
+            Map<ManyWriter, String> map = new HashMap<ManyWriter, String>();
+            //map.put(builder.create_B(false), "v1");
+            // Cannot add more than one record, since the map is printed in
+            // non-deterministic order, so the diff fails.
+            map.put(builder.create_A("val2"), "v2");
+            builder.insert_ZI11(map);
+        }
+        {
+            ArrayList<BigInteger> ints = new ArrayList<BigInteger>();
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(1));
+            builder.insert_ZI12(
+                    "ZI12",
+                    BigInteger.valueOf(1000000),
+                    ints,
+                    builder.create_Tuple2__bit_16___Many(0x10,
+                        builder.create_D(builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"))));
+        }
+        {
+            ArrayList<BigInteger> ints = new ArrayList<BigInteger>();
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(1));
+            builder.insert_ZI13("ZI13", builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"),
+                    builder.create_A("ZI13"));
+        }
         builder.applyUpdates(this.api);
         try {
             builder.applyUpdates(this.api);
@@ -468,6 +626,20 @@ public class Test {
         this.api.clearRelation(flatbufTestRelation.WI);
         this.api.clearRelation(flatbufTestRelation.XI);
         this.api.clearRelation(flatbufTestRelation.YI);
+        this.api.clearRelation(flatbufTestRelation.ZI0);
+        this.api.clearRelation(flatbufTestRelation.ZI1);
+        this.api.clearRelation(flatbufTestRelation.ZI2);
+        this.api.clearRelation(flatbufTestRelation.ZI3);
+        this.api.clearRelation(flatbufTestRelation.ZI4);
+        this.api.clearRelation(flatbufTestRelation.ZI5);
+        this.api.clearRelation(flatbufTestRelation.ZI6);
+        this.api.clearRelation(flatbufTestRelation.ZI7);
+        this.api.clearRelation(flatbufTestRelation.ZI8);
+        this.api.clearRelation(flatbufTestRelation.ZI9);
+        this.api.clearRelation(flatbufTestRelation.ZI10);
+        this.api.clearRelation(flatbufTestRelation.ZI11);
+        this.api.clearRelation(flatbufTestRelation.ZI12);
+        this.api.clearRelation(flatbufTestRelation.ZI13);
     }
 
     void run() throws IOException, DDlogException {

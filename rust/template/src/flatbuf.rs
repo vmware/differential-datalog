@@ -348,6 +348,15 @@ impl<'a> FromFlatBuffer<&'a str> for String {
     }
 }
 
+impl<'a> FromFlatBuffer<fb::__String<'a>> for String {
+    fn from_flatbuf(v: fb::__String<'a>) -> Response<Self> {
+        let v = v
+            .v()
+            .ok_or_else(|| format!("String::from_flatbuf: invalid buffer: failed to extract v"))?;
+        <String>::from_flatbuf(v)
+    }
+}
+
 impl<'b> ToFlatBuffer<'b> for String {
     type Target = fbrt::WIPOffset<&'b str>;
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
@@ -356,12 +365,13 @@ impl<'b> ToFlatBuffer<'b> for String {
 }
 
 impl<'b> ToFlatBufferTable<'b> for String {
-    type Target = &'b str;
+    type Target = fb::__String<'b>;
     fn to_flatbuf_table(
         &self,
         fbb: &mut fbrt::FlatBufferBuilder<'b>,
     ) -> fbrt::WIPOffset<Self::Target> {
-        self.to_flatbuf(fbb)
+        let v = self.to_flatbuf(fbb);
+        fb::__String::create(fbb, &fb::__StringArgs { v: Some(v) })
     }
 }
 
@@ -454,19 +464,14 @@ impl<'b> ToFlatBufferVectorElement<'b> for Uint {
 
 impl<'a> FromFlatBuffer<fb::__Command<'a>> for Update<Value> {
     fn from_flatbuf(cmd: fb::__Command<'a>) -> Response<Self> {
+        let relid = cmd.relid() as RelId;
         let val_table = cmd.val().ok_or_else(|| {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
-        let val = Value::from_flatbuf((cmd.val_type(), val_table))?;
+        let val = Value::from_flatbuf(relid, val_table)?;
         match cmd.kind() {
-            fb::__CommandKind::Insert => Ok(Update::Insert {
-                relid: cmd.relid() as RelId,
-                v: val,
-            }),
-            fb::__CommandKind::Delete => Ok(Update::DeleteValue {
-                relid: cmd.relid() as RelId,
-                v: val,
-            }),
+            fb::__CommandKind::Insert => Ok(Update::Insert { relid, v: val }),
+            fb::__CommandKind::Delete => Ok(Update::DeleteValue { relid, v: val }),
         }
     }
 }

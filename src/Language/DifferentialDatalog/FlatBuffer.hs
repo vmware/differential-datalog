@@ -118,15 +118,17 @@ compileFlatBufferSchema :: DatalogProgram -> String -> Doc
 compileFlatBufferSchema d prog_name =
     let ?d = d
         ?prog_name = prog_name in
-
     let rels = progIORelations
         -- Schema for all program types visible from outside
-        types = map typeFlatbufSchema progTypesToSerialize
+        types = map typeFlatbufSchema
+                    $ nubBy (\t1 t2 -> fbType t1 == fbType t2)
+                    $ progTypesToSerialize
         default_relid = if null rels then "0" else (pp $ relIdentifier ?d $ head rels)
     in
     "namespace" <+> jFBPackage <> ";"                                           $$
     "table __BigUint { bytes: [uint8]; }"                                       $$
     "table __BigInt { sign: bool; bytes: [uint8]; }"                            $$
+    "table __String { v: string; }"                                             $$
     ""                                                                          $$
     "// Program type declarations"                                              $$
     (vcat $ intersperse "" types)                                               $$
@@ -156,8 +158,14 @@ compileFlatBufferRustBindings d prog_name dir = do
     updateFile (dir </> "src/flatbuf.rs") $ render $
         (pp rust_template)                                              $$
         "use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
+        -- Re-export '__String', so we can use it to implement 'To/FromFlatBuf'
+        -- for 'IString' in 'intern.rs'.
+        "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> "::__String;"  $$
         rustValueFromFlatbuf                                            $$
-        (vcat $ map rustTypeFromFlatbuf progTypesToSerialize)
+        (vcat $ map rustTypeFromFlatbuf
+              -- One FromFlatBuffer implementation per Rust type
+              $ nubBy (\t1 t2 -> R.mkType t1 == R.mkType t2)
+              $ progTypesToSerialize)
 
 -- | Generate Java convenience API that provides a type-safe way to serialize/deserialize
 -- commands to a FlatBuffer.
@@ -236,12 +244,24 @@ typeTableName x =
          TBool{}       -> "__Bool"
          TInt{}        -> "__BigInt"
          TString{}     -> "__String"
+         TBit{..}    | typeWidth <= 8
+                       -> "__Bit8"
+         TBit{..}    | typeWidth <= 16
+                       -> "__Bit16"
+         TBit{..}    | typeWidth <= 32
+                       -> "__Bit32"
          TBit{..}    | typeWidth <= 64
-                       -> "__Bit" <> pp typeWidth
+                       -> "__Bit64"
                      | otherwise
                        -> "__BigUint"
+         TSigned{..} | typeWidth <= 8
+                       -> "__Signed8"
+         TSigned{..} | typeWidth <= 16
+                       -> "__Signed16"
+         TSigned{..} | typeWidth <= 32
+                       -> "__Signed32"
          TSigned{..} | typeWidth <= 64
-                       -> "__Signed" <> pp typeWidth
+                       -> "__Signed64"
                      | otherwise
                        -> "__BigInt"
          TTuple{..}    -> fbTupleName typeTupArgs
@@ -249,7 +269,10 @@ typeTableName x =
                        -> fbStructName typeName typeArgs
                    | otherwise
                        -> "__Table_" <> fbStructName typeName typeArgs
-         TOpaque{..}   -> "__Table_" <> mkTypeIdentifier x
+         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
+                       -> "__Table_Vec_" <> mkTypeIdentifier elemType
+         TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE
+                       -> typeTableName $ tOpaque "std.Vec" [tTuple [keyType, valType]]
          t             -> error $ "typeTableName: Unexpected type " ++ show t
 
 -- True if type is serialized into a vector inside FlatBuffer.
@@ -538,7 +561,6 @@ jFBReadType :: (WithType a, ?d::DatalogProgram, ?prog_name::String) => a -> Doc
 jFBReadType x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
-        TInt{}             -> "int"
         TString{}          -> "String"
         TBit{..} | typeWidth <= 16
                            -> "int"
@@ -833,7 +855,7 @@ mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
            else -- Relation type is a struct with multiple constructors
                 vcat $
                 map (\c@Constructor{..} ->
-                     "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> pp (name c) <>
+                     "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> (pp $ legalize $ name c) <>
                          "(" <> (commaSep $ map (\a -> jConvTypeW a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
                                                 [ jFBPackage <> ".__CommandKind." <> pp cmd
@@ -1136,6 +1158,7 @@ jReadField nesting fbctx e t =
                               vlen = "len" <> pp nesting
                               vlst = "lst" <> pp nesting
                               vi   = "i"   <> pp nesting
+                              _vi  = "_i"   <> pp nesting
                               vx   = "x"   <> pp nesting in
                           "((java.util.function.Supplier<" <> ltype <> ">) (() ->"                                          $$
                           (braces' $ "int" <+> vlen <+> "=" <+> e' <> "Length();"                                           $$
@@ -1152,13 +1175,20 @@ jReadField nesting fbctx e t =
                               mtype = "java.util.Map<" <> ktype <> "," <+> vtype <> ">"
                               ttable = typeTableName $ tTuple [keyType, valType]
                               vmap = "map" <> pp nesting
-                              vi   = "i"   <> pp nesting in
+                              vi   = "i"   <> pp nesting 
+                              _vi   = "_i"   <> pp nesting 
+                          in
                           "((java.util.function.Supplier<" <> mtype <> ">) (() -> "         $$
                           (braces' $ mtype <+> vmap <+> "= new java.util.HashMap<" <> ktype <> "," <+> vtype <> ">();"  $$
                                      "for (int" <+> vi <+> "= 0;" <+> vi <+> "<" <+> e' <> "Length();" <+> vi <> "++)"  $$
-                                     (braces' $ vmap <> ".put(" <>
-                                        (jReadField (nesting+1) (FBField ttable "a0") (e' <> parens vi) keyType) <> "," <+>
-                                        (jReadField (nesting+1) (FBField ttable "a1") (e' <> parens vi) valType) <> ");") $$
+                                     (braces' $
+                                        -- To prevent Java from complaining that
+                                        -- vi is not final in case it ends up
+                                        -- being used in a lambda.
+                                        "int" <+> _vi <+> "=" <+> vi <> ";" $$
+                                        vmap <> ".put(" <>
+                                        (jReadField (nesting+1) (FBField ttable "a0") (e' <> parens _vi) keyType) <> "," <+>
+                                        (jReadField (nesting+1) (FBField ttable "a1") (e' <> parens _vi) valType) <> ");") $$
                                      "return" <+> vmap <> ";") <> ")).get()"
                       t'                 -> error $ "FlatBuffer.jReadField: unsupported type " ++ show t'
         where
@@ -1170,11 +1200,11 @@ jReadField nesting fbctx e t =
 
 rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
 rustValueFromFlatbuf =
-    "impl <'a> FromFlatBuffer<(fb::__Value, fbrt::Table<'a>)> for Value {"                          $$
-    "    fn from_flatbuf(v: (fb::__Value, fbrt::Table<'a>)) -> Response<Self> {"                    $$
-    "        match v.0 {"                                                                           $$
+    "impl Value {"                                                                                  $$
+    "    fn from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<Self> {"                         $$
+    "        match relid {"                                                                         $$
     (nest' $ nest' $ nest' $ vcat enums)                                                            $$
-    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                 $$
+    "            _ => Err(format!(\"Value::from_flatbuf: invalid relation id {}\", relid))"         $$
     "        }"                                                                                     $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
@@ -1188,15 +1218,17 @@ rustValueFromFlatbuf =
     "    }"                                                                                         $$
     "}"
     where
-    enums = map (\t ->
-                 "fb::__Value::" <> typeTableName t <+> "=> Ok(" <>
-                     R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v.1))?") t <> "),")
-                $ nub $ map relType progIORelations
+    enums = map (\rel@Relation{..} ->
+                 pp (relIdentifier ?d rel) <+> "=> Ok(" <>
+                     R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
+                               relType <> "),")
+                progIORelations
     to_enums = map (\t ->
                     "Value::" <> R.mkValConstructorName ?d t <> "(v) => {"                                   $$
                     "    (fb::__Value::" <> typeTableName t <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
                     "},")
-                   $ nub $ map relType progIORelations
+                   $ nubBy (\t1 t2 -> R.mkValConstructorName ?d t1 == R.mkValConstructorName ?d t2)
+                   $ map relType progIORelations
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.
@@ -1252,7 +1284,7 @@ rustTypeFromFlatbuf t@TUser{..} =
     "    fn from_flatbuf(v: (" <> fbstruct <> ", fbrt::Table<'a>)) -> Response<Self> {"                     $$
     "        match v.0 {"                                                                                   $$
     (nest' $ nest' $ nest' $ vcat cons)                                                                     $$
-    "            _ => Err(\"Value::from_flatbuf: invalid value type\".to_string())"                         $$
+    "            _ => Err(\"" <> pp typeName <> "::from_flatbuf: invalid value type\".to_string())"         $$
     "        }"                                                                                             $$
     "    }"                                                                                                 $$
     "}"                                                                                                     $$
@@ -1398,7 +1430,7 @@ rustTypeFromFlatbuf t@TOpaque{} =
 rustTypeFromFlatbuf t | typeIsScalar t =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
-    "        let v = v.v();"                                                                                $$
+    "        let v =" <+> extract_field "v" (Field nopos "v" t) <> ";"                                      $$
     "        <" <> rtype <> ">::from_flatbuf(v)"                                                            $$
     "    }"                                                                                                 $$
     "}"                                                                                                     $$
