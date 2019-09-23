@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
-    use observe::{Observable, Observer};
+    use observe::{Observable, Observer, SharedObserver};
 
     use server_api_ddlog::api::*;
     use server_api_ddlog::server;
@@ -30,7 +30,7 @@ mod tests {
         // Right server subscribes to the stream
         let s2 = Arc::new(Mutex::new(s2));
         let sub = {
-            let s2_a = server::SharedObserver(s2.clone());
+            let s2_a = SharedObserver(s2.clone());
             stream.subscribe(Box::new(s2_a))
         };
 
