@@ -89,8 +89,8 @@ impl HDDlog {
         Ok(())
     }
 
-    pub fn stop(self) -> Result<(), String> {
-        self.prog.into_inner().map(RunningProgram::stop).unwrap()
+    pub fn stop(&mut self) -> Result<(), String> {
+        self.prog.lock().unwrap().stop()
     }
 
     pub fn transaction_start(&self) -> Result<(), String> {
@@ -662,7 +662,7 @@ pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int {
             prog, print_err, ..
         }) => prog
             .into_inner()
-            .map(|p| {
+            .map(|mut p| {
                 p.stop().map(|_| 0).unwrap_or_else(|e| {
                     HDDlog::print_err(print_err, &format!("ddlog_stop(): error: {}", e));
                     -1

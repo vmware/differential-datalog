@@ -166,7 +166,7 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-fn run(hddlog: HDDlog, print_deltas: bool) -> i32 {
+fn run(mut hddlog: HDDlog, print_deltas: bool) -> i32 {
     let upds = Arc::new(Mutex::new(Vec::new()));
     let ret = interact(|cmd, interactive| {
         handle_cmd(
