@@ -8,3 +8,4 @@ edition = "2018"
 server_api = {path = "../server_api_ddlog"}
 differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
 observe = {path = "../server_api_ddlog/observe"}
+maplit = "1.0"
