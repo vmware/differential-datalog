@@ -95,6 +95,15 @@ fn start_commit_on_no_updates() -> Result<(), String> {
         assert_eq!(mock.called_on_completed, 1);
         assert_eq!(mock.called_on_error.get(), 0);
     }
+
+    server.shutdown()?;
+
+    // But only once!
+    {
+        let mock = observable.0.lock().unwrap();
+        assert_eq!(mock.called_on_completed, 1);
+        assert_eq!(mock.called_on_error.get(), 0);
+    }
     Ok(())
 }
 
@@ -205,12 +214,10 @@ fn multiple_transactions() -> Result<(), String> {
         assert_eq!(mock.called_on_commit, 1);
     }
 
-    let updates = &[
-        UpdCmd::Delete(
-            RelIdentifier::RelId(P1In as usize),
-            Record::String("first".to_string()),
-        ),
-    ];
+    let updates = &[UpdCmd::Delete(
+        RelIdentifier::RelId(P1In as usize),
+        Record::String("first".to_string()),
+    )];
 
     server.on_start()?;
     server.on_updates(Box::new(
