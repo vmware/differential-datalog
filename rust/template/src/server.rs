@@ -99,35 +99,43 @@ pub struct Outlet {
     observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
-/// Newtype for interior mutability of the observer.
-pub struct ADDlogServer(pub Arc<Mutex<DDlogServer>>);
+/// Wrapper around an `Observer` that allows it to be shared by wrapping
+/// it into a combination of `Arc` & `Mutex`.
+pub struct SharedObserver<O>(pub Arc<Mutex<O>>);
 
-impl Observer<Update<super::Value>, String> for ADDlogServer {
-    fn on_start(&mut self) -> Response<()> {
-        let mut s = self.0.lock().unwrap();
-        s.on_start()
+impl<O> SharedObserver<O> {
+    pub fn new(observer: O) -> Self {
+        SharedObserver(Arc::new(Mutex::new(observer)))
+    }
+}
+
+impl<O, T, E> Observer<T, E> for SharedObserver<O>
+where
+    O: Observer<T, E>,
+    T: Send,
+    E: Send,
+{
+    fn on_start(&mut self) -> Result<(), E> {
+        self.0.lock().unwrap().on_start()
     }
 
-    fn on_commit(&mut self) -> Response<()> {
+    fn on_commit(&mut self) -> Result<(), E> {
         self.0.lock().unwrap().on_commit()
     }
 
-    fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
+    fn on_next(&mut self, upd: T) -> Result<(), E> {
         self.0.lock().unwrap().on_next(upd)
     }
 
-    fn on_updates<'a>(
-        &mut self,
-        updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>,
-    ) -> Response<()> {
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
         self.0.lock().unwrap().on_updates(updates)
     }
 
-    fn on_error(&self, error: String) {
+    fn on_error(&self, error: E) {
         self.0.lock().unwrap().on_error(error)
     }
 
-    fn on_completed(&mut self) -> Response<()> {
+    fn on_completed(&mut self) -> Result<(), E> {
         self.0.lock().unwrap().on_completed()
     }
 }
