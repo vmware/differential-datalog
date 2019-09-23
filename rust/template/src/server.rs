@@ -86,14 +86,17 @@ impl DDlogServer {
 
     /// Shutdown the DDlog program and notify listeners of completion.
     pub fn shutdown(&mut self) -> Response<()> {
+        // TODO: Right now we may error out early if an observer's
+        //       `on_completed` fails. In the future we probably want to push
+        //       those errors somewhere and then continue.
         if let Some(mut prog) = self.prog.take() {
-            prog.stop()?;
-        }
-        for outlet in &self.outlets {
-            let mut observer = outlet.observer.lock().unwrap();
-            if let Some(ref mut observer) = *observer {
-                observer.on_completed()?;
+            for outlet in &self.outlets {
+                let mut observer = outlet.observer.lock().unwrap();
+                if let Some(ref mut observer) = *observer {
+                    observer.on_completed()?;
+                }
             }
+            prog.stop()?;
         }
         Ok(())
     }
@@ -222,5 +225,12 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
 
     fn on_completed(&mut self) -> Response<()> {
         Ok(())
+    }
+}
+
+impl Drop for DDlogServer {
+    /// Shutdown the DDlog program and notify listeners of completion.
+    fn drop(&mut self) {
+        let _ = self.shutdown();
     }
 }
