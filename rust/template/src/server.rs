@@ -43,6 +43,12 @@ impl Observable<Update<super::Value>, String> for UpdatesObservable {
     }
 }
 
+/// An outlet streams a subset of DDlog tables to an observer.
+pub struct Outlet {
+    tables: HashSet<super::Relations>,
+    observer: Arc<Mutex<Option<ObserverBox>>>,
+}
+
 /// A DDlog server wraps a DDlog progam, and writes deltas to the
 /// outlets. The redirect map redirects input deltas to local tables.
 pub struct DDlogServer {
@@ -91,12 +97,6 @@ impl DDlogServer {
         }
         Ok(())
     }
-}
-
-/// An outlet streams a subset of DDlog tables to an observer.
-pub struct Outlet {
-    tables: HashSet<super::Relations>,
-    observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
 impl Observer<Update<super::Value>, String> for DDlogServer {
@@ -152,8 +152,8 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
 
                     if upds.peek().is_some() {
                         observer.on_updates(Box::new(upds))?;
-                        observer.on_commit()?;
                     }
+                    observer.on_commit()?;
                 }
             }
             Ok(())
