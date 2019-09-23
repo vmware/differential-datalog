@@ -86,7 +86,7 @@ impl DDlogServer {
 
     /// Shutdown the DDlog program and notify listeners of completion.
     pub fn shutdown(&mut self) -> Response<()> {
-        if let Some(prog) = self.prog.take() {
+        if let Some(mut prog) = self.prog.take() {
             prog.stop()?;
         }
         for outlet in &self.outlets {

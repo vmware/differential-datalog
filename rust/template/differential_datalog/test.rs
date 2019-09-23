@@ -9,7 +9,7 @@
     clippy::cmp_owned,
     clippy::nonminimal_bool,
     clippy::toplevel_ref_arg,
-    clippy::trivially_copy_pass_by_ref,
+    clippy::trivially_copy_pass_by_ref
 )]
 
 use abomonation::Abomonation;
@@ -333,6 +333,18 @@ fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &Value, w: Weight) {
     };
 
     //println!("set_update({}) {:?} {}", rel, *x, insert);
+}
+
+#[test]
+fn test_multiple_stops() {
+    let prog: Program<Value> = Program {
+        nodes: vec![],
+        init_data: vec![],
+    };
+
+    let mut running = prog.run(2);
+    running.stop().unwrap();
+    running.stop().unwrap();
 }
 
 /* Test insertion/deletion into a database with a single table and no rules

@@ -5,7 +5,9 @@
 //! `RunningProgram` that can be used to interact with the program at runtime.  Interactions
 //! include starting, committing or rolling back a transaction and modifying input relations.
 //! The engine invokes user-provided callbacks as records are added or removed from relations.
-//! `RunningProgram::stop()` terminates the Datalog program destroying all its state.
+//! `RunningProgram::stop()` terminates the Datalog program destroying all its state. If not
+//! invoked manually (which allows for manual error handling), `RunningProgram::stop` will be
+//! called when the program object leaves scope.
 
 // TODO: namespace cleanup
 // TODO: single input relation
@@ -815,6 +817,10 @@ pub type IndexedValSet<V> = FnvHashMap<V, V>;
 pub type DeltaSet<V> = FnvHashMap<V, bool>;
 
 /// Runtime representation of a datalog program.
+///
+/// The program will be automatically stopped when the object goes out
+/// of scope. Error occurring as part of that operation are silently
+/// ignored. If you want to handle such errors, call `stop` manually.
 pub struct RunningProgram<V: Val> {
     /* producer side of the channel used to send commands to workers */
     sender: mpsc::SyncSender<Msg<V>>,
@@ -822,13 +828,13 @@ pub struct RunningProgram<V: Val> {
     flush_ack: mpsc::Receiver<()>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     /* timely worker threads */
-    thread_handle: thread::JoinHandle<Result<(), String>>,
+    thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
     transaction_in_progress: bool,
     need_to_flush: bool,
     /* CPU profiling enabled (can be expensive) */
     profile_cpu: Arc<AtomicBool>,
     /* profiling thread */
-    prof_thread_handle: thread::JoinHandle<()>,
+    prof_thread_handle: Option<thread::JoinHandle<()>>,
     /* profiling statistics */
     pub profile: Arc<Mutex<Profile>>,
 }
@@ -1325,11 +1331,11 @@ impl<V: Val> Program<V> {
             sender: tx,
             flush_ack: flush_ack_recv,
             relations: rels,
-            thread_handle: h,
+            thread_handle: Some(h),
             transaction_in_progress: false,
             need_to_flush: false,
             profile_cpu,
-            prof_thread_handle: prof_thread,
+            prof_thread_handle: Some(prof_thread),
             profile,
         }
     }
@@ -1764,17 +1770,34 @@ impl<V: Val> RunningProgram<V> {
     }
 
     /// Terminate program, kill worker threads.
-    pub fn stop(mut self) -> Response<()> {
-        self.flush()
-            .and_then(|_| self.send(Msg::Stop))
-            .and_then(|_| match self.thread_handle.join() {
-                Err(_) => Err("timely thread terminated with an error".to_string()),
-                Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
-                Ok(Ok(())) => match self.prof_thread_handle.join() {
-                    Err(_) => Err("profiling thread terminated with an error".to_string()),
-                    Ok(_) => Ok(()),
-                },
-            })
+    pub fn stop(&mut self) -> Response<()> {
+        if let Some(thread) = self.thread_handle.take() {
+            self.flush()
+                .and_then(|_| self.send(Msg::Stop))
+                .and_then(|_| match thread.join() {
+                    // Note that we intentionally do not join the profiling thread if the timely
+                    // thread died, because an unexpected death of the timely thread means we
+                    // are in some very weird state and the profiling thread may be stuck
+                    // waiting for worker thread which will not respond. So it's best to skip
+                    // this join in such a case.
+                    Err(_) => Err("timely thread terminated with an error".to_string()),
+                    Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
+                    Ok(Ok(())) => {
+                        if let Some(thread) = self.prof_thread_handle.take() {
+                            match thread.join() {
+                                Err(_) => {
+                                    Err("profiling thread terminated with an error".to_string())?
+                                }
+                                Ok(_) => Ok(()),
+                            }
+                        } else {
+                            Ok(())
+                        }
+                    }
+                })?;
+        };
+
+        Ok(())
     }
 
     /// Start a transaction.  Does not return a transaction handle, as there
@@ -2187,6 +2210,12 @@ impl<V: Val> RunningProgram<V> {
                 Ok(()) => Ok(()),
             }
         })
+    }
+}
+
+impl<V: Val> Drop for RunningProgram<V> {
+    fn drop(&mut self) {
+        let _ = self.stop();
     }
 }
 
