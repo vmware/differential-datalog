@@ -30,7 +30,7 @@ mod tests {
         // Right server subscribes to the stream
         let s2 = Arc::new(Mutex::new(s2));
         let sub = {
-            let s2_a = server::ADDlogServer(s2.clone());
+            let s2_a = server::SharedObserver(s2.clone());
             stream.subscribe(Box::new(s2_a))
         };
 
