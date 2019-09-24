@@ -23,14 +23,14 @@ use std::thread::*;
 
 /* Single-threaded (non-thread-safe callback)
  */
-pub trait ST_CBFn<V>: Fn(RelId, &V, isize) {
+pub trait ST_CBFn<V>: FnMut(RelId, &V, isize) {
     fn clone_boxed(&self) -> Box<dyn ST_CBFn<V>>;
 }
 
 impl<T, V> ST_CBFn<V> for T
 where
     V: Val,
-    T: 'static + Clone + Fn(RelId, &V, isize),
+    T: 'static + Clone + FnMut(RelId, &V, isize),
 {
     fn clone_boxed(&self) -> Box<dyn ST_CBFn<V>> {
         Box::new(self.clone())
@@ -115,8 +115,11 @@ impl<V: Val> MTUpdateHandler<V> for NullUpdateHandler {
 /* `UpdateHandler` implementation that invokes user-provided closure.
  */
 
-pub trait Callback: 'static + Fn(usize, &record::Record, isize) + Clone + Send + Sync {}
-impl<CB> Callback for CB where CB: 'static + Fn(usize, &record::Record, isize) + Clone + Send + Sync {}
+pub trait Callback: 'static + FnMut(usize, &record::Record, isize) + Clone + Send + Sync {}
+impl<CB> Callback for CB where
+    CB: 'static + FnMut(usize, &record::Record, isize) + Clone + Send + Sync
+{
+}
 
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F: Callback> {
@@ -131,7 +134,7 @@ impl<F: Callback> CallbackUpdateHandler<F> {
 
 impl<V: Val + IntoRecord, F: Callback> UpdateHandler<V> for CallbackUpdateHandler<F> {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
-        let cb = self.cb.clone();
+        let mut cb = self.cb.clone();
         Box::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w))
     }
     fn before_commit(&self) {}
@@ -140,7 +143,7 @@ impl<V: Val + IntoRecord, F: Callback> UpdateHandler<V> for CallbackUpdateHandle
 
 impl<V: Val + IntoRecord, F: Callback> MTUpdateHandler<V> for CallbackUpdateHandler<F> {
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
-        let cb = self.cb.clone();
+        let mut cb = self.cb.clone();
         Box::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w))
     }
 }
@@ -363,9 +366,10 @@ impl<V: Val> ChainedUpdateHandler<V> {
 
 impl<V: Val> UpdateHandler<V> for ChainedUpdateHandler<V> {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
-        let cbs: Vec<Box<dyn ST_CBFn<V>>> = self.handlers.iter().map(|h| h.update_cb()).collect();
+        let mut cbs: Vec<Box<dyn ST_CBFn<V>>> =
+            self.handlers.iter().map(|h| h.update_cb()).collect();
         Box::new(move |relid, v, w| {
-            for cb in cbs.iter() {
+            for cb in cbs.iter_mut() {
                 cb(relid, v, w);
             }
         })
@@ -399,9 +403,10 @@ impl<V: Val> MTChainedUpdateHandler<V> {
 
 impl<V: Val> UpdateHandler<V> for MTChainedUpdateHandler<V> {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
-        let cbs: Vec<Box<dyn ST_CBFn<V>>> = self.handlers.iter().map(|h| h.update_cb()).collect();
+        let mut cbs: Vec<Box<dyn ST_CBFn<V>>> =
+            self.handlers.iter().map(|h| h.update_cb()).collect();
         Box::new(move |relid, v, w| {
-            for cb in cbs.iter() {
+            for cb in cbs.iter_mut() {
                 cb(relid, v, w);
             }
         })
@@ -421,9 +426,10 @@ impl<V: Val> UpdateHandler<V> for MTChainedUpdateHandler<V> {
 
 impl<V: Val> MTUpdateHandler<V> for MTChainedUpdateHandler<V> {
     fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
-        let cbs: Vec<Box<dyn CBFn<V>>> = self.handlers.iter().map(|h| h.mt_update_cb()).collect();
+        let mut cbs: Vec<Box<dyn CBFn<V>>> =
+            self.handlers.iter().map(|h| h.mt_update_cb()).collect();
         Box::new(move |relid, v, w| {
-            for cb in cbs.iter() {
+            for cb in cbs.iter_mut() {
                 cb(relid, v, w);
             }
         })
@@ -471,7 +477,7 @@ impl<V: Val> ThreadUpdateHandler<V> {
         let commit_barrier2 = commit_barrier.clone();
         spawn(move || {
             let handler = handler_generator();
-            let update_cb = handler.update_cb();
+            let mut update_cb = handler.update_cb();
             loop {
                 match rx_message_channel.recv() {
                     Ok(Msg::Update { relid, v, w }) => {

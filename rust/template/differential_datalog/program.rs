@@ -268,14 +268,14 @@ pub enum ProgNode<V: Val> {
     SCC { rels: Vec<Relation<V>> },
 }
 
-pub trait CBFn<V>: Fn(RelId, &V, Weight) + Send {
+pub trait CBFn<V>: FnMut(RelId, &V, Weight) + Send {
     fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
 }
 
 impl<T, V> CBFn<V> for T
 where
     V: Val,
-    T: 'static + Send + Clone + Fn(RelId, &V, Weight),
+    T: 'static + Send + Clone + FnMut(RelId, &V, Weight),
 {
     fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
         Box::new(self.clone())
@@ -1200,7 +1200,7 @@ impl<V: Val> Program<V> {
                                     collection.probe_with(&mut probe1);
                                 },
                                 Some(cb) => {
-                                    let cb = cb.lock().unwrap().clone();
+                                    let mut cb = cb.lock().unwrap().clone();
                                     collection.consolidate().inspect(move |x| {
                                         assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
                                         cb(relid, &x.0, x.2)
