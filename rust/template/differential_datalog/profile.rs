@@ -199,3 +199,9 @@ impl Profile {
         }
     }
 }
+
+impl Default for Profile {
+    fn default() -> Self {
+        Self::new()
+    }
+}
