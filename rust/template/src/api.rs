@@ -866,7 +866,7 @@ pub unsafe extern "C" fn ddlog_apply_updates(
     let prog = Arc::from_raw(prog);
 
     let res = prog
-        .apply_updates((0..n).map(|i| Box::from_raw(*upds.offset(i as isize))))
+        .apply_updates((0..n).map(|i| Box::from_raw(*upds.add(i))))
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
