@@ -982,8 +982,11 @@ pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_cha
     let res = {
         let profile = prog.profile();
         ffi::CString::new(profile)
-            .expect("Failed to convert profile string to C")
-            .into_raw()
+            .map(ffi::CString::into_raw)
+            .unwrap_or_else(|e| {
+                prog.eprintln(&format!("Failed to convert profile string to C: {}", e));
+                ptr::null_mut()
+            })
     };
     Arc::into_raw(prog);
     res
