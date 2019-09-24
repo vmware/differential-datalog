@@ -226,7 +226,7 @@ pub unsafe extern "C" fn ddlog_get_int(
                 bytes.len() as libc::ssize_t
             } else if capacity >= bytes.len() {
                 for (i, b) in bytes.iter().enumerate() {
-                    if let Some(p) = buf.offset(i as isize).as_mut() {
+                    if let Some(p) = buf.add(i).as_mut() {
                         *p = *b;
                     };
                 }
@@ -636,7 +636,7 @@ pub unsafe extern "C" fn ddlog_get_constructor_non_null(
 unsafe fn mk_record_vec(fields: *const *mut Record, len: libc::size_t) -> Vec<Record> {
     let mut tfields = Vec::with_capacity(len as usize);
     for i in 0..len {
-        tfields.push(*Box::from_raw(*fields.offset(i as isize)));
+        tfields.push(*Box::from_raw(*fields.add(i)));
     }
     tfields
 }
