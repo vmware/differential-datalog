@@ -1,5 +1,6 @@
 //! Parse OVSDB database update messages and convert them into DDlog table update commands
 
+#![allow(clippy::map_clone)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]
 extern crate differential_datalog;
 extern crate num;
@@ -32,7 +33,7 @@ fn parse_uuid(s: &str) -> Result<BigInt, String> {
     let digits: Vec<u8> = s
         .as_bytes()
         .iter()
-        .copied()
+        .map(|x| *x)
         .filter(|x| *x != b'-')
         .collect();
     BigInt::parse_bytes(digits.as_slice(), 16)
