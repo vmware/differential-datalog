@@ -15,16 +15,8 @@ where
     /// Observable is committed.
     fn on_commit(&mut self) -> Result<(), E>;
 
-    /// Process an incoming item.
-    fn on_next(&mut self, item: T) -> Result<(), E>;
-
     /// Process a series of incoming items.
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
-        for upd in updates {
-            self.on_next(upd)?;
-        }
-        Ok(())
-    }
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E>;
 
     /// Action to perform when the `Observable` is about to shut down.
     ///
@@ -61,10 +53,6 @@ where
 
     fn on_commit(&mut self) -> Result<(), E> {
         self.0.lock().unwrap().on_commit()
-    }
-
-    fn on_next(&mut self, upd: T) -> Result<(), E> {
-        self.0.lock().unwrap().on_next(upd)
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {

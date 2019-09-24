@@ -16,7 +16,7 @@ use maplit::hashset;
 struct Mock {
     called_on_start: usize,
     called_on_commit: usize,
-    called_on_next: usize,
+    called_on_updates: usize,
     called_on_completed: usize,
     called_on_error: Cell<usize>,
 }
@@ -26,7 +26,7 @@ impl Mock {
         Self {
             called_on_start: 0,
             called_on_commit: 0,
-            called_on_next: 0,
+            called_on_updates: 0,
             called_on_completed: 0,
             called_on_error: Cell::new(0),
         }
@@ -48,8 +48,8 @@ where
         Ok(())
     }
 
-    fn on_next(&mut self, _: T) -> Result<(), E> {
-        self.called_on_next += 1;
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
+        self.called_on_updates += updates.count();
         Ok(())
     }
 
@@ -130,7 +130,7 @@ fn start_commit_with_updates() -> Result<(), String> {
 
     let mock = observable.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
-    assert_eq!(mock.called_on_next, 1);
+    assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
     assert_eq!(mock.called_on_error.get(), 0);
     Ok(())
@@ -196,7 +196,7 @@ fn multiple_mergable_updates() -> Result<(), String> {
 
     let mock = observable.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
-    assert_eq!(mock.called_on_next, 1);
+    assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
     assert_eq!(mock.called_on_error.get(), 0);
     Ok(())
@@ -233,7 +233,7 @@ fn multiple_transactions() -> Result<(), String> {
     {
         let mock = observable.0.lock().unwrap();
         assert_eq!(mock.called_on_start, 1);
-        assert_eq!(mock.called_on_next, 2);
+        assert_eq!(mock.called_on_updates, 2);
         assert_eq!(mock.called_on_commit, 1);
     }
 
@@ -251,7 +251,7 @@ fn multiple_transactions() -> Result<(), String> {
     {
         let mock = observable.0.lock().unwrap();
         assert_eq!(mock.called_on_start, 2);
-        assert_eq!(mock.called_on_next, 3);
+        assert_eq!(mock.called_on_updates, 3);
         assert_eq!(mock.called_on_commit, 2);
     }
 
