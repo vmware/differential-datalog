@@ -6,8 +6,7 @@
     unused_parens,
     non_shorthand_field_patterns,
     dead_code,
-    overflowing_literals,
-    clippy::ptr_arg
+    overflowing_literals
 )]
 
 extern crate differential_dataflow;
@@ -86,6 +85,7 @@ pub fn string_append_str(mut s1: String, s2: &str) -> String {
     s1
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn string_append(mut s1: String, s2: &String) -> String {
     s1.push_str(s2.as_str());
     s1

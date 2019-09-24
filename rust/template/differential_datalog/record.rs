@@ -1310,7 +1310,7 @@ impl<T: FromRecord + Ord> Mutator<BTreeSet<T>> for Record {
  */
 
 pub fn arg_extract<T: FromRecord + Default>(
-    args: &Vec<(Name, Record)>,
+    args: &[(Name, Record)],
     argname: &str,
 ) -> Result<T, String> {
     args.iter()
@@ -1318,7 +1318,7 @@ pub fn arg_extract<T: FromRecord + Default>(
         .map_or_else(|| Ok(Default::default()), |(_, v)| T::from_record(v))
 }
 
-pub fn arg_find<'a>(args: &'a Vec<(Name, Record)>, argname: &str) -> Option<&'a Record> {
+pub fn arg_find<'a>(args: &'a [(Name, Record)], argname: &str) -> Option<&'a Record> {
     args.iter().find(|(n, _)| *n == argname).map(|(_, v)| v)
 }
 

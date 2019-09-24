@@ -1,4 +1,4 @@
-#![allow(clippy::get_unwrap, clippy::ptr_arg, clippy::type_complexity)]
+#![allow(clippy::get_unwrap, clippy::type_complexity)]
 
 #[macro_use]
 extern crate abomonation;
