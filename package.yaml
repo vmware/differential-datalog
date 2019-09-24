@@ -35,7 +35,7 @@ dependencies:
 - wide-word
 - graphviz
 - text
-- githash >= 0.1.3.3
+- githash
 - process
 - casing
 
@@ -98,7 +98,7 @@ tests:
     - -Werror
     dependencies:
     - differential-datalog
-    - tasty >= 1.2
+    - tasty
     - tasty-hunit
     - tasty-golden
     - filepath
