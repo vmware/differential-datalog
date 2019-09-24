@@ -1547,7 +1547,7 @@ mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
     let (arr, _) = normalizeArrangement d ctx atomVal
     -- Filter inputs using 'input_filters'
     ffun <- mkFFun d rl input_filters
-    Just aid <- getAntijoinArrangement atomRelation arr
+    aid <- fromJust <$> getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
     return $ "XFormArrangement::Antijoin {"                                                                   $$
              "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> ".to_string(),"   $$
