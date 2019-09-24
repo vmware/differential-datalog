@@ -741,7 +741,7 @@ where
 
 /* Helper type that represents an arranged collection of one of two
  * types (e.g., an arrangement created in a local scope or entered from
- * the parrent scope) */
+ * the parent scope) */
 enum A<'a, 'b, V, P, T>
 where
     P: ScopeParent,
@@ -1472,7 +1472,7 @@ impl<V: Val> Program<V> {
     }
 
     /* Return all relations required to compute rels, excluding recursive dependencies on rels */
-    fn dependencies(rels: &Vec<Relation<V>>) -> FnvHashSet<Dep> {
+    fn dependencies(rels: &[Relation<V>]) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
             for rule in &rel.rules {

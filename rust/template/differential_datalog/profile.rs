@@ -144,7 +144,7 @@ impl Profile {
         }
     }
 
-    fn handle_timely(&mut self, msg: &Vec<((Duration, usize, TimelyEvent), String)>) {
+    fn handle_timely(&mut self, msg: &[((Duration, usize, TimelyEvent), String)]) {
         for ((ts, worker, event), ctx) in msg.iter() {
             match event {
                 TimelyEvent::Operates(OperatesEvent { id, addr, name }) => {
@@ -176,7 +176,7 @@ impl Profile {
         }
     }
 
-    fn handle_differential(&mut self, msg: &Vec<(Duration, usize, DifferentialEvent)>) {
+    fn handle_differential(&mut self, msg: &[(Duration, usize, DifferentialEvent)]) {
         //eprintln!("profiling message: {:?}", msg);
         for (_, _, event) in msg.iter() {
             match event {

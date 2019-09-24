@@ -66,7 +66,7 @@ fn apply_updates(
         .apply_updates(updates?.into_iter())
 }
 
-fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &Vec<UpdCmd>) {
+fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &[UpdCmd]) {
     if let Some(ref f) = prog.replay_file {
         let mut file = f.lock().unwrap();
         let n = upds.len();
