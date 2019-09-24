@@ -2153,7 +2153,7 @@ impl<V: Val> RunningProgram<V> {
 
     /* Clear delta sets of all input relations on transaction commit. */
     fn delta_cleanup(&mut self) -> Response<()> {
-        for (_, rel) in &mut self.relations {
+        for rel in self.relations.values_mut() {
             rel.delta_mut().clear();
         }
         Ok(())
@@ -2187,7 +2187,7 @@ impl<V: Val> RunningProgram<V> {
             .and_then(|_| self.flush())
             .and_then(|_| {
                 /* validation: all deltas must be empty */
-                for (_, rel) in &self.relations {
+                for rel in self.relations.values() {
                     //println!("delta: {:?}", *d);
                     debug_assert!(rel.delta().is_empty());
                 }

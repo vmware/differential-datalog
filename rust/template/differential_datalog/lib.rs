@@ -1,5 +1,4 @@
 #![allow(
-    clippy::for_kv_map,
     clippy::get_unwrap,
     clippy::ptr_arg,
     clippy::ptr_offset_with_cast,
