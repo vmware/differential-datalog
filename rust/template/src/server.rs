@@ -165,32 +165,6 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
         }
     }
 
-    /// Apply a single update.
-    fn on_next(&mut self, upd: Update<super::Value>) -> Response<()> {
-        let upd = vec![match upd {
-            Update::Insert { relid: relid, v: v } => {
-                let rel = super::relid2rel(relid).expect("Table not found");
-                Update::Insert {
-                    relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
-                    v: v,
-                }
-            }
-            Update::DeleteValue { relid: relid, v: v } => {
-                let rel = super::relid2rel(relid).expect("Table not found");
-                Update::DeleteValue {
-                    relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
-                    v: v,
-                }
-            }
-            update => panic!("Operation {:?} not allowed", update),
-        }];
-        if let Some(ref mut prog) = self.prog {
-            prog.apply_valupdates(upd.into_iter())
-        } else {
-            Ok(())
-        }
-    }
-
     /// Apply a series of updates.
     fn on_updates<'a>(
         &mut self,
