@@ -8,8 +8,6 @@ use server_api_ddlog::server;
 use server_api_ddlog::Relations::*;
 
 use std::cell::Cell;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 use maplit::hashmap;
 use maplit::hashset;
@@ -70,11 +68,11 @@ where
 #[test]
 fn start_commit_on_no_updates() -> Result<(), String> {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, HashMap::new());
+    let mut server = server::DDlogServer::new(program, hashmap! {});
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {});
-    stream.subscribe(Box::new(observable.clone()));
+    let _ = stream.subscribe(Box::new(observable.clone()));
 
     server.on_start()?;
     server.on_commit()?;
@@ -112,11 +110,11 @@ fn start_commit_on_no_updates() -> Result<(), String> {
 #[test]
 fn start_commit_with_updates() -> Result<(), String> {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, HashMap::new());
+    let mut server = server::DDlogServer::new(program, hashmap! {});
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    stream.subscribe(Box::new(observable.clone()));
+    let _ = stream.subscribe(Box::new(observable.clone()));
 
     let updates = &[UpdCmd::Insert(
         RelIdentifier::RelId(P1In as usize),
@@ -138,16 +136,41 @@ fn start_commit_with_updates() -> Result<(), String> {
     Ok(())
 }
 
+/// Test `unsubscribe` functionality.
+#[test]
+fn unsubscribe() -> Result<(), String> {
+    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let mut server = server::DDlogServer::new(program, hashmap! {});
+
+    let observable = SharedObserver::new(Mock::new());
+    let mut stream = server.add_stream(hashset! {P1Out});
+    let subscription = stream.subscribe(Box::new(observable.clone()));
+
+    server.on_start()?;
+    server.on_commit()?;
+
+    subscription.unsubscribe();
+
+    server.on_start()?;
+    server.on_commit()?;
+
+    let mock = observable.0.lock().unwrap();
+    assert_eq!(mock.called_on_start, 1);
+    assert_eq!(mock.called_on_commit, 1);
+    assert_eq!(mock.called_on_error.get(), 0);
+    Ok(())
+}
+
 /// Verify that we do not receive repeated `on_next` calls for inserts &
 /// deletes of the same object within a single transaction.
 #[test]
 fn multiple_mergable_updates() -> Result<(), String> {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, HashMap::new());
+    let mut server = server::DDlogServer::new(program, hashmap! {});
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    stream.subscribe(Box::new(observable.clone()));
+    let _ = stream.subscribe(Box::new(observable.clone()));
 
     let updates = &[
         UpdCmd::Insert(
@@ -184,11 +207,11 @@ fn multiple_mergable_updates() -> Result<(), String> {
 #[test]
 fn multiple_transactions() -> Result<(), String> {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, HashMap::new());
+    let mut server = server::DDlogServer::new(program, hashmap! {});
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    stream.subscribe(Box::new(observable.clone()));
+    let _ = stream.subscribe(Box::new(observable.clone()));
 
     let updates = &[
         UpdCmd::Insert(
