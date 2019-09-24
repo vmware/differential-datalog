@@ -1,7 +1,6 @@
 #![allow(
     clippy::for_kv_map,
     clippy::get_unwrap,
-    clippy::into_iter_on_ref,
     clippy::ptr_arg,
     clippy::ptr_offset_with_cast,
     clippy::type_complexity

@@ -1349,7 +1349,7 @@ impl<V: Val> Program<V> {
 
     /* Advance the epoch on all input sessions */
     fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>, epoch: TS) {
-        for (_, s) in sessions.into_iter() {
+        for (_, s) in sessions.iter_mut() {
             //print!("advance\n");
             s.advance_to(epoch);
         }
@@ -1363,11 +1363,11 @@ impl<V: Val> Program<V> {
         progress_lock: &RwLock<TS>,
         progress_barrier: &Barrier,
     ) {
-        for (_, r) in sessions.into_iter() {
+        for (_, r) in sessions.iter_mut() {
             //print!("flush\n");
             r.flush();
         }
-        if let Some((_, session)) = sessions.into_iter().nth(0) {
+        if let Some((_, session)) = sessions.iter_mut().nth(0) {
             *progress_lock.write().unwrap() = *session.time();
             progress_barrier.wait();
             while probe.less_than(session.time()) {
