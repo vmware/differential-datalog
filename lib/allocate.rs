@@ -23,14 +23,15 @@ pub fn allocate_allocate<B: Ord+Clone, N:num::Num+ops::Add+cmp::Ord+Copy>(
     for b in toallocate.x.iter() {
         loop {
             next = if next == *max_val { *min_val } else { next + N::one() };
-            offset = offset + N::one();
 
             if allocated.x.contains(&next) {
-                if offset == range + N::one() { return res; };
+                if offset == range { return res; };
+                offset = offset + N::one();
                 continue;
             } else {
                 res.x.push(((*b).clone(), next));
-                if offset == range + N::one() { return res; };
+                if offset == range { return res; };
+                offset = offset + N::one();
                 break;
             }
         }
