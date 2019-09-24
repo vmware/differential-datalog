@@ -26,11 +26,13 @@ where
         Ok(())
     }
 
-    /// Action to perform when the Observable finishes sending
-    /// data.
+    /// Action to perform when the `Observable` is about to shut down.
+    ///
+    /// This method is typically used to clean up any state associated
+    /// with the `Observable`.
     fn on_completed(&mut self) -> Result<(), E>;
 
-    /// Action to perform when any error occurs
+    /// Action to perform when any error occurs.
     fn on_error(&self, error: E);
 }
 

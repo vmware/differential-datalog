@@ -5,7 +5,7 @@ authors = ["Remy Wang <remy.sucre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-server_api = {path = "../server_api_ddlog"}
 differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
-observe = {path = "../server_api_ddlog/observe"}
 maplit = "1.0"
+observe = {path = "../server_api_ddlog/observe"}
+server_api = {path = "../server_api_ddlog"}

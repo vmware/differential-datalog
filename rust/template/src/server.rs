@@ -49,7 +49,7 @@ pub struct Outlet {
     observer: Arc<Mutex<Option<ObserverBox>>>,
 }
 
-/// A DDlog server wraps a DDlog progam, and writes deltas to the
+/// A DDlog server wraps a DDlog program, and writes deltas to the
 /// outlets. The redirect map redirects input deltas to local tables.
 pub struct DDlogServer {
     prog: Option<HDDlog>,
