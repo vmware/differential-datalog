@@ -26,6 +26,7 @@ use flatbuf;
 #[cfg(feature = "flatbuf")]
 use flatbuf::FromFlatBuffer;
 
+#[derive(Debug)]
 pub struct HDDlog {
     pub prog: Mutex<RunningProgram<Value>>,
     pub update_handler: Box<dyn IMTUpdateHandler<Value>>,
