@@ -145,8 +145,20 @@ To install a precompiled version of DDlog, download the [latest binary release](
 
 ### vim syntax highlighting
 
-Create a symlink to `tools/dl.vim` from the `~/.vim/syntax/` directory to enable differential
-datalog syntax highlighting in `.dl` files.
+The easiest way to enable differential datalog syntax highlighting for `.dl` files in Vim is by
+creating a symlink from `<ddlog-folder>/tools/vim/syntax/dl.vim` into `~/.vim/syntax/`.
+
+If you are using a plugin manager you may be able to directly consume the file from the upstream
+repository as well. In the case of [`Vundle`](https://github.com/VundleVim/Vundle.vim), for example,
+configuration could look as follows:
+
+```vim
+call vundle#begin('~/.config/nvim/bundle')
+...
+Plugin 'vmware/differential-datalog', {'rtp': 'tools/vim'} <---- relevant line
+...
+call vundle#end()
+```
 
 ## Debugging with GHCi
 
