@@ -12,24 +12,27 @@
 // TODO: namespace cleanup
 // TODO: single input relation
 
-use abomonation::Abomonation;
-use serde::de::*;
-use serde::ser::*;
 use std::collections::hash_map;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Formatter};
 use std::hash::Hash;
+use std::ops::{Add, Deref, Mul};
 use std::result::Result;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::thread;
 use std::time::Duration;
+
+use abomonation::Abomonation;
+
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
 use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use num::One;
-use std::ops::{Add, Deref, Mul};
+
+use serde::de::*;
+use serde::ser::*;
 
 use differential_dataflow::difference::Diff;
 use differential_dataflow::difference::Monoid;
@@ -837,6 +840,28 @@ pub struct RunningProgram<V: Val> {
     prof_thread_handle: Option<thread::JoinHandle<()>>,
     /* profiling statistics */
     pub profile: Arc<Mutex<Profile>>,
+}
+
+// Right now this Debug implementation is more or less a short cut.
+// Ideally we would want to implement Debug for `RelationInstance`, but
+// that quickly gets very cumbersome.
+impl<V: Val> Debug for RunningProgram<V> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut builder = f.debug_struct("RunningProgram");
+        let _ = builder.field("sender", &self.sender);
+        let _ = builder.field("flush_ack", &self.flush_ack);
+        let _ = builder.field(
+            "relations",
+            &(&self.relations as *const FnvHashMap<RelId, RelationInstance<V>>),
+        );
+        let _ = builder.field("thread_handle", &self.thread_handle);
+        let _ = builder.field("transaction_in_progress", &self.transaction_in_progress);
+        let _ = builder.field("need_to_flush", &self.need_to_flush);
+        let _ = builder.field("profile_cpu", &self.profile_cpu);
+        let _ = builder.field("prof_thread_handle", &self.prof_thread_handle);
+        let _ = builder.field("profile", &self.profile);
+        builder.finish()
+    }
 }
 
 /* Runtime representation of relation */
