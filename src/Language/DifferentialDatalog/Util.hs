@@ -25,6 +25,7 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Util where
 
+import Prelude hiding(readFile, writeFile)
 import Data.Graph.Inductive
 import Control.Monad.Except
 import Data.List
@@ -36,6 +37,7 @@ import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as BL
 import System.Directory
 import System.FilePath
+import System.IO hiding (readFile, writeFile)
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
@@ -168,6 +170,21 @@ checksum16BS bs | l `mod` 2 == 0 = checksum16 $ runGet (sequence $ replicate (l 
 removeIndices :: [a] -> [Int] -> [a]
 removeIndices xs indices =
     foldl' (\xs' i -> take i xs' ++ drop (i+1) xs') xs $ reverse $ sort indices
+
+-- Unicode-aware file access.  We deliberately overload standard function names
+-- to force the user to hide non-unicode-aware versions and use these instead.
+
+readFile :: FilePath -> IO String
+readFile path = do
+  h <- openFile path ReadMode
+  hSetEncoding h utf8
+  hGetContents h
+
+writeFile :: FilePath -> String -> IO ()
+writeFile path txt =
+    withFile path WriteMode $ \h -> do
+        hSetEncoding h utf8
+        hPutStr h txt
 
 -- Replace file content if changed
 updateFile :: FilePath -> String -> IO ()

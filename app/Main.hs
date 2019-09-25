@@ -23,6 +23,7 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts, TemplateHaskell #-}
 
+import Prelude hiding(readFile, writeFile)
 import System.Environment
 import System.FilePath.Posix
 import System.Console.GetOpt
@@ -31,6 +32,7 @@ import Control.Monad
 import Data.List
 import Text.PrettyPrint
 
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Version
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
