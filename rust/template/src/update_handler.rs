@@ -13,10 +13,11 @@
 //!   the update
 //! - all of the above, but processed by a pool of worker threads
 
+use super::valmap::*;
 use super::*;
 
-use super::valmap::*;
 use std::cell::Cell;
+use std::fmt::{self, Debug, Formatter};
 use std::sync::mpsc::*;
 use std::sync::{Arc, Barrier, Mutex, MutexGuard};
 use std::thread::*;
@@ -43,7 +44,7 @@ impl<V: Val> Clone for Box<dyn ST_CBFn<V>> {
     }
 }
 
-pub trait UpdateHandler<V> {
+pub trait UpdateHandler<V>: Debug {
     /* Returns a handler to be invoked on each output relation update. */
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>>;
 
@@ -89,7 +90,7 @@ impl<V> Clone for Box<dyn IMTUpdateHandler<V>> {
 
 /* A no-op `UpdateHandler` implementation
  */
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct NullUpdateHandler {}
 
 impl NullUpdateHandler {
@@ -132,6 +133,14 @@ impl<F: Callback> CallbackUpdateHandler<F> {
     }
 }
 
+impl<F: Callback> Debug for CallbackUpdateHandler<F> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut builder = f.debug_struct("CallbackUpdateHandler");
+        let _ = builder.field("cb", &(&self.cb as *const F));
+        builder.finish()
+    }
+}
+
 impl<V: Val + IntoRecord, F: Callback> UpdateHandler<V> for CallbackUpdateHandler<F> {
     fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
         let mut cb = self.cb.clone();
@@ -150,7 +159,7 @@ impl<V: Val + IntoRecord, F: Callback> MTUpdateHandler<V> for CallbackUpdateHand
 
 /* `UpdateHandler` implementation that invokes user-provided C function.
  */
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ExternCUpdateHandler {
     cb: ExternCCallback,
     cb_arg: libc::uintptr_t,
@@ -204,7 +213,7 @@ impl<V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler {
 /* Multi-threaded `UpdateHandler` implementation that stores updates
  * in a `DeltaMap` and locks the map on every update.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MTValMapUpdateHandler {
     db: Arc<Mutex<valmap::DeltaMap>>,
 }
@@ -236,7 +245,7 @@ impl MTUpdateHandler<Value> for MTValMapUpdateHandler {
  * After the commit is done, the map can be accessed from a different
  * thread.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ValMapUpdateHandler {
     db: Arc<Mutex<DeltaMap>>,
     /* Stores pointer to `MutexGuard` between `before_commit()` and
@@ -296,7 +305,7 @@ impl UpdateHandler<Value> for ValMapUpdateHandler {
 /* `UpdateHandler` implementation that records _changes_ to output relations
  * rather than complete state.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DeltaUpdateHandler {
     /* Setting the `DeltaMap` to `None` disables recording. */
     db: Arc<Mutex<Option<DeltaMap>>>,
@@ -354,6 +363,7 @@ impl UpdateHandler<Value> for DeltaUpdateHandler {
 /* `UpdateHandler` implementation that chains multiple single-threaded
  * handlers.
  */
+#[derive(Debug)]
 pub struct ChainedUpdateHandler<V: Val> {
     handlers: Vec<Box<dyn UpdateHandler<V>>>,
 }
@@ -390,7 +400,7 @@ impl<V: Val> UpdateHandler<V> for ChainedUpdateHandler<V> {
 /* `UpdateHandler` implementation that chains multiple multi-threaded
  * handlers.
  */
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MTChainedUpdateHandler<V: Val> {
     handlers: Vec<Box<dyn IMTUpdateHandler<V>>>,
 }
@@ -449,7 +459,7 @@ enum Msg<V: Val> {
     Stop,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ThreadUpdateHandler<V: Val> {
     /* Channel to worker thread. */
     msg_channel: Arc<Mutex<SyncSender<Msg<V>>>>,
