@@ -1,8 +1,9 @@
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 /// A trait for objects that can observe an observable one.
-pub trait Observer<T, E>: Send
+pub trait Observer<T, E>: Debug + Send
 where
     T: Send,
     E: Send,
