@@ -23,11 +23,12 @@ SOFTWARE.
 
 {-# LANGUAGE FlexibleContexts, ImplicitParams #-}
 
+import Prelude hiding(readFile, writeFile)
 import Test.Tasty
 import Test.Tasty.Golden
 import Test.Tasty.Golden.Advanced
 import Test.Tasty.HUnit
-import System.IO
+import System.IO hiding(readFile, writeFile)
 import System.FilePath
 import System.Directory
 import System.Process
@@ -47,6 +48,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set as S
 import qualified Codec.Compression.GZip as GZ
 
+import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
@@ -285,9 +287,9 @@ cliTest progress fname specname rust_dir extra_args = do
         hClose herr
         hClose hdat
         when (code /= ExitSuccess) $ do
-            err <- readFile errfile
+            e <- readFile errfile
             errorWithoutStackTrace $ "cargo run cli failed with exit code " ++ show code ++
-                                     "\nstderr:\n" ++ err ++
+                                     "\nstderr:\n" ++ e ++
                                      "\n\nstdout written to:\n" ++ dumpfile
 
 unitTest :: String -> IO ()
@@ -299,11 +301,11 @@ unitTest dir = do
         let test_proc = (proc "cargo" (["test"] ++ cargo_flags)) {
                 cwd = Just $ absdir
             }
-        (code, out, err) <- readCreateProcessWithExitCode test_proc ""
+        (code, out, e) <- readCreateProcessWithExitCode test_proc ""
         when (code /= ExitSuccess) $ do
             errorWithoutStackTrace $ "cargo test failed with exit code " ++ show code ++
                                      "\nstdout:\n" ++ out ++
-                                     "\nstderr:\n" ++ err ++ "\n"
+                                     "\nstderr:\n" ++ e ++ "\n"
 
 -- A version of golden test that supports multiple output files.
 -- Uses strict evaluation to avoid errors lazily reading and then writing the

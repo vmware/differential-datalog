@@ -30,7 +30,7 @@ Description: Compile 'OVSDB schema' to DDlog.
 
 module Language.DifferentialDatalog.OVSDB.Compile (compileSchema, compileSchemaFile) where
 
-import Prelude hiding((<>))
+import Prelude hiding((<>), readFile, writeFile)
 import qualified Data.Map as M
 import Text.PrettyPrint
 import Text.RawString.QQ

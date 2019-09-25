@@ -36,6 +36,7 @@ where
 -- primary key types; the latter requires adding support for type-erased value
 -- representation (aka `Record`).
 
+import Prelude hiding ((<>), readFile, writeFile)
 import qualified Data.Map as M
 import Data.List
 import Data.Char
@@ -45,7 +46,6 @@ import Data.FileEmbed
 import Control.Monad.State
 import Text.PrettyPrint
 import Control.Monad.Except
-import Prelude hiding((<>))
 import System.FilePath
 import System.Process
 import GHC.IO.Exception
