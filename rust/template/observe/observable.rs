@@ -1,8 +1,10 @@
+use std::fmt::Debug;
+
 use super::Observer;
 use super::Subscription;
 
 /// A trait for objects that can be observed.
-pub trait Observable<T, E>
+pub trait Observable<T, E>: Debug
 where
     T: Send,
     E: Send,

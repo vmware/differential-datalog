@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 
 type ObserverBox = Box<dyn Observer<Update<super::Value>, String>>;
 
+#[derive(Debug)]
 pub struct UpdatesSubscription {
     /// A pointer to the observer field in the outlet, and sets it to
     /// `None` upon unsubscribing.
@@ -26,6 +27,7 @@ impl Subscription for UpdatesSubscription {
     }
 }
 
+#[derive(Debug)]
 pub struct UpdatesObservable {
     observer: Arc<Mutex<Option<ObserverBox>>>,
 }
@@ -44,6 +46,7 @@ impl Observable<Update<super::Value>, String> for UpdatesObservable {
 }
 
 /// An outlet streams a subset of DDlog tables to an observer.
+#[derive(Debug)]
 pub struct Outlet {
     tables: HashSet<super::Relations>,
     observer: Arc<Mutex<Option<ObserverBox>>>,
@@ -51,6 +54,7 @@ pub struct Outlet {
 
 /// A DDlog server wraps a DDlog program, and writes deltas to the
 /// outlets. The redirect map redirects input deltas to local tables.
+#[derive(Debug)]
 pub struct DDlogServer {
     prog: Option<HDDlog>,
     outlets: Vec<Outlet>,

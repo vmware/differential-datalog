@@ -12,7 +12,7 @@ use std::cell::Cell;
 use maplit::hashmap;
 use maplit::hashset;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Mock {
     called_on_start: usize,
     called_on_commit: usize,
