@@ -1,5 +1,6 @@
 #! /usr/bin/env python2.7
-"""Run various Souffle Datalog programs tests"""
+"""Run various Souffle Datalog programs tests
+   Returns 0 when no errors occurred, 1 when some error occurs, and 2 when no tests are run"""
 
 # pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,too-many-locals,too-many-return-statements
 
@@ -91,6 +92,11 @@ xfail = [
     "weighted_distances" # 197
 ]
 
+def exit(code):
+    if code != 0:
+        print "Terminating with exit code " + str(code)
+    sys.exit(code)
+
 def run_command(command, indata=None):
     """Runs a command in a shell; returns the stdout; on error prints stderr"""
     # print "Running", command
@@ -104,7 +110,8 @@ def run_command(command, indata=None):
     return p.returncode, "{}".format(stdout)
 
 def compile_example(directory, f):
-    """Run the Souffle example in directory 'directory'.  The test file is named f."""
+    """Run the Souffle example in directory 'directory'.  The test file is named f.
+       Returns the exit code of the compilation command."""
     print "Testing " + directory
     global tests_compiled, tests_compiled_successfully, libpath
     tests_compiled = tests_compiled + 1
@@ -211,7 +218,7 @@ def run_remote_tests():
             if code == 0:
                 result.append(directory)
             else:
-                sys.exit(code)
+                exit(1)
             global tests_compiled_successfully, tests_to_run
             if tests_compiled_successfully == tests_to_run:
                 return result
@@ -275,7 +282,7 @@ def main():
     if args.examples:
         code = run_examples()
         if code != 0:
-            sys.exit(code)
+            exit(1)
 
     global tests_to_skip, tests_to_run, tests_compiled_successfully, tests_compiled
     if args.skip is not None:
@@ -291,7 +298,7 @@ def main():
     imports = [s.replace("/", ".") for s in imports]
 
     if len(modules) == 0:
-        sys.exit(1)
+        exit(2)
 
     output_file = "souffle_tests"
     with open(output_file + ".dl", "w") as testfile:
@@ -317,7 +324,9 @@ def main():
                     testoutputfile.write(line)
 
     code = run_merged_test(output_file)
-    sys.exit(code)
+    if code != 0:
+        exit(1)
+    exit(0)
 
 if __name__ == "__main__":
     main()
