@@ -41,6 +41,11 @@ public class Test {
         return "(" + t.a0() + ", " + t.a1() + ", \"" + t.a2() + "\")";
     }
 
+    // typedef mtuple = (bit<32>, string)
+    private String printMTuple(Tuple2__bit_32___stringReader t) {
+        return "(" + t.a0() + ", \"" + t.a1() + "\")";
+    }
+
     // typedef Many = A{x: string}
     //              | B{b: bool}
     //              | D{t: tuple}
@@ -443,19 +448,39 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " ZO{" + z.d() + "}");
                 break;
             }
-            case flatbufTestRelation.AAO: {
-                AAOReader r = (AAOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " " + printCases("AAO", r.c()));
+            case flatbufTestRelation.ZO14: {
+                ZO14Reader r = (ZO14Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printCases("ZO14", r.c()));
                 break;
             }
-            case flatbufTestRelation.ABO: {
-                ABOReader r = (ABOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ABO", r.c()));
+            case flatbufTestRelation.ZO15: {
+                ZO15Reader r = (ZO15Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ZO15", r.c()));
                 break;
             }
-            case flatbufTestRelation.module_ACO: {
-                module_ACOReader r = (module_ACOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " module_ACO{\"" + r.x() + "\"}");
+            case flatbufTestRelation.module_ZO16: {
+                module_ZO16Reader r = (module_ZO16Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " module_ZO16{\"" + r.x() + "\"}");
+                break;
+            }
+            case flatbufTestRelation.module_ZO17: {
+                String r = (String)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " \"" + r + "\"");
+                break;
+            }
+            case flatbufTestRelation.module_ZO18: {
+                module_ZO18Reader b = (module_ZO18Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " module_ZO18{" + printMTuple(b.t()) + "}");
+                break;
+            }
+            case flatbufTestRelation.module_ZO19: {
+                Tuple2__bit_32___stringReader b = (Tuple2__bit_32___stringReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printMTuple(b));
+                break;
+            }
+            case flatbufTestRelation.ZO20: {
+                ZO20Reader b = (ZO20Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + "ZO20{" + printMTuple(b.t()) + "}");
                 break;
             }
             default:
@@ -467,7 +492,6 @@ public class Test {
 
     void update() throws DDlogException {
         flatbufTestUpdateBuilder builder = new flatbufTestUpdateBuilder();
-        //builder.insert_AI("string");
         builder.insert_BI(true);
         builder.insert_CI((byte)8);
         builder.insert_DI((short)-5);
@@ -649,19 +673,33 @@ public class Test {
         {
             Cases__string__signed_32_Writer w1 = builder.create_First__string__signed_32_("string");
             Cases__string__signed_32_Writer w2 = builder.create_Second__string__signed_32_(5);
-            builder.insert_AAI(w1);
-            builder.insert_AAI(w2);
+            builder.insert_ZI14(w1);
+            builder.insert_ZI14(w2);
         }
         {
             F__stringWriter f = builder.create_F__string("Or_string");
             Or__string__signed_32_Writer w1 = builder.create_OrFirst__string__signed_32_(f);
             S__signed_32_Writer s = builder.create_S__signed_32_(22);
             Or__string__signed_32_Writer w2 = builder.create_OrSecond__string__signed_32_(s);
-            builder.insert_ABI(w1);
-            builder.insert_ABI(w2);
+            builder.insert_ZI15(w1);
+            builder.insert_ZI15(w2);
         }
         {
-            builder.insert_module_ACI("aci");
+            builder.insert_module_ZI16("zi16");
+        }
+        {
+            builder.insert_module_ZI17("zi17");
+        }
+        {
+            Tuple2__bit_32___stringWriter b = builder.create_Tuple2__bit_32___string(-1, "ZZZ");
+            builder.insert_module_ZI18(b);
+        }
+        {
+            builder.insert_module_ZI19(-3, "zi19");
+        }
+        {
+            Tuple2__bit_32___stringWriter b = builder.create_Tuple2__bit_32___string(-2, "YYY");
+            builder.insert_ZI20(b);
         }
         builder.applyUpdates(this.api);
         try {
@@ -715,9 +753,13 @@ public class Test {
         this.api.clearRelation(flatbufTestRelation.ZI12);
         this.api.clearRelation(flatbufTestRelation.ZI13);
         this.api.clearRelation(flatbufTestRelation.ZI);
-        this.api.clearRelation(flatbufTestRelation.AAI);
-        this.api.clearRelation(flatbufTestRelation.ABI);
-        this.api.clearRelation(flatbufTestRelation.module_ACI);
+        this.api.clearRelation(flatbufTestRelation.ZI14);
+        this.api.clearRelation(flatbufTestRelation.ZI15);
+        this.api.clearRelation(flatbufTestRelation.module_ZI16);
+        this.api.clearRelation(flatbufTestRelation.module_ZI17);
+        this.api.clearRelation(flatbufTestRelation.module_ZI18);
+        this.api.clearRelation(flatbufTestRelation.module_ZI19);
+        this.api.clearRelation(flatbufTestRelation.ZI20);
     }
 
     void run() throws IOException, DDlogException {
