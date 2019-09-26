@@ -80,18 +80,22 @@ allTests progress = do
             , let expect = file -<.> "ast.expected"
             , let output = file -<.> "ast"]
   let generated_tests = testGroup "generated tests" $ concat $
-          [ [testCase generate_name $ generateDDLogRust True file ["staticlib"]
-            , after AllSucceed generate_pattern $ compilerTests progress file files
-            , after AllSucceed generate_pattern $ unitTests (dropExtension file)]
-            | (file:files) <- inFiles
-            , let base = dropExtension (takeBaseName file)
-              -- the name of the "test" generating the DDLog Rust project,
-              -- which is a dependency used by other tests
-            , let generate_name = "generate " ++ base
-            , let generate_pattern = "$(NF) == \"" ++ generate_name ++ "\""
-          ]
+          [ generatedTests progress file files
+            | (file:files) <- inFiles]
 
   return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
+
+generatedTests :: Bool -> FilePath -> [FilePath] -> [TestTree]
+generatedTests progress file files = do
+    let base = dropExtension (takeBaseName file)
+    -- the name of the "test" generating the DDLog Rust project,
+    -- which is a dependency used by other tests
+    let generate_name = "generate " ++ base
+    let generate_pattern = "$(NF) == \"" ++ generate_name ++ "\""
+
+    [testCase generate_name $ generateDDLogRust True file ["staticlib"]
+          , after AllSucceed generate_pattern $ compilerTests progress file files
+          , after AllSucceed generate_pattern $ unitTests (dropExtension file)]
 
 compilerTests :: Bool -> FilePath -> [FilePath] -> TestTree
 compilerTests progress file files = do
