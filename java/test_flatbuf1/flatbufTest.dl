@@ -122,6 +122,10 @@ input relation YI(v: VOT)
 output relation YO(v: VOT)
 YO(v) :- YI(v).
 
+input relation ZI(d: bit<256>)
+output relation ZO(d: bit<256>)
+ZO(d) :- ZI(d).
+
 input relation ZI0[string]
 output relation ZO0[string]
 ZO0[v] :- ZI0[v].
@@ -179,3 +183,23 @@ typedef Generic<'A, 'B> = Generic{f0: string, f1: 'A, f2: 'B}
 input relation ZI13[Generic<Ref<tuple>, Many>]
 output relation ZO13[Generic<Ref<tuple>, Many>]
 ZO13[v] :- ZI13[v].
+
+typedef Cases<'A, 'B> = First{a: 'A}
+                      | Second{b: 'B}
+input relation ZI14(c: Cases<string, signed<32>>)
+output relation ZO14(c: Cases<string, signed<32>>)
+ZO14(c) :- ZI14(c).
+
+typedef F<'A> = FirstF{a: 'A}
+typedef S<'A> = SecondS{a: 'A}
+typedef Or<'A, 'B> = OrFirst{f: F<'A>}
+                   | OrSecond{s: S<'B>}
+input relation ZI15(c: Or<string, signed<32>>)
+output relation ZO15(c: Or<string, signed<32>>)
+ZO15(c) :- ZO15(c).
+
+import module
+
+input relation ZI20(t: mtuple)
+output relation ZO20(t: mtuple)
+ZO20(t) :- ZI20(t).

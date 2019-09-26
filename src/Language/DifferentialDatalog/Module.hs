@@ -135,13 +135,13 @@ mergeModules mods = do
         progRules        = concatMap progRules mods,
         progApplys       = concatMap progApplys mods
     }
-    uniq (name2rust . name) (\_ -> "The following function declarations will cause name collision in Rust: ")
+    uniq (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
          $ M.elems $ progFunctions prog
-    uniq (name2rust . name) (\_ -> "The following transformer declarations will cause name collision in Rust: ")
+    uniq (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
          $ M.elems $ progTransformers prog
-    uniq (name2rust . name) (\_ -> "The following relations will cause name collision in Rust: ")
+    uniq (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
          $ M.elems $ progRelations prog
-    uniq (name2rust . name) (\_ -> "The following type declarations will cause name collision in Rust: ")
+    uniq (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
          $ M.elems $ progTypedefs prog
     return prog
 

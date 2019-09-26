@@ -26,17 +26,17 @@ PROG=flatbufTest
 # Build the Java library with the DDlog API.
 make -C ..
 
-CLASSPATH=`pwd`/${PROG}_ddlog/flatbuf/java:`pwd`/../ddlogapi.jar:$CLASSPATH
+CLASSPATH=$(pwd)/${PROG}_ddlog/flatbuf/java:$(pwd)/../ddlogapi.jar:$CLASSPATH
 
 # Compile ${PROG}.dl program; use -j switch to generate FlatBuffers schema and Java bindings for it
-ddlog -i ${PROG}.dl -j -L../../lib
+ddlog -i ${PROG}.dl -j -L../../lib -L.
 
 # Compile the rust program; generates ../test/datalog_tests/${PROG}_ddlog/target/release/lib${PROG}_ddlog.a
 (cd ${PROG}_ddlog; cargo build --release --features=flatbuf)
 
 # Compile generated Java classes (the FlatBuffer Java package must be compiled first and must be in the
 # $CLASSPATH)
-(cd ${PROG}_ddlog/flatbuf/java && javac -Xlint:unchecked `ls ddlog/__${PROG}/*.java` && javac -Xlint:unchecked `ls ddlog/${PROG}/*.java`)
+(cd ${PROG}_ddlog/flatbuf/java && javac -Xlint:unchecked $(ls ddlog/__${PROG}/*.java) && javac -Xlint:unchecked $(ls ddlog/${PROG}/*.java))
 
 # Compile Test.java and the generated Java file
 javac -Xlint:unchecked Test.java
@@ -45,9 +45,9 @@ javac -Xlint:unchecked Test.java
 ${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I../../rust/template -I../../lib ../ddlogapi.c -L${PROG}_ddlog/target/release/ -l${PROG}_ddlog -o libddlogapi.${SHLIBEXT}
 
 # Run the java program pointing to the created shared library
-java -Djava.library.path=. Test > test.dump
+java -Djava.library.path=. Test
 diff fb.dump rec.dump
 diff fb.dump fb.dump.expected
 
 # Cleanup generated files
-rm -rf *.class
+rm -rf ./*.class
