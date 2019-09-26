@@ -80,7 +80,9 @@ allTests progress = do
             , let expect = file -<.> "ast.expected"
             , let output = file -<.> "ast"]
   let generated_tests = testGroup "generated tests" $ concat $
-          [ generatedTests progress file files
+          [ if shouldFail $ file
+               then []
+               else generatedTests progress file files
             | (file:files) <- inFiles]
 
   return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
@@ -99,10 +101,8 @@ generatedTests progress file files = do
 
 compilerTests :: Bool -> FilePath -> [FilePath] -> TestTree
 compilerTests progress file files = do
-    testGroup "compiler tests" $ catMaybes $
-          [ if shouldFail $ file
-               then Nothing
-               else Just $ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
+    testGroup "compiler tests" $
+          [ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
             | let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
             , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
 
