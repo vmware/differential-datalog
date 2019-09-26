@@ -526,7 +526,7 @@ mkTypedef d tdef@TypeDef{..} =
                              mkEnumMutator tdef                                                        $$
                              display                                                                   $$
                              default_enum
-         Just t           -> "type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
+         Just t           -> "pub type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]"
