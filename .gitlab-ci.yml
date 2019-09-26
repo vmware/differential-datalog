@@ -19,6 +19,8 @@ test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
 test-simple:
+    # TODO: add release builds when we have more powerful workers
+    #script: STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p simple"
     script: stack --no-terminal test --ta "-p simple"
 
 test-modules:

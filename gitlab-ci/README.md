@@ -1,8 +1,7 @@
 # GitLab CI setup
 
 - GitLab mirror of the DDlog repo (required for integration with GitLab CI):
-    - https://gitlab.com/ryzhyk/differential-datalog
-    - TODO: create a GitLab org to host the repo instead
+    - https://gitlab.com/ddlog/differential-datalog
     - TODO: Add a webhook to the github repo to trigger GitLab sync
 
 - Docker container for GitLab CI
@@ -25,3 +24,21 @@
 
 - GitLab CI script:
     - `.gitlab-ci.yml`
+
+## Creating a GitLab mirror for your own fork of DDlog
+
+Follow these steps to connect your fork of the DDlog repo to GitLab CI,
+so that you can test your changes, e.g., before submitting a PR against
+the main DDlog repo.
+
+- You will need a [gitlab.com](https://gitlab.com) account.
+- Log into your GitLab account.
+- Click `New Project`.
+- Choose `CI/CD for external repo` project type.
+- Specify your fork of `differential-datalog` as the repository to import.
+- That's it. GitLab should now automatically pick up your changes during
+  the next periodic scan (every 30 minutes).  To kick off the CI pipeline
+  instantly, go to `Settings->Repository->Mirroring repositories` and click
+  `Update now`.  You can see the status of the CI pipeline under the `CI/CD`
+  tab.
+- TODO: Figure out how to add a webhook to start GitLab CI tests instantly.
