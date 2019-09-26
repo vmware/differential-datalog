@@ -58,3 +58,4 @@ souffle-grammar.pgt
 # idea project files
 *.iml
 flatbuffers*
+replay.dat

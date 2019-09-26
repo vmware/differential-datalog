@@ -28,7 +28,7 @@ public class XTest {
         NWriter n0 = builder.create_N(true, true);
         NWriter n1 = builder.create_N(false, false);
         MWriter m = builder.create_M(n0, n1);
-        builder.create_R3(m);
+        builder.insert_R3(m);
 
         this.api.transactionStart();
         builder.applyUpdates(this.api);

@@ -32,15 +32,15 @@ public class Test {
         this.api = new DDlogAPI(1, null, false);
         api.recordCommands("replay.dat", false);
 
-        this.fb_file  = new PrintStream("fb.dump");    
-        this.rec_file = new PrintStream("rec.dump");    
+        this.fb_file  = new PrintStream("fb.dump");
+        this.rec_file = new PrintStream("rec.dump");
     }
 
     // typedef tuple = (bool, bit<8>, string)
     private String printTuple(Tuple3__bool__bit_8___stringReader t) {
         return "(" + t.a0() + ", " + t.a1() + ", \"" + t.a2() + "\")";
     }
- 
+
     // typedef Many = A{x: string}
     //              | B{b: bool}
     //              | D{t: tuple}
@@ -56,6 +56,26 @@ public class Test {
         }
     }
 
+    private String printCases(String relname, Cases__string__signed_32_Reader r) {
+        if (r instanceof Cases__string__signed_32_Reader.First) {
+            return relname + "{First{\"" + ((Cases__string__signed_32_Reader.First)r).a() + "\"}}";
+        } else if (r instanceof Cases__string__signed_32_Reader.Second) {
+            return relname + "{Second{" + ((Cases__string__signed_32_Reader.Second)r).b() + "}}";
+        } else {
+            throw new IllegalArgumentException("Invalid Cases value " + r.toString());
+        }
+    }
+
+    private String printOr(String relname, Or__string__signed_32_Reader r) {
+        if (r instanceof Or__string__signed_32_Reader.OrFirst) {
+            return relname + "{OrFirst{F{\"" + ((Or__string__signed_32_Reader.OrFirst)r).f().a() + "\"}}}";
+        } else if (r instanceof Or__string__signed_32_Reader.OrSecond) {
+            return relname + "{OrSecond{S{" + ((Or__string__signed_32_Reader.OrSecond)r).s().a() + "}}}";
+        } else {
+            throw new IllegalArgumentException("Invalid Cases value " + r.toString());
+        }
+    }
+
     void onRecCommit(DDlogCommand command) throws IOException {
         rec_file.println(command.toString());
     }
@@ -63,6 +83,14 @@ public class Test {
     void onFBCommit(DDlogCommand<Object> command) throws IOException {
         int relid = command.relid();
         switch (relid) {
+            /*
+            case flatbutTestRelation.AO: {
+                // TODO
+                AOreader a = (AOreader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + "AO[" + v + "]");
+                break;
+            }
+            */
             // output relation BO(b: bool)
             case flatbufTestRelation.BO: {
                 BOReader v = (BOReader)command.value();
@@ -90,21 +118,21 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " EO{" + v.e() + "}");
                 break;
             }
-            
+
             // output relation FO(s: string)
             case flatbufTestRelation.FO: {
                 FOReader v = (FOReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " FO{\"" + v.s() + "\"}");
                 break;
             }
-            
+
             // output relation GO(d: bit<64>)
             case flatbufTestRelation.GO: {
                 GOReader v = (GOReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " GO{" + v.d() + "}");
                 break;
             }
-            
+
             // output relation HO(d: bit<128>)
             case flatbufTestRelation.HO: {
                 HOReader v = (HOReader)command.value();
@@ -126,7 +154,7 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " JO{" + printTuple(a) + "}");
                 break;
             }
-            
+
             // output relation KO(t: tuple)
             case flatbufTestRelation.KO: {
                 KOReader v = (KOReader)command.value();
@@ -148,7 +176,7 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " L0O{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
                 break;
             }
-            
+
             // output relation MO(v: Vec<bool>)
             case flatbufTestRelation.MO: {
                 MOReader v = (MOReader)command.value();
@@ -328,6 +356,7 @@ public class Test {
             }
             // output relation ZO4[Vec<string>]
             case flatbufTestRelation.ZO4: {
+                @SuppressWarnings("unchecked")
                 List<String> v = (List<String>)command.value();
                 List<String> quoted = new ArrayList<String>();
                 v.forEach((x) -> quoted.add("\"" + x + "\""));
@@ -336,6 +365,7 @@ public class Test {
             }
             // output relation ZO5[Map<string, Many>]
             case flatbufTestRelation.ZO5: {
+                @SuppressWarnings("unchecked")
                 Map<String, ManyReader> v = (Map<String, ManyReader>)command.value();
                 ArrayList<String> strings = new ArrayList<String>(v.size());
                 for (Map.Entry<String, ManyReader> e: v.entrySet()) {
@@ -382,6 +412,7 @@ public class Test {
             }
             // output relation ZO11[Map<Many, string>]
             case flatbufTestRelation.ZO11: {
+                @SuppressWarnings("unchecked")
                 Map<ManyReader, String> v = (Map<ManyReader, String>)command.value();
                 ArrayList<String> strings = new ArrayList<String>(v.size());
                 for (Map.Entry<ManyReader, String> e: v.entrySet()) {
@@ -406,7 +437,28 @@ public class Test {
                         "\"," + printTuple(v.f1()) + "," + printMany(v.f2()) + "}");
                 break;
             }
-            default: 
+            // output relation ZO(d: bit<256>)
+            case flatbufTestRelation.ZO: {
+                ZOReader z = (ZOReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZO{" + z.d() + "}");
+                break;
+            }
+            case flatbufTestRelation.AAO: {
+                AAOReader r = (AAOReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printCases("AAO", r.c()));
+                break;
+            }
+            case flatbufTestRelation.ABO: {
+                ABOReader r = (ABOReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ABO", r.c()));
+                break;
+            }
+            case flatbufTestRelation.module_ACO: {
+                module_ACOReader r = (module_ACOReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " module_ACO{\"" + r.x() + "\"}");
+                break;
+            }
+            default:
                 fb_file.println("Unknown output relation " + relid);
                 //throw new IllegalArgumentException("Unknown relation id " + relid);
         }
@@ -415,6 +467,7 @@ public class Test {
 
     void update() throws DDlogException {
         flatbufTestUpdateBuilder builder = new flatbufTestUpdateBuilder();
+        //builder.insert_AI("string");
         builder.insert_BI(true);
         builder.insert_CI((byte)8);
         builder.insert_DI((short)-5);
@@ -530,8 +583,8 @@ public class Test {
                 builder.create_std_Some___bool__bit_8___string_(
                     builder.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
                 builder.create_std_Some___bool__bit_8___string_(
-                    builder.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!"))
-                //builder.create_std_None___bool__bit_8___string_()
+                    builder.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
+                builder.create_std_None___bool__bit_8___string_()
             };
             builder.insert_YI(Arrays.asList(v));
         }
@@ -589,6 +642,27 @@ public class Test {
             builder.insert_ZI13("ZI13", builder.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"),
                     builder.create_A("ZI13"));
         }
+        {
+            BigInteger b = new BigInteger("01234566788901239813761283");
+            builder.insert_ZI(b);
+        }
+        {
+            Cases__string__signed_32_Writer w1 = builder.create_First__string__signed_32_("string");
+            Cases__string__signed_32_Writer w2 = builder.create_Second__string__signed_32_(5);
+            builder.insert_AAI(w1);
+            builder.insert_AAI(w2);
+        }
+        {
+            F__stringWriter f = builder.create_F__string("Or_string");
+            Or__string__signed_32_Writer w1 = builder.create_OrFirst__string__signed_32_(f);
+            S__signed_32_Writer s = builder.create_S__signed_32_(22);
+            Or__string__signed_32_Writer w2 = builder.create_OrSecond__string__signed_32_(s);
+            builder.insert_ABI(w1);
+            builder.insert_ABI(w2);
+        }
+        {
+            builder.insert_module_ACI("aci");
+        }
         builder.applyUpdates(this.api);
         try {
             builder.applyUpdates(this.api);
@@ -640,6 +714,10 @@ public class Test {
         this.api.clearRelation(flatbufTestRelation.ZI11);
         this.api.clearRelation(flatbufTestRelation.ZI12);
         this.api.clearRelation(flatbufTestRelation.ZI13);
+        this.api.clearRelation(flatbufTestRelation.ZI);
+        this.api.clearRelation(flatbufTestRelation.AAI);
+        this.api.clearRelation(flatbufTestRelation.ABI);
+        this.api.clearRelation(flatbufTestRelation.module_ACI);
     }
 
     void run() throws IOException, DDlogException {

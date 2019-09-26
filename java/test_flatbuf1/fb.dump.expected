@@ -39,24 +39,32 @@ From 51 Insert VO{true,B{false}}
 From 53 Insert WO{std_Some{B{true}}}
 From 53 Insert WO{std_None{}}
 From 55 Insert XO{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
-From 57 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}]}
-From 72 Insert "Hello, world!"
-From 72 Insert "Привіт!"
-From 73 Insert false
-From 73 Insert true
-From 74 Insert "Ref<IString>"
-From 75 Insert {A{"val2"}=>"v2"}
-From 76 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
-From 77 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
-From 78 Insert 0
-From 78 Insert 1000
-From 79 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
-From 80 Insert ["Foo
+From 57 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+From 76 Insert ZO{1234566788901239813761283}
+From 77 Insert "Hello, world!"
+From 77 Insert "Привіт!"
+From 78 Insert false
+From 78 Insert true
+From 79 Insert "Ref<IString>"
+From 80 Insert {A{"val2"}=>"v2"}
+From 81 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+From 82 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+From 83 Insert ZO14{First{"string"}}
+From 83 Insert ZO14{Second{5}}
+From 85 Insert 0
+From 85 Insert 1000
+From 86 Insert ZO20{(4294967294, "YYY")}
+From 87 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+From 88 Insert ["Foo
 ", "	bar"]
-From 81 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
-From 82 Insert std_Some{"ZI6"}
-From 82 Insert std_None{}
-From 83 Insert "ZI7"
-From 83 Insert "♛"
-From 84 Insert 100
-From 85 Insert 100
+From 89 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
+From 90 Insert std_Some{"ZI6"}
+From 90 Insert std_None{}
+From 91 Insert "ZI7"
+From 91 Insert "♛"
+From 92 Insert 100
+From 93 Insert 100
+From 98 Insert module_ZO16{"zi16"}
+From 99 Insert "zi17"
+From 100 Insert module_ZO18{(4294967295, "ZZZ")}
+From 101 Insert (4294967293, "zi19")
