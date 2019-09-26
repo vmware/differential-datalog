@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
+[![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
 [![rustc](https://img.shields.io/badge/rustc-1.37+-blue.svg)](https://blog.rust-lang.org/2019/08/15/Rust-1.37.0.html)
 
 # Differential Datalog (DDlog)
