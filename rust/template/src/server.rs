@@ -197,10 +197,6 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
         }
     }
 
-    fn on_error(&self, error: String) {
-        println!("error: {:?}", error);
-    }
-
     fn on_completed(&mut self) -> Response<()> {
         Ok(())
     }
