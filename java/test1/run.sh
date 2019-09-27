@@ -12,9 +12,9 @@ fi
 CLASSPATH=$CLASSPATH:fastutil-8.3.0.jar:..:../ddlogapi.jar:.
 compile ../../test/datalog_tests/redist.dl RedistTest.java release
 java -Djava.library.path=. RedistTest ../../test/datalog_tests/redist.dat > redist.java.dump
-gzip redist.java.dump
+gzip -f redist.java.dump
 zdiff -q redist.java.dump.gz ../../test/datalog_tests/redist.dump.expected.gz
-
 cleanup
+rm -rf redist.java.dump.gz fastutil-8.3.0
 # Additional cleanup
-# rf -f redist.java.dump.gz fastutil-8.3.0 ../../test/datalog_tests/redist_ddlog
+# rm -rf ../../test/datalog_tests/redist_ddlog

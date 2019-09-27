@@ -43,7 +43,7 @@ public class RedistTest {
             boolean first = true;
             for (int i : list) {
                 if (!first)
-                    result.append(", ");
+                    result.append(",");
                 else
                     first = false;
                 result.append(i);

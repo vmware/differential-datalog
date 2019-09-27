@@ -9,4 +9,6 @@ java -Djava.library.path=. Test
 diff fb.dump rec.dump
 diff fb.dump fb.dump.expected
 cleanup
-# rm -rf fb.dump rec.dump flatbufTest_ddlog replay.dat
+rm fb.dump rec.dump replay.dat
+# Additional cleanup
+# rm -rf flatbufTest_ddlog

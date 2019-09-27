@@ -9,4 +9,6 @@ compile x.dl XTest.java debug
 java -Djava.library.path=. XTest > xtest.dump
 diff xtest.dump xtest.dump.expected
 cleanup
-# rm -rf xtest.dump x_ddlog
+rm xtest.dump
+# Additional cleanup
+# rm -rf x_ddlog
