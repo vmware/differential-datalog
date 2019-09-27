@@ -2,7 +2,6 @@ use std::any::Any;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use differential_datalog::program::Update;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
@@ -13,7 +12,6 @@ use distributed_datalog::TcpSender;
 use server_api_ddlog::api::*;
 use server_api_ddlog::server::*;
 use server_api_ddlog::Relations::*;
-use server_api_ddlog::Value;
 
 use lazy_static::lazy_static;
 
@@ -76,7 +74,7 @@ macro_rules! DeltaTest {
 #[test]
 fn single_delta_direct() -> Result<(), String> {
     fn do_test(
-        observable: &mut dyn Observable<Update<Value>, String>,
+        observable: &mut UpdatesObservable,
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
         observable.subscribe(Box::new(observer));
@@ -91,7 +89,7 @@ fn single_delta_direct() -> Result<(), String> {
 #[test]
 fn single_delta_tcp() -> Result<(), String> {
     fn do_test(
-        observable: &mut dyn Observable<Update<Value>, String>,
+        observable: &mut UpdatesObservable,
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
         let mut recv = TcpReceiver::new("127.0.0.1:0").unwrap();

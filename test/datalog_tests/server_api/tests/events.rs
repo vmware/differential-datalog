@@ -11,13 +11,13 @@ use differential_datalog::record::UpdCmd;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
 use distributed_datalog::SharedObserver;
-use distributed_datalog::Subscription;
 use distributed_datalog::TcpReceiver;
 use distributed_datalog::TcpSender;
 
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::server::DDlogServer;
+use server_api_ddlog::server::UpdatesObservable;
 use server_api_ddlog::Relations::*;
 use server_api_ddlog::Value;
 
@@ -101,7 +101,7 @@ where
 /// updates.
 fn start_commit_on_no_updates(
     mut server: DDlogServer,
-    _subscription: Box<dyn Subscription>,
+    _observable: UpdatesObservable,
     observer: MockObserver,
 ) -> Result<(), String> {
     server.on_start()?;
@@ -151,7 +151,7 @@ fn start_commit_on_no_updates(
 /// Verify that we receive an `on_updates` call when we get an update.
 fn start_commit_with_updates(
     mut server: DDlogServer,
-    _subscription: Box<dyn Subscription>,
+    _observable: UpdatesObservable,
     observer: MockObserver,
 ) -> Result<(), String> {
     let updates = &[UpdCmd::Insert(
@@ -186,13 +186,14 @@ fn start_commit_with_updates(
 /// Test `unsubscribe` functionality.
 fn unsubscribe(
     mut server: DDlogServer,
-    subscription: Box<dyn Subscription>,
+    mut observable: UpdatesObservable,
     observer: MockObserver,
 ) -> Result<(), String> {
     server.on_start()?;
     server.on_commit()?;
 
-    subscription.unsubscribe();
+    assert!(observable.unsubscribe(&()));
+    assert!(!observable.unsubscribe(&()));
 
     server.on_start()?;
     server.on_commit()?;
@@ -213,7 +214,7 @@ fn unsubscribe(
 /// deletes of the same object within a single transaction.
 fn multiple_mergable_updates(
     mut server: DDlogServer,
-    _subscription: Box<dyn Subscription>,
+    _observable: UpdatesObservable,
     observer: MockObserver,
 ) -> Result<(), String> {
     let updates = &[
@@ -259,7 +260,7 @@ fn multiple_mergable_updates(
 /// happening.
 fn multiple_transactions(
     mut server: DDlogServer,
-    _subscription: Box<dyn Subscription>,
+    _observable: UpdatesObservable,
     observer: MockObserver,
 ) -> Result<(), String> {
     let updates = &[
@@ -324,23 +325,18 @@ fn multiple_transactions(
     Ok(())
 }
 
-fn setup() -> (DDlogServer, Box<dyn Subscription>, MockObserver) {
+fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
     let mut server = DDlogServer::new(program, hashmap! {});
 
     let observer = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    let subscription = stream.subscribe(Box::new(observer.clone())).unwrap();
+    let _ = stream.subscribe(Box::new(observer.clone())).unwrap();
 
-    (server, subscription, observer)
+    (server, stream, observer)
 }
 
-fn setup_tcp() -> (
-    DDlogServer,
-    Box<dyn Subscription>,
-    MockObserver,
-    Box<dyn Any>,
-) {
+fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {});
     let mut server = DDlogServer::new(program, hashmap! {});
 
@@ -350,10 +346,10 @@ fn setup_tcp() -> (
     let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
     let send = TcpSender::connect(*recv.addr()).unwrap();
 
-    let subscription = stream.subscribe(Box::new(send)).unwrap();
+    let _ = stream.subscribe(Box::new(send)).unwrap();
     let _ = recv.subscribe(Box::new(observer.clone())).unwrap();
 
-    (server, subscription, observer, Box::new(recv))
+    (server, stream, observer, Box::new(recv))
 }
 
 #[test]

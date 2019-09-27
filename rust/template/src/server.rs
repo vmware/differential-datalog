@@ -9,11 +9,9 @@ use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use distributed_datalog::Observer;
 use distributed_datalog::ObserverBox as ObserverBoxT;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
-use distributed_datalog::UpdatesSubscription as UpdatesSubscriptionT;
 
 pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
 pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;
-pub type UpdatesSubscription = UpdatesSubscriptionT<Update<super::Value>, String>;
 
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
