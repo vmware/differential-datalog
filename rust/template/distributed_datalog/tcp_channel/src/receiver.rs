@@ -22,8 +22,6 @@ use log::error;
 
 use observe::Observable;
 use observe::ObserverBox;
-use observe::Subscription;
-use observe::UpdatesSubscription;
 
 use serde::de::DeserializeOwned;
 
@@ -221,18 +219,31 @@ impl<T> Observable<T, String> for TcpReceiver<T>
 where
     T: Debug + Send + 'static,
 {
+    type Subscription = ();
+
     /// An observer subscribes to the receiving end of a TCP channel to
     /// listen to incoming data.
-    fn subscribe(&mut self, observer: ObserverBox<T, String>) -> Option<Box<dyn Subscription>> {
+    fn subscribe(&mut self, observer: ObserverBox<T, String>) -> Option<Self::Subscription> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
             Some(_) => None,
             None => {
                 *guard = Some(observer);
-                Some(Box::new(UpdatesSubscription {
-                    observer: self.observer.clone(),
-                }))
+                Some(())
             }
+        }
+    }
+
+    /// Unsubscribe a previously subscribed `Observer` based on a
+    /// subscription.
+    fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> bool {
+        let mut guard = self.observer.lock().unwrap();
+        match *guard {
+            Some(_) => {
+                *guard = None;
+                true
+            }
+            None => false,
         }
     }
 }
