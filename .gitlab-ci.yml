@@ -19,9 +19,9 @@ test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
 test-simple:
-    # TODO: add release builds when we have more powerful workers
-    #script: STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p simple"
-    script: stack --no-terminal test --ta "-p simple"
+    tags:
+        - ddlog-ci-1
+    script: STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p simple"
 
 test-modules:
     script: stack --no-terminal test --ta "-p modules"
@@ -79,40 +79,44 @@ test-flatbuf:
     script:
         - (cd java/test_flatbuf1 && ./run.sh)
 
+# Template for souffle tests
+.test-imported-souffle:
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
+
 # Tests from the souffle github repo.
 test-imported-souffle-tests1:
-    extends: .install-ddlog
+    extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 0 24)
 
-# Slow
-#test-imported-souffle-tests2:
-#    extends: .install-ddlog
-#    script:
-#        - (cd test && ./run-souffle-tests-in-batches.py 25 49)
+test-imported-souffle-tests2:
+    extends: .test-imported-souffle
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 25 49)
 
-# Times out or runs out of memory on gitlab
-#test-imported-souffle-tests3:
-#    extends: .install-ddlog
-#    script:
-#        - (cd test && ./run-souffle-tests-in-batches.py 50 74)
+test-imported-souffle-tests3:
+    extends: .test-imported-souffle
+    script:
+        - (cd test && ./run-souffle-tests-in-batches.py 50 74)
 
 test-imported-souffle-tests4:
-    extends: .install-ddlog
+    extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 75 99)
 
 test-imported-souffle-tests5:
-    extends: .install-ddlog
+    extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 100 124)
 
 test-imported-souffle-tests6:
-    extends: .install-ddlog
+    extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 125 149)
 
 test-imported-souffle-tests7:
-    extends: .install-ddlog
+    extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 150 175)

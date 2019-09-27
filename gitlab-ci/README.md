@@ -25,6 +25,26 @@
 - GitLab CI script:
     - `.gitlab-ci.yml`
 
+## GitLab runner configuration
+
+Some of the jobs in the CI script require more CPU or memory than available
+to GitLab shared runners.  These jobs are tagged to run on project-specific
+runners hosted by VMware, e.g.:
+
+```
+.test-imported-souffle
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
+```
+
+These runners are attached to the DDlog GitLab organization, so in order to use
+them with your fork of the DDlog repo, you must transfer the fork (or the GitLab
+mirror of the fork) to the DDlog organization (see below).
+
+I followed these [instructions](https://docs.gitlab.com/runner/install/linux-manually.html)
+to configure the GitLab runners.
+
 ## Creating a GitLab mirror for your own fork of DDlog
 
 Follow these steps to connect your fork of the DDlog repo to GitLab CI,
@@ -37,8 +57,17 @@ the main DDlog repo.
 - Choose `CI/CD for external repo` project type.
 - Specify your fork of `differential-datalog` as the repository to import.
 - That's it. GitLab should now automatically pick up your changes during
-  the next periodic scan (every 30 minutes).  To kick off the CI pipeline
+  the next periodic scan (every 30 minutes).
+  <!--To kick off the CI pipeline
   instantly, go to `Settings->Repository->Mirroring repositories` and click
-  `Update now`.  You can see the status of the CI pipeline under the `CI/CD`
-  tab.
-- TODO: Figure out how to add a webhook to start GitLab CI tests instantly.
+  `Update now`.-->
+  You can see the status of the CI pipeline under the `CI/CD` tab.
+- In order to use VMware-hosted GitLab runners, you need to transfer the
+  mirror to the DDlog organization.  To do this, first change the path
+  to the mirror (under `Settings->General->Advanced->Change path`)
+  from `differential-datalog` to, e.g., `differential-datalog-user-name`
+  and then use `Settings->General->Advanced->Transfer project` to move
+  the project to the DDlog org (you must become an owner of the org first).
+
+<!-- TODO: Figure out how to add a webhook to start GitLab CI tests instantly.
+-->
