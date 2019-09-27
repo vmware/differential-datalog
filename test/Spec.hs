@@ -63,48 +63,55 @@ main = do
     defaultMain tests
 
 cargo_build_flags :: IO [[Char]]
-cargo_build_flags = do
+cargo_build_flags =
   (maybe [] (return)) <$> lookupEnv "STACK_CARGO_FLAGS"
 
 allTests :: Bool -> IO TestTree
 allTests progress = do
-  -- locate datalog files
-  dlFiles <- findByExtensionNonRec [".dl"] "./test/datalog_tests"
-  -- some of the tests may have accompanying .dat files
-  inFiles <- mapM (\dlFile -> do let datFile = replaceExtension dlFile "dat"
-                                 exists <- doesFileExist datFile
-                                 return $ if exists then [dlFile, datFile, datFile] else [dlFile]) dlFiles
-  let parser_tests = testGroup "parser tests" $
+    -- locate datalog files
+    dlFiles <- findByExtensionNonRec [".dl"] "./test/datalog_tests"
+    -- some of the tests may have accompanying .dat files
+    inFiles <- mapM (\dlFile -> do
+        let datFile = replaceExtension dlFile "dat"
+        -- If there's a gzipped reference file, use that
+        let gzFile = replaceExtension dlFile "dump.expected.gz"
+        datFileExists <- doesFileExist datFile
+        gzFileExists <- doesFileExist gzFile
+        if datFileExists
+           then if gzFileExists
+                   then return (dlFile, Just gzFile)
+                   else return (dlFile, Just $ replaceExtension dlFile "dump.expected")
+           else return (dlFile, Nothing)) dlFiles
+    let parser_tests = testGroup "parser tests" $
           [ goldenVsFile (takeBaseName file) expect output (parserTest file)
-            | (file:_) <- inFiles
+            | (file,_) <- inFiles
             , let expect = file -<.> "ast.expected"
             , let output = file -<.> "ast"]
-  let generated_tests = testGroup "generated tests" $ concat $
-          [ if shouldFail $ file
+    let generated_tests = testGroup "generated tests" $ concat $
+          [ if shouldFail dlFile
                then []
-               else generatedTests progress file files
-            | (file:files) <- inFiles]
+               else generatedTests progress dlFile refFile
+            | (dlFile, refFile) <- inFiles]
+    return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
 
-  return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
-
-generatedTests :: Bool -> FilePath -> [FilePath] -> [TestTree]
-generatedTests progress file files = do
-    let base = dropExtension (takeBaseName file)
+generatedTests :: Bool -> FilePath -> Maybe FilePath -> [TestTree]
+generatedTests progress dlFile refFile = do
+    let base = dropExtension (takeBaseName dlFile)
     -- the name of the "test" generating the DDLog Rust project,
     -- which is a dependency used by other tests
     let generate_name = "generate " ++ base
     let generate_pattern = "$(NF) == \"" ++ generate_name ++ "\""
 
-    [testCase generate_name $ generateDDLogRust True file ["staticlib"]
-          , after AllSucceed generate_pattern $ compilerTests progress file files
-          , after AllSucceed generate_pattern $ unitTests (dropExtension file)]
+    [testCase generate_name $ generateDDLogRust True dlFile ["staticlib"]
+          , after AllSucceed generate_pattern $ compilerTests progress dlFile refFile
+          , after AllSucceed generate_pattern $ unitTests (dropExtension dlFile)]
 
-compilerTests :: Bool -> FilePath -> [FilePath] -> TestTree
-compilerTests progress file files = do
+compilerTests :: Bool -> FilePath -> Maybe FilePath -> TestTree
+compilerTests progress dlFile refFile = do
+    let expect = maybeToList refFile
+    let output = maybe [] (\_ -> [replaceExtension dlFile ".dump"]) refFile
     testGroup "compiler tests" $
-          [ goldenVsFiles (takeBaseName file) expect output (compilerTest progress file [])
-            | let expect = map (uncurry replaceExtension) $ zip files [".dump.expected"]
-            , let output = map (uncurry replaceExtension) $ zip files [".dump"]]
+          [ goldenVsFiles (takeBaseName dlFile) expect output (compilerTest progress dlFile []) ]
 
 unitTests :: FilePath -> TestTree
 unitTests dir = do
