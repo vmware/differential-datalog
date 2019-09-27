@@ -7,8 +7,6 @@ use server_api_ddlog::api::*;
 use server_api_ddlog::server;
 use server_api_ddlog::Relations::*;
 
-use std::cell::Cell;
-
 use maplit::hashmap;
 use maplit::hashset;
 
@@ -18,7 +16,6 @@ struct Mock {
     called_on_commit: usize,
     called_on_updates: usize,
     called_on_completed: usize,
-    called_on_error: Cell<usize>,
 }
 
 impl Mock {
@@ -28,7 +25,6 @@ impl Mock {
             called_on_commit: 0,
             called_on_updates: 0,
             called_on_completed: 0,
-            called_on_error: Cell::new(0),
         }
     }
 }
@@ -56,10 +52,6 @@ where
     fn on_completed(&mut self) -> Result<(), E> {
         self.called_on_completed += 1;
         Ok(())
-    }
-
-    fn on_error(&self, _: E) {
-        self.called_on_error.set(self.called_on_error.get() + 1);
     }
 }
 
@@ -91,7 +83,6 @@ fn start_commit_on_no_updates() -> Result<(), String> {
     {
         let mock = observable.0.lock().unwrap();
         assert_eq!(mock.called_on_completed, 1);
-        assert_eq!(mock.called_on_error.get(), 0);
     }
 
     server.shutdown()?;
@@ -100,7 +91,6 @@ fn start_commit_on_no_updates() -> Result<(), String> {
     {
         let mock = observable.0.lock().unwrap();
         assert_eq!(mock.called_on_completed, 1);
-        assert_eq!(mock.called_on_error.get(), 0);
     }
     Ok(())
 }
@@ -132,7 +122,6 @@ fn start_commit_with_updates() -> Result<(), String> {
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
-    assert_eq!(mock.called_on_error.get(), 0);
     Ok(())
 }
 
@@ -157,7 +146,6 @@ fn unsubscribe() -> Result<(), String> {
     let mock = observable.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_commit, 1);
-    assert_eq!(mock.called_on_error.get(), 0);
     Ok(())
 }
 
@@ -198,7 +186,6 @@ fn multiple_mergable_updates() -> Result<(), String> {
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
-    assert_eq!(mock.called_on_error.get(), 0);
     Ok(())
 }
 
@@ -256,10 +243,5 @@ fn multiple_transactions() -> Result<(), String> {
     }
 
     server.on_completed()?;
-
-    {
-        let mock = observable.0.lock().unwrap();
-        assert_eq!(mock.called_on_error.get(), 0);
-    }
     Ok(())
 }

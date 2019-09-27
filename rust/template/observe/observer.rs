@@ -24,9 +24,6 @@ where
     /// This method is typically used to clean up any state associated
     /// with the `Observable`.
     fn on_completed(&mut self) -> Result<(), E>;
-
-    /// Action to perform when any error occurs.
-    fn on_error(&self, error: E);
 }
 
 /// Wrapper around an `Observer` that allows for it to be shared by
@@ -58,10 +55,6 @@ where
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
         self.0.lock().unwrap().on_updates(updates)
-    }
-
-    fn on_error(&self, error: E) {
-        self.0.lock().unwrap().on_error(error)
     }
 
     fn on_completed(&mut self) -> Result<(), E> {
