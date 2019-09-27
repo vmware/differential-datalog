@@ -33,3 +33,10 @@ typedef Alt = C0{x: bit<16>}
 // type argument 'D not used in type definition
 typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
                                    | Option2{y: 'B, z: 'C}
+
+//---
+
+typedef VIP  = string
+typedef UUID = string
+
+input relation VM_Host[(VIP, UUID)] primary key (vm) vm.VIP

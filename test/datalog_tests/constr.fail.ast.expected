@@ -20,4 +20,6 @@ expecting function name
 
 error: ./test/datalog_tests/constr.fail.dl:4:15-7:1: Field x is declared with different types
 
-error: ./test/datalog_tests/constr.fail.dl:4:1-6:1: The following type variables are not used in type definition: D
+error: ./test/datalog_tests/constr.fail.dl:4:1-7:1: The following type variables are not used in type definition: D
+
+./test/datalog_tests/constr.fail.dl:6:54-7:1: Unknown module vm.  Did you forget to import it?

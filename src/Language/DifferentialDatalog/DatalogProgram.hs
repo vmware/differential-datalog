@@ -65,6 +65,8 @@ import Language.DifferentialDatalog.Type
 -- | Map function 'fun' over all expressions in a program
 progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m DatalogProgram
 progExprMapCtxM d fun = do
+    rels' <- M.fromList <$>
+             (mapM (\(rname, rel) -> (rname,) <$> relExprMapCtxM fun rel) $ M.toList $ progRelations d)
     funcs' <- mapM (\f -> do e <- case funcDef f of
                                        Nothing -> return Nothing
                                        Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
@@ -75,7 +77,15 @@ progExprMapCtxM d fun = do
                              return r{ruleLHS = lhs, ruleRHS = rhs})
                    $ progRules d
     return d{ progFunctions = funcs'
+            , progRelations = rels'
             , progRules     = rules'}
+
+relExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> Relation -> m Relation
+relExprMapCtxM fun rel = do
+    pkey' <- mapM (\key -> do e' <- exprFoldCtxM fun (CtxKey rel) $ keyExpr key
+                              return key{keyExpr = e'})
+             $ relPrimaryKey rel
+    return rel{relPrimaryKey = pkey'}
 
 atomExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
 atomExprMapCtxM fun ctx a = do
