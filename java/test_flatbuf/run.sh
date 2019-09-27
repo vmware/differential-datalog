@@ -9,4 +9,6 @@ compile ../../test/datalog_tests/redist.dl Test.java debug
 java -Djava.library.path=. Test > test.dump
 diff test.dump test.dump.expected
 cleanup
-# rm -rf ../../test/datalog_tests/redist_ddlog test.dump replay.dat
+rm -f test.dump replay.dat
+# additional cleanup
+# rm -rf ../../test/datalog_tests/redist_ddlog

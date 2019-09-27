@@ -10,5 +10,6 @@ compile ../../test/datalog_tests/span_string.dl SpanTest.java release
 java -Djava.library.path=. SpanTest > spantest.dump
 diff spantest.dump spantest.dump.expected
 cleanup
+rm -f spantest.dump
 # Additional cleanup
-# rm -f spantest.dump ../../test/datalog_tests/span_string_ddlog
+# rm -rf ../../test/datalog_tests/span_string_ddlog
