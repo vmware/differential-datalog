@@ -45,17 +45,17 @@ test-redist:
     extends: .install-ddlog
     script:
         - stack --no-terminal test --ta "-p redist"
-        - (cd java/test1 && ./run.sh)
+        #- (cd java/test1 && ./run.sh)
         - (cd java/test_flatbuf && ./run.sh)
 
-test-redist:
+test-span_string:
     extends: .install-ddlog
     script:
         - stack --no-terminal test --ta "-p span_string"
         - (cd java/test3 && ./run.sh)
 
 # All other Java tests.
-test-redist:
+test-span_uuid:
     extends: .install-ddlog
     script:
         - stack --no-terminal test --ta "-p span_uuid"
