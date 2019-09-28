@@ -45,7 +45,7 @@ test-redist:
     extends: .install-ddlog
     script:
         - stack --no-terminal test --ta "-p redist"
-        #- (cd java/test1 && ./run.sh)
+        - (cd java/test1 && ./run.sh)
         - (cd java/test_flatbuf && ./run.sh)
 
 test-span_string:
