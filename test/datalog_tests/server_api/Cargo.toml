@@ -9,6 +9,8 @@ differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
 maplit = "1.0"
 observe = {path = "../server_api_ddlog/observe"}
 server_api = {path = "../server_api_ddlog"}
+tcp_channel = {path = "../server_api_ddlog/tcp_channel"}
 
 [dev-dependencies]
 lazy_static = "1.4"
+waitfor = "0.1"
