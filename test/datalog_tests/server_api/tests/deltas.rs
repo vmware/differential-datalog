@@ -93,7 +93,7 @@ fn single_delta_tcp() -> Result<(), String> {
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
         let mut recv = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send = TcpSender::new(*recv.addr()).unwrap();
+        let send = TcpSender::connect(*recv.addr()).unwrap();
 
         recv.subscribe(Box::new(observer));
         observable.subscribe(Box::new(send));
