@@ -5,6 +5,8 @@ default:
 .install-ddlog:
     before_script:
         - stack install
+        - mkdir -p /root/.local/ddlog
+        - ln -s $(pwd)/lib /root/.local/ddlog/lib
 
 # Test Rust template only.
 test-rust:
@@ -120,3 +122,25 @@ test-imported-souffle-tests7:
     extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 150 175)
+
+# Test ovn-northd-ddlog
+test-ovn-northd:
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-2
+    script:
+        # TODO: use main OVS repo once these changes are there.
+        - (cd /root &&
+          git clone https://github.com/numansiddique/ovs.git &&
+          cd ovs && git checkout ovs_ddlog_patches &&
+          ./boot.sh &&
+          ./configure  &&
+          make -j6)
+        # TODO: maintain and eventually remove the list of tests.
+        # TODO: use -j6 once build script is fixed
+        - (cd /root &&
+          git clone https://github.com/ovn-org/ovn.git &&
+          cd ovn && git checkout ddlog-dev-v2 &&
+          ./boot.sh &&
+          ./configure --with-ddlog=/root/.local/ddlog/lib --with-ovs-source=/root/ovs &&
+          make check -j1 TESTSUITEFLAGS="117-135 138-141 143-145 147-149 151-152 154-161 167-169 172 174-181 183-185 187-189 191 193-196 198-199 201-202")

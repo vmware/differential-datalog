@@ -11,7 +11,10 @@ RUN apt-get update &&   \
     cmake               \
     subversion          \
     python              \
-    python-pip
+    python-pip          \
+    autoconf            \
+    libtool             \
+    libssl-dev
 
 # Install haskell stack
 RUN wget -qO- https://get.haskellstack.org/ | sh

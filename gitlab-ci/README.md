@@ -45,6 +45,38 @@ mirror of the fork) to the DDlog organization (see below).
 I followed these [instructions](https://docs.gitlab.com/runner/install/linux-manually.html)
 to configure the GitLab runners.
 
+A copy of `/etc/gitlab-runner/config.toml`:
+
+```
+concurrent = 8
+check_interval = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "ddlog-ci-1"
+  url = "https://gitlab.com"
+  token = "Bjx-aJUGEH6Fp6rBEXkf"
+  executor = "docker"
+  [runners.custom_build_dir]
+  [runners.docker]
+    tls_verify = false
+    image = "ddlog/gitlab-ci:latest"
+    privileged = false
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = ["/cache"]
+    shm_size = 0
+    network_mode = "host"
+    limit = 1
+  [runners.cache]
+    [runners.cache.s3]
+    [runners.cache.gcs]
+
+```
+
 ## Creating a GitLab mirror for your own fork of DDlog
 
 Follow these steps to connect your fork of the DDlog repo to GitLab CI,
