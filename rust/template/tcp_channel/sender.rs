@@ -1,4 +1,5 @@
 use std::io;
+use std::io::BufWriter;
 use std::io::Write;
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
@@ -14,17 +15,17 @@ use crate::message::Message;
 /// connection.
 #[derive(Debug)]
 pub struct TcpSender {
-    stream: TcpStream,
+    stream: BufWriter<TcpStream>,
 }
 
 impl TcpSender {
     /// Create a new `TcpSender`, connecting to the given address.
-    pub fn new<A>(addr: A) -> io::Result<Self>
+    pub fn connect<A>(addr: A) -> io::Result<Self>
     where
         A: ToSocketAddrs,
     {
         Ok(Self {
-            stream: TcpStream::connect(addr)?,
+            stream: BufWriter::new(TcpStream::connect(addr)?),
         })
     }
 }
@@ -66,6 +67,20 @@ mod tests {
     #[test]
     fn connect() {
         let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
-        let _ = TcpSender::new(recv.addr()).unwrap();
+        let _ = TcpSender::connect(recv.addr()).unwrap();
+    }
+
+    /// Transmit updates between a `TcpSender` and a `TcpReceiver`
+    /// without an `Observer` being subscribed to the `TcpReceiver`.
+    #[test]
+    fn transmit_updates_no_consumer() {
+        let recv = TcpReceiver::<String>::new("127.0.0.1:0").unwrap();
+        let mut send = TcpSender::connect(recv.addr()).unwrap();
+
+        let send = &mut send as &mut dyn Observer<String, _>;
+        send.on_start().unwrap();
+        send.on_updates(Box::new((1..100000).map(|_| "this-is-a-test".to_string())))
+            .unwrap();
+        send.on_commit().unwrap();
     }
 }
