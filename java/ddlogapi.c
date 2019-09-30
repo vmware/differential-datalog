@@ -265,7 +265,6 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
     }
     fd = open(c_filename, O_CREAT | O_WRONLY | (append ? O_APPEND : O_TRUNC),
               S_IRUSR | S_IWUSR);
-    (*env)->ReleaseStringUTFChars(env, filename, c_filename);
 
     if (fd < 0) {
         throwIOException(env, "Failed to open file %s. Error code: %d", c_filename, fd);
@@ -275,6 +274,8 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
         }
         close(fd);
     }
+
+    (*env)->ReleaseStringUTFChars(env, filename, c_filename);
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
