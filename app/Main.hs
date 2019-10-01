@@ -30,6 +30,7 @@ import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
 import Data.List
+import qualified Data.Map as M
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Util
@@ -46,6 +47,7 @@ data TOption = Help
              | Action String
              | LibDir String
              | Java
+             | Debug
              | DynLib
              | NoDynLib
              | StaticLib
@@ -66,6 +68,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option ['L'] []                   (ReqArg LibDir   "PATH")          "Extra DDlog library directory."
           , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
           , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings."
+          , Option []    ["debug"]            (NoArg Debug)                     "Help debugging: all non-input relations are considered output relations."
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
@@ -81,6 +84,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confStaticLib     :: Bool
                      , confDynamicLib    :: Bool
                      , confJava          :: Bool
+                     , confDebug         :: Bool
                      , confBoxThreshold  :: Int
                      }
 
@@ -90,6 +94,7 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confLibDirs       = []
                        , confStaticLib     = True
                        , confDynamicLib    = False
+                       , confDebug         = False
                        , confJava          = False
                        , confBoxThreshold  = cconfBoxThreshold defaultCompilerConfig
                        }
@@ -106,6 +111,7 @@ addOption config Java             = return config { confJava = True }
 addOption config (LibDir d)       = return config { confLibDirs = nub (d:confLibDirs config)}
 addOption config DynLib           = return config { confDynamicLib = True }
 addOption config NoDynLib         = return config { confDynamicLib = False }
+addOption config Debug            = return config { confDebug = True }
 addOption config StaticLib        = return config { confStaticLib = True }
 addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
@@ -143,11 +149,21 @@ main = do
                               return ()
          ActionCompile -> compileProg config
 
+-- convert all intermediate relations into output relations
+makeOutputRelations :: DatalogProgram -> DatalogProgram
+makeOutputRelations d =
+  d { progRelations = M.map
+      (\r -> r { relRole = if relRole r == RelInternal
+                           then RelOutput else relRole r }) $ progRelations d }
+
 parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
     (d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
-    d' <- case validate d of
+    d'' <- case confDebug of
+         False -> return d
+         True ->  return $ makeOutputRelations d
+    d' <- case validate d'' of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d' -> return d'
     when confJava $
