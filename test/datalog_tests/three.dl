@@ -1,0 +1,7 @@
+input relation I(x: bit<32>)
+
+relation M(x: bit<32>)
+M(x) :- I(x).
+
+output relation O(x: bit<32>)
+O(x) :- M(x).

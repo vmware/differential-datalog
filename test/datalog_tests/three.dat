@@ -1,0 +1,4 @@
+start;
+insert I(10),
+commit;
+dump;
