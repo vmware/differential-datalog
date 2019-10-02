@@ -7,6 +7,7 @@
     non_shorthand_field_patterns,
     dead_code,
     overflowing_literals,
+    unreachable_patterns,
     clippy::redundant_closure // Broken in 1.34
 )]
 
