@@ -41,6 +41,11 @@ impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
     /// inactive on creation, so to receive data the user must call
     /// `connect` to start a connection; and `listen` to listen for
     /// incoming data.
+    ///
+    /// `addr` may have a port set (by setting it to 0). In such a case
+    /// the system will assign a port that is free. To retrieve this
+    /// assigned port (in the form of the full `SocketAddr`), use the
+    /// `addr` method.
     pub fn new(addr: SocketAddr) -> Self {
         Self {
             addr,
@@ -54,6 +59,14 @@ impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
     pub fn connect(&mut self) -> JoinHandle<()> {
         let listener = TcpListener::bind(self.addr).unwrap();
         let stream = self.stream.clone();
+
+        // We want to allow for auto-assigned ports, by letting the user
+        // specify a `SocketAddr` with port 0. In this case, after
+        // actually binding to an address, we need to update the port we
+        // got assigned in `addr`, but for simplicity we just copy the
+        // entire thing.
+        self.addr = listener.local_addr().unwrap();
+
         spawn(move || {
             let (s, _) = listener.accept().unwrap();
             let mut stream = stream.lock().unwrap();
@@ -98,6 +111,11 @@ impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
     pub fn disconnect(&mut self) {
         // Drop TCP stream to close connection
         let _ = self.stream.lock().unwrap().take();
+    }
+
+    /// Retrieve the address we are listening on.
+    pub fn addr(&self) -> &SocketAddr {
+        &self.addr
     }
 }
 
