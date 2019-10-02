@@ -107,12 +107,6 @@ impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
         }
     }
 
-    /// Disconnect the receiver.
-    pub fn disconnect(&mut self) {
-        // Drop TCP stream to close connection
-        let _ = self.stream.lock().unwrap().take();
-    }
-
     /// Retrieve the address we are listening on.
     pub fn addr(&self) -> &SocketAddr {
         &self.addr
@@ -187,12 +181,6 @@ impl TcpSender {
             );
         }
         Ok(())
-    }
-
-    /// Disconnect the sender.
-    pub fn disconnect(&mut self) {
-        // Drop TCP stream to close connection
-        let _ = self.stream.take();
     }
 }
 
