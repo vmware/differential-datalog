@@ -4,6 +4,7 @@
 set -ex
 
 source ../build_java.sh
+DDLFLAGS="--output-input-relations=O"
 compile flatbufTest.dl Test.java release
 java -Djava.library.path=. Test
 diff fb.dump rec.dump

@@ -1,70 +1,72 @@
-From 1 Insert BO{true}
-From 3 Insert CO{8}
-From 5 Insert DO{-32768}
-From 5 Insert DO{-5}
-From 5 Insert DO{-3}
-From 5 Insert DO{-2}
-From 5 Insert DO{-1}
-From 5 Insert DO{5}
-From 5 Insert DO{1000}
-From 5 Insert DO{32767}
-From 7 Insert EO{-1}
-From 9 Insert FO{"string"}
-From 11 Insert GO{100}
-From 13 Insert HO{773153186440202938}
-From 15 Insert IO{7}
-From 17 Insert JO{(true, 10, "string")}
-From 19 Insert KO{(false, 9, "text")}
-From 21 Insert L0O{false,254,"else"}
-From 23 Insert (true, 255, "something")
-From 25 Insert MO{[true, false, true]}
-From 27 Insert NO{[(true, 255, "check"), (false, 1, "fails")]}
-From 29 Insert OO{[[false, false], [true, true]]}
-From 35 Insert PO1{[2, 3, 254]}
-From 36 Insert PO2{[3, 10000, 65534]}
-From 37 Insert PO3{[3, 4294967294, 4294967295]}
-From 38 Insert PO4{[2, 3]}
-From 39 Insert PO5{[2, 3, 72057594037927935]}
-From 41 Insert QO{{2=>"here", 3=>"there"}}
-From 43 Insert RO{2}
-From 45 Insert SO{C{"s"}}
-From 47 Insert TO{std_Some{10}}
-From 47 Insert TO{std_None{}}
-From 49 Insert A{"a"}
-From 49 Insert B{false}
-From 49 Insert D{(false, 2, "zz")}
-From 51 Insert VO{false,A{"aa"}}
-From 51 Insert VO{false,D{(false, 2, "string")}}
-From 51 Insert VO{true,B{false}}
-From 53 Insert WO{std_Some{B{true}}}
-From 53 Insert WO{std_None{}}
-From 55 Insert XO{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
-From 57 Insert YO{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
-From 76 Insert ZO{1234566788901239813761283}
-From 77 Insert "Hello, world!"
-From 77 Insert "Привіт!"
-From 78 Insert false
-From 78 Insert true
-From 79 Insert "Ref<IString>"
-From 80 Insert {A{"val2"}=>"v2"}
-From 81 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
-From 82 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
-From 83 Insert ZO14{First{"string"}}
-From 83 Insert ZO14{Second{5}}
-From 85 Insert 0
-From 85 Insert 1000
-From 86 Insert ZO20{(4294967294, "YYY")}
-From 87 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
-From 88 Insert ["Foo
+From 15 Insert BI{true}
+From 16 Insert CI{8}
+From 17 Insert DI{-32768}
+From 17 Insert DI{-5}
+From 17 Insert DI{-3}
+From 17 Insert DI{-2}
+From 17 Insert DI{-1}
+From 17 Insert DI{5}
+From 17 Insert DI{1000}
+From 17 Insert DI{32767}
+From 18 Insert EI{-1}
+From 19 Insert FI{"string"}
+From 20 Insert GI{100}
+From 21 Insert HI{773153186440202938}
+From 23 Insert II{7}
+From 24 Insert JI{(true, 10, "string")}
+From 25 Insert KI{(false, 9, "text")}
+From 26 Insert L0I{false,254,"else"}
+From 27 Insert (true, 255, "something")
+From 28 Insert MI{[true, false, true]}
+From 29 Insert NI{[(true, 255, "check"), (false, 1, "fails")]}
+From 30 Insert OI{[[false, false], [true, true]]}
+From 31 Insert PI1{[2, 3, 254]}
+From 32 Insert PI2{[3, 10000, 65534]}
+From 33 Insert PI3{[3, 4294967294, 4294967295]}
+From 34 Insert PI4{[2, 3]}
+From 35 Insert PI5{[2, 3, 72057594037927935]}
+From 36 Insert QI{{2=>"here", 3=>"there"}}
+From 37 Insert RI{2}
+From 38 Insert SI{C{"s"}}
+From 39 Insert TI{std_Some{10}}
+From 39 Insert TI{std_None{}}
+From 40 Insert A{"a"}
+From 40 Insert B{false}
+From 40 Insert D{(false, 2, "zz")}
+From 41 Insert VI{false,A{"aa"}}
+From 41 Insert VI{false,D{(false, 2, "string")}}
+From 41 Insert VI{true,B{false}}
+From 42 Insert WI{std_Some{B{true}}}
+From 42 Insert WI{std_None{}}
+From 43 Insert XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
+From 44 Insert YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+From 45 Insert ZI{1234566788901239813761283}
+From 46 Insert "Hello, world!"
+From 46 Insert "Привіт!"
+From 47 Insert false
+From 47 Insert true
+From 48 Insert "Ref<IString>"
+From 49 Insert {A{"val2"}=>"v2"}
+From 50 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+From 51 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+From 52 Insert ZI14{First{"string"}}
+From 52 Insert ZI14{Second{5}}
+From 53 Insert ZI15{OrFirst{F{"Or_string"}}}
+From 53 Insert ZI15{OrSecond{S{22}}}
+From 54 Insert 0
+From 54 Insert 1000
+From 55 Insert ZI20{(4294967294, "YYY")}
+From 56 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+From 57 Insert ["Foo
 ", "	bar"]
-From 89 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
-From 90 Insert std_Some{"ZI6"}
-From 90 Insert std_None{}
-From 91 Insert "ZI7"
-From 91 Insert "♛"
-From 92 Insert 100
-From 93 Insert 100
-From 98 Insert module_ZO16{"zi16"}
-From 99 Insert "zi17"
-From 100 Insert module_ZO18{(4294967295, "ZZZ")}
-From 101 Insert (4294967293, "zi19")
+From 58 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
+From 59 Insert std_Some{"ZI6"}
+From 59 Insert std_None{}
+From 60 Insert "ZI7"
+From 60 Insert "♛"
+From 61 Insert 100
+From 62 Insert 100
+From 63 Insert module_ZI16{"zi16"}
+From 64 Insert "zi17"
+From 65 Insert module_ZI18{(4294967295, "ZZZ")}
+From 66 Insert (4294967293, "zi19")
