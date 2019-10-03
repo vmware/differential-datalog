@@ -88,242 +88,234 @@ public class Test {
     void onFBCommit(DDlogCommand<Object> command) throws IOException {
         int relid = command.relid();
         switch (relid) {
-            /*
-            case flatbutTestRelation.AO: {
-                // TODO
-                AOreader a = (AOreader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + "AO[" + v + "]");
-                break;
-            }
-            */
-            // output relation BO(b: bool)
-            case flatbufTestRelation.BO: {
-                BOReader v = (BOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " BO{" + v.b() + "}");
+            // output relation OBI(b: bool)
+            case flatbufTestRelation.OBI: {
+                BIReader v = (BIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " BI{" + v.b() + "}");
                 break;
             }
 
-            // output relation CO(c: bit<32>)
-            case flatbufTestRelation.CO: {
-                COReader v = (COReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " CO{" + v.c() + "}");
+            // output relation OCI(c: bit<32>)
+            case flatbufTestRelation.OCI: {
+                CIReader v = (CIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " CI{" + v.c() + "}");
                 break;
             }
 
-            // output relation DO(d: signed<16>)
-            case flatbufTestRelation.DO: {
-                DOReader v = (DOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " DO{" + v.d() + "}");
+            // output relation ODI(d: signed<16>)
+            case flatbufTestRelation.ODI: {
+                DIReader v = (DIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " DI{" + v.d() + "}");
                 break;
             }
 
-            // output relation EO(e: bigint)
-            case flatbufTestRelation.EO: {
-                EOReader v = (EOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " EO{" + v.e() + "}");
+            // output relation OEI(e: bigint)
+            case flatbufTestRelation.OEI: {
+                EIReader v = (EIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " EI{" + v.e() + "}");
                 break;
             }
 
-            // output relation FO(s: string)
-            case flatbufTestRelation.FO: {
-                FOReader v = (FOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " FO{\"" + v.s() + "\"}");
+            // output relation OFI(s: string)
+            case flatbufTestRelation.OFI: {
+                FIReader v = (FIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " FI{\"" + v.s() + "\"}");
                 break;
             }
 
-            // output relation GO(d: bit<64>)
-            case flatbufTestRelation.GO: {
-                GOReader v = (GOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " GO{" + v.d() + "}");
+            // output relation OGI(d: bit<64>)
+            case flatbufTestRelation.OGI: {
+                GIReader v = (GIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " GI{" + v.d() + "}");
                 break;
             }
 
-            // output relation HO(d: bit<128>)
-            case flatbufTestRelation.HO: {
-                HOReader v = (HOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " HO{" + v.d() + "}");
+            // output relation OHI(d: bit<128>)
+            case flatbufTestRelation.OHI: {
+                HIReader v = (HIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " HI{" + v.d() + "}");
                 break;
             }
 
-            // output relation IO(d: bit<12>)
-            case flatbufTestRelation.IO: {
-                IOReader v = (IOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " IO{" + v.d() + "}");
+            // output relation OII(d: bit<12>)
+            case flatbufTestRelation.OII: {
+                IIReader v = (IIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " II{" + v.d() + "}");
                 break;
             }
 
-            // output relation JO(a: (bool, bit<8>, string))
-            case flatbufTestRelation.JO: {
-                JOReader v = (JOReader)command.value();
+            // output relation OJI(a: (bool, bit<8>, string))
+            case flatbufTestRelation.OJI: {
+                JIReader v = (JIReader)command.value();
                 Tuple3__bool__bit_8___stringReader a = v.a();
-                fb_file.println("From " + relid + " " + command.kind() + " JO{" + printTuple(a) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " JI{" + printTuple(a) + "}");
                 break;
             }
 
-            // output relation KO(t: tuple)
-            case flatbufTestRelation.KO: {
-                KOReader v = (KOReader)command.value();
+            // output relation OKI(t: tuple)
+            case flatbufTestRelation.OKI: {
+                KIReader v = (KIReader)command.value();
                 Tuple3__bool__bit_8___stringReader t = v.t();
-                fb_file.println("From " + relid + " " + command.kind() + " KO{" + printTuple(t) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " KI{" + printTuple(t) + "}");
                 break;
             }
 
-            // output relation LO[tuple]
-            case flatbufTestRelation.LO: {
+            // output relation OLI[tuple]
+            case flatbufTestRelation.OLI: {
                 Tuple3__bool__bit_8___stringReader v = (Tuple3__bool__bit_8___stringReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + printTuple(v));
                 break;
             }
 
-            // output relation L0O(a: bool, b: bit<8>, s: string)
-            case flatbufTestRelation.L0O: {
-                L0OReader v = (L0OReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " L0O{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
+            // output relation OL0I(a: bool, b: bit<8>, s: string)
+            case flatbufTestRelation.OL0I: {
+                L0IReader v = (L0IReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " L0I{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
                 break;
             }
 
-            // output relation MO(v: Vec<bool>)
-            case flatbufTestRelation.MO: {
-                MOReader v = (MOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " MO{" + v.v() + "}");
+            // output relation OMI(v: Vec<bool>)
+            case flatbufTestRelation.OMI: {
+                MIReader v = (MIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " MI{" + v.v() + "}");
                 break;
             }
 
-            // output relation NO(v: Vec<tuple>)
-            case flatbufTestRelation.NO: {
-                NOReader v = (NOReader)command.value();
+            // output relation ONI(v: Vec<tuple>)
+            case flatbufTestRelation.ONI: {
+                NIReader v = (NIReader)command.value();
                 List<Tuple3__bool__bit_8___stringReader> vs = v.v();
                 ArrayList<String> strings = new ArrayList<String>(vs.size());
                 vs.forEach((t) -> strings.add(printTuple(t)));
-                fb_file.println("From " + relid + " " + command.kind() + " NO{[" + String.join(", ",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " NI{[" + String.join(", ",strings) + "]}");
                 break;
             }
 
-            // output relation OO(v: Vec<Vec<bool>>)
-            case flatbufTestRelation.OO: {
-                OOReader v = (OOReader)command.value();
+            // output relation OOI(v: Vec<Vec<bool>>)
+            case flatbufTestRelation.OOI: {
+                OIReader v = (OIReader)command.value();
                 List<List<Boolean>> vs = v.v();
-                fb_file.println("From " + relid + " " + command.kind() + " OO{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " OI{" + vs + "}");
                 break;
             }
 
-            // output relation PO1(s: Set<bit<8>>)
-            case flatbufTestRelation.PO1: {
-                PO1Reader v = (PO1Reader)command.value();
+            // output relation OPI1(s: Set<bit<8>>)
+            case flatbufTestRelation.OPI1: {
+                PI1Reader v = (PI1Reader)command.value();
                 List<Integer> vs = v.s();
-                fb_file.println("From " + relid + " " + command.kind() + " PO1{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PI1{" + vs + "}");
                 break;
             }
 
-            // output relation PO2(s: Set<bit<16>>)
-            case flatbufTestRelation.PO2: {
-                PO2Reader v = (PO2Reader)command.value();
+            // output relation OPI2(s: Set<bit<16>>)
+            case flatbufTestRelation.OPI2: {
+                PI2Reader v = (PI2Reader)command.value();
                 List<Integer> vs = v.s();
-                fb_file.println("From " + relid + " " + command.kind() + " PO2{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PI2{" + vs + "}");
                 break;
             }
 
-            // output relation PO3(s: Set<bit<32>>)
-            case flatbufTestRelation.PO3: {
-                PO3Reader v = (PO3Reader)command.value();
+            // output relation OPI3(s: Set<bit<32>>)
+            case flatbufTestRelation.OPI3: {
+                PI3Reader v = (PI3Reader)command.value();
                 List<Long> vs = v.s();
-                fb_file.println("From " + relid + " " + command.kind() + " PO3{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PI3{" + vs + "}");
                 break;
             }
 
-            // output relation PO4(s: Set<bit<64>>)
-            case flatbufTestRelation.PO4: {
-                PO4Reader v = (PO4Reader)command.value();
+            // output relation OPI4(s: Set<bit<64>>)
+            case flatbufTestRelation.OPI4: {
+                PI4Reader v = (PI4Reader)command.value();
                 List<Long> vs = v.s();
-                fb_file.println("From " + relid + " " + command.kind() + " PO4{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PI4{" + vs + "}");
                 break;
             }
 
-            // output relation PO5(s: Set<bit<128>>)
-            case flatbufTestRelation.PO5: {
-                PO5Reader v = (PO5Reader)command.value();
+            // output relation OPI5(s: Set<bit<128>>)
+            case flatbufTestRelation.OPI5: {
+                PI5Reader v = (PI5Reader)command.value();
                 List<BigInteger> vs = v.s();
-                fb_file.println("From " + relid + " " + command.kind() + " PO5{" + vs + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " PI5{" + vs + "}");
                 break;
             }
 
-            // output relation QO(m: Map<bit<32>, string>)
-            case flatbufTestRelation.QO: {
-                QOReader v = (QOReader)command.value();
+            // output relation OQI(m: Map<bit<32>, string>)
+            case flatbufTestRelation.OQI: {
+                QIReader v = (QIReader)command.value();
                 Map<Long,String> vs = v.m();
                 ArrayList<String> vs_strs = new ArrayList<String>(vs.size());
                 for (Map.Entry<Long,String> entry : vs.entrySet()) {
                     vs_strs.add(entry.getKey() + "=>\"" + entry.getValue() + "\"");
                 }
-                fb_file.println("From " + relid + " " + command.kind() + " QO{{" + String.join(", ", vs_strs) + "}}");
+                fb_file.println("From " + relid + " " + command.kind() + " QI{{" + String.join(", ", vs_strs) + "}}");
                 break;
             }
 
-            // output relation RO(m: Ref<bit<32>>)
-            case flatbufTestRelation.RO: {
-                ROReader v = (ROReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " RO{" + v.m() + "}");
+            // output relation ORI(m: Ref<bit<32>>)
+            case flatbufTestRelation.ORI: {
+                RIReader v = (RIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " RI{" + v.m() + "}");
                 break;
             }
 
-            // output relation SO(m: C)
-            case flatbufTestRelation.SO: {
-                SOReader v = (SOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " SO{C{\"" + v.m().x() + "\"}}");
+            // output relation OSI(m: C)
+            case flatbufTestRelation.OSI: {
+                SIReader v = (SIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " SI{C{\"" + v.m().x() + "\"}}");
                 break;
             }
 
-            // output relation TO(m: Option<bit<32>>)
-            case flatbufTestRelation.TO: {
-                std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)((TOReader)command.value()).m();
+            // output relation OTI(m: Option<bit<32>>)
+            case flatbufTestRelation.OTI: {
+                std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)((TIReader)command.value()).m();
                 if (m instanceof std_Option__bit_32_Reader.std_Some) {
                     fb_file.println("From " + relid + " " + command.kind() +
-                            " TO{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}");
+                            " TI{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}");
                 } else {
-                    fb_file.println("From " + relid + " " + command.kind() + " TO{std_None{}}");
+                    fb_file.println("From " + relid + " " + command.kind() + " TI{std_None{}}");
                 }
                 break;
             }
 
-            // output relation UO[Many]
-            case flatbufTestRelation.UO: {
+            // output relation OUI[Many]
+            case flatbufTestRelation.OUI: {
                 ManyReader m = (ManyReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + printMany(m));
                 break;
             }
 
-            //output relation VO(a: bool, b: Many)
-            case flatbufTestRelation.VO: {
-                VOReader v = (VOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " VO{" + v.a() + "," + printMany(v.b()) + "}");
+            //output relation OVI(a: bool, b: Many)
+            case flatbufTestRelation.OVI: {
+                VIReader v = (VIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " VI{" + v.a() + "," + printMany(v.b()) + "}");
                 break;
             }
 
-            // output relation WO(m: Option<Many>)
-            case flatbufTestRelation.WO: {
-                std_Option__ManyReader m = (std_Option__ManyReader)((WOReader)command.value()).m();
+            // output relation OWI(m: Option<Many>)
+            case flatbufTestRelation.OWI: {
+                std_Option__ManyReader m = (std_Option__ManyReader)((WIReader)command.value()).m();
                 if (m instanceof std_Option__ManyReader.std_Some) {
                     fb_file.println("From " + relid + " " + command.kind() +
-                            " WO{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}");
+                            " WI{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}");
                 } else {
-                    fb_file.println("From " + relid + " " + command.kind() + " WO{std_None{}}");
+                    fb_file.println("From " + relid + " " + command.kind() + " WI{std_None{}}");
                 }
                 break;
             }
 
-            //output relation XO(m: Vec<Many>)
-            case flatbufTestRelation.XO: {
-                List<ManyReader> m = ((XOReader)command.value()).m();
+            //output relation OXI(m: Vec<Many>)
+            case flatbufTestRelation.OXI: {
+                List<ManyReader> m = ((XIReader)command.value()).m();
                 ArrayList<String> strings = new ArrayList<String>(m.size());
                 m.forEach((x) -> strings.add(printMany(x)));
-                fb_file.println("From " + relid + " " + command.kind() + " XO{[" + String.join(", ",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " XI{[" + String.join(", ",strings) + "]}");
                 break;
             }
 
             //typedef VOT = Vec<Option<tuple>>
-            // output relation YO(v: VOT)
-            case flatbufTestRelation.YO: {
-                List<std_Option___bool__bit_8___string_Reader> v = ((YOReader)command.value()).v();
+            // output relation OYI(v: VOT)
+            case flatbufTestRelation.OYI: {
+                List<std_Option___bool__bit_8___string_Reader> v = ((YIReader)command.value()).v();
                 ArrayList<String> strings = new ArrayList<String>(v.size());
                 v.forEach((x) -> {
                     if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
@@ -332,35 +324,35 @@ public class Test {
                         strings.add("std_None{}");
                     }
                 });
-                fb_file.println("From " + relid + " " + command.kind() + " YO{[" + String.join(", ", strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " YI{[" + String.join(", ", strings) + "]}");
                 break;
             }
-            // output relation ZO0[string]
-            case flatbufTestRelation.ZO0: {
+            // output relation OZI0[string]
+            case flatbufTestRelation.OZI0: {
                 String v = (String)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
                 break;
             }
-            // output relation ZO1[bool]
-            case flatbufTestRelation.ZO1: {
+            // output relation OZI1[bool]
+            case flatbufTestRelation.OZI1: {
                 Boolean v = (Boolean)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + v);
                 break;
             }
-            // output relation ZO2[bit<32>]
-            case flatbufTestRelation.ZO2: {
+            // output relation OZI2[bit<32>]
+            case flatbufTestRelation.OZI2: {
                 Long v = (Long)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + v);
                 break;
             }
-            // output relation ZO3[Many]
-            case flatbufTestRelation.ZO3: {
+            // output relation OZI3[Many]
+            case flatbufTestRelation.OZI3: {
                 ManyReader v = (ManyReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + printMany(v));
                 break;
             }
-            // output relation ZO4[Vec<string>]
-            case flatbufTestRelation.ZO4: {
+            // output relation OZI4[Vec<string>]
+            case flatbufTestRelation.OZI4: {
                 @SuppressWarnings("unchecked")
                 List<String> v = (List<String>)command.value();
                 List<String> quoted = new ArrayList<String>();
@@ -368,8 +360,8 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " " + quoted);
                 break;
             }
-            // output relation ZO5[Map<string, Many>]
-            case flatbufTestRelation.ZO5: {
+            // output relation OZI5[Map<string, Many>]
+            case flatbufTestRelation.OZI5: {
                 @SuppressWarnings("unchecked")
                 Map<String, ManyReader> v = (Map<String, ManyReader>)command.value();
                 ArrayList<String> strings = new ArrayList<String>(v.size());
@@ -379,8 +371,8 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
                 break;
             }
-            // output relation ZO6[Option<string>]
-            case flatbufTestRelation.ZO6: {
+            // output relation OZI6[Option<string>]
+            case flatbufTestRelation.OZI6: {
                 Object v = command.value();
                 String s = "";
                 if (v instanceof std_Option__stringReader.std_Some) {
@@ -391,32 +383,32 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " " + s);
                 break;
             }
-            // output relation ZO7[Ref<string>]
-            case flatbufTestRelation.ZO7: {
+            // output relation OZI7[Ref<string>]
+            case flatbufTestRelation.OZI7: {
                 String v = (String)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
                 break;
             }
-            // output relation ZO8[Ref<bit<25>>]
-            case flatbufTestRelation.ZO8: {
+            // output relation OZI8[Ref<bit<25>>]
+            case flatbufTestRelation.OZI8: {
                 Long v = (Long)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + v);
                 break;
             }
-            // output relation ZO9[Ref<Ref<bit<25>>>]
-            case flatbufTestRelation.ZO9: {
+            // output relation OZI9[Ref<Ref<bit<25>>>]
+            case flatbufTestRelation.OZI9: {
                 Long v = (Long)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + v);
                 break;
             }
-            // output relation ZO10[Ref<IString>]
-            case flatbufTestRelation.ZO10: {
+            // output relation OZI10[Ref<IString>]
+            case flatbufTestRelation.OZI10: {
                 String v = (String)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " \"" + v + "\"");
                 break;
             }
-            // output relation ZO11[Map<Many, string>]
-            case flatbufTestRelation.ZO11: {
+            // output relation OZI11[Map<Many, string>]
+            case flatbufTestRelation.OZI11: {
                 @SuppressWarnings("unchecked")
                 Map<ManyReader, String> v = (Map<ManyReader, String>)command.value();
                 ArrayList<String> strings = new ArrayList<String>(v.size());
@@ -426,61 +418,61 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
                 break;
             }
-            // output relation ZO12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
-            case flatbufTestRelation.ZO12: {
+            // output relation OZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
+            case flatbufTestRelation.OZI12: {
                 Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader v =
                     (Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " (\"" + v.a0() + "\", " + v.a1() +
                         ", " + v.a2() + ", ("  + v.a3().a0() + ", " + printMany(v.a3().a1()) + "))");
                 break;
             }
-            // output relation ZO13[Generic<Ref<tuple>, Many>]
-            case flatbufTestRelation.ZO13: {
+            // output relation OZI13[Generic<Ref<tuple>, Many>]
+            case flatbufTestRelation.OZI13: {
                 Generic___bool__bit_8___string___ManyReader v =
                     (Generic___bool__bit_8___string___ManyReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " Generic{\"" + v.f0() +
                         "\"," + printTuple(v.f1()) + "," + printMany(v.f2()) + "}");
                 break;
             }
-            // output relation ZO(d: bit<256>)
-            case flatbufTestRelation.ZO: {
-                ZOReader z = (ZOReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " ZO{" + z.d() + "}");
+            // output relation OZI(d: bit<256>)
+            case flatbufTestRelation.OZI: {
+                ZIReader z = (ZIReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZI{" + z.d() + "}");
                 break;
             }
-            case flatbufTestRelation.ZO14: {
-                ZO14Reader r = (ZO14Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " " + printCases("ZO14", r.c()));
+            case flatbufTestRelation.OZI14: {
+                ZI14Reader r = (ZI14Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printCases("ZI14", r.c()));
                 break;
             }
-            case flatbufTestRelation.ZO15: {
-                ZO15Reader r = (ZO15Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ZO15", r.c()));
+            case flatbufTestRelation.OZI15: {
+                ZI15Reader r = (ZI15Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ZI15", r.c()));
                 break;
             }
-            case flatbufTestRelation.module_ZO16: {
-                module_ZO16Reader r = (module_ZO16Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " module_ZO16{\"" + r.x() + "\"}");
+            case flatbufTestRelation.Omodule_ZI16: {
+                module_ZI16Reader r = (module_ZI16Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " module_ZI16{\"" + r.x() + "\"}");
                 break;
             }
-            case flatbufTestRelation.module_ZO17: {
+            case flatbufTestRelation.Omodule_ZI17: {
                 String r = (String)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " \"" + r + "\"");
                 break;
             }
-            case flatbufTestRelation.module_ZO18: {
-                module_ZO18Reader b = (module_ZO18Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " module_ZO18{" + printMTuple(b.t()) + "}");
+            case flatbufTestRelation.Omodule_ZI18: {
+                module_ZI18Reader b = (module_ZI18Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " module_ZI18{" + printMTuple(b.t()) + "}");
                 break;
             }
-            case flatbufTestRelation.module_ZO19: {
+            case flatbufTestRelation.Omodule_ZI19: {
                 Tuple2__bit_32___stringReader b = (Tuple2__bit_32___stringReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + printMTuple(b));
                 break;
             }
-            case flatbufTestRelation.ZO20: {
-                ZO20Reader b = (ZO20Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " " + "ZO20{" + printMTuple(b.t()) + "}");
+            case flatbufTestRelation.OZI20: {
+                ZI20Reader b = (ZI20Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZI20{" + printMTuple(b.t()) + "}");
                 break;
             }
             default:
