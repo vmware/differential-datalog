@@ -30,7 +30,6 @@ import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
 import Data.List
-import qualified Data.Map as M
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Util
@@ -40,6 +39,7 @@ import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Compile
 import Language.DifferentialDatalog.FlatBuffer
+import Language.DifferentialDatalog.DatalogProgram
 
 data TOption = Help
              | Version
@@ -154,45 +154,16 @@ main = do
                               return ()
          ActionCompile -> compileProg config
 
--- create an output relation for each input relation
-mirrorInputRelations :: DatalogProgram -> String -> DatalogProgram
-mirrorInputRelations d prefix =
-  let
-    inputRels = M.toList $ M.filter (\r -> relRole r == RelInput) $ progRelations d
-    relCopies = map (\(n,r) -> (prefix ++ n, r { relRole = RelOutput,
-                                                 relName = prefix ++ relName r
-                                               })) $ inputRels
-    makeRule name relation = Rule { rulePos = relPos relation,
-                                    ruleLHS = [Atom { atomPos = relPos relation,
-                                                      atomRelation = prefix ++ name,
-                                                      atomVal = eVar "x"
-                                                    }],
-                                    ruleRHS = [RHSLiteral { rhsPolarity = True,
-                                                            rhsAtom = Atom { atomPos = relPos relation,
-                                                                             atomRelation = name,
-                                                                             atomVal = eVar "x"
-                                                                           }}]}
-    rules = map (\(n,r) -> makeRule n r) inputRels
-  in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
-         progRules     = (progRules d) ++ rules }
-
--- convert all intermediate relations into output relations
-makeOutputRelations :: DatalogProgram -> DatalogProgram
-makeOutputRelations d =
-  d { progRelations = M.map
-      (\r -> r { relRole = if relRole r == RelInternal
-                           then RelOutput else relRole r }) $ progRelations d }
-
 parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
     (d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     d'' <- case confOutputInternal of
          False -> return d
-         True ->  return $ makeOutputRelations d
+         True ->  return $ progOutputInternalRelations d
     d''' <- case confOutputInput of
          "" -> return d''
-         x  ->  return $ mirrorInputRelations d'' x
+         x  ->  return $ progMirrorInputRelations d'' x
     d' <- case validate d''' of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d' -> return d'

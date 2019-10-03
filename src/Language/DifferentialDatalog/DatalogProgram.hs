@@ -41,7 +41,9 @@ module Language.DifferentialDatalog.DatalogProgram (
     depNodeIsApply,
     DepGraph,
     progDependencyGraph,
-    depGraphToDot
+    depGraphToDot,
+    progMirrorInputRelations,
+    progOutputInternalRelations
 )
 where
 
@@ -218,7 +220,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges (edges ++ apply_edges) g1
                       progRules
     apply_edges = concatMap (\(idx, Apply{..}) ->
                              let inp_rels = filter (isUpper . head) applyInputs in
-                             map (\i -> (relidx i, idx, True)) inp_rels ++ 
+                             map (\i -> (relidx i, idx, True)) inp_rels ++
                              map (\o -> (idx, relidx o, True)) applyOutputs ++
                              map (\o -> (idx, relidx o, False)) applyOutputs)
                   indexed_applys
@@ -230,3 +232,32 @@ depGraphToDot gr =
     params = GV.nonClusteredParams {
         GV.fmtNode = \(_, l) -> [GV.Label $ GV.StrLabel $ T.pack $ show l]
     }
+
+-- convert all intermediate relations into output relations
+progOutputInternalRelations :: DatalogProgram -> DatalogProgram
+progOutputInternalRelations d =
+  d { progRelations = M.map
+      (\r -> r { relRole = if relRole r == RelInternal
+                           then RelOutput else relRole r }) $ progRelations d }
+
+-- create an output relation for each input relation
+progMirrorInputRelations :: DatalogProgram -> String -> DatalogProgram
+progMirrorInputRelations d prefix =
+  let
+    inputRels = M.toList $ M.filter (\r -> relRole r == RelInput) $ progRelations d
+    relCopies = map (\(n,r) -> (prefix ++ n, r { relRole = RelOutput,
+                                                 relName = prefix ++ relName r
+                                               })) $ inputRels
+    makeRule relName relation = Rule { rulePos = relPos relation,
+                                       ruleLHS = [Atom { atomPos = relPos relation,
+                                                         atomRelation = prefix ++ relName,
+                                                         atomVal = eVar "x"
+                                                       }],
+                                       ruleRHS = [RHSLiteral { rhsPolarity = True,
+                                                               rhsAtom = Atom { atomPos = relPos relation,
+                                                                                atomRelation = relName,
+                                                                                atomVal = eVar "x"
+                                                                              }}]}
+    rules = map (\(n,r) -> makeRule n r) inputRels
+  in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
+         progRules     = (progRules d) ++ rules }
