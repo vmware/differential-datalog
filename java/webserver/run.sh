@@ -35,6 +35,7 @@ done
 set -x
 
 source ../build_java.sh
+DDLFLAGS=--output-input-relations=O
 compile reach.dl Main.java debug
 
 ${OPEN} http://localhost:8082/index.html

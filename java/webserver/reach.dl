@@ -15,7 +15,3 @@ Reach(n, m) :- SimEdge(n, x), Reach(x, m).
 // Canonical representative of a connected component: node with smallest value
 output relation Canonical(node: Node, repr: Node)
 Canonical(n, r) :- Reach(n, m), var r = Aggregate( (n), group_min(m) ).
-
-// copy of Edge
-output relation Edges(source: Node, dest: Node)
-Edges(s, d) :- Edge(s, d).
