@@ -16,6 +16,7 @@ esac
 
 # Compile a DDlog program and a Java program that uses it.
 # Requires the flatbuf library to be installed and in the CLASSPATH
+# the DDLFLAGS environment variable is passed as arguments to ddlog
 function compile {
     local DLFILE=$1   # ddlog program that is being compiled
     local JAVAPROG=$2 # java test program that is being compiled
@@ -34,7 +35,7 @@ function compile {
 
     CLASSPATH=$(pwd)/${DLDIR}/${DLPROG}_ddlog/flatbuf/java:$(pwd)/../ddlogapi.jar:..:$CLASSPATH
     # Compile the DDlog program
-    ddlog -i ${DLFILE} -L../../lib -j
+    ddlog ${DDLFLAGS} -i ${DLFILE} -L../../lib -j
     # Compile the generated rust program; generates ${DLDIR}/${DLPROG}_ddlog/target/${BUILD}/lib${DLPROG}_ddlog.a
     pushd ${DLDIR}/${DLPROG}_ddlog
     if [ "x${BUILD}" == "xrelease" ]; then

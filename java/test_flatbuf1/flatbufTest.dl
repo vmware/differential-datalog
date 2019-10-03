@@ -1,205 +1,64 @@
 import intern
 
 input relation BI(b: bool)
-output relation BO(b: bool)
-BO(b) :- BI(b).
-
 input relation CI(c: bit<32>)
-output relation CO(c: bit<32>)
-CO(c) :- CI(c).
-
 input relation DI(d: signed<16>)
-output relation DO(d: signed<16>)
-DO(d) :- DI(d).
-
 input relation EI(e: bigint)
 output relation EO(e: bigint)
-EO(e) :- EI(e).
-
 input relation FI(s: string)
-output relation FO(s: string)
-FO(s) :- FI(s).
-
 input relation GI(d: bit<64>)
-output relation GO(d: bit<64>)
-GO(d) :- GI(d).
-
 input relation HI(d: bit<128>)
-output relation HO(d: bit<128>)
-HO(d) :- HI(d).
-
 input relation II(d: bit<12>)
-output relation IO(d: bit<12>)
-IO(d) :- II(d).
-
 typedef tuple = (bool, bit<8>, string)
 input relation JI(a: (bool, bit<8>, string))
-output relation JO(a: (bool, bit<8>, string))
-JO(a) :- JI(a).
-
 input relation KI(t: tuple)
-output relation KO(t: tuple)
-KO(t) :- KI(t).
-
 input relation LI[tuple]
-output relation LO[tuple]
-LO[t] :- LI[t].
-
 input relation L0I(a: bool, b: bit<8>, s: string)
-output relation L0O(a: bool, b: bit<8>, s: string)
-L0O(a, b, c) :- L0I(a, b, c).
-
 input relation MI(v: Vec<bool>)
-output relation MO(v: Vec<bool>)
-MO(v) :- MI(v).
-
 input relation NI(v: Vec<tuple>)
-output relation NO(v: Vec<tuple>)
-NO(v) :- NI(v).
-
 input relation OI(v: Vec<Vec<bool>>)
-output relation OO(v: Vec<Vec<bool>>)
-OO(v) :- OI(v).
-
 input relation PI1(s: Set<bit<8>>)
-output relation PO1(s: Set<bit<8>>)
-PO1(s) :- PI1(s).
-
 input relation PI2(s: Set<bit<16>>)
-output relation PO2(s: Set<bit<16>>)
-PO2(s) :- PI2(s).
-
 input relation PI3(s: Set<bit<32>>)
-output relation PO3(s: Set<bit<32>>)
-PO3(s) :- PI3(s).
-
 input relation PI4(s: Set<bit<64>>)
-output relation PO4(s: Set<bit<64>>)
-PO4(s) :- PI4(s).
-
 input relation PI5(s: Set<bit<128>>)
-output relation PO5(s: Set<bit<128>>)
-PO5(s) :- PI5(s).
-
 input relation QI(m: Map<bit<32>, string>)
-output relation QO(m: Map<bit<32>, string>)
-QO(m) :- QI(m).
-
 input relation RI(m: Ref<bit<32>>)
-output relation RO(m: Ref<bit<32>>)
-RO(x) :- RI(x).
-
 typedef C = C{x: string}
 input relation SI(m: C)
-output relation SO(m: C)
-SO(m) :- SI(m).
-
 input relation TI(m: Option<bit<32>>)
-output relation TO(m: Option<bit<32>>)
-TO(m) :- TI(m).
-
 typedef Many = A{x: string}
              | B{b: bool}
              | D{t: tuple}
 input relation UI[Many]
-output relation UO[Many]
-UO[m] :- UI[m].
-
 input relation VI(a: bool, b: Many)
-output relation VO(a: bool, b: Many)
-VO(a, b) :- VI(a, b).
-
 input relation WI(m: Option<Many>)
-output relation WO(m: Option<Many>)
-WO(m) :- WI(m).
-
 input relation XI(m: Vec<Many>)
-output relation XO(m: Vec<Many>)
-XO(m) :- XI(m).
-
 typedef VOT = Vec<Option<tuple>>
 input relation YI(v: VOT)
-output relation YO(v: VOT)
-YO(v) :- YI(v).
-
 input relation ZI(d: bit<256>)
-output relation ZO(d: bit<256>)
-ZO(d) :- ZI(d).
-
 input relation ZI0[string]
-output relation ZO0[string]
-ZO0[v] :- ZI0[v].
-
 input relation ZI1[bool]
-output relation ZO1[bool]
-ZO1[v] :- ZI1[v].
-
 input relation ZI2[bit<32>]
-output relation ZO2[bit<32>]
-ZO2[v] :- ZI2[v].
-
 input relation ZI3[Many]
-output relation ZO3[Many]
-ZO3[v] :- ZI3[v].
-
 input relation ZI4[Vec<string>]
-output relation ZO4[Vec<string>]
-ZO4[v] :- ZI4[v].
-
 input relation ZI5[Map<string, Many>]
-output relation ZO5[Map<string, Many>]
-ZO5[v] :- ZI5[v].
-
 input relation ZI6[Option<string>]
-output relation ZO6[Option<string>]
-ZO6[v] :- ZI6[v].
-
 input relation ZI7[Ref<string>]
-output relation ZO7[Ref<string>]
-ZO7[v] :- ZI7[v].
-
 input relation ZI8[Ref<bit<25>>]
-output relation ZO8[Ref<bit<25>>]
-ZO8[v] :- ZI8[v].
-
 input relation ZI9[Ref<Ref<bit<25>>>]
-output relation ZO9[Ref<Ref<bit<25>>>]
-ZO9[v] :- ZI9[v].
-
 input relation ZI10[Ref<IString>]
-output relation ZO10[Ref<IString>]
-ZO10[v] :- ZI10[v].
-
 input relation ZI11[Map<Many, string>]
-output relation ZO11[Map<Many, string>]
-ZO11[v] :- ZI11[v].
-
 input relation ZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
-output relation ZO12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
-ZO12[v] :- ZI12[v].
-
 typedef Generic<'A, 'B> = Generic{f0: string, f1: 'A, f2: 'B}
-
 input relation ZI13[Generic<Ref<tuple>, Many>]
-output relation ZO13[Generic<Ref<tuple>, Many>]
-ZO13[v] :- ZI13[v].
-
 typedef Cases<'A, 'B> = First{a: 'A}
                       | Second{b: 'B}
 input relation ZI14(c: Cases<string, signed<32>>)
-output relation ZO14(c: Cases<string, signed<32>>)
-ZO14(c) :- ZI14(c).
-
 typedef F<'A> = FirstF{a: 'A}
 typedef S<'A> = SecondS{a: 'A}
 typedef Or<'A, 'B> = OrFirst{f: F<'A>}
                    | OrSecond{s: S<'B>}
 input relation ZI15(c: Or<string, signed<32>>)
-output relation ZO15(c: Or<string, signed<32>>)
-ZO15(c) :- ZO15(c).
-
 import module
-
 input relation ZI20(t: mtuple)
-output relation ZO20(t: mtuple)
-ZO20(t) :- ZI20(t).

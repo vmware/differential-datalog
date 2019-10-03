@@ -48,6 +48,7 @@ data TOption = Help
              | LibDir String
              | Java
              | OutputInternal
+             | OutputInput String
              | DynLib
              | NoDynLib
              | StaticLib
@@ -69,6 +70,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
           , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings."
           , Option []    ["output-internal-relations"]  (NoArg OutputInternal)  "All non-input relations are marked as output relations."
+          , Option []    ["output-input-relations"]  (ReqArg OutputInput "PREFIX") "Mirror each input relation into an output relation named by prepending the prefix."
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
@@ -81,6 +83,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
                      , confLibDirs       :: [FilePath]
+                     , confOutputInput   :: String
                      , confStaticLib     :: Bool
                      , confDynamicLib    :: Bool
                      , confJava          :: Bool
@@ -95,6 +98,7 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confStaticLib     = True
                        , confDynamicLib    = False
                        , confOutputInternal= False
+                       , confOutputInput   = ""
                        , confJava          = False
                        , confBoxThreshold  = cconfBoxThreshold defaultCompilerConfig
                        }
@@ -112,6 +116,7 @@ addOption config (LibDir d)       = return config { confLibDirs = nub (d:confLib
 addOption config DynLib           = return config { confDynamicLib = True }
 addOption config NoDynLib         = return config { confDynamicLib = False }
 addOption config OutputInternal   = return config { confOutputInternal = True }
+addOption config (OutputInput p)  = return config { confOutputInput = p }
 addOption config StaticLib        = return config { confStaticLib = True }
 addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
@@ -149,6 +154,28 @@ main = do
                               return ()
          ActionCompile -> compileProg config
 
+-- create an output relation for each input relation
+mirrorInputRelations :: DatalogProgram -> String -> DatalogProgram
+mirrorInputRelations d prefix =
+  let
+    inputRels = M.toList $ M.filter (\r -> relRole r == RelInput) $ progRelations d
+    relCopies = map (\(n,r) -> (prefix ++ n, r { relRole = RelOutput,
+                                                 relName = prefix ++ relName r
+                                               })) $ inputRels
+    makeRule name relation = Rule { rulePos = relPos relation,
+                                    ruleLHS = [Atom { atomPos = relPos relation,
+                                                      atomRelation = prefix ++ name,
+                                                      atomVal = eVar "x"
+                                                    }],
+                                    ruleRHS = [RHSLiteral { rhsPolarity = True,
+                                                            rhsAtom = Atom { atomPos = relPos relation,
+                                                                             atomRelation = name,
+                                                                             atomVal = eVar "x"
+                                                                           }}]}
+    rules = map (\(n,r) -> makeRule n r) inputRels
+  in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
+         progRules     = (progRules d) ++ rules }
+
 -- convert all intermediate relations into output relations
 makeOutputRelations :: DatalogProgram -> DatalogProgram
 makeOutputRelations d =
@@ -163,7 +190,10 @@ parseValidate Config{..} = do
     d'' <- case confOutputInternal of
          False -> return d
          True ->  return $ makeOutputRelations d
-    d' <- case validate d'' of
+    d''' <- case confOutputInput of
+         "" -> return d''
+         x  ->  return $ mirrorInputRelations d'' x
+    d' <- case validate d''' of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d' -> return d'
     when confJava $

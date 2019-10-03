@@ -1,16 +1,5 @@
 input relation ZI16(x: string)
-output relation ZO16(x: string)
-ZO16(x) :- ZI16(x).
-
 input relation ZI17[string]
-output relation ZO17[string]
-ZO17[x] :- ZI17[x].
-
 typedef mtuple = (bit<32>, string)
 input relation ZI18(t: mtuple)
-output relation ZO18(t: mtuple)
-ZO18(t) :- ZI18(t).
-
 input relation ZI19[mtuple]
-output relation ZO19[mtuple]
-ZO19[t] :- ZI19[t].
