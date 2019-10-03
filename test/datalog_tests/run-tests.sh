@@ -15,6 +15,11 @@ if [[ ! -d "$mydir" ]]; then mydir="$PWD"; fi
 # Always run in the directory where the script is installed
 cd ${mydir}
 
+# Make sure the ddlog executable is compiled and installed
+# inside the test directory (don't override the executable in `~/.local/bin`).
+stack install --local-bin-path ./bin
+PATH=$(pwd)/bin:$PATH
+
 if [ $# == 0 ]; then
     tests=$(ls *.dl | grep -v fail)
 else
