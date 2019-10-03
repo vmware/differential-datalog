@@ -32,7 +32,7 @@ import GitHash
 
 -- Keep this in sync with the binary release version on github
 dDLOG_VERSION :: String
-dDLOG_VERSION = "v0.9.0"
+dDLOG_VERSION = "v0.9.2"
 
 gitHash :: String
 gitHash = giHash $$tGitInfoCwd
