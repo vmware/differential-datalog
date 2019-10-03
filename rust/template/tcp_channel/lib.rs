@@ -1,7 +1,4 @@
-//! TCP implementation of an Observer/Observable channel. To establish
-//! a network of communication, the receiver on each node must be
-//! connected to its address (TcpListener::connect) before any sender
-//! tries to connect to it (TcpSender::connect).
+//! TCP implementation of an Observer/Observable channel.
 
 #![allow(clippy::type_complexity)]
 #![warn(
@@ -185,45 +182,18 @@ where
 /// connection.
 #[derive(Debug)]
 pub struct TcpSender {
-    addr: SocketAddr,
-    stream: Option<TcpStream>,
+    stream: TcpStream,
 }
 
 impl TcpSender {
-    /// Create a new `TcpSender` but without starting the connection.
-    pub fn new(socket: SocketAddr) -> Self {
-        Self {
-            addr: socket,
-            stream: None,
-        }
-    }
-
-    /// Connect to the specified address. Repeat connection attempt if
-    /// the receiver is not ready (ConnectionRefused).
-    pub fn connect(&mut self) -> Result<(), String> {
-        if self.stream.is_none() {
-            loop {
-                match TcpStream::connect(self.addr) {
-                    Ok(c) => {
-                        self.stream = Some(c);
-                        break;
-                    }
-                    Err(e) => {
-                        if e.kind() == std::io::ErrorKind::ConnectionRefused {
-                            continue;
-                        } else {
-                            panic!("TCP connection failed")
-                        }
-                    }
-                }
-            }
-        } else {
-            panic!(
-                "Attempting to start another transaction \
-                 while one is already in progress"
-            );
-        }
-        Ok(())
+    /// Create a new `TcpSender`, connecting to the given address.
+    pub fn new<A>(addr: A) -> io::Result<Self>
+    where
+        A: ToSocketAddrs,
+    {
+        Ok(Self {
+            stream: TcpStream::connect(addr)?,
+        })
     }
 }
 
@@ -235,11 +205,9 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
 
     /// Send a series of items over the TCP channel.
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), String> {
-        if let Some(ref mut stream) = self.stream {
-            for upd in updates {
-                let s = to_string(&upd).unwrap() + "\n";
-                stream.write(s.as_bytes()).map_err(|e| e.to_string())?;
-            }
+        for upd in updates {
+            let s = to_string(&upd).unwrap() + "\n";
+            self.stream.write(s.as_bytes()).map_err(|e| e.to_string())?;
         }
         Ok(())
     }
@@ -247,10 +215,10 @@ impl<T: Serialize + Send> Observer<T, String> for TcpSender {
     /// Flush the TCP stream and signal the commit.
     /// TODO writing "commit" to stream feels like a hack
     fn on_commit(&mut self) -> Result<(), String> {
-        if let Some(ref mut stream) = self.stream {
-            stream.write_all(b"commit\n").map_err(|e| e.to_string())?;
-            stream.flush().map_err(|e| e.to_string())?;
-        }
+        self.stream
+            .write_all(b"commit\n")
+            .map_err(|e| e.to_string())?;
+        self.stream.flush().map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -283,5 +251,12 @@ mod tests {
 
         let err = TcpStream::connect(addr).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::ConnectionRefused);
+    }
+
+    /// Connect a `TcpSender` to a `TcpReceiver`.
+    #[test]
+    fn sender_connect() {
+        let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+        let _ = TcpSender::new(recv.addr()).unwrap();
     }
 }
