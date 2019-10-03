@@ -128,7 +128,7 @@ public class Main {
                         .append(": ")
                         .append(c.repr());
             } else {
-                EdgesReader e = (EdgesReader)command.value();
+                EdgeReader e = (EdgeReader)command.value();
                 fromDDlog.append("\"table\": \"Edges\", ")
                         .append(quote("source"))
                         .append(": ")
