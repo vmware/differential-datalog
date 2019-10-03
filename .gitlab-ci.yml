@@ -56,6 +56,9 @@ test-span_string:
         - stack --no-terminal test --ta "-p span_string"
         - (cd java/test3 && ./run.sh)
 
+test-output-internal:
+    script: ./test/datalog_tests/run-tests.sh three
+
 # All other Java tests.
 test-span_uuid:
     extends: .install-ddlog
