@@ -1,49 +1,20 @@
-use differential_datalog::program::{RelId, Response, Update};
-use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
-
-use api::*;
-use observe::*;
-
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
-type ObserverBox = Box<dyn Observer<Update<super::Value>, String>>;
+use differential_datalog::program::{RelId, Response, Update};
+use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 
-#[derive(Debug)]
-pub struct UpdatesSubscription {
-    /// A pointer to the observer field in the outlet, and sets it to
-    /// `None` upon unsubscribing.
-    observer: Arc<Mutex<Option<ObserverBox>>>,
-}
+use api::HDDlog;
+use observe::Observer;
+use observe::ObserverBox as ObserverBoxT;
+use observe::UpdatesObservable as UpdatesObservableT;
+use observe::UpdatesSubscription as UpdatesSubscriptionT;
 
-impl Subscription for UpdatesSubscription {
-    /// Cancel a subscription so that the observer stops listening to
-    /// the observable.
-    fn unsubscribe(self: Box<Self>) {
-        let mut observer = self.observer.lock().unwrap();
-        *observer = None;
-    }
-}
-
-#[derive(Debug)]
-pub struct UpdatesObservable {
-    observer: Arc<Mutex<Option<ObserverBox>>>,
-}
-
-impl Observable<Update<super::Value>, String> for UpdatesObservable {
-    /// An observer subscribes to the delta stream from an outlet.
-    fn subscribe(
-        &mut self,
-        observer: Box<dyn Observer<Update<super::Value>, String> + Send>,
-    ) -> Box<dyn Subscription> {
-        *self.observer.lock().unwrap() = Some(observer);
-        Box::new(UpdatesSubscription {
-            observer: self.observer.clone(),
-        })
-    }
-}
+pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
+pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;
+pub type UpdatesSubscription = UpdatesSubscriptionT<Update<super::Value>, String>;
 
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
