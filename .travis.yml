@@ -42,7 +42,7 @@ env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
      # We piggy back on what has historically been one of the shorter
      # runs to also check formatting of the Rust code.
-   - TOOL=run_souffle_tests RUSTFMT=1 CLIPPY=1 CARGO_TEST=1
+   - TOOL=run_souffle_tests
    # - TOOL=stack TEST_SUITE='-p redist' JAVA=1
    # - TOOL=stack TEST_SUITE='-p span_uuid'
    # - TOOL=stack TEST_SUITE='-p souffle0'
@@ -68,8 +68,6 @@ addons:
       - subversion
 
 before_install:
-- if [ -n "${RUSTFMT}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then rustup component add rustfmt; fi
-- if [ -n "${CLIPPY}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then rustup component add clippy; fi
 - pip install --user parglare
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
@@ -89,15 +87,6 @@ script:
 # Build the package, its tests, and its docs and run the tests
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
-- if [ -n "${RUSTFMT}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
-      (cd rust/template/ && cargo fmt --all -- --check)
-  fi
-- if [ -n "${CLIPPY}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
-      (cd rust/template/ && cargo clippy --all -- -D warnings)
-  fi
-- if [ -n "${CARGO_TEST}" -a "${TRAVIS_OS_NAME}" = "linux" ]; then
-      (cd rust/template/ && cargo test --all)
-  fi
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
 - if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
