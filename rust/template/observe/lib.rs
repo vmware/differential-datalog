@@ -12,6 +12,9 @@ mod observer;
 mod subscription;
 
 pub use observable::Observable;
+pub use observable::UpdatesObservable;
 pub use observer::Observer;
+pub use observer::ObserverBox;
 pub use observer::SharedObserver;
 pub use subscription::Subscription;
+pub use subscription::UpdatesSubscription;

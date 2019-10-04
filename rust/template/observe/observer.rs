@@ -2,6 +2,9 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+/// A boxed up `Observer`.
+pub type ObserverBox<T, E> = Box<dyn Observer<T, E> + Send>;
+
 /// A trait for objects that can observe an observable one.
 pub trait Observer<T, E>: Debug + Send
 where
