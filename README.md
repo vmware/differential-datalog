@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
-[![rustc](https://img.shields.io/badge/rustc-1.37+-blue.svg)](https://blog.rust-lang.org/2019/08/15/Rust-1.37.0.html)
+[![rustc](https://img.shields.io/badge/rustc-1.34+-blue.svg)](https://blog.rust-lang.org/2019/04/11/Rust-1.34.0.html)
 
 # Differential Datalog (DDlog)
 
@@ -90,7 +90,7 @@ To download `stack` (if you don't already have it) use:
 wget -qO- https://get.haskellstack.org/ | sh
 ```
 
-You will also need to install the Rust toolchain v1.37 or later:
+You will also need to install the Rust toolchain v1.34 or later:
 
 ```
 curl https://sh.rustup.rs -sSf | sh
