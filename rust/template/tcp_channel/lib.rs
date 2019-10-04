@@ -7,6 +7,7 @@
     missing_docs
 )]
 
+mod message;
 mod receiver;
 mod sender;
 

@@ -1,6 +1,4 @@
 use std::fmt::Debug;
-use std::io;
-use std::io::BufRead;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::net::TcpListener;
@@ -13,6 +11,8 @@ use std::sync::Mutex;
 use std::thread::spawn;
 use std::thread::JoinHandle;
 
+use bincode::deserialize_from;
+
 use libc::close;
 
 use observe::Observable;
@@ -21,7 +21,8 @@ use observe::Subscription;
 use observe::UpdatesSubscription;
 
 use serde::de::DeserializeOwned;
-use serde_json::from_str;
+
+use crate::message::Message;
 
 /// The receiving end of a TCP channel has an address
 /// and streams data to an observer.
@@ -30,28 +31,34 @@ pub struct TcpReceiver<T> {
     addr: SocketAddr,
     listener: RawFd,
     stream: Arc<Mutex<Option<RawFd>>>,
-    thread: JoinHandle<io::Result<()>>,
+    thread: JoinHandle<Result<(), String>>,
     observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>,
 }
 
-impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
+impl<T> TcpReceiver<T>
+where
+    T: DeserializeOwned + Send + Debug + 'static,
+{
     /// Create a new TCP receiver with no observer.
     ///
     /// `addr` may have a port set (by setting it to 0). In such a case
     /// the system will assign a port that is free. To retrieve this
     /// assigned port (in the form of the full `SocketAddr`), use the
     /// `addr` method.
-    pub fn new<A>(addr: A) -> io::Result<Self>
+    pub fn new<A>(addr: A) -> Result<Self, String>
     where
         A: ToSocketAddrs,
     {
-        let listener = TcpListener::bind(addr)?;
+        let listener =
+            TcpListener::bind(addr).map_err(|e| format!("failed to bind TCP socket: {}", e))?;
         // We want to allow for auto-assigned ports, by letting the user
         // specify a `SocketAddr` with port 0. In this case, after
         // actually binding to an address, we need to update the port we
         // got assigned in `addr`, but for simplicity we just copy the
         // entire thing.
-        let addr = listener.local_addr()?;
+        let addr = listener
+            .local_addr()
+            .map_err(|e| format!("failed to inquire local address: {}", e))?;
         let listener_fd = listener.as_raw_fd();
         let stream_fd = Arc::new(Mutex::new(None));
         let observer = Arc::new(Mutex::new(None));
@@ -73,49 +80,36 @@ impl<T: DeserializeOwned + Send + Debug + 'static> TcpReceiver<T> {
         stream: Arc<Mutex<Option<RawFd>>>,
         listener: TcpListener,
         observer: Arc<Mutex<Option<Box<dyn Observer<T, String> + Send>>>>,
-    ) -> JoinHandle<io::Result<()>> {
+    ) -> JoinHandle<Result<(), String>> {
         spawn(move || {
-            let (socket, _) = listener.accept()?;
+            let (socket, _) = listener
+                .accept()
+                .map_err(|e| format!("failed to accept connection: {}", e))?;
             *stream.lock().unwrap() = Some(socket.as_raw_fd());
 
-            let reader = BufReader::new(socket);
-            let mut lines = reader.lines();
+            let mut reader = BufReader::new(socket);
             loop {
-                let mut upds = lines
-                    .by_ref()
-                    .take_while(|result| match result {
-                        Ok(line) if line == "commit" => false,
-                        Ok(_) => true,
-                        Err(_) => false,
-                    })
-                    .map(|result| {
-                        result.map(|line| {
-                            let v: T = from_str(&line).unwrap();
-                            v
-                        })
-                    });
-
-                let first = match upds.next() {
-                    None => break,
-                    Some(v @ Ok(_)) => v,
-                    Some(Err(e)) => return Err(e),
-                };
+                let message = deserialize_from(&mut reader)
+                    .map_err(|e| format!("failed to deserialize message: {}", e))?;
 
                 // If there is no observer we just drop the data, which
                 // is seemingly the only reasonable behavior given that
                 // observers can come and go by virtue of our API
                 // design.
                 if let Some(ref mut observer) = observer.lock().unwrap().deref_mut() {
-                    let upds = Some(first).into_iter().chain(upds).map(Result::unwrap);
                     // TODO: Need to handle those errors eventually (or
                     //       perhaps we will end up with method
                     //       signatures that don't allow for errors?).
-                    observer.on_start().unwrap();
-                    observer.on_updates(Box::new(upds)).unwrap();
-                    observer.on_commit().unwrap();
+                    match message {
+                        Message::Start => observer.on_start().unwrap(),
+                        Message::Updates(updates) => {
+                            observer.on_updates(Box::new(updates.into_iter())).unwrap()
+                        }
+                        Message::Commit => observer.on_commit().unwrap(),
+                        Message::Complete => observer.on_completed().unwrap(),
+                    }
                 }
             }
-            Ok(())
         })
     }
 
