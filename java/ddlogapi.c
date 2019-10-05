@@ -433,6 +433,14 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1id(
     return (jint)id;
 }
 
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
+    JNIEnv *env, jclass class, jint id) {
+    const char* table = ddlog_get_table_name(id);
+    jstring result = (*env)->NewStringUTF(env, table);
+    ddlog_string_free(table);
+    return result;
+}
+
 bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env = cbi->env;
