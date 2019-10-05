@@ -2,9 +2,11 @@ use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use observe::Observable;
 use observe::Observer;
 use observe::SharedObserver;
+use observe::Subscription;
 
 use server_api_ddlog::api::*;
-use server_api_ddlog::server;
+use server_api_ddlog::server::DDlogServer;
+use server_api_ddlog::server::UpdatesObservable;
 use server_api_ddlog::Relations::*;
 
 use maplit::hashmap;
@@ -55,25 +57,21 @@ where
     }
 }
 
+type MockObserver = SharedObserver<Mock>;
+
 /// Verify that `on_commit` is called even if we haven't received any
 /// updates.
-#[test]
-fn start_commit_on_no_updates() -> Result<(), String> {
-    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, hashmap! {});
-
-    let observable = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {});
-    let _ = stream
-        .subscribe(Box::new(observable.clone()))
-        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
-
+fn start_commit_on_no_updates(
+    mut server: DDlogServer,
+    _subscription: Box<dyn Subscription>,
+    observer: MockObserver,
+) -> Result<(), String> {
     server.on_start()?;
     server.on_commit()?;
     server.on_completed()?;
 
     {
-        let mock = observable.0.lock().unwrap();
+        let mock = observer.0.lock().unwrap();
         assert_eq!(mock.called_on_start, 1);
         assert_eq!(mock.called_on_commit, 1);
     }
@@ -83,7 +81,7 @@ fn start_commit_on_no_updates() -> Result<(), String> {
     // Also verify that on_completed is called as part of the shutdown
     // procedure.
     {
-        let mock = observable.0.lock().unwrap();
+        let mock = observer.0.lock().unwrap();
         assert_eq!(mock.called_on_completed, 1);
     }
 
@@ -91,7 +89,7 @@ fn start_commit_on_no_updates() -> Result<(), String> {
 
     // But only once!
     {
-        let mock = observable.0.lock().unwrap();
+        let mock = observer.0.lock().unwrap();
         assert_eq!(mock.called_on_completed, 1);
     }
     Ok(())
@@ -99,17 +97,11 @@ fn start_commit_on_no_updates() -> Result<(), String> {
 
 /// Verify that we receive an `on_updates` (and `on_next`) call when we
 /// get an update.
-#[test]
-fn start_commit_with_updates() -> Result<(), String> {
-    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, hashmap! {});
-
-    let observable = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
-    let _ = stream
-        .subscribe(Box::new(observable.clone()))
-        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
-
+fn start_commit_with_updates(
+    mut server: DDlogServer,
+    _subscription: Box<dyn Subscription>,
+    observer: MockObserver,
+) -> Result<(), String> {
     let updates = &[UpdCmd::Insert(
         RelIdentifier::RelId(P1In as usize),
         Record::String("test".to_string()),
@@ -122,7 +114,7 @@ fn start_commit_with_updates() -> Result<(), String> {
     server.on_commit()?;
     server.on_completed()?;
 
-    let mock = observable.0.lock().unwrap();
+    let mock = observer.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
@@ -130,17 +122,11 @@ fn start_commit_with_updates() -> Result<(), String> {
 }
 
 /// Test `unsubscribe` functionality.
-#[test]
-fn unsubscribe() -> Result<(), String> {
-    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, hashmap! {});
-
-    let observable = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
-    let subscription = stream
-        .subscribe(Box::new(observable.clone()))
-        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
-
+fn unsubscribe(
+    mut server: DDlogServer,
+    mut subscription: Box<dyn Subscription>,
+    observer: MockObserver,
+) -> Result<(), String> {
     server.on_start()?;
     server.on_commit()?;
 
@@ -149,7 +135,7 @@ fn unsubscribe() -> Result<(), String> {
     server.on_start()?;
     server.on_commit()?;
 
-    let mock = observable.0.lock().unwrap();
+    let mock = observer.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_commit, 1);
     Ok(())
@@ -157,17 +143,11 @@ fn unsubscribe() -> Result<(), String> {
 
 /// Verify that we do not receive repeated `on_next` calls for inserts &
 /// deletes of the same object within a single transaction.
-#[test]
-fn multiple_mergable_updates() -> Result<(), String> {
-    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, hashmap! {});
-
-    let observable = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
-    let _ = stream
-        .subscribe(Box::new(observable.clone()))
-        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
-
+fn multiple_mergable_updates(
+    mut server: DDlogServer,
+    _subscription: Box<dyn Subscription>,
+    observer: MockObserver,
+) -> Result<(), String> {
     let updates = &[
         UpdCmd::Insert(
             RelIdentifier::RelId(P1In as usize),
@@ -190,7 +170,7 @@ fn multiple_mergable_updates() -> Result<(), String> {
     server.on_commit()?;
     server.on_completed()?;
 
-    let mock = observable.0.lock().unwrap();
+    let mock = observer.0.lock().unwrap();
     assert_eq!(mock.called_on_start, 1);
     assert_eq!(mock.called_on_updates, 1);
     assert_eq!(mock.called_on_commit, 1);
@@ -199,15 +179,11 @@ fn multiple_mergable_updates() -> Result<(), String> {
 
 /// Check intended behavior in the context of multiple transactions
 /// happening.
-#[test]
-fn multiple_transactions() -> Result<(), String> {
-    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
-    let mut server = server::DDlogServer::new(program, hashmap! {});
-
-    let observable = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
-    let _ = stream.subscribe(Box::new(observable.clone()));
-
+fn multiple_transactions(
+    mut server: DDlogServer,
+    _subscription: Box<dyn Subscription>,
+    observer: MockObserver,
+) -> Result<(), String> {
     let updates = &[
         UpdCmd::Insert(
             RelIdentifier::RelId(P1In as usize),
@@ -226,7 +202,7 @@ fn multiple_transactions() -> Result<(), String> {
     server.on_commit()?;
 
     {
-        let mock = observable.0.lock().unwrap();
+        let mock = observer.0.lock().unwrap();
         assert_eq!(mock.called_on_start, 1);
         assert_eq!(mock.called_on_updates, 2);
         assert_eq!(mock.called_on_commit, 1);
@@ -244,7 +220,7 @@ fn multiple_transactions() -> Result<(), String> {
     server.on_commit()?;
 
     {
-        let mock = observable.0.lock().unwrap();
+        let mock = observer.0.lock().unwrap();
         assert_eq!(mock.called_on_start, 2);
         assert_eq!(mock.called_on_updates, 3);
         assert_eq!(mock.called_on_commit, 2);
@@ -252,4 +228,31 @@ fn multiple_transactions() -> Result<(), String> {
 
     server.on_completed()?;
     Ok(())
+}
+
+fn setup() -> (DDlogServer, Box<dyn Subscription>, MockObserver) {
+    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let mut server = DDlogServer::new(program, hashmap! {});
+
+    let observer = SharedObserver::new(Mock::new());
+    let mut stream = server.add_stream(hashset! {P1Out});
+    let subscription = stream.subscribe(Box::new(observer.clone())).unwrap();
+
+    (server, subscription, observer)
+}
+
+#[test]
+fn all_events() {
+    let tests = &[
+        start_commit_on_no_updates,
+        start_commit_with_updates,
+        unsubscribe,
+        multiple_mergable_updates,
+        multiple_transactions,
+    ];
+
+    for test in tests {
+        let (server, observable, observer) = setup();
+        test(server, observable, observer).unwrap();
+    }
 }
