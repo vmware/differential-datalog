@@ -572,7 +572,9 @@ pub unsafe extern "C" fn ddlog_get_table_name(tid: libc::size_t) -> *const raw::
     match HDDlog::get_table_name(tid) {
         Ok(name) => ffi::CString::new(name)
             .map(ffi::CString::into_raw)
-            .unwrap(),
+            .unwrap_or_else(|e| {
+                ptr::null_mut()
+            }),
         Err(_) => ptr::null(),
     }
 }
