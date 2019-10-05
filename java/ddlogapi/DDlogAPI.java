@@ -53,6 +53,7 @@ public class DDlogAPI {
     static native long ddlog_struct(String constructor, long[] handles) throws DDlogException;
     // Getters
     static native int ddlog_get_table_id(String table);
+    static native String ddlog_get_table_name(int id);
     static native boolean ddlog_is_bool(long handle);
     static native boolean ddlog_get_bool(long handle);
     static native boolean ddlog_is_int(long handle);
@@ -158,6 +159,15 @@ public class DDlogAPI {
             return id;
         }
         return this.tableId.get(table);
+    }
+
+    /**
+     * Get DDlog relation name from ID.
+     *
+     * See <code>ddlog.h: ddlog_get_table_name()</code>
+     */
+    public String getTableName(int id) {
+        return ddlog_get_table_name(id);
     }
 
     /**

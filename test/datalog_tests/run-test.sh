@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run one datalog test
 
-set -ex
+set -e
 
 function usage {
     echo "Usage: run-test.sh testname [debug|release]"

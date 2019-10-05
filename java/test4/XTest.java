@@ -9,6 +9,9 @@ public class XTest {
 
     XTest() throws DDlogException {
         this.api = new DDlogAPI(1, null, false);
+        int id = this.api.getTableId("R0");
+        String name = this.api.getTableName(id);
+        assert name.equals("R0");
     }
 
     void onCommit(DDlogCommand command) {
