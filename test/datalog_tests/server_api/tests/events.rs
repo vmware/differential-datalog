@@ -1,16 +1,30 @@
-use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
+use std::any::Any;
+use std::panic::catch_unwind;
+use std::panic::AssertUnwindSafe;
+use std::panic::UnwindSafe;
+use std::time::Duration;
+
+use differential_datalog::program::Update;
+use differential_datalog::record::Record;
+use differential_datalog::record::RelIdentifier;
+use differential_datalog::record::UpdCmd;
 use observe::Observable;
 use observe::Observer;
 use observe::SharedObserver;
 use observe::Subscription;
+use tcp_channel::TcpReceiver;
+use tcp_channel::TcpSender;
 
-use server_api_ddlog::api::*;
+use server_api_ddlog::api::updcmd2upd;
+use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::server::DDlogServer;
-use server_api_ddlog::server::UpdatesObservable;
 use server_api_ddlog::Relations::*;
+use server_api_ddlog::Value;
 
 use maplit::hashmap;
 use maplit::hashset;
+
+use waitfor::wait_for;
 
 #[derive(Clone, Debug)]
 struct Mock {
@@ -59,6 +73,28 @@ where
 
 type MockObserver = SharedObserver<Mock>;
 
+fn await_expected<F>(mut op: F)
+where
+    F: FnMut() + UnwindSafe,
+{
+    let op = || -> Result<Option<()>, ()> {
+        // All we care about for the sake of testing here are assertion
+        // failures. So if we encounter one (in the form of a panic) we
+        // map that to a retry.
+        match catch_unwind(AssertUnwindSafe(&mut op)) {
+            Ok(_) => Ok(Some(())),
+            Err(_) => Ok(None),
+        }
+    };
+
+    let result = wait_for(Duration::from_secs(5), Duration::from_millis(1), op);
+    match result {
+        Ok(Some(_)) => (),
+        Ok(None) => panic!("time out waiting for expected result"),
+        Err(e) => panic!("failed to await expected result: {:?}", e),
+    }
+}
+
 /// Verify that `on_commit` is called even if we haven't received any
 /// updates.
 fn start_commit_on_no_updates(
@@ -70,33 +106,47 @@ fn start_commit_on_no_updates(
     server.on_commit()?;
     server.on_completed()?;
 
-    {
-        let mock = observer.0.lock().unwrap();
-        assert_eq!(mock.called_on_start, 1);
-        assert_eq!(mock.called_on_commit, 1);
-    }
+    await_expected(|| {
+        let (on_start, on_updates, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (
+                mock.called_on_start,
+                mock.called_on_updates,
+                mock.called_on_commit,
+            )
+        };
+
+        assert_eq!(on_start, 1);
+        assert_eq!(on_updates, 0);
+        assert_eq!(on_commit, 1);
+    });
 
     server.shutdown()?;
 
     // Also verify that on_completed is called as part of the shutdown
     // procedure.
-    {
-        let mock = observer.0.lock().unwrap();
-        assert_eq!(mock.called_on_completed, 1);
-    }
+    await_expected(|| {
+        let on_completed = {
+            let mock = observer.0.lock().unwrap();
+            mock.called_on_completed
+        };
+        assert!(on_completed >= 1, "{}", on_completed);
+    });
 
     server.shutdown()?;
 
     // But only once!
-    {
-        let mock = observer.0.lock().unwrap();
-        assert_eq!(mock.called_on_completed, 1);
-    }
+    await_expected(|| {
+        let on_completed = {
+            let mock = observer.0.lock().unwrap();
+            mock.called_on_completed
+        };
+        assert!(on_completed >= 1, "{}", on_completed);
+    });
     Ok(())
 }
 
-/// Verify that we receive an `on_updates` (and `on_next`) call when we
-/// get an update.
+/// Verify that we receive an `on_updates` call when we get an update.
 fn start_commit_with_updates(
     mut server: DDlogServer,
     _subscription: Box<dyn Subscription>,
@@ -114,17 +164,27 @@ fn start_commit_with_updates(
     server.on_commit()?;
     server.on_completed()?;
 
-    let mock = observer.0.lock().unwrap();
-    assert_eq!(mock.called_on_start, 1);
-    assert_eq!(mock.called_on_updates, 1);
-    assert_eq!(mock.called_on_commit, 1);
+    await_expected(|| {
+        let (on_start, on_updates, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (
+                mock.called_on_start,
+                mock.called_on_updates,
+                mock.called_on_commit,
+            )
+        };
+
+        assert_eq!(on_start, 1);
+        assert_eq!(on_updates, 1);
+        assert_eq!(on_commit, 1);
+    });
     Ok(())
 }
 
 /// Test `unsubscribe` functionality.
 fn unsubscribe(
     mut server: DDlogServer,
-    mut subscription: Box<dyn Subscription>,
+    subscription: Box<dyn Subscription>,
     observer: MockObserver,
 ) -> Result<(), String> {
     server.on_start()?;
@@ -135,9 +195,15 @@ fn unsubscribe(
     server.on_start()?;
     server.on_commit()?;
 
-    let mock = observer.0.lock().unwrap();
-    assert_eq!(mock.called_on_start, 1);
-    assert_eq!(mock.called_on_commit, 1);
+    await_expected(|| {
+        let (on_start, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (mock.called_on_start, mock.called_on_commit)
+        };
+
+        assert_eq!(on_start, 1);
+        assert_eq!(on_commit, 1);
+    });
     Ok(())
 }
 
@@ -170,10 +236,20 @@ fn multiple_mergable_updates(
     server.on_commit()?;
     server.on_completed()?;
 
-    let mock = observer.0.lock().unwrap();
-    assert_eq!(mock.called_on_start, 1);
-    assert_eq!(mock.called_on_updates, 1);
-    assert_eq!(mock.called_on_commit, 1);
+    await_expected(|| {
+        let (on_start, on_updates, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (
+                mock.called_on_start,
+                mock.called_on_updates,
+                mock.called_on_commit,
+            )
+        };
+
+        assert_eq!(on_start, 1);
+        assert_eq!(on_updates, 1);
+        assert_eq!(on_commit, 1);
+    });
     Ok(())
 }
 
@@ -201,12 +277,20 @@ fn multiple_transactions(
     ))?;
     server.on_commit()?;
 
-    {
-        let mock = observer.0.lock().unwrap();
-        assert_eq!(mock.called_on_start, 1);
-        assert_eq!(mock.called_on_updates, 2);
-        assert_eq!(mock.called_on_commit, 1);
-    }
+    await_expected(|| {
+        let (on_start, on_updates, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (
+                mock.called_on_start,
+                mock.called_on_updates,
+                mock.called_on_commit,
+            )
+        };
+
+        assert_eq!(on_start, 1);
+        assert_eq!(on_updates, 2);
+        assert_eq!(on_commit, 1);
+    });
 
     let updates = &[UpdCmd::Delete(
         RelIdentifier::RelId(P1In as usize),
@@ -219,12 +303,20 @@ fn multiple_transactions(
     ))?;
     server.on_commit()?;
 
-    {
-        let mock = observer.0.lock().unwrap();
-        assert_eq!(mock.called_on_start, 2);
-        assert_eq!(mock.called_on_updates, 3);
-        assert_eq!(mock.called_on_commit, 2);
-    }
+    await_expected(|| {
+        let (on_start, on_updates, on_commit) = {
+            let mock = observer.0.lock().unwrap();
+            (
+                mock.called_on_start,
+                mock.called_on_updates,
+                mock.called_on_commit,
+            )
+        };
+
+        assert_eq!(on_start, 2);
+        assert_eq!(on_updates, 3);
+        assert_eq!(on_commit, 2);
+    });
 
     server.on_completed()?;
     Ok(())
@@ -241,6 +333,27 @@ fn setup() -> (DDlogServer, Box<dyn Subscription>, MockObserver) {
     (server, subscription, observer)
 }
 
+fn setup_tcp() -> (
+    DDlogServer,
+    Box<dyn Subscription>,
+    MockObserver,
+    Box<dyn Any>,
+) {
+    let program = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let mut server = DDlogServer::new(program, hashmap! {});
+
+    let observer = SharedObserver::new(Mock::new());
+    let mut stream = server.add_stream(hashset! {P1Out});
+
+    let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
+    let send = TcpSender::connect(*recv.addr()).unwrap();
+
+    let subscription = stream.subscribe(Box::new(send)).unwrap();
+    let _ = recv.subscribe(Box::new(observer.clone())).unwrap();
+
+    (server, subscription, observer, Box::new(recv))
+}
+
 #[test]
 fn all_events() {
     let tests = &[
@@ -254,5 +367,10 @@ fn all_events() {
     for test in tests {
         let (server, observable, observer) = setup();
         test(server, observable, observer).unwrap();
+    }
+
+    for test in tests {
+        let (server, subscription, observer, _data) = setup_tcp();
+        test(server, subscription, observer).unwrap();
     }
 }
