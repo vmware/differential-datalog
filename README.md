@@ -70,6 +70,7 @@ Datalog 2.0, Philadelphia, PA, June 4-5, 2019.
 ## Installation
 
 ### From sources
+
 To install the required dependencies for buidling DDlog run
 `. ./install-dependencies.sh` (If you want to use other versions of
 the Rust or Haskell tools you can manually install the required
