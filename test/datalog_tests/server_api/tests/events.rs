@@ -64,7 +64,9 @@ fn start_commit_on_no_updates() -> Result<(), String> {
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {});
-    let _ = stream.subscribe(Box::new(observable.clone()));
+    let _ = stream
+        .subscribe(Box::new(observable.clone()))
+        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
 
     server.on_start()?;
     server.on_commit()?;
@@ -104,7 +106,9 @@ fn start_commit_with_updates() -> Result<(), String> {
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    let _ = stream.subscribe(Box::new(observable.clone()));
+    let _ = stream
+        .subscribe(Box::new(observable.clone()))
+        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
 
     let updates = &[UpdCmd::Insert(
         RelIdentifier::RelId(P1In as usize),
@@ -133,7 +137,9 @@ fn unsubscribe() -> Result<(), String> {
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    let subscription = stream.subscribe(Box::new(observable.clone()));
+    let subscription = stream
+        .subscribe(Box::new(observable.clone()))
+        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
 
     server.on_start()?;
     server.on_commit()?;
@@ -158,7 +164,9 @@ fn multiple_mergable_updates() -> Result<(), String> {
 
     let observable = SharedObserver::new(Mock::new());
     let mut stream = server.add_stream(hashset! {P1Out});
-    let _ = stream.subscribe(Box::new(observable.clone()));
+    let _ = stream
+        .subscribe(Box::new(observable.clone()))
+        .ok_or_else(|| "failed to subscribe observer because a subscriber is already present")?;
 
     let updates = &[
         UpdCmd::Insert(

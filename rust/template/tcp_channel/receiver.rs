@@ -17,6 +17,7 @@ use libc::close;
 
 use observe::Observable;
 use observe::Observer;
+use observe::ObserverBox;
 use observe::Subscription;
 use observe::UpdatesSubscription;
 
@@ -140,22 +141,17 @@ where
 {
     /// An observer subscribes to the receiving end of a TCP channel to
     /// listen to incoming data.
-    fn subscribe(
-        &mut self,
-        observer: Box<dyn Observer<T, String> + Send>,
-    ) -> Box<dyn Subscription> {
+    fn subscribe(&mut self, observer: ObserverBox<T, String>) -> Option<Box<dyn Subscription>> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
-            Some(_) => panic!(
-                "TcpReceiver {} already has an observer subscribed",
-                self.addr
-            ),
-            None => *guard = Some(observer),
+            Some(_) => None,
+            None => {
+                *guard = Some(observer);
+                Some(Box::new(UpdatesSubscription {
+                    observer: self.observer.clone(),
+                }))
+            }
         }
-
-        Box::new(UpdatesSubscription::<T, String> {
-            observer: self.observer.clone(),
-        })
     }
 }
 

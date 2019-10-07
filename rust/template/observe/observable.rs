@@ -13,9 +13,12 @@ where
     E: Send,
 {
     /// An Observer subscribes to an Observable to listen to data
-    /// emitted by the latter. The Observer stops listening when
-    /// the Subscription returned is canceled.
-    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Box<dyn Subscription>;
+    /// emitted by the latter. The Observer stops listening when the
+    /// Subscription returned is canceled.
+    ///
+    /// A return value of `None` indicates that the `Observable` is
+    /// unable to accept any more `Observer`s.
+    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Option<Box<dyn Subscription>>;
 }
 
 /// A very simple observable that supports subscription of a single
@@ -32,12 +35,16 @@ where
     E: Debug + Send + 'static,
 {
     /// An observer subscribes to the delta stream from an outlet.
-    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Box<dyn Subscription> {
-        // TODO: Should probably panic or report an error on attempt to
-        //       subscribe multiple observers.
-        *self.observer.lock().unwrap() = Some(observer);
-        Box::new(UpdatesSubscription {
-            observer: self.observer.clone(),
-        })
+    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Option<Box<dyn Subscription>> {
+        let mut guard = self.observer.lock().unwrap();
+        match *guard {
+            Some(_) => None,
+            None => {
+                *guard = Some(observer);
+                Some(Box::new(UpdatesSubscription {
+                    observer: self.observer.clone(),
+                }))
+            }
+        }
     }
 }
