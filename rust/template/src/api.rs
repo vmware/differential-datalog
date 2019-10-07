@@ -59,6 +59,10 @@ impl HDDlog {
         relid2name(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
+    pub fn get_table_cname(tid: RelId) -> Result<&'static ffi::CStr, String> {
+        relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
+    }
+
     pub fn run<F>(workers: usize, do_store: bool, cb: F) -> HDDlog
     where
         F: Callback,
@@ -569,10 +573,8 @@ pub unsafe extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_get_table_name(tid: libc::size_t) -> *const raw::c_char {
-    match HDDlog::get_table_name(tid) {
-        Ok(name) => ffi::CString::new(name)
-            .map(ffi::CString::into_raw)
-            .unwrap_or_else(|e| ptr::null_mut()),
+    match HDDlog::get_table_cname(tid) {
+        Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
     }
 }

@@ -61,7 +61,6 @@ extern table_id ddlog_get_table_id(const char* tname);
 /*
  * Get DDlog table name from id.
  *
- * The returned string must be deallocated using ddlog_string_free().
  * On error, returns NULL.
  */
 extern const char* ddlog_get_table_name(table_id id);
@@ -496,7 +495,7 @@ extern void ddlog_free(ddlog_record *rec);
  * (currently only applicable to the string returned by `ddlog_profile()` and
  * `ddlog_dump_record()`).
  */
-extern void ddlog_string_free(const char *s);
+extern void ddlog_string_free(char *s);
 
 /*
  * Create a Boolean value

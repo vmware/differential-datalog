@@ -166,6 +166,10 @@ pub fn relid2name(_rid: RelId) -> Option<&'static str> {
     panic!("relid2name not implemented")
 }
 
+pub fn relid2cname(_rid: RelId) -> Option<&'static ffi::CStr> {
+    panic!("relid2name not implemented")
+}
+
 pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
     panic!("prog not implemented")
 }
