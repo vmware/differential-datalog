@@ -6,7 +6,7 @@ set -ex
 
 source ../build_java.sh
 
-compile ../../test/datalog_tests/span_string.dl SpanTest.java release
+compile ../../test/datalog_tests/span_string.dl SpanTest.java debug
 java -Djava.library.path=. SpanTest > spantest.dump
 diff spantest.dump spantest.dump.expected
 cleanup

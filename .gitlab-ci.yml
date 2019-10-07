@@ -21,9 +21,7 @@ test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
 test-simple:
-    tags:
-        - ddlog-ci-1
-    script: STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p simple"
+    script: stack --no-terminal test --ta "-p simple"
 
 test-modules:
     script: stack --no-terminal test --ta "-p modules"
@@ -45,8 +43,10 @@ test-souffle0:
 
 test-redist:
     extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
     script:
-        - stack --no-terminal test --ta "-p redist"
+        - STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p redist"
         - (cd java/test1 && ./run.sh)
         - (cd java/test_flatbuf && ./run.sh)
 
