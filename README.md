@@ -76,7 +76,6 @@ the Rust or Haskell tools you can manually install the required
 dependencies, as described below.)
 
 #### Prerequisites
-
 This section describes the manual installation of dependencies.
 We have tested our software on Ubuntu Linux and MacOS.
 
