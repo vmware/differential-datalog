@@ -28,4 +28,4 @@ cd ..
 
 GITDIR=$(git rev-parse --git-dir)
 # Link to pre-commit script
-ln -sf `$(pwd)`/tools/prepush.sh ${GITDIR}/hooks/pre-push
+ln -sf $(pwd)/tools/prepush.sh ${GITDIR}/hooks/pre-push
