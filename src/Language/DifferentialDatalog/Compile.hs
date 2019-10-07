@@ -730,7 +730,9 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkInputRelname2Id d                                                                             $$
     mkRelId2Relations d                                                                             $$
     mkRelId2Name d                                                                                  $$
+    mkRelId2NameC                                                                                   $$
     mkRelIdMap d                                                                                    $$
+    mkRelIdMapC d                                                                                   $$
     mkInputRelIdMap d                                                                               $$
     mkOutputRelIdMap d                                                                              $$
     "pub fn relval_from_record(rel: Relations, _rec: &record::Record) -> Result<Value, String> {"   $$
@@ -827,6 +829,12 @@ mkRelId2Name d =
     mkrel :: Relation -> Doc
     mkrel rel = pp (relIdentifier d rel) <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
 
+mkRelId2NameC :: Doc
+mkRelId2NameC =
+    "pub fn relid2cname(rid: RelId) -> Option<&'static ffi::CStr> {"        $$
+    "    RELIDMAPC.get(&rid).map(|c: &'static ffi::CString|c.as_ref())"                            $$
+    "}"
+
 mkRelIdMap :: DatalogProgram -> Doc
 mkRelIdMap d =
     "lazy_static! {"                                                        $$
@@ -840,6 +848,21 @@ mkRelIdMap d =
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
     mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+
+mkRelIdMapC :: DatalogProgram -> Doc
+mkRelIdMapC d =
+    "lazy_static! {"                                                            $$
+    "    pub static ref RELIDMAPC: FnvHashMap<RelId, ffi::CString> = {"         $$
+    "        let mut m = FnvHashMap::default();"                                $$
+    (nest' $ nest' $ vcat entries)                                              $$
+    "        m"                                                                 $$
+    "   };"                                                                     $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = "m.insert(" <> pp (relIdentifier d rel) <>
+        ", ffi::CString::new(\"" <> pp (name rel) <> "\").unwrap_or_else(|_|ffi::CString::new(r\"Cannot convert relation name to C string\").unwrap()));"
 
 mkInputRelIdMap :: DatalogProgram -> Doc
 mkInputRelIdMap d =

@@ -436,8 +436,11 @@ JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1id(
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
     JNIEnv *env, jclass class, jint id) {
     const char* table = ddlog_get_table_name(id);
+    if (table == NULL) {
+        throwDDlogException(env, "Unknown table id");
+        return NULL;
+    };
     jstring result = (*env)->NewStringUTF(env, table);
-    ddlog_string_free(table);
     return result;
 }
 
