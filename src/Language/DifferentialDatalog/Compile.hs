@@ -917,7 +917,7 @@ mkValType d types =
     "pub enum Value {"                                                                      $$
     (nest' $ vcat $ punctuate comma $ map mkValCons $ S.toList types)                       $$
     "}"                                                                                     $$
-    "unsafe_abomonate!(Value);"                                                             $$
+    "impl Abomonation for Value {}"                                                         $$
     "impl Default for Value {"                                                              $$
     "    fn default() -> Value {" <> tuple0 <> "}"                                          $$
     "}"                                                                                     $$

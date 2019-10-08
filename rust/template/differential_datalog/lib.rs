@@ -1,6 +1,5 @@
 #![allow(clippy::get_unwrap, clippy::type_complexity)]
 
-#[macro_use]
 extern crate abomonation;
 extern crate num;
 

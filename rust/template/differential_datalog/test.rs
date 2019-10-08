@@ -33,14 +33,16 @@ struct P {
     f1: Q,
     f2: bool,
 }
-unsafe_abomonate!(P);
+
+impl Abomonation for P {}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 struct Q {
     f1: bool,
     f2: String,
 }
-unsafe_abomonate!(Q);
+
+impl Abomonation for Q {}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 enum S {
@@ -58,7 +60,8 @@ enum S {
         g2: Q,
     },
 }
-unsafe_abomonate!(S);
+
+impl Abomonation for S {}
 
 impl S {
     fn f1(&mut self) -> &mut u32 {
@@ -85,7 +88,8 @@ enum Value {
     Q(Q),
     S(S),
 }
-unsafe_abomonate!(Value);
+
+impl Abomonation for Value {}
 
 impl Default for Value {
     fn default() -> Value {

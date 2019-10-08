@@ -32,7 +32,7 @@ path = "./observe"
 path = "./tcp_channel"
 
 [dependencies]
-abomonation= "0.7"
+abomonation = "0.7"
 cpuprofiler = "0.0.3"
 differential-dataflow = "0.9"
 fnv="1.0.2"

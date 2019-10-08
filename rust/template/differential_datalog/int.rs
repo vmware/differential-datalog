@@ -29,7 +29,8 @@ impl Default for Int {
         }
     }
 }
-unsafe_abomonate!(Int);
+
+impl Abomonation for Int {}
 
 impl Int {
     pub fn from_bigint(v: BigInt) -> Int {
