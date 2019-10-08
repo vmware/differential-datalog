@@ -20,6 +20,9 @@ test-rust:
 test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
+test-server_api:
+    script: stack --no-terminal test --ta "-p server_api"
+
 test-simple:
     script: stack --no-terminal test --ta "-p simple"
 
