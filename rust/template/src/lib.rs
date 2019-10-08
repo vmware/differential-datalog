@@ -29,7 +29,6 @@ extern crate twox_hash;
 #[macro_use]
 extern crate differential_datalog;
 
-#[macro_use]
 extern crate abomonation;
 extern crate ddlog_ovsdb_adapter;
 
@@ -109,13 +108,15 @@ pub enum Value {
     empty(),
     bool(bool),
 }
-unsafe_abomonate!(Value);
+
+impl Abomonation for Value {}
 
 impl Default for Value {
     fn default() -> Value {
         Value::bool(false)
     }
 }
+
 impl fmt::Display for Value {
     fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         panic!("Value::fmt not implemented")

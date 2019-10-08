@@ -94,7 +94,7 @@ pub struct TS16 {
     pub x: u16,
 }
 
-unsafe_abomonate!(TS16);
+impl Abomonation for TS16 {}
 
 impl Mul for TS16 {
     type Output = TS16;

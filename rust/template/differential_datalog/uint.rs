@@ -27,7 +27,8 @@ impl Default for Uint {
         }
     }
 }
-unsafe_abomonate!(Uint);
+
+impl Abomonation for Uint {}
 
 impl Uint {
     pub fn from_biguint(v: BigUint) -> Uint {
