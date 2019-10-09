@@ -278,7 +278,7 @@ exprNodeType' d _   (EField p (Just e) f) = do
 exprNodeType' _ ctx (ETupField p Nothing _)  = eunknown p ctx
 exprNodeType' d _   (ETupField p (Just e) i) = do
     case typ' d e of
-         t@TTuple{} -> do check (((length $ typeTupArgs t) <= i) || (0 > i)) p
+         t@TTuple{} -> do check (((length $ typeTupArgs t) > i) && (0 <= i)) p
                             $ "Tuple \"" ++ show t ++ "\" does not have " ++ show i ++ " fields"
                           return $ (typeTupArgs t) !! i
          _           -> err (pos e) $ "Expression is not a tuple"
