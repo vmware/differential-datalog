@@ -160,7 +160,10 @@ pub enum UpdCmd {
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_dump_record(rec: *const Record) -> *mut raw::c_char {
     match rec.as_ref() {
-        Some(rec) => CString::new(rec.to_string()).unwrap().into_raw(),
+        Some(rec) => match CString::new(rec.to_string()) {
+            Ok(s) => s.into_raw(),
+            Err(_) => null_mut(),
+        },
         _ => null_mut(),
     }
 }
@@ -1468,4 +1471,33 @@ macro_rules! decl_record_mutator_val_enum {
             }
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use num::bigint::ToBigInt;
+
+    /// Test the `ddlog_dump_record` C API function.
+    #[test]
+    fn dump_record() {
+        // Some very basic checks. Not all variants are covered at this
+        // point.
+        let checks = [
+            (Record::Bool(true), "true"),
+            (Record::Bool(false), "false"),
+            (Record::Int(12345.to_bigint().unwrap()), "12345"),
+            (Record::String("a-\0-byte".to_string()), "\"a-\\u{0}-byte\""),
+        ];
+
+        for check in &checks {
+            let ptr = unsafe { ddlog_dump_record(&check.0) };
+            assert!(!ptr.is_null());
+
+            let actual = unsafe { CString::from_raw(ptr) };
+            let expected = CString::new(check.1).unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
 }
