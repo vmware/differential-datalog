@@ -1139,7 +1139,7 @@ IntranetHost(addr) :- KnownHost(addr),
 
 The fields of a tuple can be accessed using the record field access
 syntax but using numbers instead of field names: `.0` is the 0-th
-field of the tuple (reading from the left).  The previous relation can
+field of the tuple (reading from the left).  The previous rule can
 be also written as:
 
 ```

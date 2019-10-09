@@ -552,7 +552,7 @@ instance Show Rule where
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
                 | EField        {exprPos :: Pos, exprStruct :: e, exprField :: String}
-                | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Integer}
+                | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Int}
                 | EBool         {exprPos :: Pos, exprBVal :: Bool}
                 | EInt          {exprPos :: Pos, exprIVal :: Integer}
                 | EString       {exprPos :: Pos, exprString :: String}
