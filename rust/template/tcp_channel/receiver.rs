@@ -19,6 +19,8 @@ use libc::close;
 use libc::shutdown;
 use libc::SHUT_RDWR;
 
+use log::error;
+
 use observe::Observable;
 use observe::ObserverBox;
 use observe::Subscription;
@@ -164,11 +166,11 @@ where
         loop {
             let message = match deserialize_from(&mut reader) {
                 Ok(m) => m,
-                Err(_) => {
+                Err(e) => {
                     if let Fd::Closed = *fd.lock().unwrap() {
                         return Ok(());
                     }
-                    // TODO: Can/should we log the error?
+                    error!("failed to deserialize message: {}", e);
                     continue;
                 }
             };
@@ -201,16 +203,17 @@ where
 
 impl<T> Drop for TcpReceiver<T> {
     fn drop(&mut self) {
-        // TODO: We probably want to just log failures.
-        self.fd.lock().unwrap().close().unwrap();
-        // TODO: We probably want to log any errors reported by the
-        //       thread being joined.
-        self.thread
-            .take()
-            .map(JoinHandle::join)
-            .unwrap()
-            .unwrap()
-            .unwrap();
+        if let Err(e) = self.fd.lock().unwrap().close() {
+            error!("failed to close TcpReceiver file descriptor: {}", e);
+        }
+
+        if let Some(t) = self.thread.take() {
+            match t.join() {
+                Ok(Ok(())) => (),
+                Ok(Err(e)) => error!("TcpReceiver accept thread failed: {}", e),
+                Err(e) => error!("TcpReceiver thread has panicked: {:?}", e),
+            }
+        };
 
         // The remaining members will be destroyed automatically, no
         // need to bother here.
