@@ -164,7 +164,7 @@ where
     ) -> Result<(), String> {
         let mut reader = BufReader::new(socket);
         loop {
-            let message = match deserialize_from(&mut reader) {
+            let mut message = match deserialize_from(&mut reader) {
                 Ok(m) => m,
                 Err(e) => {
                     if let Fd::Closed = *fd.lock().unwrap() {
@@ -180,16 +180,20 @@ where
             // observers can come and go by virtue of our API
             // design.
             if let Some(ref mut observer) = observer.lock().unwrap().deref_mut() {
-                // TODO: Need to handle those errors eventually (or
-                //       perhaps we will end up with method
-                //       signatures that don't allow for errors?).
-                match message {
-                    Message::Start => observer.on_start().unwrap(),
-                    Message::Updates(updates) => {
-                        observer.on_updates(Box::new(updates.into_iter())).unwrap()
+                let result = match message {
+                    Message::Start => observer.on_start(),
+                    Message::Updates(ref mut updates) => {
+                        observer.on_updates(Box::new(updates.drain(..)))
                     }
-                    Message::Commit => observer.on_commit().unwrap(),
-                    Message::Complete => observer.on_completed().unwrap(),
+                    Message::Commit => observer.on_commit(),
+                    Message::Complete => observer.on_completed(),
+                };
+
+                if let Err(e) = result {
+                    error!(
+                        "observer {:?} failed to process {} event: {}",
+                        observer, message, e
+                    );
                 }
             }
         }
