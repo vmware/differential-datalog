@@ -9,3 +9,6 @@ differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
 maplit = "1.0"
 observe = {path = "../server_api_ddlog/observe"}
 server_api = {path = "../server_api_ddlog"}
+
+[dev-dependencies]
+lazy_static = "1.4"
