@@ -280,7 +280,7 @@ exprNodeType' d _   (ETupField p (Just e) i) = do
     case typ' d e of
          t@TTuple{} ->
              if ((toInteger $ length $ typeTupArgs t) <= i) || (0 > i)
-             then err p  $ "Tuple \"" ++ show t ++ "\" does not have of " ++ show i ++ " fields"
+             then err p  $ "Tuple \"" ++ show t ++ "\" does not have " ++ show i ++ " fields"
              else return $ (typeTupArgs t) !! (fromIntegral i)
          _           -> err (pos e) $ "Expression is not a tuple"
 
