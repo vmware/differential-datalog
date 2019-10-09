@@ -50,6 +50,7 @@ typedef IP6Addr = bit<128>
 typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
 typedef IString1 = IString1{s: intern.IString}
 typedef Innocent = Innocent{name: string}
+typedef J = J{b: bool}
 typedef Links = Links{l: line, s1: station, s2: station}
 typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef NewAllocationOpt = NewAllocationOpt{id: bigint, alloc: std.Vec<(string, std.Option<bit<32>>)>}
@@ -57,6 +58,8 @@ typedef Numbers = Numbers{x: bigint}
 typedef Parent = Parent{child: person, parent: person}
 typedef Power3 = Power3{y: bigint}
 typedef R1 = bigint
+typedef R13 = R13{t: t13}
+typedef R14 = R14{t: t11}
 typedef R1_nl = R1_nl{a1: string}
 typedef R2_nl = R2_nl{a2: string}
 typedef R3 = R3{f1: bigint, f2: bool}
@@ -550,6 +553,7 @@ input relation Human [Human]
 relation IConcatString [IConcatString]
 input relation IString1 [IString1]
 output relation Innocent [Innocent]
+output relation J [J]
 input relation Links [Links]
 output relation NewAllocation [NewAllocation]
 output relation NewAllocationOpt [NewAllocationOpt]
@@ -557,6 +561,8 @@ input relation Numbers [Numbers]
 input relation Parent [Parent]
 output relation Power3 [Power3]
 input relation R1 [R1]
+relation R13 [R13]
+relation R14 [R14]
 input relation R1_nl [R1_nl]
 input relation R2 [(bigint, bigint)]
 relation R2_nl [R2_nl]
@@ -864,4 +870,8 @@ UMinus_bigint(.description="- -100", .n=(- (- 100))).
 UMinus_bigint(.description="-32768", .n=(- 32768)).
 Span(.entity=(entity: entid_t), .tns=bindings) :- DdlogNode(.id=entity), DdlogBinding(.tn=tn, .entity=entity), var bindings = Aggregate((entity), std.group2set(tn)).
 Span(.entity=parent, .tns=tns) :- DdlogNode(.id=parent), DdlogDependency(.parent=child, .child=parent), Span(.entity=child, .tns=child_tns), var tns = Aggregate((parent), std.group_set_unions(child_tns)).
+R13(.t=(1, true, "", 32'd1)).
+R14(.t=(1, (true, ("", 32'd1)))).
+R14(.t=(0, (true, ("", 32'd1)))).
+J(.b=b) :- R13(.t=a), R14(.t=c), (a.3 == c.1.1.1), var b = a.1.
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

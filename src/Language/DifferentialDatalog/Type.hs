@@ -264,7 +264,6 @@ exprNodeType' d ctx (EApply p f mas)      = do
     return $ typeSubstTypeArgs subst t
 
 exprNodeType' _ ctx (EField p Nothing _)  = eunknown p ctx
-
 exprNodeType' d _   (EField p (Just e) f) = do
     case typ' d e of
          t@TStruct{} ->
@@ -274,6 +273,16 @@ exprNodeType' d _   (EField p (Just e) f) = do
                                        $ "Access to guarded field \"" ++ f ++ "\""
                                  return $ fieldType fld
          _           -> err (pos e) $ "Expression is not a struct"
+
+
+exprNodeType' _ ctx (ETupField p Nothing _)  = eunknown p ctx
+exprNodeType' d _   (ETupField p (Just e) i) = do
+    case typ' d e of
+         t@TTuple{} ->
+             if ((toInteger $ length $ typeTupArgs t) <= i) || (0 > i)
+             then err p  $ "Tuple \"" ++ show t ++ "\" does not have of " ++ show i ++ " fields"
+             else return $ (typeTupArgs t) !! (fromIntegral i)
+         _           -> err (pos e) $ "Expression is not a tuple"
 
 exprNodeType' _ _   (EBool _ _)           = return tBool
 
@@ -501,6 +510,7 @@ ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
                else Just t
        else Nothing
 ctxExpectType _ (CtxField (EField _ _ _) _)          = Nothing
+ctxExpectType _ (CtxTupField (ETupField _ _ _) _)    = Nothing
 ctxExpectType d (CtxStruct (EStruct _ c _) ctx arg)  = do
     -- If struct type is known from context, e.g., it occurs in a match
     -- pattern or in a relational atom, propagate expected type info

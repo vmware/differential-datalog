@@ -122,6 +122,9 @@ Cast_u32{"32'd100  as bit<32>",100,100}
 Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
 Cast_u32{"8'd100   as bit<32>",100,100}
 
+J:
+J{true}
+
 R7:
 R7{1,2}
 R7{1,3}
@@ -305,6 +308,9 @@ Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,42949
 Cast_u32{"32'd100  as bit<32>",100,100}
 Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
 Cast_u32{"8'd100   as bit<32>",100,100}
+
+J:
+J{true}
 
 R4:
 R3{0,true}
@@ -936,6 +942,8 @@ UMinus_bigint
 UMinus_bigint{"- -100",100}
 UMinus_bigint{"-100",-100}
 UMinus_bigint{"-32768",-32768}
+J
+J{true}
 Span:
 Span{.entity = 0, .tns = [0, 1, 2]}: +1
 Span{.entity = 1, .tns = [0, 1, 2]}: +1

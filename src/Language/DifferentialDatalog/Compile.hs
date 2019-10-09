@@ -1707,6 +1707,7 @@ arrangeInput d fstatom arrange_input_by = do
 
     fieldExprVar (E EVar{..})   = exprVar
     fieldExprVar (E EField{..}) = fieldExprVar exprStruct
+    fieldExprVar (E ETupField{..}) = fieldExprVar exprTuple
     fieldExprVar e              = error $ "Compile.arrangeInput.fieldExprVar " ++ show e
 
     substVar :: (Expr, ECtx) -> Int -> Expr
@@ -1989,6 +1990,7 @@ mkExpr' d _ EApply{..}  =
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
+mkExpr' _ _ ETupField{..} = ("(" <> sel1 exprTuple <> "." <> pp exprTupField <> ")", ELVal)
 
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)

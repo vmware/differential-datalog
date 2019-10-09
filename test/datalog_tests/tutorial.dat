@@ -262,6 +262,9 @@ dump IntranetHost;
 echo IntranetHost2:;
 dump IntranetHost2;
 
+echo IntranetHost3:;
+dump IntranetHost3;
+
 start;
 
 insert Person("Alice", "USA", "student");

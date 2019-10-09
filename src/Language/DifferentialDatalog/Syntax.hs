@@ -75,6 +75,7 @@ module Language.DifferentialDatalog.Syntax (
         eVar,
         eApply,
         eField,
+        eTupField,
         eBool,
         eTrue,
         eFalse,
@@ -551,6 +552,7 @@ instance Show Rule where
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
                 | EField        {exprPos :: Pos, exprStruct :: e, exprField :: String}
+                | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Integer}
                 | EBool         {exprPos :: Pos, exprBVal :: Bool}
                 | EInt          {exprPos :: Pos, exprIVal :: Integer}
                 | EString       {exprPos :: Pos, exprString :: String}
@@ -577,6 +579,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EVar _ v1)              (EVar _ v2)                = v1 == v2
     (==) (EApply _ f1 as1)        (EApply _ f2 as2)          = f1 == f2 && as1 == as2
     (==) (EField _ s1 f1)         (EField _ s2 f2)           = s1 == s2 && f1 == f2
+    (==) (ETupField _ s1 f1)      (ETupField _ s2 f2)        = s1 == s2 && f1 == f2
     (==) (EBool _ b1)             (EBool _ b2)               = b1 == b2
     (==) (EInt _ i1)              (EInt _ i2)                = i1 == i2
     (==) (EString _ s1)           (EString _ s2)             = s1 == s2
@@ -608,6 +611,7 @@ instance PP e => PP (ExprNode e) where
     pp (EVar _ v)            = pp v
     pp (EApply _ f as)       = pp f <> (parens $ commaSep $ map pp as)
     pp (EField _ s f)        = pp s <> char '.' <> pp f
+    pp (ETupField _ s f)     = pp s <> char '.' <> pp f
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
@@ -670,6 +674,7 @@ instance WithPos Expr where
 eVar v              = E $ EVar      nopos v
 eApply f as         = E $ EApply    nopos f as
 eField e f          = E $ EField    nopos e f
+eTupField e f       = E $ ETupField nopos e f
 eBool b             = E $ EBool     nopos b
 eTrue               = eBool True
 eFalse              = eBool False
@@ -1002,6 +1007,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxApply          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
             -- | Field expression: 'X.f'
           | CtxField          {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Tuple field expression: 'X.N'
+          | CtxTupField       {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument passed to a type constructor: 'Cons(X, y, z)'
           | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::String}
             -- | Argument passed to a tuple expression: '(X, y, z)'
@@ -1067,6 +1074,7 @@ instance PP ECtx where
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
                     CtxApply{..}          -> "CtxApply          " <+> epar <+> pp ctxIdx
                     CtxField{..}          -> "CtxField          " <+> epar
+                    CtxTupField{..}       -> "CtxTupField       " <+> epar
                     CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp ctxArg
                     CtxTuple{..}          -> "CtxTuple          " <+> epar <+> pp ctxIdx
                     CtxSlice{..}          -> "CtxSlice          " <+> epar

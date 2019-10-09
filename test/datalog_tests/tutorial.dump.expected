@@ -126,5 +126,8 @@ IntranetHost{3232235778}
 IntranetHost2:
 IntranetHost2{3232235521}
 IntranetHost2{3232235778}
+IntranetHost3:
+IntranetHost3{3232235521}
+IntranetHost3{3232235778}
 TargetAudience:
 Person{"Alice","USA","student"}

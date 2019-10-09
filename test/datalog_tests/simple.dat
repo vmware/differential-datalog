@@ -556,6 +556,9 @@ echo UMinus_bigint;
 dump UMinus_bigint;
 
 
+echo J;
+dump J;
+
 start;
 insert DdlogNode[DdlogNode{0}],
 insert DdlogNode[DdlogNode{1}],

@@ -149,6 +149,7 @@ ctxMVars d ctx =
          CtxKey Relation{..}      -> ([], [(keyVar $ fromJust relPrimaryKey, Just relType)])
          CtxApply _ _ _           -> ([], plvars ++ prvars)
          CtxField _ _             -> (plvars, prvars)
+         CtxTupField _ _          -> (plvars, prvars)
          CtxStruct _ _ _          -> (plvars, prvars)
          CtxTuple _ _ _           -> (plvars, prvars)
          CtxSlice  _ _            -> ([], plvars ++ prvars)
