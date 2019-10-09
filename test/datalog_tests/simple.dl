@@ -1028,3 +1028,11 @@ input relation Signed16(x: signed<16>)
 input relation Signed64(x: signed<64>)
 
 input relation SetOfSet(x: Set<Set<bool>>)
+
+relation R13(t: t13)
+R13( (1, true, "", 1) ).
+relation R14(t: t11)
+R14( (1, (true, ("", (1)))) ).
+R14( (0, (true, ("", 1))) ).
+output relation J(b: bool)
+J(b) :- R13(a), R14(c), a.3 == c.1.1.1, var b = a.1.

@@ -75,6 +75,8 @@ exprFoldCtxM' f ctx   (EVar p v)              = f ctx $ EVar p v
 exprFoldCtxM' f ctx e@(EApply p fun as)       = f ctx =<< EApply p fun <$> (mapIdxM (\a i -> exprFoldCtxM f (CtxApply e ctx i) a) as)
 exprFoldCtxM' f ctx e@(EField p s fl)         = do s' <- exprFoldCtxM f (CtxField e ctx) s
                                                    f ctx $ EField p s' fl
+exprFoldCtxM' f ctx e@(ETupField p s fl)      = do s' <- exprFoldCtxM f (CtxTupField e ctx) s
+                                                   f ctx $ ETupField p s' fl
 exprFoldCtxM' f ctx   (EBool p b)             = f ctx $ EBool p b
 exprFoldCtxM' f ctx   (EInt p i)              = f ctx $ EInt p i
 exprFoldCtxM' f ctx   (EString p s)           = f ctx $ EString p s
@@ -121,6 +123,7 @@ exprMapM g e = case e of
                    EVar p v            -> return $ EVar p v
                    EApply p f as       -> EApply p f <$> mapM g as
                    EField p s f        -> (\s' -> EField p s' f) <$> g s
+                   ETupField p s f     -> (\s' -> ETupField p s' f) <$> g s
                    EBool p b           -> return $ EBool p b
                    EInt p i            -> return $ EInt p i
                    EString p s         -> return $ EString p s
@@ -172,6 +175,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EVar _ _              -> x'
                                      EApply _ _ as         -> foldl' op x' as
                                      EField _ s _          -> x' `op` s
+                                     ETupField _ s _       -> x' `op` s
                                      EBool _ _             -> x'
                                      EInt _ _              -> x'
                                      EString _ _           -> x'
@@ -324,6 +328,7 @@ exprIsVarOrFieldLVal d ctx e = exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e
 exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode Bool -> Bool
 exprIsVarOrFieldLVal' d ctx (EVar _ v) = isLVar d ctx v
 exprIsVarOrFieldLVal' _ _   (EField _ e _)   = e
+exprIsVarOrFieldLVal' _ _   (ETupField _ e _)= e
 exprIsVarOrFieldLVal' _ _   (ETyped _ e _)   = e
 exprIsVarOrFieldLVal' _ _   _                = False
 
@@ -334,6 +339,7 @@ exprIsVarOrField e = exprFold exprIsVarOrField' e
 exprIsVarOrField' :: ExprNode Bool -> Bool
 exprIsVarOrField' (EVar _ _)       = True
 exprIsVarOrField' (EField _ e _)   = e
+exprIsVarOrField' (ETupField _ e _)= e
 exprIsVarOrField' (ETyped _ e _)   = e
 exprIsVarOrField' _                = False
 

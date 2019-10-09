@@ -492,6 +492,7 @@ exprValidate1 d _ ctx (EApply p f as)     = do
     mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
           $ zip as (map argMut $ funcArgs fun)
 exprValidate1 _ _ _   EField{}            = return ()
+exprValidate1 _ _ _   ETupField{}         = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
 exprValidate1 _ _ _   EString{}           = return ()

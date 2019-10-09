@@ -17,6 +17,7 @@ typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IP4 = bit<32>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
 typedef IntranetHost2 = IntranetHost2{addr: ip4_addr_t}
+typedef IntranetHost3 = IntranetHost3{addr: ip4_addr_t}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: std.Option<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
@@ -87,13 +88,12 @@ function best_vendor (g: std.Group<(string, bit<64>)>): (string, bit<64>) =
     (var min_vendor = "";
      ((var min_price: bit<64>) = 64'd18446744073709551615;
       (for (vendor_price in g) {
-           ((var vendor, var price) = vendor_price;
-            if (price < min_price) {
-                (min_vendor = vendor;
-                 min_price = price)
-            } else {
-                  ()
-              })
+           if (vendor_price.1 < min_price) {
+               (min_vendor = vendor_price.0;
+                min_price = vendor_price.1)
+           } else {
+                 ()
+             }
        };
        (min_vendor, min_price))))
 function ip_addr_t2string (ip: ip_addr_t): string =
@@ -241,6 +241,7 @@ output relation HostIPVSep [HostIPVSep]
 output relation HostInSubnet [HostInSubnet]
 output relation IntranetHost [IntranetHost]
 output relation IntranetHost2 [IntranetHost2]
+output relation IntranetHost3 [IntranetHost3]
 input relation KnownHost [KnownHost]
 input relation Load_Balancer [Load_Balancer]
 input relation Logical_Switch [Logical_Switch]
@@ -293,6 +294,7 @@ UDPDstPort(.port=port) :- Packet(.pkt=pkt), var port = pkt_udp_port(pkt), (port 
 UDPDstPort2(.port=port) :- Packet(.pkt=pkt), std.Some{.x=var port} = pkt_udp_port2(pkt).
 IntranetHost(.addr=addr) :- KnownHost(.addr=addr), (var b3, var b2, _, _) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168).
 IntranetHost2(.addr=addr) :- KnownHost(.addr=addr), (8'd192, 8'd168, _, _) = addr_to_tuple(addr).
+IntranetHost3(.addr=addr) :- KnownHost(.addr=addr), var t = addr_to_tuple(addr), (t.0 == 8'd192), (t.1 == 8'd168).
 TargetAudience[person] :- Person[person], is_target_audience(person).
 StudentInfo(.student=student, .school=school) :- Student[(student@ (&Student{.id=_, .name=_, .school=school_name, .sat_score=_}))], School[(school@ (&School{.name=school_name, .address=_}))].
 TopScore(.school=school, .top_score=top_score) :- StudentInfo(.student=(&Student{.id=_, .name=_, .school=_, .sat_score=sat}), .school=(&School{.name=school, .address=_})), var top_score = Aggregate((school), std.group_max(sat)).

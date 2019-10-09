@@ -273,6 +273,7 @@ expr ::= term
        | expr "["decimal "," decimal"]"  (*bit slice (e[h:l])*)
        | expr ":" simple_type_spec       (*explicit type signature*)
        | expr "." identifier             (*struct field*)
+       | expr "." decimal                (*tuple field access*)
        | "-" expr                        (*unary arithmetic negation*)
        | "~" expr                        (*bitwise negation*)
        | "not" expr                      (*boolean negation*)

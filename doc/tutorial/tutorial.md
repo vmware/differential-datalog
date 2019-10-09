@@ -921,10 +921,9 @@ function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
     for (vendor_price in g) {
-        (var vendor, var price) = vendor_price;
-        if (price < min_price) {
-            min_vendor = vendor;
-            min_price = price
+        if (vendor_price.1 < min_price) {
+            min_vendor = vendor_price.0;
+            min_price = vendor_price.1
         }
     };
     (min_vendor, min_price)
@@ -1134,10 +1133,19 @@ Note the assignment that binds variables `b2` and `b3` to individual fields of t
 combining assignment and pattern matching:
 
 ```
-output relation IntranetHost(addr: ip4_addr_t)
-
 IntranetHost(addr) :- KnownHost(addr),
                       (192, 168, _, _) = addr_to_tuple(addr).
+```
+
+The fields of a tuple can be accessed using the record field access
+syntax but using numbers instead of field names: `.0` is the 0-th
+field of the tuple (reading from the left).  The previous relation can
+be also written as:
+
+```
+IntranetHost(addr) :- KnownHost(addr),
+                      var t = addr_to_tuple(addr),
+                      t.0 == 192, t.1 == 168.
 ```
 
 ### Generic types

@@ -610,7 +610,7 @@ mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
                    | msb v < w           = return $ if s then eSigned w v else eBit w v
                    | otherwise           = fail "Value exceeds specified width"
 
-etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
+etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs, postTupField]]
          ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefixOp "-" UMinus]]
          ,[pref  $ choice [prefixOp "~" BNeg]]
@@ -642,6 +642,7 @@ etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs]]
 pref  p = Prefix  . chainl1 p $ return       (.)
 postf p = Postfix . chainl1 p $ return (flip (.))
 postField = (\f end e -> E $ EField (fst $ pos e, end) e f) <$> field <*> getPosition
+postTupField = (\f end e -> E $ ETupField (fst $ pos e, end) e f) <$> tupField <*> getPosition
 postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) f (e:args)) <$> dotcall <*> getPosition
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
 postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
@@ -653,6 +654,11 @@ field = isfield *> dot *> varIdent
                         _ <- dot
                         _ <- notFollowedBy relIdent
                         varIdent
+tupField = isfield *> dot *> lexeme decimal
+    where isfield = try $ lookAhead $ do
+                        _ <- dot
+                        _ <- notFollowedBy relIdent
+                        lexeme decimal
 dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
                         _ <- dot
