@@ -251,6 +251,8 @@ mod tests {
     use std::io::ErrorKind;
     use std::net::TcpStream;
 
+    use test_env_log::test;
+
     /// Connect to a `TcpReceiver`.
     #[test]
     fn accept() {

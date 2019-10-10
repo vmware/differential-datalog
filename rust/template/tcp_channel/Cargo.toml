@@ -10,6 +10,10 @@ log = "0.4"
 observe = {path = "../observe"}
 serde = {version = "1.0", features = ["derive"]}
 
+[dev-dependencies]
+env_logger = {version = "0.6", default_features = false, features = ["humantime"]}
+test-env-log = "0.1"
+
 [lib]
 name = "tcp_channel"
 path = "lib.rs"
