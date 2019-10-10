@@ -11,6 +11,5 @@ server_api = {path = "../server_api_ddlog"}
 
 [dev-dependencies]
 env_logger = {version = "0.6", default_features = false, features = ["humantime"]}
-lazy_static = "1.4"
 test-env-log = "0.1"
 waitfor = "0.1"
