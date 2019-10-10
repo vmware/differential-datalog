@@ -24,6 +24,8 @@ use server_api_ddlog::Value;
 use maplit::hashmap;
 use maplit::hashset;
 
+use test_env_log::test;
+
 use waitfor::wait_for;
 
 #[derive(Clone, Debug)]

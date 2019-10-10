@@ -20,6 +20,8 @@ use lazy_static::lazy_static;
 use maplit::hashmap;
 use maplit::hashset;
 
+use test_env_log::test;
+
 use waitfor::wait_for;
 
 macro_rules! DeltaTest {
