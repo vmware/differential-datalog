@@ -10,8 +10,10 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::thread::sleep;
 use std::thread::spawn;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use bincode::deserialize_from;
 
@@ -42,22 +44,33 @@ enum Fd {
 }
 
 impl Fd {
+    fn shutdown(self, fd: RawFd) -> Result<(), Error> {
+        let rc = unsafe { shutdown(fd, SHUT_RDWR) };
+        if rc != 0 {
+            return Err(Error::last_os_error());
+        }
+        Ok(())
+    }
+
+    fn close_(self, fd: RawFd) -> Result<(), Error> {
+        let rc = unsafe { close(fd) };
+        if rc != 0 {
+            return Err(Error::last_os_error());
+        }
+        Ok(())
+    }
+
     fn close(&mut self) -> Result<(), Error> {
         match *self {
-            Fd::Listening(fd) | Fd::Accepted(fd) => {
-                let rc = unsafe { shutdown(fd, SHUT_RDWR) };
-                if rc != 0 {
-                    return Err(Error::last_os_error());
-                }
-
-                // Bad luck if we fail the close. There is not much we
-                // can do about that.
+            Fd::Accepted(fd) | Fd::Listening(fd) => {
+                // Assuming correctness on the receiver, there is no
+                // good reason why a close would fail other than the
+                // sender side having closed the connection already. So
+                // we unconditionally mark ourselves as "closed", even
+                // if one of the operations below fails.
                 *self = Fd::Closed;
-
-                let rc = unsafe { close(fd) };
-                if rc != 0 {
-                    return Err(Error::last_os_error());
-                }
+                self.shutdown(fd)?;
+                self.close_(fd)?;
                 Ok(())
             }
             Fd::Closed => Ok(()),
@@ -171,6 +184,7 @@ where
                         return Ok(());
                     }
                     error!("failed to deserialize message: {}", e);
+                    sleep(Duration::from_millis(10));
                     continue;
                 }
             };
@@ -257,7 +271,9 @@ mod tests {
     #[test]
     fn accept() {
         let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
-        let _ = TcpStream::connect(recv.addr()).unwrap();
+        {
+            let _send = TcpStream::connect(recv.addr()).unwrap();
+        }
     }
 
     /// Check that the listener socket is cleaned up properly when a

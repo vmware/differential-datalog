@@ -69,7 +69,9 @@ mod tests {
     #[test]
     fn connect() {
         let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
-        let _ = TcpSender::connect(recv.addr()).unwrap();
+        {
+            let _send = TcpSender::connect(recv.addr()).unwrap();
+        }
     }
 
     /// Transmit updates between a `TcpSender` and a `TcpReceiver`
@@ -77,12 +79,14 @@ mod tests {
     #[test]
     fn transmit_updates_no_consumer() {
         let recv = TcpReceiver::<String>::new("127.0.0.1:0").unwrap();
-        let mut send = TcpSender::connect(recv.addr()).unwrap();
+        {
+            let mut send = TcpSender::connect(recv.addr()).unwrap();
 
-        let send = &mut send as &mut dyn Observer<String, _>;
-        send.on_start().unwrap();
-        send.on_updates(Box::new((1..100000).map(|_| "this-is-a-test".to_string())))
-            .unwrap();
-        send.on_commit().unwrap();
+            let send = &mut send as &mut dyn Observer<String, _>;
+            send.on_start().unwrap();
+            send.on_updates(Box::new((1..1000).map(|_| "this-is-a-test".to_string())))
+                .unwrap();
+            send.on_commit().unwrap();
+        }
     }
 }
