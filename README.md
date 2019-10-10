@@ -133,12 +133,13 @@ To install to a different location:
 stack install --local-bin-path <custom_path>
 ```
 
-To run the tests execute (**Note:** this takes a while (~30 minutes on my system) and requires ~20GB
-of disk space):
+To test basic DDlog functionality (complete test suite takes a long time):
 
 ```
-stack test
+stack test --ta '-p path'
 ```
+
+**Note:** this takes a few minutes
 
 ### Binary
 
