@@ -1,13 +1,6 @@
 // A simple test for multiple DDlog programs communicating
 // with each other.
 
-input relation P1In[string]
-output relation P1Out[string]
-
-P1Out[s] :- P1In[s].
-
-
-input relation P2In[string]
-output relation P2Out[string]
-
-P2Out[s] :- P2In[s].
+import server_api_1 as p1
+import server_api_2 as p2
+import server_api_3 as p3

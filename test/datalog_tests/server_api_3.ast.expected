@@ -90,13 +90,7 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-input relation server_api_1.P1In [string]
-output relation server_api_1.P1Out [string]
-input relation server_api_2.P2In [string]
-output relation server_api_2.P2Out [string]
-input relation server_api_3.P1Out [string]
-input relation server_api_3.P2Out [string]
-output relation server_api_3.P3Out [string]
-server_api_1.P1Out[s] :- server_api_1.P1In[s].
-server_api_2.P2Out[s] :- server_api_2.P2In[s].
-server_api_3.P3Out[(s1 ++ s2)] :- server_api_3.P1Out[s1], server_api_3.P2Out[s2].
+input relation P1Out [string]
+input relation P2Out [string]
+output relation P3Out [string]
+P3Out[(s1 ++ s2)] :- P1Out[s1], P2Out[s2].

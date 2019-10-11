@@ -33,13 +33,13 @@ where
     let program2 = HDDlog::run(1, false, move |relation_id, record: &Record, _| {
         deltas2.lock().unwrap().push((relation_id, record.clone()));
     });
-    let server2 = DDlogServer::new(program2, hashmap! {P1Out => P2In});
+    let server2 = DDlogServer::new(program2, hashmap! {server_api_1_P1Out => server_api_2_P2In});
 
-    let mut stream = server1.add_stream(hashset! {P1Out});
+    let mut stream = server1.add_stream(hashset! {server_api_1_P1Out});
     let _data = setup(&mut stream, SharedObserver::new(server2))?;
 
     let updates = &[UpdCmd::Insert(
-        RelIdentifier::RelId(P1In as usize),
+        RelIdentifier::RelId(server_api_1_P1In as usize),
         Record::String("delta-me-now".to_string()),
     )];
 
@@ -58,7 +58,10 @@ where
         }
     });
 
-    let expected = vec![(P2Out as usize, Record::String("delta-me-now".to_string()))];
+    let expected = vec![(
+        server_api_2_P2Out as usize,
+        Record::String("delta-me-now".to_string()),
+    )];
     assert_eq!(result, Ok(Some(expected)));
     Ok(())
 }
