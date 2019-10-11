@@ -1,3 +1,4 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
 [![rustc](https://img.shields.io/badge/rustc-1.34+-blue.svg)](https://blog.rust-lang.org/2019/04/11/Rust-1.34.0.html)
