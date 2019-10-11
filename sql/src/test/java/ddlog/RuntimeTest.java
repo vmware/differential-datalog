@@ -1,12 +1,18 @@
 package ddlog;
 
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.SQLDialect;
+import org.jooq.Table;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import static java.sql.DriverManager.getConnection;
 import static org.jooq.impl.DSL.using;
@@ -25,7 +31,8 @@ public class RuntimeTest
         // Wrapper around a jdbc connection
         conn.execute(createStatement);
         conn.execute(viewStatement);
-
+        System.out.println(getTablesAndFields(conn));
+        System.out.println(getRecordTypesByTable(conn));
         Translator.translateSql(createStatement);
         Translator.translateSql(viewStatement);
     }
@@ -40,9 +47,29 @@ public class RuntimeTest
             // Create a fresh database
             final String connectionURL = "jdbc:h2:mem:;create=true";
             final Connection conn = getConnection(connectionURL, properties);
+            conn.setSchema("PUBLIC");
             return using(conn, SQLDialect.H2);
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Map<Table<?>, List<Field<?>>> getTablesAndFields(final DSLContext conn) {
+        final List<Table<?>> tables = conn.meta().getTables();
+        final Map<Table<?>, List<Field<?>>> tablesToFields = new HashMap<>();
+        tables.forEach(
+                t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
+        );
+        return tablesToFields;
+    }
+
+    private Map<Table<?>, List<Class<?>>> getRecordTypesByTable(final DSLContext conn) {
+        final Map<Table<?>, List<Field<?>>> tablesToFields = getTablesAndFields(conn);
+        return tablesToFields.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey,
+                                          entry -> entry.getValue()
+                                                        .stream()
+                                                        .map(Field::getType)
+                                                        .collect(Collectors.toList())));
     }
 }
