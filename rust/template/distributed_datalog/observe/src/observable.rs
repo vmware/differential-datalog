@@ -5,6 +5,9 @@ use crate::observer::ObserverBox;
 use crate::observer::OptionalObserver;
 use crate::observer::SharedObserver;
 
+/// A boxed up `ObservableAny`.
+pub type ObservableBox<T, E> = Box<dyn ObservableAny<T, E> + Send>;
+
 /// A trait for objects that can be observed.
 pub trait Observable<T, E>: Debug
 where

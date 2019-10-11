@@ -36,6 +36,9 @@ As it stands that means we have the following components:
   comprised of a `TcpSender` (an `Observer`) and a `TcpReceiver` (an
   `Observable) that can connect two `ddlog` programs (wrapped in
   `DDlogServer` objects) and transfer deltas produced
+- a transaction multiplexer (`TxnMux`) that allows for serializing
+  transactions as emitted by multiple `Observables` such that no two
+  transactions interleave
 
 ### Examples & Tests
 **D3log** has unit as well as integration style tests using an actual
