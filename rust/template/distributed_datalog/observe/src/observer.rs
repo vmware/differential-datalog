@@ -31,7 +31,7 @@ where
 
 /// Wrapper around an `Observer` that allows for it to be shared by
 /// wrapping it into a combination of `Arc` & `Mutex`.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SharedObserver<O>(pub Arc<Mutex<O>>);
 
 impl<O> SharedObserver<O> {
@@ -39,6 +39,12 @@ impl<O> SharedObserver<O> {
     /// provided `Observer` as necessary.
     pub fn new(observer: O) -> Self {
         SharedObserver(Arc::new(Mutex::new(observer)))
+    }
+}
+
+impl<O> Clone for SharedObserver<O> {
+    fn clone(&self) -> Self {
+        SharedObserver(self.0.clone())
     }
 }
 
