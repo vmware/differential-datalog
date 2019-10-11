@@ -1,7 +1,7 @@
 name:                differential-datalog
 version:             0.1.0.0
 github:              "ryzhyk/differential-datalog"
-license:             BSD3
+license:             MIT
 author:              "Leonid Ryzhyk"
 maintainer:          "lryzhyk@vmware.com"
 copyright:           "VMware, Inc"
