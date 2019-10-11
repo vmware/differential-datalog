@@ -160,6 +160,7 @@ rustLibFiles specname =
         , (dir </> "cmd_parser/parse.rs"                             , $(embedFile "rust/template/cmd_parser/parse.rs"))
         , (dir </> "distributed_datalog/Cargo.toml"                  , $(embedFile "rust/template/distributed_datalog/Cargo.toml"))
         , (dir </> "distributed_datalog/src/lib.rs"                  , $(embedFile "rust/template/distributed_datalog/src/lib.rs"))
+        , (dir </> "distributed_datalog/src/txnmux.rs"               , $(embedFile "rust/template/distributed_datalog/src/txnmux.rs"))
         , (dir </> "distributed_datalog/observe/Cargo.toml"          , $(embedFile "rust/template/distributed_datalog/observe/Cargo.toml"))
         , (dir </> "distributed_datalog/observe/src/lib.rs"          , $(embedFile "rust/template/distributed_datalog/observe/src/lib.rs"))
         , (dir </> "distributed_datalog/observe/src/observable.rs"   , $(embedFile "rust/template/distributed_datalog/observe/src/observable.rs"))
