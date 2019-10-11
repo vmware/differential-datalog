@@ -29,7 +29,7 @@ test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
 test-server_api:
-    script: stack --no-terminal test --ta "-p server_api"
+    script: stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || (($(NF-1) == \"compiler tests\" || $(NF-1) == \"unit tests\") && $(NF) == \"server_api\")"'
 
 test-simple:
     script: stack --no-terminal test --ta "-p simple"
@@ -41,7 +41,7 @@ test-ovn-ftl:
     script: stack --no-terminal test --ta "-p ovn_ftl"
 
 test-ovn:
-    script: stack test --ta '--pattern "$(NF) == \"generate ovn\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"ovn\")"'
+    script: stack test --ta '-p "$(NF) == \"generate ovn\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"ovn\")"'
 
 test-path:
     script:

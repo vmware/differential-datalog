@@ -155,7 +155,7 @@ fn start_commit_with_updates(
     observer: MockObserver,
 ) -> Result<(), String> {
     let updates = &[UpdCmd::Insert(
-        RelIdentifier::RelId(P1In as usize),
+        RelIdentifier::RelId(server_api_1_P1In as usize),
         Record::String("test".to_string()),
     )];
 
@@ -219,15 +219,15 @@ fn multiple_mergable_updates(
 ) -> Result<(), String> {
     let updates = &[
         UpdCmd::Insert(
-            RelIdentifier::RelId(P1In as usize),
+            RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("42".to_string()),
         ),
         UpdCmd::Insert(
-            RelIdentifier::RelId(P1In as usize),
+            RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("here-to-stay".to_string()),
         ),
         UpdCmd::Delete(
-            RelIdentifier::RelId(P1In as usize),
+            RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("42".to_string()),
         ),
     ];
@@ -265,11 +265,11 @@ fn multiple_transactions(
 ) -> Result<(), String> {
     let updates = &[
         UpdCmd::Insert(
-            RelIdentifier::RelId(P1In as usize),
+            RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("first".to_string()),
         ),
         UpdCmd::Insert(
-            RelIdentifier::RelId(P1In as usize),
+            RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("second".to_string()),
         ),
     ];
@@ -296,7 +296,7 @@ fn multiple_transactions(
     });
 
     let updates = &[UpdCmd::Delete(
-        RelIdentifier::RelId(P1In as usize),
+        RelIdentifier::RelId(server_api_1_P1In as usize),
         Record::String("first".to_string()),
     )];
 
@@ -330,7 +330,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let mut server = DDlogServer::new(program, hashmap! {});
 
     let observer = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
+    let mut stream = server.add_stream(hashset! {server_api_1_P1Out});
     let _ = stream.subscribe(Box::new(observer.clone())).unwrap();
 
     (server, stream, observer)
@@ -341,7 +341,7 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let mut server = DDlogServer::new(program, hashmap! {});
 
     let observer = SharedObserver::new(Mock::new());
-    let mut stream = server.add_stream(hashset! {P1Out});
+    let mut stream = server.add_stream(hashset! {server_api_1_P1Out});
 
     let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
     let send = TcpSender::connect(*recv.addr()).unwrap();
