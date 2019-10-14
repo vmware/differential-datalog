@@ -3,14 +3,13 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
+use api::HDDlog;
 use differential_datalog::program::{RelId, Response, Update};
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
-
-use api::HDDlog;
-use observe::Observer;
-use observe::ObserverBox as ObserverBoxT;
-use observe::UpdatesObservable as UpdatesObservableT;
-use observe::UpdatesSubscription as UpdatesSubscriptionT;
+use distributed_datalog::Observer;
+use distributed_datalog::ObserverBox as ObserverBoxT;
+use distributed_datalog::UpdatesObservable as UpdatesObservableT;
+use distributed_datalog::UpdatesSubscription as UpdatesSubscriptionT;
 
 pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
 pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;

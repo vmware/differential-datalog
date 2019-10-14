@@ -8,9 +8,8 @@ build = "src/build.rs"
 members = [
   "cmd_parser",
   "differential_datalog",
-  "observe",
+  "distributed_datalog",
   "ovsdb",
-  "tcp_channel",
 ]
 
 [build-dependencies]
@@ -19,17 +18,14 @@ libtool = "0.1"
 [dependencies.differential_datalog]
 path = "./differential_datalog"
 
+[dependencies.distributed_datalog]
+path = "./distributed_datalog"
+
 [dependencies.cmd_parser]
 path = "./cmd_parser"
 
 [dependencies.ddlog_ovsdb_adapter]
 path = "./ovsdb"
-
-[dependencies.observe]
-path = "./observe"
-
-[dependencies.tcp_channel]
-path = "./tcp_channel"
 
 [dependencies]
 abomonation = "0.7"

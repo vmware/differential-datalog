@@ -1,15 +1,13 @@
 [package]
 name = "server_api_test"
 version = "0.1.0"
-authors = ["Remy Wang <remy.sucre@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
+distributed_datalog = {path = "../server_api_ddlog/distributed_datalog"}
 maplit = "1.0"
-observe = {path = "../server_api_ddlog/observe"}
 server_api = {path = "../server_api_ddlog"}
-tcp_channel = {path = "../server_api_ddlog/tcp_channel"}
 
 [dev-dependencies]
 env_logger = {version = "0.6", default_features = false, features = ["humantime"]}

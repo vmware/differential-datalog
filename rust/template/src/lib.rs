@@ -15,7 +15,6 @@
 extern crate differential_dataflow;
 extern crate fnv;
 extern crate num_traits;
-extern crate observe;
 extern crate timely;
 
 #[macro_use]
@@ -28,6 +27,7 @@ extern crate twox_hash;
 
 #[macro_use]
 extern crate differential_datalog;
+extern crate distributed_datalog;
 
 extern crate abomonation;
 extern crate ddlog_ovsdb_adapter;
