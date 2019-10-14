@@ -4,11 +4,11 @@ use std::time::Duration;
 
 use differential_datalog::program::Update;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
-use observe::Observable;
-use observe::Observer;
-use observe::SharedObserver;
-use tcp_channel::TcpReceiver;
-use tcp_channel::TcpSender;
+use distributed_datalog::Observable;
+use distributed_datalog::Observer;
+use distributed_datalog::SharedObserver;
+use distributed_datalog::TcpReceiver;
+use distributed_datalog::TcpSender;
 
 use server_api_ddlog::api::*;
 use server_api_ddlog::server::*;

@@ -1,0 +1,8 @@
+[package]
+name = "distributed_datalog"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+observe = {path = "observe"}
+tcp_channel = {path = "tcp_channel"}

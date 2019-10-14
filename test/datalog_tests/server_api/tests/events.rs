@@ -8,12 +8,12 @@ use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
-use observe::Observable;
-use observe::Observer;
-use observe::SharedObserver;
-use observe::Subscription;
-use tcp_channel::TcpReceiver;
-use tcp_channel::TcpSender;
+use distributed_datalog::Observable;
+use distributed_datalog::Observer;
+use distributed_datalog::SharedObserver;
+use distributed_datalog::Subscription;
+use distributed_datalog::TcpReceiver;
+use distributed_datalog::TcpSender;
 
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
