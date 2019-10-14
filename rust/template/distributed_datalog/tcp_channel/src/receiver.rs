@@ -10,14 +10,11 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::thread::sleep;
 use std::thread::spawn;
 use std::thread::JoinHandle;
-use std::time::Duration;
 
 use bincode::deserialize_from;
 
-use libc::close;
 use libc::shutdown;
 use libc::SHUT_RDWR;
 
@@ -39,41 +36,30 @@ enum Fd {
     Listening(RawFd),
     /// We have accepted a connection and read data from it.
     Accepted(RawFd),
-    /// The listener/accepted connection has been closed.
-    Closed,
+    /// The listener/accepted connection has been shutdown.
+    Shutdown,
 }
 
 impl Fd {
-    fn shutdown(self, fd: RawFd) -> Result<(), Error> {
-        let rc = unsafe { shutdown(fd, SHUT_RDWR) };
-        if rc != 0 {
-            return Err(Error::last_os_error());
-        }
-        Ok(())
-    }
-
-    fn close_(self, fd: RawFd) -> Result<(), Error> {
-        let rc = unsafe { close(fd) };
-        if rc != 0 {
-            return Err(Error::last_os_error());
-        }
-        Ok(())
-    }
-
-    fn close(&mut self) -> Result<(), Error> {
+    fn shutdown(&mut self) -> Result<(), Error> {
         match *self {
             Fd::Accepted(fd) | Fd::Listening(fd) => {
                 // Assuming correctness on the receiver, there is no
-                // good reason why a close would fail other than the
-                // sender side having closed the connection already. So
-                // we unconditionally mark ourselves as "closed", even
-                // if one of the operations below fails.
-                *self = Fd::Closed;
-                self.shutdown(fd)?;
-                self.close_(fd)?;
+                // good reason why a shutdown would fail and so if it
+                // were to we are probably in some really awkward state
+                // we shouldn't be in. To be able to recover eventually
+                // (by cleaning up), let's at least allow the "acceptor"
+                // thread to finish up by indicating that we are shut
+                // down indeed unconditionally.
+                *self = Fd::Shutdown;
+
+                let rc = unsafe { shutdown(fd, SHUT_RDWR) };
+                if rc != 0 {
+                    return Err(Error::last_os_error());
+                }
                 Ok(())
             }
-            Fd::Closed => Ok(()),
+            Fd::Shutdown => Ok(()),
         }
     }
 }
@@ -138,30 +124,20 @@ where
         observer: Arc<Mutex<Option<ObserverBox<T, String>>>>,
     ) -> JoinHandle<Result<(), String>> {
         spawn(move || {
-            let socket = match listener.accept() {
-                Ok((s, _)) => {
-                    let mut guard = fd.lock().unwrap();
-                    // The user may have closed the receiver shortly
-                    // after us accepting a connection. If that is the
-                    // case do not continue.
-                    if let Fd::Closed = *guard {
-                        return Ok(());
-                    }
-                    *guard = Fd::Accepted(s.as_raw_fd());
-                    s
+            let result = listener.accept();
+            let socket = {
+                let mut guard = fd.lock().unwrap();
+                // The user may have dropped the receiver shortly after
+                // us accepting a connection. If that is the case do not
+                // continue.
+                if let Fd::Shutdown = *guard {
+                    return Ok(());
                 }
-                Err(e) => {
-                    // If the stream has been closed errors are expected
-                    // and we just return to terminate the thread. We
-                    // could alternatively check for a specific error
-                    // return that occurs when the listener socket is
-                    // closed concurrently but that seems less portable.
-                    if let Fd::Closed = *fd.lock().unwrap() {
-                        return Ok(());
-                    } else {
-                        return Err(format!("failed to accept connection: {}", e));
-                    }
-                }
+
+                let (socket, _) =
+                    result.map_err(|e| format!("failed to accept connection: {}", e))?;
+                *guard = Fd::Accepted(socket.as_raw_fd());
+                socket
             };
 
             Self::process(socket, fd, observer)
@@ -180,11 +156,10 @@ where
             let mut message = match deserialize_from(&mut reader) {
                 Ok(m) => m,
                 Err(e) => {
-                    if let Fd::Closed = *fd.lock().unwrap() {
+                    if let Fd::Shutdown = *fd.lock().unwrap() {
                         return Ok(());
                     }
                     error!("failed to deserialize message: {}", e);
-                    sleep(Duration::from_millis(10));
                     continue;
                 }
             };
@@ -221,8 +196,12 @@ where
 
 impl<T> Drop for TcpReceiver<T> {
     fn drop(&mut self) {
-        if let Err(e) = self.fd.lock().unwrap().close() {
-            error!("failed to close TcpReceiver file descriptor: {}", e);
+        // Note that we only ever shut down the file descriptor, but
+        // don't close it. The close will happen once the "acceptor"
+        // thread wakes up, sees that we are shut down, and exits,
+        // dropping the TcpListener/TcpStream in the process.
+        if let Err(e) = self.fd.lock().unwrap().shutdown() {
+            error!("failed to shut down TcpReceiver file descriptor: {}", e);
         }
 
         if let Some(t) = self.thread.take() {
@@ -266,6 +245,12 @@ mod tests {
     use std::net::TcpStream;
 
     use test_env_log::test;
+
+    /// Drop a `TcpReceiver`.
+    #[test]
+    fn drop() {
+        let _recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+    }
 
     /// Connect to a `TcpReceiver`.
     #[test]
