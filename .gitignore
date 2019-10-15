@@ -53,6 +53,7 @@ tags
 *.jar
 java/test/span_uuid.java.dump
 java/test*/*_ddlog
+java/webserver/apache-tomcat-8.5.2
 *.pyc
 souffle-grammar.pgt
 # idea project files

@@ -37,6 +37,7 @@ dependencies:
 - githash
 - process
 - casing
+- aeson
 
 library:
   source-dirs: src

@@ -21,7 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 import System.Environment
 import Text.PrettyPrint
@@ -32,6 +34,9 @@ import Data.Maybe
 import Data.List.Split
 import Control.Monad
 import qualified Data.Map as M
+import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import GHC.Generics (Generic)
+import qualified Data.ByteString.Lazy.Char8 as LZ
 
 import Language.DifferentialDatalog.OVSDB.Compile
 import Language.DifferentialDatalog.Version
@@ -41,6 +46,8 @@ data TOption = OVSFile     String
              | ROColumn    String
              | KeyColumn   String
              | ProxyTable  String
+             | ConfigJsonI String
+             | ConfigJsonO String
              | Version
 
 data Action = ActionCompile
@@ -48,74 +55,84 @@ data Action = ActionCompile
             deriving Eq
 
 options :: [OptDescr TOption]
-options = [ Option ['v'] ["version"]      (NoArg Version)                     "Display DDlog version."
-          , Option ['f'] ["schema-file"]  (ReqArg OVSFile     "FILE")         "OVSDB schema file."
-          , Option ['o'] ["output-table"] (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
-          , Option []    ["ro"]           (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
-          , Option ['k'] ["key"]          (ReqArg KeyColumn   "TABLE.COLUMN") "Mark COLUMN as key."
-          , Option ['p'] ["gen-proxy"]    (ReqArg ProxyTable  "TABLE")        "Generate output proxy table for TABLE."
+options = [ Option ['v'] ["version"]       (NoArg Version)                     "Display DDlog version."
+          , Option ['f'] ["schema-file"]   (ReqArg OVSFile     "FILE")         "OVSDB schema file."
+          , Option ['c'] ["input-config"]  (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
+          , Option ['O'] ["output-config"] (ReqArg ConfigJsonO "FILE.json")    "Write options to Json configuration file."
+          , Option ['o'] ["output-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
+          , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
+          , Option ['k'] ["key"]           (ReqArg KeyColumn   "TABLE.COLUMN") "Mark COLUMN as key."
+          , Option ['p'] ["gen-proxy"]     (ReqArg ProxyTable  "TABLE")        "Generate output proxy table for TABLE."
           ]
 
-data Config = Config { confAction       :: Action
-                     , confOVSFile      :: FilePath
-                     , confOutputTables :: [(String, [String])]
-                     , confProxyTables  :: [String]
-                     , confKeys         :: M.Map String [String]
+data Config = Config { ovsFile      :: FilePath
+                     , outputTables :: [(String, [String])]
+                     , proxyTables  :: [String]
+                     , keys         :: M.Map String [String]
                      }
+              deriving (Show, Generic)
+
+instance FromJSON Config
+instance ToJSON   Config
 
 defaultConfig :: Config
-defaultConfig = Config { confAction       = ActionCompile
-                       , confOVSFile      = ""
-                       , confOutputTables = []
-                       , confProxyTables  = []
-                       , confKeys         = M.empty
+defaultConfig = Config { ovsFile      = ""
+                       , outputTables = []
+                       , proxyTables  = []
+                       , keys         = M.empty
                        }
 
-addOption :: Config -> TOption -> IO Config
-addOption config Version = do return config { confAction = ActionVersion }
-addOption config (OVSFile f) = do
-    when (confOVSFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
-    return config {confOVSFile = f}
-addOption config (OutputTable t) = return config{ confOutputTables = nub ((t,[]) : confOutputTables config)}
-addOption config (ProxyTable t) = return config{ confProxyTables = nub (t : confProxyTables config)}
-addOption config (KeyColumn c) = do
+addOption :: (Action, Config) -> TOption -> IO (Action, Config)
+addOption (_, config) Version = do return (ActionVersion, config)
+addOption (a, config) (OVSFile f) = do
+    when (ovsFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
+    return (a, config {ovsFile = f})
+addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t,[]) : outputTables config)})
+addOption (a, config) (ProxyTable t) = return (a, config{ proxyTables = nub (t : proxyTables config)})
+addOption (a, config) (KeyColumn c) = do
     case splitOn "." c of
          [table, col] -> do
-            when (isNothing $ lookup table $ confOutputTables config)
+            when (isNothing $ lookup table $ outputTables config)
                  $ errorWithoutStackTrace $ "Unknown output table name " ++ table
-            return $ config{confKeys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
-                                               $ confKeys config}
+            return $ (a, config{keys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
+                                               $ keys config})
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
-addOption config (ROColumn c) = do
+addOption (a, config) (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
-            when (isNothing $ lookup table $ confOutputTables config)
+            when (isNothing $ lookup table $ outputTables config)
                  $ errorWithoutStackTrace $ "Unknown output table name " ++ table
             let outtabs = map (\(t,ro) -> if t == table then (t, nub $ col:ro) else (t,ro))
-                              $ confOutputTables config
-            return $ config{confOutputTables = outtabs}
+                              $ outputTables config
+            return $ (a, config{outputTables = outtabs})
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
+addOption (a, _) (ConfigJsonI c) = do
+    cdata <- readFile c
+    return $ (a, fromJust $ ((decode $ LZ.pack cdata) :: Maybe Config))
+addOption (a, config) (ConfigJsonO c) = do
+    writeFile c $ LZ.unpack $ encode config
+    return (a, config)
 
-validateConfig :: Config -> IO ()
-validateConfig Config{..} = do
-    when (confOVSFile == "" && confAction == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
+validateConfig :: (Action, Config) -> IO ()
+validateConfig (action, Config{..}) = do
+    when (ovsFile == "" && action == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
 
 main :: IO ()
 main = do
     args <- getArgs
     prog <- getProgName
-    Config{..} <- case getOpt Permute options args of
-                       (flags, [], []) -> do conf <- foldM addOption defaultConfig flags
-                                             validateConfig conf
-                                             return conf
+    (action, Config{..}) <- case getOpt Permute options args of
+                       (flags, [], []) -> do actionAndConf <- foldM addOption (ActionCompile, defaultConfig) flags
+                                             validateConfig actionAndConf
+                                             return actionAndConf
                                           `catch`
                                           (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                     throw (e::SomeException))
                        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    if confAction == ActionVersion
+    if action == ActionVersion
        then do putStrLn $ "OVSDB-to-DDlog compiler " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
        else do
-           dlschema <- compileSchemaFile confOVSFile confOutputTables confProxyTables confKeys
+           dlschema <- compileSchemaFile ovsFile outputTables proxyTables keys
            putStrLn $ render dlschema
            return ()
