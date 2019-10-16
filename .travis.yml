@@ -14,10 +14,15 @@ dist: trusty
 jdk: oraclejdk8
 osx_image: xcode9.3
 
-# build this branch in the gitlab CI
+# 'gitlab-ci' is meant for testing GitLab CI integration and not build
+# by Travis.
+# Branches starting with 'pull-request' are used by our pull-request
+# "mirroring" infrastructure and can safely be ignored by Travis as
+# well.
 branches:
   except:
   - gitlab-ci
+  - /^pull-request\/.*/
 
 # Do not choose a language; we provide our own build tools.
 language: rust
