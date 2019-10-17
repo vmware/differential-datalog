@@ -192,8 +192,8 @@ fn unsubscribe(
     server.on_start()?;
     server.on_commit()?;
 
-    assert!(observable.unsubscribe(&()));
-    assert!(!observable.unsubscribe(&()));
+    assert!(observable.unsubscribe(&()).is_some());
+    assert!(observable.unsubscribe(&()).is_none());
 
     server.on_start()?;
     server.on_commit()?;
