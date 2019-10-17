@@ -13,6 +13,7 @@ mod observer;
 mod test;
 
 pub use observable::Observable;
+pub use observable::ObservableAny;
 pub use observable::UpdatesObservable;
 pub use observer::CachingObserver;
 pub use observer::Observer;
