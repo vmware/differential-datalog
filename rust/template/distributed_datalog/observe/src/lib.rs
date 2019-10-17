@@ -14,6 +14,7 @@ mod test;
 
 pub use observable::Observable;
 pub use observable::UpdatesObservable;
+pub use observer::CachingObserver;
 pub use observer::Observer;
 pub use observer::ObserverBox;
 pub use observer::SharedObserver;
