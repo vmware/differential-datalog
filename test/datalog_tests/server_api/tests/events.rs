@@ -66,7 +66,7 @@ fn start_commit_on_no_updates(
 
     await_expected(|| {
         let (on_start, on_updates, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (
                 mock.called_on_start,
                 mock.called_on_updates,
@@ -85,7 +85,7 @@ fn start_commit_on_no_updates(
     // procedure.
     await_expected(|| {
         let on_completed = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             mock.called_on_completed
         };
         assert!(on_completed >= 1, "{}", on_completed);
@@ -96,7 +96,7 @@ fn start_commit_on_no_updates(
     // But only once!
     await_expected(|| {
         let on_completed = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             mock.called_on_completed
         };
         assert!(on_completed >= 1, "{}", on_completed);
@@ -124,7 +124,7 @@ fn start_commit_with_updates(
 
     await_expected(|| {
         let (on_start, on_updates, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (
                 mock.called_on_start,
                 mock.called_on_updates,
@@ -156,7 +156,7 @@ fn unsubscribe(
 
     await_expected(|| {
         let (on_start, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (mock.called_on_start, mock.called_on_commit)
         };
 
@@ -197,7 +197,7 @@ fn multiple_mergable_updates(
 
     await_expected(|| {
         let (on_start, on_updates, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (
                 mock.called_on_start,
                 mock.called_on_updates,
@@ -238,7 +238,7 @@ fn multiple_transactions(
 
     await_expected(|| {
         let (on_start, on_updates, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (
                 mock.called_on_start,
                 mock.called_on_updates,
@@ -264,7 +264,7 @@ fn multiple_transactions(
 
     await_expected(|| {
         let (on_start, on_updates, on_commit) = {
-            let mock = observer.0.lock().unwrap();
+            let mock = observer.lock().unwrap();
             (
                 mock.called_on_start,
                 mock.called_on_updates,

@@ -1,6 +1,8 @@
 use std::collections::LinkedList;
 use std::fmt::Debug;
 use std::mem::replace;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -31,10 +33,36 @@ where
     fn on_completed(&mut self) -> Result<(), E>;
 }
 
+// We need a direct implementation of `Observer` for boxed up observers
+// or Rust will complain in all sorts of undecipherable ways when we end
+// up with nested `ObserverBox`s.
+impl<T, E, O> Observer<T, E> for Box<O>
+where
+    T: Send,
+    E: Send,
+    O: Observer<T, E> + ?Sized,
+{
+    fn on_start(&mut self) -> Result<(), E> {
+        self.deref_mut().on_start()
+    }
+
+    fn on_commit(&mut self) -> Result<(), E> {
+        self.deref_mut().on_commit()
+    }
+
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
+        self.deref_mut().on_updates(updates)
+    }
+
+    fn on_completed(&mut self) -> Result<(), E> {
+        self.deref_mut().on_completed()
+    }
+}
+
 /// Wrapper around an `Observer` that allows for it to be shared by
 /// wrapping it into a combination of `Arc` & `Mutex`.
-#[derive(Debug)]
-pub struct SharedObserver<O>(pub Arc<Mutex<O>>);
+#[derive(Debug, Default)]
+pub struct SharedObserver<O>(Arc<Mutex<O>>);
 
 impl<O> SharedObserver<O> {
     /// Create a new `SharedObserver` object, automatically wrapping the
@@ -47,6 +75,20 @@ impl<O> SharedObserver<O> {
 impl<O> Clone for SharedObserver<O> {
     fn clone(&self) -> Self {
         SharedObserver(self.0.clone())
+    }
+}
+
+impl<O> Deref for SharedObserver<O> {
+    type Target = Arc<Mutex<O>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<O> DerefMut for SharedObserver<O> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
