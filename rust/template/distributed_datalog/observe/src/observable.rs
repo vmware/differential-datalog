@@ -67,3 +67,56 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::Observer;
+
+    #[derive(Debug)]
+    struct DummyObserver(());
+
+    impl Observer<(), ()> for DummyObserver {
+        fn on_start(&mut self) -> Result<(), ()> {
+            Ok(())
+        }
+
+        fn on_commit(&mut self) -> Result<(), ()> {
+            Ok(())
+        }
+
+        fn on_updates<'a>(&mut self, _: Box<dyn Iterator<Item = ()> + 'a>) -> Result<(), ()> {
+            Ok(())
+        }
+
+        fn on_completed(&mut self) -> Result<(), ()> {
+            Ok(())
+        }
+    }
+
+    /// Test subscribing and unsubscribing for an `UpdatesObservable`.
+    #[test]
+    fn subscribe_unsubscribe() {
+        let mut observable = UpdatesObservable {
+            observer: Arc::new(Mutex::new(None)),
+        };
+        let observer = Box::new(DummyObserver(()));
+
+        assert!(observable.subscribe(observer).is_ok());
+        assert!(observable.unsubscribe(&()).is_some());
+    }
+
+    /// Test multiple subscriptions to an `UpdatesObservable`.
+    #[test]
+    fn multiple_subscribe() {
+        let mut observable = UpdatesObservable {
+            observer: Arc::new(Mutex::new(None)),
+        };
+        let observer1 = Box::new(DummyObserver(()));
+        let observer2 = Box::new(DummyObserver(()));
+
+        assert!(observable.subscribe(observer1).is_ok());
+        assert!(observable.subscribe(observer2).is_err());
+    }
+}
