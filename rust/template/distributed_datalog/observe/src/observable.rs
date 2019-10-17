@@ -20,11 +20,14 @@ where
     ///
     /// A return value of `None` indicates that the `Observable` is
     /// unable to accept any more `Observer`s.
-    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Option<Self::Subscription>;
+    fn subscribe(
+        &mut self,
+        observer: ObserverBox<T, E>,
+    ) -> Result<Self::Subscription, ObserverBox<T, E>>;
 
     /// Cancel a subscription so that the observer stops listening to
     /// the observable.
-    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> bool;
+    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>>;
 }
 
 /// A very simple observable that supports subscription of a single
@@ -42,25 +45,25 @@ where
 {
     type Subscription = ();
 
-    fn subscribe(&mut self, observer: ObserverBox<T, E>) -> Option<Self::Subscription> {
+    fn subscribe(
+        &mut self,
+        observer: ObserverBox<T, E>,
+    ) -> Result<Self::Subscription, ObserverBox<T, E>> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
-            Some(_) => None,
+            Some(_) => Err(observer),
             None => {
                 *guard = Some(observer);
-                Some(())
+                Ok(())
             }
         }
     }
 
-    fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> bool {
+    fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
-            Some(_) => {
-                *guard = None;
-                true
-            }
-            None => false,
+            Some(_) => guard.take(),
+            None => None,
         }
     }
 }

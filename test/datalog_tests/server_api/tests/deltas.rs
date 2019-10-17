@@ -77,7 +77,7 @@ fn single_delta_direct() -> Result<(), String> {
         observable: &mut UpdatesObservable,
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
-        observable.subscribe(Box::new(observer));
+        let _ = observable.subscribe(Box::new(observer)).unwrap();
         Ok(Box::new(()))
     }
 
@@ -95,8 +95,8 @@ fn single_delta_tcp() -> Result<(), String> {
         let mut recv = TcpReceiver::new("127.0.0.1:0").unwrap();
         let send = TcpSender::connect(*recv.addr()).unwrap();
 
-        recv.subscribe(Box::new(observer));
-        observable.subscribe(Box::new(send));
+        let _ = recv.subscribe(Box::new(observer)).unwrap();
+        let _ = observable.subscribe(Box::new(send)).unwrap();
 
         // We need to pass our receiver out so that it doesn't get
         // dropped immediately, which would result in a broken
