@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::fmt::Debug;
 
 use crate::observer::ObserverBox;
@@ -28,6 +29,48 @@ where
     /// Cancel a subscription so that the observer stops listening to
     /// the observable.
     fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>>;
+}
+
+/// A trait abstracting away from the concrete type of subscription used
+/// by an `Observable`.
+pub trait ObservableAny<T, E>: Debug
+where
+    T: Send,
+    E: Send,
+{
+    /// Subscribe an `Observer` to this `Observable`.
+    fn subscribe_any(
+        &mut self,
+        observer: ObserverBox<T, E>,
+    ) -> Result<Box<dyn Any>, ObserverBox<T, E>>;
+
+    /// Unsubscribe an `Observer` from this `Observable` using a
+    /// previously handed out subscription.
+    fn unsubscribe_any(&mut self, subscription: &dyn Any) -> Option<ObserverBox<T, E>>;
+}
+
+/// Any `Observable` whose subscription type implements `Any` is also an
+/// `ObservableAny`.
+impl<T, E, S, O> ObservableAny<T, E> for O
+where
+    T: Send,
+    E: Send,
+    S: Any,
+    O: Observable<T, E, Subscription = S>,
+{
+    fn subscribe_any(
+        &mut self,
+        observer: ObserverBox<T, E>,
+    ) -> Result<Box<dyn Any>, ObserverBox<T, E>> {
+        self.subscribe(observer)
+            .map(|s| Box::new(s) as Box<dyn Any>)
+    }
+
+    fn unsubscribe_any(&mut self, subscription: &dyn Any) -> Option<ObserverBox<T, E>> {
+        subscription
+            .downcast_ref::<S>()
+            .and_then(|s| self.unsubscribe(s))
+    }
 }
 
 /// A very simple observable that supports subscription of a single
@@ -88,5 +131,15 @@ mod tests {
 
         assert!(observable.subscribe(observer1).is_ok());
         assert!(observable.subscribe(observer2).is_err());
+    }
+
+    /// Test subscribing and unsubscribing through an `ObservableAny`.
+    #[test]
+    fn subscribe_unsubscribe_any() {
+        let mut observable = UpdatesObservable::<(), ()>::default();
+        let observer = Box::new(MockObserver::new());
+
+        let subscription = observable.subscribe_any(observer).unwrap();
+        assert!(observable.unsubscribe_any(subscription.as_ref()).is_some());
     }
 }
