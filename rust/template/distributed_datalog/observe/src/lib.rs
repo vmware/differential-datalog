@@ -17,6 +17,7 @@ pub use observable::UpdatesObservable;
 pub use observer::CachingObserver;
 pub use observer::Observer;
 pub use observer::ObserverBox;
+pub use observer::OptionalObserver;
 pub use observer::SharedObserver;
 
 #[cfg(feature = "test")]

@@ -8,6 +8,8 @@ use differential_datalog::program::{RelId, Response, Update};
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use distributed_datalog::Observer;
 use distributed_datalog::ObserverBox as ObserverBoxT;
+use distributed_datalog::OptionalObserver;
+use distributed_datalog::SharedObserver;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
 pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
@@ -17,7 +19,7 @@ pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;
 #[derive(Debug)]
 pub struct Outlet {
     tables: HashSet<super::Relations>,
-    observer: Arc<Mutex<Option<ObserverBox>>>,
+    observer: SharedObserver<OptionalObserver<ObserverBox>>,
 }
 
 /// A DDlog server wraps a DDlog program, and writes deltas to the
@@ -41,7 +43,7 @@ impl DDlogServer {
 
     /// Add a new outlet that streams a subset of the tables.
     pub fn add_stream(&mut self, tables: HashSet<super::Relations>) -> UpdatesObservable {
-        let observer = Arc::new(Mutex::new(None));
+        let observer = SharedObserver::default();
         let outlet = Outlet {
             tables,
             observer: observer.clone(),
@@ -62,11 +64,8 @@ impl DDlogServer {
         //       `on_completed` fails. In the future we probably want to push
         //       those errors somewhere and then continue.
         if let Some(mut prog) = self.prog.take() {
-            for outlet in &self.outlets {
-                let mut observer = outlet.observer.lock().unwrap();
-                if let Some(ref mut observer) = *observer {
-                    observer.on_completed()?;
-                }
+            for outlet in &mut self.outlets {
+                outlet.observer.on_completed()?
             }
             prog.stop()?;
         }
@@ -80,11 +79,8 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
         if let Some(ref mut prog) = self.prog {
             prog.transaction_start()?;
 
-            for outlet in &self.outlets {
-                let mut observer = outlet.observer.lock().unwrap();
-                if let Some(ref mut observer) = *observer {
-                    observer.on_start()?;
-                }
+            for outlet in &mut self.outlets {
+                outlet.observer.on_start()?
             }
             Ok(())
         } else {
@@ -99,7 +95,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
             let changes = prog.transaction_commit_dump_changes()?;
             for outlet in &self.outlets {
                 let mut observer = outlet.observer.lock().unwrap();
-                if let Some(ref mut observer) = *observer {
+                if observer.is_some() {
                     let mut upds = outlet
                         .tables
                         .iter()

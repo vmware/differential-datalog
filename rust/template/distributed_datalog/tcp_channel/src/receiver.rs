@@ -5,7 +5,6 @@ use std::net::SocketAddr;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
-use std::ops::DerefMut;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::sync::Arc;
@@ -21,7 +20,10 @@ use libc::SHUT_RDWR;
 use log::error;
 
 use observe::Observable;
+use observe::Observer;
 use observe::ObserverBox;
+use observe::OptionalObserver;
+use observe::SharedObserver;
 
 use serde::de::DeserializeOwned;
 
@@ -74,7 +76,7 @@ pub struct TcpReceiver<T> {
     /// Handle to the thread accepting a connection and processing data.
     thread: Option<JoinHandle<Result<(), String>>>,
     /// The connected observer, if any.
-    observer: Arc<Mutex<Option<ObserverBox<T, String>>>>,
+    observer: SharedObserver<OptionalObserver<ObserverBox<T, String>>>,
 }
 
 impl<T> TcpReceiver<T>
@@ -102,7 +104,7 @@ where
             .local_addr()
             .map_err(|e| format!("failed to inquire local address: {}", e))?;
         let fd = Arc::new(Mutex::new(Fd::Listening(listener.as_raw_fd())));
-        let observer = Arc::new(Mutex::new(None));
+        let observer = SharedObserver::default();
         let thread = Some(Self::accept(listener, fd.clone(), observer.clone()));
 
         Ok(Self {
@@ -119,7 +121,7 @@ where
     fn accept(
         listener: TcpListener,
         fd: Arc<Mutex<Fd>>,
-        observer: Arc<Mutex<Option<ObserverBox<T, String>>>>,
+        mut observer: SharedObserver<OptionalObserver<ObserverBox<T, String>>>,
     ) -> JoinHandle<Result<(), String>> {
         spawn(move || {
             let result = listener.accept();
@@ -138,7 +140,7 @@ where
                 socket
             };
 
-            Self::process(socket, fd, observer)
+            Self::process(socket, fd, &mut observer)
         })
     }
 
@@ -147,7 +149,7 @@ where
     fn process(
         socket: TcpStream,
         fd: Arc<Mutex<Fd>>,
-        observer: Arc<Mutex<Option<ObserverBox<T, String>>>>,
+        observer: &mut dyn Observer<T, String>,
     ) -> Result<(), String> {
         let mut reader = BufReader::new(socket);
         loop {
@@ -162,26 +164,20 @@ where
                 }
             };
 
-            // If there is no observer we just drop the data, which
-            // is seemingly the only reasonable behavior given that
-            // observers can come and go by virtue of our API
-            // design.
-            if let Some(ref mut observer) = observer.lock().unwrap().deref_mut() {
-                let result = match message {
-                    Message::Start => observer.on_start(),
-                    Message::Updates(ref mut updates) => {
-                        observer.on_updates(Box::new(updates.drain(..)))
-                    }
-                    Message::Commit => observer.on_commit(),
-                    Message::Complete => observer.on_completed(),
-                };
-
-                if let Err(e) = result {
-                    error!(
-                        "observer {:?} failed to process {} event: {}",
-                        observer, message, e
-                    );
+            let result = match message {
+                Message::Start => observer.on_start(),
+                Message::Updates(ref mut updates) => {
+                    observer.on_updates(Box::new(updates.drain(..)))
                 }
+                Message::Commit => observer.on_commit(),
+                Message::Complete => observer.on_completed(),
+            };
+
+            if let Err(e) = result {
+                error!(
+                    "observer {:?} failed to process {} event: {}",
+                    observer, message, e
+                );
             }
         }
     }
@@ -228,12 +224,11 @@ where
         observer: ObserverBox<T, String>,
     ) -> Result<Self::Subscription, ObserverBox<T, String>> {
         let mut guard = self.observer.lock().unwrap();
-        match *guard {
-            Some(_) => Err(observer),
-            None => {
-                *guard = Some(observer);
-                Ok(())
-            }
+        if guard.is_some() {
+            Err(observer)
+        } else {
+            guard.replace(observer);
+            Ok(())
         }
     }
 
@@ -243,11 +238,7 @@ where
         &mut self,
         _subscription: &Self::Subscription,
     ) -> Option<ObserverBox<T, String>> {
-        let mut guard = self.observer.lock().unwrap();
-        match *guard {
-            Some(_) => guard.take(),
-            None => None,
-        }
+        self.observer.lock().unwrap().take()
     }
 }
 

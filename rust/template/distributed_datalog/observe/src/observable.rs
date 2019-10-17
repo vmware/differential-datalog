@@ -1,8 +1,8 @@
 use std::fmt::Debug;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 use crate::observer::ObserverBox;
+use crate::observer::OptionalObserver;
+use crate::observer::SharedObserver;
 
 /// A trait for objects that can be observed.
 pub trait Observable<T, E>: Debug
@@ -32,10 +32,10 @@ where
 
 /// A very simple observable that supports subscription of a single
 /// observer.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct UpdatesObservable<T, E> {
     /// A reference to the `Observer` subscribed to us, if any.
-    pub observer: Arc<Mutex<Option<ObserverBox<T, E>>>>,
+    pub observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
 }
 
 impl<T, E> Observable<T, E> for UpdatesObservable<T, E>
@@ -50,21 +50,16 @@ where
         observer: ObserverBox<T, E>,
     ) -> Result<Self::Subscription, ObserverBox<T, E>> {
         let mut guard = self.observer.lock().unwrap();
-        match *guard {
-            Some(_) => Err(observer),
-            None => {
-                *guard = Some(observer);
-                Ok(())
-            }
+        if guard.is_some() {
+            Err(observer)
+        } else {
+            guard.replace(observer);
+            Ok(())
         }
     }
 
     fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
-        let mut guard = self.observer.lock().unwrap();
-        match *guard {
-            Some(_) => guard.take(),
-            None => None,
-        }
+        self.observer.lock().unwrap().take()
     }
 }
 
@@ -77,9 +72,7 @@ mod tests {
     /// Test subscribing and unsubscribing for an `UpdatesObservable`.
     #[test]
     fn subscribe_unsubscribe() {
-        let mut observable = UpdatesObservable::<(), ()> {
-            observer: Arc::new(Mutex::new(None)),
-        };
+        let mut observable = UpdatesObservable::<(), ()>::default();
         let observer = Box::new(MockObserver::new());
 
         assert!(observable.subscribe(observer).is_ok());
@@ -89,9 +82,7 @@ mod tests {
     /// Test multiple subscriptions to an `UpdatesObservable`.
     #[test]
     fn multiple_subscribe() {
-        let mut observable = UpdatesObservable::<(), ()> {
-            observer: Arc::new(Mutex::new(None)),
-        };
+        let mut observable = UpdatesObservable::<(), ()>::default();
         let observer1 = Box::new(MockObserver::new());
         let observer2 = Box::new(MockObserver::new());
 
