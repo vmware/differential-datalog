@@ -34,7 +34,7 @@ where
 /// observer.
 #[derive(Debug)]
 pub struct UpdatesObservable<T, E> {
-    /// A reference to the `Observer` we subscribed to.
+    /// A reference to the `Observer` subscribed to us, if any.
     pub observer: Arc<Mutex<Option<ObserverBox<T, E>>>>,
 }
 
