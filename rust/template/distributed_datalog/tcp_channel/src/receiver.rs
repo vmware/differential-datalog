@@ -223,27 +223,30 @@ where
 
     /// An observer subscribes to the receiving end of a TCP channel to
     /// listen to incoming data.
-    fn subscribe(&mut self, observer: ObserverBox<T, String>) -> Option<Self::Subscription> {
+    fn subscribe(
+        &mut self,
+        observer: ObserverBox<T, String>,
+    ) -> Result<Self::Subscription, ObserverBox<T, String>> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
-            Some(_) => None,
+            Some(_) => Err(observer),
             None => {
                 *guard = Some(observer);
-                Some(())
+                Ok(())
             }
         }
     }
 
     /// Unsubscribe a previously subscribed `Observer` based on a
     /// subscription.
-    fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> bool {
+    fn unsubscribe(
+        &mut self,
+        _subscription: &Self::Subscription,
+    ) -> Option<ObserverBox<T, String>> {
         let mut guard = self.observer.lock().unwrap();
         match *guard {
-            Some(_) => {
-                *guard = None;
-                true
-            }
-            None => false,
+            Some(_) => guard.take(),
+            None => None,
         }
     }
 }
