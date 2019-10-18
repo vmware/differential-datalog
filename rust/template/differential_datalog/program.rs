@@ -1811,7 +1811,7 @@ impl<V: Val> RunningProgram<V> {
                         if let Some(thread) = self.prof_thread_handle.take() {
                             match thread.join() {
                                 Err(_) => {
-                                    Err("profiling thread terminated with an error".to_string())?
+                                    Err("profiling thread terminated with an error".to_string())
                                 }
                                 Ok(_) => Ok(()),
                             }
