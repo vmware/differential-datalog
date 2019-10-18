@@ -8,6 +8,7 @@ use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
+use distributed_datalog::MockObserver as Mock;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
 use distributed_datalog::SharedObserver;
@@ -27,51 +28,6 @@ use maplit::hashset;
 use test_env_log::test;
 
 use waitfor::wait_for;
-
-#[derive(Clone, Debug)]
-struct Mock {
-    called_on_start: usize,
-    called_on_commit: usize,
-    called_on_updates: usize,
-    called_on_completed: usize,
-}
-
-impl Mock {
-    fn new() -> Self {
-        Self {
-            called_on_start: 0,
-            called_on_commit: 0,
-            called_on_updates: 0,
-            called_on_completed: 0,
-        }
-    }
-}
-
-impl<T, E> Observer<T, E> for Mock
-where
-    T: Send,
-    E: Send,
-{
-    fn on_start(&mut self) -> Result<(), E> {
-        self.called_on_start += 1;
-        Ok(())
-    }
-
-    fn on_commit(&mut self) -> Result<(), E> {
-        self.called_on_commit += 1;
-        Ok(())
-    }
-
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
-        self.called_on_updates += updates.count();
-        Ok(())
-    }
-
-    fn on_completed(&mut self) -> Result<(), E> {
-        self.called_on_completed += 1;
-        Ok(())
-    }
-}
 
 type MockObserver = SharedObserver<Mock>;
 

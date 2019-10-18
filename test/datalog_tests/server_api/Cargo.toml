@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 differential_datalog = {path = "../server_api_ddlog/differential_datalog"}
-distributed_datalog = {path = "../server_api_ddlog/distributed_datalog"}
+distributed_datalog = {path = "../server_api_ddlog/distributed_datalog", features=["test"]}
 maplit = "1.0"
 server_api = {path = "../server_api_ddlog"}
 

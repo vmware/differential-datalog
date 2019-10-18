@@ -6,3 +6,8 @@ edition = "2018"
 [dependencies]
 observe = {path = "observe"}
 tcp_channel = {path = "tcp_channel"}
+
+[features]
+# The 'test' feature set on this crate requires the 'test' feature of
+# the `observe` crate being enabled as well.
+test = ["observe/test"]
