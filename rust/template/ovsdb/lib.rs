@@ -141,8 +141,8 @@ fn cmd_from_row_update(
                     uuid.clone(),
                 ))
             };
-            if new.is_some() {
-                let mut fields = new.unwrap()?;
+            if let Some(new) = new {
+                let mut fields = new?;
                 fields.push((Cow::from("_uuid"), uuid));
                 // insert
                 cmds.push(UpdCmd::Insert(
@@ -244,10 +244,12 @@ pub fn record_into_insert_str(rec: Record, table: &str) -> Result<String, String
             .iter()
             .find(|(f, _)| f == "uuid_name")
             .map(|(_, val)| val.clone()),
-        _ => Err(format!(
-            "Cannot convert record to insert command: {:?}",
-            rec
-        ))?,
+        _ => {
+            return Err(format!(
+                "Cannot convert record to insert command: {:?}",
+                rec
+            ))
+        }
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("insert".to_owned()));
@@ -257,7 +259,7 @@ pub fn record_into_insert_str(rec: Record, table: &str) -> Result<String, String
         Some(Record::String(n)) => {
             m.insert("uuid-name".to_owned(), Value::String(n));
         }
-        Some(x) => Err(format!("uuid-name is not a string {:?}", x))?,
+        Some(x) => return Err(format!("uuid-name is not a string {:?}", x)),
     };
     m.insert("row".to_owned(), record_into_row(rec)?);
     Ok(Value::Object(m).to_string())
@@ -272,10 +274,12 @@ pub fn record_into_delete_str(rec: Record, table: &str) -> Result<String, String
                 .ok_or_else(|| "Record does not have _uuid field".to_string())?
                 .1
         }
-        _ => Err(format!(
-            "Cannot convert record to delete command: {:?}",
-            rec
-        ))?,
+        _ => {
+            return Err(format!(
+                "Cannot convert record to delete command: {:?}",
+                rec
+            ))
+        }
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("delete".to_owned()));
@@ -292,10 +296,12 @@ pub fn record_into_update_str(rec: Record, table: &str) -> Result<String, String
             .ok_or_else(|| "Record does not have _uuid field".to_string())?
             .1
             .clone(),
-        _ => Err(format!(
-            "Cannot convert record to insert command: {:?}",
-            rec
-        ))?,
+        _ => {
+            return Err(format!(
+                "Cannot convert record to insert command: {:?}",
+                rec
+            ))
+        }
     };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("update".to_owned()));
@@ -407,7 +413,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
                 .map(|x| match x {
                     Record::Tuple(mut keyval) => {
                         if keyval.len() != 2 {
-                            Err(format!("Map entry {:?} is not a 2-tuple", keyval))?
+                            return Err(format!("Map entry {:?} is not a 2-tuple", keyval));
                         };
                         let v = record_into_field(keyval.remove(1))?;
                         let k = record_into_field(keyval.remove(0))?;
