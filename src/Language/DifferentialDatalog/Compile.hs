@@ -164,6 +164,7 @@ rustLibFiles specname =
         , (dir </> "distributed_datalog/observe/src/lib.rs"          , $(embedFile "rust/template/distributed_datalog/observe/src/lib.rs"))
         , (dir </> "distributed_datalog/observe/src/observable.rs"   , $(embedFile "rust/template/distributed_datalog/observe/src/observable.rs"))
         , (dir </> "distributed_datalog/observe/src/observer.rs"     , $(embedFile "rust/template/distributed_datalog/observe/src/observer.rs"))
+        , (dir </> "distributed_datalog/observe/src/test.rs"         , $(embedFile "rust/template/distributed_datalog/observe/src/test.rs"))
         , (dir </> "distributed_datalog/tcp_channel/Cargo.toml"      , $(embedFile "rust/template/distributed_datalog/tcp_channel/Cargo.toml"))
         , (dir </> "distributed_datalog/tcp_channel/src/lib.rs"      , $(embedFile "rust/template/distributed_datalog/tcp_channel/src/lib.rs"))
         , (dir </> "distributed_datalog/tcp_channel/src/message.rs"  , $(embedFile "rust/template/distributed_datalog/tcp_channel/src/message.rs"))
