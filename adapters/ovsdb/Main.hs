@@ -34,7 +34,7 @@ import Data.Maybe
 import Data.List.Split
 import Control.Monad
 import qualified Data.Map as M
-import Data.Aeson (FromJSON, ToJSON, decode, encode)
+import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import GHC.Generics (Generic)
 import qualified Data.ByteString.Lazy.Char8 as LZ
 
@@ -58,35 +58,35 @@ options :: [OptDescr TOption]
 options = [ Option ['v'] ["version"]       (NoArg Version)                     "Display DDlog version."
           , Option ['f'] ["schema-file"]   (ReqArg OVSFile     "FILE")         "OVSDB schema file."
           , Option ['c'] ["input-config"]  (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
-          , Option ['O'] ["output-config"] (ReqArg ConfigJsonO "FILE.json")    "Write options to Json configuration file."
+          , Option ['O'] ["output-config"] (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
           , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
           , Option ['k'] ["key"]           (ReqArg KeyColumn   "TABLE.COLUMN") "Mark COLUMN as key."
           , Option ['p'] ["gen-proxy"]     (ReqArg ProxyTable  "TABLE")        "Generate output proxy table for TABLE."
           ]
 
-data Config = Config { ovsFile      :: FilePath
+data Config = Config { ovsSchemaFile:: FilePath
                      , outputTables :: [(String, [String])]
                      , proxyTables  :: [String]
-                     , keys         :: M.Map String [String]
+                     , keyColumns   :: M.Map String [String]
                      }
-              deriving (Show, Generic)
+              deriving (Eq, Show, Generic)
 
 instance FromJSON Config
 instance ToJSON   Config
 
 defaultConfig :: Config
-defaultConfig = Config { ovsFile      = ""
+defaultConfig = Config { ovsSchemaFile= ""
                        , outputTables = []
                        , proxyTables  = []
-                       , keys         = M.empty
+                       , keyColumns   = M.empty
                        }
 
 addOption :: (Action, Config) -> TOption -> IO (Action, Config)
 addOption (_, config) Version = do return (ActionVersion, config)
 addOption (a, config) (OVSFile f) = do
-    when (ovsFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
-    return (a, config {ovsFile = f})
+    when (ovsSchemaFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
+    return (a, config {ovsSchemaFile = f})
 addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t,[]) : outputTables config)})
 addOption (a, config) (ProxyTable t) = return (a, config{ proxyTables = nub (t : proxyTables config)})
 addOption (a, config) (KeyColumn c) = do
@@ -94,8 +94,8 @@ addOption (a, config) (KeyColumn c) = do
          [table, col] -> do
             when (isNothing $ lookup table $ outputTables config)
                  $ errorWithoutStackTrace $ "Unknown output table name " ++ table
-            return $ (a, config{keys = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
-                                               $ keys config})
+            return $ (a, config{keyColumns = M.alter (maybe (Just [col]) (\keys -> Just $ nub $ col:keys)) table
+                                               $ keyColumns config})
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
 addOption (a, config) (ROColumn c) = do
     case splitOn "." c of
@@ -106,16 +106,21 @@ addOption (a, config) (ROColumn c) = do
                               $ outputTables config
             return $ (a, config{outputTables = outtabs})
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
-addOption (a, _) (ConfigJsonI c) = do
+addOption (a, config) (ConfigJsonI c) = do
+    when (config /= defaultConfig) $ errorWithoutStackTrace "-c option causes previous command-line options to be ignored"
     cdata <- readFile c
-    return $ (a, fromJust $ ((decode $ LZ.pack cdata) :: Maybe Config))
+    let ce = (eitherDecode $ LZ.pack cdata) :: (Either String Config)
+    case ce of
+       Right conf -> do return (a, conf)
+       Left msg   -> errorWithoutStackTrace $ "Error parsing configuration file " ++ c ++ ": " ++ msg
+
 addOption (a, config) (ConfigJsonO c) = do
     writeFile c $ LZ.unpack $ encode config
     return (a, config)
 
 validateConfig :: (Action, Config) -> IO ()
 validateConfig (action, Config{..}) = do
-    when (ovsFile == "" && action == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
+    when (ovsSchemaFile == "" && action == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
 
 main :: IO ()
 main = do
@@ -133,6 +138,6 @@ main = do
        then do putStrLn $ "OVSDB-to-DDlog compiler " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
        else do
-           dlschema <- compileSchemaFile ovsFile outputTables proxyTables keys
+           dlschema <- compileSchemaFile ovsSchemaFile outputTables proxyTables keyColumns
            putStrLn $ render dlschema
            return ()
