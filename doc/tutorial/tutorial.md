@@ -41,8 +41,8 @@ Installation instructions are found in the [README](../../README.md#Installation
 ## "Hello, World!" in DDlog
 
 Files storing DDlog programs have the `.dl` suffix.
-[dl.vim](../../tools/dl.vim) is a file that offers syntax highlighting
-support for the vim editor.
+[dl.vim](../../tools/vim/syntax/dl.vim) is a file that offers syntax
+highlighting support for the vim editor.
 
 If you add a file called `playpen.dl`, in the `test/datalog_tests`
 directory, it will be executed automatically when you run the DDlog tests, by
