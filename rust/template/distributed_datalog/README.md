@@ -34,7 +34,7 @@ As it stands that means we have the following components:
     stream is an instance of an `Observable`)
 - a TCP channel (contained in the [`tcp_channel`][tcp_channel] crate)
   comprised of a `TcpSender` (an `Observer`) and a `TcpReceiver` (an
-  `Observable) that can connect two `ddlog` programs (wrapped in
+  `Observable`) that can connect two `ddlog` programs (wrapped in
   `DDlogServer` objects) and transfer deltas produced
 - a transaction multiplexer (`TxnMux`) that allows for serializing
   transactions as emitted by multiple `Observables` such that no two

@@ -27,11 +27,9 @@ branches:
 # Do not choose a language; we provide our own build tools.
 language: rust
 rust:
-  # Test with minimum Rust version we support (keep in sync with what is
-  # documented as supported in README.md!). Newer releases are (supposed to
-  # be) backwards compatible and so we do not test everything on them as well
-  # (to not artificially blow up CI/CD times).
-  - 1.37.0
+  # Test with latest Rust version to get some mileage on it. Our GitLab
+  # pipeline tests with the minimum version we require.
+  - stable
 
 # Caching so the next build will be fast too.
 cache:
