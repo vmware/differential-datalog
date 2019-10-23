@@ -49,7 +49,6 @@ use differential_dataflow::trace::TraceReader;
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
-use timely;
 use timely::communication::initialize::Configuration;
 use timely::communication::Allocator;
 use timely::dataflow::operators::*;
@@ -61,9 +60,9 @@ use timely::progress::timestamp::Refines;
 use timely::progress::{PathSummary, Timestamp};
 use timely::worker::Worker;
 
-use profile::*;
-use record::Mutator;
-use variable::*;
+use crate::profile::*;
+use crate::record::Mutator;
+use crate::variable::*;
 
 type TValAgent<S, V> = TraceAgent<
     V,

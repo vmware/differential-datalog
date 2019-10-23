@@ -9,8 +9,8 @@ use timely::dataflow::scopes::Child;
 use timely::dataflow::*;
 use timely::order::Product;
 
-use profile::*;
-use program::{TSNested, Weight};
+use crate::profile::*;
+use crate::program::{TSNested, Weight};
 
 /// A collection defined by multiple mutually recursive rules.
 ///
