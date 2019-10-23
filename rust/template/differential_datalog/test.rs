@@ -12,19 +12,23 @@
     clippy::trivially_copy_pass_by_ref
 )]
 
-use abomonation::Abomonation;
-use program::*;
-use uint::*;
-
-use differential_dataflow::operators::Join;
-use differential_dataflow::Collection;
-use fnv::FnvHashMap;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
+
+use abomonation::Abomonation;
+use fnv::FnvHashMap;
+use serde::Deserialize;
+use serde::Serialize;
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::worker::Worker;
+
+use differential_dataflow::operators::Join;
+use differential_dataflow::Collection;
+
+use crate::program::*;
+use crate::uint::*;
 
 const TEST_SIZE: u64 = 1000;
 

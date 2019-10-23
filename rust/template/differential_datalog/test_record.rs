@@ -1,13 +1,15 @@
 //! Tests for functions and macros in `record.rs`
 
-use num::bigint::{ToBigInt, ToBigUint};
-use num::{BigInt, BigUint};
-use record::*;
 use std::borrow;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::vec;
+
+use num::bigint::{ToBigInt, ToBigUint};
+use num::{BigInt, BigUint};
+
+use crate::record::*;
 
 #[test]
 fn test_u8() {
