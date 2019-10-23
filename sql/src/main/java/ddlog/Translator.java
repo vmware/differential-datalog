@@ -1,10 +1,12 @@
 package ddlog;
 
+import com.facebook.presto.sql.TreePrinter;
 import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.tree.DefaultTraversalVisitor;
-import com.facebook.presto.sql.tree.Statement;
-import com.facebook.presto.sql.tree.Table;
+import com.facebook.presto.sql.tree.*;
+
+import java.io.PrintStream;
+import java.util.IdentityHashMap;
 
 /**
  * Hello world!
@@ -17,8 +19,7 @@ public class Translator
     public static void translateSql(final String sql) {
         final ParsingOptions options = new ParsingOptions();
         final Statement statement = PARSER.createStatement(sql, options);
-        final ExampleVisitor visitor = new ExampleVisitor();
-        visitor.process(statement);
+        System.out.println(statement.toString());
     }
 
     static class ExampleVisitor extends DefaultTraversalVisitor<Void, Void> {

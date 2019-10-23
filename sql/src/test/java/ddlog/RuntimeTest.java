@@ -14,8 +14,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import static java.sql.DriverManager.getConnection;
-import static org.jooq.impl.DSL.using;
+import java.sql.DriverManager;
+import org.jooq.impl.DSL;
 
 /**
  * Unit test for simple Translator.
@@ -31,8 +31,8 @@ public class RuntimeTest
         // Wrapper around a jdbc connection
         conn.execute(createStatement);
         conn.execute(viewStatement);
-        System.out.println(getTablesAndFields(conn));
-        System.out.println(getRecordTypesByTable(conn));
+        //System.out.println(getTablesAndFields(conn));
+        //System.out.println(getRecordTypesByTable(conn));
         Translator.translateSql(createStatement);
         Translator.translateSql(viewStatement);
     }
@@ -46,9 +46,9 @@ public class RuntimeTest
         try {
             // Create a fresh database
             final String connectionURL = "jdbc:h2:mem:;create=true";
-            final Connection conn = getConnection(connectionURL, properties);
+            final Connection conn = DriverManager.getConnection(connectionURL, properties);
             conn.setSchema("PUBLIC");
-            return using(conn, SQLDialect.H2);
+            return DSL.using(conn, SQLDialect.H2);
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
