@@ -3,7 +3,6 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
-use api::HDDlog;
 use differential_datalog::program::{RelId, Response, Update};
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use distributed_datalog::Observer;
@@ -11,6 +10,8 @@ use distributed_datalog::ObserverBox as ObserverBoxT;
 use distributed_datalog::OptionalObserver;
 use distributed_datalog::SharedObserver;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
+
+use crate::api::HDDlog;
 
 pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
 pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;

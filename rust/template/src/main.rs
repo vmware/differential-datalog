@@ -4,18 +4,8 @@
 
 #![allow(dead_code, non_snake_case)]
 
-//#![feature(alloc_system)]
-//extern crate alloc_system;
-
-extern crate cmd_parser;
-extern crate datalog_example_ddlog;
-extern crate differential_datalog;
-extern crate time;
-
-#[macro_use]
-extern crate rustop;
-
 use std::io::stdout;
+use std::io::Write;
 use std::process::exit;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -25,11 +15,10 @@ use cmd_parser::*;
 use datalog_example_ddlog::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
-use std::io::Write;
+use rustop::opts;
 use time::precise_time_ns;
 
 // uncomment to enable profiling
-//extern crate cpuprofiler;
 //use cpuprofiler::PROFILER;
 
 #[allow(clippy::let_and_return)]
