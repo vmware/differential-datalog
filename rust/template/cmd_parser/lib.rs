@@ -1,21 +1,15 @@
 #![warn(missing_debug_implementations)]
 
-extern crate libc;
-extern crate nom;
-extern crate num;
-extern crate rustyline;
-
-extern crate differential_datalog;
-
 mod parse;
+
+use std::io;
+use std::io::{BufRead, BufReader};
 
 pub use parse::*;
 
 use nom::*;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use std::io;
-use std::io::{BufRead, BufReader};
 
 const HISTORY_FILE: &str = "cmd_parser_history.txt";
 
