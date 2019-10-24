@@ -1,15 +1,16 @@
 [package]
 name = "cmd_parser"
 version = "0.1.0"
+edition = "2018"
 
 [dependencies.differential_datalog]
 path = "../differential_datalog"
 
 [dependencies]
+libc = "0.2.42"
 nom = "4.0"
 num = "0.2"
 rustyline = "1.0.0"
-libc = "0.2.42"
 
 [lib]
 name = "cmd_parser"
