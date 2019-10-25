@@ -29,7 +29,13 @@ test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
 test-server_api:
-    script: stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || (($(NF-1) == \"compiler tests\" || $(NF-1) == \"unit tests\") && $(NF) == \"server_api\")"'
+    script:
+    - i=0;
+      true;
+      while [ $? -eq 0 -a $i -lt 100 ]; do
+        i=$((i+1));
+        stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || (($(NF-1) == \"compiler tests\" || $(NF-1) == \"unit tests\") && $(NF) == \"server_api\")"';
+      done
 
 test-simple:
     script: stack --no-terminal test --ta "-p simple"

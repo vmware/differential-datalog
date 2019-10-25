@@ -11,5 +11,5 @@ pub use tcp_channel::TcpReceiver;
 pub use tcp_channel::TcpSender;
 pub use txnmux::TxnMux;
 
-#[cfg(feature = "test")]
+#[cfg(any(test, feature = "test"))]
 pub use observe::MockObserver;

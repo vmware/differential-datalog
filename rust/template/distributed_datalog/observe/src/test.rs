@@ -1,14 +1,20 @@
 use crate::Observer;
 
-#[derive(Clone, Debug, Default)]
+/// A dummy observer merely counting method invocations.
+#[derive(Copy, Clone, Debug, Default)]
 pub struct MockObserver {
+    /// The number of `on_start` calls the observer has seen.
     pub called_on_start: usize,
+    /// The number of `on_commit` calls the observer has seen.
     pub called_on_commit: usize,
+    /// The number of updates the observer has received.
     pub called_on_updates: usize,
+    /// The number of `on_completed` calls the observer has seen.
     pub called_on_completed: usize,
 }
 
 impl MockObserver {
+    /// Create a new `MockObserver`.
     pub fn new() -> Self {
         Self {
             called_on_start: 0,

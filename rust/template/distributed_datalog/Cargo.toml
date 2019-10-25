@@ -3,6 +3,9 @@ name = "distributed_datalog"
 version = "0.1.0"
 edition = "2018"
 
+[dev-dependencies]
+observe = {path = "observe", features = ["test"]}
+
 [dependencies]
 observe = {path = "observe"}
 tcp_channel = {path = "tcp_channel"}
