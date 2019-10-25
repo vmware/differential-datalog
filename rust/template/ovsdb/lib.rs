@@ -2,20 +2,18 @@
 
 #![allow(clippy::map_clone)]
 #![warn(missing_copy_implementations, missing_debug_implementations)]
-extern crate differential_datalog;
-extern crate num;
-extern crate serde_json;
-extern crate uuid;
 
-use differential_datalog::record::*;
+#[cfg(test)]
+mod test;
+
+use std::borrow::Cow;
+
 use num::{BigInt, Signed, ToPrimitive};
 use serde_json::map::Map;
 use serde_json::Number;
 use serde_json::Value;
-use std::borrow::Cow;
 
-#[cfg(test)]
-mod test;
+use differential_datalog::record::*;
 
 /*
  * Functions to parse JSON into DDlog commands
