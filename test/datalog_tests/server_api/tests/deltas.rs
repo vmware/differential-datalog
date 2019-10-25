@@ -108,11 +108,7 @@ fn single_delta_tcp() -> Result<(), String> {
 
 fn multi_transaction_test<F>(setup: F) -> Result<(), String>
 where
-    F: FnOnce(
-        UpdatesObservable,
-        UpdatesObservable,
-        SharedObserver<DDlogServer>,
-    ) -> Result<Box<dyn Any>, String>,
+    F: FnOnce(UpdatesObservable, UpdatesObservable, DDlogServer) -> Result<Box<dyn Any>, String>,
 {
     // The setup we build is as follows:
     //
@@ -140,7 +136,7 @@ where
 
     let stream1 = server1.add_stream(hashset! {server_api_1_P1Out});
     let stream2 = server2.add_stream(hashset! {server_api_2_P2Out});
-    let _data = setup(stream1, stream2, SharedObserver::new(server3))?;
+    let _data = setup(stream1, stream2, server3)?;
 
     // Insert updates concurrently to test serialization of
     // transactions.
@@ -200,7 +196,7 @@ fn multi_transaction_direct() -> Result<(), String> {
     fn do_test(
         observable1: UpdatesObservable,
         observable2: UpdatesObservable,
-        observer: SharedObserver<DDlogServer>,
+        observer: DDlogServer,
     ) -> Result<Box<dyn Any>, String> {
         let mut mux = TxnMux::new();
         let _ = mux.subscribe(Box::new(observer)).unwrap();
@@ -220,7 +216,7 @@ fn multi_transaction_tcp() -> Result<(), String> {
     fn do_test(
         mut observable1: UpdatesObservable,
         mut observable2: UpdatesObservable,
-        observer: SharedObserver<DDlogServer>,
+        observer: DDlogServer,
     ) -> Result<Box<dyn Any>, String> {
         // We create the following setup:
         // o1 -> s1 --(TCP)-> r1 \
