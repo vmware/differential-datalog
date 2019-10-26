@@ -97,7 +97,7 @@ bOX_VAR = "__box"
 
 -- Input argument to aggregation function
 gROUP_VAR :: Doc
-gROUP_VAR = "group"
+gROUP_VAR = "__group__"
 
 -- Functions that return a Rust reference rather than a value.
 -- FIXME: there should be a way to annotate function definitions
