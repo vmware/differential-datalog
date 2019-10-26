@@ -117,7 +117,7 @@ fn handle_cmd(
             let relid = match input_relname_to_id(&rname) {
                 None => {
                     eprintln!("Error: Unknown input relation {}", rname);
-                    return (-1, false);
+                    return (-1, interactive);
                 }
                 Some(rid) => rid as RelId,
             };
