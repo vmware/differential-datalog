@@ -63,7 +63,7 @@ impl HDDlog {
         relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
-    pub fn run<F>(workers: usize, do_store: bool, cb: F) -> HDDlog
+    pub fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<HDDlog, String>
     where
         F: Callback,
     {
@@ -270,7 +270,7 @@ impl HDDlog {
         do_store: bool,
         cb: UH,
         print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
-    ) -> HDDlog
+    ) -> Result<Self, String>
     where
         UH: UpdateHandler<Value> + Send + 'static,
     {
@@ -310,17 +310,17 @@ impl HDDlog {
 
         /* Notify handler about initial transaction */
         handler.before_commit();
-        let prog = program.run(workers as usize);
+        let prog = program.run(workers as usize)?;
         handler.after_commit(true);
 
-        HDDlog {
+        Ok(HDDlog {
             prog: Mutex::new(prog),
             update_handler: handler,
             db: Some(db),
             deltadb,
             print_err,
             replay_file: None,
-        }
+        })
     }
 
     fn db_dump_table<F>(db: &mut DeltaMap, table: libc::size_t, cb: Option<F>)
@@ -594,20 +594,28 @@ pub extern "C" fn ddlog_run(
     cb_arg: libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
 ) -> *const HDDlog {
-    if let Some(f) = cb {
-        Arc::into_raw(Arc::new(HDDlog::do_run(
+    let result = if let Some(f) = cb {
+        HDDlog::do_run(
             workers as usize,
             do_store,
             ExternCUpdateHandler::new(f, cb_arg),
             print_err,
-        )))
+        )
     } else {
-        Arc::into_raw(Arc::new(HDDlog::do_run(
+        HDDlog::do_run(
             workers as usize,
             do_store,
             NullUpdateHandler::new(),
             print_err,
-        )))
+        )
+    };
+
+    match result {
+        Ok(hddlog) => Arc::into_raw(Arc::new(hddlog)),
+        Err(err) => {
+            HDDlog::print_err(print_err, &format!("ddlog_run() failed: {}", err));
+            ptr::null()
+        }
     }
 }
 

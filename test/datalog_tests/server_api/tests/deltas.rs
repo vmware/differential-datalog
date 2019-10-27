@@ -27,14 +27,15 @@ fn single_delta_test<F>(setup: F) -> Result<(), String>
 where
     F: FnOnce(&mut UpdatesObservable, SharedObserver<DDlogServer>) -> Result<Box<dyn Any>, String>,
 {
-    let program1 = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let program1 = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
     let mut server1 = DDlogServer::new(program1, hashmap! {});
 
     let deltas = Arc::new(Mutex::new(Vec::new()));
     let deltas2 = deltas.clone();
     let program2 = HDDlog::run(1, false, move |relation_id, record: &Record, _| {
         deltas2.lock().unwrap().push((relation_id, record.clone()));
-    });
+    })
+    .unwrap();
     let server2 = DDlogServer::new(program2, hashmap! {server_api_1_P1Out => server_api_2_P2In});
 
     let mut stream = server1.add_stream(hashset! {server_api_1_P1Out});
@@ -117,17 +118,18 @@ where
     //        /        \
     //     P1[s1]     P2[s2]
     //
-    let program1 = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let program1 = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
     let mut server1 = DDlogServer::new(program1, hashmap! {});
 
-    let program2 = HDDlog::run(1, false, |_, _: &Record, _| {});
+    let program2 = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
     let mut server2 = DDlogServer::new(program2, hashmap! {});
 
     let deltas = Arc::new(Mutex::new(Vec::new()));
     let deltas2 = deltas.clone();
     let program3 = HDDlog::run(1, false, move |relation_id, record: &Record, _| {
         deltas2.lock().unwrap().push((relation_id, record.clone()));
-    });
+    })
+    .unwrap();
     let redirect = hashmap! {
         server_api_1_P1Out => server_api_3_P1Out,
         server_api_2_P2Out => server_api_3_P2Out,

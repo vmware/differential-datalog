@@ -1,13 +1,13 @@
 //! Datalog program.
 //!
 //! The client constructs a `struct Program` that describes Datalog relations and rules and
-//! calls `Program::run()` to instantiate the program.  The method returns an instance of
-//! `RunningProgram` that can be used to interact with the program at runtime.  Interactions
-//! include starting, committing or rolling back a transaction and modifying input relations.
-//! The engine invokes user-provided callbacks as records are added or removed from relations.
-//! `RunningProgram::stop()` terminates the Datalog program destroying all its state. If not
-//! invoked manually (which allows for manual error handling), `RunningProgram::stop` will be
-//! called when the program object leaves scope.
+//! calls `Program::run()` to instantiate the program.  The method returns an error or an
+//! instance of `RunningProgram` that can be used to interact with the program at runtime.
+//! Interactions include starting, committing or rolling back a transaction and modifying input
+//! relations. The engine invokes user-provided callbacks as records are added or removed from
+//! relations. `RunningProgram::stop()` terminates the Datalog program destroying all its state.
+//! If not invoked manually (which allows for manual error handling), `RunningProgram::stop`
+//! will be called when the program object leaves scope.
 
 // TODO: namespace cleanup
 // TODO: single input relation
@@ -243,7 +243,7 @@ pub type ArrId = (RelId, usize);
 // - input relations do not occur in LHS of rules
 // - all references to arrangements are valid
 /// A Datalog program is a vector of nodes representing
-/// individual non-recursive relations and stongly connected components
+/// individual non-recursive relations and strongly connected components
 /// comprised of one or more mutually recursive relations.
 #[derive(Clone)]
 pub struct Program<V: Val> {
@@ -258,7 +258,7 @@ type TransformerMap<'a, V> =
 /// differential-dataflow.  Takes the set of already constructed collections and modifies this
 /// set, adding new collections.  Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
-/// transformer in monotonic and thus it may not converge if used in a nested scope.
+/// transformer is monotonic and thus it may not converge if used in a nested scope.
 pub type TransformerFunc<V> = fn() -> Box<dyn for<'a> Fn(&mut TransformerMap<'a, V>)>;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
@@ -1018,7 +1018,7 @@ enum Msg<V: Val> {
 
 impl<V: Val> Program<V> {
     /// Instantiate the program with `nworkers` timely threads.
-    pub fn run(&self, nworkers: usize) -> RunningProgram<V> {
+    pub fn run(&self, nworkers: usize) -> Result<RunningProgram<V>, String> {
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
@@ -1351,7 +1351,7 @@ impl<V: Val> Program<V> {
         /* Wait for the initial transaction to complete */
         flush_ack_recv.recv().unwrap();
 
-        RunningProgram {
+        Ok(RunningProgram {
             sender: tx,
             flush_ack: flush_ack_recv,
             relations: rels,
@@ -1361,7 +1361,7 @@ impl<V: Val> Program<V> {
             profile_cpu,
             prof_thread_handle: Some(prof_thread),
             profile,
-        }
+        })
     }
 
     /* Profiler thread function */
@@ -1853,7 +1853,7 @@ impl<V: Val> RunningProgram<V> {
     /// Rollback the transaction, undoing all changes.
     pub fn transaction_rollback(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
-            return Err("transacion_rollback: no transaction in progress".to_string());
+            return Err("transaction_rollback: no transaction in progress".to_string());
         }
 
         self.flush().and_then(|_| self.delta_undo()).and_then(|_| {
@@ -1908,7 +1908,7 @@ impl<V: Val> RunningProgram<V> {
             let rel = self
                 .relations
                 .get_mut(&upd.relid())
-                .ok_or_else(|| format!("unknown input relation {}", upd.relid()))?;
+                .ok_or_else(|| format!("apply_updates: unknown input relation {}", upd.relid()))?;
             match rel {
                 RelationInstance::Flat { elements, delta } => {
                     Self::set_update(elements, delta, upd, &mut filtered_updates)?
@@ -1943,7 +1943,7 @@ impl<V: Val> RunningProgram<V> {
             let rel = self
                 .relations
                 .get_mut(&relid)
-                .ok_or_else(|| format!("unknown input relation {}", relid))?;
+                .ok_or_else(|| format!("clear_relation: unknown input relation {}", relid))?;
             match rel {
                 RelationInstance::Flat { elements, .. } => {
                     let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());

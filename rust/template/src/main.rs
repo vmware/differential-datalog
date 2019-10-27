@@ -192,8 +192,7 @@ fn run(mut hddlog: HDDlog, print_deltas: bool) -> i32 {
 }
 
 #[allow(clippy::redundant_closure)]
-pub fn main() {
-    //println!("sizeof(Value) = {}", mem::size_of::<Value>());
+fn main_impl() -> i32 {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
@@ -205,7 +204,8 @@ pub fn main() {
     let (args, rest) = parser.parse_or_exit();
 
     if !rest.is_empty() || args.workers == 0 {
-        panic!("Invalid command line arguments; try -h for help");
+        eprintln!("Invalid command line arguments; try -h for help");
+        return 1;
     }
 
     fn record_upd(table: usize, rec: &Record, w: isize) {
@@ -220,8 +220,15 @@ pub fn main() {
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
     let cb = if args.print { record_upd } else { no_op };
 
-    let hddlog = HDDlog::run(args.workers, args.store, cb);
+    match HDDlog::run(args.workers, args.store, cb) {
+        Ok(hddlog) => run(hddlog, args.delta),
+        Err(err) => {
+            eprintln!("Failed to run differential datalog: {}", err);
+            1
+        }
+    }
+}
 
-    let ret = run(hddlog, args.delta);
-    exit(ret);
+pub fn main() {
+    exit(main_impl())
 }
