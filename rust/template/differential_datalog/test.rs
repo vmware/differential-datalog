@@ -343,6 +343,7 @@ fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &Value, w: Weight) {
     //println!("set_update({}) {:?} {}", rel, *x, insert);
 }
 
+/// Check that a program can be stopped multiple times without failure.
 #[test]
 fn test_multiple_stops() {
     let prog: Program<Value> = Program {
@@ -350,7 +351,7 @@ fn test_multiple_stops() {
         init_data: vec![],
     };
 
-    let mut running = prog.run(2);
+    let mut running = prog.run(2).unwrap();
     running.stop().unwrap();
     running.stop().unwrap();
 }
@@ -380,7 +381,7 @@ fn test_one_relation(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -494,7 +495,7 @@ fn test_two_relations(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -644,7 +645,7 @@ fn test_semijoin(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
@@ -804,7 +805,7 @@ fn test_join(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
@@ -969,7 +970,7 @@ fn test_antijoin(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
@@ -1194,7 +1195,7 @@ fn test_map(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
@@ -1423,7 +1424,7 @@ fn test_recursion(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads);
+    let mut running = prog.run(nthreads).unwrap();
 
     /* 1. Populate parent relation */
     /*
