@@ -21,6 +21,7 @@ path = "./differential_datalog"
 
 [dependencies.distributed_datalog]
 path = "./distributed_datalog"
+optional = true
 
 [dependencies.cmd_parser]
 path = "./cmd_parser"
@@ -49,6 +50,7 @@ flatbuffers = {version = "0.6", optional = true}
 
 [features]
 default = []
+d3log = ["distributed_datalog"]
 flatbuf = ["flatbuffers"]
 
 [profile.release]

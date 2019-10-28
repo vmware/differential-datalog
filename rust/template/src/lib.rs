@@ -58,6 +58,7 @@ use num_traits::identities::One;
 
 pub mod api;
 pub mod ovsdb;
+#[cfg(feature = "d3log")]
 pub mod server;
 pub mod update_handler;
 pub mod valmap;
