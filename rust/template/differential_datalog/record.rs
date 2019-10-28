@@ -14,7 +14,6 @@ use std::slice;
 use std::string::ToString;
 use std::vec;
 
-extern crate serde;
 use serde::{Deserialize, Serialize};
 
 pub type Name = Cow<'static, str>;

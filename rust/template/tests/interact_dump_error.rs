@@ -2,8 +2,6 @@
 // here invokes itself and having multiple test running in parallel
 // while that is happening is probably a bad idea.
 
-extern crate cmd_parser;
-
 use cmd_parser::Command;
 
 mod common;

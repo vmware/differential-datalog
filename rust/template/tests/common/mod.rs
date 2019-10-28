@@ -1,5 +1,3 @@
-extern crate cmd_parser;
-
 use std::env::current_exe;
 use std::env::var_os;
 use std::io::Write;

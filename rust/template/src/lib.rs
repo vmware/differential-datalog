@@ -12,45 +12,6 @@
     clippy::redundant_closure // Broken in 1.34
 )]
 
-extern crate differential_dataflow;
-extern crate fnv;
-extern crate num_traits;
-extern crate timely;
-
-#[macro_use]
-extern crate lazy_static;
-
-#[macro_use]
-extern crate serde;
-extern crate libc;
-extern crate twox_hash;
-
-#[macro_use]
-extern crate differential_datalog;
-extern crate distributed_datalog;
-
-extern crate abomonation;
-extern crate ddlog_ovsdb_adapter;
-
-#[cfg(feature = "flatbuf")]
-extern crate flatbuffers;
-
-use differential_dataflow::collection;
-use timely::communication;
-use timely::dataflow::scopes;
-use timely::worker;
-
-use abomonation::Abomonation;
-use differential_datalog::arcval;
-use differential_datalog::int::*;
-use differential_datalog::program::*;
-use differential_datalog::record;
-use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
-use differential_datalog::uint::*;
-
-use fnv::{FnvHashMap, FnvHashSet};
-use libc::size_t;
-use num_traits::identities::One;
 use std::borrow;
 use std::boxed;
 use std::ffi;
@@ -67,6 +28,33 @@ use std::os::unix;
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::ptr;
 use std::sync;
+
+use differential_dataflow::collection;
+use timely::communication;
+use timely::dataflow::scopes;
+use timely::worker;
+
+use serde::Deserialize;
+use serde::Serialize;
+
+use abomonation::Abomonation;
+use differential_datalog::arcval;
+use differential_datalog::decl_enum_into_record;
+use differential_datalog::decl_record_mutator_enum;
+use differential_datalog::decl_record_mutator_struct;
+use differential_datalog::decl_record_mutator_val_enum;
+use differential_datalog::decl_struct_into_record;
+use differential_datalog::decl_val_enum_into_record;
+use differential_datalog::int::*;
+use differential_datalog::program::*;
+use differential_datalog::record;
+use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
+use differential_datalog::uint::*;
+
+use fnv::{FnvHashMap, FnvHashSet};
+use lazy_static::lazy_static;
+use libc::size_t;
+use num_traits::identities::One;
 
 pub mod api;
 pub mod ovsdb;
