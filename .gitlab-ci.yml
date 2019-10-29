@@ -40,8 +40,6 @@ test-server_api:
 test-simple:
     script:
     - stack --no-terminal test --ta "-p simple"
-    - apt-get update
-    - apt-get install --assume-yes libgoogle-perftools-dev
     - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
 
 test-modules:

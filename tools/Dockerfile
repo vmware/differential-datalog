@@ -14,7 +14,8 @@ RUN apt-get update &&   \
     python-pip          \
     autoconf            \
     libtool             \
-    libssl-dev
+    libssl-dev          \
+    libgoogle-perftools-dev
 
 # Install haskell stack
 RUN wget -qO- https://get.haskellstack.org/ | sh
