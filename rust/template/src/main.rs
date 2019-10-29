@@ -18,8 +18,8 @@ use differential_datalog::record::*;
 use rustop::opts;
 use time::precise_time_ns;
 
-// uncomment to enable profiling
-//use cpuprofiler::PROFILER;
+#[cfg(feature = "profile")]
+use cpuprofiler::PROFILER;
 
 #[allow(clippy::let_and_return)]
 fn handle_cmd(
@@ -37,8 +37,15 @@ fn handle_cmd(
     .and(match cmd {
         Command::Start => hddlog.transaction_start(),
         Command::Commit(record_delta) => {
-            // uncomment to enable profiling
-            // PROFILER.lock().unwrap().start("./prof.profile").expect("Couldn't start profiling");
+            #[cfg(feature = "profile")]
+            {
+                PROFILER
+                    .lock()
+                    .unwrap()
+                    .start("./prof.profile")
+                    .expect("Couldn't start profiling");
+            }
+
             let res = if record_delta {
                 hddlog.transaction_commit_dump_changes().map(|changes| {
                     if print_deltas {
@@ -59,7 +66,15 @@ fn handle_cmd(
             } else {
                 hddlog.transaction_commit()
             };
-            //PROFILER.lock().unwrap().stop().expect("Couldn't stop profiler");
+
+            #[cfg(feature = "profile")]
+            {
+                PROFILER
+                    .lock()
+                    .unwrap()
+                    .stop()
+                    .expect("Couldn't stop profiler");
+            }
             res
         }
         Command::Comment => Ok(()),
