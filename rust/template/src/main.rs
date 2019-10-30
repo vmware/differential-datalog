@@ -6,7 +6,6 @@
 
 use std::io::stdout;
 use std::io::Write;
-use std::process::exit;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -28,7 +27,7 @@ fn handle_cmd(
     interactive: bool,
     upds: &mut Vec<Update<Value>>,
     cmd: Command,
-) -> (i32, bool) {
+) -> (Result<(), String>, bool) {
     let resp = (if !is_upd_cmd(&cmd) {
         apply_updates(hddlog, upds)
     } else {
@@ -102,8 +101,11 @@ fn handle_cmd(
         Command::Dump(Some(rname)) => {
             let relid = match output_relname_to_id(&rname) {
                 None => {
-                    eprintln!("Error: Unknown output relation {}", rname);
-                    return (-1, interactive);
+                    let err = format!("Unknown output relation {}", rname);
+                    if interactive {
+                        eprintln!("Error: {}", err);
+                    }
+                    return (Err(err), interactive);
                 }
                 Some(rid) => rid as RelId,
             };
@@ -116,15 +118,18 @@ fn handle_cmd(
         Command::Clear(rname) => {
             let relid = match input_relname_to_id(&rname) {
                 None => {
-                    eprintln!("Error: Unknown input relation {}", rname);
-                    return (-1, interactive);
+                    let err = format!("Unknown input relation {}", rname);
+                    if interactive {
+                        eprintln!("Error: {}", err);
+                    }
+                    return (Err(err), interactive);
                 }
                 Some(rid) => rid as RelId,
             };
             hddlog.clear_relation(relid)
         }
         Command::Exit => {
-            return (0, false);
+            return (Ok(()), false);
         }
         Command::Echo(txt) => {
             println!("{}", txt);
@@ -135,8 +140,10 @@ fn handle_cmd(
                 Ok(u) => upds.push(u),
                 Err(e) => {
                     upds.clear();
-                    eprintln!("Error: {}", e);
-                    return (-1, interactive);
+                    if interactive {
+                        eprintln!("Error: {}", e);
+                    }
+                    return (Err(e), interactive);
                 }
             };
             if last {
@@ -147,10 +154,12 @@ fn handle_cmd(
         }
     });
     match resp {
-        Ok(_) => (0, true),
+        Ok(_) => (Ok(()), true),
         Err(e) => {
-            eprintln!("Error: {}", e);
-            (-1, interactive)
+            if interactive {
+                eprintln!("Error: {}", e);
+            }
+            (Err(e), interactive)
         }
     }
 }
@@ -170,9 +179,9 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-fn run(mut hddlog: HDDlog, print_deltas: bool) -> i32 {
+fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
-    let ret = interact(|cmd, interactive| {
+    interact(|cmd, interactive| {
         handle_cmd(
             &hddlog,
             print_deltas,
@@ -180,19 +189,13 @@ fn run(mut hddlog: HDDlog, print_deltas: bool) -> i32 {
             &mut upds.lock().unwrap(),
             cmd,
         )
-    });
-    let stop_res = hddlog.stop();
-    if ret != 0 {
-        ret
-    } else if stop_res.is_err() {
-        -1
-    } else {
-        0
-    }
+    })?;
+
+    hddlog.stop()
 }
 
 #[allow(clippy::redundant_closure)]
-fn main_impl() -> i32 {
+fn main() -> Result<(), String> {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
@@ -204,8 +207,7 @@ fn main_impl() -> i32 {
     let (args, rest) = parser.parse_or_exit();
 
     if !rest.is_empty() || args.workers == 0 {
-        eprintln!("Invalid command line arguments; try -h for help");
-        return 1;
+        return Err("Invalid command line arguments; try -h for help".to_string());
     }
 
     fn record_upd(table: usize, rec: &Record, w: isize) {
@@ -222,13 +224,6 @@ fn main_impl() -> i32 {
 
     match HDDlog::run(args.workers, args.store, cb) {
         Ok(hddlog) => run(hddlog, args.delta),
-        Err(err) => {
-            eprintln!("Failed to run differential datalog: {}", err);
-            1
-        }
+        Err(err) => Err(format!("Failed to run differential datalog: {}", err)),
     }
-}
-
-pub fn main() {
-    exit(main_impl())
 }

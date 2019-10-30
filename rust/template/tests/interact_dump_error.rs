@@ -6,14 +6,14 @@ use cmd_parser::Command;
 
 mod common;
 
-fn handler(command: Command, interactive: bool) -> (i32, bool) {
+fn handler(command: Command, interactive: bool) -> (Result<(), String>, bool) {
     match command {
         // We return `true` ("continue") on this path and verify that we
         // actually hit the exit command (i.e., we don't exit when
         // returning an error.
-        Command::Dump(_) => (-1, true),
-        Command::Exit => (42, false),
-        _ => (0, interactive),
+        Command::Dump(_) => (Err("unexpected dump command".to_string()), true),
+        Command::Exit => (Ok(()), false),
+        _ => (Err("unexpected command".to_string()), interactive),
     }
 }
 
@@ -22,5 +22,5 @@ fn interact_dump_error() {
     let input = b"\
 dump NonExistantRelation;
 exit;";
-    assert_eq!(common::run_interact_test(input, handler), 42)
+    assert_eq!(common::run_interact_test(input, handler), Ok(()))
 }
