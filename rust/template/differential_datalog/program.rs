@@ -1485,9 +1485,7 @@ impl<V: Val> Program<V> {
                 ProgNode::Apply { .. } => vec![],
                 ProgNode::SCC { rels: rs } => {
                     for r in rs {
-                        if r.input {
-                            panic!("input relation in SCC");
-                        };
+                        assert!(!r.input, "input relation ({}) in SCC", r.name);
                     }
                     vec![]
                 }

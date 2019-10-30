@@ -356,6 +356,64 @@ fn test_multiple_stops() {
     running.stop().unwrap();
 }
 
+/// Test that we can attempt to insert a value into a non-existent
+/// relation and fail gracefully.
+#[test]
+fn test_insert_non_existent_relation() {
+    let prog: Program<Value> = Program {
+        nodes: vec![],
+        init_data: vec![],
+    };
+
+    let mut running = prog.run(3).unwrap();
+    running.transaction_start().unwrap();
+    let result = running.insert(1, Value::u64(42));
+    assert_eq!(
+        &result.unwrap_err(),
+        "apply_updates: unknown input relation 1"
+    );
+    running.transaction_commit().unwrap();
+}
+
+#[test]
+#[should_panic(expected = "input relation (ancestor) in SCC")]
+fn test_input_relation_nested() {
+    let parent = {
+        Relation {
+            name: "parent".to_string(),
+            input: true,
+            distinct: true,
+            key_func: None,
+            id: 1,
+            rules: Vec::new(),
+            arrangements: vec![],
+            change_cb: None,
+        }
+    };
+    let ancestor = Relation {
+        name: "ancestor".to_string(),
+        input: true,
+        distinct: true,
+        key_func: None,
+        id: 2,
+        rules: vec![],
+        arrangements: vec![],
+        change_cb: None,
+    };
+    let prog: Program<Value> = Program {
+        nodes: vec![
+            ProgNode::Rel { rel: parent },
+            ProgNode::SCC {
+                rels: vec![ancestor],
+            },
+        ],
+        init_data: vec![],
+    };
+
+    // This call is expected to panic.
+    let _err = prog.run(3).unwrap_err();
+}
+
 /* Test insertion/deletion into a database with a single table and no rules
  */
 fn test_one_relation(nthreads: usize) {
