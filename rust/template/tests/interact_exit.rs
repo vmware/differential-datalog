@@ -6,14 +6,14 @@ use cmd_parser::Command;
 
 mod common;
 
-fn handler(command: Command, interactive: bool) -> (i32, bool) {
+fn handler(command: Command, interactive: bool) -> (Result<(), String>, bool) {
     match command {
-        Command::Exit => (42, false),
-        _ => (0, interactive),
+        Command::Exit => (Ok(()), false),
+        _ => (Err("unexpected command".to_string()), interactive),
     }
 }
 
 #[test]
 fn interact_exit() {
-    assert_eq!(common::run_interact_test(br#"exit;"#, handler), 42)
+    assert_eq!(common::run_interact_test(br#"exit;"#, handler), Ok(()))
 }

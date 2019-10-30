@@ -3,7 +3,8 @@
 mod parse;
 
 use std::io;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
+use std::io::BufReader;
 
 pub use parse::*;
 
@@ -20,9 +21,9 @@ enum Input {
 }
 
 /// Parse commands from stdio.
-pub fn interact<F>(cb: F) -> i32
+pub fn interact<F>(cb: F) -> Result<(), String>
 where
-    F: Fn(Command, bool) -> (i32, bool),
+    F: Fn(Command, bool) -> (Result<(), String>, bool),
 {
     let mut buf: Vec<u8> = Vec::new();
 
@@ -55,12 +56,11 @@ where
                     Err(ReadlineError::Eof) => {
                         println!("CTRL-D");
                         save_history(&rl);
-                        return 0;
+                        return Ok(());
                     }
                     Err(err) => {
-                        println!("Error: {:?}", err);
                         save_history(&rl);
-                        return -1;
+                        return Err(format!("Readline failure: {}", err));
                     }
                 }
             }
@@ -69,12 +69,11 @@ where
                 let res = reader.read_line(&mut line);
                 match res {
                     Ok(0) => {
-                        return 0;
+                        return Ok(());
                     }
                     Ok(_) => {}
-                    Err(e) => {
-                        eprintln!("Failed to read stdin: {}", e);
-                        return -1;
+                    Err(err) => {
+                        return Err(format!("Failed to read stdin: {}", err));
                     }
                 };
                 line
@@ -87,9 +86,9 @@ where
             let interactive = istty;
             let (rest, more) = match parse_command(buf.as_slice()) {
                 Ok((rest, cmd)) => {
-                    let (status, cont) = cb(cmd, interactive);
+                    let (result, cont) = cb(cmd, interactive);
                     if !cont {
-                        return status;
+                        return result;
                     };
                     let rest = rest.to_owned();
                     let more = !rest.is_empty();
@@ -97,9 +96,11 @@ where
                 }
                 Err(Err::Incomplete(_)) => (None, false),
                 Err(e) => {
-                    eprintln!("Invalid input: {}, ", err_str(&e));
+                    let err = format!("Invalid input: {}, ", err_str(&e));
                     if !istty {
-                        return -1;
+                        return Err(err);
+                    } else {
+                        eprintln!("{}", err);
                     };
                     (Some(Vec::new()), false)
                     //return -1;
