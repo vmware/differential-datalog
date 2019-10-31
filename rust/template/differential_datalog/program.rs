@@ -1050,9 +1050,9 @@ impl<V: Val> Program<V> {
         let progress_lock = Arc::new(RwLock::new(0));
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
-        let h = thread::spawn(move ||
+        let h = thread::spawn(move || {
             /* start up timely computation */
-            timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| {
+            timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker_index = worker.index();
                 let probe = probe::Handle::new();
                 {
@@ -1086,7 +1086,7 @@ impl<V: Val> Program<V> {
                     });
 
                     let rx = rx.clone();
-                    let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| {
+                    let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
                         let mut sessions : FnvHashMap<RelId, InputSession<TS, V, Weight>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
@@ -1132,14 +1132,12 @@ impl<V: Val> Program<V> {
                                      * updated collections returned from the inner scope. */
                                     for r in rels.iter() {
                                         let (session, collection) = outer.new_collection::<V,Weight>();
-                                        if r.input {
-                                            panic!("input relation in nested scope: {}", r.name)
-                                        }
+                                        assert!(!r.input, "input relation in nested scope: {}", r.name);
                                         sessions.insert(r.id, session);
                                         collections.insert(r.id, collection);
                                     };
                                     /* create a nested scope for mutually recursive relations */
-                                    let new_collections = outer.scoped("recursive component", |inner| {
+                                    let new_collections = outer.scoped("recursive component", |inner| -> Result<_, String> {
                                         /* create variables for relations defined in the SCC. */
                                         let mut vars = FnvHashMap::default();
                                         /* arrangements created inside the nested scope */
@@ -1149,7 +1147,11 @@ impl<V: Val> Program<V> {
                                         /* collections entered from global scope */
                                         let mut inner_collections = FnvHashMap::default();
                                         for r in rels.iter() {
-                                            vars.insert(r.id, Variable::from(&collections.get(&r.id).unwrap().enter(inner), &r.name));
+                                            let var = Variable::from(&collections
+                                                .get(&r.id)
+                                                .ok_or_else(|| format!("failed to find collection with relation ID {}", r.id))?
+                                                .enter(inner), &r.name);
+                                            vars.insert(r.id, var);
                                         };
                                         /* create arrangements */
                                         for rel in rels {
@@ -1159,7 +1161,7 @@ impl<V: Val> Program<V> {
                                                     with_prof_context(
                                                         &format!("local {}", arr.name()),
                                                         ||local_arrangements.insert((rel.id, i),
-                                                                                    arr.build_arrangement(vars.get(&rel.id).unwrap().deref())));
+                                                                                    arr.build_arrangement(vars.get(&rel.id)?.deref())));
                                                 }
                                             }
                                         };
@@ -1167,17 +1169,19 @@ impl<V: Val> Program<V> {
                                             match dep {
                                                 Dep::Rel(relid) => {
                                                     assert!(!vars.contains_key(&relid));
-                                                    inner_collections.insert(relid,
-                                                                             collections
-                                                                             .get(&relid)
-                                                                             .unwrap()
-                                                                             .enter(inner));
+                                                    let collection = collections
+                                                                         .get(&relid)
+                                                                         .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
+                                                                         .enter(inner);
+
+                                                    inner_collections.insert(relid, collection);
                                                 },
                                                 Dep::Arr(arrid) => {
-                                                    inner_arrangements.insert(arrid,
-                                                                              arrangements.get(&arrid)
+                                                    let arrangement = arrangements.get(&arrid)
                                                                               .unwrap_or_else(|| panic!("Arr: unknown arrangement {:?}", arrid))
-                                                                              .enter(inner));
+                                                                              .enter(inner);
+
+                                                    inner_arrangements.insert(arrid, arrangement);
                                                 }
                                             }
                                         };
@@ -1189,17 +1193,26 @@ impl<V: Val> Program<V> {
                                                     |rid| vars.get(&rid).map(|v|&(**v)).or_else(|| inner_collections.get(&rid)),
                                                     Arrangements{arrangements1: &local_arrangements,
                                                                  arrangements2: &inner_arrangements});
-                                                vars.get_mut(&rel.id).unwrap().add(&c);
+                                                vars
+                                                    .get_mut(&rel.id)
+                                                    .ok_or_else(|| format!("no variable found for relation ID {}", rel.id))?
+                                                    .add(&c);
                                             };
                                             /* var.distinct() will be called automatically by var.drop() */
                                         };
                                         /* bring new relations back to the outer scope */
                                         let mut new_collections = FnvHashMap::default();
                                         for rel in rels {
-                                            new_collections.insert(rel.id, vars.get(&rel.id).unwrap().leave());
+                                            let collection = vars
+                                                .get(&rel.id)
+                                                .ok_or_else(|| format!("no variable found for relation ID {}", rel.id))?
+                                                .leave();
+
+                                            new_collections
+                                                .insert(rel.id, collection);
                                         };
-                                        new_collections
-                                    });
+                                        Ok(new_collections)
+                                    })?;
                                     /* add new collections to the map */
                                     collections.extend(new_collections);
                                     /* create arrangements */
@@ -1209,7 +1222,14 @@ impl<V: Val> Program<V> {
                                             if prog.arrangement_used_by_nodes((rel.id, i)).iter().any(|n|*n != nodeid) {
                                                 with_prof_context(
                                                     &format!("global {}", arr.name()),
-                                                    ||arrangements.insert((rel.id, i), arr.build_arrangement(collections.get(&rel.id).unwrap())));
+                                                    || -> Result<_, String> {
+                                                        let collection = collections
+                                                            .get(&rel.id)
+                                                            .ok_or_else(|| format!("no collection found for relation ID {}", rel.id))?;
+
+                                                        Ok(arrangements.insert((rel.id, i), arr.build_arrangement(collection)))
+                                                    }
+                                                )?;
                                             }
                                         };
                                     };
@@ -1232,8 +1252,8 @@ impl<V: Val> Program<V> {
                                 }
                             }
                         };
-                        sessions
-                    });
+                        Ok(sessions)
+                    })?;
                     //println!("worker {} started", worker.index());
 
                     let mut epoch: TS = 0;
@@ -1241,12 +1261,15 @@ impl<V: Val> Program<V> {
                     // feed initial data to sessions
                     if worker_index == 0 {
                         for (relid, v) in prog.init_data.iter() {
-                            all_sessions.get_mut(relid).unwrap().update(v.clone(), 1);
+                            all_sessions
+                              .get_mut(relid)
+                              .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                              .update(v.clone(), 1);
                         }
                         epoch += 1;
                         Self::advance(&mut all_sessions, epoch);
                         Self::flush(&mut all_sessions, &probe, worker, &*progress_lock, &progress_barrier);
-                        flush_ack_send.send(()).unwrap();
+                        flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
                     // close session handles for non-input sessions
@@ -1269,10 +1292,16 @@ impl<V: Val> Program<V> {
                                     for update in updates.drain(..) {
                                         match update {
                                             Update::Insert{relid, v} => {
-                                                sessions.get_mut(&relid).unwrap().update(v, 1);
+                                                sessions
+                                                  .get_mut(&relid)
+                                                  .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                                                  .update(v, 1);
                                             },
                                             Update::DeleteValue{relid, v} => {
-                                                sessions.get_mut(&relid).unwrap().update(v, -1);
+                                                sessions
+                                                  .get_mut(&relid)
+                                                  .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                                                  .update(v, -1);
                                             },
                                             Update::DeleteKey{..} => {
                                                 // workers don't know about keys
@@ -1291,7 +1320,7 @@ impl<V: Val> Program<V> {
                                     //println!("flushing");
                                     Self::flush(&mut sessions, &probe, worker, &progress_lock, &progress_barrier);
                                     //println!("flushed");
-                                    flush_ack_send.send(()).unwrap();
+                                    flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
                                 },
                                 Ok(Msg::Stop) => {
                                     Self::stop_workers(&progress_lock, &progress_barrier);
@@ -1306,18 +1335,20 @@ impl<V: Val> Program<V> {
                         progress_barrier.wait();
                         let time = *progress_lock.read().unwrap();
                         if time == /*0xffffffffffffffff*/TS::max_value() {
-                            return
+                            return Ok(())
                         };
                         while probe.less_than(&time) {
                             if !worker.step() {
-                                return
+                                return Ok(())
                             };
                         };
                         progress_barrier.wait();
                     }
                 }
+                Ok(())
             }
-        ).map(|g| {g.join();}));
+        ).map(|g| {g.join();})
+        });
 
         //println!("timely computation started");
 
@@ -1349,7 +1380,9 @@ impl<V: Val> Program<V> {
             }
         }
         /* Wait for the initial transaction to complete */
-        flush_ack_recv.recv().unwrap();
+        flush_ack_recv
+            .recv()
+            .map_err(|e| format!("failed to receive ACK: {}", e))?;
 
         Ok(RunningProgram {
             sender: tx,
