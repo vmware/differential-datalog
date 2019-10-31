@@ -1,6 +1,10 @@
 default:
     image: ddlog/gitlab-ci:latest
 
+# controls differential dataflow's eager compaction behavior
+variables:
+    DIFFERENTIAL_EAGER_MERGE: 100000
+
 # Template for tests that expect ddlog to be in the $PATH.
 .install-ddlog:
     before_script:
