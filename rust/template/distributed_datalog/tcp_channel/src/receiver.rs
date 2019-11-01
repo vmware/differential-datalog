@@ -270,12 +270,31 @@ mod tests {
     /// `TcpReceiver` is dropped but has never accepted a connection.
     #[test]
     fn never_accepted() {
-        let addr = {
-            let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
-            recv.addr().clone()
+        let test = || {
+            let addr = {
+                let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+                recv.addr().clone()
+            };
+
+            TcpStream::connect(addr)
         };
 
-        let err = TcpStream::connect(addr).unwrap_err();
-        assert_eq!(err.kind(), ErrorKind::ConnectionRefused);
+        // There is a teeny-tiny chance that a test running in parallel
+        // gets assigned the very same port we were using between the
+        // drop of the `TcpReceiver` and the `TcpStream::connect`. To
+        // prevent this unlikely collision from causing a flaky test we
+        // retry if we did indeed succeed to connect.
+        for _ in 1..10 {
+            match test() {
+                Ok(_) => continue,
+                Err(e) => {
+                    if e.kind() == ErrorKind::ConnectionRefused {
+                        break;
+                    } else {
+                        panic!("unexpected error")
+                    }
+                }
+            }
+        }
     }
 }
