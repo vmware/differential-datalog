@@ -2,7 +2,6 @@
 
 - GitLab mirror of the DDlog repo (required for integration with GitLab CI):
     - https://gitlab.com/ddlog/differential-datalog
-    - TODO: Add a webhook to the github repo to trigger GitLab sync
 
 - Docker container for GitLab CI
     - Docker Hub organization to host GitLab CI container images:
@@ -21,7 +20,8 @@
         - Switching to a different JDK
       - Upon success, the script prints a command line to upload the image
         to Docker Hub.
-
+    - To clean Docker cache when it starts to take too much space:
+        `docker system prune -a`
 - GitLab CI script:
     - `.gitlab-ci.yml`
 
@@ -74,7 +74,6 @@ check_interval = 0
   [runners.cache]
     [runners.cache.s3]
     [runners.cache.gcs]
-
 ```
 
 ## Creating a GitLab mirror for your own fork of DDlog
@@ -88,18 +87,11 @@ the main DDlog repo.
 - Click `New Project`.
 - Choose `CI/CD for external repo` project type.
 - Specify your fork of `differential-datalog` as the repository to import.
-- That's it. GitLab should now automatically pick up your changes during
-  the next periodic scan (every 30 minutes).
-  <!--To kick off the CI pipeline
-  instantly, go to `Settings->Repository->Mirroring repositories` and click
-  `Update now`.-->
-  You can see the status of the CI pipeline under the `CI/CD` tab.
+- That's it. GitLab should now automatically pick up your changes and start the
+  CI pipeline.
 - In order to use VMware-hosted GitLab runners, you need to transfer the
   mirror to the DDlog organization.  To do this, first change the path
   to the mirror (under `Settings->General->Advanced->Change path`)
   from `differential-datalog` to, e.g., `differential-datalog-user-name`
   and then use `Settings->General->Advanced->Transfer project` to move
   the project to the DDlog org (you must become an owner of the org first).
-
-<!-- TODO: Figure out how to add a webhook to start GitLab CI tests instantly.
--->
