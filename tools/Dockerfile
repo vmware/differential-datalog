@@ -12,6 +12,8 @@ RUN apt-get update &&   \
     subversion          \
     python              \
     python-pip          \
+    python3             \
+    python3-pip         \
     autoconf            \
     libtool             \
     libssl-dev
@@ -42,3 +44,5 @@ RUN pip install     \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF8"
+
+RUN apt-get install -y time

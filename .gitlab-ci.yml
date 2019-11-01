@@ -155,8 +155,8 @@ test-ovn-northd:
     script:
         # TODO: use main OVS repo once these changes are there.
         - (cd /root &&
-          git clone https://github.com/numansiddique/ovs.git &&
-          cd ovs && git checkout ovs_ddlog_patches &&
+          git clone https://github.com/openvswitch/ovs.git &&
+          cd ovs && git checkout ovn-ddlog-patches &&
           ./boot.sh &&
           ./configure  &&
           make -j6)
@@ -166,5 +166,7 @@ test-ovn-northd:
           git clone https://github.com/ovn-org/ovn.git &&
           cd ovn && git checkout ddlog-dev-v2 &&
           ./boot.sh &&
-          ./configure --with-ddlog=/root/.local/ddlog/lib --with-ovs-source=/root/ovs &&
+          ./configure --with-ddlog=/root/.local/ddlog/lib --with-ovs-source=/root/ovs --enable-ddlog-northd-cli &&
           make check -j1 TESTSUITEFLAGS="117-135 138-141 143-145 147-149 151-152 154-161 167-169 172 174-181 183-185 187-189 191 193-196 198-199 201-202")
+        - (git clone https://github.com/ddlog-dev/ovn-test-data.git &&
+          /usr/bin/time /root/ovn/northd/ovn_northd_ddlog/target/release/ovn_northd_cli -w 2 --no-store --no-print --no-delta < ovn-test-data/ovn_scale_test_short.dat)
