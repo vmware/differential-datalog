@@ -17,6 +17,7 @@ RUN apt-get update &&   \
     autoconf            \
     libtool             \
     libssl-dev          \
+    time                \
     libgoogle-perftools-dev
 
 # Install haskell stack
@@ -45,5 +46,3 @@ RUN pip install     \
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF8"
-
-RUN apt-get install -y time
