@@ -259,7 +259,8 @@ type TransformerMap<'a, V> =
 /// set, adding new collections.  Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
 /// transformer is monotonic and thus it may not converge if used in a nested scope.
-pub type TransformerFunc<V> = fn() -> Box<dyn for<'a> Fn(&mut TransformerMap<'a, V>)>;
+pub type TransformerFuncRes<V> = Box<dyn for<'a> Fn(&mut TransformerMap<'a, V>)>;
+pub type TransformerFunc<V> = fn() -> TransformerFuncRes<V>;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
 /// a vector of one or more mutually recursive relations.
