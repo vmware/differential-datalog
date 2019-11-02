@@ -1,12 +1,5 @@
 //! TCP implementation of an Observer/Observable channel.
 
-#![allow(clippy::type_complexity)]
-#![warn(
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs
-)]
-
 mod message;
 mod receiver;
 mod sender;

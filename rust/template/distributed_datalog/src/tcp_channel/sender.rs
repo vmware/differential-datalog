@@ -9,7 +9,7 @@ use observe::Observer;
 use bincode::serialize_into;
 use serde::Serialize;
 
-use crate::message::Message;
+use crate::tcp_channel::message::Message;
 
 /// The sending end of a TCP channel with a specified address and a TCP
 /// connection.
