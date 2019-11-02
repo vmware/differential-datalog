@@ -11,17 +11,17 @@ default:
 # Test Rust template only.
 test-rust:
     script:
-        - (cd rust/template/ && cargo fmt --all -- --check)
-        - (cd rust/template/ && cargo clippy --all -- -D warnings)
-        - (cd rust/template/ && cargo test --all)
-        - (cd rust/template/ && (
-            i=0;
-            true;
-            while [ $? -eq 0 -a $i -lt 100 ]; do
-              i=$((i+1));
-              cargo test --package tcp_channel;
-            done
-          ))
+    - (cd rust/template/ && cargo fmt --all -- --check)
+    - (cd rust/template/ && cargo clippy --all -- -D warnings)
+    - (cd rust/template/ && cargo test --all)
+    - (cd rust/template/distributed_datalog && (
+        i=0;
+        true;
+        while [ $? -eq 0 -a $i -lt 100 ]; do
+          i=$((i+1));
+          cargo test -- tcp_channel::;
+        done
+      ))
 
 # Run individual stack-based tests, when possible combining them with Java tests
 # that depend on the same DDlog program.

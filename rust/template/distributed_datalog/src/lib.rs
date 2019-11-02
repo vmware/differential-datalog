@@ -1,3 +1,13 @@
+#![allow(clippy::type_complexity)]
+#![warn(
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs
+)]
+
+//! Distributed computing for differential-datalog.
+
+mod tcp_channel;
 mod txnmux;
 
 pub use observe::Observable;

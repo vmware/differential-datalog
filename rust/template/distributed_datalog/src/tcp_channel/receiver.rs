@@ -27,7 +27,7 @@ use observe::SharedObserver;
 
 use serde::de::DeserializeOwned;
 
-use crate::message::Message;
+use crate::tcp_channel::message::Message;
 
 #[derive(Copy, Clone, Debug)]
 enum Fd {

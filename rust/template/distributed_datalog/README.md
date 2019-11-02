@@ -32,7 +32,7 @@ As it stands that means we have the following components:
   - such an object can also stream changes produced by certain (output)
     relations and these changes can be subscribed to (i.e., such a
     stream is an instance of an `Observable`)
-- a TCP channel (contained in the [`tcp_channel`][tcp_channel] crate)
+- a TCP channel (contained in the [`tcp_channel`][tcp_channel] module)
   comprised of a `TcpSender` (an `Observer`) and a `TcpReceiver` (an
   `Observable`) that can connect two `ddlog` programs (wrapped in
   `DDlogServer` objects) and transfer deltas produced
@@ -53,4 +53,4 @@ dependent crates inside of it) and integration tests are located in the
 [rust-template]: ..
 [server.rs]: ../src/server.rs
 [server_api]: ../../../test/datalog_tests/server_api
-[tcp_channel]: tcp_channel
+[tcp_channel]: src/tcp_channel
