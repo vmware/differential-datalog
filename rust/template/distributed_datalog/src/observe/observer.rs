@@ -180,7 +180,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::test::MockObserver;
+    use crate::observe::test::MockObserver;
 
     /// Test the workings of an `OptionalObserver` with no actual
     /// observer present.

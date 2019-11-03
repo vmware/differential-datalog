@@ -4,11 +4,10 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
 
-use observe::Observer;
-
 use bincode::serialize_into;
 use serde::Serialize;
 
+use crate::observe::Observer;
 use crate::tcp_channel::message::Message;
 
 /// The sending end of a TCP channel with a specified address and a TCP

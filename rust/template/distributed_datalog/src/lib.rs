@@ -7,6 +7,7 @@
 
 //! Distributed computing for differential-datalog.
 
+mod observe;
 mod tcp_channel;
 mod txnmux;
 

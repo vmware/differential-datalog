@@ -1,11 +1,4 @@
-#![warn(
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs
-)]
-
-//! A crate providing a publish-subscribe infrastructure for
-//! differential datalog program.
+//! A publish-subscribe infrastructure for differential-datalog programs.
 
 mod observable;
 mod observer;
@@ -21,5 +14,5 @@ pub use observer::ObserverBox;
 pub use observer::OptionalObserver;
 pub use observer::SharedObserver;
 
-#[cfg(feature = "test")]
+#[cfg(any(test, feature = "test"))]
 pub use test::MockObserver;

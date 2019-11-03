@@ -1,8 +1,0 @@
-[package]
-name = "observe"
-version = "0.1.0"
-edition = "2018"
-
-[features]
-# Expose additional types commonly used only for testing purposes.
-test = []

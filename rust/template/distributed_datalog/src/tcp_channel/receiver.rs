@@ -19,14 +19,13 @@ use libc::SHUT_RDWR;
 
 use log::error;
 
-use observe::Observable;
-use observe::Observer;
-use observe::ObserverBox;
-use observe::OptionalObserver;
-use observe::SharedObserver;
-
 use serde::de::DeserializeOwned;
 
+use crate::observe::Observable;
+use crate::observe::Observer;
+use crate::observe::ObserverBox;
+use crate::observe::OptionalObserver;
+use crate::observe::SharedObserver;
 use crate::tcp_channel::message::Message;
 
 #[derive(Copy, Clone, Debug)]

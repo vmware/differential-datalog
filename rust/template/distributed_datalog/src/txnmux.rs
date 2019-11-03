@@ -3,12 +3,12 @@ use std::collections::LinkedList;
 use std::fmt::Debug;
 use std::mem::replace;
 
-use observe::Observable;
-use observe::ObservableBox;
-use observe::Observer;
-use observe::ObserverBox;
-use observe::OptionalObserver;
-use observe::SharedObserver;
+use crate::observe::Observable;
+use crate::observe::ObservableBox;
+use crate::observe::Observer;
+use crate::observe::ObserverBox;
+use crate::observe::OptionalObserver;
+use crate::observe::SharedObserver;
 
 /// Wrapper around a `SharedObserver` that stores updates and pushes them
 /// forward only when an `on_commit` is received.
@@ -165,7 +165,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::MockObserver;
+    use crate::observe::MockObserver;
 
     /// Test caching of transactions via a `CachingObserver`.
     #[test]
