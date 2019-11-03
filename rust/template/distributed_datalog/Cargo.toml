@@ -5,17 +5,13 @@ edition = "2018"
 
 [dev-dependencies]
 env_logger = {version = "0.6", default_features = false, features = ["humantime"]}
-observe = {path = "observe", features = ["test"]}
 test-env-log = "0.1"
 
 [dependencies]
 bincode = "1.2"
 libc = "0.2"
 log = "0.4"
-observe = {path = "observe"}
 serde = {version = "1.0", features = ["derive"]}
 
 [features]
-# The 'test' feature set on this crate requires the 'test' feature of
-# the `observe` crate being enabled as well.
-test = ["observe/test"]
+test = []

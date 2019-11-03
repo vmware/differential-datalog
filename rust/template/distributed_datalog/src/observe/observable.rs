@@ -1,9 +1,9 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use crate::observer::ObserverBox;
-use crate::observer::OptionalObserver;
-use crate::observer::SharedObserver;
+use crate::observe::observer::ObserverBox;
+use crate::observe::observer::OptionalObserver;
+use crate::observe::observer::SharedObserver;
 
 /// A boxed up `ObservableAny`.
 pub type ObservableBox<T, E> = Box<dyn ObservableAny<T, E> + Send>;
@@ -113,7 +113,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::test::MockObserver;
+    use crate::observe::test::MockObserver;
 
     /// Test subscribing and unsubscribing for an `UpdatesObservable`.
     #[test]

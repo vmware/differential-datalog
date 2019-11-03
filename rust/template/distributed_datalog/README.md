@@ -26,7 +26,7 @@ another (an "observable").
 building blocks we envision to use in the future in a well tested form.
 As it stands that means we have the following components:
 - the `Observable`-`Observer` core-infrastructure itself, residing in
-  the [`observe`][observe] crate
+  the [`observe`][observe] module
 - a `DDlogServer` (residing in [`server.rs`][server.rs] that wraps a
   standard `HDDlog` and adapts it to the `Observer` interface
   - such an object can also stream changes produced by certain (output)
@@ -43,12 +43,11 @@ As it stands that means we have the following components:
 ### Examples & Tests
 **D3log** has unit as well as integration style tests using an actual
 `ddlog` program that serve both as tests and examples on how to use the
-APIs. Unit tests reside along with the individual components (in this or
-dependent crates inside of it) and integration tests are located in the
-[`server_api`][server_api] program.
+APIs. Unit tests reside along with the individual components/module and
+integration tests are located in the [`server_api`][server_api] program.
 
 
-[observe]: observe
+[observe]: src/observe
 [reactivex.io]: http://reactivex.io/documentation/observable.html
 [rust-template]: ..
 [server.rs]: ../src/server.rs
