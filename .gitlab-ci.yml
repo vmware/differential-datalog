@@ -30,11 +30,13 @@ test-tutorial:
 
 test-server_api:
     script:
-    - i=0;
+    - stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"server_api\")"';
+    - cd test/datalog_tests/server_api/;
+      i=0;
       true;
       while [ $? -eq 0 -a $i -lt 100 ]; do
         i=$((i+1));
-        stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || (($(NF-1) == \"compiler tests\" || $(NF-1) == \"unit tests\") && $(NF) == \"server_api\")"';
+        cargo test;
       done
 
 test-simple:
