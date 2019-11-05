@@ -15,11 +15,11 @@ use distributed_datalog::Observer;
 use distributed_datalog::SharedObserver;
 use distributed_datalog::TcpReceiver;
 use distributed_datalog::TcpSender;
+use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
-use server_api_ddlog::server::DDlogServer;
-use server_api_ddlog::server::UpdatesObservable;
+use server_api_ddlog::server::DDlogServer as DDlogServerT;
 use server_api_ddlog::Relations::*;
 use server_api_ddlog::Value;
 
@@ -30,7 +30,9 @@ use test_env_log::test;
 
 use waitfor::wait_for;
 
+type DDlogServer = DDlogServerT<HDDlog>;
 type MockObserver = SharedObserver<Mock>;
+type UpdatesObservable = UpdatesObservableT<Update<Value>, String>;
 
 fn await_expected<F>(mut op: F)
 where
