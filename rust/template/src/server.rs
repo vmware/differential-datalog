@@ -3,8 +3,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
-use differential_datalog::program::{RelId, Response, Update};
-use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
+use differential_datalog::program::Update;
 use distributed_datalog::Observer;
 use distributed_datalog::ObserverBox as ObserverBoxT;
 use distributed_datalog::OptionalObserver;
@@ -60,7 +59,7 @@ impl DDlogServer {
     }
 
     /// Shutdown the DDlog program and notify listeners of completion.
-    pub fn shutdown(&mut self) -> Response<()> {
+    pub fn shutdown(&mut self) -> Result<(), String> {
         // TODO: Right now we may error out early if an observer's
         //       `on_completed` fails. In the future we probably want to push
         //       those errors somewhere and then continue.
@@ -76,7 +75,7 @@ impl DDlogServer {
 
 impl Observer<Update<super::Value>, String> for DDlogServer {
     /// Start a transaction when deltas start coming in.
-    fn on_start(&mut self) -> Response<()> {
+    fn on_start(&mut self) -> Result<(), String> {
         if let Some(ref mut prog) = self.prog {
             prog.transaction_start()?;
 
@@ -91,7 +90,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
 
     /// Commit input deltas to local tables and pass on output deltas to
     /// the listeners on the outlets.
-    fn on_commit(&mut self) -> Response<()> {
+    fn on_commit(&mut self) -> Result<(), String> {
         if let Some(ref mut prog) = self.prog {
             let changes = prog.transaction_commit_dump_changes()?;
             for outlet in &self.outlets {
@@ -138,7 +137,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
     fn on_updates<'a>(
         &mut self,
         updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>,
-    ) -> Response<()> {
+    ) -> Result<(), String> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
                 Update::Insert { relid: relid, v: v } => {
@@ -162,7 +161,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
         }
     }
 
-    fn on_completed(&mut self) -> Response<()> {
+    fn on_completed(&mut self) -> Result<(), String> {
         Ok(())
     }
 }
