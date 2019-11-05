@@ -36,9 +36,14 @@ where
         deltas2.lock().unwrap().push((relation_id, record.clone()));
     })
     .unwrap();
-    let server2 = DDlogServer::new(program2, hashmap! {server_api_1_P1Out => server_api_2_P2In});
+    let server2 = DDlogServer::new(
+        program2,
+        hashmap! {
+            server_api_1_P1Out as usize => server_api_2_P2In as usize,
+        },
+    );
 
-    let mut stream = server1.add_stream(hashset! {server_api_1_P1Out});
+    let mut stream = server1.add_stream(hashset! {server_api_1_P1Out as usize});
     let _data = setup(&mut stream, SharedObserver::new(server2))?;
 
     let updates = &[UpdCmd::Insert(
@@ -131,13 +136,13 @@ where
     })
     .unwrap();
     let redirect = hashmap! {
-        server_api_1_P1Out => server_api_3_P1Out,
-        server_api_2_P2Out => server_api_3_P2Out,
+        server_api_1_P1Out as usize => server_api_3_P1Out as usize,
+        server_api_2_P2Out as usize => server_api_3_P2Out as usize,
     };
     let server3 = DDlogServer::new(program3, redirect);
 
-    let stream1 = server1.add_stream(hashset! {server_api_1_P1Out});
-    let stream2 = server2.add_stream(hashset! {server_api_2_P2Out});
+    let stream1 = server1.add_stream(hashset! {server_api_1_P1Out as usize});
+    let stream2 = server2.add_stream(hashset! {server_api_2_P2Out as usize});
     let _data = setup(stream1, stream2, server3)?;
 
     // Insert updates concurrently to test serialization of

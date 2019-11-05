@@ -3,6 +3,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
+use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use distributed_datalog::Observer;
 use distributed_datalog::ObserverBox as ObserverBoxT;
@@ -18,7 +19,7 @@ pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
 pub struct Outlet {
-    tables: HashSet<super::Relations>,
+    tables: HashSet<RelId>,
     observer: SharedObserver<OptionalObserver<ObserverBox>>,
 }
 
@@ -28,12 +29,12 @@ pub struct Outlet {
 pub struct DDlogServer {
     prog: Option<HDDlog>,
     outlets: Vec<Outlet>,
-    redirect: HashMap<super::Relations, super::Relations>,
+    redirect: HashMap<RelId, RelId>,
 }
 
 impl DDlogServer {
     /// Create a new server with no outlets.
-    pub fn new(prog: HDDlog, redirect: HashMap<super::Relations, super::Relations>) -> Self {
+    pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
         DDlogServer {
             prog: Some(prog),
             outlets: Vec::new(),
@@ -42,7 +43,7 @@ impl DDlogServer {
     }
 
     /// Add a new outlet that streams a subset of the tables.
-    pub fn add_stream(&mut self, tables: HashSet<super::Relations>) -> UpdatesObservable {
+    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> UpdatesObservable {
         let observer = SharedObserver::default();
         let outlet = Outlet {
             tables,
@@ -140,20 +141,14 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
     ) -> Result<(), String> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
-                Update::Insert { relid: relid, v: v } => {
-                    let rel = super::relid2rel(relid).expect("Table not found");
-                    Update::Insert {
-                        relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
-                        v,
-                    }
-                }
-                Update::DeleteValue { relid: relid, v: v } => {
-                    let rel = super::relid2rel(relid).expect("Table not found");
-                    Update::DeleteValue {
-                        relid: *self.redirect.get(&rel).unwrap_or(&rel) as usize,
-                        v,
-                    }
-                }
+                Update::Insert { relid: relid, v: v } => Update::Insert {
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                    v,
+                },
+                Update::DeleteValue { relid: relid, v: v } => Update::DeleteValue {
+                    relid: *self.redirect.get(&relid).unwrap_or(&relid),
+                    v,
+                },
                 update => panic!("Operation {:?} not allowed", update),
             }))
         } else {
