@@ -539,7 +539,7 @@ pub fn updates_from_flatbuf<'a>(
     }
 }
 
-pub fn updates_to_flatbuf(delta: &DeltaMap) -> (Vec<u8>, usize) {
+pub fn updates_to_flatbuf(delta: &DeltaMap<Value>) -> (Vec<u8>, usize) {
     /* Pre-compute size of delta. */
     let mut delta_size: usize = 0;
 

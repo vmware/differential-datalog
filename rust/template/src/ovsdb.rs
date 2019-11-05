@@ -118,8 +118,8 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(
     res
 }
 
-fn dump_delta(
-    db: &mut valmap::DeltaMap,
+fn dump_delta<V: Val + IntoRecord>(
+    db: &mut valmap::DeltaMap<V>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {

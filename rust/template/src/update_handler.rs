@@ -214,18 +214,18 @@ impl<V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler {
  * in a `DeltaMap` and locks the map on every update.
  */
 #[derive(Clone, Debug)]
-pub struct MTValMapUpdateHandler {
-    db: Arc<Mutex<valmap::DeltaMap>>,
+pub struct MTValMapUpdateHandler<V> {
+    db: Arc<Mutex<valmap::DeltaMap<V>>>,
 }
 
-impl MTValMapUpdateHandler {
-    pub fn new(db: Arc<Mutex<valmap::DeltaMap>>) -> Self {
+impl<V> MTValMapUpdateHandler<V> {
+    pub fn new(db: Arc<Mutex<valmap::DeltaMap<V>>>) -> Self {
         Self { db }
     }
 }
 
-impl UpdateHandler<Value> for MTValMapUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn<Value>> {
+impl<V: Val> UpdateHandler<V> for MTValMapUpdateHandler<V> {
+    fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
         let db = self.db.clone();
         Box::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w))
     }
@@ -233,8 +233,8 @@ impl UpdateHandler<Value> for MTValMapUpdateHandler {
     fn after_commit(&self, _success: bool) {}
 }
 
-impl MTUpdateHandler<Value> for MTValMapUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn<Value>> {
+impl<V: Val> MTUpdateHandler<V> for MTValMapUpdateHandler<V> {
+    fn mt_update_cb(&self) -> Box<dyn CBFn<V>> {
         let db = self.db.clone();
         Box::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w as isize))
     }
@@ -246,8 +246,8 @@ impl MTUpdateHandler<Value> for MTValMapUpdateHandler {
  * thread.
  */
 #[derive(Clone, Debug)]
-pub struct ValMapUpdateHandler {
-    db: Arc<Mutex<DeltaMap>>,
+pub struct ValMapUpdateHandler<V> {
+    db: Arc<Mutex<DeltaMap<V>>>,
     /* Stores pointer to `MutexGuard` between `before_commit()` and
      * `after_commit()`.  This has to be unsafe, because Rust does
      * not let us express a borrow from a field of the same struct in a
@@ -255,18 +255,18 @@ pub struct ValMapUpdateHandler {
     locked: Arc<Cell<*mut libc::c_void>>,
 }
 
-impl Drop for ValMapUpdateHandler {
+impl<V> Drop for ValMapUpdateHandler<V> {
     /* Release the mutex if still held. */
     fn drop<'a>(&'a mut self) {
-        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap>;
+        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<V>>;
         if !guard_ptr.is_null() {
-            let _guard: Box<MutexGuard<'_, DeltaMap>> = unsafe { Box::from_raw(guard_ptr) };
+            let _guard: Box<MutexGuard<'_, DeltaMap<V>>> = unsafe { Box::from_raw(guard_ptr) };
         }
     }
 }
 
-impl ValMapUpdateHandler {
-    pub fn new(db: Arc<Mutex<DeltaMap>>) -> Self {
+impl<V> ValMapUpdateHandler<V> {
+    pub fn new(db: Arc<Mutex<DeltaMap<V>>>) -> Self {
         Self {
             db,
             locked: Arc::new(Cell::new(ptr::null_mut())),
@@ -274,16 +274,16 @@ impl ValMapUpdateHandler {
     }
 }
 
-impl UpdateHandler<Value> for ValMapUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn<Value>> {
+impl<V: Val> UpdateHandler<V> for ValMapUpdateHandler<V> {
+    fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
         let handler = self.clone();
         Box::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             /* `update_cb` can also be called during rollback and stop operations.
              * Ignore those. */
             if !guard_ptr.is_null() {
-                let mut guard: Box<MutexGuard<'_, DeltaMap>> =
-                    unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>) };
+                let mut guard: Box<MutexGuard<'_, DeltaMap<V>>> =
+                    unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<V>>) };
                 guard.update(relid, v, w);
                 Box::into_raw(guard);
             }
@@ -297,7 +297,7 @@ impl UpdateHandler<Value> for ValMapUpdateHandler {
     fn after_commit(&self, _success: bool) {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
-        let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>) };
+        let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<V>>) };
         /* Lock will be released when `_guard` goes out of scope. */
     }
 }
@@ -306,24 +306,24 @@ impl UpdateHandler<Value> for ValMapUpdateHandler {
  * rather than complete state.
  */
 #[derive(Clone, Debug)]
-pub struct DeltaUpdateHandler {
+pub struct DeltaUpdateHandler<V> {
     /* Setting the `DeltaMap` to `None` disables recording. */
-    db: Arc<Mutex<Option<DeltaMap>>>,
+    db: Arc<Mutex<Option<DeltaMap<V>>>>,
     locked: Arc<Cell<*mut libc::c_void>>,
 }
 
-impl Drop for DeltaUpdateHandler {
+impl<V> Drop for DeltaUpdateHandler<V> {
     /* Release the mutex if still held. */
     fn drop<'a>(&'a mut self) {
-        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap>;
+        let guard_ptr = self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<V>>;
         if !guard_ptr.is_null() {
-            let _guard: Box<MutexGuard<'_, DeltaMap>> = unsafe { Box::from_raw(guard_ptr) };
+            let _guard: Box<MutexGuard<'_, DeltaMap<V>>> = unsafe { Box::from_raw(guard_ptr) };
         }
     }
 }
 
-impl DeltaUpdateHandler {
-    pub fn new(db: Arc<Mutex<Option<DeltaMap>>>) -> Self {
+impl<V> DeltaUpdateHandler<V> {
+    pub fn new(db: Arc<Mutex<Option<DeltaMap<V>>>>) -> Self {
         Self {
             db,
             locked: Arc::new(Cell::new(ptr::null_mut())),
@@ -331,14 +331,14 @@ impl DeltaUpdateHandler {
     }
 }
 
-impl UpdateHandler<Value> for DeltaUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn<Value>> {
+impl<V: Val> UpdateHandler<V> for DeltaUpdateHandler<V> {
+    fn update_cb(&self) -> Box<dyn ST_CBFn<V>> {
         let handler = self.clone();
         Box::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             if !guard_ptr.is_null() {
-                let mut guard: Box<MutexGuard<'_, Option<DeltaMap>>> =
-                    unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, Option<DeltaMap>>) };
+                let mut guard: Box<MutexGuard<'_, Option<DeltaMap<V>>>> =
+                    unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, Option<DeltaMap<V>>>) };
                 if let Some(db) = (*guard).as_mut() {
                     db.update(relid, v, w)
                 };
@@ -355,7 +355,7 @@ impl UpdateHandler<Value> for DeltaUpdateHandler {
     fn after_commit(&self, _success: bool) {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
-        let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap>) };
+        let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<V>>) };
         /* Lock will be released when `_guard` goes out of scope. */
     }
 }
