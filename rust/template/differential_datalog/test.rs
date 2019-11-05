@@ -13,6 +13,9 @@
 )]
 
 use std::collections::btree_map::{BTreeMap, Entry};
+use std::fmt;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
@@ -98,6 +101,12 @@ impl Abomonation for Value {}
 impl Default for Value {
     fn default() -> Value {
         Value::bool(false)
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("test::Value")
     }
 }
 

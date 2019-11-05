@@ -13,7 +13,7 @@
 // TODO: single input relation
 
 use std::collections::hash_map;
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::{Add, Deref, Mul};
 use std::result::Result;
@@ -192,6 +192,7 @@ pub trait Val:
     + Serialize
     + DeserializeOwned
     + Debug
+    + Display
     + Abomonation
     + Default
     + Sync
@@ -209,6 +210,7 @@ impl<T> Val for T where
         + Serialize
         + DeserializeOwned
         + Debug
+        + Display
         + Abomonation
         + Default
         + Sync
