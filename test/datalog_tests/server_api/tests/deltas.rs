@@ -5,6 +5,7 @@ use std::thread::spawn;
 use std::time::Duration;
 
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
+use differential_datalog::DDlog;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
 use distributed_datalog::SharedObserver;

@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
+use differential_datalog::DDlog;
 use distributed_datalog::Observer;
 use distributed_datalog::ObserverBox as ObserverBoxT;
 use distributed_datalog::OptionalObserver;
