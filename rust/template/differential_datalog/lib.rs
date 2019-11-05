@@ -1,6 +1,7 @@
 #![allow(clippy::get_unwrap, clippy::type_complexity)]
 
 mod callback;
+mod ddlog;
 mod profile;
 #[cfg(test)]
 mod test;
@@ -19,5 +20,6 @@ pub mod record;
 mod test_record;
 
 pub use callback::Callback;
+pub use ddlog::DDlog;
 pub use valmap::ConvertRelId;
 pub use valmap::DeltaMap;

@@ -29,6 +29,7 @@ serde = { version = "1.0", features = ["derive"] }
 
 [features]
 default = []
+flatbuf = []
 
 [lib]
 name = "differential_datalog"

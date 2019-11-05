@@ -16,6 +16,7 @@ use cmd_parser::*;
 use datalog_example_ddlog::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
+use differential_datalog::DDlog;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 use time::precise_time_ns;

@@ -8,6 +8,7 @@ use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
+use differential_datalog::DDlog;
 use distributed_datalog::MockObserver as Mock;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;

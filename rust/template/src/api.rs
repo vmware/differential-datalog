@@ -2,6 +2,7 @@ use differential_datalog::program::*;
 use differential_datalog::record;
 use differential_datalog::record::IntoRecord;
 use differential_datalog::Callback;
+use differential_datalog::DDlog;
 use differential_datalog::DeltaMap;
 
 use libc::size_t;
@@ -67,13 +68,6 @@ impl HDDlog {
         relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
-    pub fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<HDDlog, String>
-    where
-        F: Callback,
-    {
-        Self::do_run(workers, do_store, CallbackUpdateHandler::new(cb), None)
-    }
-
     pub fn record_commands(&mut self, file: &mut Option<Mutex<fs::File>>) {
         mem::swap(&mut self.replay_file, file);
     }
@@ -100,128 +94,6 @@ impl HDDlog {
             }
         }
         Ok(())
-    }
-
-    pub fn stop(&mut self) -> Result<(), String> {
-        self.prog.lock().unwrap().stop()
-    }
-
-    pub fn transaction_start(&self) -> Result<(), String> {
-        self.record_transaction_start();
-        self.prog.lock().unwrap().transaction_start()
-    }
-
-    pub fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<Value>, String> {
-        self.record_transaction_commit(true);
-        *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
-
-        self.update_handler.before_commit();
-        match (self.prog.lock().unwrap().transaction_commit()) {
-            Ok(()) => {
-                self.update_handler.after_commit(true);
-                let mut delta = self.deltadb.lock().unwrap();
-                Ok(delta.take().unwrap())
-            }
-            Err(e) => {
-                self.update_handler.after_commit(false);
-                Err(e)
-            }
-        }
-    }
-
-    pub fn transaction_commit(&self) -> Result<(), String> {
-        self.record_transaction_commit(false);
-        self.update_handler.before_commit();
-
-        match (self.prog.lock().unwrap().transaction_commit()) {
-            Ok(()) => {
-                self.update_handler.after_commit(true);
-                Ok(())
-            }
-            Err(e) => {
-                self.update_handler.after_commit(false);
-                Err(e)
-            }
-        }
-    }
-
-    pub fn transaction_rollback(&self) -> Result<(), String> {
-        let _ = self.record_transaction_rollback();
-        self.prog.lock().unwrap().transaction_rollback()
-    }
-
-    /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `Value`s.
-     */
-    pub fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
-    where
-        V: Deref<Target = record::UpdCmd>,
-        I: iter::Iterator<Item = V>,
-    {
-        let mut conversion_err = false;
-        let mut msg: Option<String> = None;
-
-        /* Iterate through all updates, but only feed them to `apply_valupdates` until we reach
-         * the first invalid command.
-         * XXX: We must iterate till the end of `upds`, as `ddlog_apply_updates` relies on this to
-         * deallocate all commands.
-         */
-        let res = self.apply_valupdates(upds.flat_map(|u| {
-            if conversion_err {
-                None
-            } else {
-                match updcmd2upd(u.deref()) {
-                    Ok(u) => Some(u),
-                    Err(e) => {
-                        conversion_err = true;
-                        msg = Some(format!("invalid command {:?}: {}", *u, e));
-                        None
-                    }
-                }
-            }
-        }));
-        match msg {
-            Some(e) => Err(e),
-            None => res,
-        }
-    }
-
-    #[cfg(feature = "flatbuf")]
-    pub fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String> {
-        let cmditer = flatbuf::updates_from_flatbuf(buf)?;
-        let upds: Result<Vec<Update<Value>>, String> =
-            cmditer.map(|cmd| Update::from_flatbuf(cmd)).collect();
-        self.apply_valupdates(upds?.into_iter())
-    }
-
-    pub fn apply_valupdates<I: iter::Iterator<Item = Update<Value>>>(
-        &self,
-        upds: I,
-    ) -> Result<(), String> {
-        if let Some(ref f) = self.replay_file {
-            let mut file = f.lock().unwrap();
-            /* Count the number of elements in `upds`. */
-            let mut n = 0;
-
-            let res = self
-                .prog
-                .lock()
-                .unwrap()
-                .apply_updates(upds.enumerate().map(|(i, upd)| {
-                    n += 1;
-                    if i > 0 {
-                        let _ = writeln!(file, ",");
-                    };
-                    record_valupdate(&mut *file, &upd);
-                    upd
-                }));
-            /* Print semicolon if `upds` were not empty. */
-            if n > 0 {
-                let _ = writeln!(file, ";");
-            }
-            res
-        } else {
-            self.prog.lock().unwrap().apply_updates(upds)
-        }
     }
 
     pub fn clear_relation(&self, table: usize) -> Result<(), String> {
@@ -264,6 +136,140 @@ impl HDDlog {
         let rprog = self.prog.lock().unwrap();
         let profile: String = rprog.profile.lock().unwrap().to_string();
         profile
+    }
+}
+
+impl DDlog for HDDlog {
+    type Value = Value;
+
+    fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<Self, String>
+    where
+        Self: Sized,
+        F: Callback,
+    {
+        Self::do_run(workers, do_store, CallbackUpdateHandler::new(cb), None)
+    }
+
+    fn transaction_start(&self) -> Result<(), String> {
+        self.record_transaction_start();
+        self.prog.lock().unwrap().transaction_start()
+    }
+
+    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<Value>, String> {
+        self.record_transaction_commit(true);
+        *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
+
+        self.update_handler.before_commit();
+        match (self.prog.lock().unwrap().transaction_commit()) {
+            Ok(()) => {
+                self.update_handler.after_commit(true);
+                let mut delta = self.deltadb.lock().unwrap();
+                Ok(delta.take().unwrap())
+            }
+            Err(e) => {
+                self.update_handler.after_commit(false);
+                Err(e)
+            }
+        }
+    }
+
+    fn transaction_commit(&self) -> Result<(), String> {
+        self.record_transaction_commit(false);
+        self.update_handler.before_commit();
+
+        match (self.prog.lock().unwrap().transaction_commit()) {
+            Ok(()) => {
+                self.update_handler.after_commit(true);
+                Ok(())
+            }
+            Err(e) => {
+                self.update_handler.after_commit(false);
+                Err(e)
+            }
+        }
+    }
+
+    fn transaction_rollback(&self) -> Result<(), String> {
+        let _ = self.record_transaction_rollback();
+        self.prog.lock().unwrap().transaction_rollback()
+    }
+
+    /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `Value`s.
+     */
+    fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
+    where
+        V: Deref<Target = record::UpdCmd>,
+        I: iter::Iterator<Item = V>,
+    {
+        let mut conversion_err = false;
+        let mut msg: Option<String> = None;
+
+        /* Iterate through all updates, but only feed them to `apply_valupdates` until we reach
+         * the first invalid command.
+         * XXX: We must iterate till the end of `upds`, as `ddlog_apply_updates` relies on this to
+         * deallocate all commands.
+         */
+        let res = self.apply_valupdates(upds.flat_map(|u| {
+            if conversion_err {
+                None
+            } else {
+                match updcmd2upd(u.deref()) {
+                    Ok(u) => Some(u),
+                    Err(e) => {
+                        conversion_err = true;
+                        msg = Some(format!("invalid command {:?}: {}", *u, e));
+                        None
+                    }
+                }
+            }
+        }));
+        match msg {
+            Some(e) => Err(e),
+            None => res,
+        }
+    }
+
+    #[cfg(feature = "flatbuf")]
+    fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String> {
+        let cmditer = flatbuf::updates_from_flatbuf(buf)?;
+        let upds: Result<Vec<Update<Value>>, String> =
+            cmditer.map(|cmd| Update::from_flatbuf(cmd)).collect();
+        self.apply_valupdates(upds?.into_iter())
+    }
+
+    fn apply_valupdates<I>(&self, upds: I) -> Result<(), String>
+    where
+        I: Iterator<Item = Update<Value>>,
+    {
+        if let Some(ref f) = self.replay_file {
+            let mut file = f.lock().unwrap();
+            /* Count the number of elements in `upds`. */
+            let mut n = 0;
+
+            let res = self
+                .prog
+                .lock()
+                .unwrap()
+                .apply_updates(upds.enumerate().map(|(i, upd)| {
+                    n += 1;
+                    if i > 0 {
+                        let _ = writeln!(file, ",");
+                    };
+                    record_valupdate(&mut *file, &upd);
+                    upd
+                }));
+            /* Print semicolon if `upds` were not empty. */
+            if n > 0 {
+                let _ = writeln!(file, ";");
+            }
+            res
+        } else {
+            self.prog.lock().unwrap().apply_updates(upds)
+        }
+    }
+
+    fn stop(&mut self) -> Result<(), String> {
+        self.prog.lock().unwrap().stop()
     }
 }
 
