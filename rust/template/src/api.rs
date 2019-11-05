@@ -30,8 +30,8 @@ use flatbuf::FromFlatBuffer;
 pub struct HDDlog {
     pub prog: Mutex<RunningProgram<Value>>,
     pub update_handler: Box<dyn IMTUpdateHandler<Value>>,
-    pub db: Option<Arc<Mutex<DeltaMap>>>,
-    pub deltadb: Arc<Mutex<Option<DeltaMap>>>,
+    pub db: Option<Arc<Mutex<DeltaMap<Value>>>>,
+    pub deltadb: Arc<Mutex<Option<DeltaMap<Value>>>>,
     pub print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     /* When set, all commands sent to the program are recorded in
      * the specified `.dat` file so that they can be replayed later. */
@@ -107,7 +107,7 @@ impl HDDlog {
         self.prog.lock().unwrap().transaction_start()
     }
 
-    pub fn transaction_commit_dump_changes(&self) -> Result<DeltaMap, String> {
+    pub fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<Value>, String> {
         self.record_transaction_commit(true);
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
 
@@ -276,10 +276,10 @@ impl HDDlog {
     {
         let workers = if workers == 0 { 1 } else { workers };
 
-        let db: Arc<Mutex<DeltaMap>> = Arc::new(Mutex::new(DeltaMap::new()));
+        let db: Arc<Mutex<DeltaMap<Value>>> = Arc::new(Mutex::new(DeltaMap::new()));
         let db2 = db.clone();
 
-        let deltadb: Arc<Mutex<Option<DeltaMap>>> = Arc::new(Mutex::new(None));
+        let deltadb: Arc<Mutex<Option<DeltaMap<_>>>> = Arc::new(Mutex::new(None));
         let deltadb2 = deltadb.clone();
 
         let handler: Box<dyn IMTUpdateHandler<Value>> = {
@@ -323,7 +323,7 @@ impl HDDlog {
         })
     }
 
-    fn db_dump_table<F>(db: &mut DeltaMap, table: libc::size_t, cb: Option<F>)
+    fn db_dump_table<F>(db: &mut DeltaMap<Value>, table: libc::size_t, cb: Option<F>)
     where
         F: Fn(&record::Record) -> bool,
     {

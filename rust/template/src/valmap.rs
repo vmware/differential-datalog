@@ -14,25 +14,25 @@ use super::*;
 /* Stores a set of changes to output tables.
  */
 #[derive(Debug, Default)]
-pub struct DeltaMap {
-    map: BTreeMap<RelId, BTreeMap<Value, isize>>,
+pub struct DeltaMap<V> {
+    map: BTreeMap<RelId, BTreeMap<V, isize>>,
 }
 
-impl AsMut<BTreeMap<RelId, BTreeMap<Value, isize>>> for DeltaMap {
-    fn as_mut(&mut self) -> &mut BTreeMap<RelId, BTreeMap<Value, isize>> {
+impl<V> AsMut<BTreeMap<RelId, BTreeMap<V, isize>>> for DeltaMap<V> {
+    fn as_mut(&mut self) -> &mut BTreeMap<RelId, BTreeMap<V, isize>> {
         &mut self.map
     }
 }
 
-impl AsRef<BTreeMap<RelId, BTreeMap<Value, isize>>> for DeltaMap {
-    fn as_ref(&self) -> &BTreeMap<RelId, BTreeMap<Value, isize>> {
+impl<V> AsRef<BTreeMap<RelId, BTreeMap<V, isize>>> for DeltaMap<V> {
+    fn as_ref(&self) -> &BTreeMap<RelId, BTreeMap<V, isize>> {
         &self.map
     }
 }
 
-impl DeltaMap {
-    pub fn new() -> DeltaMap {
-        DeltaMap {
+impl<V: Val> DeltaMap<V> {
+    pub fn new() -> Self {
+        Self {
             map: BTreeMap::default(),
         }
     }
@@ -77,11 +77,11 @@ impl DeltaMap {
         Ok(())
     }
 
-    pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<Value, isize> {
+    pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<V, isize> {
         self.map.entry(relid).or_insert_with(BTreeMap::default)
     }
 
-    pub fn update(&mut self, relid: RelId, x: &Value, diff: isize) {
+    pub fn update(&mut self, relid: RelId, x: &V, diff: isize) {
         //println!("set_update({}) {:?} {}", rel, *x, insert);
         let entry = self
             .map
