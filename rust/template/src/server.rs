@@ -1,42 +1,49 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::sync::{Arc, Mutex};
 
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
+use differential_datalog::program::Val;
 use differential_datalog::DDlog;
+
 use distributed_datalog::Observer;
-use distributed_datalog::ObserverBox as ObserverBoxT;
+use distributed_datalog::ObserverBox;
 use distributed_datalog::OptionalObserver;
 use distributed_datalog::SharedObserver;
-use distributed_datalog::UpdatesObservable as UpdatesObservableT;
+use distributed_datalog::UpdatesObservable;
 
 use crate::api::HDDlog;
 
-pub type ObserverBox = ObserverBoxT<Update<super::Value>, String>;
-pub type UpdatesObservable = UpdatesObservableT<Update<super::Value>, String>;
-
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
-pub struct Outlet {
+pub struct Outlet<V>
+where
+    V: Val,
+{
     tables: HashSet<RelId>,
-    observer: SharedObserver<OptionalObserver<ObserverBox>>,
+    observer: SharedObserver<OptionalObserver<ObserverBox<Update<V>, String>>>,
 }
 
 /// A DDlog server wraps a DDlog program, and writes deltas to the
 /// outlets. The redirect map redirects input deltas to local tables.
 #[derive(Debug)]
-pub struct DDlogServer {
-    prog: Option<HDDlog>,
-    outlets: Vec<Outlet>,
+pub struct DDlogServer<P>
+where
+    P: DDlog,
+{
+    prog: Option<P>,
+    outlets: Vec<Outlet<P::Value>>,
     redirect: HashMap<RelId, RelId>,
 }
 
-impl DDlogServer {
+impl<P> DDlogServer<P>
+where
+    P: DDlog,
+{
     /// Create a new server with no outlets.
-    pub fn new(prog: HDDlog, redirect: HashMap<RelId, RelId>) -> Self {
-        DDlogServer {
+    pub fn new(prog: P, redirect: HashMap<RelId, RelId>) -> Self {
+        Self {
             prog: Some(prog),
             outlets: Vec::new(),
             redirect,
@@ -44,7 +51,10 @@ impl DDlogServer {
     }
 
     /// Add a new outlet that streams a subset of the tables.
-    pub fn add_stream(&mut self, tables: HashSet<RelId>) -> UpdatesObservable {
+    pub fn add_stream(
+        &mut self,
+        tables: HashSet<RelId>,
+    ) -> UpdatesObservable<Update<P::Value>, String> {
         let observer = SharedObserver::default();
         let outlet = Outlet {
             tables,
@@ -55,7 +65,7 @@ impl DDlogServer {
     }
 
     /// Remove an outlet.
-    pub fn remove_stream(&mut self, stream: UpdatesObservable) {
+    pub fn remove_stream(&mut self, stream: UpdatesObservable<Update<P::Value>, String>) {
         self.outlets
             .retain(|o| !Arc::ptr_eq(&o.observer, &stream.observer));
     }
@@ -75,7 +85,10 @@ impl DDlogServer {
     }
 }
 
-impl Observer<Update<super::Value>, String> for DDlogServer {
+impl<P> Observer<Update<P::Value>, String> for DDlogServer<P>
+where
+    P: Debug + Send + DDlog,
+{
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
         if let Some(ref mut prog) = self.prog {
@@ -138,7 +151,7 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
     /// Apply a series of updates.
     fn on_updates<'a>(
         &mut self,
-        updates: Box<dyn Iterator<Item = Update<super::Value>> + 'a>,
+        updates: Box<dyn Iterator<Item = Update<P::Value>> + 'a>,
     ) -> Result<(), String> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
@@ -162,7 +175,10 @@ impl Observer<Update<super::Value>, String> for DDlogServer {
     }
 }
 
-impl Drop for DDlogServer {
+impl<P> Drop for DDlogServer<P>
+where
+    P: DDlog,
+{
     /// Shutdown the DDlog program and notify listeners of completion.
     fn drop(&mut self) {
         let _ = self.shutdown();
