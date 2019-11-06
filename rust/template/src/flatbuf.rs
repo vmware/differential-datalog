@@ -2,8 +2,8 @@
 
 use super::*;
 use differential_datalog::program::{RelId, Response, Update};
+use differential_datalog::DeltaMap;
 use flatbuffers as fbrt;
-use valmap::DeltaMap;
 
 use std::iter;
 

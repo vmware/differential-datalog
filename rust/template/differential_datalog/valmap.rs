@@ -5,11 +5,11 @@
 #![allow(non_snake_case, dead_code)]
 
 use std::collections::btree_map::{BTreeMap, Entry};
-use std::collections::BTreeSet;
 use std::convert::{AsMut, AsRef};
 use std::io;
 
-use super::*;
+use crate::program::RelId;
+use crate::program::Val;
 
 /// Convert a `RelId` into something else.
 pub trait ConvertRelId {

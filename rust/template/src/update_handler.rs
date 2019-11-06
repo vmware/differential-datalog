@@ -13,7 +13,6 @@
 //!   the update
 //! - all of the above, but processed by a pool of worker threads
 
-use super::valmap::*;
 use super::*;
 
 use std::cell::Cell;
@@ -21,6 +20,9 @@ use std::fmt::{self, Debug, Formatter};
 use std::sync::mpsc::*;
 use std::sync::{Arc, Barrier, Mutex, MutexGuard};
 use std::thread::*;
+
+use differential_datalog::Callback;
+use differential_datalog::DeltaMap;
 
 /* Single-threaded (non-thread-safe callback)
  */
@@ -116,12 +118,6 @@ impl<V: Val> MTUpdateHandler<V> for NullUpdateHandler {
 /* `UpdateHandler` implementation that invokes user-provided closure.
  */
 
-pub trait Callback: 'static + FnMut(usize, &record::Record, isize) + Clone + Send + Sync {}
-impl<CB> Callback for CB where
-    CB: 'static + FnMut(usize, &record::Record, isize) + Clone + Send + Sync
-{
-}
-
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F: Callback> {
     cb: F,
@@ -215,11 +211,11 @@ impl<V: Val + IntoRecord> MTUpdateHandler<V> for ExternCUpdateHandler {
  */
 #[derive(Clone, Debug)]
 pub struct MTValMapUpdateHandler<V> {
-    db: Arc<Mutex<valmap::DeltaMap<V>>>,
+    db: Arc<Mutex<DeltaMap<V>>>,
 }
 
 impl<V> MTValMapUpdateHandler<V> {
-    pub fn new(db: Arc<Mutex<valmap::DeltaMap<V>>>) -> Self {
+    pub fn new(db: Arc<Mutex<DeltaMap<V>>>) -> Self {
         Self { db }
     }
 }

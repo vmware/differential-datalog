@@ -19,7 +19,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/ovsdb.rs");
     println!("cargo:rerun-if-changed=src/server.rs");
     println!("cargo:rerun-if-changed=src/update_handler.rs");
-    println!("cargo:rerun-if-changed=src/valmap.rs");
 
     let lib = "libdatalog_example_ddlog";
 
