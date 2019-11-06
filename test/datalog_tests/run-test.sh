@@ -29,7 +29,7 @@ else
     usage
 fi
 
-CARGOFLAGS="--features=flatbuf"
+CARGOFLAGS+=" --features=flatbuf"
 if [ "x${build}" == "xrelease" ]; then
     CARGOFLAGS="--release ${CARGOFLAGS}"
 elif [ "x${build}" == "xdebug" ]; then
