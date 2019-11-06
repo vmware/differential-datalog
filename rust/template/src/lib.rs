@@ -82,6 +82,16 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
     s1
 }
 
+/// A default implementation of `ConvertRelId` that just forwards calls
+/// to generated functions of equal name.
+pub struct RelIdConverter {}
+
+impl valmap::ConvertRelId for RelIdConverter {
+    fn relid2name(relId: RelId) -> Option<&'static str> {
+        relid2name(relId)
+    }
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template

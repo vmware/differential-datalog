@@ -11,6 +11,12 @@ use std::io;
 
 use super::*;
 
+/// Convert a `RelId` into something else.
+pub trait ConvertRelId {
+    /// Convert a `RelId` into its symbolic name.
+    fn relid2name(relId: RelId) -> Option<&'static str>;
+}
+
 /* Stores a set of changes to output tables.
  */
 #[derive(Debug, Default)]
@@ -37,9 +43,12 @@ impl<V: Val> DeltaMap<V> {
         }
     }
 
-    pub fn format(&self, w: &mut dyn io::Write) -> io::Result<()> {
+    pub fn format<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
+    where
+        R: ConvertRelId,
+    {
         for (relid, relmap) in &self.map {
-            w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
+            w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
             for (val, weight) in relmap {
                 w.write_fmt(format_args!("{}: {}\n", *val, *weight))?;
             }
@@ -56,9 +65,12 @@ impl<V: Val> DeltaMap<V> {
         Ok(())
     }
 
-    pub fn format_as_sets(&self, w: &mut dyn io::Write) -> io::Result<()> {
+    pub fn format_as_sets<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
+    where
+        R: ConvertRelId,
+    {
         for (relid, map) in &self.map {
-            w.write_fmt(format_args!("{:?}:\n", relid2rel(*relid).unwrap()))?;
+            w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
             for (val, weight) in map {
                 w.write_fmt(format_args!("{}\n", *val))?;
                 assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
