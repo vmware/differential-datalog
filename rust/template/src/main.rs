@@ -95,10 +95,11 @@ fn handle_cmd(
             Ok(())
         }
         Command::Dump(None) => {
-            let _ = hddlog
-                .db
-                .as_ref()
-                .map(|db| db.lock().unwrap().format_as_sets(&mut stdout()));
+            let _ = hddlog.db.as_ref().map(|db| {
+                db.lock()
+                    .unwrap()
+                    .format_as_sets::<RelIdConverter>(&mut stdout())
+            });
             Ok(())
         }
         Command::Dump(Some(rname)) => {
