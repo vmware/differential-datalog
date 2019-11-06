@@ -1,11 +1,11 @@
 //! OVSDB JSON interface to RunningProgram
 
 use super::api::{record_update, updcmd2upd, HDDlog};
-use super::valmap;
 use super::{relname2id, Value};
 use ddlog_ovsdb_adapter::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, UpdCmd};
+use differential_datalog::DeltaMap;
 use std::ffi::{CStr, CString};
 use std::io::Write;
 use std::os::raw::{c_char, c_int};
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(
 }
 
 fn dump_delta<V: Val + IntoRecord>(
-    db: &mut valmap::DeltaMap<V>,
+    db: &mut DeltaMap<V>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {
