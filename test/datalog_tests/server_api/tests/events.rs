@@ -9,6 +9,7 @@ use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
 use differential_datalog::DDlog;
+use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::MockObserver as Mock;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
@@ -19,7 +20,6 @@ use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
-use server_api_ddlog::server::DDlogServer as DDlogServerT;
 use server_api_ddlog::Relations::*;
 use server_api_ddlog::Value;
 

@@ -8,6 +8,7 @@
 //! Distributed computing for differential-datalog.
 
 mod observe;
+mod server;
 mod tcp_channel;
 mod txnmux;
 
@@ -18,6 +19,7 @@ pub use observe::ObserverBox;
 pub use observe::OptionalObserver;
 pub use observe::SharedObserver;
 pub use observe::UpdatesObservable;
+pub use server::DDlogServer;
 pub use tcp_channel::TcpReceiver;
 pub use tcp_channel::TcpSender;
 pub use txnmux::TxnMux;

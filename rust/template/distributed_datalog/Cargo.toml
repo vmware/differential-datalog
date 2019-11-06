@@ -3,6 +3,9 @@ name = "distributed_datalog"
 version = "0.1.0"
 edition = "2018"
 
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
 [dev-dependencies]
 env_logger = {version = "0.6", default_features = false, features = ["humantime"]}
 test-env-log = "0.1"
