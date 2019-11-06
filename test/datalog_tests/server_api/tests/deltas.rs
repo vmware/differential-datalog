@@ -7,6 +7,7 @@ use std::time::Duration;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::program::Update;
 use differential_datalog::DDlog;
+use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
 use distributed_datalog::SharedObserver;
@@ -17,7 +18,6 @@ use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
 use server_api_ddlog::api::*;
 use server_api_ddlog::Relations::*;
-use server_api_ddlog::server::DDlogServer as DDlogServerT;
 use server_api_ddlog::Value;
 
 use maplit::hashmap;

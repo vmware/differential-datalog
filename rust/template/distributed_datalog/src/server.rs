@@ -1,19 +1,17 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Formatter};
-use std::sync::{Arc, Mutex};
+use std::fmt::Debug;
+use std::sync::Arc;
 
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use differential_datalog::program::Val;
 use differential_datalog::DDlog;
 
-use distributed_datalog::Observer;
-use distributed_datalog::ObserverBox;
-use distributed_datalog::OptionalObserver;
-use distributed_datalog::SharedObserver;
-use distributed_datalog::UpdatesObservable;
-
-use crate::api::HDDlog;
+use crate::observe::Observer;
+use crate::observe::ObserverBox;
+use crate::observe::OptionalObserver;
+use crate::observe::SharedObserver;
+use crate::observe::UpdatesObservable;
 
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
@@ -115,7 +113,7 @@ where
                         .tables
                         .iter()
                         .flat_map(|table| {
-                            let table = *table as usize;
+                            let table = *table;
                             changes.as_ref().get(&table).map(|t| {
                                 t.iter().map(move |(val, weight)| {
                                     debug_assert!(*weight == 1 || *weight == -1);
@@ -155,11 +153,11 @@ where
     ) -> Result<(), String> {
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
-                Update::Insert { relid: relid, v: v } => Update::Insert {
+                Update::Insert { relid, v } => Update::Insert {
                     relid: *self.redirect.get(&relid).unwrap_or(&relid),
                     v,
                 },
-                Update::DeleteValue { relid: relid, v: v } => Update::DeleteValue {
+                Update::DeleteValue { relid, v } => Update::DeleteValue {
                     relid: *self.redirect.get(&relid).unwrap_or(&relid),
                     v,
                 },

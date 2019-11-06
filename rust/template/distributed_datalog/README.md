@@ -50,6 +50,6 @@ integration tests are located in the [`server_api`][server_api] program.
 [observe]: src/observe
 [reactivex.io]: http://reactivex.io/documentation/observable.html
 [rust-template]: ..
-[server.rs]: ../src/server.rs
+[server.rs]: src/server.rs
 [server_api]: ../../../test/datalog_tests/server_api
 [tcp_channel]: src/tcp_channel
