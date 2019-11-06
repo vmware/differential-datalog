@@ -16,6 +16,7 @@ variables:
 test-rust:
     script:
     - (cd rust/template/ && cargo fmt --all -- --check)
+    - (cd lib && rustfmt *.rs --check)
     - (cd rust/template/ && cargo clippy --all -- -D warnings)
     - (cd rust/template/ && cargo test --all)
     - (cd rust/template/distributed_datalog && (
