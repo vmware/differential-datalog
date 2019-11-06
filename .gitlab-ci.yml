@@ -154,10 +154,13 @@ test-imported-souffle-tests7:
 # Test ovn-northd-ddlog
 test-ovn-northd:
     extends: .install-ddlog
+    # Don't use eager merging, as northd tends to perform many small
+    # transactions, making things slow.
+    variables: {}
     tags:
         - ddlog-ci-2
     script:
-        # TODO: use main OVS repo once these changes are there.
+        # TODO: OVS master once these changes are there.
         - (cd /root &&
           git clone https://github.com/openvswitch/ovs.git &&
           cd ovs && git checkout ovn-ddlog-patches &&
@@ -166,8 +169,9 @@ test-ovn-northd:
           make -j6)
         # TODO: maintain and eventually remove the list of tests.
         # TODO: use -j6 once build script is fixed
+        # TODO: use primary OVN repo
         - (cd /root &&
-          git clone https://github.com/ovn-org/ovn.git &&
+          git clone https://github.com/ryzhyk/ovn.git &&
           cd ovn && git checkout ddlog-dev-v2 &&
           ./boot.sh &&
           ./configure --with-ddlog=/root/.local/ddlog/lib --with-ovs-source=/root/ovs --enable-ddlog-northd-cli &&
