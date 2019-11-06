@@ -20,7 +20,8 @@ differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow
 abomonation = "0.7"
 fnv = "1.0.2"
 #timely = "0.9"
-timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
+#timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
+timely = { git = "https://github.com/ryzhyk/timely-dataflow" }
 libc = "0.2"
 num = { version = "0.2", features = ["serde"] }
 sequence_trie = "0.3"
