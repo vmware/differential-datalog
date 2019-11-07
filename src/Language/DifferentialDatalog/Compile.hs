@@ -125,6 +125,7 @@ cargo specname toml_code crate_types =
 rustProjectDir :: String -> String
 rustProjectDir specname = specname ++ "_ddlog"
 
+-- IMPORTANT: KEEP THIS IN SYNC WITH FILE LIST IN 'build.rs'.
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
     map (mapSnd (BS.unpack)) $
