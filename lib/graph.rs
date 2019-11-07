@@ -21,8 +21,8 @@ where
     S: Scope,
     S::Timestamp: Lattice + Ord,
     V: Val,
-    N: Val,
-    E: Val,
+    N: differential_dataflow::ExchangeData + std::hash::Hash,
+    E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
     LF: Fn((N, N)) -> V + 'static,
 {
@@ -54,8 +54,8 @@ where
     S: Scope,
     S::Timestamp: Lattice + Ord,
     V: Val,
-    N: Val,
-    E: Val,
+    N: differential_dataflow::ExchangeData + std::hash::Hash,
+    E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
     LF: Fn((N, N)) -> V + 'static,
 {
@@ -82,8 +82,8 @@ where
     S::Timestamp: Lattice + Ord,
     u64: From<N>,
     V: Val,
-    N: Val + Clone,
-    E: Val,
+    N: differential_dataflow::ExchangeData + std::hash::Hash,
+    E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
     LF: Fn((N, N)) -> V + 'static,
 {
@@ -115,8 +115,8 @@ where
     S: Scope,
     S::Timestamp: TotalOrder + Lattice + Ord,
     V: Val,
-    N: Val,
-    E: Val,
+    N: differential_dataflow::ExchangeData + std::hash::Hash,
+    E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
     LF: Fn((N, N)) -> V + 'static,
 {
