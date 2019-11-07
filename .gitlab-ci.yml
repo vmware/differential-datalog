@@ -35,6 +35,8 @@ test-tutorial:
 
 test-server_api:
     script:
+    # The NF variable is defined by the Haskell tasty package, documented here:
+    # http://hackage.haskell.org/package/tasty
     - stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"server_api\")"';
     - cd test/datalog_tests/server_api/;
       i=0;
