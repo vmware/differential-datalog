@@ -567,11 +567,11 @@ impl<'a, K: Ord, V> MapIter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator for MapIter<'a, K, V> {
-    type Item = (&'a K, &'a V);
+impl<'a, K: Clone, V: Clone> Iterator for MapIter<'a, K, V> {
+    type Item = (K, V);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        self.iter.next().map(|(k, v)| (k.clone(), v.clone()))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -691,7 +691,7 @@ where
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
         let vec: Vec<<(K, V) as ToFlatBufferVectorElement<'b>>::Target> = self
             .iter()
-            .map(|(k, v)| ((*k).clone(), (*v).clone()).to_flatbuf_vector_element(fbb))
+            .map(|(k, v)| (k, v).to_flatbuf_vector_element(fbb))
             .collect();
         fbb.create_vector(vec.as_slice())
     }

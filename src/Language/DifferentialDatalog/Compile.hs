@@ -2081,8 +2081,8 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
 mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
-    -- Iterator over group produces owned values, not references
-    opt_ref = if isGroup d $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
+    -- Iterators over groups and maps produces owned values, not references
+    opt_ref = if (\t -> isGroup d t || isMap d t) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
                  then "ref"
                  else empty
     doc = ("for" <+> opt_ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$

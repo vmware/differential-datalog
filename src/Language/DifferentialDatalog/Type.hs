@@ -35,7 +35,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup,
+    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -438,6 +438,11 @@ isGroup :: (WithType a) => DatalogProgram -> a -> Bool
 isGroup d a = case typ' d a of
                    TOpaque _ t _ | t == gROUP_TYPE -> True
                    _                               -> False
+
+isMap :: (WithType a) => DatalogProgram -> a -> Bool
+isMap d a = case typ' d a of
+                 TOpaque _ t _ | t == mAP_TYPE -> True
+                 _                             -> False
 
 -- | Check if 'a' and 'b' have idential types up to type aliasing;
 -- throw exception if they don't.
