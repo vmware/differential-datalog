@@ -9,42 +9,16 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.vmware.ddlog;
+/**
+ * Package that doesn't allow null values as method parameters.
+ */
 
-import com.vmware.ddlog.ir.DDlogExpression;
-import com.vmware.ddlog.ir.DDlogIRNode;
-import com.vmware.ddlog.util.Linq;
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package com.vmware.ddlog.util;
 
-import java.util.List;
+import com.vmware.ddlog.FieldsAreNonnullByDefault;
+import com.vmware.ddlog.MethodsAreNonnullByDefault;
 
-public class DDlogEMatch extends DDlogExpression {
-    public DDlogEMatch(DDlogExpression matchExpr, List<Case> cases) {
-        this.matchExpr = matchExpr;
-        this.cases = cases;
-    }
-
-    public static final class Case implements DDlogIRNode {
-        final DDlogExpression first;
-        final DDlogExpression second;
-
-        public Case(DDlogExpression first, DDlogExpression second) {
-            this.first = first;
-            this.second = second;
-        }
-
-        @Override
-        public String toString() {
-            return this.first + " -> " + this.second;
-        }
-    }
-
-    final DDlogExpression matchExpr;
-    final List<Case> cases;
-
-    @Override
-    public String toString() {
-        return "match(" + this.matchExpr + ") {" +
-            String.join(",\n", Linq.map(this.cases, Case::toString)) +
-                "\n}";
-    }
-}
+import javax.annotation.ParametersAreNonnullByDefault;

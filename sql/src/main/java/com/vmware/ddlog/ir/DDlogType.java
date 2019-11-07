@@ -12,4 +12,15 @@
 package com.vmware.ddlog.ir;
 
 public abstract class DDlogType implements DDlogIRNode {
+    static boolean isNumeric(DDlogType type) {
+        return type instanceof DDlogTBit ||
+                type instanceof DDlogTSigned ||
+                type instanceof DDlogTInt;
+    }
+
+    static void checkCompatible(DDlogType type0, DDlogType type1) {
+        // TODO: refine this.
+        if (type0.getClass() != type1.getClass())
+            throw new RuntimeException("Incompatible types " + type0 + " and " + type1);
+    }
 }

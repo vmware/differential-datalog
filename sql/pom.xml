@@ -43,7 +43,11 @@
       <version>5.5.0</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+    </dependency>
     <!-- Uncomment if required
     <dependency>
       <groupId>ddlogapi</groupId>

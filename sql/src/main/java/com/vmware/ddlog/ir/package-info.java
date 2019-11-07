@@ -9,36 +9,16 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/**
+ * Package that doesn't allow null values as method parameters.
+ */
+
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
+import com.vmware.ddlog.FieldsAreNonnullByDefault;
+import com.vmware.ddlog.MethodsAreNonnullByDefault;
 
-import java.util.List;
-import java.util.Objects;
-
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
-    }
-
-    @Override
-    public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
-    }
-}
+import javax.annotation.ParametersAreNonnullByDefault;

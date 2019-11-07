@@ -14,7 +14,7 @@ package com.vmware.ddlog.ir;
 public class DDlogEBinOp extends DDlogExpression {
     public enum BOp {
         Eq, Neq, Lt, Gt, Lte, Gte, And, Or, Impl, Plus,
-        Minus, Mod, Times, Div, ShiftR, ShiftL, BAnd, Bor, BXor, Concat;
+        Minus, Mod, Times, Div, ShiftR, ShiftL, BAnd, BOr, BXor, Concat;
 
         @Override
         public String toString() {
@@ -53,7 +53,7 @@ public class DDlogEBinOp extends DDlogExpression {
                     return "<<";
                 case BAnd:
                     return "&";
-                case Bor:
+                case BOr:
                     return "|";
                 case BXor:
                     return "^";
@@ -64,15 +64,63 @@ public class DDlogEBinOp extends DDlogExpression {
         }
     }
 
+    private final BOp bop;
+    private final DDlogExpression left;
+    private final DDlogExpression right;
+
     public DDlogEBinOp(BOp bop, DDlogExpression left, DDlogExpression right) {
         this.bop = bop;
-        this.left = left;
-        this.right = right;
+        this.left = this.checkNull(left);
+        this.right = this.checkNull(right);
+        switch (this.bop) {
+            case Eq:
+            case Neq:
+            case Lt:
+            case Gt:
+            case Lte:
+            case Gte:
+                if (!DDlogType.isNumeric(left.type))
+                    throw new RuntimeException(this.bop + " is not applied to numeric type");
+                if (!DDlogType.isNumeric(right.type))
+                    throw new RuntimeException(this.bop + " is not applied to numeric type");
+                this.type = DDlogTBool.instance;
+                DDlogType.checkCompatible(left.type, right.type);
+                break;
+            case And:
+            case Or:
+            case Impl:
+                if (!(left.type instanceof DDlogTBool))
+                    throw new RuntimeException(this.bop + " is not applied to Boolean type");
+                if (!(right.type instanceof DDlogTBool))
+                    throw new RuntimeException(this.bop + " is not applied to Boolean type");
+                this.type = left.type;
+                break;
+            case Plus:
+            case Minus:
+            case Mod:
+            case Times:
+            case Div:
+            case ShiftR:
+            case ShiftL:
+            case BAnd:
+            case BOr:
+            case BXor:
+                if (!DDlogType.isNumeric(left.type))
+                    throw new RuntimeException(this.bop + " is not applied to numeric type");
+                if (!DDlogType.isNumeric(right.type))
+                    throw new RuntimeException(this.bop + " is not applied to numeric type");
+                this.type = left.type;
+                DDlogType.checkCompatible(left.type, right.type);
+                break;
+            case Concat:
+                if (!(left.type instanceof DDlogTString))
+                    throw new RuntimeException(this.bop + " is not applied to string type");
+                if (!(right.type instanceof DDlogTString))
+                    throw new RuntimeException(this.bop + " is not applied to string type");
+                this.type = left.type;
+                break;
+        }
     }
-
-    final BOp bop;
-    final DDlogExpression left;
-    final DDlogExpression right;
 
     @Override
     public String toString() {

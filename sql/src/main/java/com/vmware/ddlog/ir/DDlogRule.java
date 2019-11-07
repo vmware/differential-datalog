@@ -13,25 +13,38 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 
-public class DDlogRule {
-    final List<DDlogAtom> lhs;
-    final List<DDlogRuleRHS> rhs;
+/**
+ * The Haskell rule allows multiple values on the LHS,
+ * but when translating SQL we never need more than 1.
+ */
+public class DDlogRule implements DDlogIRNode {
+    private final DDlogAtom lhs;
+    private final List<DDlogRuleRHS> rhs;
+    @Nullable
+    public DDlogType type;
 
-    public DDlogRule(List<DDlogAtom> lhs, List<DDlogRuleRHS> rhs) {
-        this.lhs = lhs;
-        this.rhs = rhs;
+    public DDlogRule(DDlogAtom lhs, List<DDlogRuleRHS> rhs) {
+        this.lhs = this.checkNull(lhs);
+        this.rhs = this.checkNull(rhs);
+    }
+
+    public DDlogRule(DDlogAtom lhs, DDlogRuleRHS rhs) {
+        this(lhs, new ArrayList<DDlogRuleRHS>());
+        this.rhs.add(this.checkNull(rhs));
     }
 
     @Override
     public String toString() {
-        String result = String.join("\n,",
-                Linq.map(this.lhs, DDlogAtom::toString));
+        String result = this.lhs.toString();
         if (!this.rhs.isEmpty()) {
             result += " :- " + String.join(",",
-                Linq.map(this.rhs, DDlogRuleRHS::toString)) + ".";
+                Linq.map(this.rhs, DDlogRuleRHS::toString));
         }
+        result += ".";
         return result;
     }
 }

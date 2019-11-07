@@ -11,34 +11,22 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
-
 import java.util.List;
-import java.util.Objects;
 
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
+public class DDlogImport implements DDlogIRNode {
+    final List<String> module;
+    final List<String> alias;
 
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+    public DDlogImport(List<String> module, List<String> alias) {
+        this.module = module;
+        this.alias = alias;
     }
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        String result = "import " + String.join(".", this.module);
+        if (!this.alias.isEmpty())
+            result += " as " + String.join(".", this.alias);
+        return result + "\n";
     }
 }

@@ -11,6 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
+import java.util.Objects;
+
 public class DDlogField implements DDlogIRNode {
     final String name;
     final DDlogType type;
@@ -18,6 +20,20 @@ public class DDlogField implements DDlogIRNode {
     public DDlogField(String name, DDlogType type) {
         this.name = name;
         this.type = type;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogField that = (DDlogField) o;
+        return name.equals(that.name) &&
+                type.equals(that.type);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, type);
     }
 
     @Override

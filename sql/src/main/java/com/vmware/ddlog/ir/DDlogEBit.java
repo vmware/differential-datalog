@@ -14,16 +14,24 @@ package com.vmware.ddlog.ir;
 import java.math.BigInteger;
 
 public class DDlogEBit extends DDlogExpression {
+    /**
+     * When width is 0 it means it is unspecified.
+     */
     final int width;
     final BigInteger ival;
 
     public DDlogEBit(int width, BigInteger ival) {
         this.width = width;
         this.ival = ival;
+        this.type = new DDlogTBit(width);
     }
 
     @Override
     public String toString() {
-        return this.ival + "'d" + this.ival.toString();
+        String result = "";
+        if (this.width > 0)
+            result = this.width + "'d";
+        result += this.ival.toString();
+        return result;
     }
 }

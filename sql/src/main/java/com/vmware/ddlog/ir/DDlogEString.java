@@ -16,6 +16,7 @@ public class DDlogEString extends DDlogExpression {
 
     public DDlogEString(String string) {
         this.string = string;
+        this.type = new DDlogTString();
     }
 
     @Override

@@ -11,34 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
+public class DDlogComment implements DDlogIRNode {
+    private final String comment;
 
-import java.util.List;
-import java.util.Objects;
-
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+    public DDlogComment(String comment) {
+        this.comment = comment;
     }
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        return "/* " + this.comment + " */";
     }
 }

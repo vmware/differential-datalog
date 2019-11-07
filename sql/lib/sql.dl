@@ -1,0 +1,16 @@
+/* This library has functions for supporting the translation of SQL into DDlog */
+
+extern type DateTime
+
+// functions that manipulate dates
+extern function year(d: DateTime): bit<32>
+extern function quarter(d: DateTime): bit<32>
+extern function month(d: DateTime): bit<32>
+extern function week(d: DateTime): bit<32>
+extern function day(d: DateTime): bit<32>
+extern function day_of_month(d: DateTime): bit<32>
+extern function day_of_week(d: DateTime): bit<32>
+extern function day_of_year(d: DateTime): bit<32>
+extern function hour(d: DateTime): bit<32>
+extern function minute(d: DateTime): bit<32>
+extern function second(d: DateTime): bit<32>

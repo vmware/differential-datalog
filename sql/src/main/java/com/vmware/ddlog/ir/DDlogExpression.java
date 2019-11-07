@@ -12,5 +12,9 @@
 package com.vmware.ddlog.ir;
 
 public abstract class DDlogExpression implements DDlogIRNode {
+    /**
+     * Inferred type of the expression.
+     */
+    public DDlogType type;
     public abstract String toString();
 }

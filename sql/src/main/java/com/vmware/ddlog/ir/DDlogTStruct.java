@@ -13,18 +13,38 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DDlogTStruct extends DDlogType {
-    final List<DDlogConstructor> constructors;
+    private final List<DDlogConstructor> constructors;
 
-    public DDlogTStruct(List<DDlogConstructor> constructors) {
-        this.constructors = constructors;
+    DDlogTStruct(List<DDlogConstructor> constructors) {
+        this.constructors = this.checkNull(constructors);
+    }
+
+    public DDlogTStruct(DDlogConstructor constructor) {
+        this(new ArrayList<DDlogConstructor>(1));
+        this.constructors.add(this.checkNull(constructor));
     }
 
     @Override
     public String toString() {
         return String.join("\n|",
                 Linq.map(this.constructors, Object::toString));
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogTStruct that = (DDlogTStruct) o;
+        return constructors.equals(that.constructors);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(constructors);
     }
 }

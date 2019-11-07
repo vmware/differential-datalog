@@ -11,6 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
+import java.util.Objects;
+
 public class DDlogTBit extends DDlogType {
     final int width;
 
@@ -20,4 +22,17 @@ public class DDlogTBit extends DDlogType {
 
     @Override
     public String toString() { return "bit<" + this.width + ">"; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogTBit dDlogTBit = (DDlogTBit) o;
+        return width == dDlogTBit.width;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(width);
+    }
 }

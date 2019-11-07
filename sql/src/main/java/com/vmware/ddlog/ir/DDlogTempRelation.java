@@ -11,34 +11,40 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
+import javax.annotation.Nullable;
 
-import java.util.List;
-import java.util.Objects;
+/**
+ * This class does not correspond to any DDlog construct; this is
+ * used as to represent a partial result from a subquery.  Since in DDlog
+ * clauses operate on rows, each TempRelation object has a "row" variable.
+ */
+public class DDlogTempRelation implements DDlogIRNode {
+    private final String rowVariable;
+    private final DDlogType type;
+    private final DDlogRelation source;
+    @Nullable
+    private final DDlogExpression condition;
 
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+    public DDlogTempRelation(String rowVariable, DDlogType type,
+                             DDlogRelation source, @Nullable DDlogExpression condition) {
+        this.rowVariable = this.checkNull(rowVariable);
+        this.type = this.checkNull(type);
+        this.source = source;
+        this.condition = condition;
     }
+
+    public DDlogRelation getSource() { return this.source; }
+
+    public String getRowVariable() { return this.rowVariable; }
+
+    public DDlogType getType() { return this.type; }
+
+    @Nullable
+    public DDlogExpression getCondition() { return this.condition; }
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        // TODO
+        return "";
     }
 }

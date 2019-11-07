@@ -12,6 +12,16 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogTBool extends DDlogType {
+    private DDlogTBool() {}
+
     @Override
     public String toString() { return "bool"; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o != null && getClass() == o.getClass();
+    }
+
+    public static DDlogTBool instance = new DDlogTBool();
 }
