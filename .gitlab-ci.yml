@@ -72,7 +72,7 @@ test-redist:
     tags:
         - ddlog-ci-1
     script:
-        - STACK_CARGO_FLAGS='--release' stack --no-terminal test --ta "-p redist"
+        - STACK_CARGO_FLAGS='--release' stack test --ta '-p "$(NF) == \"generate redist\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"redist\")"'
         - (cd java/test1 && ./run.sh)
         - (cd java/test_flatbuf && ./run.sh)
 
@@ -151,6 +151,16 @@ test-imported-souffle-tests7:
     extends: .test-imported-souffle
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 150 175)
+
+# Torture-test optimized version of redist
+test-redist_opt:
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-2
+    script:
+        - (cd test/datalog_tests &&
+          git clone https://github.com/ddlog-dev/redist_opt-test-data.git &&
+          ./test-redist_opt.sh)
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
