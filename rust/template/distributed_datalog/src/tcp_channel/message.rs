@@ -16,7 +16,7 @@ pub enum Message<T> {
 }
 
 impl<T> Display for Message<T> {
-    fn fmt(&self, formatter: &mut Formatter) -> Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result {
         let s = match self {
             Message::Start => "on_start",
             Message::Updates(_) => "on_updates",

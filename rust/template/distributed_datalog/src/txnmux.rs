@@ -151,7 +151,7 @@ where
         if guard.is_some() {
             Err(observer)
         } else {
-            guard.replace(observer);
+            let _ = guard.replace(observer);
             Ok(())
         }
     }
