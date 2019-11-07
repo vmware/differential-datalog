@@ -11,11 +11,26 @@
 
 package com.vmware.ddlog.ir;
 
+import java.util.Objects;
+
 public class DDlogTSigned extends DDlogType {
     final int width;
 
     public DDlogTSigned(int width) {
         this.width = width;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogTSigned that = (DDlogTSigned) o;
+        return width == that.width;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(width);
     }
 
     @Override

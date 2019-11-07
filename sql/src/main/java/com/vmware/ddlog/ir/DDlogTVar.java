@@ -11,6 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
+import java.util.Objects;
+
 public class DDlogTVar extends DDlogType {
     final String varName;
 
@@ -21,5 +23,18 @@ public class DDlogTVar extends DDlogType {
     @Override
     public String toString() {
         return "'" + this.varName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogTVar dDlogTVar = (DDlogTVar) o;
+        return varName.equals(dDlogTVar.varName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(varName);
     }
 }

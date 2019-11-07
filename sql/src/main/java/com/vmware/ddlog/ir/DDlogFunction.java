@@ -13,32 +13,33 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Objects;
 
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
+public class DDlogFunction implements DDlogIRNode {
+    final String name;
+    final List<DDlogFuncArg> args;
+    final DDlogType type;
+    @Nullable
+    final DDlogExpression def;
 
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+    public DDlogFunction(String name, List<DDlogFuncArg> args, DDlogType type, @Nullable DDlogExpression def) {
+        this.name = name;
+        this.args = args;
+        this.type = type;
+        this.def = def;
     }
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        String result = "";
+        if (this.def == null)
+            result = "extern ";
+        result += "function " + this.name + "(" +
+            String.join(", ", Linq.map(this.args, DDlogFuncArg::toString)) + ") :" +
+            this.type.toString();
+        if (this.def != null)
+            result += " = " + this.def.toString();
+        return result;
     }
 }

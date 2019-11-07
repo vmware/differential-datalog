@@ -11,34 +11,19 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
+public class DDlogFuncArg implements DDlogIRNode {
+    final String name;
+    final boolean mut;
+    final DDlogType type;
 
-import java.util.List;
-import java.util.Objects;
-
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+    public DDlogFuncArg(String name, boolean mut, DDlogType type) {
+        this.name = name;
+        this.mut = mut;
+        this.type = type;
     }
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        return this.name + ": " + (this.mut ? "mut " : "") + this.type.toString();
     }
 }

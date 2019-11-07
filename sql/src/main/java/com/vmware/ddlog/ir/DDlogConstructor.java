@@ -14,6 +14,7 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import java.util.List;
+import java.util.Objects;
 
 public class DDlogConstructor implements DDlogIRNode {
     final String name;
@@ -27,6 +28,20 @@ public class DDlogConstructor implements DDlogIRNode {
     @Override
     public String toString() {
         return this.name + "{" + String.join(", ",
-                Linq.map(this.args, DDlogField::toString));
+                Linq.map(this.args, DDlogField::toString)) + "}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogConstructor that = (DDlogConstructor) o;
+        return name.equals(that.name) &&
+                args.equals(that.args);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, args);
     }
 }

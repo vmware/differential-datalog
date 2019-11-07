@@ -9,36 +9,26 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.translator;
 
-import com.vmware.ddlog.util.Linq;
+import com.facebook.presto.sql.tree.Node;
+import com.facebook.presto.sql.tree.NodeLocation;
 
-import java.util.List;
-import java.util.Objects;
+import javax.annotation.Nullable;
 
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+class TranslationException extends RuntimeException {
+    TranslationException(String message, @Nullable Node node) {
+        super(message + "\n" + getPosition(node));
     }
 
-    @Override
-    public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+    private static String getPosition(@Nullable Node node) {
+        if (node == null)
+            return "";
+        String result = node.toString();
+        if (!node.getLocation().isPresent())
+            return result;
+        NodeLocation location = node.getLocation().get();
+        result += " line: " + location.getLineNumber() + " column: " + location.getColumnNumber();
+        return result;
     }
 }

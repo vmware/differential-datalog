@@ -12,10 +12,10 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogRHSCondition extends DDlogRuleRHS {
-    final DDlogExpression expr;
+    private final DDlogExpression expr;
 
     public DDlogRHSCondition(DDlogExpression expr) {
-        this.expr = expr;
+        this.expr = this.checkNull(expr);
     }
 
     @Override

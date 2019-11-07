@@ -14,6 +14,7 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import java.util.List;
+import java.util.Objects;
 
 public class DDlogTOpaque extends DDlogType {
     final String name;
@@ -22,6 +23,20 @@ public class DDlogTOpaque extends DDlogType {
     public DDlogTOpaque(String name, List<DDlogType> typeArgs) {
         this.name = name;
         this.typeArgs = typeArgs;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogTOpaque that = (DDlogTOpaque) o;
+        return name.equals(that.name) &&
+                typeArgs.equals(that.typeArgs);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, typeArgs);
     }
 
     @Override

@@ -14,31 +14,35 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import java.util.List;
-import java.util.Objects;
 
-public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
-
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this.tupArgs = tupArgs;
+public class DDlogEMatch extends DDlogExpression {
+    public DDlogEMatch(DDlogExpression matchExpr, List<Case> cases) {
+        this.matchExpr = matchExpr;
+        this.cases = cases;
     }
+
+    public static final class Case implements DDlogIRNode {
+        final DDlogExpression first;
+        final DDlogExpression second;
+
+        public Case(DDlogExpression first, DDlogExpression second) {
+            this.first = first;
+            this.second = second;
+        }
+
+        @Override
+        public String toString() {
+            return this.first + " -> " + this.second;
+        }
+    }
+
+    final DDlogExpression matchExpr;
+    final List<Case> cases;
 
     @Override
     public String toString() {
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tupArgs);
+        return "match(" + this.matchExpr + ") {" +
+            String.join(",\n", Linq.map(this.cases, Case::toString)) +
+                "\n}";
     }
 }

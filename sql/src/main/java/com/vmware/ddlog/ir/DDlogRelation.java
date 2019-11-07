@@ -14,7 +14,7 @@ package com.vmware.ddlog.ir;
 import javax.annotation.Nullable;
 
 public class DDlogRelation implements DDlogIRNode {
-    enum RelationRole {
+    public enum RelationRole {
         RelInput,
         RelOutput,
         RelInternal;
@@ -33,22 +33,42 @@ public class DDlogRelation implements DDlogIRNode {
         }
     }
 
-    final RelationRole role;
-    final String name;
-    final DDlogType type;
+    private final RelationRole role;
+    private final String name;
+    private final DDlogType type;
     @Nullable
-    final DDlogExpression primaryKey;
+    private final DDlogExpression primaryKey;
 
-    public DDlogRelation(RelationRole role, String name, DDlogType type, @Nullable DDlogExpression primaryKey) {
+    public DDlogRelation(RelationRole role, String name,
+                         DDlogType type, @Nullable DDlogExpression primaryKey) {
         this.role = role;
-        this.name = name;
-        this.type = type;
+        this.name = this.checkNull(name);
+        this.type = this.checkNull(type);
         this.primaryKey = primaryKey;
+    }
+
+    public DDlogRelation(RelationRole role, String name,
+                         DDlogType type) {
+        this(role, name, type, null);
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public DDlogType getType() {
+        return this.type;
+    }
+
+    static String relationName(String name) {
+        return "R" + name;
     }
 
     @Override
     public String toString() {
-        String result = this.role.toString() + " " + this.name + "[" + this.type.toString() + "]";
+        // We prefix the relation name with R
+        String result = this.role.toString() + " relation " + relationName(this.name)
+                + "[" + this.type.toString() + "]";
         if (this.primaryKey != null)
             result += "primary key " + this.primaryKey;
         return result;

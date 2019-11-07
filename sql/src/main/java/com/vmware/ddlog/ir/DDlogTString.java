@@ -14,4 +14,10 @@ package com.vmware.ddlog.ir;
 public class DDlogTString extends DDlogType {
     @Override
     public String toString() { return "string"; }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o != null && getClass() == o.getClass();
+    }
 }

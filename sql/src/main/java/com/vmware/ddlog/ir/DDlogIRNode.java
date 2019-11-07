@@ -11,6 +11,14 @@
 
 package com.vmware.ddlog.ir;
 
+import javax.annotation.Nullable;
+
 public interface DDlogIRNode {
     String toString();
+
+    default <T> T checkNull(@Nullable T value) {
+        if (value == null)
+            throw new NullPointerException();
+        return value;
+    }
 }

@@ -18,6 +18,7 @@ public class DDlogEInt extends DDlogExpression {
 
     public DDlogEInt(BigInteger ival) {
         this.ival = ival;
+        this.type = new DDlogTInt();
     }
 
     @Override

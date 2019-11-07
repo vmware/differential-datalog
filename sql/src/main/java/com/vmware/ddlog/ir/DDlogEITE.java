@@ -11,21 +11,29 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogEITE extends DDlogExpression {
-    final DDlogExpression cond;
-    final DDlogExpression then;
-    final DDlogExpression eelse;
+import javax.annotation.Nullable;
 
-    public DDlogEITE(DDlogExpression cond, DDlogExpression then, DDlogExpression eelse) {
-        this.cond = cond;
-        this.then = then;
+public class DDlogEITE extends DDlogExpression {
+    private final DDlogExpression cond;
+    private final DDlogExpression then;
+    @Nullable
+    private final DDlogExpression eelse;
+
+    public DDlogEITE(DDlogExpression cond, DDlogExpression then, @Nullable DDlogExpression eelse) {
+        this.cond = this.checkNull(cond);
+        this.then = this.checkNull(then);
         this.eelse = eelse;
+        if (!(this.cond.type instanceof DDlogTBool))
+            throw new RuntimeException("Condition is not Boolean");
     }
 
     @Override
     public String toString() {
-        return "if " + this.cond.toString() + "{\n" +
-                this.then.toString() + "} else {\n" +
+        String result =  "if " + this.cond.toString() + "{\n" +
+                this.then.toString() + "}";
+        if (this.eelse != null)
+            result += " else {\n" +
                 this.eelse.toString() + "}";
+        return result;
     }
 }

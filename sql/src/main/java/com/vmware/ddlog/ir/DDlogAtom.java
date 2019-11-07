@@ -14,8 +14,8 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 public class DDlogAtom implements DDlogIRNode {
-    final String relation;
-    final DDlogExpression val;
+    private final String relation;
+    private final DDlogExpression val;
 
     public DDlogAtom(String relation, DDlogExpression val) {
         this.relation = relation;
@@ -26,11 +26,11 @@ public class DDlogAtom implements DDlogIRNode {
     public String toString() {
         if (this.val instanceof DDlogEStruct) {
             DDlogEStruct struct = (DDlogEStruct)this.val;
-            return this.relation + "(" + String.join(",",
+            return DDlogRelation.relationName(this.relation) + "(" + String.join(",",
                 Linq.map(struct.fields, f ->
                         (f.name.isEmpty() ? "" : "." + f.name) + " = "
                                 + f.value.toString())) + ")";
         }
-        return this.relation + "[" + this.val.toString() + "]";
+        return DDlogRelation.relationName(this.relation) + "[" + this.val.toString() + "]";
     }
 }

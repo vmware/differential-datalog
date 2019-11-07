@@ -16,6 +16,7 @@ public class DDlogEBool extends DDlogExpression {
 
     public DDlogEBool(boolean bval) {
         this.bval = bval;
+        this.type = DDlogTBool.instance;
     }
 
     @Override
