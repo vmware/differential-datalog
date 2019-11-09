@@ -49,7 +49,6 @@ import Control.Monad.Except
 import System.FilePath
 import System.Process
 import GHC.IO.Exception
-import qualified Text.Casing as Casing
 --import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 
@@ -183,8 +182,39 @@ compileFlatBufferJavaBindings d prog_name =
 jFBPackage :: (?prog_name :: String) => Doc
 jFBPackage = "ddlog.__" <> pp ?prog_name
 
+-- Generate snake-case Rust module name.
+-- replicating the following logic from the `flatc` compiler.
+{-
+std::string MakeSnakeCase(const std::string &in) {
+  std::string s;
+  for (size_t i = 0; i < in.length(); i++) {
+    if (i == 0) {
+      s += static_cast<char>(tolower(in[0]));
+    } else if (in[i] == '_') {
+      s += '_';
+    } else if (!islower(in[i])) {
+      // Prevent duplicate underscores for Upper_Snake_Case strings
+      // and UPPERCASE strings.
+      if (islower(in[i - 1])) {
+        s += '_';
+      }
+      s += static_cast<char>(tolower(in[i]));
+    } else {
+      s += in[i];
+    }
+  }
+  return s;
+}
+-}
 rustFBModule :: (?prog_name :: String) => Doc
-rustFBModule = "__" <> (pp $ Casing.quietSnake ?prog_name)
+rustFBModule = "__" <> char (toLower (head ?prog_name)) <> rustFBModule' (head ?prog_name) (tail ?prog_name)
+
+rustFBModule' :: Char -> String -> Doc
+rustFBModule' _ ""        = ""
+rustFBModule' _ ('_':s)   = char '_' <> rustFBModule' '_' s
+rustFBModule' c (x:s)     | not (isLower x)
+                          = (if isLower c then char '_' else empty) <> char (toLower x) <> rustFBModule' x s
+rustFBModule' _ (x:s)     = char x <> rustFBModule' x s
 
 -- Convert DDlog field name to Java accessor method name,
 -- replicating the following logic from the `flatc` compiler.
