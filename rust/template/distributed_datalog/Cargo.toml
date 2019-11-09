@@ -13,7 +13,6 @@ path = "../differential_datalog"
 env_logger = {version = "0.7", default_features = false, features = ["humantime"]}
 tempfile = "3.1"
 test-env-log = "0.1"
-waitfor = "0.1"
 
 [dependencies]
 bincode = "1.2"
@@ -21,7 +20,7 @@ libc = "0.2"
 log = "0.4"
 nom = "4.0"
 serde = {version = "1.0", features = ["derive"]}
-waitfor = {version = "0.1", optional = true}
+waitfor = "0.1"
 
 [features]
-test = ["waitfor"]
+test = []
