@@ -16,8 +16,15 @@ use distributed_datalog::TcpSender;
 use distributed_datalog::TxnMux;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
-use server_api_ddlog::api::*;
-use server_api_ddlog::Relations::*;
+use server_api_ddlog::api::updcmd2upd;
+use server_api_ddlog::api::HDDlog;
+use server_api_ddlog::Relations::server_api_1_P1In;
+use server_api_ddlog::Relations::server_api_1_P1Out;
+use server_api_ddlog::Relations::server_api_2_P2In;
+use server_api_ddlog::Relations::server_api_2_P2Out;
+use server_api_ddlog::Relations::server_api_3_P1Out;
+use server_api_ddlog::Relations::server_api_3_P2Out;
+use server_api_ddlog::Relations::server_api_3_P3Out;
 use server_api_ddlog::Value;
 
 use maplit::hashmap;
@@ -51,7 +58,7 @@ where
     );
 
     let mut stream = server1.add_stream(hashset! {server_api_1_P1Out as usize});
-    let _data = setup(&mut stream, SharedObserver::new(server2))?;
+    let _data = setup(&mut stream, SharedObserver::new(Mutex::new(server2)))?;
 
     let updates = &[UpdCmd::Insert(
         RelIdentifier::RelId(server_api_1_P1In as usize),

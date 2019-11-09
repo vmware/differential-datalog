@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -57,38 +56,8 @@ where
     }
 }
 
-/// Wrapper around an `Observer` that allows for it to be shared by
-/// wrapping it into a combination of `Arc` & `Mutex`.
-#[derive(Debug, Default)]
-pub struct SharedObserver<O>(Arc<Mutex<O>>);
-
-impl<O> SharedObserver<O> {
-    /// Create a new `SharedObserver` object, automatically wrapping the
-    /// provided `Observer` as necessary.
-    pub fn new(observer: O) -> Self {
-        SharedObserver(Arc::new(Mutex::new(observer)))
-    }
-}
-
-impl<O> Clone for SharedObserver<O> {
-    fn clone(&self) -> Self {
-        SharedObserver(self.0.clone())
-    }
-}
-
-impl<O> Deref for SharedObserver<O> {
-    type Target = Arc<Mutex<O>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<O> DerefMut for SharedObserver<O> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+/// An easily sharable `Observer`.
+pub type SharedObserver<O> = Arc<Mutex<O>>;
 
 impl<O, T, E> Observer<T, E> for SharedObserver<O>
 where
@@ -97,19 +66,19 @@ where
     E: Send,
 {
     fn on_start(&mut self) -> Result<(), E> {
-        self.0.lock().unwrap().on_start()
+        self.lock().unwrap().on_start()
     }
 
     fn on_commit(&mut self) -> Result<(), E> {
-        self.0.lock().unwrap().on_commit()
+        self.lock().unwrap().on_commit()
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
-        self.0.lock().unwrap().on_updates(updates)
+        self.lock().unwrap().on_updates(updates)
     }
 
     fn on_completed(&mut self) -> Result<(), E> {
-        self.0.lock().unwrap().on_completed()
+        self.lock().unwrap().on_completed()
     }
 }
 
@@ -161,16 +130,16 @@ mod tests {
     /// present.
     #[test]
     fn with_optional_observer() {
-        let mock = SharedObserver::new(MockObserver::new());
+        let mock = Arc::new(Mutex::new(MockObserver::new()));
         let observer = &mut Some(mock.clone()) as &mut dyn Observer<_, ()>;
 
         assert_eq!(observer.on_start(), Ok(()));
-        assert_eq!(mock.0.lock().unwrap().called_on_start, 1);
+        assert_eq!(mock.lock().unwrap().called_on_start, 1);
 
         assert_eq!(observer.on_updates(Box::new([1, 3, 2].iter())), Ok(()));
-        assert_eq!(mock.0.lock().unwrap().called_on_updates, 3);
+        assert_eq!(mock.lock().unwrap().called_on_updates, 3);
 
         assert_eq!(observer.on_commit(), Ok(()));
-        assert_eq!(mock.0.lock().unwrap().called_on_commit, 1);
+        assert_eq!(mock.lock().unwrap().called_on_commit, 1);
     }
 }
