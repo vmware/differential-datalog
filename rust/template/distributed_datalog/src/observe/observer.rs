@@ -113,45 +113,9 @@ where
     }
 }
 
-/// An `Observer` that wraps an inner, optional `Observer`. If the inner
-/// one is unset all events will just be dropped.
-#[derive(Debug)]
-pub struct OptionalObserver<O>(Option<O>);
-
-impl<O> OptionalObserver<O> {
-    /// Create a new `OptionalObserver` object, automatically wrapping the
-    /// provided `Observer` as necessary.
-    pub fn new(observer: O) -> Self {
-        Self(Some(observer))
-    }
-
-    /// Replace the existing `Observer` (if any) with the given optional
-    /// one, returning the previous one.
-    pub fn replace(&mut self, value: O) -> Option<O> {
-        self.0.replace(value)
-    }
-
-    /// Take the inner observer, if any, replacing it with none.
-    pub fn take(&mut self) -> Option<O> {
-        self.0.take()
-    }
-
-    /// Check whether an actual observer is present or not.
-    pub fn is_some(&self) -> bool {
-        self.0.is_some()
-    }
-
-    /// Retrieve an `Option` referencing the inner `Observer`.
-    pub fn as_ref(&self) -> Option<&O> {
-        self.0.as_ref()
-    }
-}
-
-impl<O> Default for OptionalObserver<O> {
-    fn default() -> Self {
-        Self(None)
-    }
-}
+/// An optional `Observer`. If set to `None` all events will just be
+/// dropped.
+pub type OptionalObserver<O> = Option<O>;
 
 impl<O, T, E> Observer<T, E> for OptionalObserver<O>
 where
@@ -160,19 +124,19 @@ where
     E: Send,
 {
     fn on_start(&mut self) -> Result<(), E> {
-        self.0.as_mut().map_or(Ok(()), Observer::on_start)
+        self.as_mut().map_or(Ok(()), Observer::on_start)
     }
 
     fn on_commit(&mut self) -> Result<(), E> {
-        self.0.as_mut().map_or(Ok(()), Observer::on_commit)
+        self.as_mut().map_or(Ok(()), Observer::on_commit)
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
-        self.0.as_mut().map_or(Ok(()), |o| o.on_updates(updates))
+        self.as_mut().map_or(Ok(()), |o| o.on_updates(updates))
     }
 
     fn on_completed(&mut self) -> Result<(), E> {
-        self.0.as_mut().map_or(Ok(()), Observer::on_completed)
+        self.as_mut().map_or(Ok(()), Observer::on_completed)
     }
 }
 
@@ -198,7 +162,7 @@ mod tests {
     #[test]
     fn with_optional_observer() {
         let mock = SharedObserver::new(MockObserver::new());
-        let observer = &mut OptionalObserver::new(mock.clone()) as &mut dyn Observer<_, ()>;
+        let observer = &mut Some(mock.clone()) as &mut dyn Observer<_, ()>;
 
         assert_eq!(observer.on_start(), Ok(()));
         assert_eq!(mock.0.lock().unwrap().called_on_start, 1);
