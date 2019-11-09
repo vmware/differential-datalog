@@ -165,12 +165,15 @@ where
 mod tests {
     use super::*;
 
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
     use crate::observe::MockObserver;
 
     /// Test caching of transactions via a `CachingObserver`.
     #[test]
     fn transaction_caching() {
-        let mock = SharedObserver::new(Some(MockObserver::new()));
+        let mock = Arc::new(Mutex::new(Some(MockObserver::new())));
         let observer = &mut CachingObserver::new(mock.clone()) as &mut dyn Observer<_, ()>;
 
         assert_eq!(observer.on_start(), Ok(()));

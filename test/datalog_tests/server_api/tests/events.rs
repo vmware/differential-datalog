@@ -2,6 +2,7 @@ use std::any::Any;
 use std::panic::catch_unwind;
 use std::panic::AssertUnwindSafe;
 use std::panic::UnwindSafe;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use differential_datalog::program::Update;
@@ -288,7 +289,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
     let mut server = DDlogServer::new(program, hashmap! {});
 
-    let observer = SharedObserver::new(Mock::new());
+    let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
     let _ = stream.subscribe(Box::new(observer.clone())).unwrap();
 
@@ -299,7 +300,7 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let program = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
     let mut server = DDlogServer::new(program, hashmap! {});
 
-    let observer = SharedObserver::new(Mock::new());
+    let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
 
     let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
