@@ -167,8 +167,8 @@ mod tests {
 
     #[test]
     fn compare_addrs() {
-        let addr0 = Addr::Ip("127.0.0.1:2000".parse().unwrap());
-        let addr1 = Addr::Ip("127.0.0.1:2001".parse().unwrap());
+        let addr0 = Addr::Ip("127.0.0.1:1".parse().unwrap());
+        let addr1 = Addr::Ip("127.0.0.1:2".parse().unwrap());
 
         assert!(addr0 < addr1);
     }

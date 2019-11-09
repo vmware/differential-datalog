@@ -23,7 +23,7 @@ pub trait DDlogConvert: Debug {
 /// A trait capturing program instantiation and handling of
 /// transactions.
 pub trait DDlog: Debug {
-    type Convert: DDlogConvert;
+    type Convert: DDlogConvert<Value = Self::Value>;
     type Value: Val;
 
     /// Run the program.
