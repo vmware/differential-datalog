@@ -1,11 +1,14 @@
 use std::io;
 use std::io::BufWriter;
+use std::io::ErrorKind;
 use std::io::Write;
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
+use std::time::Duration;
 
 use bincode::serialize_into;
 use serde::Serialize;
+use waitfor::wait_for;
 
 use crate::observe::Observer;
 use crate::tcp_channel::message::Message;
@@ -26,6 +29,37 @@ impl TcpSender {
         Ok(Self {
             stream: BufWriter::new(TcpStream::connect(addr)?),
         })
+    }
+
+    /// Try connecting to the given address and retry every `internal`
+    /// until `timeout` is reached if the connection was refused.
+    pub fn with_retry<A>(addr: A, timeout: Duration, interval: Duration) -> io::Result<Self>
+    where
+        A: ToSocketAddrs + Clone,
+    {
+        let result = wait_for(timeout, interval, || {
+            match TcpStream::connect(addr.clone()) {
+                Ok(c) => Ok(Some(c)),
+                Err(e) => {
+                    if e.kind() == ErrorKind::ConnectionRefused {
+                        Ok(None)
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        });
+
+        match result {
+            Ok(None) => Err(io::Error::new(
+                ErrorKind::TimedOut,
+                "timed out (re)trying to connect",
+            )),
+            Ok(Some(c)) => Ok(Self {
+                stream: BufWriter::new(c),
+            }),
+            Err(e) => Err(e),
+        }
     }
 }
 
