@@ -48,39 +48,58 @@ run_memleak_test 100000
 
 # $1 - number of iterations
 # $2 - number of workers
-# $3 - DIFFERENTIAL_EAGER_MERGE value
+# $3 - data file
+# $4 - expected output file
+# $5 - DIFFERENTIAL_EAGER_MERGE value
 run_test() {
-    echo Correctness test with $1 iterations, $2 workers, and DIFFERENTIAL_EAGER_MERGE=$3
-    if [ $# == 3 ]; then
-        export DIFFERENTIAL_EAGER_MERGE=$3
+    echo Correctness test with $1 iterations, $2 workers, input file \"$3\", reference file \"$4\" and DIFFERENTIAL_EAGER_MERGE=$5
+    if [ $# == 5 ]; then
+        export DIFFERENTIAL_EAGER_MERGE=$5
     else
         unset DIFFERENTIAL_EAGER_MERGE
     fi
     # Feed $1 copies of data to DDlog
     ( for (( i=1; i<=$1; i++ ))
     do
-        cat redist_opt-test-data/redist_opt.dat
+        cat $3
     done) |
         /usr/bin/time ./redist_opt_ddlog/target/release/redist_opt_cli -w $2 --no-print --no-store > redist_opt.dump
 
     # The output should be $1 copies of redist_opt.dump.expected
     (for (( i=1; i<=$1; i++ ))
     do
-        cat redist_opt-test-data/redist_opt.dump.expected
+        cat $4
     done) > redist_opt.dump.expected
 
     diff -q redist_opt.dump.expected redist_opt.dump
 }
 
-run_test 5 1
-run_test 5 1 100000
-run_test 3 2
-run_test 3 2 100000
-run_test 3 4
-run_test 3 4 100000
-run_test 3 8
-run_test 3 8 100000
-run_test 3 16
-run_test 3 16 100000
-run_test 3 40
-run_test 3 40 100000
+run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected"
+run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
+run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
+run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100000
+run_test 3 2 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected"
+run_test 3 2 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
+run_test 3 2 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
+run_test 3 2 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100000
+run_test 3 4 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected"
+run_test 3 4 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
+run_test 3 4 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
+run_test 3 4 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100000
+run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected"
+run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
+run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
+run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100000
+
+run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
+run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
+run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
+
+run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
+run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
+run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
+run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 1000
+
+run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
+run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
+run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
