@@ -46,6 +46,7 @@
 
 //! Distributed computing for differential-datalog.
 
+mod instantiate;
 mod observe;
 mod schema;
 mod server;
@@ -60,6 +61,8 @@ pub mod sinks;
 /// A module comprising sources to feed data into a computation.
 pub mod sources;
 
+pub use instantiate::instantiate;
+pub use instantiate::simple_assign;
 pub use observe::Observable;
 pub use observe::ObservableBox;
 pub use observe::Observer;
@@ -67,6 +70,7 @@ pub use observe::ObserverBox;
 pub use observe::OptionalObserver;
 pub use observe::SharedObserver;
 pub use observe::UpdatesObservable;
+pub use schema::Addr;
 pub use schema::Member;
 pub use schema::Members;
 pub use schema::Node;
