@@ -120,6 +120,13 @@ impl Member {
 pub type Members = BTreeSet<Member>;
 
 /// A set of relations used in various contexts.
+///
+/// # Important:
+///
+/// We currently assume globally unique relation IDs, which also means
+/// we require the exact same program to be present on all nodes in the
+/// system. This is a simplifying assumption made for the time being.
+/// Ideally, a relation ID really would be a `(Node, RelId)` tuple.
 pub type Relations = BTreeSet<RelId>;
 
 /// All the input sources we support.
@@ -155,7 +162,7 @@ pub type NodeCfg = BTreeMap<RelId, BTreeSet<RelCfg>>;
 ///
 /// Each value in the map represents the configuration of a single node.
 /// In order to reason about nodes we assign a UUID to each.
-pub type SysCfg = BTreeMap<Uuid, NodeCfg>;
+pub type SysCfg = BTreeMap<Node, NodeCfg>;
 
 #[cfg(test)]
 mod tests {
@@ -167,8 +174,8 @@ mod tests {
 
     #[test]
     fn compare_addrs() {
-        let addr0 = Addr::Ip("127.0.0.1:2000".parse().unwrap());
-        let addr1 = Addr::Ip("127.0.0.1:2001".parse().unwrap());
+        let addr0 = Addr::Ip("127.0.0.1:1".parse().unwrap());
+        let addr1 = Addr::Ip("127.0.0.1:2".parse().unwrap());
 
         assert!(addr0 < addr1);
     }

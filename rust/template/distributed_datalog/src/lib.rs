@@ -46,6 +46,9 @@
 
 //! Distributed computing for differential-datalog.
 
+#[cfg(any(test, feature = "test"))]
+mod assign;
+mod instantiate;
 mod observe;
 mod schema;
 mod server;
@@ -60,6 +63,7 @@ pub mod sinks;
 /// A module comprising sources to feed data into a computation.
 pub mod sources;
 
+pub use instantiate::instantiate;
 pub use observe::Observable;
 pub use observe::ObservableBox;
 pub use observe::Observer;
@@ -67,6 +71,7 @@ pub use observe::ObserverBox;
 pub use observe::OptionalObserver;
 pub use observe::SharedObserver;
 pub use observe::UpdatesObservable;
+pub use schema::Addr;
 pub use schema::Member;
 pub use schema::Members;
 pub use schema::Node;
@@ -82,7 +87,4 @@ pub use tcp_channel::TcpSender;
 pub use txnmux::TxnMux;
 
 #[cfg(any(test, feature = "test"))]
-pub use observe::MockObserver;
-
-#[cfg(any(test, feature = "test"))]
-pub use test::await_expected;
+pub use {assign::simple_assign, observe::MockObserver, test::await_expected};
