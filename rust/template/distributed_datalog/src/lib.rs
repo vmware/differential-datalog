@@ -55,6 +55,7 @@ mod tcp_channel;
 #[cfg(any(test, feature = "test"))]
 mod test;
 mod txnmux;
+mod zookeeper;
 
 /// A module comprising sinks to forward data from a computation.
 pub mod sinks;

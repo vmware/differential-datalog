@@ -181,6 +181,7 @@ rustLibFiles specname =
         , (dir </> "distributed_datalog/src/tcp_channel/sender.rs"   , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/sender.rs"))
         , (dir </> "distributed_datalog/src/test.rs"                 , $(embedFile "rust/template/distributed_datalog/src/test.rs"))
         , (dir </> "distributed_datalog/src/txnmux.rs"               , $(embedFile "rust/template/distributed_datalog/src/txnmux.rs"))
+        , (dir </> "distributed_datalog/src/zookeeper.rs"            , $(embedFile "rust/template/distributed_datalog/src/zookeeper.rs"))
         , (dir </> "ovsdb/Cargo.toml"                                , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                                    , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                                   , $(embedFile "rust/template/ovsdb/test.rs"))
