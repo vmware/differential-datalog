@@ -47,6 +47,7 @@
 //! Distributed computing for differential-datalog.
 
 mod instantiate;
+mod members;
 mod observe;
 mod schema;
 mod server;
