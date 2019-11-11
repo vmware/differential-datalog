@@ -152,6 +152,13 @@ test-imported-souffle-tests7:
     script:
         - (cd test && ./run-souffle-tests-in-batches.py 150 175)
 
+# Test DDlog code from the Declarative Cluster Management project
+test-dcm:
+    extends: .install-ddlog
+    script:
+        - (cd test/datalog_tests &&
+          ./run-test.sh dcm1 debug)
+
 # Torture-test optimized version of redist
 test-redist_opt:
     extends: .install-ddlog

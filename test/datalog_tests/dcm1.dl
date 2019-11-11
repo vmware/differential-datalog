@@ -1,0 +1,77 @@
+import intern
+
+typedef int_t = signed<64>
+
+function sum(g: Group<(int_t)>): (int_t) =
+{
+    var sum: int_t = 0;
+    for (resource in g) {
+        sum = resource + sum
+    };
+    sum
+}
+
+input relation NODE(
+	name: IString, 
+	is_master: bool, 
+	unschedulable: bool, 
+	out_of_disk: bool, 
+	memory_pressure: bool, 
+	disk_pressure: bool,
+	pid_pressure: bool, 
+	ready: bool, 
+	network_unavailable: bool, 
+	cpu_capacity: int_t, 
+	memory_capacity: int_t,
+	ephemeral_storage_capacity: int_t, 
+	pods_capacity: int_t, 
+	cpu_allocatable:int_t, 
+	memory_allocatable: int_t, 
+	ephemeral_storage_allocatable:int_t, 
+	pods_allocatable: int_t) 
+
+input relation POD(
+	pod_name: IString, 
+	status: IString, 
+	controllable__node_name: IString,
+	namespace: IString, 
+	cpu_request: int_t,  
+	memory_request: int_t, 
+	ephemeral_storage_request: int_t,
+	pods_request:int_t,
+	owner_name: IString,
+	creation_timestamp: IString,
+	priority: int_t)
+
+
+output relation CPUUSEDPERNODE(name: IString, cpu: int_t)
+
+output relation MEMORYUSEDPERNODE(name: IString, memory: int_t)
+
+output relation PODSUSEDPERNODE(name:IString, pods:int_t)
+
+output relation SPARECAPACITY(name:IString, cpu_remaining:int_t, memory_remaining: int_t, pods_remaining:int_t) 
+
+
+CPUUSEDPERNODE(node_name, cpu) :-
+	POD(_, _, node_name, _, cpu_request, _, _, _, _, _, _),
+	var cpu = Aggregate((node_name), sum(cpu_request)). 
+	
+MEMORYUSEDPERNODE(node_name, memory) :-
+	POD(pod_name, _, node_name, _, _, memory_request, _, _, _, _, _),
+	var memory = Aggregate((node_name), sum(memory_request)).
+
+PODSUSEDPERNODE(node_name, pods):-
+	POD(pod_name, _, node_name, _, _, _, _, pods_request, _, _, _),
+	var pods = Aggregate((node_name), sum(pods_request)).
+
+SPARECAPACITY(node_name, cpu_remaining, memory_remaining, pods_remaining) :-
+	POD(.controllable__node_name = node_name),
+	(istring_str(node_name) != "null"),
+	NODE(node_name, _, _, _, _, _, _, _, _, _, _, _, _, cpu_allocatable, memory_allocatable, _, pods_allocatable), 
+	CPUUSEDPERNODE(node_name, cpu),
+	MEMORYUSEDPERNODE(node_name, memory),
+	PODSUSEDPERNODE(node_name, pods),
+	var cpu_remaining =  cpu_allocatable-cpu,
+	var memory_remaining =  memory_allocatable-memory,
+	var pods_remaining = pods_allocatable-pods.
