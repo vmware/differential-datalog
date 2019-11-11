@@ -45,7 +45,7 @@ where
     fn subscribe_any(
         &mut self,
         observer: ObserverBox<T, E>,
-    ) -> Result<Box<dyn Any>, ObserverBox<T, E>>;
+    ) -> Result<Box<dyn Any + Send>, ObserverBox<T, E>>;
 
     /// Unsubscribe an `Observer` from this `Observable` using a
     /// previously handed out subscription.
@@ -58,15 +58,15 @@ impl<T, E, S, O> ObservableAny<T, E> for O
 where
     T: Send,
     E: Send,
-    S: Any,
+    S: Any + Send,
     O: Observable<T, E, Subscription = S>,
 {
     fn subscribe_any(
         &mut self,
         observer: ObserverBox<T, E>,
-    ) -> Result<Box<dyn Any>, ObserverBox<T, E>> {
+    ) -> Result<Box<dyn Any + Send>, ObserverBox<T, E>> {
         self.subscribe(observer)
-            .map(|s| Box::new(s) as Box<dyn Any>)
+            .map(|s| Box::new(s) as Box<dyn Any + Send>)
     }
 
     fn unsubscribe_any(&mut self, subscription: &dyn Any) -> Option<ObserverBox<T, E>> {

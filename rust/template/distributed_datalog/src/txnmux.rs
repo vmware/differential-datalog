@@ -86,7 +86,7 @@ where
     E: Debug + Send,
 {
     /// The observables we track and our subscriptions to them.
-    subscriptions: Vec<(ObservableBox<T, E>, Box<dyn Any>)>,
+    subscriptions: Vec<(ObservableBox<T, E>, Box<dyn Any + Send>)>,
     /// A reference to the `Observer` subscribed to us, if any.
     observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
 }
