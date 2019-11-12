@@ -15,6 +15,7 @@ import com.facebook.presto.sql.tree.*;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
@@ -23,11 +24,8 @@ import java.util.*;
 public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, TranslationContext> {
     @Override
     protected DDlogExpression visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
-        DDlogExpression left = process(node.getLeft(), context);
-        DDlogExpression right = process(node.getRight(), context);
-        if (!left.type.equals(right.type)) {
-            throw new RuntimeException("Types do not match: " + left.type + " vs " + right.type);
-        }
+        DDlogExpression left = this.process(node.getLeft(), context);
+        DDlogExpression right = this.process(node.getRight(), context);
         switch (node.getOperator()) {
             case ADD:
                 return new DDlogEBinOp(DDlogEBinOp.BOp.Plus, left, right);
@@ -45,9 +43,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
-        DDlogExpression max = process(node.getMax(), context);
-        DDlogExpression value = process(node.getValue(), context);
-        DDlogExpression min = process(node.getMin(), context);
+        DDlogExpression max = this.process(node.getMax(), context);
+        DDlogExpression value = this.process(node.getValue(), context);
+        DDlogExpression min = this.process(node.getMin(), context);
         DDlogExpression left = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, min, value);
         DDlogExpression right = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, value, max);
         return new DDlogEBinOp(DDlogEBinOp.BOp.BAnd, left, right);
@@ -63,7 +61,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     protected DDlogExpression visitCoalesceExpression(CoalesceExpression node, TranslationContext context) {
         // Find first non-null expression
         for (Expression operand : node.getOperands()) {
-            DDlogExpression e = process(operand, context);
+            DDlogExpression e = this.process(operand, context);
         }
         // TODO: define a datatype for lists
         throw new UnsupportedOperationException();
@@ -71,13 +69,16 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitIdentifier(Identifier id, TranslationContext context) {
-        return new DDlogEVar(id.getValue());
+        DDlogExpression expr = context.lookupColumn(id.getValue());
+        if (expr == null)
+            throw new TranslationException("Could not resolve identifier", id);
+        return expr;
     }
 
     @Override
     protected DDlogExpression visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
-        DDlogExpression left = process(node.getLeft(), context);
-        DDlogExpression right = process(node.getRight(), context);
+        DDlogExpression left = this.process(node.getLeft(), context);
+        DDlogExpression right = this.process(node.getRight(), context);
         switch (node.getOperator()) {
             case EQUAL:
                 return new DDlogEBinOp(DDlogEBinOp.BOp.Eq, left, right);
@@ -98,9 +99,22 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
+    protected DDlogExpression visitIsNullPredicate(IsNullPredicate node, TranslationContext context) {
+        DDlogExpression arg = this.process(node.getValue(), context);
+        return new DDlogEApply("isNull", arg, DDlogTBool.instance);
+    }
+
+    @Override
+    protected DDlogExpression visitIsNotNullPredicate(IsNotNullPredicate node, TranslationContext context) {
+        DDlogExpression arg = this.process(node.getValue(), context);
+        DDlogExpression isNull = new DDlogEApply("isNull", arg, DDlogTBool.instance);
+        return new DDlogEUnOp(DDlogEUnOp.UOp.BNeg, isNull);
+    }
+
+    @Override
     protected DDlogExpression visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
-        DDlogExpression left = process(node.getLeft(), context);
-        DDlogExpression right = process(node.getRight(), context);
+        DDlogExpression left = this.process(node.getLeft(), context);
+        DDlogExpression right = this.process(node.getRight(), context);
         switch (node.getOperator()) {
             case AND:
                 return new DDlogEBinOp(DDlogEBinOp.BOp.And, left, right);
@@ -124,10 +138,57 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         }
     }
 
+    private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
+        switch (function) {
+            case "substr":
+                return DDlogTString.instance;
+            default:
+                throw new UnsupportedOperationException(function);
+        }
+    }
+
+    @Override
+    protected DDlogExpression visitFunctionCall(FunctionCall node, TranslationContext context) {
+        if (node.getWindow().isPresent())
+            throw new TranslationException("Not yet supported", node);
+        if (node.getOrderBy().isPresent())
+            throw new TranslationException("Not yet supported", node);
+        if (node.getFilter().isPresent())
+            throw new TranslationException("Not yet supported", node);
+        if (node.isDistinct())
+            throw new TranslationException("Not yet supported", node);
+        String name = TranslationVisitor.convertQualifiedName(node.getName());
+        List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
+        DDlogType type = this.functionResultType(name, args, context);
+        return new DDlogEApply(name, args, type);
+    }
+
     @Override
     protected DDlogExpression visitNotExpression(NotExpression node, TranslationContext context) {
         DDlogExpression value = process(node.getValue(), context);
         return new DDlogEUnOp(DDlogEUnOp.UOp.Not, value);
+    }
+
+    private DDlogExpression makeNull() {
+        return new DDlogEStruct("None", new ArrayList<DDlogEStruct.FieldValue>(), new DDlogTUser("Option"));
+    }
+
+    @Override
+    protected DDlogExpression visitSearchedCaseExpression(SearchedCaseExpression expression, TranslationContext context) {
+        DDlogExpression current = this.makeNull();
+        Optional<Expression> def = expression.getDefaultValue();
+        if (def.isPresent())
+            current = process(def.get(), context);
+        List<WhenClause> whens = new ArrayList<WhenClause>(expression.getWhenClauses());
+        Collections.reverse(whens);
+        for (WhenClause w: whens) {
+            DDlogExpression label = process(w.getOperand(), context);
+            DDlogExpression result = process(w.getResult(), context);
+            current = new DDlogEITE(label, result, current);
+        }
+        if (current == null)
+            throw new NullPointerException();
+        return current;
     }
 
     @Override
@@ -167,7 +228,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitLongLiteral(LongLiteral node, TranslationContext context) {
-        return new DDlogEBit(64, BigInteger.valueOf(node.getValue()));
+        return new DDlogESigned(64, BigInteger.valueOf(node.getValue()));
     }
 
     @Override

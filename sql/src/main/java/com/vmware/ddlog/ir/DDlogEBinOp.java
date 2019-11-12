@@ -75,25 +75,32 @@ public class DDlogEBinOp extends DDlogExpression {
         switch (this.bop) {
             case Eq:
             case Neq:
+                this.type = DDlogTBool.instance;
+                DDlogType.checkCompatible(left.getType(), right.getType());
+                break;
             case Lt:
             case Gt:
             case Lte:
             case Gte:
-                if (!DDlogType.isNumeric(left.type))
-                    throw new RuntimeException(this.bop + " is not applied to numeric type");
-                if (!DDlogType.isNumeric(right.type))
-                    throw new RuntimeException(this.bop + " is not applied to numeric type");
+                if (!DDlogType.isNumeric(left.getType()))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to numeric type: " + left.getType());
+                if (!DDlogType.isNumeric(right.getType()))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to numeric type: " + right.getType());
                 this.type = DDlogTBool.instance;
-                DDlogType.checkCompatible(left.type, right.type);
+                DDlogType.checkCompatible(left.getType(), right.getType());
                 break;
             case And:
             case Or:
             case Impl:
-                if (!(left.type instanceof DDlogTBool))
-                    throw new RuntimeException(this.bop + " is not applied to Boolean type");
-                if (!(right.type instanceof DDlogTBool))
-                    throw new RuntimeException(this.bop + " is not applied to Boolean type");
-                this.type = left.type;
+                if (!(left.getType() instanceof DDlogTBool))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to Boolean type: " + left.getType());
+                if (!(right.getType() instanceof DDlogTBool))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to Boolean type: " + right.getType());
+                this.type = left.getType();
                 break;
             case Plus:
             case Minus:
@@ -105,19 +112,23 @@ public class DDlogEBinOp extends DDlogExpression {
             case BAnd:
             case BOr:
             case BXor:
-                if (!DDlogType.isNumeric(left.type))
-                    throw new RuntimeException(this.bop + " is not applied to numeric type");
-                if (!DDlogType.isNumeric(right.type))
-                    throw new RuntimeException(this.bop + " is not applied to numeric type");
-                this.type = left.type;
-                DDlogType.checkCompatible(left.type, right.type);
+                if (!DDlogType.isNumeric(left.getType()))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to numeric type: " + left.getType());
+                if (!DDlogType.isNumeric(right.getType()))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to numeric type: " + right.getType());
+                this.type = left.getType();
+                DDlogType.checkCompatible(left.getType(), right.getType());
                 break;
             case Concat:
-                if (!(left.type instanceof DDlogTString))
-                    throw new RuntimeException(this.bop + " is not applied to string type");
-                if (!(right.type instanceof DDlogTString))
-                    throw new RuntimeException(this.bop + " is not applied to string type");
-                this.type = left.type;
+                if (!(left.getType() instanceof DDlogTString))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to string type: " + left.getType());
+                if (!(right.getType() instanceof DDlogTString))
+                    throw new RuntimeException(
+                            this.bop + " is not applied to string type: " + right.getType());
+                this.type = left.getType();
                 break;
         }
     }

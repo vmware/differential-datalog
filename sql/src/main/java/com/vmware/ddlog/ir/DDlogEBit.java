@@ -17,13 +17,13 @@ public class DDlogEBit extends DDlogExpression {
     /**
      * When width is 0 it means it is unspecified.
      */
-    final int width;
-    final BigInteger ival;
+    private final int width;
+    private final BigInteger ival;
 
     public DDlogEBit(int width, BigInteger ival) {
+        super(new DDlogTBit(width));
         this.width = width;
         this.ival = ival;
-        this.type = new DDlogTBit(width);
     }
 
     @Override

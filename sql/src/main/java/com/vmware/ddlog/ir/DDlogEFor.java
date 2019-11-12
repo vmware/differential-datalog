@@ -11,12 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
+import java.util.ArrayList;
+
 public class DDlogEFor extends DDlogExpression {
-    final String loopVar;
-    final DDlogExpression iter;
-    final DDlogExpression body;
+    private final String loopVar;
+    private final DDlogExpression iter;
+    private final DDlogExpression body;
 
     public DDlogEFor(String loopVar, DDlogExpression iter, DDlogExpression body) {
+        super(DDlogTTuple.emptyTupleType);
         this.loopVar = loopVar;
         this.iter = iter;
         this.body = body;

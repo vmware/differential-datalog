@@ -11,10 +11,25 @@
 
 package com.vmware.ddlog.ir;
 
+import javax.annotation.Nullable;
+
 public abstract class DDlogExpression implements DDlogIRNode {
     /**
      * Inferred type of the expression.
      */
-    public DDlogType type;
+    @Nullable
+    protected /*final*/ DDlogType type;
     public abstract String toString();
+
+    protected DDlogExpression(DDlogType type) {
+        this.type = this.checkNull(type);
+    }
+
+    protected DDlogExpression() {
+        this.type = null;
+    }
+
+    public DDlogType getType() {
+        return this.checkNull(this.type);
+    }
 }

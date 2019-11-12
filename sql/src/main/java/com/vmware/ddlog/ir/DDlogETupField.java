@@ -12,12 +12,20 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogETupField extends DDlogExpression {
-    final DDlogExpression struct;
-    final int field;
+    private final DDlogExpression struct;
+    private final int field;
 
     public DDlogETupField(DDlogExpression struct, int field) {
+        super(getFieldType(struct.getType(), field));
         this.struct = struct;
         this.field = field;
+    }
+
+    private static DDlogType getFieldType(DDlogType type, int field) {
+        if (!(type instanceof DDlogTTuple))
+            throw new RuntimeException("Type is not a tuple: " + type);
+        DDlogTTuple tuple = (DDlogTTuple)type;
+        return tuple.tupArgs.get(field);
     }
 
     @Override

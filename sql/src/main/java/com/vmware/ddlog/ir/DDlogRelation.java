@@ -67,7 +67,10 @@ public class DDlogRelation implements DDlogIRNode {
     @Override
     public String toString() {
         // We prefix the relation name with R
-        String result = this.role.toString() + " relation " + relationName(this.name)
+        String result = this.role.toString();
+        if (!result.isEmpty())
+            result += " ";
+        result += "relation " + relationName(this.name)
                 + "[" + this.type.toString() + "]";
         if (this.primaryKey != null)
             result += "primary key " + this.primaryKey;

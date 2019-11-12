@@ -12,17 +12,16 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEAs extends DDlogExpression {
-    final DDlogExpression expr;
-    final DDlogType type;
+    private final DDlogExpression expr;
 
     public DDlogEAs(DDlogExpression expr, DDlogType type) {
+        super(type);
         this.expr = expr;
-        this.type = type;
     }
 
     @Override
     public String toString() {
         return this.expr.toString() + " as " +
-                "" + this.type.toString();
+                "" + this.getType().toString();
     }
 }

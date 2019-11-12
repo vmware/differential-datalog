@@ -12,11 +12,11 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEBool extends DDlogExpression {
-    final boolean bval;
+    private final boolean bval;
 
     public DDlogEBool(boolean bval) {
+        super(DDlogTBool.instance);
         this.bval = bval;
-        this.type = DDlogTBool.instance;
     }
 
     @Override

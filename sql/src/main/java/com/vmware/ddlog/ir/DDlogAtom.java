@@ -28,8 +28,8 @@ public class DDlogAtom implements DDlogIRNode {
             DDlogEStruct struct = (DDlogEStruct)this.val;
             return DDlogRelation.relationName(this.relation) + "(" + String.join(",",
                 Linq.map(struct.fields, f ->
-                        (f.name.isEmpty() ? "" : "." + f.name) + " = "
-                                + f.value.toString())) + ")";
+                        (f.getName().isEmpty() ? "" : "." + f.getName()) + " = "
+                                + f.getValue().toString())) + ")";
         }
         return DDlogRelation.relationName(this.relation) + "[" + this.val.toString() + "]";
     }

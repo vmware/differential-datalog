@@ -14,11 +14,11 @@ package com.vmware.ddlog.ir;
 import java.math.BigInteger;
 
 public class DDlogEInt extends DDlogExpression {
-    final BigInteger ival;
+    private final BigInteger ival;
 
     public DDlogEInt(BigInteger ival) {
+        super(DDlogTInt.instance);
         this.ival = ival;
-        this.type = new DDlogTInt();
     }
 
     @Override

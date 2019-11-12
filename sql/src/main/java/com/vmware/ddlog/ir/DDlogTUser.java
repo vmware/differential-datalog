@@ -13,16 +13,25 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class DDlogTUser extends DDlogType {
-    final String name;
-    final List<DDlogType> typeArgs;
+    private final String name;
+    private final List<DDlogType> typeArgs;
 
     public DDlogTUser(String name, List<DDlogType> typeArgs) {
         this.name = name;
         this.typeArgs = typeArgs;
+    }
+
+    public DDlogTUser(String name) {
+        this(name, new ArrayList<DDlogType>());
+    }
+
+    public String getName() {
+        return this.name;
     }
 
     @Override

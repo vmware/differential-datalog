@@ -14,31 +14,41 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DDlogTypeDef implements DDlogIRNode {
-    final List<DDlogAttribute> attrs;
-    final String name;
-    final List<String> args;
+    private final List<DDlogAttribute> attrs;
+    private final String name;
+    private final List<String> args;
     @Nullable
-    final DDlogType type;
+    private final DDlogType type;
 
-    public DDlogTypeDef(List<DDlogAttribute> attrs, String name, List<String> args, @Nullable DDlogType type) {
+    DDlogTypeDef(List<DDlogAttribute> attrs, String name, List<String> args, @Nullable DDlogType type) {
         this.attrs = attrs;
         this.name = name;
         this.args = args;
         this.type = type;
     }
 
+    public DDlogTypeDef(String name, @Nullable DDlogType type) {
+        this(new ArrayList<DDlogAttribute>(), name, new ArrayList<String>(), type);
+    }
+
+    public String getName() { return this.name; }
+
+    @Nullable
+    public DDlogType getType() { return this.type; }
+
     @Override
     public String toString() {
         String result;
         if (this.type != null) {
-            result = "typedef  " + this.name;
+            result = "typedef " + this.name;
             if (!this.args.isEmpty())
                 result += "<" + String.join(", ",
-                        Linq.map(this.args, a -> "'" + a)) + "> = "
-                        + this.type.toString();
+                        Linq.map(this.args, a -> "'" + a)) + ">";
+            result += " = " + this.type.toString();
         } else {
             result = "extern type " + this.name;
             if (!this.args.isEmpty())

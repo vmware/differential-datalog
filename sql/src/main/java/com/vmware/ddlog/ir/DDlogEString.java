@@ -12,11 +12,13 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEString extends DDlogExpression {
-    final String string;
+    private final String string;
 
     public DDlogEString(String string) {
+        super(DDlogTString.instance);
+        if (string.startsWith("'") && string.endsWith("'"))
+            string = string.substring(1, string.length() - 1);
         this.string = string;
-        this.type = new DDlogTString();
     }
 
     @Override
@@ -24,6 +26,6 @@ public class DDlogEString extends DDlogExpression {
         if (this.string.contains("${")) {
             return "[|" + this.string + "|]";
         }
-        return this.string;
+        return "\"" + this.string + "\"";
     }
 }

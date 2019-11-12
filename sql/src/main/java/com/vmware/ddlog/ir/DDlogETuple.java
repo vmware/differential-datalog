@@ -16,15 +16,16 @@ import com.vmware.ddlog.util.Linq;
 import java.util.List;
 
 public class DDlogETuple extends DDlogExpression {
-    final List<DDlogExpression> tupFields;
+    private final List<DDlogExpression> tupFields;
 
     public DDlogETuple(List<DDlogExpression> tupFields) {
+        super(new DDlogTTuple(Linq.map(tupFields, DDlogExpression::getType)));
         this.tupFields = tupFields;
     }
 
     @Override
     public String toString() {
         return "(" + String.join(", ",
-                Linq.map(this.tupFields, f -> f.toString())) + ")";
+                Linq.map(this.tupFields, DDlogExpression::toString)) + ")";
     }
 }

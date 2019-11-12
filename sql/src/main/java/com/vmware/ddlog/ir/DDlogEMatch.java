@@ -17,8 +17,12 @@ import java.util.List;
 
 public class DDlogEMatch extends DDlogExpression {
     public DDlogEMatch(DDlogExpression matchExpr, List<Case> cases) {
+        super(cases.get(0).second.getType());
         this.matchExpr = matchExpr;
         this.cases = cases;
+        for (int i = 1; i < cases.size(); i++) {
+            DDlogType.checkCompatible(this.checkNull(this.type), cases.get(i).second.getType());
+        }
     }
 
     public static final class Case implements DDlogIRNode {
@@ -36,8 +40,8 @@ public class DDlogEMatch extends DDlogExpression {
         }
     }
 
-    final DDlogExpression matchExpr;
-    final List<Case> cases;
+    private final DDlogExpression matchExpr;
+    private final List<Case> cases;
 
     @Override
     public String toString() {

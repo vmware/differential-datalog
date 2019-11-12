@@ -14,16 +14,21 @@ package com.vmware.ddlog.ir;
 import java.math.BigInteger;
 
 public class DDlogESigned extends DDlogExpression {
-    final int width;
-    final BigInteger ival;
+    private final int width;
+    private final BigInteger ival;
 
     public DDlogESigned(int width, BigInteger ival) {
+        super(new DDlogTSigned(width));
         this.width = width;
         this.ival = ival;
     }
 
     @Override
     public String toString() {
-        return this.ival + "'sd" + this.ival.toString();
+        String result = "";
+        if (this.width > 0)
+            result = this.width + "'sd";
+        result += this.ival.toString();
+        return result;
     }
 }
