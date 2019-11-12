@@ -39,7 +39,6 @@ public class Translator {
     private final TranslationContext translationContext;
     private final TranslationVisitor visitor;
     private final ParsingOptions options = new ParsingOptions();
-    private final boolean debug = true;
 
     public Translator(@Nullable final DSLContext dynamicContext) {
         this.parser = new SqlParser();
@@ -57,10 +56,12 @@ public class Translator {
      * @param sql  Statement to translate.
      */
     public DDlogIRNode translateSqlStatement(final String sql) {
+        this.translationContext.beginTranslation();
         Statement statement = this.parser.createStatement(sql, this.options);
-        if (this.debug)
-            System.out.println("Translating: " + statement.toString());
-        return this.visitor.process(statement, this.translationContext);
+        //System.out.println("Translating: " + statement.toString());
+        DDlogIRNode result = this.visitor.process(statement, this.translationContext);
+        this.translationContext.endTranslation();
+        return result;
     }
 
     public DDlogIRNode translateExpression(final String sql) {

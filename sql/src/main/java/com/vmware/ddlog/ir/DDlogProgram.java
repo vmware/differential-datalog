@@ -40,15 +40,16 @@ public class DDlogProgram implements DDlogIRNode {
 
     @Override
     public String toString() {
-        return String.join("\n",
-                        Linq.map(this.imports, DDlogImport::toString)) +
-                String.join("\n",
-                        Linq.map(this.typedefs, DDlogTypeDef::toString)) +
-                String.join("\n",
-                        Linq.map(this.functions, DDlogFunction::toString)) +
-                String.join("\n",
-                        Linq.map(this.relations, DDlogRelation::toString)) +
-                String.join("\n",
-                        Linq.map(this.rules, DDlogRule::toString));
+        String[] parts = new String[5];
+        parts[0] = String.join("\n", Linq.map(this.imports, DDlogImport::toString));
+        parts[1] = String.join("\n", Linq.map(this.typedefs, DDlogTypeDef::toString));
+        parts[2] = String.join("\n", Linq.map(this.functions, DDlogFunction::toString));
+        parts[3] = String.join("\n", Linq.map(this.relations, DDlogRelation::toString));
+        parts[4] = String.join("\n", Linq.map(this.rules, DDlogRule::toString));
+        return String.join("\n", parts);
+    }
+
+    public void compile() {
+
     }
 }

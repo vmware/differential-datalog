@@ -9,21 +9,18 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.translator;
 
-public class DDlogESlice extends DDlogExpression {
-    final DDlogExpression expr;
-    final int h;
-    final int l;
+import com.facebook.presto.sql.tree.AstVisitor;
+import com.facebook.presto.sql.tree.Identifier;
 
-    public DDlogESlice(DDlogExpression expr, int h, int l) {
-        this.expr = expr;
-        this.h = h;
-        this.l = l;
-    }
-
+/**
+ * A simple visitor which extracts a column name from an expression.
+ * This returns null for most expressions.
+ */
+public class ExpressionColumnName extends AstVisitor<String, Void> {
     @Override
-    public String toString() {
-        return this.expr.toString() + "[" + this.h + ":" + this.l + "]";
+    protected String visitIdentifier(Identifier id, Void context) {
+        return id.getValue();
     }
 }

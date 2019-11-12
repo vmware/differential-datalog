@@ -12,6 +12,10 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogTString extends DDlogType {
+    public static DDlogTString instance = new DDlogTString();
+
+    private DDlogTString() {}
+
     @Override
     public String toString() { return "string"; }
 

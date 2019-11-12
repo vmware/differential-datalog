@@ -39,14 +39,14 @@ public class DDlogEUnOp extends DDlogExpression {
                 this.type = DDlogTBool.instance;
             case BNeg:
             case UMinus:
-                if (!DDlogType.isNumeric(expr.type))
+                if (!DDlogType.isNumeric(expr.getType()))
                     throw new RuntimeException(this.uop + " is not applied to numeric type");
                 this.type = expr.type;
         }
     }
 
-    final UOp uop;
-    final DDlogExpression expr;
+    private final UOp uop;
+    private final DDlogExpression expr;
 
     @Override
     public String toString() {

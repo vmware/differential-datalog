@@ -17,21 +17,31 @@ import java.util.List;
 
 public class DDlogEStruct extends DDlogExpression {
     public static final class FieldValue {
-        String name;
-        DDlogExpression value;
+        private final String name;
+        private final DDlogExpression value;
+
+        public FieldValue(String name, DDlogExpression value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public String getName() { return this.name; }
+        public DDlogExpression getValue() { return this.value; }
     }
 
-    final String constructor;
+    private final String constructor;
     final List<FieldValue> fields;
 
-    public DDlogEStruct(String constructor, List<FieldValue> fields) {
+    public DDlogEStruct(String constructor, List<FieldValue> fields, DDlogType type) {
+        super(type);
         this.constructor = constructor;
         this.fields = fields;
+        // TODO: check type?
     }
 
     @Override
     public String toString() {
-        return "{" + String.join(",",
+        return this.constructor + "{" + String.join(",",
                 Linq.map(this.fields, f ->
                         (f.name.isEmpty() ? "" : "." + f.name) + " = "
                                 + f.value.toString())) + "}";

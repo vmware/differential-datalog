@@ -13,26 +13,25 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * DDlogTStruct can have multiple constructors, but in SQL we never need more than 1.
+ */
 public class DDlogTStruct extends DDlogType {
-    private final List<DDlogConstructor> constructors;
+    private final String name;
+    private final List<DDlogField> args;
 
-    DDlogTStruct(List<DDlogConstructor> constructors) {
-        this.constructors = this.checkNull(constructors);
-    }
-
-    public DDlogTStruct(DDlogConstructor constructor) {
-        this(new ArrayList<DDlogConstructor>(1));
-        this.constructors.add(this.checkNull(constructor));
+    public DDlogTStruct(String name, List<DDlogField> args) {
+        this.name = name;
+        this.args = args;
     }
 
     @Override
     public String toString() {
-        return String.join("\n|",
-                Linq.map(this.constructors, Object::toString));
+        return this.name + "{" + String.join(", ",
+                Linq.map(this.args, DDlogField::toString)) + "}";
     }
 
     @Override
@@ -40,11 +39,16 @@ public class DDlogTStruct extends DDlogType {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DDlogTStruct that = (DDlogTStruct) o;
-        return constructors.equals(that.constructors);
+        return name.equals(that.name) &&
+                args.equals(that.args);
     }
+
+    public String getName() { return this.name; }
+
+    public List<DDlogField> getFields() { return this.args; }
 
     @Override
     public int hashCode() {
-        return Objects.hash(constructors);
+        return Objects.hash(name, args);
     }
 }

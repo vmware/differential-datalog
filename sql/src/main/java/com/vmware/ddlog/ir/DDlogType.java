@@ -23,4 +23,8 @@ public abstract class DDlogType implements DDlogIRNode {
         if (type0.getClass() != type1.getClass())
             throw new RuntimeException("Incompatible types " + type0 + " and " + type1);
     }
+
+    public static String typeName(String name) {
+        return "T" + name;
+    }
 }

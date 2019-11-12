@@ -12,9 +12,10 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEVar extends DDlogExpression {
-    final String var;
+    private final String var;
 
-    public DDlogEVar(String var) {
+    public DDlogEVar(String var, DDlogType type) {
+        super(type);
         this.var = var;
     }
 

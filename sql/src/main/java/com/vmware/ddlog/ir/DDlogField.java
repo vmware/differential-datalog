@@ -14,8 +14,8 @@ package com.vmware.ddlog.ir;
 import java.util.Objects;
 
 public class DDlogField implements DDlogIRNode {
-    final String name;
-    final DDlogType type;
+    private final String name;
+    private final DDlogType type;
 
     public DDlogField(String name, DDlogType type) {
         this.name = name;
@@ -29,6 +29,14 @@ public class DDlogField implements DDlogIRNode {
         DDlogField that = (DDlogField) o;
         return name.equals(that.name) &&
                 type.equals(that.type);
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public DDlogType getType() {
+        return type;
     }
 
     @Override

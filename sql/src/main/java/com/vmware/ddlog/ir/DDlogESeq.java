@@ -12,10 +12,11 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogESeq extends DDlogExpression {
-    final DDlogExpression left;
-    final DDlogExpression right;
+    private final DDlogExpression left;
+    private final DDlogExpression right;
 
     public DDlogESeq(DDlogExpression left, DDlogExpression right) {
+        super(right.getType());
         this.left = left;
         this.right = right;
     }

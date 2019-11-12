@@ -12,10 +12,11 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEBinding extends DDlogExpression {
-    final String var;
-    final DDlogExpression pattern;
+    private final String var;
+    private final DDlogExpression pattern;
 
-    public DDlogEBinding(String var, DDlogExpression pattern) {
+    public DDlogEBinding(String var, DDlogExpression pattern, DDlogType type) {
+        super(type);
         this.var = var;
         this.pattern = pattern;
     }

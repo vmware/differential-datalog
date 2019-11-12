@@ -16,6 +16,7 @@ public class DDlogESet extends DDlogExpression {
     final DDlogExpression rval;
 
     public DDlogESet(DDlogExpression lval, DDlogExpression rval) {
+        super(DDlogTTuple.emptyTupleType);
         this.lval = lval;
         this.rval = rval;
     }

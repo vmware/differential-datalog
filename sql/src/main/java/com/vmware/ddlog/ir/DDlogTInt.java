@@ -12,6 +12,10 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogTInt extends DDlogType {
+    private DDlogTInt() {}
+
+    public static DDlogTInt instance = new DDlogTInt();
+
     @Override
     public String toString() { return "bigint"; }
 
