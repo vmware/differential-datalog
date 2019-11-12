@@ -1,0 +1,194 @@
+CPUUSEDPERNODE:
+CPUUSEDPERNODE{.name = "null", .cpu = 5}: +1
+CPUUSEDPERNODE{.name = "node5", .cpu = 1}: +1
+CPUUSEDPERNODE{.name = "node6", .cpu = 1}: +1
+CPUUSEDPERNODE{.name = "node7", .cpu = 1}: +1
+CPUUSEDPERNODE{.name = "node8", .cpu = 1}: +1
+CPUUSEDPERNODE{.name = "node9", .cpu = 1}: +1
+INTERPODAFFINITYMATCHES:
+INTERPODAFFINITYMATCHES{.pod_name = "pod0", .matches = "pod0", .node_name = "null", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod0", .matches = "pod1", .node_name = "null", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod2", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod3", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod4", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod5", .node_name = "node5", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod6", .node_name = "node6", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod7", .node_name = "node7", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod8", .node_name = "node8", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod1", .matches = "pod9", .node_name = "node9", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod2", .matches = "pod2", .node_name = "null", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod2", .matches = "pod3", .node_name = "null", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod0", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod1", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod4", .node_name = "null", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod5", .node_name = "node5", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod6", .node_name = "node6", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod7", .node_name = "node7", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod8", .node_name = "node8", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod3", .matches = "pod9", .node_name = "node9", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod4", .matches = "pod4", .node_name = "null", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHES{.pod_name = "pod4", .matches = "pod5", .node_name = "node5", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHESGROUPBY:
+INTERPODAFFINITYMATCHESGROUPBY{.pod_name = "pod0", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHESGROUPBY{.pod_name = "pod1", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHESGROUPBY{.pod_name = "pod2", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHESGROUPBY{.pod_name = "pod3", .num_matches = 8}: +1
+INTERPODAFFINITYMATCHESGROUPBY{.pod_name = "pod4", .num_matches = 2}: +1
+INTERPODAFFINITYMATCHESINNER:
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod0", .matches = "pod0", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod0", .matches = "pod1", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod2", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod3", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod6", .node_name = "node6"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod7", .node_name = "node7"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod8", .node_name = "node8"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod1", .matches = "pod9", .node_name = "node9"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod2", .matches = "pod2", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod2", .matches = "pod3", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod0", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod1", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod6", .node_name = "node6"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod7", .node_name = "node7"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod8", .node_name = "node8"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod3", .matches = "pod9", .node_name = "node9"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod4", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNER{.pod_name = "pod4", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNEREXISTS:
+INTERPODAFFINITYMATCHESINNEREXISTS{.pod_name = "pod2", .matches = "pod2", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNEREXISTS{.pod_name = "pod2", .matches = "pod3", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERIN:
+INTERPODAFFINITYMATCHESINNERIN{.pod_name = "pod0", .matches = "pod0", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERIN{.pod_name = "pod0", .matches = "pod1", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERIN{.pod_name = "pod4", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERIN{.pod_name = "pod4", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNERNOT:
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod2", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod3", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod6", .node_name = "node6"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod7", .node_name = "node7"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod8", .node_name = "node8"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod1", .matches = "pod9", .node_name = "node9"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod0", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod1", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod4", .node_name = "null"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod5", .node_name = "node5"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod6", .node_name = "node6"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod7", .node_name = "node7"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod8", .node_name = "node8"}: +1
+INTERPODAFFINITYMATCHESINNERNOT{.pod_name = "pod3", .matches = "pod9", .node_name = "node9"}: +1
+MEMORYUSEDPERNODE:
+MEMORYUSEDPERNODE{.name = "null", .memory = 5}: +1
+MEMORYUSEDPERNODE{.name = "node5", .memory = 1}: +1
+MEMORYUSEDPERNODE{.name = "node6", .memory = 1}: +1
+MEMORYUSEDPERNODE{.name = "node7", .memory = 1}: +1
+MEMORYUSEDPERNODE{.name = "node8", .memory = 1}: +1
+MEMORYUSEDPERNODE{.name = "node9", .memory = 1}: +1
+NODESTHATHAVETOLERATIONS:
+NODESTHATHAVETOLERATIONS{.node_name = "node0"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node1"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node2"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node3"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node4"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node5"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node6"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node7"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node8"}: +1
+NODESTHATHAVETOLERATIONS{.node_name = "node9"}: +1
+NODETAINTSGROUP:
+NODETAINTSGROUP{.node_name = "node0", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node1", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node2", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node3", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node4", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node5", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node6", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node7", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node8", .num_taints = 1}: +1
+NODETAINTSGROUP{.node_name = "node9", .num_taints = 1}: +1
+PODNODESELECTORMATCHES:
+PODNODESELECTORMATCHES{.pod_name = "pod0", .node_name = "node0"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod0", .node_name = "node1"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node2"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node3"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node4"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node5"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node6"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node7"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node8"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod1", .node_name = "node9"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod2", .node_name = "node2"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod2", .node_name = "node3"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node0"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node1"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node4"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node5"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node6"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node7"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node8"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod3", .node_name = "node9"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod4", .node_name = "node4"}: +1
+PODNODESELECTORMATCHES{.pod_name = "pod4", .node_name = "node5"}: +1
+PODNODESELECTORMATCHESEXISTS:
+PODNODESELECTORMATCHESEXISTS{.pod_name = "pod2", .node_name = "node2"}: +1
+PODNODESELECTORMATCHESEXISTS{.pod_name = "pod2", .node_name = "node3"}: +1
+PODNODESELECTORMATCHESIN:
+PODNODESELECTORMATCHESIN{.pod_name = "pod0", .node_name = "node0"}: +1
+PODNODESELECTORMATCHESIN{.pod_name = "pod0", .node_name = "node1"}: +1
+PODNODESELECTORMATCHESIN{.pod_name = "pod4", .node_name = "node4"}: +1
+PODNODESELECTORMATCHESIN{.pod_name = "pod4", .node_name = "node5"}: +1
+PODNODESELECTORMATCHESNOT:
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node2"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node3"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node4"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node5"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node6"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node7"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node8"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod1", .node_name = "node9"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node0"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node1"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node4"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node5"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node6"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node7"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node8"}: +1
+PODNODESELECTORMATCHESNOT{.pod_name = "pod3", .node_name = "node9"}: +1
+PODSTHATTOLERATENODETAINTS:
+PODSTHATTOLERATENODETAINTS{.pod_name = "pod0", .node_name = "node0"}: +1
+PODSTHATTOLERATENODETAINTS{.pod_name = "pod1", .node_name = "node1"}: +1
+PODSTHATTOLERATENODETAINTS{.pod_name = "pod2", .node_name = "node2"}: +1
+PODSTHATTOLERATENODETAINTS{.pod_name = "pod3", .node_name = "node3"}: +1
+PODSTHATTOLERATENODETAINTS{.pod_name = "pod4", .node_name = "node4"}: +1
+PODSTOASSIGN:
+PODSTOASSIGN{.pod_name = "pod0", .status = "Pending", .controllable__node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGN{.pod_name = "pod1", .status = "Pending", .controllable__node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGN{.pod_name = "pod2", .status = "Pending", .controllable__node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGN{.pod_name = "pod3", .status = "Pending", .controllable__node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGN{.pod_name = "pod4", .status = "Pending", .controllable__node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGNNOLIMIT:
+PODSTOASSIGNNOLIMIT{.pod_name = "pod0", .status = "Pending", .node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGNNOLIMIT{.pod_name = "pod1", .status = "Pending", .node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGNNOLIMIT{.pod_name = "pod2", .status = "Pending", .node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGNNOLIMIT{.pod_name = "pod3", .status = "Pending", .node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSTOASSIGNNOLIMIT{.pod_name = "pod4", .status = "Pending", .node_name = "null", .namespace = "default", .cpu_request = 1, .memory_request = 1, .ephemeral_storage_request = 1, .pods_request = 1, .owner_name = "owner", .creation_timestamp = "owner", .has_node_selector_labels = true, .has_pod_affinity_requirements = true}: +1
+PODSUSEDPERNODE:
+PODSUSEDPERNODE{.name = "null", .pods = 5}: +1
+PODSUSEDPERNODE{.name = "node5", .pods = 1}: +1
+PODSUSEDPERNODE{.name = "node6", .pods = 1}: +1
+PODSUSEDPERNODE{.name = "node7", .pods = 1}: +1
+PODSUSEDPERNODE{.name = "node8", .pods = 1}: +1
+PODSUSEDPERNODE{.name = "node9", .pods = 1}: +1
+PODSWITHPORTREQUESTS:
+PODSWITHPORTREQUESTS{.controllable__node_name = "null", .host_ip = "ip", .host_port = 8080, .host_protocol = "http"}: +1
+SPARECAPACITY:
+SPARECAPACITY{.name = "node5", .cpu_remaining = 0, .memory_remaining = 0, .pods_remaining = 0}: +1
+SPARECAPACITY{.name = "node6", .cpu_remaining = 0, .memory_remaining = 0, .pods_remaining = 0}: +1
+SPARECAPACITY{.name = "node7", .cpu_remaining = 0, .memory_remaining = 0, .pods_remaining = 0}: +1
+SPARECAPACITY{.name = "node8", .cpu_remaining = 0, .memory_remaining = 0, .pods_remaining = 0}: +1
+SPARECAPACITY{.name = "node9", .cpu_remaining = 0, .memory_remaining = 0, .pods_remaining = 0}: +1
