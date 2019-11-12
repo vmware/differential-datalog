@@ -1,5 +1,7 @@
 use std::any::Any;
 use std::fmt::Debug;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use crate::observe::observer::ObserverBox;
 use crate::observe::observer::OptionalObserver;
@@ -32,6 +34,31 @@ where
     /// Cancel a subscription so that the observer stops listening to
     /// the observable.
     fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>>;
+}
+
+/// An easily sharable `Observable`.
+pub type SharedObservable<O> = Arc<Mutex<O>>;
+
+impl<O, T, E> Observable<T, E> for SharedObservable<O>
+where
+    O: Observable<T, E>,
+    T: Send,
+    E: Send,
+{
+    type Subscription = O::Subscription;
+
+    fn subscribe(
+        &mut self,
+        observer: ObserverBox<T, E>,
+    ) -> Result<Self::Subscription, ObserverBox<T, E>> {
+        self.lock().unwrap().subscribe(observer)
+    }
+
+    /// Cancel a subscription so that the observer stops listening to
+    /// the observable.
+    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
+        self.lock().unwrap().unsubscribe(subscription)
+    }
 }
 
 /// A trait abstracting away from the concrete type of subscription used
