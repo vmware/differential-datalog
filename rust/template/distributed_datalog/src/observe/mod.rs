@@ -8,6 +8,7 @@ mod test;
 pub use observable::Observable;
 pub use observable::ObservableAny;
 pub use observable::ObservableBox;
+pub use observable::SharedObservable;
 pub use observable::UpdatesObservable;
 pub use observer::Observer;
 pub use observer::ObserverBox;

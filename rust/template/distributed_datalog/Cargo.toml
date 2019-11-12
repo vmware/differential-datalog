@@ -9,6 +9,7 @@ path = "../differential_datalog"
 [dev-dependencies]
 env_logger = {version = "0.6", default_features = false, features = ["humantime"]}
 test-env-log = "0.1"
+waitfor = "0.1"
 
 [dependencies]
 bincode = "1.2"
