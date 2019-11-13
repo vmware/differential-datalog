@@ -11,8 +11,13 @@ use crate::valmap::DeltaMap;
 
 /// Convert to and from values/objects of a DDlog program.
 pub trait DDlogConvert: Debug {
+    type Value: Debug;
+
     /// Convert a `RelId` into its symbolic name.
     fn relid2name(rel_id: RelId) -> Option<&'static str>;
+
+    /// Convert an `UpdCmd` into an `Update`.
+    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String>;
 }
 
 /// A trait capturing program instantiation and handling of

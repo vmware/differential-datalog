@@ -47,6 +47,7 @@ use differential_datalog::decl_val_enum_into_record;
 use differential_datalog::int::*;
 use differential_datalog::program::*;
 use differential_datalog::record;
+use differential_datalog::record::UpdCmd;
 use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
 use differential_datalog::uint::*;
 use differential_datalog::DDlogConvert;
@@ -55,6 +56,8 @@ use fnv::{FnvHashMap, FnvHashSet};
 use lazy_static::lazy_static;
 use libc::size_t;
 use num_traits::identities::One;
+
+use crate::api::updcmd2upd;
 
 pub mod api;
 pub mod ovsdb;
@@ -85,8 +88,14 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
 pub struct DDlogConverter {}
 
 impl DDlogConvert for DDlogConverter {
+    type Value = Value;
+
     fn relid2name(relId: RelId) -> Option<&'static str> {
         relid2name(relId)
+    }
+
+    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {
+        updcmd2upd(upd_cmd)
     }
 }
 
