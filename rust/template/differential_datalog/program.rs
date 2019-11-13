@@ -979,7 +979,9 @@ where
         let upd = match self {
             Update::Insert { relid, v } => (true, relid, v),
             Update::DeleteValue { relid, v } => (false, relid, v),
-            _ => panic!("Cannot serialize Modify/DeleteKey update"),
+            Update::Modify { .. } | Update::DeleteKey { .. } => {
+                panic!("Cannot serialize {:?} update", self)
+            }
         };
 
         upd.serialize(serializer)
