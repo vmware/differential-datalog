@@ -16,14 +16,14 @@ use crate::observe::SharedObserver;
 struct CachingObserver<O, T> {
     /// The observer we ultimately push our data to when we received the
     /// `on_commit` event.
-    observer: SharedObserver<OptionalObserver<O>>,
+    observer: SharedObserver<O>,
     /// The data we accumulated so far.
     data: Option<LinkedList<Vec<T>>>,
 }
 
 impl<O, T> CachingObserver<O, T> {
     /// Create a new `CachingObserver` wrapping the provided observer.
-    pub fn new(observer: SharedObserver<OptionalObserver<O>>) -> Self {
+    pub fn new(observer: SharedObserver<O>) -> Self {
         Self {
             observer,
             data: None,
