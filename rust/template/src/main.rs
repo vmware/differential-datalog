@@ -99,7 +99,7 @@ fn handle_cmd(
             let _ = hddlog.db.as_ref().map(|db| {
                 db.lock()
                     .unwrap()
-                    .format_as_sets::<RelIdConverter>(&mut stdout())
+                    .format_as_sets::<DDlogConverter>(&mut stdout())
             });
             Ok(())
         }

@@ -1,15 +1,24 @@
+use std::fmt::Debug;
 use std::iter::Iterator;
 use std::ops::Deref;
 
 use crate::callback::Callback;
+use crate::program::RelId;
 use crate::program::Update;
 use crate::program::Val;
 use crate::record::UpdCmd;
 use crate::valmap::DeltaMap;
 
+/// Convert to and from values/objects of a DDlog program.
+pub trait DDlogConvert: Debug {
+    /// Convert a `RelId` into its symbolic name.
+    fn relid2name(rel_id: RelId) -> Option<&'static str>;
+}
+
 /// A trait capturing program instantiation and handling of
 /// transactions.
-pub trait DDlog {
+pub trait DDlog: Debug {
+    type Convert: DDlogConvert;
     type Value: Val;
 
     /// Run the program.

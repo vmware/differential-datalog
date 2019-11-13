@@ -21,5 +21,5 @@ mod test_record;
 
 pub use callback::Callback;
 pub use ddlog::DDlog;
-pub use valmap::ConvertRelId;
+pub use ddlog::DDlogConvert;
 pub use valmap::DeltaMap;

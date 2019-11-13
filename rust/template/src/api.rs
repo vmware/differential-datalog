@@ -140,6 +140,7 @@ impl HDDlog {
 }
 
 impl DDlog for HDDlog {
+    type Convert = DDlogConverter;
     type Value = Value;
 
     fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<Self, String>
