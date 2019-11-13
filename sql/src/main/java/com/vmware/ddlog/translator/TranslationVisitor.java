@@ -30,10 +30,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<DDlogField> fields = new ArrayList<DDlogField>();
         for (TableElement te: elements) {
             DDlogIRNode field = this.process(te, context);
-            if (field instanceof DDlogField)
-                fields.add((DDlogField)field);
-            else
-                throw new TranslationException("Unexpected table element", te);
+            fields.add(field.as(DDlogField.class, null));
         }
         DDlogTStruct type = new DDlogTStruct(DDlogType.typeName(name), fields);
         DDlogTypeDef tdef = new DDlogTypeDef(type.getName(), type);
@@ -47,11 +44,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     protected DDlogIRNode visitTableSubquery(TableSubquery query, TranslationContext context) {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
-        if (!(subquery instanceof RelationRHS))
-            throw new TranslationException(
-                    "Translating query specification did not produce a relation: " +
-                            subquery.getClass(), query);
-        RelationRHS relation = (RelationRHS)subquery;
+        RelationRHS relation = subquery.as(RelationRHS.class, null);
 
         String relName = context.freshGlobalName("tmp");
         DDlogRelation rel = new DDlogRelation(
@@ -68,7 +61,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         context.add(rule);
         RelationRHS result = new RelationRHS(lhsVar, relation.getType());
         result.addDefinition(new DDlogRHSLiteral(true, new DDlogAtom(rel.getName(), varExpr)));
-        TranslationContext.Scope scope = new TranslationContext.Scope(lhsVar, rel.getType());
+        Scope scope = new Scope(relName, lhsVar, rel.getType());
         context.enterScope(scope);
         return result;
     }
@@ -85,6 +78,23 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     }
 
     @Override
+    protected DDlogIRNode visitAliasedRelation(
+            AliasedRelation relation, TranslationContext context) {
+        DDlogIRNode rel = this.process(relation.getRelation(), context);
+        String name = relation.getAlias().getValue();
+        RelationRHS rrhs = rel.as(RelationRHS.class, null);
+        DDlogRelation alias = new DDlogRelation(
+                DDlogRelation.RelationRole.RelInternal, name, rrhs.getType());
+        context.add(alias);
+        String var = context.freshLocalName("v");
+        RelationRHS result = new RelationRHS(var, rrhs.getType());
+        result.addDefinition(new DDlogRHSLiteral(true, new DDlogAtom(name, rrhs.getRowVariable(false))));
+        Scope scope = new Scope(name, var, rrhs.getType());
+        context.enterScope(scope);
+        return result;
+    }
+
+    @Override
     protected DDlogIRNode visitTable(Table table, TranslationContext context) {
         String name = convertQualifiedName(table.getName());
         DDlogRelation relation = context.getRelation(name);
@@ -92,7 +102,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             throw new TranslationException("Could not find relation", table);
         String var = context.freshLocalName("v");
         DDlogType type = relation.getType();
-        TranslationContext.Scope scope = new TranslationContext.Scope(var, type);
+        Scope scope = new Scope(name, var, type);
         context.enterScope(scope);
         RelationRHS result = new RelationRHS(var, type);
         result.addDefinition(new DDlogRHSLiteral(
@@ -167,11 +177,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogIRNode source = this.process(spec.getFrom().get(), context);
         if (source == null)
             throw new TranslationException("Not yet handled", spec);
-        if (!(source instanceof RelationRHS))
-            throw new RuntimeException(
-                    "Translating query specification did not produce a relation: " +
-                            source.getClass());
-        RelationRHS relation = (RelationRHS)source;
+        RelationRHS relation = source.as(RelationRHS.class, null);
         if (spec.getWhere().isPresent()) {
             Expression expr = spec.getWhere().get();
             DDlogExpression ddexpr = context.translateExpression(expr);
@@ -186,10 +192,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     protected DDlogIRNode visitCreateView(CreateView view, TranslationContext context) {
         String name = convertQualifiedName(view.getName());
         DDlogIRNode query = process(view.getQuery(), context);
-        if (!(query instanceof RelationRHS))
-            throw new TranslationException("Unexpected query translation", view);
-
-        RelationRHS rel = (RelationRHS)query;
+        RelationRHS rel = query.as(RelationRHS.class, null);
         DDlogRelation out = new DDlogRelation(
                 DDlogRelation.RelationRole.RelOutput, name, rel.getType());
 
