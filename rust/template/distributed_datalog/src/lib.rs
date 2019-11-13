@@ -10,6 +10,8 @@
 mod observe;
 mod server;
 mod tcp_channel;
+#[cfg(any(test, feature = "test"))]
+mod test;
 mod txnmux;
 
 pub use observe::Observable;
@@ -26,3 +28,6 @@ pub use txnmux::TxnMux;
 
 #[cfg(any(test, feature = "test"))]
 pub use observe::MockObserver;
+
+#[cfg(any(test, feature = "test"))]
+pub use test::await_expected;

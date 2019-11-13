@@ -1,15 +1,12 @@
 use std::any::Any;
-use std::panic::catch_unwind;
-use std::panic::AssertUnwindSafe;
-use std::panic::UnwindSafe;
 use std::sync::Mutex;
-use std::time::Duration;
 
 use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
 use differential_datalog::DDlog;
+use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::MockObserver as Mock;
 use distributed_datalog::Observable;
@@ -29,33 +26,9 @@ use maplit::hashset;
 
 use test_env_log::test;
 
-use waitfor::wait_for;
-
 type DDlogServer = DDlogServerT<HDDlog>;
 type MockObserver = SharedObserver<Mock>;
 type UpdatesObservable = UpdatesObservableT<Update<Value>, String>;
-
-fn await_expected<F>(mut op: F)
-where
-    F: FnMut() + UnwindSafe,
-{
-    let op = || -> Result<Option<()>, ()> {
-        // All we care about for the sake of testing here are assertion
-        // failures. So if we encounter one (in the form of a panic) we
-        // map that to a retry.
-        match catch_unwind(AssertUnwindSafe(&mut op)) {
-            Ok(_) => Ok(Some(())),
-            Err(_) => Ok(None),
-        }
-    };
-
-    let result = wait_for(Duration::from_secs(5), Duration::from_millis(1), op);
-    match result {
-        Ok(Some(_)) => (),
-        Ok(None) => panic!("time out waiting for expected result"),
-        Err(e) => panic!("failed to await expected result: {:?}", e),
-    }
-}
 
 /// Verify that `on_commit` is called even if we haven't received any
 /// updates.
