@@ -914,7 +914,7 @@ impl<V: Val> RelationInstance<V> {
 /// `DeleteKey` takes key only and is only defined for relations with 'key_func';
 /// `Modify` takes a key and a `Mutator` trait object that represents an update
 /// to be applied to the given key.
-pub enum Update<V: Val> {
+pub enum Update<V> {
     Insert {
         relid: RelId,
         v: V,
@@ -936,7 +936,10 @@ pub enum Update<V: Val> {
 
 // Manual implementation of `Debug` for `Update` because the latter
 // contains a member that is not auto-derivable.
-impl<V: Val> Debug for Update<V> {
+impl<V> Debug for Update<V>
+where
+    V: Debug,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Update::Insert { relid, v } => {
@@ -968,7 +971,10 @@ impl<V: Val> Debug for Update<V> {
     }
 }
 
-impl<V: Val + Serialize> Serialize for Update<V> {
+impl<V> Serialize for Update<V>
+where
+    V: Debug + Serialize,
+{
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let upd = match self {
             Update::Insert { relid, v } => (true, relid, v),
@@ -982,7 +988,7 @@ impl<V: Val + Serialize> Serialize for Update<V> {
 
 impl<'de, V> Deserialize<'de> for Update<V>
 where
-    V: Val + DeserializeOwned,
+    V: DeserializeOwned,
 {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let (b, relid, v) = <(bool, RelId, V) as Deserialize>::deserialize(deserializer)?;
@@ -994,7 +1000,7 @@ where
     }
 }
 
-impl<V: Val> Update<V> {
+impl<V> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
             Update::Insert { relid, .. } => *relid,
