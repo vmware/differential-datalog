@@ -23,7 +23,8 @@ import java.util.*;
 
 public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, TranslationContext> {
     @Override
-    protected DDlogExpression visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
+    protected DDlogExpression visitArithmeticBinary(
+            ArithmeticBinaryExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
         switch (node.getOperator()) {
@@ -42,13 +43,14 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
-    protected DDlogExpression visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
+    protected DDlogExpression visitBetweenPredicate(
+            BetweenPredicate node, TranslationContext context) {
         DDlogExpression max = this.process(node.getMax(), context);
         DDlogExpression value = this.process(node.getValue(), context);
         DDlogExpression min = this.process(node.getMin(), context);
         DDlogExpression left = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, min, value);
         DDlogExpression right = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, value, max);
-        return new DDlogEBinOp(DDlogEBinOp.BOp.BAnd, left, right);
+        return new DDlogEBinOp(DDlogEBinOp.BOp.And, left, right);
     }
 
     @Override
@@ -58,7 +60,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
-    protected DDlogExpression visitCoalesceExpression(CoalesceExpression node, TranslationContext context) {
+    protected DDlogExpression visitCoalesceExpression(
+            CoalesceExpression node, TranslationContext context) {
         // Find first non-null expression
         for (Expression operand : node.getOperands()) {
             DDlogExpression e = this.process(operand, context);
@@ -69,14 +72,15 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitIdentifier(Identifier id, TranslationContext context) {
-        DDlogExpression expr = context.lookupColumn(id.getValue());
+        DDlogExpression expr = context.lookupIdentifier(id.getValue());
         if (expr == null)
             throw new TranslationException("Could not resolve identifier", id);
         return expr;
     }
 
     @Override
-    protected DDlogExpression visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
+    protected DDlogExpression visitComparisonExpression(
+            ComparisonExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
         switch (node.getOperator()) {
@@ -99,7 +103,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
-    protected DDlogExpression visitIsNullPredicate(IsNullPredicate node, TranslationContext context) {
+    protected DDlogExpression visitIsNullPredicate(
+            IsNullPredicate node, TranslationContext context) {
         DDlogExpression arg = this.process(node.getValue(), context);
         return new DDlogEApply("isNull", arg, DDlogTBool.instance);
     }
@@ -126,7 +131,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
-    protected DDlogExpression visitArithmeticUnary(ArithmeticUnaryExpression node, TranslationContext context) {
+    protected DDlogExpression visitArithmeticUnary(
+            ArithmeticUnaryExpression node, TranslationContext context) {
         DDlogExpression value = process(node.getValue(), context);
         switch (node.getSign()) {
             case PLUS:
@@ -138,10 +144,28 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         }
     }
 
+    @Override
+    protected DDlogExpression visitDereferenceExpression(
+            DereferenceExpression node, TranslationContext context) {
+         context.searchScope(true);
+         DDlogExpression scope = this.process(node.getBase(), context);
+        context.searchScope(false);
+         DDlogScope ddscope = scope.as(DDlogScope.class, null);
+         context.enterScope(ddscope.getScope());  // we look up the next identifier in this scope.
+         DDlogExpression result = this.process(node.getField(), context);
+         context.exitScope();
+         return result;
+    }
+
     private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
             case "substr":
                 return DDlogTString.instance;
+            case "min":
+            case "max":
+                if (args.size() == 0)
+                    throw new RuntimeException("No arguments for max?");
+                return args.get(0).getType();
             default:
                 throw new UnsupportedOperationException(function);
         }
@@ -236,8 +260,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         return new DDlogEBool(node.getValue());
     }
 
-    private static boolean isAsciiPrintable(int codePoint)
-    {
+    private static boolean isAsciiPrintable(int codePoint) {
         if (codePoint >= 0x7F || codePoint < 0x20) {
             return false;
         }
@@ -257,7 +280,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         PrimitiveIterator.OfInt iterator = s.codePoints().iterator();
         while (iterator.hasNext()) {
             int codePoint = iterator.nextInt();
-            Preconditions.checkArgument(codePoint >= 0, "Invalid UTF-8 encoding in characters: %s", s);
+            Preconditions.checkArgument(codePoint >= 0,
+                    "Invalid UTF-8 encoding in characters: %s", s);
             if (isAsciiPrintable(codePoint)) {
                 char ch = (char) codePoint;
                 if (ch == '\\') {

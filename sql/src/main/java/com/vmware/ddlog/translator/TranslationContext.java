@@ -27,50 +27,10 @@ class TranslationContext {
     private final DDlogProgram program;
     private final HashMap<String, DDlogRelation> relations;
     private final ExpressionTranslationVisitor etv;
-
-    static class Scope {
-        final String rowVariable;
-        final DDlogType type;
-
-        Scope(String rowVariable, DDlogType type) {
-            this.rowVariable = rowVariable;
-            this.type = type;
-        }
-
-        /**
-         * Lookup the specified identifier as a column name.
-         * @param identifier  Identifier to look up.
-         * @return            null if the identifier is not a field name.
-         *                    A DDlogField expression of the row variable if the field is present.
-         */
-        @Nullable
-        DDlogExpression lookupColumn(String identifier, TranslationContext context) {
-            DDlogType type = this.type;
-            while (type instanceof DDlogTUser) {
-                type = context.resolveTypeDef((DDlogTUser)type);
-            }
-            if (!(type instanceof DDlogTStruct))
-                return null;
-            DDlogTStruct ts = (DDlogTStruct)type;
-            for (DDlogField f: ts.getFields()) {
-                if (identifier.equals(f.getName())) {
-                    DDlogEVar var = new DDlogEVar(this.rowVariable, type);
-                    return new DDlogEField(var, identifier, f.getType());
-                }
-            }
-            return null;
-        }
-    }
-
-    @Nullable
-    private DDlogType resolveTypeDef(DDlogTUser type) {
-        for (DDlogTypeDef t: this.program.typedefs) {
-            if (t.getName().equals(type.getName()))
-                return t.getType();
-        }
-        return null;
-    }
-
+    /**
+     * If true we resolve identifiers to scopes, not to values within a scope.
+     */
+    private boolean searchScopeName;
     private final List<Scope> translationScope;
 
     TranslationContext() {
@@ -80,17 +40,32 @@ class TranslationContext {
         this.relations = new HashMap<String, DDlogRelation>();
         this.etv = new ExpressionTranslationVisitor();
         this.translationScope = new ArrayList<Scope>();
+        this.searchScopeName = false;
     }
 
     @Nullable
-    public DDlogExpression lookupColumn(String identifier) {
+    DDlogType resolveTypeDef(DDlogTUser type) {
+        for (DDlogTypeDef t: this.program.typedefs) {
+            if (t.getName().equals(type.getName()))
+                return t.getType();
+        }
+        return null;
+    }
+
+    @Nullable
+    DDlogExpression lookupIdentifier(String identifier) {
         for (int i = 0; i < this.translationScope.size(); i++) {
             // Look starting from the end.
             int index = this.translationScope.size() - 1 - i;
             Scope scope = this.translationScope.get(index);
-            @Nullable
-            DDlogExpression expr = scope.lookupColumn(identifier, this);
-            if (expr != null) return expr;
+            if (this.searchScopeName) {
+                if (identifier.equals(scope.scopeName))
+                    return new DDlogScope(scope);
+            } else {
+                @Nullable
+                DDlogExpression expr = scope.lookupColumn(identifier, this);
+                if (expr != null) return expr;
+            }
         }
         return null;
     }
@@ -99,8 +74,16 @@ class TranslationContext {
         this.translationScope.add(scope);
     }
 
+    void searchScope(boolean yes) {
+        this.searchScopeName = yes;
+    }
+
     private void exitAllScopes() {
         this.translationScope.clear();
+    }
+
+    void exitScope() {
+        this.translationScope.remove(this.translationScope.size() - 1);
     }
 
     DDlogExpression translateExpression(Expression expr) {

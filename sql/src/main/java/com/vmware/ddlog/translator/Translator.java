@@ -38,7 +38,7 @@ public class Translator {
     private final DSLContext dynamicContext;
     private final TranslationContext translationContext;
     private final TranslationVisitor visitor;
-    private final ParsingOptions options = new ParsingOptions();
+    private final ParsingOptions options = ParsingOptions.builder().build();
 
     public Translator(@Nullable final DSLContext dynamicContext) {
         this.parser = new SqlParser();
@@ -76,15 +76,5 @@ public class Translator {
                 t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
         );
         return tablesToFields;
-    }
-
-    private Map<org.jooq.Table<?>, List<Class<?>>> getRecordTypesByTable(final DSLContext conn) {
-        final Map<org.jooq.Table<?>, List<Field<?>>> tablesToFields = getTablesAndFields(conn);
-        return tablesToFields.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey,
-                        entry -> entry.getValue()
-                                .stream()
-                                .map(Field::getType)
-                                .collect(Collectors.toList())));
     }
 }

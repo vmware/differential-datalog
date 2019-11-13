@@ -7,6 +7,7 @@ import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
+import org.h2.store.fs.FileUtils;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
 
@@ -67,6 +68,11 @@ public class RuntimeTest {
             Assert.assertEquals(0, exitCode);
             boolean b = tmp.delete();
             Assert.assertTrue(b);
+            String basename = tmp.getName();
+            basename = basename.substring(0, basename.lastIndexOf('.'));
+            String tempDir = System.getProperty("java.io.tmpdir");
+            String dir = tempDir + "/" + basename + "_ddlog";
+            FileUtils.deleteRecursive(dir, false);
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -96,7 +102,8 @@ public class RuntimeTest {
     public void testFormat() {
         final String createStatement = "create table t1(column1 integer, column2 varchar(36), column3 boolean)";
         SqlParser parser = new SqlParser();
-        Statement create = parser.createStatement(createStatement, new ParsingOptions());
+        ParsingOptions options = ParsingOptions.builder().build();
+        Statement create = parser.createStatement(createStatement, options);
         String stat = SqlFormatter.formatSql(create, Optional.empty());
         Assert.assertEquals("CREATE TABLE t1 (\n" +
                 "   column1 integer,\n" +
@@ -104,7 +111,7 @@ public class RuntimeTest {
                 "   column3 boolean\n)", stat);
 
         final String viewStatement = "create view v1 as select * from t1 where column1 = 10";
-        Statement view = parser.createStatement(viewStatement, new ParsingOptions());
+        Statement view = parser.createStatement(viewStatement, options);
         stat = SqlFormatter.formatSql(view, Optional.empty());
         Assert.assertEquals("CREATE VIEW v1 AS\n" +
                 "SELECT *\n" +
@@ -143,7 +150,7 @@ public class RuntimeTest {
 
     @Test
     public void testWhen() {
-        String query = "create view v1 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 END FROM t1";
+        String query = "create view v1 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
         String program =
                 "import sql\n\n" +
                         "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
@@ -154,8 +161,80 @@ public class RuntimeTest {
                         "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = if (v0.column1 == 64'sd1){\n" +
                         "64'sd1} else {\n" +
                         "if (64'sd1 < v0.column1){\n" +
-                        "64'sd2} else { None }}},var v3 = v2.";
+                        "64'sd2} else {\n" +
+                        "64'sd3}}},var v3 = v2.";
         testTranslation(query, program);
+    }
+
+    @Test
+    public void testAlias() {
+        String query = "create view v1 as SELECT DISTINCT t2.column1 FROM t1 AS t2";
+        String program = "";
+        // TODO
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testAs() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 AS T(a, b, c)";
+        String program = "";
+        // TODO
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testScope() {
+        String query = "create view v1 as SELECT DISTINCT t1.column1 FROM t1";
+        String program = "import sql\n" +
+                "\n" +
+                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+                "typedef Ttmp0 = Ttmp0{col1:signed<64>}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = v0.column1},var v3 = v2.";
+        testTranslation(query, program);
+    }
+
+    //@Test
+    public void testMultiJoin() {
+        // TODO
+        String query = "SELECT *\n" +
+                "    FROM t1,\n" +
+                "         (SELECT column0 AS a FROM t1) b,\n" +
+                "         (SELECT columns1 AS c FROM t1) c,\n" +
+                "         (SELECT columns2 AS d FROM t1) d";
+        String program = "";
+        testTranslation(query, program);
+    }
+
+    //@Test
+    public void testMax() {
+        // TODO
+        String query = "create view v1 as SELECT DISTINCT MAX(CASE WHEN column2 = 'foo' THEN column1 ELSE 0 END) FROM t1";
+        String program = "";
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testBetween() {
+        String query = "create view v1 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";
+        String program = "import sql\n" +
+                "\n" +
+                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v2] :- Rt1[v0],(((- 64'sd1) <= v0.column1) and (v0.column1 <= 64'sd10)),var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testJoin() {
+
     }
 
     @Test

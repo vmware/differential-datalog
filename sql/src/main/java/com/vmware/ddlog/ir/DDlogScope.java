@@ -11,33 +11,23 @@
 
 package com.vmware.ddlog.ir;
 
-import javax.annotation.Nullable;
+import com.vmware.ddlog.translator.Scope;
 
-public interface DDlogIRNode {
-    String toString();
+/**
+ * This is not a real DDlog expression; it stands for a SQL expression that
+ * evaluates to a scope.
+ */
+public class DDlogScope extends DDlogExpression {
+    private final Scope scope;
 
-    default <T> T checkNull(@Nullable T value) {
-        if (value == null)
-            throw new NullPointerException();
-        return value;
+    public DDlogScope(Scope scope) {
+        this.scope = scope;
     }
 
-    @Nullable
-    default <T> T as(Class<T> clazz) {
-        try {
-            return clazz.cast(this);
-        } catch (ClassCastException e) {
-            return null;
-        }
-    }
+    public Scope getScope() { return this.scope; }
 
-    default <T> T as(Class<T> clazz, @Nullable String failureMessage) {
-        T result = this.as(clazz);
-        if (result == null) {
-            if (failureMessage == null)
-                failureMessage = this.getClass().getName() + " is not an instance of " + clazz.toString();
-            throw new RuntimeException(failureMessage);
-        }
-        return result;
+    @Override
+    public String toString() {
+        return "Scope: " + this.scope.getName();
     }
 }
