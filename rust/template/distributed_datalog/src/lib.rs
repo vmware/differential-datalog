@@ -14,6 +14,9 @@ mod tcp_channel;
 mod test;
 mod txnmux;
 
+/// A module comprising sources to feed data into a computation.
+pub mod sources;
+
 pub use observe::Observable;
 pub use observe::ObservableBox;
 pub use observe::Observer;
