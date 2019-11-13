@@ -8,8 +8,7 @@
     dead_code,
     overflowing_literals,
     unreachable_patterns,
-    unused_variables,
-    clippy::redundant_closure // Broken in 1.34
+    unused_variables
 )]
 
 use std::borrow;
