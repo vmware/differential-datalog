@@ -2,11 +2,11 @@ use std::any::Any;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::spawn;
-use std::time::Duration;
 
-use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::program::Update;
+use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::DDlog;
+use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::Observable;
 use distributed_datalog::Observer;
@@ -31,8 +31,6 @@ use maplit::hashmap;
 use maplit::hashset;
 
 use test_env_log::test;
-
-use waitfor::wait_for;
 
 type DDlogServer = DDlogServerT<HDDlog>;
 type UpdatesObservable = UpdatesObservableT<Update<Value>, String>;
@@ -71,20 +69,14 @@ where
     ))?;
     server1.on_commit()?;
 
-    let result = wait_for::<_, _, ()>(Duration::from_secs(5), Duration::from_millis(10), || {
-        let deltas = deltas.lock().unwrap();
-        if deltas.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(deltas.clone()))
-        }
+    await_expected(|| {
+        let deltas = deltas.lock().unwrap().clone();
+        let expected = vec![(
+            server_api_2_P2Out as usize,
+            Record::String("delta-me-now".to_string()),
+        )];
+        assert_eq!(deltas, expected);
     });
-
-    let expected = vec![(
-        server_api_2_P2Out as usize,
-        Record::String("delta-me-now".to_string()),
-    )];
-    assert_eq!(result, Ok(Some(expected)));
     Ok(())
 }
 
@@ -191,23 +183,17 @@ where
         server2.on_commit().unwrap();
     });
 
-    let result = wait_for::<_, _, ()>(Duration::from_secs(5), Duration::from_millis(10), || {
-        let deltas = deltas.lock().unwrap();
-        if deltas.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(deltas.clone()))
-        }
+    await_expected(|| {
+        let deltas = deltas.lock().unwrap().clone();
+        let expected = vec![(
+            server_api_3_P3Out as usize,
+            Record::String("p1-entryp2-entry".to_string()),
+        )];
+        assert_eq!(deltas, expected);
     });
 
     t1.join().unwrap();
     t2.join().unwrap();
-
-    let expected = vec![(
-        server_api_3_P3Out as usize,
-        Record::String("p1-entryp2-entry".to_string()),
-    )];
-    assert_eq!(result, Ok(Some(expected)));
     Ok(())
 }
 

@@ -332,12 +332,10 @@ mod tests {
     use std::io::ErrorKind;
     use std::io::Read;
     use std::net::TcpStream;
-    use std::time::Duration;
 
     use test_env_log::test;
 
-    use waitfor::wait_for;
-
+    use crate::await_expected;
     use crate::MockObserver;
     use crate::TcpSender;
 
@@ -444,18 +442,19 @@ mod tests {
         t2.join().unwrap();
         t3.join().unwrap();
 
-        let result = wait_for::<_, _, ()>(Duration::from_secs(5), Duration::from_millis(1), || {
-            let guard = mock.lock().unwrap();
-            if guard.called_on_start == 3
-                && guard.called_on_updates == 8
-                && guard.called_on_commit == 3
-            {
-                Ok(Some(()))
-            } else {
-                Ok(None)
-            }
-        });
+        await_expected(|| {
+            let (on_start, on_updates, on_commit) = {
+                let guard = mock.lock().unwrap();
+                (
+                    guard.called_on_start,
+                    guard.called_on_updates,
+                    guard.called_on_commit,
+                )
+            };
 
-        assert!(result.unwrap().is_some(), "timed out waiting for events");
+            assert_eq!(on_start, 3);
+            assert_eq!(on_updates, 8);
+            assert_eq!(on_commit, 3);
+        });
     }
 }
