@@ -49,7 +49,7 @@ use differential_datalog::program::*;
 use differential_datalog::record;
 use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
 use differential_datalog::uint::*;
-use differential_datalog::ConvertRelId;
+use differential_datalog::DDlogConvert;
 
 use fnv::{FnvHashMap, FnvHashSet};
 use lazy_static::lazy_static;
@@ -79,11 +79,12 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
     s1
 }
 
-/// A default implementation of `ConvertRelId` that just forwards calls
+/// A default implementation of `DDlogConvert` that just forwards calls
 /// to generated functions of equal name.
-pub struct RelIdConverter {}
+#[derive(Debug)]
+pub struct DDlogConverter {}
 
-impl ConvertRelId for RelIdConverter {
+impl DDlogConvert for DDlogConverter {
     fn relid2name(relId: RelId) -> Option<&'static str> {
         relid2name(relId)
     }

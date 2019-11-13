@@ -8,14 +8,9 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::convert::{AsMut, AsRef};
 use std::io;
 
+use crate::ddlog::DDlogConvert;
 use crate::program::RelId;
 use crate::program::Val;
-
-/// Convert a `RelId` into something else.
-pub trait ConvertRelId {
-    /// Convert a `RelId` into its symbolic name.
-    fn relid2name(relId: RelId) -> Option<&'static str>;
-}
 
 /* Stores a set of changes to output tables.
  */
@@ -45,7 +40,7 @@ impl<V: Val> DeltaMap<V> {
 
     pub fn format<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
     where
-        R: ConvertRelId,
+        R: DDlogConvert,
     {
         for (relid, relmap) in &self.map {
             w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
@@ -67,7 +62,7 @@ impl<V: Val> DeltaMap<V> {
 
     pub fn format_as_sets<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
     where
-        R: ConvertRelId,
+        R: DDlogConvert,
     {
         for (relid, map) in &self.map {
             w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
