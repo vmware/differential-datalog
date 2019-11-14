@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::io::BufReader;
 use std::io::Error;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::net::TcpListener;
 use std::net::TcpStream;
@@ -13,6 +14,7 @@ use std::thread::spawn;
 use std::thread::JoinHandle;
 
 use bincode::deserialize_from;
+use bincode::ErrorKind as BincodeError;
 
 use libc::shutdown;
 use libc::SHUT_RDWR;
@@ -248,7 +250,18 @@ where
                     if let Fd::Shutdown = *fd.lock().unwrap() {
                         return Ok(());
                     }
-                    error!("failed to deserialize message: {}", e);
+                    match *e {
+                        // It is possible that the sender was actually
+                        // closed and in this case there is nothing more
+                        // for us to do. So return early.
+                        BincodeError::Io(ref e) if e.kind() == ErrorKind::UnexpectedEof => {
+                            if let Err(e) = fd.lock().unwrap().shutdown() {
+                                error!("failed to shut down socket: {}", e);
+                            }
+                            return Ok(());
+                        }
+                        _ => error!("failed to deserialize message: {}", e),
+                    }
                     continue;
                 }
             };
