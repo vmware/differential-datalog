@@ -27,7 +27,7 @@ path = "./ovsdb"
 
 [dependencies]
 abomonation = "0.7"
-cpuprofiler = {version = "0.0.3", optional = true}
+cpuprofiler = {version = "0.0", optional = true}
 #differential-dataflow = "0.9"
 differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow", branch="0.10.2" }
 fnv="1.0.2"
