@@ -1,15 +1,20 @@
 //! OVSDB JSON interface to RunningProgram
 
-use super::api::{record_update, updcmd2upd, HDDlog};
-use super::{relname2id, Value};
-use ddlog_ovsdb_adapter::*;
-use differential_datalog::program::*;
-use differential_datalog::record::{IntoRecord, UpdCmd};
-use differential_datalog::DeltaMap;
 use std::ffi::{CStr, CString};
 use std::io::Write;
 use std::os::raw::{c_char, c_int};
 use std::sync;
+
+use ddlog_ovsdb_adapter::*;
+use differential_datalog::program::*;
+use differential_datalog::record::{IntoRecord, UpdCmd};
+use differential_datalog::DeltaMap;
+use differential_datalog::RecordReplay;
+
+use super::api::{updcmd2upd, HDDlog};
+use super::{relname2id, Value};
+
+use crate::DDlogConverter;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -71,13 +76,17 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &[UpdCmd]) {
         let mut file = f.lock().unwrap();
         let n = upds.len();
         for (i, upd) in upds.iter().enumerate() {
-            let sep = if i == n - 1 { ";" } else { "," };
-            record_update(&mut *file, upd);
-            if writeln!(&mut *file, "{}", sep).is_err() {
-                prog.eprintln(
-                    "ddlog_transaction_start(): failed to record invocation in replay file",
-                );
-            }
+            let _ = file
+                .record_upd_cmd::<DDlogConverter, _>(upd)
+                .and_then(|()| {
+                    let sep = if i == n - 1 { ";" } else { "," };
+                    writeln!(&mut *file, "{}", sep)
+                })
+                .map_err(|_| {
+                    prog.eprintln(
+                        "ddlog_apply_ovsdb_updates(): failed to record invocation in replay file",
+                    );
+                });
         }
     }
 }

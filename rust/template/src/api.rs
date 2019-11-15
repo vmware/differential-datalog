@@ -4,6 +4,7 @@ use differential_datalog::record::IntoRecord;
 use differential_datalog::Callback;
 use differential_datalog::DDlog;
 use differential_datalog::DeltaMap;
+use differential_datalog::RecordReplay;
 
 use libc::size_t;
 use std::ffi;
@@ -191,7 +192,7 @@ impl DDlog for HDDlog {
     }
 
     fn transaction_rollback(&self) -> Result<(), String> {
-        let _ = self.record_transaction_rollback();
+        self.record_transaction_rollback();
         self.prog.lock().unwrap().transaction_rollback()
     }
 
@@ -256,7 +257,7 @@ impl DDlog for HDDlog {
                     if i > 0 {
                         let _ = writeln!(file, ",");
                     };
-                    record_valupdate(&mut *file, &upd);
+                    let _ = file.record_valupdate::<DDlogConverter, _>(&upd);
                     upd
                 }));
             /* Print semicolon if `upds` were not empty. */
@@ -350,162 +351,71 @@ impl HDDlog {
 
     fn record_transaction_start(&self) {
         if let Some(ref f) = self.replay_file {
-            if writeln!(f.lock().unwrap(), "start;").is_err() {
+            let _ = f.lock().unwrap().record_start().map_err(|_| {
                 self.eprintln("failed to record invocation in replay file");
-            }
+            });
         }
     }
 
     fn record_transaction_commit(&self, record_changes: bool) {
         if let Some(ref f) = self.replay_file {
-            let res = if record_changes {
-                writeln!(f.lock().unwrap(), "commit dump_changes;")
-            } else {
-                writeln!(f.lock().unwrap(), "commit;")
-            };
-            if res.is_err() {
+            let _ = f
+                .lock()
+                .unwrap()
+                .record_commit(record_changes)
+                .map_err(|_| {
+                    self.eprintln("failed to record invocation in replay file");
+                });
+        }
+    }
+
+    fn record_transaction_rollback(&self) {
+        if let Some(ref f) = self.replay_file {
+            let _ = f.lock().unwrap().record_rollback().map_err(|_| {
                 self.eprintln("failed to record invocation in replay file");
-            }
+            });
         }
     }
 
-    fn record_transaction_rollback(&self) -> Result<(), String> {
+    fn record_clear_relation(&self, rid: RelId) {
         if let Some(ref f) = self.replay_file {
-            if writeln!(f.lock().unwrap(), "rollback;").is_err() {
-                Err("failed to record invocation in replay file".to_string())
-            } else {
-                Ok(())
-            }
-        } else {
-            Ok(())
+            let _ = f
+                .lock()
+                .unwrap()
+                .record_clear::<DDlogConverter, _>(rid)
+                .map_err(|e| {
+                    self.eprintln("failed to record invocation in replay file");
+                });
         }
     }
 
-    fn record_clear_relation(&self, table: usize) {
+    fn record_dump_table(&self, rid: RelId) {
         if let Some(ref f) = self.replay_file {
-            if writeln!(
-                f.lock().unwrap(),
-                "clear {};",
-                relid2name(table).unwrap_or(&"???")
-            )
-            .is_err()
-            {
-                self.eprintln("failed to record invocation in replay file");
-            }
-        }
-    }
-
-    fn record_dump_table(&self, table: usize) {
-        if let Some(ref f) = self.replay_file {
-            if writeln!(
-                f.lock().unwrap(),
-                "dump {};",
-                relid2name(table).unwrap_or(&"???")
-            )
-            .is_err()
-            {
-                self.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
-            }
+            let _ = f
+                .lock()
+                .unwrap()
+                .record_dump::<DDlogConverter, _>(rid)
+                .map_err(|e| {
+                    self.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
+                });
         }
     }
 
     fn record_enable_cpu_profiling(&self, enable: bool) {
         if let Some(ref f) = self.replay_file {
-            if writeln!(
-                f.lock().unwrap(),
-                "profile cpu {};",
-                if enable { "on" } else { "off" }
-            )
-            .is_err()
-            {
+            let _ = f.lock().unwrap().record_cpu_profiling(enable).map_err(|_| {
                 self.eprintln(
                     "ddlog_cpu_profiling_enable(): failed to record invocation in replay file",
-                );
-            }
+                )
+            });
         }
     }
 
     fn record_profile(&self) {
         if let Some(ref f) = self.replay_file {
-            if writeln!(f.lock().unwrap(), "profile;").is_err() {
-                self.eprintln("failed to record invocation in replay file");
-            }
-        }
-    }
-}
-
-pub fn record_update(file: &mut fs::File, upd: &record::UpdCmd) {
-    match upd {
-        record::UpdCmd::Insert(rel, record) => {
-            let _ = write!(
-                file,
-                "insert {}[{}]",
-                relident2name(rel).unwrap_or(&"???"),
-                record
-            );
-        }
-        record::UpdCmd::Delete(rel, record) => {
-            let _ = write!(
-                file,
-                "delete {}[{}]",
-                relident2name(rel).unwrap_or(&"???"),
-                record
-            );
-        }
-        record::UpdCmd::DeleteKey(rel, record) => {
-            let _ = write!(
-                file,
-                "delete_key {} {}",
-                relident2name(rel).unwrap_or(&"???"),
-                record
-            );
-        }
-        record::UpdCmd::Modify(rel, key, mutator) => {
-            let _ = write!(
-                file,
-                "modify {} {} <- {}",
-                relident2name(rel).unwrap_or(&"???"),
-                key,
-                mutator
-            );
-        }
-    }
-}
-
-pub fn record_valupdate(file: &mut fs::File, upd: &Update<Value>) {
-    match upd {
-        Update::Insert { relid, v } => {
-            let _ = write!(
-                file,
-                "insert {}[{}]",
-                relid2name(*relid).unwrap_or(&"???"),
-                v
-            );
-        }
-        Update::DeleteValue { relid, v } => {
-            let _ = write!(
-                file,
-                "delete {}[{}]",
-                relid2name(*relid).unwrap_or(&"???"),
-                v
-            );
-        }
-        Update::DeleteKey { relid, k } => {
-            let _ = write!(
-                file,
-                "delete_key {} {}",
-                relid2name(*relid).unwrap_or(&"???"),
-                k
-            );
-        }
-        Update::Modify { relid, k, m } => {
-            let _ = write!(
-                file,
-                "modify {} {} <- {}",
-                relid2name(*relid).unwrap_or(&"???"),
-                k,
-                m
-            );
+            let _ = f.lock().unwrap().record_profile().map_err(|_| {
+                self.eprintln("record_profile: failed to record invocation in replay file");
+            });
         }
     }
 }
@@ -556,13 +466,6 @@ fn relident2id(r: &record::RelIdentifier) -> Option<Relations> {
     match r {
         record::RelIdentifier::RelName(rname) => relname2id(rname),
         record::RelIdentifier::RelId(id) => relid2rel(*id),
-    }
-}
-
-fn relident2name(r: &record::RelIdentifier) -> Option<&str> {
-    match r {
-        record::RelIdentifier::RelName(rname) => Some(rname.as_ref()),
-        record::RelIdentifier::RelId(id) => relid2name(*id),
     }
 }
 

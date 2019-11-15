@@ -152,6 +152,7 @@ rustLibFiles specname =
         , (dir </> "differential_datalog/profile.rs"                 , $(embedFile "rust/template/differential_datalog/profile.rs"))
         , (dir </> "differential_datalog/program.rs"                 , $(embedFile "rust/template/differential_datalog/program.rs"))
         , (dir </> "differential_datalog/record.rs"                  , $(embedFile "rust/template/differential_datalog/record.rs"))
+        , (dir </> "differential_datalog/replay.rs"                  , $(embedFile "rust/template/differential_datalog/replay.rs"))
         , (dir </> "differential_datalog/test.rs"                    , $(embedFile "rust/template/differential_datalog/test.rs"))
         , (dir </> "differential_datalog/test_record.rs"             , $(embedFile "rust/template/differential_datalog/test_record.rs"))
         , (dir </> "differential_datalog/uint.rs"                    , $(embedFile "rust/template/differential_datalog/uint.rs"))
