@@ -21,6 +21,31 @@ where
     }
 }
 
+fn record_updates<W, I, U, F>(writer: &mut W, updates: I, record: F) -> Result<()>
+where
+    W: Write,
+    I: Iterator<Item = U>,
+    F: Fn(&mut W, &U) -> Result<()>,
+{
+    // Count the number of elements in `updates`.
+    let mut n = 0;
+
+    updates.enumerate().map(Ok(()), |(i, upd)| {
+        n += 1;
+        if i > 0 {
+            writeln!(writer, ",")?;
+        };
+        record(writer, &upd)?;
+        upd
+    });
+
+    // Print semicolon if `updates` was not empty.
+    if n > 0 {
+        writeln!(writer, ";")?;
+    }
+    Ok(())
+}
+
 pub trait RecordReplay: Write {
     fn record_start(&mut self) -> Result<()> {
         writeln!(self, "start;")
