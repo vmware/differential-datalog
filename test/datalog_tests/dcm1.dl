@@ -40,24 +40,12 @@ input relation PODAFFINITYMATCHEXPRESSIONS(pod_name:IString, label_selector: sig
     label_value:IString, topology_key: IString
 )
 
-relation TO_ASSIGN[PODAFFINITYMATCHEXPRESSIONS]
-
-TO_ASSIGN[x] :-
-    x in PODAFFINITYMATCHEXPRESSIONS(.pod_name = pod_name),
-    PODSTOASSIGN(.pod_name = pod_name).
-
 input relation PODANTIAFFINITYMATCHEXPRESSIONS(pod_name:IString, label_key: IString,
     label_operator:IString, label_value:IString,
     topology_key:IString
 )
 
 input relation PODLABELS(pod_name:IString, label_key:IString, label_value:IString)
-
-relation PODLABELS_NODE(pod_name:IString, label_key:IString, label_value:IString, node_name: IString)
-
-PODLABELS_NODE(pod_name, label_key, label_value, node_name) :-
-    PODLABELS(.pod_name = pod_name, .label_key = label_key, .label_value = label_value),
-    POD(.pod_name = pod_name, .node_name = node_name).
 
 input relation NODELABELS(node_name:IString, label_key:IString, label_value:IString)
 
@@ -104,11 +92,11 @@ output relation PODSWITHPORTREQUESTS(controllable__node_name: IString, host_ip: 
     host_port: signed<64>, host_protocol: IString
 )
 
-output relation CPUUSEDPERNODE(name: IString, cpu: signed<64>)
+relation CPUUSEDPERNODE(name: IString, cpu: signed<64>)
 
-output relation MEMORYUSEDPERNODE(name: IString, memory: signed<64>)
+relation MEMORYUSEDPERNODE(name: IString, memory: signed<64>)
 
-output relation PODSUSEDPERNODE(name:IString, pods: signed<64>)
+relation PODSUSEDPERNODE(name:IString, pods: signed<64>)
 
 output relation SPARECAPACITY(name:IString, cpu_remaining: signed<64>,
     memory_remaining: signed<64>, pods_remaining: signed<64>
@@ -116,27 +104,27 @@ output relation SPARECAPACITY(name:IString, cpu_remaining: signed<64>,
 
 output relation PODNODESELECTORMATCHES(pod_name:IString, node_name:IString)
 
-output relation PODNODESELECTORMATCHESEXISTS(pod_name:IString, node_name:IString)
+relation PODNODESELECTORMATCHESEXISTS(pod_name:IString, node_name:IString)
 
-output relation PODNODESELECTORMATCHESIN(pod_name:IString, node_name:IString)
+relation PODNODESELECTORMATCHESIN(pod_name:IString, node_name:IString)
 
-output relation PODNODESELECTORMATCHESNOT(pod_name:IString, node_name:IString)
+relation PODNODESELECTORMATCHESNOT(pod_name:IString, node_name:IString)
 
 output relation PODSTHATTOLERATENODETAINTS(pod_name:IString, node_name:IString)
 
 output relation INTERPODAFFINITYMATCHESINNER(pod_name:IString, matches: IString, node_name:IString)
 
-output relation INTERPODAFFINITYMATCHESINNERIN(pod_name:IString, matches: IString, node_name:IString)
+relation INTERPODAFFINITYMATCHESINNERIN(pod_name:IString, matches: IString, node_name:IString)
 
-output relation INTERPODAFFINITYMATCHESINNERNOT(pod_name:IString, matches: IString, node_name:IString)
+relation INTERPODAFFINITYMATCHESINNERNOT(pod_name:IString, matches: IString, node_name:IString)
 
-output relation INTERPODAFFINITYMATCHESINNEREXISTS(pod_name:IString, matches: IString, node_name:IString)
+relation INTERPODAFFINITYMATCHESINNEREXISTS(pod_name:IString, matches: IString, node_name:IString)
 
 output relation INTERPODAFFINITYMATCHES(pod_name:IString, matches: IString, node_name:IString, num_matches:bit<64>)
 
-output relation INTERPODAFFINITYMATCHESGROUPBY(pod_name:IString, num_matches:bit<64>)
+relation INTERPODAFFINITYMATCHESGROUPBY(pod_name:IString, num_matches:bit<64>)
 
-output relation NODETAINTSGROUP(node_name:IString, num_taints: bit<64>)
+relation NODETAINTSGROUP(node_name:IString, num_taints: bit<64>)
 
 /**assumption -- because underlying datastructures are sets, values will be unique**/
 output relation NODESTHATHAVETOLERATIONS(node_name:IString)
@@ -166,7 +154,7 @@ function cast_bit64_to_signedbit64(x: bit<64>): signed<64> = { x as signed<64> }
 CPUUSEDPERNODE(node_name, cpu) :-
 	POD(.node_name = node_name, .cpu_request = cpu_request),
 	var cpu = Aggregate((node_name), sum(cpu_request)).
-
+	
 MEMORYUSEDPERNODE(node_name, memory) :-
 	POD(.node_name = node_name, .memory_request = memory_request),
 	var memory = Aggregate((node_name), sum(memory_request)).
@@ -232,33 +220,108 @@ PODNODESELECTORMATCHES(pod_name, node_name):-
 PODNODESELECTORMATCHES(pod_name, node_name):-
     PODNODESELECTORMATCHESNOT(pod_name, node_name).
 
-INTERPODAFFINITYMATCHESINNEREXISTS(pod_name, matches, node_name):-
-    TO_ASSIGN[PODAFFINITYMATCHEXPRESSIONS{.pod_name = pod_name, .label_selector = label_selector, .match_expression = match_expression, .num_match_expressions = num_match_expressions, .label_key = label_key, .label_operator = string_intern("Exists"), .label_value = label_value, .topology_key = topology_key}],
-    PODLABELS_NODE(.pod_name = matches, .label_key = label_key, .node_name = node_name),
-    var distinct_match_expression = Aggregate((pod_name, matches, label_selector, topology_key, num_match_expressions, node_name), count_uniq(match_expression)),
-    (num_match_expressions == cast_bit64_to_signedbit64(distinct_match_expression)).
+/* Each entry in this relation describes a single label selector defined for a pod,
+ * consisting of a vector of match expressions.  Each expression is modeled as an
+ * (operator, key, Set<value>) tuple. */
+relation PodLabelSelector(
+    pod_name: IString,
+    expressions: Vec<(IString, IString, Set<IString>)>)
 
-INTERPODAFFINITYMATCHESINNERIN(pod_name, matches, node_name):-
-    TO_ASSIGN[PODAFFINITYMATCHEXPRESSIONS{.pod_name = pod_name, .label_selector = label_selector, .match_expression = match_expression, .num_match_expressions = num_match_expressions, .label_key = label_key, .label_operator = string_intern("In"), .label_value = label_value, .topology_key = topology_key}],
-    PODLABELS_NODE(.pod_name = matches, .label_key = label_key, .label_value = label_value, .node_name = node_name),
-    var distinct_match_expression = Aggregate((pod_name, matches, label_selector, topology_key, num_match_expressions, node_name), count_uniq(match_expression)),
-    (num_match_expressions == cast_bit64_to_signedbit64(distinct_match_expression)).
+PodLabelSelector(pod_name, expressions) :-
+    PODSTOASSIGN(.pod_name = pod_name),
+    PODAFFINITYMATCHEXPRESSIONS(
+        .pod_name = pod_name,
+        .label_selector = label_selector,
+        .match_expression = match_expression,
+        .label_key = label_key,
+        .label_operator = label_operator,
+        .label_value = label_value
+        ),
+    var expressions =
+        Aggregate((pod_name, label_selector),
+                  group2expressions((match_expression, label_operator, label_key, label_value))).
 
-INTERPODAFFINITYMATCHESINNERNOT(pod_name, matches, node_name):-
-    TO_ASSIGN[PODAFFINITYMATCHEXPRESSIONS{.pod_name = pod_name, .label_selector = label_selector, .match_expression = match_expression, .num_match_expressions = num_match_expressions, .label_key = label_key_matchexp, .label_operator = label_operator, .label_value = label_value_matchexp}],
-    ((istring_str(label_operator) == "DoesNotExist") or (istring_str(label_operator) == "NotIn")),
-    PODLABELS_NODE(.pod_name = matches, .label_key = label_key_label, .label_value = label_value_label, .node_name = node_name),
-    not ((istring_str(label_operator) == "DoesNotExist" and label_key_label == label_key_matchexp) or
-        (istring_str(label_operator) == "NotIn" and label_key_label == label_key_matchexp and label_value_label == label_value_matchexp)).
+/* Convert a group of (match_expression, operator, key, value) tuples into a
+ * vector of match expressions. */
+function group2expressions(g: Group<(signed<64>, IString, IString, IString)>): Vec<(IString, IString, Set<IString>)> =
+{
+    var expressions: Map<signed<64>, (IString, IString, Set<IString>)> = map_empty();
+    for (e in g) {
+        match (map_get(expressions, e.0)) {
+            None -> {
+                map_insert(expressions, e.0, (e.1, e.2, set_singleton(e.3)))
+            },
+            Some{(op, k, vals)} -> {
+                map_insert(expressions, e.0, (op, k, set_insert_imm(vals, e.3)))
+            }
+        }
+    };
 
-INTERPODAFFINITYMATCHESINNER(pod_name, matches, node_name):-
-    INTERPODAFFINITYMATCHESINNERIN(pod_name, matches, node_name).
+    /* Extract values in the map into a vector (because we're missing the `map_values()`
+     * function in `std`). */
+    var expression_vec: Vec<(IString, IString, Set<IString>)> = vec_empty();
+    for (e in expressions) {
+        vec_push(expression_vec, e.1)
+    };
+    expression_vec
+}
 
-INTERPODAFFINITYMATCHESINNER(pod_name, matches, node_name):-
-    INTERPODAFFINITYMATCHESINNERNOT(pod_name, matches, node_name).
+/* Relation that aggregates all labels assigned to each pod. */
+relation PodAllLabels(pod_name: IString, node_name: IString, labels: Map<IString, IString>)
 
-INTERPODAFFINITYMATCHESINNER(pod_name, matches, node_name):-
-    INTERPODAFFINITYMATCHESINNEREXISTS(pod_name, matches, node_name).
+PodAllLabels(pod_name, node_name, labels) :-
+    POD(.pod_name = pod_name, .node_name = node_name),
+    PODLABELS(.pod_name = pod_name, .label_key = label_key, .label_value = label_value),
+    var labels = Aggregate((pod_name, node_name), group2map((label_key, label_value))).
+
+INTERPODAFFINITYMATCHESINNER(pod_name, matching_pod, node_name):-
+    PodLabelSelector(pod_name, expressions),
+    PodAllLabels(matching_pod, node_name, labels),
+    pod_matches_label_selector(expressions, labels).
+
+/* Matches pod agains a label selector.  The selector is specified as a vector
+ * of expressions that must all be satisfied for the pod to match the selector. */
+function pod_matches_label_selector(
+    expressions: Vec<(IString, IString, Set<IString>)>,
+    labels: Map<IString, IString>): bool =
+{
+    var matches = true;
+    for (e in expressions) {
+        if matches {
+            matches = pod_matches_expression(e.0, e.1, e.2, labels)
+        }
+    };
+    matches
+}
+
+/* Matches a pod against a match expression.  The match expression is given by
+ * its operator, key, and set of values. */
+function pod_matches_expression(
+    operator: IString,
+    expr_key: IString,
+    expr_vals: Set<IString>,
+    labels: Map<IString, IString>): bool =
+{
+    /* XXX: this code would be more efficient if an enum was used for operators
+     * instead of interned strings. */
+    if (operator == string_intern("Exists")) {
+        is_some(map_get(labels, expr_key))
+    } else if (operator == string_intern("In")) {
+        match (map_get(labels, expr_key)) {
+            None -> false,
+            Some{val} -> set_contains(expr_vals, val)
+        }
+    } else if (operator == string_intern("DoesNotExist")) {
+        is_none(map_get(labels, expr_key))
+    } else if (operator == string_intern("NotIn")) {
+        match (map_get(labels, expr_key)) {
+            None -> true,
+            Some{val} -> not set_contains(expr_vals, val)
+        }
+    } else {
+        false
+    }
+}
 
 INTERPODAFFINITYMATCHESGROUPBY(pod_name, num_matches):-
     INTERPODAFFINITYMATCHESINNER(pod_name, matches, node_name),
