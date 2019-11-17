@@ -99,6 +99,7 @@ run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.e
 run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
 run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
 run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 1000
+run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100000
 
 run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
 run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
