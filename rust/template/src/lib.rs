@@ -153,10 +153,6 @@ pub fn input_relname_to_id(_rname: &str) -> Option<Relations> {
     panic!("input_relname_to_id not implemented")
 }
 
-pub fn record_update(_file: &mut fs::File, _upd: &record::UpdCmd) {
-    panic!("record_update not implemented")
-}
-
 pub fn relid2rel(_rid: RelId) -> Option<Relations> {
     panic!("relid2rel not implemented")
 }
