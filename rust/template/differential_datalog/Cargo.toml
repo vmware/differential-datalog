@@ -3,25 +3,17 @@ name = "differential_datalog"
 version = "0.1.0"
 edition = "2018"
 
-[dependencies.graph_map]
-git = "https://github.com/frankmcsherry/graph-map.git"
-
 [dev-dependencies]
 byteorder = "0.4.2"
 getopts = "0.2.14"
 itertools = "^0.6"
-rand = "0.3.13"
 serde_derive = "1.0"
 
 [dependencies]
-#differential-dataflow = "0.9"
-differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow", branch="0.10.4" }
-#differential-dataflow = { git = "https://github.com/ryzhyk/differential-dataflow"}
+differential-dataflow = "0.11.0"
 abomonation = "0.7"
 fnv = "1.0.2"
-#timely = "0.9"
-#timely = { git = "https://github.com/TimelyDataflow/timely-dataflow" }
-timely = { git = "https://github.com/ryzhyk/timely-dataflow" }
+timely = "0.11"
 libc = "0.2"
 num = { version = "0.2", features = ["serde"] }
 sequence_trie = "0.3"
