@@ -62,14 +62,14 @@ where
 fn record_updates<'w, W, I, U, F, E>(
     writer: &'w mut W,
     updates: I,
-    record: F,
-    error: E,
+    mut record: F,
+    mut error: E,
 ) -> impl Iterator<Item = U> + 'w
 where
     W: Write,
     I: Iterator<Item = U> + 'w,
-    F: Fn(&mut W, &U) -> Result<()> + 'w,
-    E: Fn(Error) + 'w,
+    F: FnMut(&mut W, &U) -> Result<()> + 'w,
+    E: FnMut(Error) + 'w,
 {
     Peeking::new(updates).map(move |(upd, last)| {
         let _ = record(writer, &upd)
@@ -101,7 +101,7 @@ where
     V: Debug,
     W: Write,
     I: Iterator<Item = &'w UpdCmd> + 'w,
-    F: Fn(Error) + 'w,
+    F: FnMut(Error) + 'w,
 {
     record_updates(writer, upds, |w, u| w.record_upd_cmd::<C, _>(&u), error)
 }
@@ -121,7 +121,7 @@ where
     V: Display + Debug + 'w,
     W: Write,
     I: Iterator<Item = Update<V>> + 'w,
-    F: Fn(Error) + 'w,
+    F: FnMut(Error) + 'w,
 {
     record_updates(writer, upds, |w, u| w.record_val_upd::<C, _>(&u), error)
 }
