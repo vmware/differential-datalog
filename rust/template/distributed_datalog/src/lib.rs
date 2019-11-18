@@ -14,6 +14,9 @@ mod tcp_channel;
 mod test;
 mod txnmux;
 
+/// A module comprising sinks to forward data from a computation.
+pub mod sinks;
+
 /// A module comprising sources to feed data into a computation.
 pub mod sources;
 

@@ -39,6 +39,9 @@ As it stands that means we have the following components:
 - a transaction multiplexer (`TxnMux`) that allows for serializing
   transactions as emitted by multiple `Observables` such that no two
   transactions interleave
+- [sources][sources] and [sinks][sinks] that produce and consume
+  updates, respectively, and can be fit into the system using the
+  `Observable` and `Observer` interfaces
 
 ### Examples & Tests
 **D3log** has unit as well as integration style tests using an actual
@@ -52,4 +55,6 @@ integration tests are located in the [`server_api`][server_api] program.
 [rust-template]: ..
 [server.rs]: src/server.rs
 [server_api]: ../../../test/datalog_tests/server_api
+[sinks]: src/sinks
+[sources]: src/sources
 [tcp_channel]: src/tcp_channel
