@@ -110,6 +110,17 @@ pub enum Relations {
     X = 0,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
+impl Relations {
+    pub fn is_input(&self) -> bool {
+        panic!("Relations::is_input not implemented")
+    }
+
+    pub fn is_output(&self) -> bool {
+        panic!("Relations::is_output not implemented")
+    }
+}
+
 impl TryFrom<&str> for Relations {
     type Error = ();
 
@@ -148,14 +159,6 @@ impl Mutator<Value> for record::Record {
     fn mutate(&self, _x: &mut Value) -> Result<(), String> {
         panic!("Value::mutate not implemented")
     }
-}
-
-pub fn output_relname_to_id(_rname: &str) -> Option<Relations> {
-    panic!("output_relname_to_id not implemented")
-}
-
-pub fn input_relname_to_id(_rname: &str) -> Option<Relations> {
-    panic!("input_relname_to_id not implemented")
 }
 
 pub fn relid2rel(_rid: RelId) -> Option<Relations> {

@@ -745,8 +745,8 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
 mkValueFromRecord :: (?cfg::CompilerConfig) => DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
     mkRelname2Id d                                                                                  $$
-    mkOutputRelname2Id d                                                                            $$
-    mkInputRelname2Id d                                                                             $$
+    mkIsOutputRels d                                                                                $$
+    mkIsInputRels d                                                                                 $$
     mkRelId2Relations d                                                                             $$
     mkRelId2Name d                                                                                  $$
     mkRelId2NameC                                                                                   $$
@@ -798,31 +798,35 @@ mkRelname2Id d =
     mkrel :: Relation -> Doc
     mkrel rel = "\"" <> pp (name rel) <> "\" => Ok(Relations::" <> rname (name rel) <> "),"
 
-mkOutputRelname2Id :: DatalogProgram -> Doc
-mkOutputRelname2Id d =
-    "pub fn output_relname_to_id(rname: &str) -> Option<Relations> {" $$
-    "   match rname {"                                      $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+mkIsOutputRels :: DatalogProgram -> Doc
+mkIsOutputRels d =
+    "impl Relations {" $$
+    "    pub fn is_output(&self) -> bool {"        $$
+    "        match self {"                         $$
+                 (nest' $ nest' $ vcat $ entries)  $$
+    "            _  => false"                      $$
+    "        }"                                    $$
+    "    }"                                        $$
     "}"
     where
     entries = map mkrel $ filter ((== RelOutput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = "Relations::" <> rname (name rel) <> " => true,"
 
-mkInputRelname2Id :: DatalogProgram -> Doc
-mkInputRelname2Id d =
-    "pub fn input_relname_to_id(rname: &str) -> Option<Relations> {" $$
-    "   match rname {"                                      $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+mkIsInputRels :: DatalogProgram -> Doc
+mkIsInputRels d =
+    "impl Relations {" $$
+    "    pub fn is_input(&self) -> bool {"         $$
+    "        match self {"                         $$
+                 (nest' $ nest' $ vcat $ entries)  $$
+    "            _  => false"                      $$
+    "        }"                                    $$
+    "    }"                                        $$
     "}"
     where
     entries = map mkrel $ filter ((== RelInput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = "Relations::" <> rname (name rel) <> " => true,"
 
 -- Convert string to enum Relations
 mkRelId2Relations :: DatalogProgram -> Doc
