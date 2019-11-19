@@ -1,4 +1,9 @@
-#![allow(clippy::get_unwrap, clippy::type_complexity)]
+#![allow(
+    clippy::unknown_clippy_lints,
+    clippy::get_unwrap,
+    clippy::missing_safety_doc,
+    clippy::type_complexity
+)]
 
 mod callback;
 mod ddlog;
