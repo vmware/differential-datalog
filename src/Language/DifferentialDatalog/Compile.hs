@@ -781,19 +781,22 @@ mkValueFromRecord d@DatalogProgram{..} =
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
--- Convert string to RelId
+-- Convert string to Relations
 mkRelname2Id :: DatalogProgram -> Doc
 mkRelname2Id d =
-    "pub fn relname2id(rname: &str) -> Option<Relations> {" $$
-    "   match rname {"                                      $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+    "impl TryFrom<&str> for Relations {"                                  $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(rname: &str) -> Result<Self, Self::Error> {"         $$
+    "         match rname {"                                              $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
     "}"
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Ok(Relations::" <> rname (name rel) <> "),"
 
 mkOutputRelname2Id :: DatalogProgram -> Doc
 mkOutputRelname2Id d =

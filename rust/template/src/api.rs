@@ -59,7 +59,7 @@ impl HDDlog {
     }
 
     pub fn get_table_id(tname: &str) -> Result<Relations, String> {
-        relname2id(tname).ok_or_else(|| format!("unknown relation {}", tname))
+        Relations::try_from(tname).map_err(|()| format!("unknown relation {}", tname))
     }
 
     pub fn get_table_name(tid: RelId) -> Result<&'static str, String> {
@@ -447,7 +447,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
 
 fn relident2id(r: &record::RelIdentifier) -> Option<Relations> {
     match r {
-        record::RelIdentifier::RelName(rname) => relname2id(rname),
+        record::RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()).ok(),
         record::RelIdentifier::RelId(id) => relid2rel(*id),
     }
 }

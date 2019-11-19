@@ -1,5 +1,6 @@
 //! OVSDB JSON interface to RunningProgram
 
+use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::io::Write;
 use std::os::raw::{c_char, c_int};
@@ -14,7 +15,8 @@ use differential_datalog::RecordReplay;
 
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;
-use crate::{relname2id, Value};
+use crate::Relations;
+use crate::Value;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///
@@ -135,8 +137,8 @@ fn dump_delta<V: Val + IntoRecord>(
 
     /* DeltaPlus */
     let plus_cmds: Result<Vec<String>, String> = {
-        let plus_table_id = relname2id(&plus_table_name)
-            .ok_or_else(|| format!("unknown table {}", plus_table_name))?;
+        let plus_table_id = Relations::try_from(plus_table_name.as_str())
+            .map_err(|()| format!("unknown table {}", plus_table_name))?;
         db.get_rel(plus_table_id as RelId)
             .iter()
             .map(|(v, w)| {
@@ -149,8 +151,8 @@ fn dump_delta<V: Val + IntoRecord>(
 
     /* DeltaMinus */
     let minus_cmds: Result<Vec<String>, String> = {
-        let minus_table_id = relname2id(&minus_table_name)
-            .ok_or_else(|| format!("unknown table {}", minus_table_name))?;
+        let minus_table_id = Relations::try_from(minus_table_name.as_str())
+            .map_err(|()| format!("unknown table {}", minus_table_name))?;
         db.get_rel(minus_table_id as RelId)
             .iter()
             .map(|(v, w)| {
@@ -163,8 +165,8 @@ fn dump_delta<V: Val + IntoRecord>(
 
     /* Update */
     let upd_cmds: Result<Vec<String>, String> = {
-        match relname2id(&upd_table_name) {
-            Some(upd_table_id) => db
+        match Relations::try_from(upd_table_name.as_str()) {
+            Ok(upd_table_id) => db
                 .get_rel(upd_table_id as RelId)
                 .iter()
                 .map(|(v, w)| {
@@ -172,7 +174,7 @@ fn dump_delta<V: Val + IntoRecord>(
                     record_into_update_str(v.clone().into_record(), table_str)
                 })
                 .collect(),
-            None => Ok(vec![]),
+            Err(()) => Ok(vec![]),
         }
     };
     let mut upd_cmds = upd_cmds?;

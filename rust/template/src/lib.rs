@@ -13,6 +13,7 @@
 
 use std::borrow;
 use std::boxed;
+use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
 use std::fmt::Display;
@@ -109,6 +110,14 @@ pub enum Relations {
     X = 0,
 }
 
+impl TryFrom<&str> for Relations {
+    type Error = ();
+
+    fn try_from(rname: &str) -> Result<Self, Self::Error> {
+        panic!("Relations::try_from::<&str> not implemented")
+    }
+}
+
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub enum Value {
     empty(),
@@ -139,10 +148,6 @@ impl Mutator<Value> for record::Record {
     fn mutate(&self, _x: &mut Value) -> Result<(), String> {
         panic!("Value::mutate not implemented")
     }
-}
-
-pub fn relname2id(_rname: &str) -> Option<Relations> {
-    panic!("relname2id not implemented")
 }
 
 pub fn output_relname_to_id(_rname: &str) -> Option<Relations> {
