@@ -831,16 +831,19 @@ mkIsInputRels d =
 -- Convert string to enum Relations
 mkRelId2Relations :: DatalogProgram -> Doc
 mkRelId2Relations d =
-    "pub fn relid2rel(rid: RelId) -> Option<Relations> {"   $$
-    "   match rid {"                                        $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+    "impl TryFrom<RelId> for Relations {"                                 $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(rid: RelId) -> Result<Self, Self::Error> {"          $$
+    "         match rid {"                                                $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
     "}"
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = pp (relIdentifier d rel) <+> "=> Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = pp (relIdentifier d rel) <+> "=> Ok(Relations::" <> rname (name rel) <> "),"
 
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
