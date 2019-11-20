@@ -52,6 +52,8 @@ typedef IString1 = IString1{s: intern.IString}
 typedef Innocent = Innocent{name: string}
 typedef J = J{b: bool}
 typedef Links = Links{l: line, s1: station, s2: station}
+typedef Long = Long{x0: bit<16>, x1: bit<16>, x2: bit<16>, x3: bit<16>, x4: bit<16>, x5: bit<16>, x6: bit<16>, x7: bit<16>, x8: bit<16>, x9: bit<16>, x10: bit<16>, x11: bit<16>, x12: bit<16>, x13: bit<16>, x14: bit<16>, x15: bit<16>, x16: bit<16>, x17: bit<16>, x18: bit<16>, x19: bit<16>}
+typedef LongJoin = LongJoin{x0: bit<16>, x1: bit<16>, x2: bit<16>, x3: bit<16>, x4: bit<16>, x5: bit<16>, x6: bit<16>, x7: bit<16>, x8: bit<16>, x9: bit<16>, x10: bit<16>, x11: bit<16>, x12: bit<16>, x13: bit<16>, x14: bit<16>, x15: bit<16>, x16: bit<16>, x17: bit<16>, x18: bit<16>, x19: bit<16>}
 typedef NewAllocation = NewAllocation{id: bigint, alloc: std.Vec<(string, bit<32>)>}
 typedef NewAllocationOpt = NewAllocationOpt{id: bigint, alloc: std.Vec<(string, std.Option<bit<32>>)>}
 typedef Numbers = Numbers{x: bigint}
@@ -557,6 +559,8 @@ input relation IString1 [IString1]
 output relation Innocent [Innocent]
 output relation J [J]
 input relation Links [Links]
+input relation Long [Long]
+output relation LongJoin [LongJoin]
 output relation NewAllocation [NewAllocation]
 output relation NewAllocationOpt [NewAllocationOpt]
 input relation Numbers [Numbers]
@@ -876,4 +880,5 @@ R13(.t=(1, true, "", 32'd1)).
 R14(.t=(1, (true, ("", 32'd1)))).
 R14(.t=(0, (true, ("", 32'd1)))).
 J(.b=b) :- R13(.t=a), R14(.t=c), (a.3 == c.1.1.1), var b = a.1.
+LongJoin(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19) :- Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

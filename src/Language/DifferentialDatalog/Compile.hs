@@ -1861,8 +1861,10 @@ mkArrangementKey d rel pattern = do
         getvars t (E EVar{..})    = [Field nopos exprVar t]
         getvars _ _               = []
     let t = relType rel
-    -- order variables alphabetically: '_0', '_1', ...
-    patvars <- mkVarsTupleValue d $ sortBy (\f1 f2 -> compare (name f1) (name f2)) $ getvars t pattern
+    -- Order variables by their integer value: '_0', '_1', ...
+    patvars <- mkVarsTupleValue d
+               $ sortBy (\f1 f2 -> compare ((read $ tail $ name f1)::Int) (read $ tail $ name f2))
+               $ getvars t pattern
     constructor <- mkValConstructorName' d t
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
