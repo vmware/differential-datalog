@@ -56,17 +56,18 @@ From 53 Insert ZI15{OrSecond{S{22}}}
 From 54 Insert 0
 From 54 Insert 1000
 From 55 Insert ZI20{(4294967294, "YYY")}
-From 56 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
-From 57 Insert ["Foo
+From 56 Insert ZI21{13}
+From 57 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+From 58 Insert ["Foo
 ", "	bar"]
-From 58 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
-From 59 Insert std_Some{"ZI6"}
-From 59 Insert std_None{}
-From 60 Insert "ZI7"
-From 60 Insert "♛"
-From 61 Insert 100
+From 59 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
+From 60 Insert std_Some{"ZI6"}
+From 60 Insert std_None{}
+From 61 Insert "ZI7"
+From 61 Insert "♛"
 From 62 Insert 100
-From 63 Insert module_ZI16{"zi16"}
-From 64 Insert "zi17"
-From 65 Insert module_ZI18{(4294967295, "ZZZ")}
-From 66 Insert (4294967293, "zi19")
+From 63 Insert 100
+From 64 Insert module_ZI16{"zi16"}
+From 65 Insert "zi17"
+From 66 Insert module_ZI18{(4294967295, "ZZZ")}
+From 67 Insert (4294967293, "zi19")

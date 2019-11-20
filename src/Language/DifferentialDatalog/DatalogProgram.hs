@@ -246,7 +246,8 @@ progMirrorInputRelations d prefix =
   let
     inputRels = M.toList $ M.filter (\r -> relRole r == RelInput) $ progRelations d
     relCopies = map (\(n,r) -> (prefix ++ n, r { relRole = RelOutput,
-                                                 relName = prefix ++ relName r
+                                                 relName = prefix ++ relName r,
+                                                 relPrimaryKey = Nothing
                                                })) $ inputRels
     makeRule relName relation = Rule { rulePos = relPos relation,
                                        ruleLHS = [Atom { atomPos = relPos relation,
