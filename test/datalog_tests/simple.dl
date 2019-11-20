@@ -1036,3 +1036,55 @@ R14( (1, (true, ("", (1)))) ).
 R14( (0, (true, ("", 1))) ).
 output relation J(b: bool)
 J(b) :- R13(a), R14(c), a.3 == c.1.1.1, var b = a.1.
+
+
+input relation Long(
+    x0: bit<16>,
+    x1: bit<16>,
+    x2: bit<16>,
+    x3: bit<16>,
+    x4: bit<16>,
+    x5: bit<16>,
+    x6: bit<16>,
+    x7: bit<16>,
+    x8: bit<16>,
+    x9: bit<16>,
+    x10: bit<16>,
+    x11: bit<16>,
+    x12: bit<16>,
+    x13: bit<16>,
+    x14: bit<16>,
+    x15: bit<16>,
+    x16: bit<16>,
+    x17: bit<16>,
+    x18: bit<16>,
+    x19: bit<16>
+)
+
+output relation LongJoin(
+    x0: bit<16>,
+    x1: bit<16>,
+    x2: bit<16>,
+    x3: bit<16>,
+    x4: bit<16>,
+    x5: bit<16>,
+    x6: bit<16>,
+    x7: bit<16>,
+    x8: bit<16>,
+    x9: bit<16>,
+    x10: bit<16>,
+    x11: bit<16>,
+    x12: bit<16>,
+    x13: bit<16>,
+    x14: bit<16>,
+    x15: bit<16>,
+    x16: bit<16>,
+    x17: bit<16>,
+    x18: bit<16>,
+    x19: bit<16>
+)
+
+LongJoin(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) :-
+    Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19),
+    Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19),
+    Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19).
