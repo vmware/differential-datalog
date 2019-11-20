@@ -13,7 +13,7 @@ typedef tuple = (bool, bit<8>, string)
 input relation JI(a: (bool, bit<8>, string))
 input relation KI(t: tuple)
 input relation LI[tuple]
-input relation L0I(a: bool, b: bit<8>, s: string)
+input relation L0I(a: bool, b: bit<8>, s: string) primary key (x) x.a
 input relation MI(v: Vec<bool>)
 input relation NI(v: Vec<tuple>)
 input relation OI(v: Vec<Vec<bool>>)
