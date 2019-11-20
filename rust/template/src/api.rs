@@ -1,13 +1,3 @@
-use differential_datalog::program::*;
-use differential_datalog::record;
-use differential_datalog::record::IntoRecord;
-use differential_datalog::record_val_upds;
-use differential_datalog::Callback;
-use differential_datalog::DDlog;
-use differential_datalog::DeltaMap;
-use differential_datalog::RecordReplay;
-
-use libc::size_t;
 use std::ffi;
 use std::fs;
 use std::io;
@@ -19,6 +9,17 @@ use std::os::unix::io::FromRawFd;
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
+
+use libc::size_t;
+
+use differential_datalog::program::*;
+use differential_datalog::record;
+use differential_datalog::record::IntoRecord;
+use differential_datalog::record_val_upds;
+use differential_datalog::Callback;
+use differential_datalog::DDlog;
+use differential_datalog::DeltaMap;
+use differential_datalog::RecordReplay;
 
 use super::update_handler::*;
 use super::*;
@@ -74,19 +75,24 @@ impl HDDlog {
         mem::swap(&mut self.replay_file, file);
     }
 
-    pub fn dump_input_snapshot<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+    pub fn dump_input_snapshot<W>(&self, w: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
         for (rel, relname) in INPUT_RELIDMAP.iter() {
             let prog = self.prog.lock().unwrap();
             match prog.get_input_relation_data(*rel as RelId) {
                 Ok(valset) => {
                     for v in valset.iter() {
-                        writeln!(w, "insert {}[{}],", relname, v)?;
+                        w.record_insert(relname, v)?;
+                        writeln!(w, ",")?;
                     }
                 }
                 _ => match prog.get_input_relation_index(*rel as RelId) {
                     Ok(ivalset) => {
                         for v in ivalset.values() {
-                            writeln!(w, "insert {}[{}],", relname, v)?;
+                            w.record_insert(relname, v)?;
+                            writeln!(w, ",")?;
                         }
                     }
                     _ => {
