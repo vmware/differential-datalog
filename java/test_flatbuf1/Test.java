@@ -475,6 +475,11 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " ZI20{" + printMTuple(b.t()) + "}");
                 break;
             }
+            case flatbufTestRelation.OZI21: {
+                ZI21Reader m = (ZI21Reader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZI21{" + m.m() + "}");
+                break;
+            }
             default:
                 fb_file.println("Unknown output relation " + relid);
                 //throw new IllegalArgumentException("Unknown relation id " + relid);
@@ -693,6 +698,7 @@ public class Test {
             Tuple2__bit_32___stringWriter b = builder.create_Tuple2__bit_32___string(-2, "YYY");
             builder.insert_ZI20(b);
         }
+        builder.insert_ZI21(13);
         builder.applyUpdates(this.api);
         try {
             builder.applyUpdates(this.api);
@@ -752,6 +758,7 @@ public class Test {
         this.api.clearRelation(flatbufTestRelation.module_ZI18);
         this.api.clearRelation(flatbufTestRelation.module_ZI19);
         this.api.clearRelation(flatbufTestRelation.ZI20);
+        this.api.clearRelation(flatbufTestRelation.ZI21);
     }
 
     void run() throws IOException, DDlogException {

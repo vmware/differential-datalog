@@ -62,3 +62,4 @@ typedef Or<'A, 'B> = OrFirst{f: F<'A>}
 input relation ZI15(c: Or<string, signed<32>>)
 import module
 input relation ZI20(t: mtuple)
+input relation ZI21(m: bit<32>) primary key (r) r.m
