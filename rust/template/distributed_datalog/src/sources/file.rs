@@ -176,15 +176,15 @@ where
 {
     /// Create a new adapter streaming data from the file at the given
     /// `path`.
-    pub fn new<P>(path: P) -> Result<Self, Error>
+    pub fn new<P>(path: P) -> Self
     where
         P: Into<PathBuf>,
     {
-        Ok(Self {
+        Self {
             path: path.into(),
             state: None,
             _unused: Default::default(),
-        })
+        }
     }
 
     fn start(
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn non_existent_file() {
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter, _>::new("i-dont-actually-exist").unwrap();
+        let mut adapter = File::<DummyConverter, _>::new("i-dont-actually-exist");
         let result = adapter.subscribe(Box::new(mock.clone()));
 
         assert!(result.is_err(), result);
@@ -315,7 +315,7 @@ mod tests {
         file.write_all(TRANSACTION_DUMP).unwrap();
 
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter, _>::new(file.path()).unwrap();
+        let mut adapter = File::<DummyConverter, _>::new(file.path());
         let _ = adapter.subscribe(Box::new(mock.clone())).unwrap();
 
         await_expected(|| {
