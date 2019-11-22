@@ -24,6 +24,7 @@ public class DDlogTStruct extends DDlogType {
     private final List<DDlogField> args;
 
     public DDlogTStruct(String name, List<DDlogField> args) {
+        super(false);
         this.name = name;
         this.args = args;
     }

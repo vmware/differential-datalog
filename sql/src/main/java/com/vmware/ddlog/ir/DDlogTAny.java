@@ -11,23 +11,18 @@
 
 package com.vmware.ddlog.ir;
 
-import java.util.ArrayList;
+/**
+ * The type of the _ expression: any type.
+ */
+public class DDlogTAny extends DDlogType {
+    public static DDlogType instance = new DDlogTAny();
 
-public class DDlogEFor extends DDlogExpression {
-    private final String loopVar;
-    private final DDlogExpression iter;
-    private final DDlogExpression body;
-
-    public DDlogEFor(String loopVar, DDlogExpression iter, DDlogExpression body) {
-        super(DDlogTTuple.emptyTupleType);
-        this.loopVar = loopVar;
-        this.iter = iter;
-        this.body = body;
+    private DDlogTAny() {
+        super(true);
     }
 
     @Override
     public String toString() {
-        return "for (" + this.loopVar + " in " + this.iter.toString() + ") {\n" +
-                this.body.toString() + "}";
+        return "*";
     }
 }

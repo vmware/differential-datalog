@@ -62,4 +62,8 @@ public class RelationRHS implements DDlogIRNode {
             return new DDlogEVarDecl(this.rowVariable, this.type);
         return new DDlogEVar(this.rowVariable, this.type);
     }
+
+    public String getVarName() {
+        return this.rowVariable;
+    }
 }

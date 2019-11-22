@@ -21,13 +21,14 @@ public class DDlogTUser extends DDlogType {
     private final String name;
     private final List<DDlogType> typeArgs;
 
-    public DDlogTUser(String name, List<DDlogType> typeArgs) {
+    public DDlogTUser(String name, List<DDlogType> typeArgs, boolean mayBeNull) {
+        super(mayBeNull);
         this.name = name;
         this.typeArgs = typeArgs;
     }
 
-    public DDlogTUser(String name) {
-        this(name, new ArrayList<DDlogType>());
+    public DDlogTUser(String name, boolean mayBeNull) {
+        this(name, new ArrayList<DDlogType>(), mayBeNull);
     }
 
     public String getName() {
@@ -37,11 +38,10 @@ public class DDlogTUser extends DDlogType {
     @Override
     public String toString() {
         String result = this.name;
-        if (this.typeArgs.isEmpty())
-            return result;
-        result += "<" + String.join(", ",
-                Linq.map(this.typeArgs, DDlogType::toString)) + ">";
-        return result;
+        if (!this.typeArgs.isEmpty())
+            result += "<" + String.join(", ",
+                    Linq.map(this.typeArgs, DDlogType::toString)) + ">";
+        return this.wrapOption(result);
     }
 
     @Override

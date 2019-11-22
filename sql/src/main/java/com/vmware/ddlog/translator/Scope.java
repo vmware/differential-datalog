@@ -17,8 +17,8 @@ import javax.annotation.Nullable;
 
 public class Scope {
     final String scopeName;
-    final String rowVariable;
-    final DDlogType type;
+    private final String rowVariable;
+    private final DDlogType type;
 
     Scope(String scopeName, String rowVariable, DDlogType type) {
         this.scopeName = scopeName;

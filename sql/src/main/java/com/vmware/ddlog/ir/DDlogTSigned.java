@@ -14,9 +14,10 @@ package com.vmware.ddlog.ir;
 import java.util.Objects;
 
 public class DDlogTSigned extends DDlogType {
-    final int width;
+    private final int width;
 
-    public DDlogTSigned(int width) {
+    public DDlogTSigned(int width, boolean mayBeNull) {
+        super(mayBeNull);
         this.width = width;
     }
 
@@ -34,5 +35,5 @@ public class DDlogTSigned extends DDlogType {
     }
 
     @Override
-    public String toString() { return "signed<" + this.width + ">"; }
+    public String toString() { return this.wrapOption("signed<" + this.width + ">"); }
 }

@@ -17,4 +17,19 @@ extern function second(d: DateTime): bit<32>
 
 function substr(s: string, start: signed<64>, end: signed<64>): string =
    string_substr(s, start as bit<64>, (start + end) as bit<64>)
-extern function isNull(value: 'T): bool
+
+function substr_N(s: Option<string>, start: signed<64>, end: signed<64>): Option<string> =
+   match (s) {
+      Some{.x = var a} -> Some{substr(a, start, end)},
+      _                -> None
+   }
+function isNull(value: Option<'T>): bool =
+   match (value) {
+      Some{_} -> false,
+      None    -> true
+   }
+function unwrapBool(v: Option<bool>): bool =
+   match (v) {
+      Some{.x = var a} -> a,
+      _                -> false
+   }

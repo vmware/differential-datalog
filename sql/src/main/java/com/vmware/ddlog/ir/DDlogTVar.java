@@ -14,9 +14,10 @@ package com.vmware.ddlog.ir;
 import java.util.Objects;
 
 public class DDlogTVar extends DDlogType {
-    final String varName;
+    private final String varName;
 
     public DDlogTVar(String varName) {
+        super(false);
         this.varName = varName;
     }
 

@@ -12,12 +12,13 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogTInt extends DDlogType {
-    private DDlogTInt() {}
+    private DDlogTInt(boolean mayBeNull) { super(mayBeNull); }
 
-    public static DDlogTInt instance = new DDlogTInt();
+    public static DDlogTInt instance = new DDlogTInt(false);
+    public static DDlogTInt instanceWNull = new DDlogTInt(true);
 
     @Override
-    public String toString() { return "bigint"; }
+    public String toString() { return this.wrapOption("bigint"); }
 
     @Override
     public boolean equals(Object o) {

@@ -12,9 +12,9 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogFuncArg implements DDlogIRNode {
-    final String name;
-    final boolean mut;
-    final DDlogType type;
+    private final String name;
+    private final boolean mut;
+    private final DDlogType type;
 
     public DDlogFuncArg(String name, boolean mut, DDlogType type) {
         this.name = name;

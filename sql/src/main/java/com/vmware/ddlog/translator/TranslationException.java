@@ -25,10 +25,7 @@ class TranslationException extends RuntimeException {
         if (node == null)
             return "";
         String result = node.toString();
-        if (!node.getLocation().isPresent())
-            return result;
-        NodeLocation location = node.getLocation().get();
-        result += " line: " + location.getLineNumber() + " column: " + location.getColumnNumber();
+        result += " " + TranslationContext.location(node);
         return result;
     }
 }

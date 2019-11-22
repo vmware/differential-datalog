@@ -14,15 +14,12 @@ package com.vmware.ddlog.translator;
 import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.*;
-import com.vmware.ddlog.ir.DDlogIRNode;
-import com.vmware.ddlog.ir.DDlogProgram;
+import com.vmware.ddlog.ir.*;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +36,7 @@ public class Translator {
     private final TranslationContext translationContext;
     private final TranslationVisitor visitor;
     private final ParsingOptions options = ParsingOptions.builder().build();
+
 
     public Translator(@Nullable final DSLContext dynamicContext) {
         this.parser = new SqlParser();
@@ -73,8 +71,12 @@ public class Translator {
         final List<org.jooq.Table<?>> tables = conn.meta().getTables();
         final Map<org.jooq.Table<?>, List<Field<?>>> tablesToFields = new HashMap<>();
         tables.forEach(
-                t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
+            t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
         );
         return tablesToFields;
+    }
+
+    public DDlogProgram generateLibrary() {
+        return this.translationContext.generateLibrary();
     }
 }

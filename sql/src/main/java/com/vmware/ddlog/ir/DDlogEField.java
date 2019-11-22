@@ -12,8 +12,8 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogEField extends DDlogExpression {
-    final DDlogExpression struct;
-    final String field;
+    private final DDlogExpression struct;
+    private final String field;
 
     public DDlogEField(DDlogExpression struct, String field, DDlogType type) {
         super(type);

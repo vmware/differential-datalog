@@ -20,7 +20,8 @@ public class DDlogEITE extends DDlogExpression {
     private final DDlogExpression eelse;
 
     public DDlogEITE(DDlogExpression cond, DDlogExpression then, @Nullable DDlogExpression eelse) {
-        super(then.getType());
+        super(eelse == null ? then.getType() :
+                (then.getType().mayBeNull ? eelse.getType() : then.getType()));
         if (eelse != null)
             DDlogType.checkCompatible(then.getType(), eelse.getType());
         this.cond = this.checkNull(cond);

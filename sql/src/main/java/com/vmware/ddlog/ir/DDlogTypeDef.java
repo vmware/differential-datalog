@@ -18,21 +18,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DDlogTypeDef implements DDlogIRNode {
-    private final List<DDlogAttribute> attrs;
     private final String name;
     private final List<String> args;
     @Nullable
     private final DDlogType type;
 
-    DDlogTypeDef(List<DDlogAttribute> attrs, String name, List<String> args, @Nullable DDlogType type) {
-        this.attrs = attrs;
+    private DDlogTypeDef(String name, List<String> args, @Nullable DDlogType type) {
         this.name = name;
         this.args = args;
         this.type = type;
     }
 
     public DDlogTypeDef(String name, @Nullable DDlogType type) {
-        this(new ArrayList<DDlogAttribute>(), name, new ArrayList<String>(), type);
+        this(name, new ArrayList<String>(), type);
     }
 
     public String getName() { return this.name; }
