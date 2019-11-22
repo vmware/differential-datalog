@@ -749,7 +749,7 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
 -}
 mkValueFromRecord :: (?cfg::CompilerConfig) => DatalogProgram -> Doc
 mkValueFromRecord d@DatalogProgram{..} =
-    mkRelname2Id d                                                                                  $$
+    mkRelationsTryFromStr d                                                                         $$
     mkOutputRelname2Id d                                                                            $$
     mkInputRelname2Id d                                                                             $$
     mkRelId2Relations d                                                                             $$
@@ -786,19 +786,22 @@ mkValueFromRecord d@DatalogProgram{..} =
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
 
--- Convert string to RelId
-mkRelname2Id :: DatalogProgram -> Doc
-mkRelname2Id d =
-    "pub fn relname2id(rname: &str) -> Option<Relations> {" $$
-    "   match rname {"                                      $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+-- Convert string to Relations
+mkRelationsTryFromStr :: DatalogProgram -> Doc
+mkRelationsTryFromStr d =
+    "impl TryFrom<&str> for Relations {"                                  $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(rname: &str) -> Result<Self, Self::Error> {"         $$
+    "         match rname {"                                              $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
     "}"
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Ok(Relations::" <> rname (name rel) <> "),"
 
 mkOutputRelname2Id :: DatalogProgram -> Doc
 mkOutputRelname2Id d =
