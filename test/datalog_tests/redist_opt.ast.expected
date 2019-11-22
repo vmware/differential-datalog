@@ -1,0 +1,190 @@
+typedef DdlogBinding = DdlogBinding{tn: tnid_t, entity: entid_t}
+typedef DdlogDependency = DdlogDependency{parent: entid_t, child: entid_t}
+typedef DdlogNode = DdlogNode{id: entid_t, etype: EntityType}
+typedef DumpRelation = DumpRelation{parent: entid_t, child: entid_t}
+typedef DumpSpan = DumpSpan{entity: entid_t, tns: std.Ref<tinyset.Set64<tnid_t>>}
+typedef EntityType = EntityLS{} | EntityLSP{connected_to_dr: bool} | EntityLRP{} | EntityRDS{routingDomainId: entid_t} | EntityOther{}
+typedef ExtDdlogDependency = ExtDdlogDependency{parent: entid_t, child: entid_t}
+typedef FromNode = FromNode{fro: entid_t}
+typedef Froms = Froms{from: entid_t, to: entid_t}
+typedef FromsList = FromsList{froms: std.Set<entid_t>, to: entid_t}
+typedef IsDumpRelation = IsDumpRelation{}
+typedef IsDumpSpan = IsDumpSpan{}
+typedef LabeledNode = LabeledNode{node: entid_t, scc: entid_t}
+typedef QuerySpan = QuerySpan{entity: entid_t, tns: std.Ref<tinyset.Set64<tnid_t>>}
+typedef QuerySpanNode = QuerySpanNode{entity: entid_t}
+typedef SCCBinding = SCCBinding{scc: entid_t, bindings: std.Ref<tinyset.Set64<tnid_t>>}
+typedef SCCEdge = SCCEdge{parent: entid_t, child: entid_t}
+typedef SCCSpan = SCCSpan{scc: entid_t, span: std.Ref<tinyset.Set64<tnid_t>>}
+typedef Span = Span{entity: entid_t, tns: std.Ref<tinyset.Set64<tnid_t>>}
+typedef ToNode = ToNode{to: entid_t}
+typedef Tos = Tos{from: entid_t, to: entid_t}
+typedef TosList = TosList{from: entid_t, tos: std.Set<entid_t>}
+typedef ValidDependency = ValidDependency{parent: entid_t, child: entid_t}
+typedef entid_t = bit<32>
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+extern type std.Group<'A>
+extern type std.Map<'K,'V>
+typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+#[size = 8]
+extern type std.Ref<'A>
+extern type std.Set<'A>
+extern type std.Vec<'A>
+extern type tinyset.Set64<'X>
+typedef tnid_t = bit<16>
+function dep_child (e: ExtDdlogDependency): entid_t =
+    e.child
+function dep_parent (e: ExtDdlogDependency): entid_t =
+    e.parent
+function edge_child (e: (entid_t, entid_t)): entid_t =
+    match (e) {
+        (_, var child) -> child
+    }
+function edge_parent (e: (entid_t, entid_t)): entid_t =
+    match (e) {
+        (var parent, _) -> parent
+    }
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
+extern function std.__builtin_2string (x: 'X): string
+extern function std.deref (x: std.Ref<'A>): 'A
+extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
+extern function std.group2set (g: std.Group<'A>): std.Set<'A>
+extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
+extern function std.group_count (g: std.Group<'A>): bit<64>
+extern function std.group_first (g: std.Group<'A>): 'A
+extern function std.group_max (g: std.Group<'A>): 'A
+extern function std.group_min (g: std.Group<'A>): 'A
+extern function std.group_nth (g: std.Group<'A>, n: bit<64>): std.Option<'A>
+extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'A>): 'A
+function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+    ((var xs: std.Vec<'X>) = std.vec_empty();
+     ((var ys: std.Vec<'Y>) = std.vec_empty();
+      (for (v in g) {
+           ((var x, var y) = v;
+            (std.vec_push(xs, x);
+             std.vec_push(ys, y)))
+       };
+       (xs, ys))))
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
+extern function std.htonl (x: bit<32>): bit<32>
+extern function std.htons (x: bit<16>): bit<16>
+function std.is_none (x: std.Option<'A>): bool =
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+function std.is_some (x: std.Option<'A>): bool =
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+extern function std.max (x: 'A, y: 'A): 'A
+extern function std.min (x: 'A, y: 'A): 'A
+extern function std.ntohl (x: bit<32>): bit<32>
+extern function std.ntohs (x: bit<16>): bit<16>
+extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.pow32 (base: 'A, exp: bit<32>): 'A
+extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
+extern function std.ref_new (x: 'A): std.Ref<'A>
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.str_to_lower (s: string): string
+extern function std.string_contains (s1: string, s2: string): bool
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_len (s: string): bit<64>
+extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
+extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
+extern function std.vec_empty (): std.Vec<'A>
+extern function std.vec_is_empty (v: std.Vec<'X>): bool
+extern function std.vec_len (v: std.Vec<'X>): bit<64>
+extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
+extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
+extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function tinyset.contains (s: tinyset.Set64<'X>, v: 'X): bool
+extern function tinyset.empty (): tinyset.Set64<'X>
+extern function tinyset.group2set (g: std.Group<'A>): tinyset.Set64<'A>
+extern function tinyset.group_set_unions (g: std.Group<tinyset.Set64<'A>>): tinyset.Set64<'A>
+extern function tinyset.group_setref_unions (g: std.Group<std.Ref<tinyset.Set64<'A>>>): std.Ref<tinyset.Set64<'A>>
+extern function tinyset.insert (s: mut tinyset.Set64<'X>, v: 'X): ()
+extern function tinyset.insert_imm (s: tinyset.Set64<'X>, v: 'X): tinyset.Set64<'X>
+extern function tinyset.is_empty (s: tinyset.Set64<'X>): bool
+extern function tinyset.nth (s: tinyset.Set64<'X>, n: bit<64>): std.Option<bit<64>>
+extern function tinyset.singleton (x: 'X): tinyset.Set64<'X>
+extern function tinyset.size (s: tinyset.Set64<'X>): bit<64>
+extern function tinyset.union (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
+extern function tinyset.unions (sets: std.Vec<tinyset.Set64<'X>>): tinyset.Set64<'X>
+extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
+extern transformer graph.ConnectedComponents64(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
+extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
+extern transformer graph.UnsafeBidirectionalEdges(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (BiEdges: relation[('N, 'N)])
+relation BiEdge [(entid_t, entid_t)]
+input relation DdlogBinding [DdlogBinding]
+input relation DdlogDependency [DdlogDependency]
+input relation DdlogNode [DdlogNode]
+output relation DumpRelation [DumpRelation]
+output relation DumpSpan [DumpSpan]
+relation ExtDdlogDependency [ExtDdlogDependency]
+input relation FromNode [FromNode]
+relation Froms [Froms]
+output relation FromsList [FromsList]
+input relation IsDumpRelation [IsDumpRelation]
+input relation IsDumpSpan [IsDumpSpan]
+relation LabeledNode [LabeledNode]
+output relation QuerySpan [QuerySpan]
+input relation QuerySpanNode [QuerySpanNode]
+relation SCCBinding [SCCBinding]
+relation SCCEdge [SCCEdge]
+relation SCCLabel [(entid_t, entid_t)]
+relation SCCSpan [SCCSpan]
+output relation Span [Span]
+input relation ToNode [ToNode]
+relation Tos [Tos]
+output relation TosList [TosList]
+relation ValidDependency [ValidDependency]
+ValidDependency(.parent=parent, .child=child) :- DdlogDependency(.parent=parent, .child=child), DdlogNode(.id=parent, .etype=_), DdlogNode(.id=child, .etype=_).
+ExtDdlogDependency(.parent=parent, .child=child) :- ValidDependency(.parent=parent, .child=child).
+ExtDdlogDependency(.parent=ls, .child=lsp) :- ValidDependency(.parent=lsp, .child=lrp), DdlogNode(.id=lrp, .etype=EntityLRP{}), DdlogNode(.id=lsp, .etype=EntityLSP{.connected_to_dr=true}), ValidDependency(.parent=lsp, .child=ls), DdlogNode(.id=ls, .etype=EntityLS{}).
+LabeledNode(.node=node, .scc=scc) :- SCCLabel[(node, scc)].
+LabeledNode(.node=node, .scc=node) :- DdlogNode(.id=node, .etype=_), not SCCLabel[(node, _)].
+SCCEdge(.parent=parentscc, .child=childscc) :- ExtDdlogDependency(.parent=parent, .child=child), LabeledNode(.node=parent, .scc=parentscc), LabeledNode(.node=child, .scc=childscc), (childscc != parentscc).
+SCCBinding(.scc=scc, .bindings=std.ref_new(bindings)) :- DdlogBinding(.tn=tn, .entity=entity), LabeledNode(.node=entity, .scc=scc), var bindings = Aggregate((scc), tinyset.group2set(tn)).
+SCCSpan(.scc=scc, .span=bindings) :- SCCBinding(.scc=scc, .bindings=bindings).
+SCCSpan(.scc=parent, .span=tns) :- SCCEdge(.parent=child, .child=parent), SCCSpan(.scc=child, .span=child_tns), var tns = Aggregate((parent), tinyset.group_setref_unions(child_tns)).
+Span(.entity=node, .tns=span) :- SCCSpan(.scc=scc, .span=span), LabeledNode(.node=node, .scc=scc).
+Froms(.from=from, .to=to) :- ToNode(.to=to), ExtDdlogDependency(.parent=from, .child=to).
+Tos(.from=from, .to=to) :- FromNode(.fro=from), ExtDdlogDependency(.parent=from, .child=to).
+FromsList(.froms=froms, .to=to) :- Froms(.from=from, .to=to), var froms = Aggregate((to), std.group2set(from)).
+TosList(.from=from, .tos=tos) :- Tos(.from=from, .to=to), var tos = Aggregate((from), std.group2set(to)).
+QuerySpan(.entity=node, .tns=span) :- QuerySpanNode(.entity=node), Span(.entity=node, .tns=span).
+DumpSpan(.entity=node, .tns=span) :- IsDumpSpan(), Span(.entity=node, .tns=span).
+DumpRelation(.parent=parent, .child=child) :- IsDumpRelation(), ExtDdlogDependency(.parent=parent, .child=child).
+apply graph.UnsafeBidirectionalEdges(ExtDdlogDependency, dep_parent, dep_child) -> (BiEdge)
+apply graph.ConnectedComponents64(BiEdge, edge_child, edge_parent) -> (SCCLabel)
