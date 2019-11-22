@@ -189,7 +189,9 @@ function a3 (): bit<32> =
 function a4 (): bit<32> =
     (64'd0: bit<64>)[40:9]
 function a5 (a: bit<32>, b: bit<32>): bit<32> =
-    ((((((a & b) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
+    (((((((a ^ b) | (a & b)) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
+function a51 (a: signed<32>, b: signed<32>): signed<32> =
+    ((((((a ^ b) | (a & b)) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5))
 function a6 (a: bit<16>, b: bit<16>): bit<16> =
     (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
 function a7 (a: bit<16>, b: bit<16>): bool =
