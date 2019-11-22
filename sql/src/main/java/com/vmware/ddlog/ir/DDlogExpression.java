@@ -15,7 +15,8 @@ import javax.annotation.Nullable;
 
 public abstract class DDlogExpression implements DDlogIRNode {
     /**
-     * Inferred type of the expression.
+     * Inferred type of the expression.  We can't make it final
+     * since sometimes it's not set in the constructor.  But it should be really final.
      */
     @Nullable
     protected /*final*/ DDlogType type;

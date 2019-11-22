@@ -21,6 +21,7 @@ public class DDlogTOpaque extends DDlogType {
     final List<DDlogType> typeArgs;
 
     public DDlogTOpaque(String name, List<DDlogType> typeArgs) {
+        super(false);
         this.name = name;
         this.typeArgs = typeArgs;
     }

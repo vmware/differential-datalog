@@ -11,22 +11,20 @@
 
 package com.vmware.ddlog.ir;
 
-import java.util.List;
-
 public class DDlogImport implements DDlogIRNode {
-    final List<String> module;
-    final List<String> alias;
+    private final String module;
+    private final String alias;
 
-    public DDlogImport(List<String> module, List<String> alias) {
+    public DDlogImport(String module, String alias) {
         this.module = module;
         this.alias = alias;
     }
 
     @Override
     public String toString() {
-        String result = "import " + String.join(".", this.module);
+        String result = "import " + this.module;
         if (!this.alias.isEmpty())
-            result += " as " + String.join(".", this.alias);
-        return result + "\n";
+            result += " as " + this.alias;
+        return result;
     }
 }

@@ -36,7 +36,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogTypeDef tdef = new DDlogTypeDef(type.getName(), type);
         context.add(tdef);
         DDlogRelation rel = new DDlogRelation(
-                DDlogRelation.RelationRole.RelInput, name, new DDlogTUser(tdef.getName()));
+                DDlogRelation.RelationRole.RelInput, name,
+                new DDlogTUser(tdef.getName(), type.mayBeNull));
         context.add(rel);
         return rel;
     }
@@ -83,15 +84,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogIRNode rel = this.process(relation.getRelation(), context);
         String name = relation.getAlias().getValue();
         RelationRHS rrhs = rel.as(RelationRHS.class, null);
-        DDlogRelation alias = new DDlogRelation(
-                DDlogRelation.RelationRole.RelInternal, name, rrhs.getType());
-        context.add(alias);
-        String var = context.freshLocalName("v");
-        RelationRHS result = new RelationRHS(var, rrhs.getType());
-        result.addDefinition(new DDlogRHSLiteral(true, new DDlogAtom(name, rrhs.getRowVariable(false))));
-        Scope scope = new Scope(name, var, rrhs.getType());
+        Scope scope = new Scope(name, rrhs.getVarName(), rrhs.getType());
         context.enterScope(scope);
-        return result;
+        return rrhs;
     }
 
     @Override
@@ -151,7 +146,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogTStruct type = new DDlogTStruct(newTypeName, typeList);
         DDlogTypeDef tdef = new DDlogTypeDef(newTypeName, type);
         context.add(tdef);
-        DDlogType tuser = new DDlogTUser(tdef.getName());
+        DDlogType tuser = new DDlogTUser(tdef.getName(), type.mayBeNull);
         DDlogExpression project = new DDlogEStruct(newTypeName, exprList, tuser);
         DDlogRelation outRel = new DDlogRelation(DDlogRelation.RelationRole.RelInternal, outRelName, tuser);
         context.add(outRel);
@@ -181,6 +176,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         if (spec.getWhere().isPresent()) {
             Expression expr = spec.getWhere().get();
             DDlogExpression ddexpr = context.translateExpression(expr);
+            ddexpr = ExpressionTranslationVisitor.unwrapBool(ddexpr);
             relation = relation.addDefinition(ddexpr);
         }
 
@@ -213,18 +209,24 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     protected DDlogIRNode visitColumnDefinition(ColumnDefinition definition, TranslationContext context) {
         String name = definition.getName().getValue();
         String type = definition.getType();
-        DDlogType ddtype = createType(type);
+        DDlogType ddtype = createType(type, definition.isNullable());
         return new DDlogField(name, ddtype);
     }
 
-    private static DDlogType createType(String sqltype) {
-        if (sqltype.equals("boolean"))
+    private static DDlogType createType(String sqltype, boolean mayBeNull) {
+        if (sqltype.equals("boolean")) {
+            if (mayBeNull)
+                return DDlogTBool.instanceWNull;
             return DDlogTBool.instance;
-        else if (sqltype.equals("integer"))
-            return new DDlogTSigned(64);
-        else if (sqltype.startsWith("varchar"))
+        } else if (sqltype.equals("integer")) {
+            return new DDlogTSigned(64, mayBeNull);
+        } else if (sqltype.startsWith("varchar")) {
+            if (mayBeNull)
+                return DDlogTString.instanceWNull;
             return DDlogTString.instance;
-        else if (sqltype.equals("bigint")) {
+        } else if (sqltype.equals("bigint")) {
+            if (mayBeNull)
+                return DDlogTInt.instanceWNull;
             return DDlogTInt.instance;
         }
         throw new RuntimeException("SQL type not yet implemented: " + sqltype);

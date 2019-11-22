@@ -19,9 +19,11 @@ package com.vmware.ddlog.util;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Some utility classes inspired by C# Linq.
@@ -81,5 +83,35 @@ public class Linq {
         for (int i=0; i < data.length; i++)
             result[i] = function.apply(data[i]);
         return result;
+    }
+
+    @SafeVarargs
+    public static <T> List<T> list(T... data) {
+        return Arrays.asList(data);
+    }
+
+    public static <T> List<T> where(List<T> data, Predicate<T> function) {
+        List<T> result = new ArrayList<T>();
+        for (T aData : data)
+            if (function.test(aData))
+                result.add(aData);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T[] where(T[] data, Predicate<T> function) {
+        List<T> result = new ArrayList<T>();
+        for (T datum : data)
+            if (function.test(datum))
+                result.add(datum);
+        return (T[]) result.toArray();
+    }
+
+    public static <T> boolean any(Iterable<T> data, Predicate<T> test) {
+        for (T d: data)
+            if (test.test(d)) {
+                return true;
+            }
+        return false;
     }
 }

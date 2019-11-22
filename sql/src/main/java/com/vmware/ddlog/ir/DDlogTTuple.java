@@ -23,6 +23,7 @@ public class DDlogTTuple extends DDlogType {
     public static DDlogTTuple emptyTupleType = new DDlogTTuple(new ArrayList<DDlogType>());
 
     public DDlogTTuple(List<DDlogType> tupArgs) {
+        super(false);
         this.tupArgs = tupArgs;
     }
 

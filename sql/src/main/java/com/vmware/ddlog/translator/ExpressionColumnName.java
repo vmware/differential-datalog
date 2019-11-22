@@ -12,6 +12,7 @@
 package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.AstVisitor;
+import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.Identifier;
 
 /**
@@ -22,5 +23,10 @@ public class ExpressionColumnName extends AstVisitor<String, Void> {
     @Override
     protected String visitIdentifier(Identifier id, Void context) {
         return id.getValue();
+    }
+
+    @Override
+    protected String visitDereferenceExpression(DereferenceExpression expression, Void context) {
+        return expression.getField().getValue();
     }
 }

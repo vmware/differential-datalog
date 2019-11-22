@@ -14,14 +14,17 @@ package com.vmware.ddlog.ir;
 import java.util.Objects;
 
 public class DDlogTBit extends DDlogType {
-    final int width;
+    private final int width;
 
-    public DDlogTBit(int width) {
+    DDlogTBit(int width, boolean mayBeNull) {
+        super(mayBeNull);
         this.width = width;
     }
 
     @Override
-    public String toString() { return "bit<" + this.width + ">"; }
+    public String toString() {
+        return this.wrapOption("bit<" + this.width + ">");
+    }
 
     @Override
     public boolean equals(Object o) {

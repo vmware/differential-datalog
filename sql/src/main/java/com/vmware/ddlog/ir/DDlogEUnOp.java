@@ -32,16 +32,15 @@ public class DDlogEUnOp extends DDlogExpression {
     public DDlogEUnOp(UOp uop, DDlogExpression expr) {
         this.uop = uop;
         this.expr = this.checkNull(expr);
+        this.type = expr.getType();
         switch (this.uop) {
             case Not:
                 if (!(expr.type instanceof DDlogTBool))
                     throw new RuntimeException("Not is not applied to Boolean type");
-                this.type = DDlogTBool.instance;
             case BNeg:
             case UMinus:
                 if (!DDlogType.isNumeric(expr.getType()))
                     throw new RuntimeException(this.uop + " is not applied to numeric type");
-                this.type = expr.type;
         }
     }
 

@@ -13,6 +13,8 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +26,7 @@ public class DDlogProgram implements DDlogIRNode {
     public final List<DDlogRule> rules;
     public final List<DDlogImport> imports;
 
-    public DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelation> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
+    DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelation> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
         this.typedefs = typedefs;
         this.functions = functions;
         this.relations = relations;
@@ -41,7 +43,7 @@ public class DDlogProgram implements DDlogIRNode {
     @Override
     public String toString() {
         String[] parts = new String[5];
-        parts[0] = String.join("\n", Linq.map(this.imports, DDlogImport::toString));
+        parts[0] = String.join("\n", Linq.map(this.imports, DDlogImport::toString)) + "\n";
         parts[1] = String.join("\n", Linq.map(this.typedefs, DDlogTypeDef::toString));
         parts[2] = String.join("\n", Linq.map(this.functions, DDlogFunction::toString));
         parts[3] = String.join("\n", Linq.map(this.relations, DDlogRelation::toString));
@@ -49,7 +51,9 @@ public class DDlogProgram implements DDlogIRNode {
         return String.join("\n", parts);
     }
 
-    public void compile() {
-
+    public void toFile(String filename) throws FileNotFoundException {
+        try (PrintWriter out = new PrintWriter(filename)) {
+            out.println(this.toString());
+        }
     }
 }

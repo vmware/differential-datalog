@@ -11,18 +11,13 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogEBinding extends DDlogExpression {
-    private final String var;
-    private final DDlogExpression pattern;
-
-    public DDlogEBinding(String var, DDlogExpression pattern, DDlogType type) {
-        super(type);
-        this.var = var;
-        this.pattern = pattern;
+public class DDlogEPHolder extends DDlogExpression {
+    public DDlogEPHolder() {
+        super(DDlogTAny.instance);
     }
 
     @Override
     public String toString() {
-        return this.var + "@" + this.var.toString();
+        return "_";
     }
 }

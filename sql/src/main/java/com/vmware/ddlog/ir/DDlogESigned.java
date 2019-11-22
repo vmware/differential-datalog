@@ -18,7 +18,7 @@ public class DDlogESigned extends DDlogExpression {
     private final BigInteger ival;
 
     public DDlogESigned(int width, BigInteger ival) {
-        super(new DDlogTSigned(width));
+        super(new DDlogTSigned(width, false));
         this.width = width;
         this.ival = ival;
     }

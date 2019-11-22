@@ -13,24 +13,17 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class DDlogEApply extends DDlogExpression {
     private final String func;
     private final List<DDlogExpression> args;
 
-    public DDlogEApply(String func, List<DDlogExpression> args, DDlogType type) {
+    public DDlogEApply(String func, DDlogType type, DDlogExpression... args) {
         super(type);
         this.func = func;
-        this.args = args;
-    }
-
-    public DDlogEApply(String func, DDlogExpression arg, DDlogType type) {
-        super(type);
-        this.func = func;
-        this.args = new ArrayList<DDlogExpression>(1);
-        this.args.add(arg);
+        this.args = Arrays.asList(args);
     }
 
     @Override

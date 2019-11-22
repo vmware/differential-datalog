@@ -12,10 +12,10 @@
 package com.vmware.ddlog.ir;
 
 public class DDlogTBool extends DDlogType {
-    private DDlogTBool() {}
+    private DDlogTBool(boolean mayBeNull) { super(mayBeNull); }
 
     @Override
-    public String toString() { return "bool"; }
+    public String toString() { return this.wrapOption("bool"); }
 
     @Override
     public boolean equals(Object o) {
@@ -23,5 +23,6 @@ public class DDlogTBool extends DDlogType {
         return o != null && getClass() == o.getClass();
     }
 
-    public static DDlogTBool instance = new DDlogTBool();
+    public static DDlogTBool instance = new DDlogTBool(false);
+    public static DDlogTBool instanceWNull = new DDlogTBool(true);
 }

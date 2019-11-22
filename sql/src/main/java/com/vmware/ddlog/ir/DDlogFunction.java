@@ -36,10 +36,10 @@ public class DDlogFunction implements DDlogIRNode {
         if (this.def == null)
             result = "extern ";
         result += "function " + this.name + "(" +
-            String.join(", ", Linq.map(this.args, DDlogFuncArg::toString)) + ") :" +
+            String.join(", ", Linq.map(this.args, DDlogFuncArg::toString)) + "):" +
             this.type.toString();
         if (this.def != null)
-            result += " = " + this.def.toString();
+            result += " =\n" + this.def.toString();
         return result;
     }
 }

@@ -21,7 +21,7 @@ public class DDlogEBit extends DDlogExpression {
     private final BigInteger ival;
 
     public DDlogEBit(int width, BigInteger ival) {
-        super(new DDlogTBit(width));
+        super(new DDlogTBit(width, false));
         this.width = width;
         this.ival = ival;
     }

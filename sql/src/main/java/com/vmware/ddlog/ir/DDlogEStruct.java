@@ -36,7 +36,7 @@ public class DDlogEStruct extends DDlogExpression {
         super(type);
         this.constructor = constructor;
         this.fields = fields;
-        // TODO: check type?
+        // We cannot check the type if it is just a typedef.
     }
 
     @Override

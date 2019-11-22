@@ -22,24 +22,56 @@ import java.math.BigInteger;
 import java.util.*;
 
 public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, TranslationContext> {
+    private DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right,
+                                  TranslationContext context) {
+        String function = context.getFunction(op, left.getType(), right.getType());
+        DDlogType type = DDlogType.reduceType(left.getType(), right.getType());
+        if (op.isComparison() || op.isBoolean()) {
+            type = type.mayBeNull ? DDlogTBool.instanceWNull : DDlogTBool.instance;
+        }
+        if (function.endsWith("RR"))
+            // optimize for the case of no nulls
+            return new DDlogEBinOp(op, left, right);
+        return new DDlogEApply(function, type, left, right);
+    }
+
     @Override
     protected DDlogExpression visitArithmeticBinary(
             ArithmeticBinaryExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
+
+        DDlogEBinOp.BOp op;
         switch (node.getOperator()) {
             case ADD:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Plus, left, right);
+                op = DDlogEBinOp.BOp.Plus;
+                break;
             case SUBTRACT:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Minus, left, right);
+                op = DDlogEBinOp.BOp.Minus;
+                break;
             case MULTIPLY:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Times, left, right);
+                op = DDlogEBinOp.BOp.Times;
+                break;
             case DIVIDE:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Div, left, right);
+                op = DDlogEBinOp.BOp.Div;
+                break;
             case MODULUS:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Mod, left, right);
+                op = DDlogEBinOp.BOp.Mod;
+                break;
+            default:
+                throw new TranslationException("Unexpected node", node);
         }
-        throw new RuntimeException("Unexpected node: " + node);
+        return this.operationCall(op, left, right, context);
+    }
+
+    /**
+     * From an expression that produced Option[bool] extract
+     * just a bool
+     */
+    static DDlogExpression unwrapBool(DDlogExpression expr) {
+        if (expr.getType().mayBeNull)
+            return new DDlogEApply("unwrapBool", DDlogTBool.instance, expr);
+        return expr;
     }
 
     @Override
@@ -48,9 +80,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         DDlogExpression max = this.process(node.getMax(), context);
         DDlogExpression value = this.process(node.getValue(), context);
         DDlogExpression min = this.process(node.getMin(), context);
-        DDlogExpression left = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, min, value);
-        DDlogExpression right = new DDlogEBinOp(DDlogEBinOp.BOp.Lte, value, max);
-        return new DDlogEBinOp(DDlogEBinOp.BOp.And, left, right);
+        DDlogExpression left = this.operationCall(DDlogEBinOp.BOp.Lte, min, value, context);
+        DDlogExpression right = this.operationCall(DDlogEBinOp.BOp.Lte, value, max, context);
+        return this.operationCall(DDlogEBinOp.BOp.And, left, right, context);
     }
 
     @Override
@@ -83,36 +115,52 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             ComparisonExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
+        DDlogEBinOp.BOp op;
         switch (node.getOperator()) {
             case EQUAL:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Eq, left, right);
+                op = DDlogEBinOp.BOp.Eq;
+                break;
             case NOT_EQUAL:
             case IS_DISTINCT_FROM:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Neq, left, right);
+                op = DDlogEBinOp.BOp.Neq;
+                break;
             case LESS_THAN:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Lt, left, right);
+                op = DDlogEBinOp.BOp.Lt;
+                break;
             case LESS_THAN_OR_EQUAL:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Lte, left, right);
+                op = DDlogEBinOp.BOp.Lte;
+                break;
             case GREATER_THAN:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Gt, left, right);
+                op = DDlogEBinOp.BOp.Gt;
+                break;
             case GREATER_THAN_OR_EQUAL:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Gte, left, right);
+                op = DDlogEBinOp.BOp.Gte;
+                break;
             default:
                 throw new RuntimeException("Unexpected node: " + node);
         }
+        return this.operationCall(op, left, right, context);
     }
 
     @Override
     protected DDlogExpression visitIsNullPredicate(
             IsNullPredicate node, TranslationContext context) {
         DDlogExpression arg = this.process(node.getValue(), context);
-        return new DDlogEApply("isNull", arg, DDlogTBool.instance);
+        if (!arg.getType().mayBeNull) {
+            context.warning("isNull can never be true", node);
+            return new DDlogEBool(false);
+        }
+        return new DDlogEApply("isNull", DDlogTBool.instance, arg);
     }
 
     @Override
     protected DDlogExpression visitIsNotNullPredicate(IsNotNullPredicate node, TranslationContext context) {
         DDlogExpression arg = this.process(node.getValue(), context);
-        DDlogExpression isNull = new DDlogEApply("isNull", arg, DDlogTBool.instance);
+        if (!arg.getType().mayBeNull) {
+            context.warning("isNotNull can never be true", node);
+            return new DDlogEBool(true);
+        }
+        DDlogExpression isNull = new DDlogEApply("isNull", DDlogTBool.instance, arg);
         return new DDlogEUnOp(DDlogEUnOp.UOp.BNeg, isNull);
     }
 
@@ -120,14 +168,18 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     protected DDlogExpression visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
+        DDlogEBinOp.BOp op;
         switch (node.getOperator()) {
             case AND:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.And, left, right);
+                op = DDlogEBinOp.BOp.And;
+                break;
             case OR:
-                return new DDlogEBinOp(DDlogEBinOp.BOp.Or, left, right);
+                op = DDlogEBinOp.BOp.Or;
+                break;
             default:
                 throw new RuntimeException("Unexpected node: " + node);
         }
+        return this.operationCall(op, left, right, context);
     }
 
     @Override
@@ -160,7 +212,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
             case "substr":
-                return DDlogTString.instance;
+                return args.get(0).getType();
             case "min":
             case "max":
                 if (args.size() == 0)
@@ -184,7 +236,10 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         String name = TranslationVisitor.convertQualifiedName(node.getName());
         List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
         DDlogType type = this.functionResultType(name, args, context);
-        return new DDlogEApply(name, args, type);
+        boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
+        if (someNull)
+            name += "_N";
+        return new DDlogEApply(name, type, args.toArray(new DDlogExpression[0]));
     }
 
     @Override
@@ -194,7 +249,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     private DDlogExpression makeNull() {
-        return new DDlogEStruct("None", new ArrayList<DDlogEStruct.FieldValue>(), new DDlogTUser("Option"));
+        return new DDlogEStruct("None", new ArrayList<DDlogEStruct.FieldValue>(), new
+                DDlogTUser("Option", false));
     }
 
     @Override
@@ -208,6 +264,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         for (WhenClause w: whens) {
             DDlogExpression label = process(w.getOperand(), context);
             DDlogExpression result = process(w.getResult(), context);
+            label = unwrapBool(label);
             current = new DDlogEITE(label, result, current);
         }
         if (current == null)
@@ -228,7 +285,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         for (WhenClause w: whens) {
             DDlogExpression compared = process(w.getOperand(), context);
             DDlogExpression result = process(w.getResult(), context);
-            current = new DDlogEITE(new DDlogEBinOp(DDlogEBinOp.BOp.Eq, op, compared), result, current);
+            DDlogExpression eq = this.operationCall(DDlogEBinOp.BOp.Eq, op, compared, context);
+            eq = unwrapBool(eq);
+            current = new DDlogEITE(eq, result, current);
         }
         if (current == null)
             throw new NullPointerException();
@@ -242,6 +301,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         DDlogExpression falseValue = null;
         if (node.getFalseValue().isPresent())
             falseValue = process(node.getFalseValue().get(), context);
+        condition = unwrapBool(condition);
         return new DDlogEITE(condition, trueValue, falseValue);
     }
 
@@ -261,10 +321,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     private static boolean isAsciiPrintable(int codePoint) {
-        if (codePoint >= 0x7F || codePoint < 0x20) {
-            return false;
-        }
-        return true;
+        return codePoint < 0x7F && codePoint >= 0x20;
     }
 
     private static String formatStringLiteral(String s) {

@@ -62,6 +62,31 @@ public class DDlogEBinOp extends DDlogExpression {
             }
             throw new RuntimeException("Unexpected operator");
         }
+
+        public boolean isComparison() {
+            switch (this) {
+                case Eq:
+                case Neq:
+                case Lt:
+                case Gt:
+                case Lte:
+                case Gte:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        public boolean isBoolean() {
+            switch (this) {
+                case Or:
+                case And:
+                case Impl:
+                    return true;
+                default:
+                    return false;
+            }
+        }
     }
 
     private final BOp bop;
@@ -75,7 +100,10 @@ public class DDlogEBinOp extends DDlogExpression {
         switch (this.bop) {
             case Eq:
             case Neq:
-                this.type = DDlogTBool.instance;
+                if (left.getType().mayBeNull || right.getType().mayBeNull)
+                    this.type = DDlogTBool.instanceWNull;
+                else
+                    this.type = DDlogTBool.instance;
                 DDlogType.checkCompatible(left.getType(), right.getType());
                 break;
             case Lt:
@@ -88,7 +116,10 @@ public class DDlogEBinOp extends DDlogExpression {
                 if (!DDlogType.isNumeric(right.getType()))
                     throw new RuntimeException(
                             this.bop + " is not applied to numeric type: " + right.getType());
-                this.type = DDlogTBool.instance;
+                if (left.getType().mayBeNull || right.getType().mayBeNull)
+                    this.type = DDlogTBool.instanceWNull;
+                else
+                    this.type = DDlogTBool.instance;
                 DDlogType.checkCompatible(left.getType(), right.getType());
                 break;
             case And:
@@ -100,7 +131,7 @@ public class DDlogEBinOp extends DDlogExpression {
                 if (!(right.getType() instanceof DDlogTBool))
                     throw new RuntimeException(
                             this.bop + " is not applied to Boolean type: " + right.getType());
-                this.type = left.getType();
+                this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
             case Plus:
             case Minus:
@@ -118,8 +149,7 @@ public class DDlogEBinOp extends DDlogExpression {
                 if (!DDlogType.isNumeric(right.getType()))
                     throw new RuntimeException(
                             this.bop + " is not applied to numeric type: " + right.getType());
-                this.type = left.getType();
-                DDlogType.checkCompatible(left.getType(), right.getType());
+                this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
             case Concat:
                 if (!(left.getType() instanceof DDlogTString))
@@ -128,7 +158,7 @@ public class DDlogEBinOp extends DDlogExpression {
                 if (!(right.getType() instanceof DDlogTString))
                     throw new RuntimeException(
                             this.bop + " is not applied to string type: " + right.getType());
-                this.type = left.getType();
+                this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
         }
     }

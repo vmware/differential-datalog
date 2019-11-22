@@ -11,11 +11,46 @@
 
 package com.vmware.ddlog.ir;
 
+import com.vmware.ddlog.util.Linq;
+
+import java.util.List;
+
 public abstract class DDlogType implements DDlogIRNode {
+    /**
+     * True if this type may include null values.
+     */
+    public final boolean mayBeNull;
+
+    protected DDlogType(boolean mayBeNull) {
+        this.mayBeNull = mayBeNull;
+    }
+
     static boolean isNumeric(DDlogType type) {
         return type instanceof DDlogTBit ||
                 type instanceof DDlogTSigned ||
                 type instanceof DDlogTInt;
+    }
+
+    String wrapOption(String type) {
+        if (this.mayBeNull)
+            return "Option<" + type + ">";
+        return type;
+    }
+
+    public static DDlogType reduceType(List<DDlogType> types) {
+        if (types.isEmpty())
+            return DDlogTTuple.emptyTupleType;
+        DDlogType result = types.get(0);
+        for (int i = 1; i < types.size(); i++) {
+            DDlogType.checkCompatible(result, types.get(i));
+            if (types.get(i).mayBeNull)
+                result = types.get(i);
+        }
+        return result;
+    }
+
+    public static DDlogType reduceType(DDlogType left, DDlogType right) {
+        return reduceType(Linq.list(left, right));
     }
 
     static void checkCompatible(DDlogType type0, DDlogType type1) {
@@ -27,4 +62,6 @@ public abstract class DDlogType implements DDlogIRNode {
     public static String typeName(String name) {
         return "T" + name;
     }
+
+    public abstract String toString();
 }
