@@ -4,6 +4,7 @@
 
 #![allow(dead_code, non_snake_case)]
 
+use std::convert::TryFrom;
 use std::io::stdout;
 use std::io::Write;
 use std::sync::Arc;
@@ -104,15 +105,15 @@ fn handle_cmd(
             Ok(())
         }
         Command::Dump(Some(rname)) => {
-            let relid = match output_relname_to_id(&rname) {
-                None => {
+            let relid = match Relations::try_from(rname.as_str()) {
+                Ok(rid) if rid.is_output() => rid as RelId,
+                _ => {
                     let err = format!("Unknown output relation {}", rname);
                     if interactive {
                         eprintln!("Error: {}", err);
                     }
                     return (Err(err), interactive);
                 }
-                Some(rid) => rid as RelId,
             };
             let _ = hddlog
                 .db
@@ -121,15 +122,15 @@ fn handle_cmd(
             Ok(())
         }
         Command::Clear(rname) => {
-            let relid = match input_relname_to_id(&rname) {
-                None => {
+            let relid = match Relations::try_from(rname.as_str()) {
+                Ok(rid) if rid.is_input() => rid as RelId,
+                _ => {
                     let err = format!("Unknown input relation {}", rname);
                     if interactive {
                         eprintln!("Error: {}", err);
                     }
                     return (Err(err), interactive);
                 }
-                Some(rid) => rid as RelId,
             };
             hddlog.clear_relation(relid)
         }
