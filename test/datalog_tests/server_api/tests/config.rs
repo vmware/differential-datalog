@@ -36,8 +36,6 @@ use server_api_ddlog::Relations::server_api_3_P3Out;
 fn instantiate_configuration_end_to_end() -> Result<(), String> {
     const SERVER_API_1_P1IN: &'static [u8] = include_bytes!("server_api_1_p1in.dat");
     const SERVER_API_2_P2IN: &'static [u8] = include_bytes!("server_api_2_p2in.dat");
-    // TODO: Right now the dump contains an empty start; commit; pair.
-    //       Investigate why it is emitted and eliminate the source.
     const SERVER_API_3_P3OUT: &'static str = include_str!("server_api_3_p3out.dump.expected");
 
     let mut file1 = NamedTempFile::new().unwrap();

@@ -51,9 +51,9 @@ fn start_commit_on_no_updates(
             )
         };
 
-        assert_eq!(on_start, 1);
+        assert_eq!(on_start, 0);
         assert_eq!(on_updates, 0);
-        assert_eq!(on_commit, 1);
+        assert_eq!(on_commit, 0);
     });
 
     server.shutdown()?;
@@ -123,12 +123,28 @@ fn unsubscribe(
     observer: MockObserver,
 ) -> Result<(), String> {
     server.on_start()?;
+    server.on_updates(Box::new(
+        [UpdCmd::Insert(
+            RelIdentifier::RelId(server_api_1_P1In as usize),
+            Record::String("test1".to_string()),
+        )]
+        .into_iter()
+        .map(|cmd| updcmd2upd(cmd).unwrap()),
+    ))?;
     server.on_commit()?;
 
     assert!(observable.unsubscribe(&()).is_some());
     assert!(observable.unsubscribe(&()).is_none());
 
     server.on_start()?;
+    server.on_updates(Box::new(
+        [UpdCmd::Insert(
+            RelIdentifier::RelId(server_api_1_P1In as usize),
+            Record::String("test2".to_string()),
+        )]
+        .into_iter()
+        .map(|cmd| updcmd2upd(cmd).unwrap()),
+    ))?;
     server.on_commit()?;
 
     await_expected(|| {
