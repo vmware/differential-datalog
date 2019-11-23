@@ -90,12 +90,7 @@ where
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
         if let Some(ref mut prog) = self.prog {
-            prog.transaction_start()?;
-
-            for outlet in &mut self.outlets {
-                outlet.observer.on_start()?
-            }
-            Ok(())
+            prog.transaction_start()
         } else {
             Ok(())
         }
@@ -135,9 +130,10 @@ where
                         .peekable();
 
                     if upds.peek().is_some() {
+                        observer.on_start()?;
                         observer.on_updates(Box::new(upds))?;
+                        observer.on_commit()?;
                     }
-                    observer.on_commit()?;
                 }
             }
             Ok(())
