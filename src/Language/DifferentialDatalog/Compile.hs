@@ -752,7 +752,7 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkRelationsTryFromStr d                                                                         $$
     mkIsOutputRels d                                                                                $$
     mkIsInputRels d                                                                                 $$
-    mkRelId2Relations d                                                                             $$
+    mkRelationsTryFromRelId d                                                                       $$
     mkRelId2Name d                                                                                  $$
     mkRelId2NameC                                                                                   $$
     mkRelIdMap d                                                                                    $$
@@ -833,19 +833,22 @@ mkIsInputRels d =
     mkrel :: Relation -> Doc
     mkrel rel = "Relations::" <> rname (name rel) <> " => true,"
 
--- Convert string to enum Relations
-mkRelId2Relations :: DatalogProgram -> Doc
-mkRelId2Relations d =
-    "pub fn relid2rel(rid: RelId) -> Option<Relations> {"   $$
-    "   match rid {"                                        $$
-    (nest' $ nest' $ vcat $ entries)                        $$
-    "       _  => None"                                     $$
-    "   }"                                                  $$
+-- Convert RelId to enum Relations
+mkRelationsTryFromRelId :: DatalogProgram -> Doc
+mkRelationsTryFromRelId d =
+    "impl TryFrom<RelId> for Relations {"                                 $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(rid: RelId) -> Result<Self, Self::Error> {"          $$
+    "         match rid {"                                                $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
     "}"
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = pp (relIdentifier d rel) <+> "=> Some(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = pp (relIdentifier d rel) <+> "=> Ok(Relations::" <> rname (name rel) <> "),"
 
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =

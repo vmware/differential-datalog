@@ -412,8 +412,8 @@ impl HDDlog {
 pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
     match c {
         record::UpdCmd::Insert(rident, rec) => {
-            let relid: Relations =
-                relident2id(rident).ok_or_else(|| format!("Unknown relation {}", rident))?;
+            let relid =
+                Relations::try_from(rident).map_err(|_| format!("Unknown relation {}", rident))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert {
                 relid: relid as RelId,
@@ -421,8 +421,8 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             })
         }
         record::UpdCmd::Delete(rident, rec) => {
-            let relid: Relations =
-                relident2id(rident).ok_or_else(|| format!("Unknown relation {}", rident))?;
+            let relid =
+                Relations::try_from(rident).map_err(|()| format!("Unknown relation {}", rident))?;
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue {
                 relid: relid as RelId,
@@ -430,8 +430,8 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             })
         }
         record::UpdCmd::DeleteKey(rident, rec) => {
-            let relid: Relations =
-                relident2id(rident).ok_or_else(|| format!("Unknown relation {}", rident))?;
+            let relid =
+                Relations::try_from(rident).map_err(|()| format!("Unknown relation {}", rident))?;
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey {
                 relid: relid as RelId,
@@ -439,8 +439,8 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             })
         }
         record::UpdCmd::Modify(rident, key, rec) => {
-            let relid: Relations =
-                relident2id(rident).ok_or_else(|| format!("Unknown relation {}", rident))?;
+            let relid =
+                Relations::try_from(rident).map_err(|()| format!("Unknown relation {}", rident))?;
             let key = relkey_from_record(relid, key)?;
             Ok(Update::Modify {
                 relid: relid as RelId,
@@ -448,13 +448,6 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
                 m: Box::new(rec.clone()),
             })
         }
-    }
-}
-
-fn relident2id(r: &record::RelIdentifier) -> Option<Relations> {
-    match r {
-        record::RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()).ok(),
-        record::RelIdentifier::RelId(id) => relid2rel(*id),
     }
 }
 
