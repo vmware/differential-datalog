@@ -50,6 +50,7 @@ use differential_datalog::decl_val_enum_into_record;
 use differential_datalog::int::*;
 use differential_datalog::program::*;
 use differential_datalog::record;
+use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
 use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
 use differential_datalog::uint::*;
@@ -102,6 +103,17 @@ impl DDlogConvert for DDlogConverter {
     }
 }
 
+impl TryFrom<&RelIdentifier> for Relations {
+    type Error = ();
+
+    fn try_from(rel_id: &RelIdentifier) -> Result<Self, Self::Error> {
+        match rel_id {
+            RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()),
+            RelIdentifier::RelId(id) => Relations::try_from(*id),
+        }
+    }
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template
@@ -128,6 +140,14 @@ impl TryFrom<&str> for Relations {
 
     fn try_from(rname: &str) -> Result<Self, Self::Error> {
         panic!("Relations::try_from::<&str> not implemented")
+    }
+}
+
+impl TryFrom<RelId> for Relations {
+    type Error = ();
+
+    fn try_from(rid: RelId) -> Result<Self, Self::Error> {
+        panic!("Relations::try_from::<RelId> not implemented")
     }
 }
 
@@ -161,10 +181,6 @@ impl Mutator<Value> for record::Record {
     fn mutate(&self, _x: &mut Value) -> Result<(), String> {
         panic!("Value::mutate not implemented")
     }
-}
-
-pub fn relid2rel(_rid: RelId) -> Option<Relations> {
-    panic!("relid2rel not implemented")
 }
 
 pub fn relval_from_record(_rel: Relations, _rec: &record::Record) -> Result<Value, String> {
