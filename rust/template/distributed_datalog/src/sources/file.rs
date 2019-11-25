@@ -18,7 +18,9 @@ use std::thread::JoinHandle;
 use libc::close;
 use log::error;
 use log::info;
+use log::trace;
 use nom::Err;
+use uid::Id;
 
 use cmd_parser::err_str;
 use cmd_parser::parse_command;
@@ -64,6 +66,7 @@ impl Fd {
 /// `updates` acts as an inter-procedural cache of updates that we will
 /// push into the observer eventually.
 fn handle<C, V>(
+    id: usize,
     command: Command,
     updates: &mut Vec<Update<V>>,
     observer: &mut dyn Observer<Update<V>, String>,
@@ -71,6 +74,8 @@ fn handle<C, V>(
     C: DDlogConvert<Value = V>,
     V: Debug + Send,
 {
+    trace!("File({})::handle: {:?}", id, command);
+
     match command {
         Command::Start => {
             let _ = observer
@@ -102,6 +107,7 @@ fn handle<C, V>(
 }
 
 fn process<C, V, R>(
+    id: usize,
     reader: R,
     fd: Arc<Mutex<Fd>>,
     mut observer: ObserverBox<Update<V>, String>,
@@ -127,7 +133,7 @@ where
                         // TODO: Remove unnecessary allocation. (Replace
                         //       with Vec::splice perhaps?)
                         buffer = rest.to_owned();
-                        handle::<C, _>(command, &mut updates, &mut observer);
+                        handle::<C, _>(id, command, &mut updates, &mut observer);
                     }
                     Err(Err::Incomplete(_)) => (),
                     Err(e) => {
@@ -161,6 +167,8 @@ where
     C: DDlogConvert<Value = V>,
     V: Debug + Send + 'static,
 {
+    /// The file source's unique ID.
+    id: usize,
     /// The path to the file we want to adapt to.
     path: PathBuf,
     /// The state we maintain.
@@ -181,6 +189,7 @@ where
         P: Into<PathBuf>,
     {
         Self {
+            id: Id::<()>::new().get(),
             path: path.into(),
             state: None,
             _unused: Default::default(),
@@ -188,6 +197,7 @@ where
     }
 
     fn start(
+        id: usize,
         path: &Path,
         observer: ObserverBox<Update<V>, String>,
     ) -> Result<State<V>, ObserverBox<Update<V>, String>> {
@@ -201,7 +211,7 @@ where
         let fd = Arc::new(Mutex::new(Fd::Active(file.as_raw_fd())));
         let state = State {
             fd: fd.clone(),
-            thread: spawn(move || process::<C, _, _>(file, fd, observer)),
+            thread: spawn(move || process::<C, _, _>(id, file, fd, observer)),
         };
 
         Ok(state)
@@ -229,10 +239,12 @@ where
         &mut self,
         observer: ObserverBox<Update<V>, String>,
     ) -> Result<Self::Subscription, ObserverBox<Update<V>, String>> {
+        trace!("File({})::subscribe", self.id);
+
         if self.state.is_some() {
             Err(observer)
         } else {
-            let state = Self::start(&self.path, observer)?;
+            let state = Self::start(self.id, &self.path, observer)?;
             let _ = self.state.replace(state);
             Ok(())
         }
@@ -242,6 +254,8 @@ where
         &mut self,
         _subscription: &Self::Subscription,
     ) -> Option<ObserverBox<Update<V>, String>> {
+        trace!("File({})::unsubscribe", self.id);
+
         if let Some(state) = self.state.take() {
             if let Err(e) = state.fd.lock().unwrap().close() {
                 error!("failed to close adapted file: {}", e);

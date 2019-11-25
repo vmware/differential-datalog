@@ -3,6 +3,9 @@ use std::fmt::Display;
 use std::fs::File as FsFile;
 use std::marker::PhantomData;
 
+use log::trace;
+use uid::Id;
+
 use differential_datalog::program::Update;
 use differential_datalog::record_val_upds;
 use differential_datalog::DDlogConvert;
@@ -14,6 +17,8 @@ use crate::Observer;
 /// transaction traces into a file.
 #[derive(Debug)]
 pub struct File<C> {
+    /// The file sink's unique ID.
+    id: usize,
     /// The file we dump our transaction traces into.
     file: FsFile,
     /// Unused phantom data.
@@ -23,7 +28,11 @@ pub struct File<C> {
 impl<C> File<C> {
     /// Create a new file based observer using the given file.
     pub fn new(file: FsFile) -> Self {
+        let id = Id::<()>::new().get();
+        trace!("File({})::new", id);
+
         Self {
+            id,
             file,
             _unused: PhantomData,
         }
@@ -36,12 +45,16 @@ where
     V: Debug + Display + Send,
 {
     fn on_start(&mut self) -> Result<(), String> {
+        trace!("File({})::on_start", self.id);
+
         self.file
             .record_start()
             .map_err(|e| format!("failed to record 'on_start' event: {}", e))
     }
 
     fn on_commit(&mut self) -> Result<(), String> {
+        trace!("File({})::on_commit", self.id);
+
         self.file
             .record_commit(false)
             .map_err(|e| format!("failed to record 'on_commit' event: {}", e))
@@ -51,6 +64,8 @@ where
         &mut self,
         updates: Box<dyn Iterator<Item = Update<V>> + 'a>,
     ) -> Result<(), String> {
+        trace!("File({})::on_updates", self.id);
+
         let mut result = Ok(());
         record_val_upds::<C, _, _, _, _>(&mut self.file, updates, |e| {
             result = Err(e);
@@ -61,6 +76,7 @@ where
     }
 
     fn on_completed(&mut self) -> Result<(), String> {
+        trace!("File({})::on_completed", self.id);
         Ok(())
     }
 }

@@ -3,6 +3,9 @@ use std::collections::LinkedList;
 use std::fmt::Debug;
 use std::mem::replace;
 
+use log::trace;
+use uid::Id;
+
 use crate::observe::Observable;
 use crate::observe::ObservableBox;
 use crate::observe::Observer;
@@ -14,6 +17,8 @@ use crate::observe::SharedObserver;
 /// forward only when an `on_commit` is received.
 #[derive(Debug)]
 struct CachingObserver<O, T> {
+    /// The observer's unique ID.
+    id: usize,
     /// The observer we ultimately push our data to when we received the
     /// `on_commit` event.
     observer: SharedObserver<O>,
@@ -24,7 +29,11 @@ struct CachingObserver<O, T> {
 impl<O, T> CachingObserver<O, T> {
     /// Create a new `CachingObserver` wrapping the provided observer.
     pub fn new(observer: SharedObserver<O>) -> Self {
+        let id = Id::<()>::new().get();
+        trace!("CachingObserver({})::new", id);
+
         Self {
+            id,
             observer,
             data: None,
         }
@@ -38,6 +47,8 @@ where
     E: Send,
 {
     fn on_start(&mut self) -> Result<(), E> {
+        trace!("CachingObserver({})::on_start", self.id);
+
         if self.data.is_none() {
             self.data = Some(LinkedList::new());
         } else {
@@ -47,6 +58,8 @@ where
     }
 
     fn on_commit(&mut self) -> Result<(), E> {
+        trace!("CachingObserver({})::on_commit", self.id);
+
         if let Some(ref mut data) = self.data.take() {
             let updates = replace(data, LinkedList::new());
             let mut guard = self.observer.lock().unwrap();
@@ -60,6 +73,8 @@ where
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
+        trace!("CachingObserver({})::on_updates", self.id);
+
         if let Some(ref mut data) = self.data {
             data.push_back(updates.collect());
         } else {
@@ -69,6 +84,7 @@ where
     }
 
     fn on_completed(&mut self) -> Result<(), E> {
+        trace!("CachingObserver({})::on_completed", self.id);
         self.observer.on_completed()
     }
 }
@@ -85,6 +101,8 @@ where
     T: Debug + Send,
     E: Debug + Send,
 {
+    /// The transaction multiplexer's unique ID.
+    id: usize,
     /// The observables we track and our subscriptions to them.
     subscriptions: Vec<(ObservableBox<T, E>, Box<dyn Any + Send>)>,
     /// A reference to the `Observer` subscribed to us, if any.
@@ -98,7 +116,11 @@ where
 {
     /// Create a new `TxnMux`, without any observables.
     pub fn new() -> Self {
+        let id = Id::<()>::new().get();
+        trace!("TxnMux({})::new", id);
+
         Self {
+            id,
             subscriptions: Vec::new(),
             observer: SharedObserver::default(),
         }
@@ -109,6 +131,8 @@ where
         &mut self,
         mut observable: ObservableBox<T, E>,
     ) -> Result<(), ObservableBox<T, E>> {
+        trace!("TxnMux({})::add_observable", self.id);
+
         // Each observable gets its own `CachingObserver`, which will
         // take care of applying transactions in one go (serialized by
         // the shared observer's lock).
@@ -147,6 +171,8 @@ where
         &mut self,
         observer: ObserverBox<T, E>,
     ) -> Result<Self::Subscription, ObserverBox<T, E>> {
+        trace!("TxnMux({})::subscribe", self.id);
+
         let mut guard = self.observer.lock().unwrap();
         if guard.is_some() {
             Err(observer)
@@ -157,6 +183,7 @@ where
     }
 
     fn unsubscribe(&mut self, _subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
+        trace!("TxnMux({})::unsubscribe", self.id);
         self.observer.lock().unwrap().take()
     }
 }

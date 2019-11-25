@@ -2,6 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use log::trace;
+use uid::Id;
+
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use differential_datalog::program::Val;
@@ -30,6 +33,7 @@ pub struct DDlogServer<P>
 where
     P: DDlog,
 {
+    id: usize,
     prog: Option<P>,
     outlets: Vec<Outlet<P::Value>>,
     redirect: HashMap<RelId, RelId>,
@@ -41,7 +45,11 @@ where
 {
     /// Create a new server with no outlets.
     pub fn new(prog: P, redirect: HashMap<RelId, RelId>) -> Self {
+        let id = Id::<()>::new().get();
+        trace!("DDlogServer({})::new", id);
+
         Self {
+            id,
             prog: Some(prog),
             outlets: Vec::new(),
             redirect,
@@ -53,6 +61,8 @@ where
         &mut self,
         tables: HashSet<RelId>,
     ) -> UpdatesObservable<Update<P::Value>, String> {
+        trace!("DDlogServer({})::add_stream", self.id);
+
         let observer = SharedObserver::default();
         let outlet = Outlet {
             tables,
@@ -64,12 +74,15 @@ where
 
     /// Remove an outlet.
     pub fn remove_stream(&mut self, stream: UpdatesObservable<Update<P::Value>, String>) {
+        trace!("DDlogServer({})::remove_stream", self.id);
         self.outlets
             .retain(|o| !Arc::ptr_eq(&o.observer, &stream.observer));
     }
 
     /// Shutdown the DDlog program and notify listeners of completion.
     pub fn shutdown(&mut self) -> Result<(), String> {
+        trace!("DDlogServer({})::shutdown", self.id);
+
         // TODO: Right now we may error out early if an observer's
         //       `on_completed` fails. In the future we probably want to push
         //       those errors somewhere and then continue.
@@ -89,6 +102,8 @@ where
 {
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
+        trace!("DDlogServer({})::on_start", self.id);
+
         if let Some(ref mut prog) = self.prog {
             prog.transaction_start()?;
 
@@ -104,6 +119,8 @@ where
     /// Commit input deltas to local tables and pass on output deltas to
     /// the listeners on the outlets.
     fn on_commit(&mut self) -> Result<(), String> {
+        trace!("DDlogServer({})::on_commit", self.id);
+
         if let Some(ref mut prog) = self.prog {
             let changes = prog.transaction_commit_dump_changes()?;
             for outlet in &self.outlets {
@@ -151,6 +168,8 @@ where
         &mut self,
         updates: Box<dyn Iterator<Item = Update<P::Value>> + 'a>,
     ) -> Result<(), String> {
+        trace!("DDlogServer({})::on_updates", self.id);
+
         if let Some(ref prog) = self.prog {
             prog.apply_valupdates(updates.map(|upd| match upd {
                 Update::Insert { relid, v } => Update::Insert {
@@ -169,6 +188,7 @@ where
     }
 
     fn on_completed(&mut self) -> Result<(), String> {
+        trace!("DDlogServer({})::on_completed", self.id);
         Ok(())
     }
 }
