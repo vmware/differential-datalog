@@ -26,6 +26,14 @@
 //!   relation can have multiple purposes. A relation configuration in
 //!   turn describes one property of the relation: it could have a set
 //!   of input relations and/or be fed directly from a source.
+//!
+//! # Important:
+//!
+//! We currently assume globally unique relation IDs, which also means
+//! we require the exact same program to be present on all nodes in the
+//! system. This is a simplifying assumption made for the time being.
+//! Ideally, a relation ID really would be a `(Node, RelId)` tuple (or
+//! something along those lines).
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -119,16 +127,6 @@ impl Member {
 /// A type for representing a set of members.
 pub type Members = BTreeSet<Member>;
 
-/// A set of relations used in various contexts.
-///
-/// # Important:
-///
-/// We currently assume globally unique relation IDs, which also means
-/// we require the exact same program to be present on all nodes in the
-/// system. This is a simplifying assumption made for the time being.
-/// Ideally, a relation ID really would be a `(Node, RelId)` tuple.
-pub type Relations = BTreeSet<RelId>;
-
 /// All the input sources we support.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub enum Source {
@@ -148,8 +146,8 @@ pub enum Sink {
 pub enum RelCfg {
     /// A relation that is directly fed from a source.
     Source(Source),
-    /// This relation is fed from the given set of relations.
-    Input(Relations),
+    /// This relation is fed from the given relation.
+    Input(RelId),
     /// A relation that outputs directly into a sink.
     Sink(Sink),
 }
@@ -204,7 +202,7 @@ mod tests {
                 2usize => btreeset!{ RelCfg::Source(Source::File(PathBuf::from("input.cmd"))) },
             },
             uuid1 => btreemap! {
-                3usize => btreeset!{ RelCfg::Input(btreeset! {2}) },
+                3usize => btreeset!{ RelCfg::Input(2) },
             },
         } as SysCfg;
 
@@ -213,7 +211,7 @@ mod tests {
             + &uuid0.to_hyphenated_ref().to_string()
             + r#"":{"2":[{"Source":{"File":"input.cmd"}}]},""#
             + &uuid1.to_hyphenated_ref().to_string()
-            + r#"":{"3":[{"Input":[2]}]}}"#;
+            + r#"":{"3":[{"Input":2}]}}"#;
 
         assert_eq!(serialized, expected);
     }

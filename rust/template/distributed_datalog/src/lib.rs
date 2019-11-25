@@ -77,7 +77,6 @@ pub use schema::Members;
 pub use schema::Node;
 pub use schema::NodeCfg;
 pub use schema::RelCfg;
-pub use schema::Relations;
 pub use schema::Sink;
 pub use schema::Source;
 pub use schema::SysCfg;
