@@ -20,6 +20,9 @@ use libc::shutdown;
 use libc::SHUT_RDWR;
 
 use log::error;
+use log::trace;
+
+use uid::Id;
 
 use serde::de::DeserializeOwned;
 
@@ -128,6 +131,8 @@ pub struct TcpReceiver<T>
 where
     T: Debug + Send,
 {
+    /// The TCP receiver's unique ID.
+    id: usize,
     /// The address we are listening on.
     addr: SocketAddr,
     /// Our listener file descriptor state; shared with the thread
@@ -154,6 +159,9 @@ where
     where
         A: ToSocketAddrs,
     {
+        let id = Id::<()>::new().get();
+        trace!("TcpReceiver({})::new", id);
+
         let listener =
             TcpListener::bind(addr).map_err(|e| format!("failed to bind TCP socket: {}", e))?;
         // We want to allow for auto-assigned ports, by letting the user
@@ -169,6 +177,7 @@ where
         let thread = Some(Self::accept(listener, fd.clone(), txnmux.clone()));
 
         Ok(Self {
+            id,
             addr,
             fd,
             thread,
@@ -306,8 +315,8 @@ where
         if let Some(t) = self.thread.take() {
             match t.join() {
                 Ok(Ok(())) => (),
-                Ok(Err(e)) => error!("TcpReceiver accept thread failed: {}", e),
-                Err(e) => error!("TcpReceiver thread has panicked: {:?}", e),
+                Ok(Err(e)) => error!("TcpReceiver({}) accept thread failed: {}", self.id, e),
+                Err(e) => error!("TcpReceiver({}) thread has panicked: {:?}", self.id, e),
             }
         };
 
@@ -328,12 +337,16 @@ where
         &mut self,
         observer: ObserverBox<T, String>,
     ) -> Result<Self::Subscription, ObserverBox<T, String>> {
+        trace!("TcpReceiver({})::subscribe", self.id);
+
         self.txnmux.lock().unwrap().subscribe(observer)
     }
 
     /// Unsubscribe a previously subscribed `Observer` based on a
     /// subscription.
     fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, String>> {
+        trace!("TcpReceiver({})::unsubscribe", self.id);
+
         self.txnmux.lock().unwrap().unsubscribe(subscription)
     }
 }

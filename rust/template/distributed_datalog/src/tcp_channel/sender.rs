@@ -7,7 +7,9 @@ use std::net::ToSocketAddrs;
 use std::time::Duration;
 
 use bincode::serialize_into;
+use log::trace;
 use serde::Serialize;
+use uid::Id;
 use waitfor::wait_for;
 
 use crate::observe::Observer;
@@ -17,6 +19,9 @@ use crate::tcp_channel::message::Message;
 /// connection.
 #[derive(Debug)]
 pub struct TcpSender {
+    /// The TCP sender's unique ID.
+    id: usize,
+    /// The connected TCP stream used by this sender.
     stream: BufWriter<TcpStream>,
 }
 
@@ -26,7 +31,11 @@ impl TcpSender {
     where
         A: ToSocketAddrs,
     {
+        let id = Id::<()>::new().get();
+        trace!("TcpSender({})::connect", id);
+
         Ok(Self {
+            id,
             stream: BufWriter::new(TcpStream::connect(addr)?),
         })
     }
@@ -37,6 +46,9 @@ impl TcpSender {
     where
         A: ToSocketAddrs + Clone,
     {
+        let id = Id::<()>::new().get();
+        trace!("TcpSender({})::with_retry", id);
+
         let result = wait_for(timeout, interval, || {
             match TcpStream::connect(addr.clone()) {
                 Ok(c) => Ok(Some(c)),
@@ -56,6 +68,7 @@ impl TcpSender {
                 "timed out (re)trying to connect",
             )),
             Ok(Some(c)) => Ok(Self {
+                id,
                 stream: BufWriter::new(c),
             }),
             Err(e) => Err(e),
@@ -69,22 +82,29 @@ where
 {
     /// Perform some action before data start coming in.
     fn on_start(&mut self) -> Result<(), String> {
+        trace!("TcpSender({})::on_start", self.id);
         serialize_into(&mut self.stream, &Message::<T>::Start).map_err(|e| e.to_string())
     }
 
     /// Send a series of items over the TCP channel.
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), String> {
+        trace!("TcpSender({})::on_updates", self.id);
+
         let message = Message::Updates(updates.collect());
         serialize_into(&mut self.stream, &message).map_err(|e| e.to_string())
     }
 
     /// Flush the TCP stream and signal the commit.
     fn on_commit(&mut self) -> Result<(), String> {
+        trace!("TcpSender({})::on_commit", self.id);
+
         serialize_into(&mut self.stream, &Message::<T>::Commit).map_err(|e| e.to_string())?;
         self.stream.flush().map_err(|e| e.to_string())
     }
 
     fn on_completed(&mut self) -> Result<(), String> {
+        trace!("TcpSender({})::on_completed", self.id);
+
         serialize_into(&mut self.stream, &Message::<T>::Complete).map_err(|e| e.to_string())?;
         self.stream.flush().map_err(|e| e.to_string())
     }
