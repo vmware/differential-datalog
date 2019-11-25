@@ -90,7 +90,7 @@ mod tests {
             uuids[0] => btreemap! {},
             uuids[1] => btreemap! {
                 1 => btreeset! {
-                    RelCfg::Input(btreeset! {0}),
+                    RelCfg::Input(0),
                 }
             },
         };

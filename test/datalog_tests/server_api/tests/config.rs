@@ -75,14 +75,10 @@ fn instantiate_configuration_end_to_end() -> Result<(), String> {
     };
     let node3_cfg = btreemap! {
         server_api_3_P1Out as usize => btreeset!{
-            RelCfg::Input(btreeset!{
-                server_api_1_P1Out as usize,
-            })
+            RelCfg::Input(server_api_1_P1Out as usize)
         },
         server_api_3_P2Out as usize => btreeset!{
-            RelCfg::Input(btreeset!{
-                server_api_2_P2Out as usize,
-            })
+            RelCfg::Input(server_api_2_P2Out as usize)
         },
         server_api_3_P3Out as usize => btreeset!{
             RelCfg::Sink(Sink::File(path3.deref().into())),

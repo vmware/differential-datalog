@@ -68,12 +68,12 @@ fn deduce_outputs(
             .for_each(|(addr, node_cfg)| {
                 node_cfg.values().for_each(|rel_cfgs| {
                     rel_cfgs.iter().for_each(|rel_cfg| match rel_cfg {
-                        RelCfg::Input(inputs) => inputs.iter().for_each(|input| {
+                        RelCfg::Input(input) => {
                             if input == rel {
                                 let rels = outputs.entry(addr.clone()).or_default();
                                 let _ = rels.insert(*input);
                             }
-                        }),
+                        }
                         RelCfg::Source(_) | RelCfg::Sink(_) => (),
                     })
                 })
@@ -89,12 +89,10 @@ fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
     config.iter().fold(HashMap::new(), |redirects, (rel, cfg)| {
         cfg.iter().fold(redirects, |mut redirects, rel_cfg| {
             match rel_cfg {
-                RelCfg::Input(inputs) => {
+                RelCfg::Input(input) => {
                     // Each of the inputs needs to be redirected to the
                     // relation it feeds into.
-                    inputs.iter().for_each(|input| {
-                        let _ = redirects.insert(*input, *rel);
-                    })
+                    let _ = redirects.insert(*input, *rel);
                 }
                 RelCfg::Source(_) | RelCfg::Sink(_) => (),
             }
@@ -329,14 +327,15 @@ mod tests {
                 RelCfg::Sink(Sink::File(PathBuf::from("output_0_2.dump"))),
             },
             1 => btreeset! {
-                RelCfg::Input(btreeset!{2, 4}),
+                RelCfg::Input(2),
+                RelCfg::Input(4),
             },
             2 => btreeset! {
                 RelCfg::Sink(Sink::File(PathBuf::from("output_0_2.dump"))),
             },
             3 => btreeset! {
                 RelCfg::Sink(Sink::File(PathBuf::from("output_3.dump"))),
-                RelCfg::Input(btreeset!{0}),
+                RelCfg::Input(0),
             },
         };
 
@@ -367,7 +366,7 @@ mod tests {
         };
         let node1_cfg = btreemap! {
             1 => btreeset! {
-                RelCfg::Input(btreeset! {0}),
+                RelCfg::Input(0),
             },
         };
         let sys_cfg = btreemap! {
@@ -412,14 +411,10 @@ mod tests {
         };
         let node2_cfg = btreemap! {
             4 => btreeset!{
-                RelCfg::Input(btreeset!{
-                    1,
-                })
+                RelCfg::Input(1)
             },
             5 => btreeset!{
-                RelCfg::Input(btreeset!{
-                    3,
-                })
+                RelCfg::Input(3)
             },
             6 => btreeset!{
                 RelCfg::Sink(Sink::File("node2.dump".into())),
