@@ -65,13 +65,17 @@ fn instantiate_configuration_end_to_end() -> Result<(), String> {
         server_api_1_P1In as usize => btreeset!{
             RelCfg::Source(Source::File(path1.deref().into())),
         },
-        server_api_1_P1Out as usize => btreeset!{},
+        server_api_1_P1Out as usize => btreeset!{
+            RelCfg::Output(uuids[2], server_api_3_P1Out as usize),
+        },
     };
     let node2_cfg = btreemap! {
         server_api_2_P2In as usize => btreeset!{
             RelCfg::Source(Source::File(path2.deref().into())),
         },
-        server_api_2_P2Out as usize => btreeset!{}
+        server_api_2_P2Out as usize => btreeset!{
+            RelCfg::Output(uuids[2], server_api_3_P2Out as usize),
+        },
     };
     let node3_cfg = btreemap! {
         server_api_3_P1Out as usize => btreeset!{

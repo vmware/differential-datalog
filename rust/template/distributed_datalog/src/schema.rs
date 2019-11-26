@@ -148,6 +148,8 @@ pub enum RelCfg {
     Source(Source),
     /// This relation is fed from the given relation.
     Input(RelId),
+    /// This relation feeds the given input relation on the given node.
+    Output(Node, RelId),
     /// A relation that outputs directly into a sink.
     Sink(Sink),
 }

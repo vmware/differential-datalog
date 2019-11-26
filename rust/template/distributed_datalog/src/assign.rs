@@ -87,7 +87,11 @@ mod tests {
         let node1 = Addr::Ip("127.0.0.1:2".parse().unwrap());
 
         let config = btreemap! {
-            uuids[0] => btreemap! {},
+            uuids[0] => btreemap! {
+                1 => btreeset! {
+                    RelCfg::Output(uuids[1], 1),
+                }
+            },
             uuids[1] => btreemap! {
                 1 => btreeset! {
                     RelCfg::Input(0),

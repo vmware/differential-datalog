@@ -41,60 +41,43 @@ pub type Outputs = BTreeMap<Addr, HashSet<RelId>>;
 pub type Assignment = BTreeMap<Node, Addr>;
 
 /// Deduce the output streaming relations we require.
-///
-/// In a nutshell, this function deduces a mapping from all relations on
-/// a node to other nodes that have relations that have this relation as
-/// input. Unfortunately doing so is rather costly, as we ultimately
-/// have to visit pretty much all relations in the assignment and check
-/// them.
-fn deduce_outputs(
-    addr: &Addr,
-    node_cfg: &NodeCfg,
-    sys_cfg: &SysCfg,
-    assignment: &Assignment,
-) -> Outputs {
-    node_cfg.keys().fold(Outputs::new(), |mut outputs, rel| {
-        sys_cfg
-            .iter()
-            .filter_map(|(uuid, node_cfg)| {
-                assignment.get(uuid).and_then(|other_addr| {
-                    if other_addr != addr {
-                        Some((other_addr, node_cfg))
-                    } else {
-                        None
+fn deduce_outputs(node_cfg: &NodeCfg, assignment: &Assignment) -> Result<Outputs, String> {
+    node_cfg
+        .iter()
+        .try_fold(Outputs::new(), |outputs, (rel_id, rel_cfgs)| {
+            rel_cfgs.iter().try_fold(outputs, |mut outputs, rel_cfg| {
+                match rel_cfg {
+                    RelCfg::Output(node, _dst) => {
+                        let addr = assignment.get(node).ok_or_else(|| {
+                            format!(
+                                "failed to find node {} in assignment",
+                                node.to_hyphenated_ref()
+                            )
+                        })?;
+                        let rels = outputs.entry(addr.clone()).or_default();
+                        let _ = rels.insert(*rel_id);
                     }
-                })
+                    RelCfg::Input(..) | RelCfg::Source(..) | RelCfg::Sink(..) => (),
+                }
+                Ok(outputs)
             })
-            .for_each(|(addr, node_cfg)| {
-                node_cfg.values().for_each(|rel_cfgs| {
-                    rel_cfgs.iter().for_each(|rel_cfg| match rel_cfg {
-                        RelCfg::Input(input) => {
-                            if input == rel {
-                                let rels = outputs.entry(addr.clone()).or_default();
-                                let _ = rels.insert(*input);
-                            }
-                        }
-                        RelCfg::Source(_) | RelCfg::Sink(_) => (),
-                    })
-                })
-            });
-
-        outputs
-    })
+        })
 }
 
-/// Deduce the required redirections for a given input/output
-/// configuration.
+/// Deduce the required redirections for a given node configuration.
+///
+/// Redirections determine what input relations the inputs to a certain
+/// node feed into.
 fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
     config.iter().fold(HashMap::new(), |redirects, (rel, cfg)| {
         cfg.iter().fold(redirects, |mut redirects, rel_cfg| {
             match rel_cfg {
-                RelCfg::Input(input) => {
+                RelCfg::Input(src) => {
                     // Each of the inputs needs to be redirected to the
                     // relation it feeds into.
-                    let _ = redirects.insert(*input, *rel);
+                    let _ = redirects.insert(*src, *rel);
                 }
-                RelCfg::Source(_) | RelCfg::Sink(_) => (),
+                RelCfg::Output(..) | RelCfg::Source(..) | RelCfg::Sink(..) => (),
             }
             redirects
         })
@@ -128,24 +111,29 @@ where
 
 /// Add as many `TcpSender` objects as required given the provided node
 /// configuration.
-fn add_tcp_senders<P>(server: &mut DDlogServer<P>, outputs: Outputs) -> Result<(), String>
+fn add_tcp_senders<P>(
+    server: &mut DDlogServer<P>,
+    node_cfg: &NodeCfg,
+    assignment: &Assignment,
+) -> Result<(), String>
 where
     P: DDlog,
 {
-    // Create streams for the deduced output relations.
-    outputs.into_iter().try_for_each(|(addr, rel_ids)| {
-        let timeout = Duration::from_secs(30);
-        let interval = Duration::from_millis(500);
-        let sender = TcpSender::with_retry(&addr, timeout, interval)
-            .map_err(|e| format!("failed to connect to node {}: {}", addr, e))?;
+    deduce_outputs(node_cfg, assignment)?
+        .into_iter()
+        .try_for_each(|(addr, rel_ids)| {
+            let timeout = Duration::from_secs(30);
+            let interval = Duration::from_millis(500);
+            let sender = TcpSender::with_retry(&addr, timeout, interval)
+                .map_err(|e| format!("failed to connect to node {}: {}", addr, e))?;
 
-        let mut stream = server.add_stream(rel_ids);
-        // TODO: What should we really do if we can't subscribe?
-        stream
-            .subscribe(Box::new(sender))
-            .map_err(|_| "failed to subscribe TCP sender".to_string())?;
-        Ok(())
-    })
+            let mut stream = server.add_stream(rel_ids);
+            // TODO: What should we really do if we can't subscribe?
+            stream
+                .subscribe(Box::new(sender))
+                .map_err(|_| "failed to subscribe TCP sender".to_string())?;
+            Ok(())
+        })
 }
 
 /// Add a `TcpReceiver` feeding the given server if one is needed given
@@ -212,6 +200,8 @@ where
         })
 }
 
+/// Add file sources as per the node configuration to the given `TxnMux`
+/// object.
 fn add_file_sources<P>(
     txnmux: &mut TxnMux<Update<P::Value>, String>,
     node_cfg: &NodeCfg,
@@ -239,14 +229,14 @@ where
 fn realize<P>(
     addr: &Addr,
     node_cfg: &NodeCfg,
-    outputs: Outputs,
+    assignment: &Assignment,
 ) -> Result<Realization<P::Value>, String>
 where
     P: Send + DDlog + 'static,
     P::Convert: Send,
 {
     let mut server = create_server::<P>(&node_cfg)?;
-    add_tcp_senders(&mut server, outputs)?;
+    add_tcp_senders(&mut server, node_cfg, assignment)?;
     add_file_sinks(&mut server, node_cfg)?;
 
     let mut txnmux = create_txn_mux(server)?;
@@ -258,8 +248,8 @@ where
 
 /// An object representing a realized configuration.
 ///
-/// Right now all clients can do with object of this type is dropping
-/// them to tear everything down.
+/// Right now all that clients can do with an object of this type is
+/// dropping it to tear everything down.
 #[derive(Debug)]
 pub struct Realization<V>
 where
@@ -290,15 +280,7 @@ where
             }
         })
         .try_fold(Vec::new(), |mut accumulator, node_cfg| {
-            // The supplied configuration by design does not
-            // include information about output streaming
-            // relations, because these can be inferred by
-            // looking at the input relations of other nodes.
-            // Start by doing exactly that such that we have
-            // enough information to fully configure a node
-            // locally.
-            let outputs = deduce_outputs(&addr, node_cfg, &sys_cfg, assignment);
-            realize::<P>(addr, node_cfg, outputs).map(|realization| {
+            realize::<P>(addr, node_cfg, assignment).map(|realization| {
                 accumulator.push(realization);
                 accumulator
             })
@@ -353,6 +335,26 @@ mod tests {
     }
 
     #[test]
+    fn output_deduction_failure() {
+        let uuid0 = Uuid::new_v4();
+        let uuid1 = Uuid::new_v4();
+        let node0 = Addr::Ip("127.0.0.1:1".parse().unwrap());
+
+        let node0_cfg = btreemap! {
+            0 => btreeset! {
+                RelCfg::Source(Source::File(PathBuf::from("input.cmd"))),
+                RelCfg::Output(uuid1, 1),
+            },
+        };
+        let assignment = btreemap! {
+            uuid0 => node0.clone(),
+            // uuid1 does not have an assignment.
+        };
+
+        assert!(deduce_outputs(&node0_cfg, &assignment).is_err());
+    }
+
+    #[test]
     fn output_deduction_two_nodes() {
         let uuid0 = Uuid::new_v4();
         let uuid1 = Uuid::new_v4();
@@ -362,6 +364,7 @@ mod tests {
         let node0_cfg = btreemap! {
             0 => btreeset! {
                 RelCfg::Source(Source::File(PathBuf::from("input.cmd"))),
+                RelCfg::Output(uuid1, 1),
             },
         };
         let node1_cfg = btreemap! {
@@ -369,22 +372,18 @@ mod tests {
                 RelCfg::Input(0),
             },
         };
-        let sys_cfg = btreemap! {
-            uuid0 => node0_cfg.clone(),
-            uuid1 => node1_cfg.clone(),
-        };
         let assignment = btreemap! {
             uuid0 => node0.clone(),
             uuid1 => node1.clone(),
         };
 
-        let outputs = deduce_outputs(&node0, &node0_cfg, &sys_cfg, &assignment);
+        let outputs = deduce_outputs(&node0_cfg, &assignment).unwrap();
         let expected = btreemap! {
             node1.clone() => hashset! { 0 },
         };
         assert_eq!(outputs, expected);
 
-        let outputs = deduce_outputs(&node1, &node1_cfg, &sys_cfg, &assignment);
+        let outputs = deduce_outputs(&node1_cfg, &assignment).unwrap();
         assert_eq!(outputs, Outputs::new());
     }
 
@@ -401,13 +400,17 @@ mod tests {
             0 => btreeset!{
                 RelCfg::Source(Source::File("input0.dat".into())),
             },
-            1 => btreeset!{},
+            1 => btreeset!{
+                RelCfg::Output(uuid2, 4),
+            },
         };
         let node1_cfg = btreemap! {
             2 => btreeset!{
                 RelCfg::Source(Source::File("input2.dat".into())),
             },
-            3 => btreeset!{}
+            3 => btreeset!{
+                RelCfg::Output(uuid2, 6),
+            }
         };
         let node2_cfg = btreemap! {
             4 => btreeset!{
@@ -421,31 +424,25 @@ mod tests {
             },
         };
 
-        let sys_cfg = btreemap! {
-            uuid0 => node0_cfg.clone(),
-            uuid1 => node1_cfg.clone(),
-            uuid2 => node2_cfg.clone(),
-        };
-
         let assignment = btreemap! {
             uuid0 => node0.clone(),
             uuid1 => node1.clone(),
             uuid2 => node2.clone(),
         };
 
-        let outputs = deduce_outputs(&node0, &node0_cfg, &sys_cfg, &assignment);
+        let outputs = deduce_outputs(&node0_cfg, &assignment).unwrap();
         let expected = btreemap! {
             node2.clone() => hashset! { 1 },
         };
         assert_eq!(outputs, expected);
 
-        let outputs = deduce_outputs(&node1, &node1_cfg, &sys_cfg, &assignment);
+        let outputs = deduce_outputs(&node1_cfg, &assignment).unwrap();
         let expected = btreemap! {
             node2.clone() => hashset! { 3 },
         };
         assert_eq!(outputs, expected);
 
-        let outputs = deduce_outputs(&node2, &node2_cfg, &sys_cfg, &assignment);
+        let outputs = deduce_outputs(&node2_cfg, &assignment).unwrap();
         let expected = btreemap! {};
         assert_eq!(outputs, expected);
     }
