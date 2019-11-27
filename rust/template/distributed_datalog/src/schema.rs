@@ -41,10 +41,7 @@ use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
-use std::io::Error;
 use std::net::SocketAddr;
-use std::net::ToSocketAddrs;
-use std::option::IntoIter;
 use std::path::PathBuf;
 
 use serde::Deserialize;
@@ -88,16 +85,6 @@ impl Ord for Addr {
 impl PartialOrd for Addr {
     fn partial_cmp(&self, other: &Addr) -> Option<Ordering> {
         Some(self.cmp(other))
-    }
-}
-
-impl ToSocketAddrs for Addr {
-    type Iter = IntoIter<SocketAddr>;
-
-    fn to_socket_addrs(&self) -> Result<Self::Iter, Error> {
-        match self {
-            Addr::Ip(addr) => addr.to_socket_addrs(),
-        }
     }
 }
 

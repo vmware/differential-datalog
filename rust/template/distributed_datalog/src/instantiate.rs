@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::fs::File;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::time::Duration;
 
@@ -124,9 +125,10 @@ where
         .try_for_each(|(addr, rel_ids)| {
             let timeout = Duration::from_secs(30);
             let interval = Duration::from_millis(500);
-            let sender = TcpSender::with_retry(&addr, timeout, interval)
-                .map_err(|e| format!("failed to connect to node {}: {}", addr, e))?;
-
+            let sender = match addr {
+                Addr::Ip(addr) => TcpSender::with_retry(&addr, timeout, interval)
+                    .map_err(|e| format!("failed to connect to node {}: {}", addr, e))?,
+            };
             let mut stream = server.add_stream(rel_ids);
             // TODO: What should we really do if we can't subscribe?
             stream
@@ -138,7 +140,10 @@ where
 
 /// Add a `TcpReceiver` feeding the given server if one is needed given
 /// the provided node configuration.
-fn add_tcp_receiver<V>(txnmux: &mut TxnMux<Update<V>, String>, addr: &Addr) -> Result<(), String>
+fn add_tcp_receiver<V>(
+    txnmux: &mut TxnMux<Update<V>, String>,
+    addr: &SocketAddr,
+) -> Result<(), String>
 where
     V: Val,
 {
@@ -240,7 +245,9 @@ where
     add_file_sinks(&mut server, node_cfg)?;
 
     let mut txnmux = create_txn_mux(server)?;
-    add_tcp_receiver(&mut txnmux, addr)?;
+    match addr {
+        Addr::Ip(addr) => add_tcp_receiver(&mut txnmux, addr)?,
+    }
     add_file_sources::<P>(&mut txnmux, node_cfg)?;
 
     Ok(Realization { txnmux })
