@@ -104,7 +104,7 @@ fn single_delta_tcp() -> Result<(), String> {
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
         let mut recv = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send = TcpSender::connect(*recv.addr()).unwrap();
+        let send = TcpSender::new(*recv.addr()).unwrap();
 
         let _ = recv.subscribe(Box::new(observer)).unwrap();
         let _ = observable.subscribe(Box::new(send)).unwrap();
@@ -236,10 +236,10 @@ fn multi_transaction_tcp() -> Result<(), String> {
         let _ = mux.subscribe(Box::new(observer)).unwrap();
 
         let recv1 = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send1 = TcpSender::connect(*recv1.addr()).unwrap();
+        let send1 = TcpSender::new(*recv1.addr()).unwrap();
 
         let recv2 = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send2 = TcpSender::connect(*recv2.addr()).unwrap();
+        let send2 = TcpSender::new(*recv2.addr()).unwrap();
 
         let _ = observable1.subscribe(Box::new(send1)).unwrap();
         let _ = observable2.subscribe(Box::new(send2)).unwrap();

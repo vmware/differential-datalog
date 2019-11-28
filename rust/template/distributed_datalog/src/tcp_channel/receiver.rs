@@ -19,6 +19,7 @@ use bincode::ErrorKind as BincodeError;
 use libc::shutdown;
 use libc::SHUT_RDWR;
 
+use log::debug;
 use log::error;
 use log::trace;
 
@@ -174,7 +175,7 @@ where
             .map_err(|e| format!("failed to inquire local address: {}", e))?;
         let fd = Arc::new(Mutex::new(Fd::Active(listener.as_raw_fd())));
         let txnmux = Arc::new(Mutex::new(TxnMux::new()));
-        let thread = Some(Self::accept(listener, fd.clone(), txnmux.clone()));
+        let thread = Some(Self::accept(id, listener, fd.clone(), txnmux.clone()));
 
         Ok(Self {
             id,
@@ -188,6 +189,7 @@ where
     /// Accept a connection (in a non-blocking manner), read data from
     /// it, and dispatch that to the transaction multiplexer.
     fn accept(
+        id: usize,
         listener: TcpListener,
         fd: Arc<Mutex<Fd>>,
         txnmux: Arc<Mutex<TxnMux<T, String>>>,
@@ -196,7 +198,10 @@ where
             let mut handles = Vec::new();
             loop {
                 let socket = match listener.accept() {
-                    Ok((socket, _)) => socket,
+                    Ok((socket, _)) => {
+                        debug!("TcpReceiver({}): accepted connection", id);
+                        socket
+                    }
                     Err(e) => {
                         // The user may have dropped the receiver shortly after
                         // us accepting a connection. If that is the case do not
@@ -204,7 +209,7 @@ where
                         if let Fd::Shutdown = *fd.lock().unwrap() {
                             break;
                         }
-                        error!("failed to accept connection: {}", e);
+                        error!("TcpReceiver({}): failed to accept connection: {}", id, e);
                         continue;
                     }
                 };
@@ -213,7 +218,8 @@ where
                 let observable = Box::new(passthrough.clone());
                 if txnmux.lock().unwrap().add_observable(observable).is_err() {
                     error!(
-                        "failed to register connection {} with TxnMux",
+                        "TcpReceiver({}): failed to register connection {} with TxnMux",
+                        id,
                         socket.as_raw_fd()
                     );
                     continue;
@@ -221,7 +227,7 @@ where
 
                 let fd = Arc::new(Mutex::new(Fd::Active(socket.as_raw_fd())));
                 let copy = fd.clone();
-                let thread = spawn(move || Self::process(socket, copy, passthrough));
+                let thread = spawn(move || Self::process(id, socket, copy, passthrough));
                 handles.push((thread, fd));
             }
 
@@ -230,7 +236,10 @@ where
             // processing threads we started.
             for (thread, fd) in handles.into_iter().rev() {
                 if let Err(e) = fd.lock().unwrap().shutdown() {
-                    error!("failed to shut down TcpReceiver file descriptor: {}", e);
+                    error!(
+                        "TcpReceiver({}): failed to shut down TcpReceiver file descriptor: {}",
+                        id, e
+                    );
                 }
                 // It should be safe for us to continue even in case of
                 // shutdown failure because all ways in which shutdown
@@ -247,6 +256,7 @@ where
     /// Process data from a `TcpSender`, relaying messages to a
     /// connected `Observer`, if any, or dropping them.
     fn process(
+        id: usize,
         socket: TcpStream,
         fd: Arc<Mutex<Fd>>,
         mut observer: SharedObserver<Passthrough<T, String>>,
@@ -265,11 +275,11 @@ where
                         // for us to do. So return early.
                         BincodeError::Io(ref e) if e.kind() == ErrorKind::UnexpectedEof => {
                             if let Err(e) = fd.lock().unwrap().shutdown() {
-                                error!("failed to shut down socket: {}", e);
+                                error!("TcpReceiver({}): failed to shut down socket: {}", id, e);
                             }
                             return Ok(());
                         }
-                        _ => error!("failed to deserialize message: {}", e),
+                        _ => error!("TcpReceiver({}): failed to deserialize message: {}", id, e),
                     }
                     continue;
                 }
@@ -280,14 +290,17 @@ where
                 Message::Updates(ref mut updates) => {
                     observer.on_updates(Box::new(updates.drain(..)))
                 }
+                Message::UpdateList(ref mut updates) => {
+                    observer.on_updates(Box::new(updates.split_off(0).into_iter().flatten()))
+                }
                 Message::Commit => observer.on_commit(),
                 Message::Complete => observer.on_completed(),
             };
 
             if let Err(e) = result {
                 error!(
-                    "observer {:?} failed to process {} event: {}",
-                    observer, message, e
+                    "TcpReceiver({}): observer {:?} failed to process {} event: {}",
+                    id, observer, message, e
                 );
             }
         }
@@ -295,6 +308,7 @@ where
 
     /// Retrieve the address we are listening on.
     pub fn addr(&self) -> &SocketAddr {
+        trace!("TcpReceiver({})::addr: {}", self.id, &self.addr);
         &self.addr
     }
 }
@@ -434,34 +448,43 @@ mod tests {
         let mock = Arc::new(Mutex::new(MockObserver::new()));
         let mut recv = TcpReceiver::<u64>::new("127.0.0.1:0").unwrap();
         let addr = recv.addr();
-        let mut send1 = TcpSender::connect(addr).unwrap();
-        let mut send2 = TcpSender::connect(addr).unwrap();
-        let mut send3 = TcpSender::connect(addr).unwrap();
+        let mut send1 = TcpSender::new(*addr).unwrap();
+        let mut send2 = TcpSender::new(*addr).unwrap();
+        let mut send3 = TcpSender::new(*addr).unwrap();
 
         recv.subscribe(Box::new(mock.clone())).unwrap();
 
         let t1 = spawn(move || {
-            let send1 = &mut send1 as (&mut dyn Observer<u64, _>);
+            let observer1 = &mut send1 as (&mut dyn Observer<u64, _>);
             let updates1 = vec![1u64];
-            send1.on_start().unwrap();
-            send1.on_updates(Box::new(updates1.into_iter())).unwrap();
-            send1.on_commit().unwrap();
+            observer1.on_start().unwrap();
+            observer1
+                .on_updates(Box::new(updates1.into_iter()))
+                .unwrap();
+            observer1.on_commit().unwrap();
+            send1.wait_connected().unwrap();
         });
 
         let t2 = spawn(move || {
-            let send2 = &mut send2 as (&mut dyn Observer<u64, _>);
+            let observer2 = &mut send2 as (&mut dyn Observer<u64, _>);
             let updates2 = vec![2u64, 3, 4];
-            send2.on_start().unwrap();
-            send2.on_updates(Box::new(updates2.into_iter())).unwrap();
-            send2.on_commit().unwrap();
+            observer2.on_start().unwrap();
+            observer2
+                .on_updates(Box::new(updates2.into_iter()))
+                .unwrap();
+            observer2.on_commit().unwrap();
+            send2.wait_connected().unwrap();
         });
 
         let t3 = spawn(move || {
-            let send3 = &mut send3 as (&mut dyn Observer<u64, _>);
+            let observer3 = &mut send3 as (&mut dyn Observer<u64, _>);
             let updates3 = vec![5u64, 6, 7, 8];
-            send3.on_start().unwrap();
-            send3.on_updates(Box::new(updates3.into_iter())).unwrap();
-            send3.on_commit().unwrap();
+            observer3.on_start().unwrap();
+            observer3
+                .on_updates(Box::new(updates3.into_iter()))
+                .unwrap();
+            observer3.on_commit().unwrap();
+            send3.wait_connected().unwrap();
         });
 
         t1.join().unwrap();

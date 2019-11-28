@@ -1,3 +1,13 @@
+//! A module providing an asynchronously cancelable socket. Rust's
+//! `std::net::TcpStream` does not allow for interrupting a connection
+//! attempt midway, as there is simply no API for doing so. As a clumsy
+//! work around one could use `std::net::TcpStream::connect_timeout`
+//! with a short timeout, after which one could check for a cancellation
+//! request, but that requires an unnecessary amount of cycles.
+//!
+//! This module provides a way to cancel a connection request issued
+//! earlier by separating socket creation from connection.
+
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::io::Error;
@@ -120,6 +130,11 @@ fn connect(socket: &Fd, addr: &SocketAddr) -> Result<(), Error> {
                     // readiness. If the connection got refused we start
                     // over attempting to connect again.
                     if pollfds[0].revents & libc::POLLHUP != 0 {
+                        // TODO: We could probably do better than busy
+                        //       waiting, but it is not clear how.
+                        //       Perhaps we just sleep or we have some
+                        //       form of exponential backoff on repeated
+                        //       connection failures?
                         continue 'connect;
                     }
                     return Ok(());
