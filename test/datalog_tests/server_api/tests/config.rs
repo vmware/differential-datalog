@@ -102,17 +102,9 @@ fn instantiate_configuration_end_to_end() -> Result<(), String> {
     };
 
     let assignment = simple_assign(sys_cfg.keys(), members.iter()).unwrap();
-
-    // TODO: Because of TCP senders synchronously connecting to TCP
-    //       receivers we instantiate the nodes in "reverse", meaning
-    //       with the ones feeding the others first. That's only
-    //       possible while we don't have any loops in the
-    //       configuration. In the future we may want to make
-    //       `TcpSender` more clever and allowing it to buffer updates,
-    //       or something along those lines.
-    let _realization3 = instantiate::<HDDlog>(sys_cfg.clone(), &node3, &assignment).unwrap();
-    let _realization2 = instantiate::<HDDlog>(sys_cfg.clone(), &node2, &assignment).unwrap();
     let _realization1 = instantiate::<HDDlog>(sys_cfg.clone(), &node1, &assignment).unwrap();
+    let _realization2 = instantiate::<HDDlog>(sys_cfg.clone(), &node2, &assignment).unwrap();
+    let _realization3 = instantiate::<HDDlog>(sys_cfg.clone(), &node3, &assignment).unwrap();
 
     await_expected(move || {
         let mut string = String::new();

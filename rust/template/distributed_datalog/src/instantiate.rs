@@ -12,7 +12,6 @@ use std::fmt::Debug;
 use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
-use std::time::Duration;
 
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
@@ -123,18 +122,19 @@ where
     deduce_outputs(node_cfg, assignment)?
         .into_iter()
         .try_for_each(|(addr, rel_ids)| {
-            let timeout = Duration::from_secs(30);
-            let interval = Duration::from_millis(500);
-            let sender = match addr {
-                Addr::Ip(addr) => TcpSender::with_retry(&addr, timeout, interval)
-                    .map_err(|e| format!("failed to connect to node {}: {}", addr, e))?,
-            };
-            let mut stream = server.add_stream(rel_ids);
-            // TODO: What should we really do if we can't subscribe?
-            stream
-                .subscribe(Box::new(sender))
-                .map_err(|_| "failed to subscribe TCP sender".to_string())?;
-            Ok(())
+            match addr {
+                Addr::Ip(addr) => {
+                    let sender = TcpSender::new(addr)
+                        .map_err(|e| format!("failed to create TcpSender socket: {}", e))?;
+
+                    // TODO: What should we really do if we can't subscribe?
+                    server
+                        .add_stream(rel_ids)
+                        .subscribe(Box::new(sender))
+                        .map_err(|_| "failed to subscribe TCP sender".to_string())?;
+                    Ok(())
+                }
+            }
         })
 }
 

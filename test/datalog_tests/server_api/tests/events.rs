@@ -293,7 +293,7 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
 
     let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
-    let send = TcpSender::connect(*recv.addr()).unwrap();
+    let send = TcpSender::new(*recv.addr()).unwrap();
 
     let _ = stream.subscribe(Box::new(send)).unwrap();
     let _ = recv.subscribe(Box::new(observer.clone())).unwrap();
