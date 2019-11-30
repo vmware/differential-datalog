@@ -147,11 +147,14 @@ fn connect(socket: &Fd, addr: &SocketAddr) -> Result<(), Error> {
 
 const FD_CLOSED: usize = 1 << (0usize.count_zeros() - 1);
 const FD_SHUTDOWN: usize = FD_CLOSED >> 1;
+const FD_UNOWNED: usize = FD_SHUTDOWN >> 1;
 
 #[derive(Debug)]
-struct Fd(AtomicUsize);
+pub struct Fd(AtomicUsize);
 
 impl Fd {
+    /// Create a new `Fd` object that owns the given file descriptor,
+    /// i.e., it will be closed when the object is dropped.
     pub fn new<T>(fd: T) -> Self
     where
         // We deliberately use c_uint here which pushes the burden of
@@ -161,15 +164,30 @@ impl Fd {
     {
         debug_assert_eq!(FD_CLOSED.count_ones(), 1);
         debug_assert_eq!(FD_SHUTDOWN.count_ones(), 1);
+        debug_assert_eq!(FD_UNOWNED.count_ones(), 1);
 
         let fd = usize::try_from(fd.into()).unwrap();
         assert_eq!(fd & FD_SHUTDOWN, 0);
         assert_eq!(fd & FD_CLOSED, 0);
+        assert_eq!(fd & FD_UNOWNED, 0);
 
         // This type is based on the assumption that sizeof(c_uint) >=
         // sizeof(usize), which really should hold all platforms we are
         // interested in.
         Fd(fd.into())
+    }
+
+    /// Create an `Fd` object without transferring ownership.
+    ///
+    /// The wrapped file descriptor will not be closed when the
+    /// resulting object is dropped.
+    pub fn new_unowned<T>(fd: T) -> Self
+    where
+        T: Into<libc::c_uint>,
+    {
+        let s = Self::new(fd);
+        let _ = s.0.fetch_or(FD_UNOWNED, Ordering::SeqCst);
+        s
     }
 
     /// Shut down the file descriptor.
@@ -181,6 +199,7 @@ impl Fd {
         if fd & (FD_SHUTDOWN | FD_CLOSED) != 0 {
             Ok(())
         } else {
+            let fd = fd & !FD_UNOWNED;
             cvt(unsafe { libc::shutdown(fd.try_into().unwrap(), libc::SHUT_RDWR) }).map(|_| ())
         }
     }
@@ -194,29 +213,23 @@ impl Fd {
     ///
     /// Note that no matter whether the close actually succeeds or not,
     /// the object won't ever allow another close.
-    pub fn close(&self) -> Result<(), Error> {
+    fn close(&self) -> Result<(), Error> {
         let fd = self.0.fetch_or(FD_CLOSED, Ordering::SeqCst);
         // Note that we don't care about the shut down state of the
         // object in this method, as shutting down the file descriptor
         // does not invalidate it.
-        if fd & FD_CLOSED != 0 {
+        if fd & (FD_CLOSED | FD_UNOWNED) != 0 {
             Ok(())
         } else {
             let fd = fd & !FD_SHUTDOWN;
             cvt(unsafe { libc::close(fd.try_into().unwrap()) }).map(|_| ())
         }
     }
-
-    /// Check whether the file descriptor has been closed.
-    #[cfg(test)]
-    fn is_closed(&self) -> bool {
-        self.0.load(Ordering::SeqCst) & FD_CLOSED != 0
-    }
 }
 
 impl AsRawFd for Fd {
     fn as_raw_fd(&self) -> RawFd {
-        let fd = self.0.load(Ordering::SeqCst) & !(FD_SHUTDOWN | FD_CLOSED);
+        let fd = self.0.load(Ordering::SeqCst) & !(FD_SHUTDOWN | FD_CLOSED | FD_UNOWNED);
         // It's always safe to unwrap because we created the object from
         // what is essentially a RawFd to begin with, it's just that we
         // store it in something potentially larger.
@@ -314,17 +327,21 @@ mod tests {
     /// Test the closing on an `Fd`.
     #[test]
     fn close() {
+        fn is_closed(fd: &Fd) -> bool {
+            fd.0.load(Ordering::SeqCst) & FD_CLOSED != 0
+        }
+
         let socket = Socket::new().unwrap();
         let fd = socket.0;
         let raw = fd.as_raw_fd();
 
-        assert!(!fd.is_closed());
+        assert!(!is_closed(&fd));
         assert!(fd.close().is_ok());
-        assert!(fd.is_closed());
+        assert!(is_closed(&fd));
         assert_eq!(fd.as_raw_fd(), raw);
 
         assert!(fd.close().is_ok());
-        assert!(fd.is_closed());
+        assert!(is_closed(&fd));
         assert_eq!(fd.as_raw_fd(), raw);
     }
 
