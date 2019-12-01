@@ -1,13 +1,12 @@
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::io::BufReader;
-use std::io::Error;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
 use std::os::unix::io::AsRawFd;
-use std::os::unix::io::RawFd;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::spawn;
@@ -16,8 +15,7 @@ use std::thread::JoinHandle;
 use bincode::deserialize_from;
 use bincode::ErrorKind as BincodeError;
 
-use libc::shutdown;
-use libc::SHUT_RDWR;
+use libc::c_uint;
 
 use log::debug;
 use log::error;
@@ -32,6 +30,7 @@ use crate::observe::Observer;
 use crate::observe::ObserverBox;
 use crate::observe::SharedObserver;
 use crate::tcp_channel::message::Message;
+use crate::tcp_channel::socket::Fd;
 use crate::txnmux::TxnMux;
 
 /// A struct representing both an `Observer` and an `Observable` that
@@ -91,40 +90,6 @@ where
     }
 }
 
-/// A struct representing a socket file descriptor that can be shut down
-/// while an actual owned object (e.g., `TcpStream`) exists.
-#[derive(Copy, Clone, Debug)]
-enum Fd {
-    /// The socket is still active.
-    Active(RawFd),
-    /// The socket has been shutdown.
-    Shutdown,
-}
-
-impl Fd {
-    fn shutdown(&mut self) -> Result<(), Error> {
-        match *self {
-            Fd::Active(fd) => {
-                // Assuming correctness on the receiver, there is no
-                // good reason why a shutdown would fail and so if it
-                // were to we are probably in some really awkward state
-                // we shouldn't be in. To be able to recover eventually
-                // (by cleaning up), let's at least allow threads using
-                // this socket to finish up by indicating that we are
-                // shut down indeed, unconditionally.
-                *self = Fd::Shutdown;
-
-                let rc = unsafe { shutdown(fd, SHUT_RDWR) };
-                if rc != 0 {
-                    return Err(Error::last_os_error());
-                }
-                Ok(())
-            }
-            Fd::Shutdown => Ok(()),
-        }
-    }
-}
-
 /// The receiving end of a TCP channel has an address
 /// and streams data to an observer.
 #[derive(Debug)]
@@ -138,7 +103,7 @@ where
     addr: SocketAddr,
     /// Our listener file descriptor state; shared with the thread
     /// accepting connections.
-    fd: Arc<Mutex<Fd>>,
+    fd: Arc<Fd>,
     /// Handle to the thread accepting a connection and processing data.
     thread: Option<JoinHandle<Result<(), String>>>,
     /// The transaction multiplexer we use to ensure serialization of
@@ -173,7 +138,8 @@ where
         let addr = listener
             .local_addr()
             .map_err(|e| format!("failed to inquire local address: {}", e))?;
-        let fd = Arc::new(Mutex::new(Fd::Active(listener.as_raw_fd())));
+        let fd = c_uint::try_from(listener.as_raw_fd()).unwrap();
+        let fd = Arc::new(Fd::new_unowned(fd));
         let txnmux = Arc::new(Mutex::new(TxnMux::new()));
         let thread = Some(Self::accept(id, listener, fd.clone(), txnmux.clone()));
 
@@ -191,7 +157,7 @@ where
     fn accept(
         id: usize,
         listener: TcpListener,
-        fd: Arc<Mutex<Fd>>,
+        fd: Arc<Fd>,
         txnmux: Arc<Mutex<TxnMux<T, String>>>,
     ) -> JoinHandle<Result<(), String>> {
         spawn(move || {
@@ -206,7 +172,7 @@ where
                         // The user may have dropped the receiver shortly after
                         // us accepting a connection. If that is the case do not
                         // continue.
-                        if let Fd::Shutdown = *fd.lock().unwrap() {
+                        if fd.is_shutdown() {
                             break;
                         }
                         error!("TcpReceiver({}): failed to accept connection: {}", id, e);
@@ -225,7 +191,8 @@ where
                     continue;
                 }
 
-                let fd = Arc::new(Mutex::new(Fd::Active(socket.as_raw_fd())));
+                let fd = c_uint::try_from(socket.as_raw_fd()).unwrap();
+                let fd = Arc::new(Fd::new_unowned(fd));
                 let copy = fd.clone();
                 let thread = spawn(move || Self::process(id, socket, copy, passthrough));
                 handles.push((thread, fd));
@@ -235,7 +202,7 @@ where
             // in this case we intend to stop and join all the
             // processing threads we started.
             for (thread, fd) in handles.into_iter().rev() {
-                if let Err(e) = fd.lock().unwrap().shutdown() {
+                if let Err(e) = fd.shutdown() {
                     error!(
                         "TcpReceiver({}): failed to shut down TcpReceiver file descriptor: {}",
                         id, e
@@ -258,7 +225,7 @@ where
     fn process(
         id: usize,
         socket: TcpStream,
-        fd: Arc<Mutex<Fd>>,
+        fd: Arc<Fd>,
         mut observer: SharedObserver<Passthrough<T, String>>,
     ) -> Result<(), String> {
         let mut reader = BufReader::new(socket);
@@ -266,7 +233,7 @@ where
             let mut message = match deserialize_from(&mut reader) {
                 Ok(m) => m,
                 Err(e) => {
-                    if let Fd::Shutdown = *fd.lock().unwrap() {
+                    if fd.is_shutdown() {
                         return Ok(());
                     }
                     match *e {
@@ -274,7 +241,7 @@ where
                         // closed and in this case there is nothing more
                         // for us to do. So return early.
                         BincodeError::Io(ref e) if e.kind() == ErrorKind::UnexpectedEof => {
-                            if let Err(e) = fd.lock().unwrap().shutdown() {
+                            if let Err(e) = fd.shutdown() {
                                 error!("TcpReceiver({}): failed to shut down socket: {}", id, e);
                             }
                             return Ok(());
@@ -322,7 +289,7 @@ where
         // don't close it. The close will happen once the "acceptor"
         // thread wakes up, sees that we are shut down, and exits,
         // dropping the TcpListener/TcpStream in the process.
-        if let Err(e) = self.fd.lock().unwrap().shutdown() {
+        if let Err(e) = self.fd.shutdown() {
             error!("failed to shut down TcpReceiver file descriptor: {}", e);
         }
 
