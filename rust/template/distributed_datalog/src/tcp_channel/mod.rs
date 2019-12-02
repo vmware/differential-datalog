@@ -8,3 +8,4 @@ mod txnbuf;
 
 pub use receiver::TcpReceiver;
 pub use sender::TcpSender;
+pub use socket::Fd;

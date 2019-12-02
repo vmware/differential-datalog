@@ -31,6 +31,7 @@ use crate::observe::ObserverBox;
 use crate::observe::SharedObserver;
 use crate::tcp_channel::message::Message;
 use crate::tcp_channel::socket::Fd;
+use crate::tcp_channel::socket::ShutdownExt;
 use crate::txnmux::TxnMux;
 
 /// A struct representing both an `Observer` and an `Observable` that

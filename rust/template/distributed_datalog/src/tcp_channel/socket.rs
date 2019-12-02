@@ -145,6 +145,19 @@ fn connect(socket: &Fd, addr: &SocketAddr) -> Result<(), Error> {
     }
 }
 
+/// A trait providing shutdown functionality to certain objects.
+pub trait ShutdownExt {
+    /// Shut down the object.
+    ///
+    /// Note that no matter whether the shutdown actually succeeds or
+    /// not, the object won't ever allow another shutdown but always
+    /// return `Ok`.
+    fn shutdown(&self) -> Result<(), Error>;
+
+    /// Check whether the object has been shut down.
+    fn is_shutdown(&self) -> bool;
+}
+
 const FD_CLOSED: usize = 1 << (0usize.count_zeros() - 1);
 const FD_SHUTDOWN: usize = FD_CLOSED >> 1;
 const FD_UNOWNED: usize = FD_SHUTDOWN >> 1;
@@ -190,30 +203,11 @@ impl Fd {
         s
     }
 
-    /// Shut down the file descriptor.
-    ///
-    /// Note that no matter whether the shutdown actually succeeds or
-    /// not, the object won't ever allow another shutdown.
-    pub fn shutdown(&self) -> Result<(), Error> {
-        let fd = self.0.fetch_or(FD_SHUTDOWN, Ordering::SeqCst);
-        if fd & (FD_SHUTDOWN | FD_CLOSED) != 0 {
-            Ok(())
-        } else {
-            let fd = fd & !FD_UNOWNED;
-            cvt(unsafe { libc::shutdown(fd.try_into().unwrap(), libc::SHUT_RDWR) }).map(|_| ())
-        }
-    }
-
-    /// Check whether the file descriptor has been shut down.
-    pub fn is_shutdown(&self) -> bool {
-        self.0.load(Ordering::SeqCst) & FD_SHUTDOWN != 0
-    }
-
     /// Safely close the file descriptor.
     ///
     /// Note that no matter whether the close actually succeeds or not,
     /// the object won't ever allow another close.
-    fn close(&self) -> Result<(), Error> {
+    pub fn close(&self) -> Result<(), Error> {
         let fd = self.0.fetch_or(FD_CLOSED, Ordering::SeqCst);
         // Note that we don't care about the shut down state of the
         // object in this method, as shutting down the file descriptor
@@ -224,6 +218,27 @@ impl Fd {
             let fd = fd & !FD_SHUTDOWN;
             cvt(unsafe { libc::close(fd.try_into().unwrap()) }).map(|_| ())
         }
+    }
+
+    /// Check whether the object has been closed.
+    pub fn is_closed(&self) -> bool {
+        self.0.load(Ordering::SeqCst) & FD_CLOSED != 0
+    }
+}
+
+impl ShutdownExt for Fd {
+    fn shutdown(&self) -> Result<(), Error> {
+        let fd = self.0.fetch_or(FD_SHUTDOWN, Ordering::SeqCst);
+        if fd & (FD_SHUTDOWN | FD_CLOSED) != 0 {
+            Ok(())
+        } else {
+            let fd = fd & !FD_UNOWNED;
+            cvt(unsafe { libc::shutdown(fd.try_into().unwrap(), libc::SHUT_RDWR) }).map(|_| ())
+        }
+    }
+
+    fn is_shutdown(&self) -> bool {
+        self.0.load(Ordering::SeqCst) & FD_SHUTDOWN != 0
     }
 }
 
@@ -327,21 +342,17 @@ mod tests {
     /// Test the closing on an `Fd`.
     #[test]
     fn close() {
-        fn is_closed(fd: &Fd) -> bool {
-            fd.0.load(Ordering::SeqCst) & FD_CLOSED != 0
-        }
-
         let socket = Socket::new().unwrap();
         let fd = socket.0;
         let raw = fd.as_raw_fd();
 
-        assert!(!is_closed(&fd));
+        assert!(!fd.is_closed());
         assert!(fd.close().is_ok());
-        assert!(is_closed(&fd));
+        assert!(fd.is_closed());
         assert_eq!(fd.as_raw_fd(), raw);
 
         assert!(fd.close().is_ok());
-        assert!(is_closed(&fd));
+        assert!(fd.is_closed());
         assert_eq!(fd.as_raw_fd(), raw);
     }
 
