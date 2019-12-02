@@ -1,21 +1,19 @@
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::fs::File as FsFile;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Error;
 use std::io::Read;
 use std::iter::once;
 use std::marker::PhantomData;
 use std::os::unix::io::AsRawFd;
-use std::os::unix::io::RawFd;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread::spawn;
 use std::thread::JoinHandle;
 
-use libc::close;
+use libc::c_uint;
 use log::error;
 use log::info;
 use log::trace;
@@ -28,38 +26,10 @@ use cmd_parser::Command;
 use differential_datalog::program::Update;
 use differential_datalog::DDlogConvert;
 
+use crate::tcp_channel::Fd;
 use crate::Observable;
 use crate::Observer;
 use crate::ObserverBox;
-
-#[derive(Debug)]
-enum Fd {
-    /// The file descriptor is still active.
-    Active(RawFd),
-    /// The file descriptor has been closed.
-    Closed,
-}
-
-impl Fd {
-    fn close(&mut self) -> Result<(), Error> {
-        match *self {
-            Fd::Active(fd) => {
-                // We don't know of any good reason why a close would
-                // fail. If it did, we are in some pretty funky state
-                // right now and should treat the problem as if the file
-                // descriptor had been closed.
-                *self = Fd::Closed;
-
-                let rc = unsafe { close(fd) };
-                if rc != 0 {
-                    return Err(Error::last_os_error());
-                }
-                Ok(())
-            }
-            Fd::Closed => Ok(()),
-        }
-    }
-}
 
 /// Handle the given command.
 ///
@@ -109,7 +79,7 @@ fn handle<C, V>(
 fn process<C, V, R>(
     id: usize,
     reader: R,
-    fd: Arc<Mutex<Fd>>,
+    fd: Arc<Fd>,
     mut observer: ObserverBox<Update<V>, String>,
 ) -> ObserverBox<Update<V>, String>
 where
@@ -143,7 +113,7 @@ where
                 }
             }
             Err(e) => {
-                if let Fd::Closed = *fd.lock().unwrap() {
+                if fd.is_closed() {
                     return observer;
                 }
                 error!("failed to read from source file: {}", e);
@@ -155,7 +125,7 @@ where
 #[derive(Debug)]
 struct State<V> {
     /// The raw handle of the file we are reading from.
-    fd: Arc<Mutex<Fd>>,
+    fd: Arc<Fd>,
     /// The thread reading from the file.
     thread: JoinHandle<ObserverBox<Update<V>, String>>,
 }
@@ -208,7 +178,8 @@ where
                 return Err(observer);
             }
         };
-        let fd = Arc::new(Mutex::new(Fd::Active(file.as_raw_fd())));
+        let fd = c_uint::try_from(file.as_raw_fd()).unwrap();
+        let fd = Arc::new(Fd::new(fd));
         let state = State {
             fd: fd.clone(),
             thread: spawn(move || process::<C, _, _>(id, file, fd, observer)),
@@ -257,7 +228,7 @@ where
         trace!("File({})::unsubscribe", self.id);
 
         if let Some(state) = self.state.take() {
-            if let Err(e) = state.fd.lock().unwrap().close() {
+            if let Err(e) = state.fd.close() {
                 error!("failed to close adapted file: {}", e);
                 // We continue as there is not much we can do about
                 // the error. There shouldn't be any chance that we
