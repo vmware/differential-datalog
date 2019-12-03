@@ -3,10 +3,10 @@ use std::fmt::Debug;
 use std::fs::File as FsFile;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Read;
 use std::iter::once;
 use std::marker::PhantomData;
 use std::os::unix::io::AsRawFd;
+use std::os::unix::io::IntoRawFd;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -76,23 +76,22 @@ fn handle<C, V>(
     }
 }
 
-fn process<C, V, R>(
+fn process<C, V>(
     id: usize,
-    reader: R,
+    file: FsFile,
     fd: Arc<Fd>,
     mut observer: ObserverBox<Update<V>, String>,
 ) -> ObserverBox<Update<V>, String>
 where
     C: DDlogConvert<Value = V>,
     V: Debug + Send,
-    R: Read,
 {
     // TODO: The logic here somewhat resembles that in
     //       `cmd_parser/lib.rs`. We may want to deduplicate at some
     //       point.
     let mut buffer = Vec::new();
     let mut updates = Vec::new();
-    let mut reader = BufReader::new(reader);
+    let mut reader = BufReader::new(file);
     loop {
         let mut line = String::new();
         match reader.read_line(&mut line) {
@@ -114,6 +113,11 @@ where
             }
             Err(e) => {
                 if fd.is_closed() {
+                    // Because `fd` has been closed, we should not
+                    // close the file object wrapped by our reader
+                    // again, or we may close an unrelated file
+                    // descriptor that happens to reuse the same number.
+                    let _ = reader.into_inner().into_raw_fd();
                     return observer;
                 }
                 error!("failed to read from source file: {}", e);
@@ -182,7 +186,7 @@ where
         let fd = Arc::new(Fd::new(fd));
         let state = State {
             fd: fd.clone(),
-            thread: spawn(move || process::<C, _, _>(id, file, fd, observer)),
+            thread: spawn(move || process::<C, _>(id, file, fd, observer)),
         };
 
         Ok(state)
