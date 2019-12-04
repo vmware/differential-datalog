@@ -25,7 +25,7 @@ public class DDlogETupField extends DDlogExpression {
         if (!(type instanceof DDlogTTuple))
             throw new RuntimeException("Type is not a tuple: " + type);
         DDlogTTuple tuple = (DDlogTTuple)type;
-        return tuple.tupArgs.get(field);
+        return tuple.tupArgs[field];
     }
 
     @Override

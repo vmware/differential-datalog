@@ -187,7 +187,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     protected DDlogIRNode visitCreateView(CreateView view, TranslationContext context) {
         String name = convertQualifiedName(view.getName());
-        DDlogIRNode query = process(view.getQuery(), context);
+        DDlogIRNode query = this.process(view.getQuery(), context);
         RelationRHS rel = query.as(RelationRHS.class, null);
         DDlogRelation out = new DDlogRelation(
                 DDlogRelation.RelationRole.RelOutput, name, rel.getType());
@@ -203,6 +203,39 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         context.add(out);
         context.add(rule);
         return rule;
+    }
+
+    @Override
+    public DDlogIRNode visitJoin(Join join, TranslationContext context) {
+        switch (join.getType()) {
+            case INNER:
+            case LEFT:
+            case RIGHT:
+            case FULL:
+            default:
+                return null; // TODO
+            case CROSS:
+            case IMPLICIT:
+                DDlogIRNode left = this.process(join.getLeft(), context);
+                DDlogIRNode right = this.process(join.getRight(), context);
+                RelationRHS lrel = left.as(RelationRHS.class, null);
+                RelationRHS rrel = right.as(RelationRHS.class, null);
+
+                String var = context.freshLocalName("v");
+                DDlogType ltype = lrel.getType();
+                DDlogType rtype = rrel.getType();
+                DDlogType type = new DDlogTTuple(ltype, rtype);
+                RelationRHS result = new RelationRHS(var, type);
+                for (DDlogRuleRHS r: lrel.getDefinitions())
+                    result.addDefinition(r);
+                for (DDlogRuleRHS r: rrel.getDefinitions())
+                    result.addDefinition(r);
+                DDlogExpression e = new DDlogESet(
+                        new DDlogEVarDecl(var, type),
+                        new DDlogETuple(lrel.getRowVariable(false), rrel.getRowVariable(false)));
+                result.addDefinition(e);
+                return result;
+        }
     }
 
     @Override

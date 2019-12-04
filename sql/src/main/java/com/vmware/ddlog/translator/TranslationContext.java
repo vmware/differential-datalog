@@ -167,20 +167,20 @@ class TranslationContext {
                             new DDlogEVar("left", raw), new DDlogEVar("right", raw));
                     } else {
                         def = new DDlogEMatch(
-                            new DDlogETuple(Arrays.asList(
+                            new DDlogETuple(
                                 new DDlogEVar("left", leftType),
-                                new DDlogEVar("right", rightType))),
+                                new DDlogEVar("right", rightType)),
                             Arrays.asList(new DDlogEMatch.Case(
-                                    new DDlogETuple(Arrays.asList(leftMatch, rightMatch)),
+                                    new DDlogETuple(leftMatch, rightMatch),
                                     new DDlogEStruct("Some", Collections.singletonList(
                                         new DDlogEStruct.FieldValue("x",
                                             new DDlogEBinOp(op,
                                                 new DDlogEVar("l", raw), new DDlogEVar("r", raw)))
                                     ), type)),
                                 new DDlogEMatch.Case(
-                                    new DDlogETuple(Arrays.asList(
+                                    new DDlogETuple(
                                         new DDlogEPHolder(),
-                                        new DDlogEPHolder())),
+                                        new DDlogEPHolder()),
                                     new DDlogEStruct("None", Collections.emptyList(), type)))
                         );
                     }
