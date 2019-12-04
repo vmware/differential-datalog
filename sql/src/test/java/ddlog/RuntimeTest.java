@@ -261,6 +261,32 @@ public class RuntimeTest {
         testTranslation(query, program, true);
     }
 
+    @Test
+    public void testImplicitJoin() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1, t1";
+        String program = imports +
+                "\n" +
+                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "output relation Rv1[(Tt1,Tt1)]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt1[v1],var v2 = (v0, v1),var v3 = v2.";
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testCrossJoin() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 CROSS JOIN t1";
+        String program = imports +
+                "\n" +
+                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "output relation Rv1[(Tt1,Tt1)]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt1[v1],var v2 = (v0, v1),var v3 = v2.";
+        testTranslation(query, program);
+    }
+
     //@Test
     public void testMultiJoin() {
         // TODO

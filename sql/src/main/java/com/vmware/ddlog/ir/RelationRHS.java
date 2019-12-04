@@ -43,6 +43,7 @@ public class RelationRHS implements DDlogIRNode {
         this.addDefinition(expr);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public RelationRHS addDefinition(DDlogRuleRHS rhs) {
         this.definitions.add(rhs);
         return this;

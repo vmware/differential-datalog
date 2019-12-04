@@ -14,15 +14,16 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class DDlogTTuple extends DDlogType {
-    final List<DDlogType> tupArgs;
+    final DDlogType[] tupArgs;
 
-    public static DDlogTTuple emptyTupleType = new DDlogTTuple(new ArrayList<DDlogType>());
+    public static DDlogTTuple emptyTupleType = new DDlogTTuple();
 
-    public DDlogTTuple(List<DDlogType> tupArgs) {
+    public DDlogTTuple(DDlogType... tupArgs) {
         super(false);
         this.tupArgs = tupArgs;
     }
@@ -30,7 +31,7 @@ public class DDlogTTuple extends DDlogType {
     @Override
     public String toString() {
         return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString)) + ")";
+                Linq.map(this.tupArgs, DDlogType::toString, String.class)) + ")";
     }
 
     @Override
@@ -38,11 +39,11 @@ public class DDlogTTuple extends DDlogType {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         DDlogTTuple that = (DDlogTTuple) o;
-        return tupArgs.equals(that.tupArgs);
+        return Arrays.equals(tupArgs, that.tupArgs);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(tupArgs);
+        return Arrays.hashCode(tupArgs);
     }
 }
