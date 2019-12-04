@@ -22,6 +22,7 @@ use std::os::unix::io::RawFd;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::Weak;
 
 use log::error;
 
@@ -171,21 +172,6 @@ impl Fd {
         Fd(fd.into())
     }
 
-    /// Transfer ownership of the underlying file descriptor into a new
-    /// object, if that hasn't been done already.
-    pub fn take(&self) -> Option<Fd> {
-        let fd = self.0.fetch_or(FD_CLOSED, Ordering::SeqCst);
-        // Note that we don't care about the shut down state of the
-        // object in this method, as shutting down the file descriptor
-        // does not invalidate it (yet, it transitions over to the new
-        // object).
-        if fd & FD_CLOSED != 0 {
-            None
-        } else {
-            Some(Fd(fd.into()))
-        }
-    }
-
     /// Shut down the file descriptor.
     ///
     /// Note that no matter whether the shutdown actually succeeds or
@@ -209,10 +195,16 @@ impl Fd {
     /// Note that no matter whether the close actually succeeds or not,
     /// the object won't ever allow another close.
     pub fn close(&self) -> Result<(), Error> {
-        if let Some(fd) = self.take() {
-            cvt(unsafe { libc::close(fd.into_raw_fd()) }).map(|_| ())?;
+        let fd = self.0.fetch_or(FD_CLOSED, Ordering::SeqCst);
+        // Note that we don't care about the shut down state of the
+        // object in this method, as shutting down the file descriptor
+        // does not invalidate it.
+        if fd & FD_CLOSED != 0 {
+            Ok(())
+        } else {
+            let fd = fd & !FD_SHUTDOWN;
+            cvt(unsafe { libc::close(fd.try_into().unwrap()) }).map(|_| ())
         }
-        Ok(())
     }
 
     /// Check whether the file descriptor has been closed.
@@ -274,31 +266,36 @@ impl Socket {
     /// This function will not return until a connection has been
     /// established or the socket been closed.
     pub fn connect(self, addr: &SocketAddr) -> Result<TcpStream, Error> {
-        if let Some(fd) = self.0.take() {
-            connect(&fd, addr).map(|_| unsafe { TcpStream::from_raw_fd(fd.into_raw_fd()) })
-        } else {
-            Err(Error::from_raw_os_error(libc::EBADF))
-        }
+        connect(&self.0, addr).map(|_| {
+            // It's always safe to unwrap here because we only ever
+            // handed out weak references.
+            let fd = Arc::try_unwrap(self.0).unwrap();
+            unsafe { TcpStream::from_raw_fd(fd.into_raw_fd()) }
+        })
     }
 
     /// Retrieve a reference to a file descriptor that can be used to
     /// asynchronously close the socket, unblocking any in-progress
     /// connect(2) operations.
     pub fn to_cancelable(&self) -> Cancelable {
-        Cancelable(self.0.clone())
+        Cancelable(Arc::downgrade(&self.0))
     }
 }
 
 #[derive(Debug)]
-pub struct Cancelable(Arc<Fd>);
+pub struct Cancelable(Weak<Fd>);
 
 impl Cancelable {
     /// Cancel the cancelable.
     pub fn cancel(&self) -> Result<(), Error> {
-        match self.0.shutdown() {
-            // Don't signal an error if we just haven't connected yet.
-            Err(ref e) if e.raw_os_error() == Some(libc::ENOTCONN) => Ok(()),
-            r => r,
+        if let Some(fd) = self.0.upgrade() {
+            match fd.shutdown() {
+                // Don't signal an error if we just haven't connected yet.
+                Err(ref e) if e.raw_os_error() == Some(libc::ENOTCONN) => Ok(()),
+                r => r,
+            }
+        } else {
+            Ok(())
         }
     }
 }
@@ -340,9 +337,8 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
 
-        let socket = Socket::new().unwrap();
-        let fd = socket.0.clone();
-        let _stream = socket.connect(&addr).unwrap();
+        let fd = socket().unwrap();
+        connect(&fd, &addr).unwrap();
 
         assert!(!fd.is_shutdown());
         assert!(fd.shutdown().is_ok());
@@ -355,27 +351,9 @@ mod tests {
         assert!(fd.is_shutdown());
     }
 
-    /// Test that the `Fd::take` functionality works as expected.
-    #[test]
-    fn take() {
-        let socket = Socket::new().unwrap();
-        let fd = socket.0;
-        let copy = fd.take().unwrap();
-        assert!(!fd.is_shutdown());
-        assert!(fd.is_closed());
-        assert!(!copy.is_shutdown());
-        assert!(!copy.is_closed());
-
-        // Subsequent takes should fail.
-        assert!(fd.take().is_none());
-
-        // Closing of the new `Fd` should work as it did before.
-        assert!(copy.close().is_ok());
-    }
-
     /// Test that we can establish a connection.
     #[test]
-    fn connect() {
+    fn connect_immediately() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
 
