@@ -95,6 +95,10 @@ where
     loop {
         let mut line = String::new();
         match reader.read_line(&mut line) {
+            // TODO: We need to handle the Ok(0) case which occurs if
+            //       the underlying file has reached EOF. We basically
+            //       would need to register a poll(2) for the fd or
+            //       something along those lines.
             Ok(_) => {
                 buffer.extend_from_slice(line.as_bytes());
                 match parse_command(buffer.as_slice()) {
@@ -262,6 +266,7 @@ mod tests {
     use std::time::Duration;
 
     use tempfile::NamedTempFile;
+    use test_env_log::test;
 
     use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
@@ -299,9 +304,10 @@ mod tests {
     }
 
     #[test]
-    fn adapt_observable_to_dump_file() {
+    fn source_file() {
         let mut file = NamedTempFile::new().unwrap();
         file.write_all(TRANSACTION_DUMP).unwrap();
+        file.flush().unwrap();
 
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
         let mut adapter = File::<DummyConverter, _>::new(file.path());
@@ -324,6 +330,7 @@ mod tests {
         // Add the same data into the file and verify that we get more
         // updates.
         file.write_all(TRANSACTION_DUMP).unwrap();
+        file.flush().unwrap();
 
         await_expected(|| {
             let (on_start, on_updates, on_commit) = {
@@ -344,6 +351,7 @@ mod tests {
         let _ = adapter.unsubscribe(&()).unwrap();
 
         file.write_all(TRANSACTION_DUMP).unwrap();
+        file.flush().unwrap();
         sleep(Duration::from_millis(250));
 
         assert_eq!(mock.lock().unwrap().called_on_start, 4);

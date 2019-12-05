@@ -1,3 +1,5 @@
+use log::trace;
+
 use crate::Observer;
 
 /// A dummy observer merely counting method invocations.
@@ -31,21 +33,25 @@ where
     E: Send,
 {
     fn on_start(&mut self) -> Result<(), E> {
+        trace!("MockObserver::on_start");
         self.called_on_start += 1;
         Ok(())
     }
 
     fn on_commit(&mut self) -> Result<(), E> {
+        trace!("MockObserver::on_commit");
         self.called_on_commit += 1;
         Ok(())
     }
 
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
+        trace!("MockObserver::on_updates");
         self.called_on_updates += updates.count();
         Ok(())
     }
 
     fn on_completed(&mut self) -> Result<(), E> {
+        trace!("MockObserver::on_completed");
         self.called_on_completed += 1;
         Ok(())
     }
