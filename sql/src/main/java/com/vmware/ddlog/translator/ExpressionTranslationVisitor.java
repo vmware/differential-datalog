@@ -22,8 +22,8 @@ import java.math.BigInteger;
 import java.util.*;
 
 public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, TranslationContext> {
-    private DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right,
-                                  TranslationContext context) {
+    public DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right,
+                                         TranslationContext context) {
         String function = context.getFunction(op, left.getType(), right.getType());
         DDlogType type = DDlogType.reduceType(left.getType(), right.getType());
         if (op.isComparison() || op.isBoolean()) {
@@ -209,6 +209,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
          return result;
     }
 
+    @SuppressWarnings("unused")
     private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
             case "substr":

@@ -13,8 +13,7 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * DDlogTStruct can have multiple constructors, but in SQL we never need more than 1.
@@ -27,6 +26,12 @@ public class DDlogTStruct extends DDlogType {
         super(false);
         this.name = name;
         this.args = args;
+        HashSet<String> fields = new HashSet<String>();
+        for (DDlogField f: args) {
+            if (fields.contains(f.getName()))
+                throw new RuntimeException("Field name " + f + " is duplicated");
+            fields.add(f.getName());
+        }
     }
 
     @Override
@@ -51,5 +56,13 @@ public class DDlogTStruct extends DDlogType {
     @Override
     public int hashCode() {
         return Objects.hash(name, args);
+    }
+
+    public DDlogType getFieldType(String col) {
+        for (DDlogField f : this.getFields()) {
+            if (f.getName().equals(col))
+                return f.getType();
+        }
+        throw new RuntimeException("Field " + col + " not present in struct " + this.name);
     }
 }
