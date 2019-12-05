@@ -41,8 +41,10 @@ use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result as FmtResult;
+use std::net::AddrParseError;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -69,6 +71,14 @@ impl Display for Addr {
         match self {
             Addr::Ip(addr) => addr.fmt(f),
         }
+    }
+}
+
+impl FromStr for Addr {
+    type Err = AddrParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        SocketAddr::from_str(s).map(Addr::Ip)
     }
 }
 
