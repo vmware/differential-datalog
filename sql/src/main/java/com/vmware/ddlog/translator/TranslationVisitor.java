@@ -13,9 +13,12 @@ package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.Linq;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     static String convertQualifiedName(QualifiedName name) {
@@ -33,11 +36,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             fields.add(field.as(DDlogField.class, null));
         }
         DDlogTStruct type = new DDlogTStruct(DDlogType.typeName(name), fields);
-        DDlogTypeDef tdef = new DDlogTypeDef(type.getName(), type);
-        context.add(tdef);
+        DDlogTUser tuser = context.createTypedef(type);
         DDlogRelation rel = new DDlogRelation(
-                DDlogRelation.RelationRole.RelInput, name,
-                new DDlogTUser(tdef.getName(), type.mayBeNull));
+                DDlogRelation.RelationRole.RelInput, name, tuser);
         context.add(rel);
         return rel;
     }
@@ -144,9 +145,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
         String newTypeName = DDlogType.typeName(outRelName);
         DDlogTStruct type = new DDlogTStruct(newTypeName, typeList);
-        DDlogTypeDef tdef = new DDlogTypeDef(newTypeName, type);
-        context.add(tdef);
-        DDlogType tuser = new DDlogTUser(tdef.getName(), type.mayBeNull);
+        DDlogType tuser = context.createTypedef(type);
         DDlogExpression project = new DDlogEStruct(newTypeName, exprList, tuser);
         DDlogRelation outRel = new DDlogRelation(DDlogRelation.RelationRole.RelInternal, outRelName, tuser);
         context.add(outRel);
@@ -205,37 +204,117 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         return rule;
     }
 
+    /**
+     * Generate a fresh name that is not in the set.
+     * @param prefix  Prefix used to generate the name.
+     * @param used    Set of names that cannot be used.
+     * @return        The generated name.  The name is added to the used set.
+     */
+    public static String freshName(String prefix, Set<String> used) {
+        if (!used.contains(prefix)) {
+            used.add(prefix);
+            return prefix;
+        }
+        for (int i = 0; ; i++) {
+            String candidate = prefix + i;
+            if (!used.contains(candidate)) {
+                used.add(candidate);
+                return candidate;
+            }
+        }
+    }
+
     @Override
     public DDlogIRNode visitJoin(Join join, TranslationContext context) {
+        DDlogIRNode left = this.process(join.getLeft(), context);
+        DDlogIRNode right = this.process(join.getRight(), context);
+        RelationRHS lrel = left.as(RelationRHS.class, null);
+        RelationRHS rrel = right.as(RelationRHS.class, null);
+        String var = context.freshLocalName("v");
+        DDlogType ltype = context.resolveType(lrel.getType());
+        DDlogType rtype = context.resolveType(rrel.getType());
+        DDlogTStruct lst = ltype.as(DDlogTStruct.class, null);
+        DDlogTStruct rst = rtype.as(DDlogTStruct.class, null);
+        List<DDlogRuleRHS> rules = new ArrayList<DDlogRuleRHS>();
+        rules.addAll(lrel.getDefinitions());
+        rules.addAll(rrel.getDefinitions());
+
+        Set<String> joinColumns = new HashSet<String>();
         switch (join.getType()) {
             case INNER:
+                if (join.getCriteria().isPresent()) {
+                    JoinCriteria c = join.getCriteria().get();
+                    if (c instanceof JoinOn) {
+                        JoinOn on = (JoinOn)c;
+                        DDlogExpression onE = context.translateExpression(on.getExpression());
+                        rules.add(new DDlogRHSCondition(ExpressionTranslationVisitor.unwrapBool(onE)));
+                    } else if (c instanceof JoinUsing) {
+                        JoinUsing using = (JoinUsing)c;
+                        joinColumns = new HashSet<String>(Linq.map(using.getColumns(), Identifier::getValue));
+                    } else if (c instanceof NaturalJoin) {
+                        joinColumns = new HashSet<String>(Linq.map(lst.getFields(), DDlogField::getName));
+                        HashSet<String> rightCols = new HashSet<String>(Linq.map(rst.getFields(), DDlogField::getName));
+                        joinColumns.retainAll(rightCols);
+                    } else {
+                        throw new TranslationException("Unexpected join", join);
+                    }
+                }
+                break;
+            case CROSS:
+            case IMPLICIT:
+                // Nothing more to do
+                break;
             case LEFT:
             case RIGHT:
             case FULL:
+                // TODO
             default:
-                return null; // TODO
-            case CROSS:
-            case IMPLICIT:
-                DDlogIRNode left = this.process(join.getLeft(), context);
-                DDlogIRNode right = this.process(join.getRight(), context);
-                RelationRHS lrel = left.as(RelationRHS.class, null);
-                RelationRHS rrel = right.as(RelationRHS.class, null);
-
-                String var = context.freshLocalName("v");
-                DDlogType ltype = lrel.getType();
-                DDlogType rtype = rrel.getType();
-                DDlogType type = new DDlogTTuple(ltype, rtype);
-                RelationRHS result = new RelationRHS(var, type);
-                for (DDlogRuleRHS r: lrel.getDefinitions())
-                    result.addDefinition(r);
-                for (DDlogRuleRHS r: rrel.getDefinitions())
-                    result.addDefinition(r);
-                DDlogExpression e = new DDlogESet(
-                        new DDlogEVarDecl(var, type),
-                        new DDlogETuple(lrel.getRowVariable(false), rrel.getRowVariable(false)));
-                result.addDefinition(e);
-                return result;
+                throw new TranslationException("Unexpected join type", join);
         }
+
+        DDlogExpression condition = new DDlogEBool(true);
+        for (String col: joinColumns) {
+            DDlogExpression e = context.operationCall(DDlogEBinOp.BOp.Eq,
+                    new DDlogEField(lrel.getRowVariable(false), col, lst.getFieldType(col)),
+                    new DDlogEField(rrel.getRowVariable(false), col, rst.getFieldType(col)));
+            condition = context.operationCall(DDlogEBinOp.BOp.And, condition, e);
+        }
+        rules.add(new DDlogRHSCondition(ExpressionTranslationVisitor.unwrapBool(condition)));
+
+        // For the result we take all fields from the left and right but we skip
+        // the joinColumn fields from the right.
+        String tmp = DDlogType.typeName(context.freshGlobalName("tmp"));
+        List<DDlogField> tfields = new ArrayList<DDlogField>();
+        List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
+
+        Set<String> names = new HashSet<String>();
+        for (DDlogField f: lst.getFields()) {
+            tfields.add(f);
+            names.add(f.getName());
+            fields.add(new DDlogEStruct.FieldValue(f.getName(),
+                    new DDlogEField(lrel.getRowVariable(false), f.getName(), f.getType())));
+        }
+        for (DDlogField f: rst.getFields()) {
+            if (joinColumns.contains(f.getName()))
+                continue;
+            // We may need to rename this field if it is already present
+            String name = freshName(f.getName(), names);
+            DDlogField field = new DDlogField(name, f.getType());
+            tfields.add(field);
+            fields.add(new DDlogEStruct.FieldValue(field.getName(),
+                    new DDlogEField(rrel.getRowVariable(false), f.getName(), f.getType())));
+        }
+        DDlogTStruct type = new DDlogTStruct(tmp, tfields);
+        DDlogTUser tuser = context.createTypedef(type);
+        DDlogExpression e = new DDlogESet(
+                new DDlogEVarDecl(var, type),
+                new DDlogEStruct(tmp, fields, type));
+        rules.add(new DDlogRHSCondition(e));
+
+        RelationRHS result = new RelationRHS(var, tuser);
+        for (DDlogRuleRHS r: rules)
+            result.addDefinition(r);
+        return result;
     }
 
     @Override

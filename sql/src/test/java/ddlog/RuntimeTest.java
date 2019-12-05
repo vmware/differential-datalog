@@ -28,8 +28,36 @@ import org.junit.Test;
 /**
  * Unit test for simple Translator.
  */
+@SuppressWarnings("FieldCanBeLocal")
 public class RuntimeTest {
+    // These strings are part of almost all expected outputs
     private final String imports = "import sql\nimport sqlop\n";
+    private final String t1t2 =
+            "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+            "typedef Tt2 = Tt2{column1:signed<64>}\n";
+    private final String t1t2null =
+            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+            "typedef Tt2 = Tt2{column1:Option<signed<64>>}\n";
+
+    /**
+     * The expected string the generated program starts with.
+     * @param withNull  True if the tables can contain nulls.
+     */
+    private String header(boolean withNull) {
+        if (withNull)
+            return this.imports + "\n" + this.t1t2null;
+        return this.imports + "\n" + this.t1t2;
+    }
+
+    /**
+     * The expected string for the declared relations
+     */
+    @SuppressWarnings("unused")
+    private String relations(boolean withNull) {
+        return "\n" +
+               "input relation Rt1[Tt1]\n" +
+               "input relation Rt2[Tt2]\n";
+    }
 
     @BeforeClass
     public static void createLibrary() throws FileNotFoundException {
@@ -48,7 +76,7 @@ public class RuntimeTest {
         conn.execute(viewStatement);
     }
 
-    private Translator createInputTable(boolean withNulls) {
+    private Translator createInputTables(boolean withNulls) {
         String nulls = withNulls ? "" : " not null";
         String createStatement = "create table t1(column1 integer " + nulls + ",\n" +
                 " column2 varchar(36) " + nulls + ",\n" +
@@ -59,6 +87,14 @@ public class RuntimeTest {
         String s = create.toString();
         Assert.assertNotNull(s);
         Assert.assertEquals("input relation Rt1[Tt1]", s);
+
+        createStatement = "create table t2(column1 integer " + nulls + ")";
+        create = t.translateSqlStatement(createStatement);
+        Assert.assertNotNull(create);
+        s = create.toString();
+        Assert.assertNotNull(s);
+        Assert.assertEquals("input relation Rt2[Tt2]", s);
+
         return t;
     }
 
@@ -91,7 +127,7 @@ public class RuntimeTest {
     }
 
     private void testTranslation(String query, String program, boolean withNulls) {
-        Translator t = this.createInputTable(withNulls);
+        Translator t = this.createInputTables(withNulls);
         DDlogIRNode view = t.translateSqlStatement(query);
         Assert.assertNotNull(view);
         String s = view.toString();
@@ -161,10 +197,9 @@ public class RuntimeTest {
     public void testWhen() {
         String query = "create view v1 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
         String program =
-                imports + "\n" +
-                        "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
-                        "typedef Ttmp0 = Ttmp0{col1:signed<64>}\n\n" +
-                        "input relation Rt1[Tt1]\n" +
+                this.header(false) +
+                        "typedef Ttmp0 = Ttmp0{col1:signed<64>}\n" +
+                        this.relations(false) +
                         "relation Rtmp0[Ttmp0]\n" +
                         "output relation Rv1[Ttmp0]\n" +
                         "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = if (v0.column1 == 64'sd1){\n" +
@@ -179,10 +214,9 @@ public class RuntimeTest {
     public void testWhenWNull() {
         String query = "create view v1 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
         String program =
-            imports + "\n" +
-                "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
-                "typedef Ttmp0 = Ttmp0{col1:signed<64>}\n\n" +
-                "input relation Rt1[Tt1]\n" +
+            this.header(true) +
+                "typedef Ttmp0 = Ttmp0{col1:signed<64>}\n" +
+                this.relations(true) +
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = if unwrapBool(a_eq_NR(v0.column1, 64'sd1)){\n" +
@@ -196,12 +230,9 @@ public class RuntimeTest {
     @Test
     public void testAlias() {
         String query = "create view v1 as SELECT DISTINCT t2.column1 FROM t1 AS t2";
-        String program = imports +
-                "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+        String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{column1:signed<64>}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
+                this.relations(false) +
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
@@ -211,35 +242,21 @@ public class RuntimeTest {
     @Test
     public void testAliasWNull() {
         String query = "create view v1 as SELECT DISTINCT t2.column1 FROM t1 AS t2";
-        String program = imports +
-            "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+        String program = this.header(true) +
             "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>}\n" +
-            "\n" +
-            "input relation Rt1[Tt1]\n" +
+            this.relations(true) +
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
         testTranslation(query, program, true);
     }
 
-    //@Test
-    public void testAs() {
-        String query = "create view v1 as SELECT DISTINCT * FROM t1 AS T(a, b, c)";
-        String program = "";
-        // TODO
-        testTranslation(query, program);
-    }
-
     @Test
     public void testScope() {
         String query = "create view v1 as SELECT DISTINCT t1.column1 FROM t1";
-        String program = imports +
-                "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+        String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{column1:signed<64>}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
+                this.relations(false) +
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
@@ -249,12 +266,9 @@ public class RuntimeTest {
     @Test
     public void testScopeWNulls() {
         String query = "create view v1 as SELECT DISTINCT t1.column1 FROM t1";
-        String program = imports +
-            "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+        String program = this.header(true) +
             "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>}\n" +
-            "\n" +
-            "input relation Rt1[Tt1]\n" +
+            this.relations(true) +
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
@@ -263,39 +277,115 @@ public class RuntimeTest {
 
     @Test
     public void testImplicitJoin() {
-        String query = "create view v1 as SELECT DISTINCT * FROM t1, t1";
-        String program = imports +
-                "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
-                "output relation Rv1[(Tt1,Tt1)]\n" +
-                "Rv1[v3] :- Rt1[v0],Rt1[v1],var v2 = (v0, v1),var v3 = v2.";
+        String query = "create view v1 as SELECT DISTINCT * FROM t1, t2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                this.relations(false) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testJoinStar() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                this.relations(false) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],(v0.column1 == v1.column1),true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testJoinStarWNull() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
+        String program = this.header(true) +
+                "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column10:Option<signed<64>>}\n" +
+                this.relations(true) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],unwrapBool(a_eq_NN(v0.column1, v1.column1)),true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
+        testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testNaturalJoin() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool}\n" +
+                this.relations(false) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],(true and (v0.column1 == v1.column1)),var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3},var v3 = v2.";
+        testTranslation(query, program);
+    }
+
+    @Test
+    public void testJoin() {
+        String query = "create view v1 as SELECT DISTINCT t0.column1, t1.column3 FROM t1 AS t0 JOIN t1 ON t0.column2 = t1.column2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>, column20:string, column30:bool}\n" +
+                "typedef Ttmp1 = Ttmp1{column1:signed<64>, column3:bool}\n" +
+                this.relations(false) +
+                "relation Rtmp1[Ttmp1]\n" +
+                "output relation Rv1[Ttmp1]\n" +
+                "Rv1[v4] :- Rt1[v0],Rt1[v1],(v0.column2 == v1.column2),true," +
+                "var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1,.column20 = v1.column2,.column30 = v1.column3}," +
+                "var v3 = Ttmp1{.column1 = v0.column1,.column3 = v1.column3},var v4 = v3.";
         testTranslation(query, program);
     }
 
     @Test
     public void testCrossJoin() {
-        String query = "create view v1 as SELECT DISTINCT * FROM t1 CROSS JOIN t1";
-        String program = imports +
-                "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
-                "output relation Rv1[(Tt1,Tt1)]\n" +
-                "Rv1[v3] :- Rt1[v0],Rt1[v1],var v2 = (v0, v1),var v3 = v2.";
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                this.relations(false) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
         testTranslation(query, program);
     }
 
-    //@Test
+    @Test
+    public void testCrossJoinWNull() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
+        String program = this.header(true) +
+                "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column10:Option<signed<64>>}\n" +
+                this.relations(true) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
+        testTranslation(query, program, true);
+    }
+
+    @Test
     public void testMultiJoin() {
-        // TODO
-        String query = "SELECT *\n" +
+        String query = "create view v1 as SELECT DISTINCT *\n" +
                 "    FROM t1,\n" +
-                "         (SELECT column0 AS a FROM t1) b,\n" +
-                "         (SELECT columns1 AS c FROM t1) c,\n" +
-                "         (SELECT columns2 AS d FROM t1) d";
-        String program = "";
+                "         (SELECT DISTINCT column1 AS a FROM t1) b,\n" +
+                "         (SELECT DISTINCT column2 AS c FROM t1) c,\n" +
+                "         (SELECT DISTINCT column3 AS d FROM t1) d";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{a:signed<64>}\n" +
+                "typedef Ttmp2 = Ttmp2{column1:signed<64>, column2:string, column3:bool, a:signed<64>}\n" +
+                "typedef Ttmp3 = Ttmp3{c:string}\n" +
+                "typedef Ttmp5 = Ttmp5{column1:signed<64>, column2:string, column3:bool, a:signed<64>, c:string}\n" +
+                "typedef Ttmp6 = Ttmp6{d:bool}\n" +
+                "typedef Ttmp8 = Ttmp8{column1:signed<64>, column2:string, column3:bool, a:signed<64>, c:string, d:bool}\n" +
+                this.relations(false) +
+                "relation Rtmp0[Ttmp0]\n" +
+                "relation Rtmp1[Ttmp0]\n" +
+                "relation Rtmp3[Ttmp3]\n" +
+                "relation Rtmp4[Ttmp3]\n" +
+                "relation Rtmp6[Ttmp6]\n" +
+                "relation Rtmp7[Ttmp6]\n" +
+                "output relation Rv1[Ttmp8]\n" +
+                "Rtmp1[v3] :- Rt1[v1],var v2 = Ttmp0{.a = v1.column1},var v3 = v2.\n" +
+                "Rtmp4[v7] :- Rt1[v5],var v6 = Ttmp3{.c = v5.column2},var v7 = v6.\n" +
+                "Rtmp7[v11] :- Rt1[v9],var v10 = Ttmp6{.d = v9.column3},var v11 = v10.\n" +
+                "Rv1[v13] :- Rt1[v0],Rtmp1[v3],true," +
+                "var v4 = Ttmp2{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.a = v3.a}," +
+                "Rtmp4[v7],true," +
+                "var v8 = Ttmp5{.column1 = v4.column1,.column2 = v4.column2,.column3 = v4.column3,.a = v4.a,.c = v7.c},Rtmp7[v11],true,var v12 = Ttmp8{.column1 = v8.column1,.column2 = v8.column2,.column3 = v8.column3,.a = v8.a,.c = v8.c,.d = v11.d}," +
+                "var v13 = v12.";
         testTranslation(query, program);
     }
 
@@ -310,12 +400,9 @@ public class RuntimeTest {
     @Test
     public void testBetween() {
         String query = "create view v1 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";
-        String program = imports +
-                "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+        String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
+                this.relations(false) +
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],(((- 64'sd1) <= v0.column1) and (v0.column1 <= 64'sd10)),var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
@@ -325,12 +412,9 @@ public class RuntimeTest {
     @Test
     public void testBetweenWNulls() {
         String query = "create view v1 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";
-        String program = imports +
-            "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+        String program = this.header(true) +
             "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>}\n" +
-            "\n" +
-            "input relation Rt1[Tt1]\n" +
+            this.relations(true) +
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],unwrapBool(b_and_NN(a_lte_RN((- 64'sd1), v0.column1), a_lte_NR(v0.column1, 64'sd10))),var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
@@ -340,11 +424,9 @@ public class RuntimeTest {
     @Test
     public void testSubstr() {
         String query = "create view v1 as SELECT DISTINCT SUBSTR(column2, 3, 5) FROM t1";
-        String program = imports + "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+        String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col1:string}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
+                this.relations(false) +
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = substr(v0.column2, 64'sd3, 64'sd5)},var v3 = v2.";
@@ -354,11 +436,9 @@ public class RuntimeTest {
     @Test
     public void testSubstrWNull() {
         String query = "create view v1 as SELECT DISTINCT SUBSTR(column2, 3, 5) FROM t1";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+        String program = this.header(true) +
             "typedef Ttmp0 = Ttmp0{col1:Option<string>}\n" +
-            "\n" +
-            "input relation Rt1[Tt1]\n" +
+            this.relations(true) +
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = substr_N(v0.column2, 64'sd3, 64'sd5)},var v3 = v2.";
@@ -368,36 +448,34 @@ public class RuntimeTest {
     @Test
     public void testSelectWithNulls() {
         String query = "create view v1 as select distinct column1, column2 from t1";
-        String program = imports + "\n" +
-                        "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
-                        "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>}\n\n" +
-                        "input relation Rt1[Tt1]\n" +
-                        "relation Rtmp0[Ttmp0]\n" +
-                        "output relation Rv1[Ttmp0]\n" +
-                        "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
+        String program =
+                this.header(true) +
+                "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>}\n" +
+                this.relations(true) +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
         testTranslation(query, program, true);
     }
 
     @Test
     public void testSelect() {
         String query = "create view v1 as select distinct column1, column2 from t1";
-        String program = imports + "\n" +
-                    "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
-                    "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string}\n\n" +
-                    "input relation Rt1[Tt1]\n" +
-                    "relation Rtmp0[Ttmp0]\n" +
-                    "output relation Rv1[Ttmp0]\n" +
-                    "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
+        String program = this.header(false) +
+            "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string}\n" +
+            this.relations(false) +
+            "relation Rtmp0[Ttmp0]\n" +
+            "output relation Rv1[Ttmp0]\n" +
+            "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
         testTranslation(query, program);
     }
 
     @Test
     public void testSelectWNull() {
         String query = "create view v1 as select distinct column1, column2 from t1";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
-            "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>}\n\n" +
-            "input relation Rt1[Tt1]\n" +
+        String program = this.header(true) +
+            "typedef Ttmp0 = Ttmp0{column1:Option<signed<64>>, column2:Option<string>}\n" +
+            this.relations(true) +
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
@@ -407,9 +485,8 @@ public class RuntimeTest {
     @Test
     public void testSimple() {
         String query = "create view v1 as select distinct * from t1";
-        String program = imports + "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n\n" +
-                "input relation Rt1[Tt1]\n" +
+        String program = this.header(false) +
+                this.relations(false) +
                 "output relation Rv1[Tt1]\n" +
                 "Rv1[v1] :- Rt1[v0],var v1 = v0.";
         testTranslation(query, program);
@@ -418,9 +495,8 @@ public class RuntimeTest {
     @Test
     public void testSimpleWNull() {
         String query = "create view v1 as select distinct * from t1";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n\n" +
-            "input relation Rt1[Tt1]\n" +
+        String program = this.header(true) +
+            this.relations(true) +
             "output relation Rv1[Tt1]\n" +
             "Rv1[v1] :- Rt1[v0],var v1 = v0.";
         testTranslation(query, program, true);
@@ -429,9 +505,8 @@ public class RuntimeTest {
     @Test
     public void testSimple1() {
         String query = "create view v2 as select distinct * from t1 where column1 = 10";
-        String program = imports + "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n\n" +
-                "input relation Rt1[Tt1]\n" +
+        String program = this.header(false) +
+                this.relations(false) +
                 "output relation Rv2[Tt1]\n" +
                 "Rv2[v1] :- Rt1[v0],(v0.column1 == 64'sd10),var v1 = v0.";
         testTranslation(query, program);
@@ -440,9 +515,8 @@ public class RuntimeTest {
     @Test
     public void testSimple1WNulls() {
         String query = "create view v2 as select distinct * from t1 where column1 = 10";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n\n" +
-            "input relation Rt1[Tt1]\n" +
+        String program = this.header(true) +
+            this.relations(true) +
             "output relation Rv2[Tt1]\n" +
             "Rv2[v1] :- Rt1[v0],unwrapBool(a_eq_NR(v0.column1, 64'sd10)),var v1 = v0.";
         testTranslation(query, program, true);
@@ -451,9 +525,8 @@ public class RuntimeTest {
     @Test
     public void testSimple2() {
         String query = "create view v3 as select distinct * from t1 where column1 = 10 and column2 = 'something'";
-        String program = imports + "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n\n" +
-                "input relation Rt1[Tt1]\n" +
+        String program = this.header(false) +
+                this.relations(false) +
                 "output relation Rv3[Tt1]\n" +
                 "Rv3[v1] :- Rt1[v0],((v0.column1 == 64'sd10) and (v0.column2 == \"something\")),var v1 = v0.";
         testTranslation(query, program);
@@ -462,9 +535,8 @@ public class RuntimeTest {
     @Test
     public void testSimple2WNulls() {
         String query = "create view v3 as select distinct * from t1 where column1 = 10 and column2 = 'something'";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n\n" +
-            "input relation Rt1[Tt1]\n" +
+        String program = this.header(true) +
+            this.relations(true) +
             "output relation Rv3[Tt1]\n" +
             "Rv3[v1] :- Rt1[v0],unwrapBool(b_and_NN(a_eq_NR(v0.column1, 64'sd10), s_eq_NR(v0.column2, \"something\"))),var v1 = v0.";
         testTranslation(query, program, true);
@@ -473,9 +545,8 @@ public class RuntimeTest {
     @Test
     public void testNested() {
         String query = "create view v4 as select distinct * from (select distinct * from t1 where column1 = 10) where column2 = 'something'";
-        String program = imports + "\n" +
-                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n\n" +
-                "input relation Rt1[Tt1]\n" +
+        String program = this.header(false) +
+                this.relations(false) +
                 "relation Rtmp0[Tt1]\n" +
                 "output relation Rv4[Tt1]\n" +
                 "Rtmp0[v1] :- Rt1[v0],(v0.column1 == 64'sd10),var v1 = v0.\n" +
@@ -486,9 +557,8 @@ public class RuntimeTest {
     @Test
     public void testNestedWNull() {
         String query = "create view v4 as select distinct * from (select distinct * from t1 where column1 = 10) where column2 = 'something'";
-        String program = imports + "\n" +
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n\n" +
-            "input relation Rt1[Tt1]\n" +
+        String program = this.header(true) +
+            this.relations(true) +
             "relation Rtmp0[Tt1]\n" +
             "output relation Rv4[Tt1]\n" +
             "Rtmp0[v1] :- Rt1[v0],unwrapBool(a_eq_NR(v0.column1, 64'sd10)),var v1 = v0.\n" +
@@ -782,7 +852,6 @@ public class RuntimeTest {
         create = t.translateSqlStatement(pods_to_assign);
         Assert.assertNotNull(create);
 
-        /*
         String pods_with_port_request =
                 "-- Pods with port requests\n" +
                 "create view pods_with_port_requests as\n" +
@@ -796,6 +865,7 @@ public class RuntimeTest {
         create = t.translateSqlStatement(pods_with_port_request);
         Assert.assertNotNull(create);
 
+        /*
         String pod_node_selectors =
                 "-- Pod node selectors\n" +
                 "create view pod_node_selector_matches as\n" +
@@ -939,7 +1009,9 @@ public class RuntimeTest {
             "typedef Tpod_images = Tpod_images{pod_name:string, image_name:string}\n" +
             "typedef Ttmp0 = Ttmp0{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool}\n" +
             "typedef Tbatch_size = Tbatch_size{pendingPodsLimit:signed<64>}\n" +
-            "typedef Ttmp1 = Ttmp1{node_name:string}\n" +
+            "typedef Ttmp1 = Ttmp1{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, host_ip:string, host_port:signed<64>, host_protocol:string}\n" +
+            "typedef Ttmp2 = Ttmp2{controllable__node_name:Option<string>, host_port:signed<64>, host_ip:string, host_protocol:string}\n" +
+            "typedef Ttmp3 = Ttmp3{node_name:string}\n" +
             "\n" +
             "input relation Rnode_info[Tnode_info]\n" +
             "input relation Rpod_info[Tpod_info]\n" +
@@ -962,11 +1034,14 @@ public class RuntimeTest {
             "output relation Rpods_to_assign_no_limit[Ttmp0]\n" +
             "input relation Rbatch_size[Tbatch_size]\n" +
             "output relation Rpods_to_assign[Ttmp0]\n" +
-            "relation Rtmp1[Ttmp1]\n" +
-            "output relation Rnodes_that_have_tolerations[Ttmp1]\n" +
+            "relation Rtmp2[Ttmp2]\n" +
+            "output relation Rpods_with_port_requests[Ttmp2]\n" +
+            "relation Rtmp3[Ttmp3]\n" +
+            "output relation Rnodes_that_have_tolerations[Ttmp3]\n" +
             "Rpods_to_assign_no_limit[v2] :- Rpod_info[v0],unwrapBool(b_and_RN(((v0.status == \"Pending\") and isNull(v0.node_name)), s_eq_NR(v0.schedulerName, \"dcm-scheduler\"))),var v1 = Ttmp0{.pod_name = v0.pod_name,.status = v0.status,.controllable__node_name = v0.node_name,.namespace = v0.namespace,.cpu_request = v0.cpu_request,.memory_request = v0.memory_request,.ephemeral_storage_request = v0.ephemeral_storage_request,.pods_request = v0.pods_request,.owner_name = v0.owner_name,.creation_timestamp = v0.creation_timestamp,.has_node_selector_labels = v0.has_node_selector_labels,.has_pod_affinity_requirements = v0.has_pod_affinity_requirements},var v2 = v1.\n" +
             "Rpods_to_assign[v1] :- Rpods_to_assign_no_limit[v0],var v1 = v0.\n" +
-            "Rnodes_that_have_tolerations[v2] :- Rnode_taints[v0],var v1 = Ttmp1{.node_name = v0.node_name},var v2 = v1.";
+            "Rpods_with_port_requests[v4] :- Rpods_to_assign[v0],Rpod_ports_request[v1],(v1.pod_name == v0.pod_name),true,var v2 = Ttmp1{.pod_name = v0.pod_name,.status = v0.status,.controllable__node_name = v0.controllable__node_name,.namespace = v0.namespace,.cpu_request = v0.cpu_request,.memory_request = v0.memory_request,.ephemeral_storage_request = v0.ephemeral_storage_request,.pods_request = v0.pods_request,.owner_name = v0.owner_name,.creation_timestamp = v0.creation_timestamp,.has_node_selector_labels = v0.has_node_selector_labels,.has_pod_affinity_requirements = v0.has_pod_affinity_requirements,.pod_name0 = v1.pod_name,.host_ip = v1.host_ip,.host_port = v1.host_port,.host_protocol = v1.host_protocol},var v3 = Ttmp2{.controllable__node_name = v0.controllable__node_name,.host_port = v1.host_port,.host_ip = v1.host_ip,.host_protocol = v1.host_protocol},var v4 = v3.\n" +
+            "Rnodes_that_have_tolerations[v2] :- Rnode_taints[v0],var v1 = Ttmp3{.node_name = v0.node_name},var v2 = v1.";
         Assert.assertEquals(expected, p);
     }
 

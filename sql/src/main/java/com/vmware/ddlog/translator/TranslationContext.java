@@ -50,6 +50,10 @@ class TranslationContext {
         this.initializeMaps();
     }
 
+    public DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
+        return this.etv.operationCall(op, left, right, this);
+    }
+
     String getFunction(DDlogEBinOp.BOp op, DDlogType ltype, @Nullable DDlogType rtype) {
         HashMap<String, DDlogEBinOp.BOp> map;
         if (ltype.as(DDlogTBool.class) != null) {
@@ -211,6 +215,23 @@ class TranslationContext {
                 return t.getType();
         }
         return null;
+    }
+
+    DDlogType resolveType(DDlogType type) {
+        if (type instanceof DDlogTUser) {
+            DDlogTUser tu = (DDlogTUser)type;
+            DDlogType result = this.resolveTypeDef(tu);
+            if (result == null)
+                throw new RuntimeException("Cannot resolve type " + tu.getName());
+            return result;
+        }
+        return type;
+    }
+
+    DDlogTUser createTypedef(DDlogTStruct type) {
+        DDlogTypeDef tdef = new DDlogTypeDef(type.getName(), type);
+        this.add(tdef);
+        return new DDlogTUser(tdef.getName(), type.mayBeNull);
     }
 
     @Nullable
