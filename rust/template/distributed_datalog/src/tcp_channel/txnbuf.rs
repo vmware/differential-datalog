@@ -231,12 +231,14 @@ mod tests {
             Message::UpdateList(updates),
             Message::Commit,
             Message::Start,
+            Message::Complete,
         ];
         test(expected, |buffer| {
             buffer.on_start()?;
             buffer.on_updates(Box::new(vec![1, 2].into_iter()))?;
             buffer.on_updates(Box::new(vec![3].into_iter()))?;
             buffer.on_commit()?;
+            buffer.on_completed()?;
 
             buffer.on_start()?;
             buffer.on_updates(Box::new(vec![4, 5, 6].into_iter()))?;
