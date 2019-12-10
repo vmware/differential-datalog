@@ -15,10 +15,16 @@ public class DDlogTInt extends DDlogType {
     private DDlogTInt(boolean mayBeNull) { super(mayBeNull); }
 
     public static DDlogTInt instance = new DDlogTInt(false);
-    public static DDlogTInt instanceWNull = new DDlogTInt(true);
 
     @Override
     public String toString() { return this.wrapOption("bigint"); }
+
+    @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        return new DDlogTInt(mayBeNull);
+    }
 
     @Override
     public boolean equals(Object o) {

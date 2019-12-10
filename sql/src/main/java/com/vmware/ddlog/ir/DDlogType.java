@@ -25,6 +25,11 @@ public abstract class DDlogType implements DDlogIRNode {
         this.mayBeNull = mayBeNull;
     }
 
+    /**
+     * True if the given type is a numeric type.
+     * @param type  Type to analyze.
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     static boolean isNumeric(DDlogType type) {
         return type instanceof DDlogTBit ||
                 type instanceof DDlogTSigned ||
@@ -37,6 +42,11 @@ public abstract class DDlogType implements DDlogIRNode {
         return type;
     }
 
+    /**
+     * Given a set of similar types (which differ only in mayBeNull)
+     * return a type with mayBeNull if any of them has mayBeNull.
+     * @param types  List of types to reduce.
+     */
     public static DDlogType reduceType(List<DDlogType> types) {
         if (types.isEmpty())
             return DDlogTTuple.emptyTupleType;
@@ -64,4 +74,10 @@ public abstract class DDlogType implements DDlogIRNode {
     }
 
     public abstract String toString();
+
+    /**
+     * Return a copy of this type with the mayBeNull bit set to the specified value.
+     * @param mayBeNull  Value for the mayBeNull bit.
+     */
+    public abstract DDlogType setMayBeNull(boolean mayBeNull);
 }

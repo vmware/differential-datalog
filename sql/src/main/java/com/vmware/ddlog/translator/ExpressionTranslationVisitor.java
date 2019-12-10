@@ -27,7 +27,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         String function = context.getFunction(op, left.getType(), right.getType());
         DDlogType type = DDlogType.reduceType(left.getType(), right.getType());
         if (op.isComparison() || op.isBoolean()) {
-            type = type.mayBeNull ? DDlogTBool.instanceWNull : DDlogTBool.instance;
+            type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
         }
         if (function.endsWith("RR"))
             // optimize for the case of no nulls
@@ -209,16 +209,19 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
          return result;
     }
 
-    @SuppressWarnings("unused")
-    private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
+    private DDlogType functionResultType(String function, List<DDlogExpression> args) {
         switch (function) {
             case "substr":
                 return args.get(0).getType();
             case "min":
             case "max":
+            case "avg":
+            case "sum":
                 if (args.size() == 0)
-                    throw new RuntimeException("No arguments for max?");
+                    throw new RuntimeException("No arguments for aggregate?");
                 return args.get(0).getType();
+            case "count":
+                return DDlogTSigned.signed64;
             default:
                 throw new UnsupportedOperationException(function);
         }
@@ -236,7 +239,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             throw new TranslationException("Not yet supported", node);
         String name = TranslationVisitor.convertQualifiedName(node.getName());
         List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
-        DDlogType type = this.functionResultType(name, args, context);
+        DDlogType type = this.functionResultType(name, args);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
         if (someNull)
             name += "_N";

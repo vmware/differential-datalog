@@ -123,14 +123,12 @@ class TranslationContext {
                     DDlogType withNull;
                     if (h.equals(this.stringFunctions)) {
                         raw = DDlogTString.instance;
-                        withNull = DDlogTString.instanceWNull;
                     } else if (op.isBoolean()) {
                         raw = DDlogTBool.instance;
-                        withNull = DDlogTBool.instanceWNull;
                     } else {
                         raw = new DDlogTSigned(64, false);
-                        withNull = new DDlogTSigned(64, true);
                     }
+                    withNull = raw.setMayBeNull(true);
                     DDlogExpression leftMatch = new DDlogEVarDecl("l", raw);
                     DDlogExpression rightMatch = new DDlogEVarDecl("r", raw);
                     if ((i & 1) == 1) {
@@ -163,7 +161,7 @@ class TranslationContext {
                     DDlogFuncArg right = new DDlogFuncArg("right", false, rightType);
                     DDlogType type = DDlogType.reduceType(leftType, rightType);
                     if (op.isComparison()) {
-                        type = type.mayBeNull ? DDlogTBool.instanceWNull : DDlogTBool.instance;
+                        type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
                     }
                     DDlogExpression def;
                     if (i == 0) {

@@ -35,6 +35,13 @@ public class DDlogTTuple extends DDlogType {
     }
 
     @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (mayBeNull)
+            throw new RuntimeException("Nullable tuples not supported");
+        return this;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

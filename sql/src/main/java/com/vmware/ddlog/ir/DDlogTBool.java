@@ -18,11 +18,17 @@ public class DDlogTBool extends DDlogType {
     public String toString() { return this.wrapOption("bool"); }
 
     @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        return new DDlogTBool(mayBeNull);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         return o != null && getClass() == o.getClass();
     }
 
     public static DDlogTBool instance = new DDlogTBool(false);
-    public static DDlogTBool instanceWNull = new DDlogTBool(true);
 }

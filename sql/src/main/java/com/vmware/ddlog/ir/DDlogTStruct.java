@@ -41,6 +41,15 @@ public class DDlogTStruct extends DDlogType {
     }
 
     @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        if (mayBeNull)
+            throw new RuntimeException("Nullable structs not supported");
+        return this;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

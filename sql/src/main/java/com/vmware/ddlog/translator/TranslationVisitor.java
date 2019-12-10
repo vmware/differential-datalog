@@ -15,12 +15,19 @@ import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.util.Linq;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
+    static HashMap<String, String> aggregateFunctions = new HashMap<String, String>();
+
+    static {
+        aggregateFunctions.put("count", "group_count");
+        aggregateFunctions.put("sum", "group_sum");
+        aggregateFunctions.put("avg", "group_avg");
+        aggregateFunctions.put("min", "group_min");
+        aggregateFunctions.put("max", "group_max");
+    }
+
     static String convertQualifiedName(QualifiedName name) {
         return String.join(".", name.getParts());
     }
@@ -106,8 +113,50 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         return result;
     }
 
+    private boolean isAggregateFunction(String functionName) {
+        return aggregateFunctions.containsKey(functionName);
+    }
+
+    /**
+     * True if this expression is a call of an aggregate function.
+     * @param expression  Expression to analyze.
+     * @return            True if the expression is a call to sum, avg, etc.
+     */
+    private boolean isAggregate(Expression expression) {
+        if (!(expression instanceof FunctionCall))
+            return false;
+        FunctionCall fc = (FunctionCall)expression;
+        return this.isAggregateFunction(convertQualifiedName(fc.getName()));
+    }
+
+    /**
+     * True if the select computes an aggregate.
+     * @param select select part of a statement.
+     * @return       True is the select computes an aggregate.  All SelectItems must be aggregates.
+     */
+    private boolean isAggregate(Select select) {
+        boolean foundAggregate = false;
+        boolean foundNonAggregate = false;
+
+        List<SelectItem> items = select.getSelectItems();
+        for (SelectItem s: items) {
+            if (s instanceof AllColumns) {
+                foundNonAggregate = true;
+            } else {
+                SingleColumn sc = (SingleColumn)s;
+                if (this.isAggregate(sc.getExpression()))
+                    foundAggregate = true;
+                else
+                    foundNonAggregate = true;
+            }
+        }
+        if (foundAggregate && foundNonAggregate)
+            throw new TranslationException("SELECT with a mix of aggregates and non-aggregates.", select);
+        return foundAggregate;
+    }
+
     private DDlogIRNode processSelect(RelationRHS relation, Select select, TranslationContext context) {
-        if (!select.isDistinct())
+        if (!select.isDistinct() && !isAggregate(select))
             throw new TranslationException("Only SELECT DISTINCT currently supported", select);
 
         // Special case for SELECT *
@@ -125,7 +174,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<DDlogEStruct.FieldValue> exprList = new ArrayList<DDlogEStruct.FieldValue>();
         for (SelectItem s: items) {
             if (s instanceof AllColumns) {
-                AllColumns ac = (AllColumns)s;
+                // AllColumns ac = (AllColumns)s;
                 // TODO
             } else {
                 SingleColumn sc = (SingleColumn)s;
@@ -168,6 +217,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             throw new TranslationException("ORDER BY clauses not supported", spec);
         if (!spec.getFrom().isPresent())
             throw new TranslationException("FROM clause is required", spec);
+        if (spec.getGroupBy().isPresent())
+            throw new TranslationException("Not yet handled", spec);
         DDlogIRNode source = this.process(spec.getFrom().get(), context);
         if (source == null)
             throw new TranslationException("Not yet handled", spec);
@@ -326,21 +377,20 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     }
 
     private static DDlogType createType(String sqltype, boolean mayBeNull) {
+        DDlogType type = null;
         if (sqltype.equals("boolean")) {
-            if (mayBeNull)
-                return DDlogTBool.instanceWNull;
-            return DDlogTBool.instance;
+            type = DDlogTBool.instance;
         } else if (sqltype.equals("integer")) {
-            return new DDlogTSigned(64, mayBeNull);
+            type = DDlogTSigned.signed64;
         } else if (sqltype.startsWith("varchar")) {
-            if (mayBeNull)
-                return DDlogTString.instanceWNull;
-            return DDlogTString.instance;
+            type = DDlogTString.instance;
         } else if (sqltype.equals("bigint")) {
-            if (mayBeNull)
-                return DDlogTInt.instanceWNull;
-            return DDlogTInt.instance;
+            type = DDlogTInt.instance;
         }
-        throw new RuntimeException("SQL type not yet implemented: " + sqltype);
+        if (type == null)
+            throw new RuntimeException("SQL type not yet implemented: " + sqltype);
+        if (mayBeNull)
+            type = type.setMayBeNull(mayBeNull);
+        return type;
     }
 }

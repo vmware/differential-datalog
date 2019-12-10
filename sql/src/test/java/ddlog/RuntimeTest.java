@@ -193,6 +193,13 @@ public class RuntimeTest {
                 "\"Other\"}}", s);
     }
 
+    //@Test
+    public void testCount() {
+        String query = "create view v1 as SELECT COUNT(*) FROM t1";
+        String program = "";
+        this.testTranslation(query, program);
+    }
+
     @Test
     public void testWhen() {
         String query = "create view v1 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
@@ -207,7 +214,7 @@ public class RuntimeTest {
                         "if (64'sd1 < v0.column1){\n" +
                         "64'sd2} else {\n" +
                         "64'sd3}}},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -224,7 +231,7 @@ public class RuntimeTest {
                 "if unwrapBool(a_lt_RN(64'sd1, v0.column1)){\n" +
                 "64'sd2} else {\n" +
                 "64'sd3}}},var v3 = v2.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -236,7 +243,7 @@ public class RuntimeTest {
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -248,7 +255,7 @@ public class RuntimeTest {
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -260,7 +267,7 @@ public class RuntimeTest {
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -272,7 +279,7 @@ public class RuntimeTest {
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1},var v2 = v1.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -283,7 +290,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -294,7 +301,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],(v0.column1 == v1.column1),true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -305,7 +312,7 @@ public class RuntimeTest {
                 this.relations(true) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],unwrapBool(a_eq_NN(v0.column1, v1.column1)),true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -316,7 +323,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],(true and (v0.column1 == v1.column1)),var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -331,7 +338,7 @@ public class RuntimeTest {
                 "Rv1[v4] :- Rt1[v0],Rt1[v1],(v0.column2 == v1.column2),true," +
                 "var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1,.column20 = v1.column2,.column30 = v1.column3}," +
                 "var v3 = Ttmp1{.column1 = v0.column1,.column3 = v1.column3},var v4 = v3.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -342,7 +349,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -353,7 +360,7 @@ public class RuntimeTest {
                 this.relations(true) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v3 = v2.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -386,7 +393,7 @@ public class RuntimeTest {
                 "Rtmp4[v7],true," +
                 "var v8 = Ttmp5{.column1 = v4.column1,.column2 = v4.column2,.column3 = v4.column3,.a = v4.a,.c = v7.c},Rtmp7[v11],true,var v12 = Ttmp8{.column1 = v8.column1,.column2 = v8.column2,.column3 = v8.column3,.a = v8.a,.c = v8.c,.d = v11.d}," +
                 "var v13 = v12.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     //@Test
@@ -394,7 +401,7 @@ public class RuntimeTest {
         // TODO
         String query = "create view v1 as SELECT DISTINCT MAX(CASE WHEN column2 = 'foo' THEN column1 ELSE 0 END) FROM t1";
         String program = "";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -430,7 +437,7 @@ public class RuntimeTest {
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = substr(v0.column2, 64'sd3, 64'sd5)},var v3 = v2.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -442,7 +449,7 @@ public class RuntimeTest {
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v3] :- Rt1[v0],var v2 = Ttmp0{.col1 = substr_N(v0.column2, 64'sd3, 64'sd5)},var v3 = v2.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -455,7 +462,7 @@ public class RuntimeTest {
                 "relation Rtmp0[Ttmp0]\n" +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -467,7 +474,7 @@ public class RuntimeTest {
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -479,7 +486,7 @@ public class RuntimeTest {
             "relation Rtmp0[Ttmp0]\n" +
             "output relation Rv1[Ttmp0]\n" +
             "Rv1[v2] :- Rt1[v0],var v1 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2},var v2 = v1.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -489,7 +496,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv1[Tt1]\n" +
                 "Rv1[v1] :- Rt1[v0],var v1 = v0.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -499,7 +506,7 @@ public class RuntimeTest {
             this.relations(true) +
             "output relation Rv1[Tt1]\n" +
             "Rv1[v1] :- Rt1[v0],var v1 = v0.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -509,7 +516,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv2[Tt1]\n" +
                 "Rv2[v1] :- Rt1[v0],(v0.column1 == 64'sd10),var v1 = v0.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -519,7 +526,7 @@ public class RuntimeTest {
             this.relations(true) +
             "output relation Rv2[Tt1]\n" +
             "Rv2[v1] :- Rt1[v0],unwrapBool(a_eq_NR(v0.column1, 64'sd10)),var v1 = v0.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -529,7 +536,7 @@ public class RuntimeTest {
                 this.relations(false) +
                 "output relation Rv3[Tt1]\n" +
                 "Rv3[v1] :- Rt1[v0],((v0.column1 == 64'sd10) and (v0.column2 == \"something\")),var v1 = v0.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -539,7 +546,7 @@ public class RuntimeTest {
             this.relations(true) +
             "output relation Rv3[Tt1]\n" +
             "Rv3[v1] :- Rt1[v0],unwrapBool(b_and_NN(a_eq_NR(v0.column1, 64'sd10), s_eq_NR(v0.column2, \"something\"))),var v1 = v0.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test
@@ -551,7 +558,7 @@ public class RuntimeTest {
                 "output relation Rv4[Tt1]\n" +
                 "Rtmp0[v1] :- Rt1[v0],(v0.column1 == 64'sd10),var v1 = v0.\n" +
                 "Rv4[v2] :- Rtmp0[v1],(v1.column2 == \"something\"),var v2 = v1.";
-        testTranslation(query, program);
+        this.testTranslation(query, program);
     }
 
     @Test
@@ -563,7 +570,7 @@ public class RuntimeTest {
             "output relation Rv4[Tt1]\n" +
             "Rtmp0[v1] :- Rt1[v0],unwrapBool(a_eq_NR(v0.column1, 64'sd10)),var v1 = v0.\n" +
             "Rv4[v2] :- Rtmp0[v1],unwrapBool(s_eq_NR(v1.column2, \"something\")),var v2 = v1.";
-        testTranslation(query, program, true);
+        this.testTranslation(query, program, true);
     }
 
     @Test

@@ -13,12 +13,18 @@ package com.vmware.ddlog.ir;
 
 public class DDlogTString extends DDlogType {
     public static DDlogTString instance = new DDlogTString(false);
-    public static DDlogTString instanceWNull = new DDlogTString(true);
 
     private DDlogTString(boolean mayBeNull) { super(mayBeNull); }
 
     @Override
     public String toString() { return this.wrapOption("string"); }
+
+    @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        return new DDlogTString(mayBeNull);
+    }
 
     @Override
     public boolean equals(Object o) {

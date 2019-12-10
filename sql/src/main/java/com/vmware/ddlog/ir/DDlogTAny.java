@@ -20,9 +20,15 @@ public class DDlogTAny extends DDlogType {
     private DDlogTAny() {
         super(true);
     }
+    private DDlogTAny(boolean mayBeNull) { super(mayBeNull); }
 
     @Override
     public String toString() {
         return "*";
+    }
+
+    @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        return new DDlogTAny(mayBeNull);
     }
 }

@@ -45,6 +45,11 @@ public class DDlogTUser extends DDlogType {
     }
 
     @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        return new DDlogTUser(this.name, this.typeArgs, mayBeNull);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

@@ -27,6 +27,11 @@ public class DDlogTBit extends DDlogType {
     }
 
     @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        return new DDlogTBit(this.width, mayBeNull);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

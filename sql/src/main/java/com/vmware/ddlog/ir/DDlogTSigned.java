@@ -15,6 +15,8 @@ import java.util.Objects;
 
 public class DDlogTSigned extends DDlogType {
     private final int width;
+    public static final DDlogTSigned signed32 = new DDlogTSigned(32, false);
+    public static final DDlogTSigned signed64 = new DDlogTSigned(64, false);
 
     public DDlogTSigned(int width, boolean mayBeNull) {
         super(mayBeNull);
@@ -36,4 +38,9 @@ public class DDlogTSigned extends DDlogType {
 
     @Override
     public String toString() { return this.wrapOption("signed<" + this.width + ">"); }
+
+    @Override
+    public DDlogType setMayBeNull(boolean mayBeNull) {
+        return new DDlogTSigned(this.width, mayBeNull);
+    }
 }
