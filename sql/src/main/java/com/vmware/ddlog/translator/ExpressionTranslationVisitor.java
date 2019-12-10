@@ -209,7 +209,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
          return result;
     }
 
-    private DDlogType functionResultType(String function, List<DDlogExpression> args) {
+    @SuppressWarnings("unused")
+    private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
             case "substr":
                 return args.get(0).getType();
@@ -239,7 +240,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             throw new TranslationException("Not yet supported", node);
         String name = TranslationVisitor.convertQualifiedName(node.getName());
         List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
-        DDlogType type = this.functionResultType(name, args);
+        DDlogType type = this.functionResultType(name, args, context);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
         if (someNull)
             name += "_N";
