@@ -1,0 +1,3 @@
+input relation R(v: bit<16>)
+output relation O(v: bit<16>)
+O(v) :- R(v).
