@@ -7,6 +7,7 @@ import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
+import ddlogapi.*;
 import org.h2.store.fs.FileUtils;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -98,9 +99,44 @@ public class RuntimeTest {
         return t;
     }
 
+    @Test
+    public void testDynamicLoading() {
+        try {
+            String ddlogProgram = "input relation R(v: bit<16>)\n" +
+                    "output relation O(v: bit<16>)\n" +
+                    "O(v) :- R(v).";
+            String filename = "program.dl";
+            File file = new File(filename);
+            file.deleteOnExit();
+            BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+            bw.write(ddlogProgram);
+            bw.close();
+            DDlogAPI api = Translator.compileAndLoad(file.getName(), "..");
+            if (api == null)
+                throw new RuntimeException("Could not load program");
+
+            DDlogRecord field = new DDlogRecord(10);
+            DDlogRecord[] fields = { field };
+            DDlogRecord record = DDlogRecord.makeStruct("R", fields);
+            int id = api.getTableId("R");
+            DDlogRecCommand command = new DDlogRecCommand(
+                    DDlogCommand.Kind.Insert, id, record);
+            DDlogRecCommand[] ca = new DDlogRecCommand[1];
+            ca[0] = command;
+
+            System.err.println("Executing " + command.toString());
+            api.transactionStart();
+            api.applyUpdates(ca);
+            api.transactionCommitDumpChanges(s -> Assert.assertEquals("From 0 Insert O{10}", s.toString()));
+        } catch (IOException | DDlogException | NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void compiledDDlog(String program) {
         try {
             File tmp = File.createTempFile("program", ".dl");
+            tmp.deleteOnExit();
             BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
             bw.write(program);
             bw.close();
@@ -114,8 +150,6 @@ public class RuntimeTest {
                 System.out.println(program);
             }
             Assert.assertEquals(0, exitCode);
-            boolean b = tmp.delete();
-            Assert.assertTrue(b);
             String basename = tmp.getName();
             basename = basename.substring(0, basename.lastIndexOf('.'));
             String tempDir = System.getProperty("java.io.tmpdir");

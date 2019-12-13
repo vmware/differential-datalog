@@ -35,6 +35,11 @@
       <artifactId>presto-parser</artifactId>
       <version>0.228</version>
     </dependency>
+    <dependency>
+      <groupId>ddlog</groupId>
+      <artifactId>ddlogapi</artifactId>
+      <version>0.1</version>
+    </dependency>
 
     <!-- For testing -->
     <dependency>

@@ -11,6 +11,8 @@ import java.io.*;
  * DDlog programs.
  */
 public class DDlogAPI {
+    static boolean nativeLibraryLoaded = false;
+
     /**
      * The C ddlog API
      */
@@ -126,7 +128,10 @@ public class DDlogAPI {
      */
     public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
             throws DDlogException {
-        System.loadLibrary("ddlogapi");
+        if (!nativeLibraryLoaded) {
+            System.loadLibrary("ddlogapi");
+            nativeLibraryLoaded = true;
+        }
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
@@ -409,108 +414,5 @@ public class DDlogAPI {
         if (new_cbinfo != 0) {
             logCBInfo.put(module, new_cbinfo);
         }
-    }
-
-    /**
-     * Run an external process by executing the specified command.
-     * @param commands        Command and arguments.
-     * @param workdirectory   If not null the working directory.
-     * @return                The exit code of the process.  On error prints
-     *                        the process stderr on stderr.
-     */
-    static int runProcess(List<String> commands, String workdirectory) {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(commands);
-            pb.redirectErrorStream(true);
-            if (workdirectory != null) {
-                pb.directory(new File(workdirectory));
-            }
-            Process process = pb.start();
-
-            StringBuilder out = new StringBuilder();
-            BufferedReader br = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String line = null;
-            while ((line = br.readLine()) != null) {
-                out.append(line).append('\n');
-            }
-
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                System.err.println("Error running " + String.join(" ", commands));
-                System.err.println(out.toString());
-            }
-            return exitCode;
-        } catch (Exception ex) {
-            System.err.println("Error running " + String.join(" ", commands));
-            System.err.println(ex.getMessage());
-            return 1;
-        }
-    }
-
-    /**
-     * Compile and load a ddlog program stored in a file.
-     * @param ddlogFile  Pathname to the ddlog program.
-     * @param ddlogInstallationPath  Path to DDLog installation.
-     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
-     * @return           A DDlogAPI which can be used to access the program.
-     *                   On error returns null and prints an error on stderr.
-     */
-    public static DDlogAPI compileAndLoad(
-        String ddlogFile,
-        String ddlogInstallationPath,
-        String... ddlogLibraryPath) throws DDlogException {
-        List<String> command = new ArrayList<String>();
-        // Run DDlog compiler
-        command.add("ddlog");
-        command.add("-i");
-        command.add(ddlogFile);
-        for (String s: ddlogLibraryPath) {
-            command.add("-L");
-            command.add(s);
-        }
-        command.add("-L");
-        command.add(ddlogInstallationPath + "/lib");
-        int exitCode = runProcess(command, null);
-        if (exitCode != 0)
-            return null;
-
-        // Run Rust compiler
-        command.clear();
-        command.add("cargo");
-        command.add("build");
-        command.add("--release");
-        int dot = ddlogFile.indexOf('.');
-        String rustDir = ddlogFile;
-        if (dot >= 0)
-            rustDir = ddlogFile.substring(0, dot);
-        rustDir += "_ddlog";
-        exitCode = runProcess(command, rustDir);
-        if (exitCode != 0)
-            return null;
-
-        // Run C compiler
-        command.clear();
-        command.add("cc");
-        command.add("-shared");
-        command.add("-fPIC");
-        String javaHome = System.getenv("JAVA_HOME");
-        String os = System.getProperty("os.name").toLowerCase();
-        String shlibext = "so";
-        if (os.equals("darwin"))
-            shlibext = "dynlib";
-        command.add("-I" + javaHome + "/include");
-        command.add("-I" + javaHome + "/include/" + os);
-        command.add("-I" + ddlogInstallationPath + "/rust/template");
-        command.add("-I" + ddlogInstallationPath + "/lib");
-        command.add(ddlogInstallationPath + "/java/ddlogapi.c");
-        command.add("-L" + rustDir + "/target/release/");
-        command.add("-l" + rustDir);
-        command.add("-o");
-        command.add("libddlogapi." + shlibext);
-        exitCode = runProcess(command, null);
-        if (exitCode != 0)
-            return null;
-
-        return new DDlogAPI(1, null, false);
     }
 }
