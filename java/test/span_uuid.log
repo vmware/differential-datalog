@@ -1,5 +1,0 @@
-Exception in thread "main" java.lang.UnsatisfiedLinkError: ddlogapi.DDlogAPI.ddlog_log_replace_callback(IJLjava/util/function/ObjIntConsumer;I)J
-	at ddlogapi.DDlogAPI.ddlog_log_replace_callback(Native Method)
-	at ddlogapi.DDlogAPI.logSetCallback(DDlogAPI.java:407)
-	at SpanTest$SpanParser.<init>(SpanTest.java:127)
-	at SpanTest.main(SpanTest.java:427)
