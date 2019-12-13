@@ -64,9 +64,7 @@ changes to the relational schema or rules require re-compilation.
 - DDlog [language reference](doc/language_reference/language_reference.md).
 - [Instructions](doc/testing/testing.md) for writing and testing your own Datalog programs.
 - [How to](doc/java_api.md) use DDlog from Java.
-
-[Differential Datalog](doc/datalog2.0-workshop/paper.pdf), Leonid Ryzhyk and Mihai Budiu
-Datalog 2.0, Philadelphia, PA, June 4-5, 2019.
+- [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf).
 
 ## Installation
 
