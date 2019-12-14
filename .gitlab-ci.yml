@@ -107,6 +107,8 @@ test-java1:
 
 test-flatbuf:
     extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
     script:
         - (cd java/test_flatbuf1 && ./run.sh)
 
