@@ -1,6 +1,10 @@
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::thread::park;
 
+use env_logger::init;
+use lazy_static::lazy_static;
+use log::debug;
 use log::info;
 use log::log_enabled;
 use log::Level::Info;
@@ -9,11 +13,19 @@ use structopt::StructOpt;
 
 use distributed_datalog::instantiate;
 use distributed_datalog::simple_assign;
+use distributed_datalog::zookeeper::connect;
+use distributed_datalog::zookeeper::renew_watch;
+use distributed_datalog::zookeeper::WatchedEvent;
+use distributed_datalog::zookeeper::ZooKeeper;
 use distributed_datalog::Addr;
 use distributed_datalog::Member;
 use distributed_datalog::Members;
+use distributed_datalog::ReadConfig;
+use distributed_datalog::ReadMembers;
+use distributed_datalog::Realization;
 
 use server_api_ddlog::api::HDDlog;
+use server_api_ddlog::Value;
 use server_api_test::config;
 
 #[derive(StructOpt, Debug)]
@@ -45,6 +57,18 @@ enum Opts {
         /// into.
         #[structopt(long, default_value = "output.dump", parse(from_os_str))]
         output: PathBuf,
+    },
+
+    /// Read the configuration from a ZooKeeper instance.
+    #[structopt(name = "zookeeper")]
+    ZooKeeper {
+        /// The address of the current member being instantiated.
+        #[structopt(long)]
+        member: Addr,
+
+        /// The addresses of the nodes making up the ZooKeeper cluster.
+        #[structopt(long)]
+        nodes: Vec<String>,
     },
 }
 
@@ -90,7 +114,79 @@ fn manual(
     Ok(())
 }
 
+fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<Value>>, String> {
+    let members = zookeeper.members()?;
+    let sys_cfg = zookeeper.config()?;
+
+    let assignment = simple_assign(sys_cfg.keys(), members.iter())
+        .ok_or_else(|| format!("failed to find an node:member assignment"))?;
+
+    let realization = instantiate::<HDDlog>(sys_cfg, member, &assignment)?;
+    Ok(realization)
+}
+
+fn reconfig_state(member: &Addr, state: &Mutex<State>) -> Result<(), String> {
+    info!("Reconfiguring...");
+    let mut guard = state.lock().unwrap();
+    // Tear down the old realization before re-instantiating
+    // everything.
+    drop(guard.realization.take());
+
+    if let Some(zookeeper) = &mut guard.zookeeper {
+        // It is not clear why, but we seemingly need to "renew" the
+        // watch we already have...
+        renew_watch(zookeeper)?;
+
+        match reconfigure(&member, zookeeper) {
+            Ok(new) => {
+                guard.realization.replace(new);
+                Ok(())
+            }
+            Err(e) => Err(format!("failed to reconfigure: {}", e)),
+        }
+    } else {
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+struct State {
+    zookeeper: Option<ZooKeeper>,
+    realization: Option<Vec<Realization<Value>>>,
+}
+
+impl State {
+    const fn new() -> Self {
+        Self {
+            zookeeper: None,
+            realization: None,
+        }
+    }
+}
+
+fn zookeeper(member: Addr, nodes: Vec<String>) -> Result<(), String> {
+    lazy_static! {
+        static ref STATE: Mutex<State> = Mutex::new(State::new());
+    }
+
+    let watch = move |event: WatchedEvent| {
+        debug!("Watch event: {:?}", event);
+        if event.path.is_some() {
+            let _ = reconfig_state(&member, &STATE);
+        }
+    };
+    let zookeeper = connect(nodes.iter(), watch)?;
+    STATE.lock().unwrap().zookeeper = Some(zookeeper);
+
+    reconfig_state(&member, &STATE)?;
+    println!("Configuration is running. Stop with Ctrl-C.");
+    park();
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
+    init();
+
     let opts = Opts::from_args();
     match opts {
         Opts::Manual {
@@ -100,5 +196,6 @@ fn main() -> Result<(), String> {
             input2,
             output,
         } => manual(member, members, input1, input2, output),
+        Opts::ZooKeeper { member, nodes } => zookeeper(member, nodes),
     }
 }
