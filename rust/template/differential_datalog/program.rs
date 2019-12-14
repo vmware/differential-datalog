@@ -1422,10 +1422,10 @@ impl<V: Val> Program<V> {
                                             },
                                             Update::DeleteKey{..} => {
                                                 // workers don't know about keys
-                                                Err("DeleteKey command received by worker thread".to_string())?;
+                                                return Err("DeleteKey command received by worker thread".to_string());
                                             },
                                             Update::Modify{..} => {
-                                                Err("Modify command received by worker thread".to_string())?
+                                                return Err("Modify command received by worker thread".to_string());
                                             }
                                         }
                                     };
@@ -1488,7 +1488,7 @@ impl<V: Val> Program<V> {
                                         Self::handle_query(&mut traces, &reply_send, arrid, key)?;
                                     },
                                     Ok(msg) => {
-                                        Err(format!("Worker {} received unexpected message: {:?}", worker_index, msg))?;
+                                        return Err(format!("Worker {} received unexpected message: {:?}", worker_index, msg));
                                     },
                                     Err(mpsc::TryRecvError::Empty) => {
                                         /* Command channel empty: use idle time to work on garbage collection. */
@@ -2299,10 +2299,10 @@ impl<V: Val> RunningProgram<V> {
                     unknown = true;
                 }
                 repl => {
-                    Err(format!(
+                    return Err(format!(
                         "query_arrangement: unexpected reply from worker {}: {:?}",
                         worker_index, repl
-                    ))?;
+                    ));
                 }
             }
         }
