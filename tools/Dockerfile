@@ -18,6 +18,7 @@ RUN apt-get update &&   \
     libtool             \
     libssl-dev          \
     time                \
+    zookeeper           \
     libgoogle-perftools-dev
 
 # Install haskell stack
