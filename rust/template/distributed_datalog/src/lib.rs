@@ -50,6 +50,7 @@
 mod assign;
 mod instantiate;
 mod observe;
+mod read_config;
 mod schema;
 mod server;
 mod tcp_channel;
@@ -63,7 +64,11 @@ pub mod sinks;
 /// A module comprising sources to feed data into a computation.
 pub mod sources;
 
+/// A module providing functionality for using d3log with ZooKeeper.
+pub mod zookeeper;
+
 pub use instantiate::instantiate;
+pub use instantiate::Realization;
 pub use observe::Observable;
 pub use observe::ObservableBox;
 pub use observe::Observer;
@@ -71,6 +76,8 @@ pub use observe::ObserverBox;
 pub use observe::OptionalObserver;
 pub use observe::SharedObserver;
 pub use observe::UpdatesObservable;
+pub use read_config::ReadConfig;
+pub use read_config::ReadMembers;
 pub use schema::Addr;
 pub use schema::Member;
 pub use schema::Members;
