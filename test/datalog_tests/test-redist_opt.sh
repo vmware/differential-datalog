@@ -74,6 +74,19 @@ run_test() {
     diff -q redist_opt.dump.expected redist_opt.dump
 }
 
+run_test 1 1 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected"
+run_test 1 1 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 10
+run_test 1 1 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 100
+
+run_test 1 2 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected"
+run_test 1 2 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 10
+run_test 1 2 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 100
+run_test 1 2 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 1000
+run_test 1 2 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 100000
+
+run_test 1 4 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected"
+run_test 1 4 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 10
+run_test 1 4 "redist_opt-test-data/query2.dat" "redist_opt-test-data/query2.dump.expected" 100
 run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected"
 run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
 run_test 5 1 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
@@ -90,17 +103,3 @@ run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist
 run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 10
 run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100
 run_test 3 40 "redist_opt-test-data/redist_opt.dat" "redist_opt-test-data/redist_opt.dump.expected" 100000
-
-run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
-run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
-run_test 1 1 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
-
-run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
-run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
-run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100
-run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 1000
-run_test 1 2 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100000
-
-run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected"
-run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 10
-run_test 1 4 "redist_opt-test-data/query.dat" "redist_opt-test-data/query.dump.expected" 100

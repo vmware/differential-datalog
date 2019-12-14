@@ -356,6 +356,61 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
                                             size_t n);
 
 /*
+ * Perform a query selialized in a flatbuf; return result in another flatbuf.
+ *
+ * The FlatBuffer schema is auto-generated from DDlog code and is stored in
+ * `flatbuf/flatbuf.rs`.
+ *
+ * `buf` - pointer to FlatBuffer of size `n` containing the query.
+ *
+ * The following values returned by the function describe the flatbuffer
+ * containing response to the query.
+ * `resbuf` - address where the function will write the pointer to the reply
+ * flatbuf.
+ * `resbuf_size` - address to store the size of the generated flatbuf.
+ * `resbuf_capacity` - address to store generated flatbuf capacity.
+ * `resbuf_offset` - address to store data offset inside the returned buffer.
+ *
+ * On success, returns `0`. On error, returns a negative value and
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ */
+extern int ddlog_query_index_from_flatbuf(ddlog_prog prog,
+                                          const unsigned char *buf,
+                                          size_t n,
+                                          unsigned char ** resbuf,
+                                          size_t* resbuf_size,
+                                          size_t* resbuf_capacity,
+                                          size_t* resbuf_offset);
+
+/*
+ * Dump all values in an index to a flatbuf.
+ *
+ * The FlatBuffer schema is auto-generated from DDlog code and is stored in
+ * `flatbuf/flatbuf.rs`.
+ *
+ * `idxid` - id of the index to dump.
+ *
+ * The following values returned by the function describe the flatbuffer
+ * containing response to the query.
+ * `resbuf` - address where the function will write the pointer to the reply
+ * flatbuf.
+ * `resbuf_size` - address to store the size of the generated flatbuf.
+ * `resbuf_capacity` - address to store generated flatbuf capacity.
+ * `resbuf_offset` - address to store data offset inside the returned buffer.
+ *
+ * On success, returns `0`. On error, returns a negative value and
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ */
+extern int ddlog_dump_index_to_flatbuf(ddlog_prog prog,
+                                       size_t idxid,
+                                       unsigned char ** resbuf,
+                                       size_t* resbuf_size,
+                                       size_t* resbuf_capacity,
+                                       size_t* resbuf_offset);
+
+/*
  * Remove all records from an input relation.
  *
  * Fails if there is no transaction in progress.

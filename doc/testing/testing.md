@@ -72,6 +72,8 @@ outputs.
 | `timestamp;`                   |                                                  | print current time in ns since some unspecified epoch                  |
 | `dump;`                        |                                                  | dump the content of all relations                                      |
 | `dump <relation>;`             | `dump Rel1;`                                     | dump the content of an individual relation                             |
+| `query_index <index>(<args>);` | `query_index Edge_by_from(100);`                 | dump all values in an indexed relation with the given key              |
+| `dump_index <index>;`          | `dump_index Edge_by_from;`                       | dump all values in an indexed relation                                 |
 | `echo <text>;`                 | `echo Hello world;`                              | copy arbitrary text to stdout                                          |
 | `insert <record>;`             | `insert Rel1(1,true,"foo");`                     | insert record to relation Rel1                                         |
 |                                | `insert Rel1(.arg2=true,.arg1=1, .arg3="foo");`  | as above, but uses named rather than positional arguments              |

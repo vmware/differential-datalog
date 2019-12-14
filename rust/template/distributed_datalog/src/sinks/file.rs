@@ -89,6 +89,7 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
+    use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::Record;
     use differential_datalog::record::RelIdentifier;
@@ -105,6 +106,10 @@ mod tests {
                 1 => Some("test_rel"),
                 _ => panic!("unexpected RelId {}", rel_id),
             }
+        }
+
+        fn indexid2name(idx_id: IdxId) -> Option<&'static str> {
+            panic!("unexpected IdxId {}", idx_id)
         }
 
         fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {

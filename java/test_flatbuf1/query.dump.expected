@@ -1,0 +1,411 @@
+Query CI_by_c[0]:
+Query CI_by_c[8]:
+CI{8}
+Query DI_by_d[0]:
+Query DI_by_d[1000]:
+DI{1000}
+Query DI_by_none[]:
+DI{-32768}
+DI{-5}
+DI{-3}
+DI{-2}
+DI{-1}
+DI{5}
+DI{1000}
+DI{32767}
+Query EI_by_e[-1]:
+EI{-1}
+Query EO_by_e[-1]:
+Query FI_by_s["α,"]:
+Query FI_by_s["string"]:
+FI{"string"}
+Query GI_by_d[-100]:
+Query GI_by_d[100]:
+GI{100}
+Query HI_by_d[0ABACABA0ABACABA]:
+HI{773153186440202938}
+Query II_by_d[7]:
+II{7}
+Query JI_by_0[true]:
+JI{(true, 10, "string")}
+Query JI_by_1[10]:
+JI{(true, 10, "string")}
+Query JI_by_2["string"]:
+JI{(true, 10, "string")}
+Query JI_by_01[true, 10]:
+JI{(true, 10, "string")}
+Query JI_by_01[false, 10]:
+Query JI_by_02[true, "string"]:
+JI{(true, 10, "string")}
+Query JI_by_12[10, "string"]:
+JI{(true, 10, "string")}
+Query JI_by_012[true, 10, "string"]:
+JI{(true, 10, "string")}
+Query JI_by_all[true, 10, "string"]:
+JI{(true, 10, "string")}
+Query JI_by_self[true, 10, "string"]:
+JI{(true, 10, "string")}
+Query JI_by_10[10, true]:
+JI{(true, 10, "string")}
+Query KI_by_01[false, 9]:
+KI{(false, 9, "text")}
+Query KI_by_all[false, 9, "text"]:
+KI{(false, 9, "text")}
+Query LI_by_01[true, -1]:
+(true, 255, "something")
+Query LI_by_all[true, -1, "something"]:
+(true, 255, "something")
+Query L0I[true]:
+Query L0I[false]:
+L0I{false,254,"else"}
+Query MI_by_v[true, false, true]:
+MI{[true, false, true]}
+Query NI_by_v[(true,-1,"check"), (false,1,"fails")]:
+NI{[(true, 255, "check"), (false, 1, "fails")]}
+Query OI_by_v[[false,false],[true, true]]:
+OI{[[false, false], [true, true]]}
+Query PI1_by_s[-2, 3, 2, 3]:
+PI1{[2, 3, 254]}
+Query PI2_by_s[10000, 3, -2, 3]:
+PI2{[3, 10000, 65534]}
+Query PI3_by_s[0xffffffff, 3, -2, 3]:
+PI3{[3, 4294967294, 4294967295]}
+Query PI4_by_s[2, 3, 2, 3]:
+PI4{[2, 3]}
+Query PI4_by_none[]:
+PI4{[2, 3]}
+Query PI4_by_self[2, 3, 2, 3]:
+PI4{[2, 3]}
+Query PI5_by_s[0xffffffffffffff, 3, 2, 3]:
+PI5{[2, 3, 72057594037927935]}
+Query QI_by_m[(2=>"here", 3=>"there"]:
+QI{{2=>"here", 3=>"there"}}
+Query RI_by_refm[2]:
+RI{2}
+Query RI_by_m[2]:
+RI{2}
+Query SI_by_m["s"]:
+SI{C{"s"}}
+Query SI_by_x["s"]:
+SI{C{"s"}}
+Query TI_by_m[10]:
+TI{std_Some{10}}
+Query TI_by_some[10]:
+TI{std_Some{10}}
+Query TI_by_none[]:
+TI{std_None{}}
+Query UI_by_x["a"]:
+A{"a"}
+Query UI_by_b[false]:
+B{false}
+Query UI_by_t[(false, 2, "zz")]:
+D{(false, 2, "zz")}
+Query UI_by_t1[2]:
+D{(false, 2, "zz")}
+Query VI_by_a[false]:
+VI{false,A{"aa"}}
+VI{false,D{(false, 2, "string")}}
+Query VI_by_t1[2]:
+VI{false,D{(false, 2, "string")}}
+Query WI_by_t2["foo"]:
+Query WI_by_t[(false, 2, "string")]:
+Query XI_by_m[A{"aa"}, B{false}, D{(false,2,"string")}]:
+XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
+Query YI_by_v[...]:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Query YI_by_none[]:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Query YI_by_self[...]:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Query ZI_by_d[0]:
+Query ZI0_by_self["Привіт!"]:
+"Привіт!"
+Query ZI1_by_self[false]:
+false
+Query ZI1_by_true[]:
+true
+Query ZI2_by_self[1000]:
+1000
+Query ZI2_by_const[]:
+1000
+Query ZI3_by_self[...]:
+A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+Query ZI3_by_const[]:
+A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+Query ZI4_by_self[...]:
+["Foo
+", "	bar"]
+Query ZI5_by_self[...]:
+{"key1"=>B{false}, "key2"=>A{"val2"}}
+Query ZI6_by_self["ZI6"]:
+std_Some{"ZI6"}
+Query ZI6_by_none[]:
+std_None{}
+Query ZI7_by_self["♛"]:
+"♛"
+Query ZI7_by_val["ZI7"]:
+"ZI7"
+Query ZI8_by_self[100]:
+100
+Query ZI9_by_self[100]:
+100
+Query ZI9_by_refval[100]:
+100
+Query ZI9_by_val[100]:
+100
+Query ZI9_by_const[]:
+100
+Query ZI10_by_self["Ref<IString>"]:
+"Ref<IString>"
+Query ZI11_by_self["val2"=>"v2"]:
+{A{"val2"}=>"v2"}
+Query ZI12_by_self[..]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_0["ZI12"]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_1[1000000]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_2[0,0,1]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_3[...]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_30[0x10]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI12_by_31[...]:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Query ZI13_by_f0[...]:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Query ZI13_by_f1[...]:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Query ZI13_by_f2[...]:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Query ZI13_by_t2[...]:
+Query ZI14_by_self[...]:
+ZI14{First{"string"}}
+Query ZI14_by_a["string"]:
+ZI14{First{"string"}}
+Query ZI14_by_b[5]:
+ZI14{Second{5}}
+Query ZI15_by_a["Or_string"]:
+ZI15{OrFirst{F{"Or_string"}}}
+Query module_ZI16_by_x["zi16"]:
+module_ZI16{"zi16"}
+Query module_ZI18_by_0[-1]:
+module_ZI18{(4294967295, "ZZZ")}
+Query module_ZI19_by_1["zi19"]:
+(4294967293, "zi19")
+Query ZI20_by_0[-2]:
+ZI20{(4294967294, "YYY")}
+Query ZI21_by_m[13]:
+ZI21{13}
+Dump CI_by_c:
+CI{8}
+Dump DI_by_d:
+DI{-32768}
+DI{-5}
+DI{-3}
+DI{-2}
+DI{-1}
+DI{5}
+DI{1000}
+DI{32767}
+Dump DI_by_none:
+DI{-32768}
+DI{-5}
+DI{-3}
+DI{-2}
+DI{-1}
+DI{5}
+DI{1000}
+DI{32767}
+Dump EI_by_e:
+EI{-1}
+Dump EO_by_e:
+Dump FI_by_s:
+FI{"string"}
+Dump GI_by_d:
+GI{100}
+Dump HI_by_d:
+HI{773153186440202938}
+Dump II_by_d:
+II{7}
+Dump JI_by_0:
+JI{(true, 10, "string")}
+Dump JI_by_1:
+JI{(true, 10, "string")}
+Dump JI_by_2:
+JI{(true, 10, "string")}
+Dump JI_by_01:
+JI{(true, 10, "string")}
+Dump JI_by_02:
+JI{(true, 10, "string")}
+Dump JI_by_12:
+JI{(true, 10, "string")}
+Dump JI_by_012:
+JI{(true, 10, "string")}
+Dump JI_by_all:
+JI{(true, 10, "string")}
+Dump JI_by_self:
+JI{(true, 10, "string")}
+Dump JI_by_10:
+JI{(true, 10, "string")}
+Dump KI_by_01:
+KI{(false, 9, "text")}
+Dump KI_by_all:
+KI{(false, 9, "text")}
+Dump LI_by_01:
+(true, 255, "something")
+Dump LI_by_all:
+(true, 255, "something")
+Dump L0I:
+L0I{false,254,"else"}
+Dump MI_by_v:
+MI{[true, false, true]}
+Dump NI_by_v:
+NI{[(true, 255, "check"), (false, 1, "fails")]}
+Dump OI_by_v:
+OI{[[false, false], [true, true]]}
+Dump PI1_by_s:
+PI1{[2, 3, 254]}
+Dump PI2_by_s:
+PI2{[3, 10000, 65534]}
+Dump PI3_by_s:
+PI3{[3, 4294967294, 4294967295]}
+Dump PI4_by_s:
+PI4{[2, 3]}
+Dump PI4_by_none:
+PI4{[2, 3]}
+Dump PI4_by_self:
+PI4{[2, 3]}
+Dump PI5_by_s:
+PI5{[2, 3, 72057594037927935]}
+Dump QI_by_m:
+QI{{2=>"here", 3=>"there"}}
+Dump RI_by_refm:
+RI{2}
+Dump RI_by_m:
+RI{2}
+Dump SI_by_m:
+SI{C{"s"}}
+Dump SI_by_x:
+SI{C{"s"}}
+Dump TI_by_m:
+TI{std_Some{10}}
+TI{std_None{}}
+Dump TI_by_some:
+TI{std_Some{10}}
+Dump TI_by_none:
+TI{std_None{}}
+Dump UI_by_x:
+A{"a"}
+Dump UI_by_b:
+B{false}
+Dump UI_by_t:
+D{(false, 2, "zz")}
+Dump UI_by_t1:
+D{(false, 2, "zz")}
+Dump VI_by_a:
+VI{false,A{"aa"}}
+VI{false,D{(false, 2, "string")}}
+VI{true,B{false}}
+Dump VI_by_t1:
+VI{false,D{(false, 2, "string")}}
+Dump WI_by_t2:
+Dump WI_by_t:
+Dump XI_by_m:
+XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
+Dump YI_by_v:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Dump YI_by_none:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Dump YI_by_self:
+YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+Dump ZI_by_d:
+HI{1234566788901239813761283}
+Dump ZI0_by_self:
+"Hello, world!"
+"Привіт!"
+Dump ZI1_by_self:
+false
+true
+Dump ZI1_by_true:
+true
+Dump ZI2_by_self:
+0
+1000
+Dump ZI2_by_const:
+1000
+Dump ZI3_by_self:
+A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+Dump ZI3_by_const:
+A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}
+Dump ZI4_by_self:
+["Foo
+", "	bar"]
+Dump ZI5_by_self:
+{"key1"=>B{false}, "key2"=>A{"val2"}}
+Dump ZI6_by_self:
+std_Some{"ZI6"}
+std_None{}
+Dump ZI6_by_none:
+std_None{}
+Dump ZI7_by_self:
+"ZI7"
+"♛"
+Dump ZI7_by_val:
+"ZI7"
+"♛"
+Dump ZI8_by_self:
+100
+Dump ZI9_by_self:
+100
+Dump ZI9_by_refval:
+100
+Dump ZI9_by_val:
+100
+Dump ZI9_by_const:
+100
+Dump ZI10_by_self:
+"Ref<IString>"
+Dump ZI11_by_self:
+{A{"val2"}=>"v2"}
+Dump ZI12_by_self:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_0:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_1:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_2:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_3:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_30:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI12_by_31:
+("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
+Dump ZI13_by_f0:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Dump ZI13_by_f1:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Dump ZI13_by_f2:
+Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
+Dump ZI13_by_t2:
+Dump ZI14_by_self:
+ZI14{First{"string"}}
+ZI14{Second{5}}
+Dump ZI14_by_a:
+ZI14{First{"string"}}
+Dump ZI14_by_b:
+ZI14{Second{5}}
+Dump ZI15_by_a:
+ZI15{OrFirst{F{"Or_string"}}}
+Dump module_ZI16_by_x:
+module_ZI16{"zi16"}
+Dump module_ZI18_by_0:
+module_ZI18{(4294967295, "ZZZ")}
+Dump module_ZI19_by_1:
+(4294967293, "zi19")
+Dump ZI20_by_0:
+ZI20{(4294967294, "YYY")}
+Dump ZI21_by_m:
+ZI21{13}

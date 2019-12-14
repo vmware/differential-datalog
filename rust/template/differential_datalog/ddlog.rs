@@ -3,11 +3,13 @@ use std::iter::Iterator;
 use std::ops::Deref;
 
 use crate::callback::Callback;
+use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;
 use crate::program::Val;
 use crate::record::UpdCmd;
 use crate::valmap::DeltaMap;
+use std::collections::btree_set::BTreeSet;
 
 /// Convert to and from values/objects of a DDlog program.
 pub trait DDlogConvert: Debug {
@@ -15,6 +17,9 @@ pub trait DDlogConvert: Debug {
 
     /// Convert a `RelId` into its symbolic name.
     fn relid2name(rel_id: RelId) -> Option<&'static str>;
+
+    /// Convert a `IdxId` into its symbolic name.
+    fn indexid2name(idx_id: IdxId) -> Option<&'static str>;
 
     /// Convert an `UpdCmd` into an `Update`.
     fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String>;
@@ -62,6 +67,16 @@ pub trait DDlog: Debug {
     /// representation
     #[cfg(feature = "flatbuf")]
     fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String>;
+
+    /// Query index.  Returns all values associated with the given key in the index.
+    fn query_index(&self, index: IdxId, key: Self::Value) -> Result<BTreeSet<Self::Value>, String>;
+
+    /// Similar to `query_index`, but extracts query from a flatbuffer.
+    #[cfg(feature = "flatbuf")]
+    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<Self::Value>, String>;
+
+    /// Dump all values in an index.
+    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<Self::Value>, String>;
 
     /// Stop the program.
     fn stop(&mut self) -> Result<(), String>;

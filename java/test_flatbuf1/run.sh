@@ -9,7 +9,8 @@ compile flatbufTest.dl Test.java release
 java -Djava.library.path=. Test
 diff fb.dump rec.dump
 diff fb.dump fb.dump.expected
+diff query.dump query.dump.expected
 cleanup
-rm fb.dump rec.dump replay.dat
+rm fb.dump rec.dump
 # Additional cleanup
 # rm -rf flatbufTest_ddlog

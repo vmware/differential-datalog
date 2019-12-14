@@ -1,65 +1,207 @@
 import intern
 
 input relation BI(b: bool)
+index BI_by_b(b: bool) on BI(b)
+
 input relation CI(c: bit<32>)
+index CI_by_c(c: bit<32>) on CI(c)
+
 input relation DI(d: signed<16>)
+index DI_by_d(d: signed<16>) on DI(d)
+index DI_by_none() on DI()
+
 input relation EI(e: bigint)
+index EI_by_e(e: bigint) on EI(e)
+
 output relation EO(e: bigint)
+index EO_by_e(e: bigint) on EO(e)
+
 input relation FI(s: string)
+index FI_by_s(s: string) on FI(s)
+
 input relation GI(d: bit<64>)
+index GI_by_d(d: bit<64>) on GI(d)
+
 input relation HI(d: bit<128>)
+index HI_by_d(d: bit<128>) on HI(d)
+
 input relation II(d: bit<12>)
+index II_by_d(d: bit<12>) on II(d)
+
 typedef tuple = (bool, bit<8>, string)
 input relation JI(a: (bool, bit<8>, string))
+index JI_by_0(x: bool) on JI((x,_,_))
+index JI_by_1(x: bit<8>) on JI((_,x,_))
+index JI_by_2(x: string) on JI((_,_,x))
+index JI_by_01(x: bool, y: bit<8>) on JI((x,y,_))
+index JI_by_02(x: bool, y: string) on JI((x,_,y))
+index JI_by_12(x: bit<8>, y: string) on JI((_,x,y))
+index JI_by_012(x: bool, y: bit<8>, z: string) on JI((x,y,z))
+index JI_by_all(x: tuple) on JI(x)
+index JI_by_self(x: JI) on JI[x]
+index JI_by_10(y: bit<8>, x: bool) on JI((x,y,_))
+
 input relation KI(t: tuple)
+index KI_by_01(x: bool, y: bit<8>) on KI((x,y,_))
+index KI_by_all(x: tuple) on KI(x)
+
 input relation LI[tuple]
+index LI_by_01(x: bool, y: bit<8>) on LI[(x,y,_)]
+index LI_by_all(x: tuple) on LI[x]
+
 input relation L0I(a: bool, b: bit<8>, s: string) primary key (x) x.a
+index L0I_by_a(a: bool) on L0I(.a = a)
+
 input relation MI(v: Vec<bool>)
+index MI_by_v(v: Vec<bool>) on MI(v)
+
 input relation NI(v: Vec<tuple>)
+index NI_by_v(v: Vec<tuple>) on NI(v)
+
 input relation OI(v: Vec<Vec<bool>>)
+index OI_by_v(v: Vec<Vec<bool>>) on OI(v)
+
 input relation PI1(s: Set<bit<8>>)
+index PI1_by_s(s: Set<bit<8>>) on PI1(s)
+
 input relation PI2(s: Set<bit<16>>)
+index PI2_by_s(s: Set<bit<16>>) on PI2(s)
+
 input relation PI3(s: Set<bit<32>>)
+index PI3_by_s(s: Set<bit<32>>) on PI3(s)
+
 input relation PI4(s: Set<bit<64>>)
+index PI4_by_s(s: Set<bit<64>>) on PI4(s)
+index PI4_by_none() on PI4()
+index PI4_by_self(x: PI4) on PI4[x]
+
 input relation PI5(s: Set<bit<128>>)
+index PI5_by_s(s: Set<bit<128>>) on PI5(s)
+
 input relation QI(m: Map<bit<32>, string>)
+index QI_by_m(m: Map<bit<32>, string>) on QI(m)
+
 input relation RI(m: Ref<bit<32>>)
+index RI_by_refm(m: Ref<bit<32>>) on RI(m)
+index RI_by_m(m: bit<32>) on RI(&m)
+
 typedef C = C{x: string}
 input relation SI(m: C)
+index SI_by_m(m: C) on SI(m)
+index SI_by_x(x: string) on SI(C{x})
+
 input relation TI(m: Option<bit<32>>)
+index TI_by_m(m: Option<bit<32>>) on TI(m)
+index TI_by_some(some: bit<32>) on TI(Some{some})
+index TI_by_none() on TI(None)
+
 typedef Many = A{x: string}
              | B{b: bool}
              | D{t: tuple}
 input relation UI[Many]
+index UI_by_x(x: string) on UI[A{x}]
+index UI_by_b(b: bool) on UI[B{b}]
+index UI_by_t(t: tuple) on UI[D{t}]
+index UI_by_t1(t1: bit<8>) on UI[D{(_,t1,_)}]
+
 input relation VI(a: bool, b: Many)
+index VI_by_a(a: bool) on VI(a,_)
+index VI_by_t1(t1: bit<8>) on VI(_,D{(_, t1, _)})
+
 input relation WI(m: Option<Many>)
+index WI_by_t2(t2: string) on WI(Some{D{(_,_,t2)}})
+index WI_by_t(t: tuple) on WI(Some{D{t}})
+
 input relation XI(m: Vec<Many>)
+index XI_by_m(m: Vec<Many>) on XI(m)
+
 typedef VOT = Vec<Option<tuple>>
 input relation YI(v: VOT)
+index YI_by_v(v: VOT) on YI(v)
+index YI_by_none() on YI()
+index YI_by_self(x: YI) on YI[x]
+
 input relation ZI(d: bit<256>)
+index ZI_by_d(d: bit<256>) on ZI(d)
+
 input relation ZI0[string]
+index ZI0_by_self(s: string) on ZI0[s]
+
 input relation ZI1[bool]
+index ZI1_by_self(b: bool) on ZI1[b]
+index ZI1_by_true() on ZI1[true]
+
 input relation ZI2[bit<32>]
+index ZI2_by_self(b: bit<32>) on ZI2[b]
+index ZI2_by_const() on ZI2[1000]
+
 input relation ZI3[Many]
+index ZI3_by_self(x: Many) on ZI3[x]
+index ZI3_by_const() on ZI3[A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω."}]
+
 input relation ZI4[Vec<string>]
+index ZI4_by_self(x: Vec<string>) on ZI4[x]
+
 input relation ZI5[Map<string, Many>]
+index ZI5_by_self(x: Map<string, Many>) on ZI5[x]
+
 input relation ZI6[Option<string>]
+index ZI6_by_self(x: Option<string>) on ZI6[x]
+index ZI6_by_none() on ZI6[None]
+
 input relation ZI7[Ref<string>]
+index ZI7_by_self(x: Ref<string>) on ZI7[x]
+index ZI7_by_val(s: string) on ZI7[&s]
+
 input relation ZI8[Ref<bit<25>>]
+index ZI8_by_self(x: Ref<bit<25>>) on ZI8[x]
+
 input relation ZI9[Ref<Ref<bit<25>>>]
+index ZI9_by_self(x: Ref<Ref<bit<25>>>) on ZI9[x]
+index ZI9_by_refval(x: Ref<bit<25>>) on ZI9[&x]
+index ZI9_by_val(x: bit<25>) on ZI9[&&x]
+index ZI9_by_const() on ZI9[&&100]
+
 input relation ZI10[Ref<IString>]
+index ZI10_by_self(x: Ref<IString>) on ZI10[x]
+
 input relation ZI11[Map<Many, string>]
+index ZI11_by_self(x: Map<Many, string>) on ZI11[x]
+
 input relation ZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
+index ZI12_by_self(x: (string, bigint, Vec<bigint>, (bit<16>, Many))) on ZI12[x]
+index ZI12_by_0(x: string) on ZI12[(x,_,_,_)]
+index ZI12_by_1(x: bigint) on ZI12[(_,x,_,_)]
+index ZI12_by_2(x: Vec<bigint>) on ZI12[(_,_,x,_)]
+index ZI12_by_3(x: (bit<16>, Many)) on ZI12[(_,_,_,x)]
+index ZI12_by_30(x: bit<16>) on ZI12[(_,_,_,(x,_))]
+index ZI12_by_31(x: Many) on ZI12[(_,_,_,(_,x))]
+
 typedef Generic<'A, 'B> = Generic{f0: string, f1: 'A, f2: 'B}
 input relation ZI13[Generic<Ref<tuple>, Many>]
+index ZI13_by_f0(x: string) on ZI13[Generic{.f0 = x}]
+index ZI13_by_f1(x: Ref<tuple>) on ZI13[Generic{.f1 = x}]
+index ZI13_by_f2(x: Many) on ZI13[Generic{.f2 = x}]
+index ZI13_by_t2(x: string) on ZI13[Generic{.f2 = D{.t = (_,_,x)}}]
+
 typedef Cases<'A, 'B> = First{a: 'A}
                       | Second{b: 'B}
 input relation ZI14(c: Cases<string, signed<32>>)
+index ZI14_by_self(x: Cases<string, signed<32>>) on ZI14(x)
+index ZI14_by_a(a: string) on ZI14(First{a})
+index ZI14_by_b(b: signed<32>) on ZI14(Second{b})
+
 typedef F<'A> = FirstF{a: 'A}
 typedef S<'A> = SecondS{a: 'A}
 typedef Or<'A, 'B> = OrFirst{f: F<'A>}
                    | OrSecond{s: S<'B>}
 input relation ZI15(c: Or<string, signed<32>>)
+index ZI15_by_a(a: string) on ZI15(OrFirst{FirstF{a}})
+
 import module
+index ZI18_by_0(x: bit<32>) on ZI18((x,_))
+
 input relation ZI20(t: mtuple)
+index ZI20_by_0(x: bit<32>) on ZI20((x,_))
 input relation ZI21(m: bit<32>) primary key (r) r.m
+index ZI21_by_m(m: bit<32>) on ZI21(m)

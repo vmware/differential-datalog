@@ -148,6 +148,7 @@ attrIdent    = identifier   <?> "attribute name"
 
 consIdent    = ucScopedIdentifier <?> "constructor name"
 relIdent     = ucScopedIdentifier <?> "relation name"
+indexIdent   = scopedIdentifier   <?> "index name"
 funcIdent    = lcScopedIdentifier <?> "function name"
 transIdent   = ucScopedIdentifier <?> "transformer name"
 typeIdent    = scopedIdentifier   <?> "type name"
@@ -174,6 +175,7 @@ removeTabs = do s <- getInput
 data SpecItem = SpImport      Import
               | SpType        TypeDef
               | SpRelation    Relation
+              | SpIndex       Index
               | SpRule        Rule
               | SpApply       Apply
               | SpFunc        Function
@@ -182,6 +184,7 @@ data SpecItem = SpImport      Import
 instance WithPos SpecItem where
     pos   (SpType         t)   = pos t
     pos   (SpRelation     r)   = pos r
+    pos   (SpIndex        i)   = pos i
     pos   (SpRule         r)   = pos r
     pos   (SpApply        a)   = pos a
     pos   (SpFunc         f)   = pos f
@@ -189,6 +192,7 @@ instance WithPos SpecItem where
     pos   (SpTransformer  t)   = pos t
     atPos (SpType         t) p = SpType        $ atPos t p
     atPos (SpRelation     r) p = SpRelation    $ atPos r p
+    atPos (SpIndex        i) p = SpIndex       $ atPos i p
     atPos (SpRule         r) p = SpRule        $ atPos r p
     atPos (SpApply        a) p = SpApply       $ atPos a p
     atPos (SpFunc         f) p = SpFunc        $ atPos f p
@@ -207,6 +211,9 @@ spec = do
     let relations = mapMaybe (\case
                                SpRelation r -> Just (name r, r)
                                _            -> Nothing) items
+    let indexes = mapMaybe (\case
+                             SpIndex i -> Just (name i, i)
+                             _         -> Nothing) items
     let types = mapMaybe (\case
                            SpType t -> Just (name t, t)
                            _        -> Nothing) items
@@ -225,6 +232,7 @@ spec = do
     let res = do uniqNames ("Multiple definitions of type " ++) $ map snd types
                  uniqNames ("Multiple definitions of function " ++) $ map snd funcs
                  uniqNames ("Multiple definitions of relation " ++) $ map snd relations
+                 uniqNames ("Multiple definitions of index " ++) $ map snd indexes
                  uniqNames ("Multiple definitions of transformer " ++) $ map snd transformers
                  --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
                  uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
@@ -233,6 +241,7 @@ spec = do
                                          , progFunctions    = M.fromList funcs
                                          , progTransformers = M.fromList transformers
                                          , progRelations    = M.fromList relations
+                                         , progIndexes      = M.fromList indexes
                                          , progRules        = rules
                                          , progApplys       = applys}
     case res of
@@ -247,6 +256,7 @@ decl =  do attrs <- optionMaybe attributes
                          (return . SpImport)         <$> imprt
                      <|> (return . SpType)           <$> typeDef
                      <|> relation
+                     <|> (return . SpIndex)          <$> index
                      <|> (return . SpFunc)           <$> func
                      <|> (return . SpTransformer)    <$> transformer
                      <|> (return . SpRule)           <$> rule
@@ -296,6 +306,9 @@ targ = withPos $ HOField nopos <$> targIdent <*> (colon *> hotypeSpec)
 hotypeSpec = withPos $ (HOTypeRelation nopos <$ reserved "relation" <*> (brackets typeSpecSimple))
                        <|>
                        (HOTypeFunction nopos <$ reserved "function" <*> (parens $ commaSep farg) <*> (colon *> typeSpecSimple))
+
+index = withPos $ Index nopos <$ symbol "index" <*> indexIdent <*> parens (commaSep arg) <*>
+                  (symbol "on" *> atom False)
 
 relation = do
     role <-  RelInput    <$ reserved "input" <* reserved "relation"

@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell, QuasiQuotes, ImplicitParams #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, OverloadedStrings, TemplateHaskell, QuasiQuotes, ImplicitParams, NamedFieldPuns #-}
 
 {- |
 Module     : Compile
@@ -71,6 +71,7 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Relation
+import Language.DifferentialDatalog.Index
 import Language.DifferentialDatalog.Optimize
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
@@ -215,9 +216,17 @@ rustLibFiles specname =
 --
 -- The 'distinct' flag in 'ArrangementSet' indicates that this arrangement is used
 -- in an antijoin and therefore must contain distinct entries.
-data Arrangement = ArrangementMap { arngPattern :: Expr }
+data Arrangement = ArrangementMap { arngPattern :: Expr, arngIndexes :: [Index] }
                  | ArrangementSet { arngPattern :: Expr, arngDistinct :: Bool}
                  deriving Eq
+
+arngUsedInIndexes :: Arrangement -> [Index]
+arngUsedInIndexes ArrangementMap{arngIndexes} = arngIndexes
+arngUsedInIndexes ArrangementSet{} = []
+
+arngIsDistinct :: Arrangement -> Bool
+arngIsDistinct ArrangementMap{} = False
+arngIsDistinct ArrangementSet{arngDistinct} = arngDistinct
 
 -- Rust expression kind
 data EKind = EVal         -- normal value
@@ -342,6 +351,13 @@ mkRelEnum d =
     (nest' $ vcat $ punctuate comma $ map (\rel -> rname (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d)    $$
     "}"
 
+mkIdxEnum :: DatalogProgram -> Doc
+mkIdxEnum d =
+    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
+    "pub enum Indexes {"                                                                                                                  $$
+    (nest' $ vcat $ punctuate comma $ map (\idx -> rname (name idx) <+> "=" <+> pp (idxIdentifier d idx)) $ M.elems $ progIndexes d)      $$
+    "}"
+
 relId :: String -> Doc
 relId rel = "Relations::" <> rname rel <+> "as RelId"
 
@@ -354,16 +370,15 @@ addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
 -- * If a semijoin arrangement with the same pattern exists,
 --   promote it to a join arrangement
 -- * Otherwise, add the new arrangement
-addJoinArrangement :: String -> Expr -> CompilerMonad ()
-addJoinArrangement relname pattern = do
+addJoinArrangement :: String -> Expr -> Maybe Index -> CompilerMonad ()
+addJoinArrangement relname pattern midx = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let join_arr = ArrangementMap pattern
-    let semijoin_idx = elemIndex (ArrangementSet pattern False) arrs
-    let arrs' = if elem join_arr arrs
-                   then arrs
-                   else maybe (arrs ++ [join_arr])
-                              (\idx -> take idx arrs ++ [join_arr] ++ drop (idx+1) arrs)
-                              semijoin_idx
+    let existing_idx = findIndex (\a -> (arngPattern a == pattern) && (arngIsDistinct a == False)) arrs
+    let idxs = nub $ maybeToList midx ++ maybe [] (arngUsedInIndexes . (arrs !!)) existing_idx
+    let join_arr = ArrangementMap pattern idxs
+    let arrs' = maybe (arrs ++ [join_arr])
+                      (\idx -> take idx arrs ++ [join_arr] ++ drop (idx+1) arrs)
+                      existing_idx
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
 
 -- Create a new arrangement for use in a semijoin operator:
@@ -372,9 +387,7 @@ addJoinArrangement relname pattern = do
 addSemijoinArrangement :: String -> Expr -> CompilerMonad ()
 addSemijoinArrangement relname pattern = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let arrs' = if (elem (ArrangementSet pattern True) arrs ||
-                    elem (ArrangementSet pattern False) arrs ||
-                    elem (ArrangementMap pattern) arrs)
+    let arrs' = if isJust $ find ((==pattern) . arngPattern) arrs
                    then arrs
                    else arrs ++ [ArrangementSet pattern False]
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
@@ -405,11 +418,13 @@ getSemijoinArrangement relname pattern = do
                          _                         -> False)
                        arrs
 
--- Find an arrangement of the form 'ArrangementMap pattern'
+-- Find an arrangement of the form 'ArrangementMap pattern _'
 getJoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
 getJoinArrangement relname pattern = do
     arrs <- gets $ (M.! relname) . cArrangements
-    return $ elemIndex (ArrangementMap pattern) arrs
+    return $ findIndex (\case
+                         ArrangementMap{arngPattern} -> arngPattern == pattern
+                         _ -> False) arrs
 
 -- Find an arrangement of the form 'ArrangementSet pattern True'
 getAntijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
@@ -490,13 +505,15 @@ compile d_unoptimized specname rs_code toml_code dir crate_types = do
 -- the program for the Rust Datalog library
 compileLib :: (?cfg::CompilerConfig) => DatalogProgram -> String -> Doc -> Doc
 compileLib d specname rs_code =
-    header specname      $+$
-    rs_code              $+$
-    typedefs             $+$
-    mkValueFromRecord d  $+$ -- Function to convert cmd_parser::Record to Value
-    mkRelEnum d          $+$ -- Relations enum
-    valtype              $+$
-    funcs                $+$
+    header specname             $+$
+    rs_code                     $+$
+    typedefs                    $+$
+    mkValueFromRecord d         $+$ -- Function to convert cmd_parser::Record to Value
+    mkIndexesIntoArrId d cstate $+$
+    mkRelEnum d                 $+$ -- `enum Relations`
+    mkIdxEnum d                 $+$ -- `enum Indexes`
+    valtype                     $+$
+    funcs                       $+$
     prog
     where
     -- Compute ordered SCCs of the dependency graph.  These will define the
@@ -528,9 +545,17 @@ compileLib d specname rs_code =
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
 -- parts of the compiler.
+-- Likewise, add a dummy index if the spec does not contain any.
 addDummyRel :: DatalogProgram -> DatalogProgram
-addDummyRel d | not $ M.null $ progRelations d = d
-              | otherwise = d {progRelations = M.singleton "Null" $ Relation nopos RelInternal "Null" (tTuple []) Nothing}
+addDummyRel d =
+    d {progRelations = rels, progIndexes = idxs}
+    where
+    rels = if (M.null $ progRelations d) || (M.null $ progIndexes d)
+              then M.insert "__Null" (Relation nopos RelInternal "__Null" (tTuple []) Nothing) (progRelations d)
+              else progRelations d
+    idxs = if M.null $ progIndexes d
+              then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" $ eTuple []
+              else progIndexes d
 
 mkTypedef :: DatalogProgram -> TypeDef -> Doc
 mkTypedef d tdef@TypeDef{..} =
@@ -763,6 +788,12 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkRelIdMapC d                                                                                   $$
     mkInputRelIdMap d                                                                               $$
     mkOutputRelIdMap d                                                                              $$
+    mkIndexesTryFromStr d                                                                           $$
+    mkIndexesTryFromIdxId d                                                                         $$
+    mkIdxId2Name d                                                                                  $$
+    mkIdxId2NameC                                                                                   $$
+    mkIdxIdMap d                                                                                    $$
+    mkIdxIdMapC d                                                                                   $$
     "pub fn relval_from_record(rel: Relations, _rec: &record::Record) -> Result<Value, String> {"   $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcat $ punctuate comma entries)                                                $$
@@ -773,24 +804,36 @@ mkValueFromRecord d@DatalogProgram{..} =
     (nest' $ nest' $ vcat $ key_entries)                                                            $$
     "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"                 $$
     "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "pub fn idxkey_from_record(idx: Indexes, _rec: &record::Record) -> Result<Value, String> {"     $$
+    "    match idx {"                                                                               $$
+    (nest' $ nest' $ vcat $ idx_entries)                                                            $$
+    "    }"                                                                                         $$
     "}"
     where
     entries = map mkrelval $ M.elems progRelations
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")   $$
+        "Relations::" <> rname(name rel) <+> "=> {"                                                                         $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")    $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                                  $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")$$
+        "Relations::" <> rname(name rel) <+> "=> {"                                                                         $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")    $$
         "},"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
+    idx_entries = map mkidxkey $ M.elems progIndexes
+    mkidxkey :: Index ->  Doc
+    mkidxkey idx@Index{..} =
+        "Indexes::" <> rname (name idx) <+> "=> {"                                                                          $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ box d t $ "<" <> mkType t <> ">::from_record(_rec)?)")    $$
+        "},"
+        where t = typeNormalize d $ idxKeyType idx
 
--- Convert string to Relations
+-- Convert string to `enum Relations`
 mkRelationsTryFromStr :: DatalogProgram -> Doc
 mkRelationsTryFromStr d =
     "impl TryFrom<&str> for Relations {"                                  $$
@@ -930,6 +973,106 @@ mkOutputRelIdMap d =
     mkrel :: Relation -> Doc
     mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
 
+-- Convert string to `enum Relations`
+mkIndexesTryFromStr :: DatalogProgram -> Doc
+mkIndexesTryFromStr d =
+    "impl TryFrom<&str> for Indexes {"                                    $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(iname: &str) -> Result<Self, Self::Error> {"         $$
+    "         match iname {"                                              $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = "\"" <> pp (name idx) <> "\" => Ok(Indexes::" <> rname (name idx) <> "),"
+
+mkIndexesIntoArrId :: DatalogProgram -> CompilerState -> Doc
+mkIndexesIntoArrId d CompilerState{..} =
+    "pub fn indexes2arrid(idx: Indexes) -> ArrId {"                  $$
+    "    match idx {"                                                $$
+    (nest' $ nest' $ vcat $ entries)                                 $$
+    "    }"                                                          $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = "Indexes::" <> rname (name idx) <+> "=> (" <+> pp (relIdentifier d $ idxRelation d idx)
+                                                    <> "," <+> pp (findidx idx) <> "),"
+    findidx :: Index -> Int
+    findidx idx@Index{..} =
+        fromJust
+        $ findIndex (elem idx . arngUsedInIndexes)
+        $ cArrangements M.! atomRelation idxAtom
+
+-- Convert IdxId to `enum Indexes`
+mkIndexesTryFromIdxId :: DatalogProgram -> Doc
+mkIndexesTryFromIdxId d =
+    "impl TryFrom<IdxId> for Indexes {"                                   $$
+    "    type Error = ();"                                                $$
+    "    fn try_from(iid: IdxId) -> Result<Self, Self::Error> {"          $$
+    "         match iid {"                                                $$
+                  (nest' $ nest' $ vcat $ entries)                        $$
+    "             _  => Err(())"                                          $$
+    "         }"                                                          $$
+    "    }"                                                               $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = pp (idxIdentifier d idx) <+> "=> Ok(Indexes::" <> rname (name idx) <> "),"
+
+mkIdxId2Name :: DatalogProgram -> Doc
+mkIdxId2Name d =
+    "pub fn indexid2name(iid: IdxId) -> Option<&'static str> {" $$
+    "   match iid {"                                            $$
+    (nest' $ nest' $ vcat $ entries)                            $$
+    "       _  => None"                                         $$
+    "   }"                                                      $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = pp (idxIdentifier d idx) <+> "=> Some(&\"" <> pp (name idx) <> "\"),"
+
+mkIdxId2NameC :: Doc
+mkIdxId2NameC =
+    "pub fn indexid2cname(iid: IdxId) -> Option<&'static ffi::CStr> {"      $$
+    "    IDXIDMAPC.get(&iid).map(|c: &'static ffi::CString|c.as_ref())"     $$
+    "}"
+
+mkIdxIdMap :: DatalogProgram -> Doc
+mkIdxIdMap d =
+    "lazy_static! {"                                                        $$
+    "    pub static ref IDXIDMAP: FnvHashMap<Indexes, &'static str> = {"    $$
+    "        let mut m = FnvHashMap::default();"                            $$
+    (nest' $ nest' $ vcat entries)                                          $$
+    "        m"                                                             $$
+    "   };"                                                                 $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = "m.insert(Indexes::" <> rname (name idx) <> ", \"" <> pp (name idx) <> "\");"
+
+mkIdxIdMapC :: DatalogProgram -> Doc
+mkIdxIdMapC d =
+    "lazy_static! {"                                                            $$
+    "    pub static ref IDXIDMAPC: FnvHashMap<IdxId, ffi::CString> = {"         $$
+    "        let mut m = FnvHashMap::default();"                                $$
+    (nest' $ nest' $ vcat entries)                                              $$
+    "        m"                                                                 $$
+    "   };"                                                                     $$
+    "}"
+    where
+    entries = map mkidx $ M.elems $ progIndexes d
+    mkidx :: Index -> Doc
+    mkidx idx = "m.insert(" <> pp (idxIdentifier d idx) <>
+        ", ffi::CString::new(\"" <> pp (name idx) <> "\").unwrap_or_else(|_|ffi::CString::new(r\"Cannot convert index name to C string\").unwrap()));"
+
 mkFunc :: DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
     "fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType          $$
@@ -976,13 +1119,26 @@ mkValType d types =
     mkdisplay t | isString d t = "Value::" <> consname t <+> "(v) => record::format_ddlog_str(v.as_ref(), f)"
                 | otherwise    = "Value::" <> consname t <+> "(v) => write!(f, \"{:?}\", *v)"
 
--- Iterate through all rules in the program; precompute the set of arrangements for each
--- relation.  This is done as a separate compiler pass to maximize arrangement sharing
--- between joins and semijoins: if a particular key is only used in a semijoin operator,
--- the it is sufficient to create a cheaper 'Arrangement.Set' for it.  If it is also used
--- in a join, then we create an 'Arrangement.Map' and share it between a join and a semijoin.
+-- Precompute the set of arrangements used by the program.  This is done as a separate
+-- compiler pass to maximize arrangement sharing: if a particular key is only used in
+-- semijoin operators, then it is sufficient to create a cheaper 'Arrangement.Set' for it.
+-- If it is also used in a join operator or an index, then we create an 'Arrangement.Map'
+-- and share it between all relevant joins, indexes, and semijoins.
 createArrangements :: DatalogProgram -> CompilerMonad ()
-createArrangements d = mapM_ (createRelArrangements d) $ progRelations d
+createArrangements d = do
+    -- Iterate through all rules in the program; precompute the set of arrangements for each
+    -- relation.
+    mapM_ (createRelArrangements d) $ progRelations d
+    -- Arrangements for all program indexes.
+    mapM_ (createIndexArrangement d) $ progIndexes d
+
+createIndexArrangement :: DatalogProgram -> Index -> CompilerMonad ()
+createIndexArrangement d idx@Index{..} = do
+    let marr = arrangeInput d idxAtom
+               $ map (\f -> (eVar $ name f, error $ "createIndexArrangement " ++ show idx ++ ": " ++ name f ++ " context should not be used")) idxVars
+    case marr of
+         Nothing -> error $ "createIndexArrangement " ++ show idx ++ ": failed to compute index arrangement."
+         Just arr -> addJoinArrangement (atomRelation idxAtom) arr (Just idx)
 
 createRelArrangements :: DatalogProgram -> Relation -> CompilerMonad ()
 createRelArrangements d rel = mapM_ (createRuleArrangements d) $ relRules d $ name rel
@@ -992,7 +1148,7 @@ createRuleArrangements d rule = do
     -- Arrange the first atom in the rule if needed
     let arr = ruleArrangeFstLiteral d rule
     when (isJust arr)
-        $ addJoinArrangement (atomRelation $ rhsAtom $ head $ ruleRHS rule) $ fromJust arr
+         $ addJoinArrangement (atomRelation $ rhsAtom $ head $ ruleRHS rule) (fromJust arr) Nothing
     mapM_ (createRuleArrangement d rule) [1..(length (ruleRHS rule) - 1)]
 
 createRuleArrangement :: DatalogProgram -> Rule -> Int -> CompilerMonad ()
@@ -1005,7 +1161,7 @@ createRuleArrangement d rule idx = do
     let is_semi = null $ ruleRHSNewVars d rule idx
     case rhs of
          RHSLiteral True _ | is_semi   -> addSemijoinArrangement (name rel) arr
-                           | otherwise -> addJoinArrangement (name rel) arr
+                           | otherwise -> addJoinArrangement (name rel) arr Nothing
          RHSLiteral False _            -> addAntijoinArrangement (name rel) arr
          _                             -> return ()
 
@@ -1631,7 +1787,7 @@ mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
 -- above pattern is not equivalent to 'C1{_, C2{_1,_},_0}').
 --
 -- The following two functions are used to extract patterns from rules. Consider the following
--- rule:  '... :- A(x,z,B{_,y}), C(y.f1, D{_z})'.  Given this rule we would like to generate
+-- rule:  '... :- A(x,z,B{_,y}), C(y.f1, D{z})'.  Given this rule we would like to generate
 -- arrangements of 'C' and 'A'.
 --
 -- 'normalizeArrangement' computes the former: 'C{_0, D{_1}}', along with the mapping from aux
@@ -1832,15 +1988,16 @@ mkNode (ApplyNode fun) =
     "ProgNode::Apply{tfun:" <+> fun <> "}"
 
 mkArrangement :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangement d rel (ArrangementMap pattern) = do
-    filter_key <- mkArrangementKey d rel pattern
+mkArrangement d rel ArrangementMap{..} = do
+    filter_key <- mkArrangementKey d rel arngPattern
     let afun = braces' $
                "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
     return $
         "Arrangement::Map{"                                                                                 $$
-        "   name: r###\"" <> pp pattern <> "\"###.to_string(),"                                             $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f}")   $$
+        "   name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                         $$
+        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")  $$
+        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                 $$
         "}"
 
 mkArrangement d rel ArrangementSet{..} = do

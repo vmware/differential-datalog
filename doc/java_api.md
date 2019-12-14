@@ -338,6 +338,38 @@ belongs to. For example, if the record belongs to a relation named `Span`,
 its actual type is `SpanReader`, which in turn provides methods to access
 its fields.
 
+#### `class <prog_name>Query`
+
+The auto-generated `ddlog.<prog_name>.<prog_name>Query` class provides methods
+to query [DDlog indexes](tutorial/tutorial.md#indexes).  There are two methods
+for each index: the `query<index_name>` returns all values associated
+with a given key, and the `dump<index_name>` returns all values in the indexed
+relation.  For example, given a program called `graph.dl` with the following
+declarations:
+
+```
+// graph.dl
+
+relation Edge(from: bit<32>, to: bit<32>)
+index Edge_by_from(from: bit<32>) on Edge(from, _)
+```
+
+DDlog generates `class graphQuery` as follows:
+
+```
+public class graphQuery
+{
+    public static void queryEdge_by_from(DDlogAPI hddlog, long from, Consumer<EdgeReader> callback) throws DDlogException
+    {...}
+
+    public static void dumpEdge_by_from(DDlogAPI hddlog, Consumer<EdgeReader> callback) throws DDlogException
+    {...}
+}
+```
+
+Both methods take a callback invoked once for each record returned by the query.
+
+
 #### DDlog-to-Java type mapping summary
 
 Fields of primitive types, e.g., `bit<8>`, map directly to Java primitives;

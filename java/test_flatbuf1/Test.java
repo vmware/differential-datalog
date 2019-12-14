@@ -25,6 +25,7 @@ import ddlog.flatbufTest.*;
 public class Test {
     private final DDlogAPI api;
     private final PrintStream fb_file;
+    private final PrintStream query_file;
     private final PrintStream rec_file;
 
     Test() throws IOException, DDlogException {
@@ -33,6 +34,7 @@ public class Test {
         api.recordCommands("replay.dat", false);
 
         this.fb_file  = new PrintStream("fb.dump");
+        this.query_file  = new PrintStream("query.dump");
         this.rec_file = new PrintStream("rec.dump");
     }
 
@@ -44,6 +46,100 @@ public class Test {
     // typedef mtuple = (bit<32>, string)
     private String printMTuple(Tuple2__bit_32___stringReader t) {
         return "(" + t.a0() + ", \"" + t.a1() + "\")";
+    }
+
+    private String printNI(NIReader v) {
+        List<Tuple3__bool__bit_8___stringReader> vs = v.v();
+        ArrayList<String> strings = new ArrayList<String>(vs.size());
+        vs.forEach((t) -> strings.add(printTuple(t)));
+        return "NI{[" + String.join(", ",strings) + "]}";
+    }
+
+    private String printQI(QIReader v) {
+        Map<Long,String> vs = v.m();
+        ArrayList<String> vs_strs = new ArrayList<String>(vs.size());
+        for (Map.Entry<Long,String> entry : vs.entrySet()) {
+            vs_strs.add(entry.getKey() + "=>\"" + entry.getValue() + "\"");
+        }
+        return "QI{{" + String.join(", ", vs_strs) + "}}";
+    }
+    
+    private String printTI(TIReader v) {
+        std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)(v).m();
+        if (m instanceof std_Option__bit_32_Reader.std_Some) {
+            return "TI{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}";
+        } else {
+            return "TI{std_None{}}";
+        }
+    }
+
+    private String printWI(WIReader v) {
+        std_Option__ManyReader m = (std_Option__ManyReader)(v).m();
+        if (m instanceof std_Option__ManyReader.std_Some) {
+            return "WI{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}";
+        } else {
+            return "WI{std_None{}}";
+        }
+    }
+
+    private String printXI(XIReader v) {
+        List<ManyReader> m = v.m();
+        ArrayList<String> strings = new ArrayList<String>(m.size());
+        m.forEach((x) -> strings.add(printMany(x)));
+        return "XI{[" + String.join(", ",strings) + "]}";
+    }
+
+    private String printYI(YIReader v) {
+        List<std_Option___bool__bit_8___string_Reader> val = v.v();
+        ArrayList<String> strings = new ArrayList<String>(val.size());
+        val.forEach((x) -> {
+            if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
+                strings.add("std_Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
+            } else {
+                strings.add("std_None{}");
+            }
+        });
+        return "YI{[" + String.join(", ", strings) + "]}";
+    }
+
+    private String printStrings(List<String> v) {
+        List<String> quoted = new ArrayList<String>();
+        v.forEach((x) -> quoted.add("\"" + x + "\""));
+        return quoted.toString();
+    }
+
+    private String printOptString(Object v) {
+        if (v instanceof std_Option__stringReader.std_Some) {
+            return "std_Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
+        } else {
+            return "std_None{}";
+        }
+    }
+
+    private String printZI5(Map<String, ManyReader> v) {
+        ArrayList<String> strings = new ArrayList<String>(v.size());
+        for (Map.Entry<String, ManyReader> e: v.entrySet()) {
+            strings.add("\"" + e.getKey() + "\"=>" + printMany(e.getValue()));
+        }
+        return "{" + String.join(", ", strings) + "}";
+    }
+
+    private String printZI11(Map<ManyReader, String> v) {
+        ArrayList<String> strings = new ArrayList<String>(v.size());
+        for (Map.Entry<ManyReader, String> e: v.entrySet()) {
+            strings.add(printMany(e.getKey()) + "=>\"" + e.getValue() + "\"");
+        }
+        return "{" + String.join(", ", strings) + "}";
+    }
+
+    private String printZI12(Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader v) {
+        return "(\"" + v.a0() + "\", " + v.a1() +
+                ", " + v.a2() + ", ("  + v.a3().a0() + ", " + printMany(v.a3().a1()) + "))";
+    }
+
+    private String printZI13(Generic___bool__bit_8___string___ManyReader v) {
+        return "Generic{\"" + v.f0() +
+            "\"," + printTuple(v.f1()) + "," + printMany(v.f2()) + "}";
     }
 
     // typedef Many = A{x: string}
@@ -85,6 +181,7 @@ public class Test {
         rec_file.println(command.toString());
     }
 
+    @SuppressWarnings("unchecked")
     void onFBCommit(DDlogCommand<Object> command) throws IOException {
         int relid = command.relid();
         switch (relid) {
@@ -187,7 +284,7 @@ public class Test {
                 List<Tuple3__bool__bit_8___stringReader> vs = v.v();
                 ArrayList<String> strings = new ArrayList<String>(vs.size());
                 vs.forEach((t) -> strings.add(printTuple(t)));
-                fb_file.println("From " + relid + " " + command.kind() + " NI{[" + String.join(", ",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printNI((NIReader)command.value()));
                 break;
             }
 
@@ -242,12 +339,7 @@ public class Test {
             // output relation OQI(m: Map<bit<32>, string>)
             case flatbufTestRelation.OQI: {
                 QIReader v = (QIReader)command.value();
-                Map<Long,String> vs = v.m();
-                ArrayList<String> vs_strs = new ArrayList<String>(vs.size());
-                for (Map.Entry<Long,String> entry : vs.entrySet()) {
-                    vs_strs.add(entry.getKey() + "=>\"" + entry.getValue() + "\"");
-                }
-                fb_file.println("From " + relid + " " + command.kind() + " QI{{" + String.join(", ", vs_strs) + "}}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printQI(v));
                 break;
             }
 
@@ -267,13 +359,7 @@ public class Test {
 
             // output relation OTI(m: Option<bit<32>>)
             case flatbufTestRelation.OTI: {
-                std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)((TIReader)command.value()).m();
-                if (m instanceof std_Option__bit_32_Reader.std_Some) {
-                    fb_file.println("From " + relid + " " + command.kind() +
-                            " TI{std_Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}");
-                } else {
-                    fb_file.println("From " + relid + " " + command.kind() + " TI{std_None{}}");
-                }
+                fb_file.println("From " + relid + " " + command.kind() + " " + printTI((TIReader)command.value()));
                 break;
             }
 
@@ -293,38 +379,20 @@ public class Test {
 
             // output relation OWI(m: Option<Many>)
             case flatbufTestRelation.OWI: {
-                std_Option__ManyReader m = (std_Option__ManyReader)((WIReader)command.value()).m();
-                if (m instanceof std_Option__ManyReader.std_Some) {
-                    fb_file.println("From " + relid + " " + command.kind() +
-                            " WI{std_Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}");
-                } else {
-                    fb_file.println("From " + relid + " " + command.kind() + " WI{std_None{}}");
-                }
+                fb_file.println("From " + relid + " " + command.kind() + " " + printWI((WIReader)command.value()));
                 break;
             }
 
             //output relation OXI(m: Vec<Many>)
             case flatbufTestRelation.OXI: {
-                List<ManyReader> m = ((XIReader)command.value()).m();
-                ArrayList<String> strings = new ArrayList<String>(m.size());
-                m.forEach((x) -> strings.add(printMany(x)));
-                fb_file.println("From " + relid + " " + command.kind() + " XI{[" + String.join(", ",strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printXI((XIReader)command.value()));
                 break;
             }
 
             //typedef VOT = Vec<Option<tuple>>
             // output relation OYI(v: VOT)
             case flatbufTestRelation.OYI: {
-                List<std_Option___bool__bit_8___string_Reader> v = ((YIReader)command.value()).v();
-                ArrayList<String> strings = new ArrayList<String>(v.size());
-                v.forEach((x) -> {
-                    if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
-                        strings.add("std_Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
-                    } else {
-                        strings.add("std_None{}");
-                    }
-                });
-                fb_file.println("From " + relid + " " + command.kind() + " YI{[" + String.join(", ", strings) + "]}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printYI((YIReader)command.value()));
                 break;
             }
             // output relation OZI0[string]
@@ -353,34 +421,17 @@ public class Test {
             }
             // output relation OZI4[Vec<string>]
             case flatbufTestRelation.OZI4: {
-                @SuppressWarnings("unchecked")
-                List<String> v = (List<String>)command.value();
-                List<String> quoted = new ArrayList<String>();
-                v.forEach((x) -> quoted.add("\"" + x + "\""));
-                fb_file.println("From " + relid + " " + command.kind() + " " + quoted);
+                fb_file.println("From " + relid + " " + command.kind() + " " + printStrings((List<String>)command.value()));
                 break;
             }
             // output relation OZI5[Map<string, Many>]
             case flatbufTestRelation.OZI5: {
-                @SuppressWarnings("unchecked")
-                Map<String, ManyReader> v = (Map<String, ManyReader>)command.value();
-                ArrayList<String> strings = new ArrayList<String>(v.size());
-                for (Map.Entry<String, ManyReader> e: v.entrySet()) {
-                    strings.add("\"" + e.getKey() + "\"=>" + printMany(e.getValue()));
-                }
-                fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printZI5((Map<String, ManyReader>)command.value()));
                 break;
             }
             // output relation OZI6[Option<string>]
             case flatbufTestRelation.OZI6: {
-                Object v = command.value();
-                String s = "";
-                if (v instanceof std_Option__stringReader.std_Some) {
-                    s = "std_Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
-                } else {
-                    s = "std_None{}";
-                }
-                fb_file.println("From " + relid + " " + command.kind() + " " + s);
+                fb_file.println("From " + relid + " " + command.kind() + " " + printOptString(command.value()));
                 break;
             }
             // output relation OZI7[Ref<string>]
@@ -409,29 +460,19 @@ public class Test {
             }
             // output relation OZI11[Map<Many, string>]
             case flatbufTestRelation.OZI11: {
-                @SuppressWarnings("unchecked")
-                Map<ManyReader, String> v = (Map<ManyReader, String>)command.value();
-                ArrayList<String> strings = new ArrayList<String>(v.size());
-                for (Map.Entry<ManyReader, String> e: v.entrySet()) {
-                    strings.add(printMany(e.getKey()) + "=>\"" + e.getValue() + "\"");
-                }
-                fb_file.println("From " + relid + " " + command.kind() + " {" + String.join(", ", strings) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " " + printZI11((Map<ManyReader,String>)command.value()));
                 break;
             }
             // output relation OZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
             case flatbufTestRelation.OZI12: {
-                Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader v =
-                    (Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " (\"" + v.a0() + "\", " + v.a1() +
-                        ", " + v.a2() + ", ("  + v.a3().a0() + ", " + printMany(v.a3().a1()) + "))");
+                fb_file.println("From " + relid + " " + command.kind() + " " +
+                        printZI12((Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader)command.value()));
                 break;
             }
             // output relation OZI13[Generic<Ref<tuple>, Many>]
             case flatbufTestRelation.OZI13: {
-                Generic___bool__bit_8___string___ManyReader v =
-                    (Generic___bool__bit_8___string___ManyReader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " Generic{\"" + v.f0() +
-                        "\"," + printTuple(v.f1()) + "," + printMany(v.f2()) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " " +
+                        printZI13((Generic___bool__bit_8___string___ManyReader)command.value()));
                 break;
             }
             // output relation OZI(d: bit<256>)
@@ -789,7 +830,951 @@ public class Test {
                 throw new UncheckedIOException(e);
             }
         });
+
+        /* Test queries */
+        query_file.println("Query CI_by_c[0]:");
+        flatbufTestQuery.queryCI_by_c(this.api, 0, v -> {
+            query_file.println("CI{" + v.c() + "}");
+        });
+
+        query_file.println("Query CI_by_c[8]:");
+        flatbufTestQuery.queryCI_by_c(this.api, 8, v -> {
+            query_file.println("CI{" + v.c() + "}");
+        });
+
+        query_file.println("Query DI_by_d[0]:");
+        flatbufTestQuery.queryDI_by_d(this.api, (short)0, v -> {
+            query_file.println("DI{" + v.d() + "}");
+        });
+        query_file.println("Query DI_by_d[1000]:");
+        flatbufTestQuery.queryDI_by_d(this.api, (short)1000, v -> {
+            query_file.println("DI{" + v.d() + "}");
+        });
+        query_file.println("Query DI_by_none[]:");
+        flatbufTestQuery.queryDI_by_none(this.api, v -> {
+            query_file.println("DI{" + v.d() + "}");
+        });
+
+        query_file.println("Query EI_by_e[-1]:");
+        flatbufTestQuery.queryEI_by_e(this.api, BigInteger.ZERO.subtract(BigInteger.ONE), v -> {
+            query_file.println("EI{" + v.e() + "}");
+        });
+        query_file.println("Query EO_by_e[-1]:");
+        flatbufTestQuery.queryEO_by_e(this.api, BigInteger.ZERO.subtract(BigInteger.ONE), v -> {
+            query_file.println("EO{" + v.e() + "}");
+        });
+
+        query_file.println("Query FI_by_s[\"α,\"]:");
+        flatbufTestQuery.queryFI_by_s(this.api, "α", v -> {
+            query_file.println("FI{\"" + v.s() + "\"}");
+        });
+        query_file.println("Query FI_by_s[\"string\"]:");
+        flatbufTestQuery.queryFI_by_s(this.api, "string", v -> {
+            query_file.println("FI{\"" + v.s() + "\"}");
+        });
+
+        query_file.println("Query GI_by_d[-100]:");
+        flatbufTestQuery.queryGI_by_d(this.api, (long)-100, v -> {
+            query_file.println("GI{" + v.d() + "}");
+        });
+        query_file.println("Query GI_by_d[100]:");
+        flatbufTestQuery.queryGI_by_d(this.api, (long)100, v -> {
+            query_file.println("GI{" + v.d() + "}");
+        });
+
+        query_file.println("Query HI_by_d[0ABACABA0ABACABA]:");
+        flatbufTestQuery.queryHI_by_d(this.api, new BigInteger("0ABACABA0ABACABA", 16), v -> {
+            query_file.println("HI{" + v.d() + "}");
+        });
+
+        query_file.println("Query II_by_d[7]:");
+        flatbufTestQuery.queryII_by_d(this.api, 7, v -> {
+            query_file.println("II{" + v.d() + "}");
+        });
+
+        query_file.println("Query JI_by_0[true]:");
+        flatbufTestQuery.queryJI_by_0(this.api, true, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_1[10]:");
+        flatbufTestQuery.queryJI_by_1(this.api, 10, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_2[\"string\"]:");
+        flatbufTestQuery.queryJI_by_2(this.api, "string", v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_01[true, 10]:");
+        flatbufTestQuery.queryJI_by_01(this.api, true, 10, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_01[false, 10]:");
+        flatbufTestQuery.queryJI_by_01(this.api, false, 10, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_02[true, \"string\"]:");
+        flatbufTestQuery.queryJI_by_02(this.api, true, "string", v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_12[10, \"string\"]:");
+        flatbufTestQuery.queryJI_by_12(this.api, 10, "string", v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_012[true, 10, \"string\"]:");
+        flatbufTestQuery.queryJI_by_012(this.api, true, 10, "string", v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Query JI_by_all[true, 10, \"string\"]:");
+        flatbufTestQuery.queryJI_by_all(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(true, (byte)10, "string");
+                },
+                v -> {
+                    query_file.println("JI{" + printTuple(v.a()) + "}");
+                });
+        query_file.println("Query JI_by_self[true, 10, \"string\"]:");
+        flatbufTestQuery.queryJI_by_self(this.api,
+                bldr -> {
+                    return bldr.create_JI(bldr.create_Tuple3__bool__bit_8___string(true, (byte)10, "string"));
+                },
+                v -> {
+                    query_file.println("JI{" + printTuple(v.a()) + "}");
+                });
+        query_file.println("Query JI_by_10[10, true]:");
+        flatbufTestQuery.queryJI_by_10(this.api, 10, true, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+
+        query_file.println("Query KI_by_01[false, 9]:");
+        flatbufTestQuery.queryKI_by_01(this.api, false, 9, v -> {
+            query_file.println("KI{" + printTuple(v.t()) + "}");
+        });
+        query_file.println("Query KI_by_all[false, 9, \"text\"]:");
+        flatbufTestQuery.queryKI_by_all(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(false, (byte)9, "text");
+                },
+                v -> {
+                    query_file.println("KI{" + printTuple(v.t()) + "}");
+                });
+
+        query_file.println("Query LI_by_01[true, -1]:");
+        flatbufTestQuery.queryLI_by_01(this.api, true, -1, v -> {
+            query_file.println(printTuple((Tuple3__bool__bit_8___stringReader)v));
+
+        });
+        query_file.println("Query LI_by_all[true, -1, \"something\"]:");
+        flatbufTestQuery.queryLI_by_all(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(true, (byte)-1, "something");
+                },
+                v -> {
+                    query_file.println(printTuple((Tuple3__bool__bit_8___stringReader)v));
+                });
+
+        query_file.println("Query L0I[true]:");
+        flatbufTestQuery.queryL0I_by_a(this.api, true, v -> {
+            query_file.println("L0I{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
+        });
+        query_file.println("Query L0I[false]:");
+        flatbufTestQuery.queryL0I_by_a(this.api, false, v -> {
+            query_file.println("L0I{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
+        });
+
+        query_file.println("Query MI_by_v[true, false, true]:");
+        flatbufTestQuery.queryMI_by_v(this.api, Arrays.asList(new Boolean[] {true, false, true}), v -> {
+            query_file.println("MI{" + v.v() + "}");
+        });
+
+        query_file.println("Query NI_by_v[(true,-1,\"check\"), (false,1,\"fails\")]:");
+        flatbufTestQuery.queryNI_by_v(this.api, 
+                bldr -> {
+                    ArrayList<Tuple3__bool__bit_8___stringWriter> vec = new ArrayList<Tuple3__bool__bit_8___stringWriter>(2);
+                    vec.add(bldr.create_Tuple3__bool__bit_8___string(true, (byte)-1, "check"));
+                    vec.add(bldr.create_Tuple3__bool__bit_8___string(false, (byte)1, "fails"));
+                    return vec;
+                },
+                v -> {
+                    query_file.println(printNI(v));
+                });
+
+        query_file.println("Query OI_by_v[[false,false],[true, true]]:");
+        List<Boolean> l1 = Arrays.asList(new Boolean[] {false, false});
+        List<Boolean> l2 = Arrays.asList(new Boolean[] {true, true});
+        List<List<Boolean>> nest = new ArrayList<List<Boolean>>(2);
+        nest.add(l1);
+        nest.add(l2);
+        flatbufTestQuery.queryOI_by_v(this.api, nest,
+                v -> {
+                    query_file.println("OI{" + v.v() + "}");
+                });
+
+        query_file.println("Query PI1_by_s[-2, 3, 2, 3]:");
+        flatbufTestQuery.queryPI1_by_s(this.api, Arrays.asList(new Byte[]{ -2, 3, 2, 3 }), v -> {
+            query_file.println("PI1{" + v.s() + "}");
+        });
+
+        query_file.println("Query PI2_by_s[10000, 3, -2, 3]:");
+        flatbufTestQuery.queryPI2_by_s(this.api, Arrays.asList(new Short[]{ 10000, 3, -2, 3 }), v -> {
+            query_file.println("PI2{" + v.s() + "}");
+        });
+
+        query_file.println("Query PI3_by_s[0xffffffff, 3, -2, 3]:");
+        flatbufTestQuery.queryPI3_by_s(this.api, Arrays.asList(new Integer[]{ 0xffffffff, 3, -2, 3 }), v -> {
+            query_file.println("PI3{" + v.s() + "}");
+        });
+
+        query_file.println("Query PI4_by_s[2, 3, 2, 3]:");
+        flatbufTestQuery.queryPI4_by_s(this.api, Arrays.asList(new Long[]{ 2L, 3L, 2L, 3L }), v -> {
+            query_file.println("PI4{" + v.s() + "}");
+        });
+        query_file.println("Query PI4_by_none[]:");
+        flatbufTestQuery.queryPI4_by_none(this.api, v -> {
+            query_file.println("PI4{" + v.s() + "}");
+        });
+        query_file.println("Query PI4_by_self[2, 3, 2, 3]:");
+        flatbufTestQuery.queryPI4_by_self(this.api,
+                bldr -> {
+                    return bldr.create_PI4(Arrays.asList(new Long[]{ 2L, 3L, 2L, 3L }));
+                },
+                v -> {
+                    query_file.println("PI4{" + v.s() + "}");
+                });
+
+        query_file.println("Query PI5_by_s[0xffffffffffffff, 3, 2, 3]:");
+        List<BigInteger> pi = Arrays.asList(new BigInteger[]{
+            BigInteger.valueOf(0xffffffffffffffL),
+            BigInteger.valueOf(3),
+            BigInteger.valueOf(2),
+            BigInteger.valueOf(3)
+        });
+        flatbufTestQuery.queryPI5_by_s(this.api, pi, v -> {
+            query_file.println("PI5{" + v.s() + "}");
+        });
+
+        query_file.println("Query QI_by_m[(2=>\"here\", 3=>\"there\"]:");
+        {
+            Map<Long, String> map = new HashMap<Long, String>();
+            map.put(Long.valueOf(2), "here");
+            map.put(Long.valueOf(3), "there");
+            flatbufTestQuery.queryQI_by_m(this.api, map, v -> {
+                query_file.println(printQI(v));
+            });
+        }
+
+        query_file.println("Query RI_by_refm[2]:");
+        flatbufTestQuery.queryRI_by_refm(this.api, 2, v -> {
+            query_file.println("RI{" + v.m() + "}");
+        });
+        query_file.println("Query RI_by_m[2]:");
+        flatbufTestQuery.queryRI_by_m(this.api, 2, v -> {
+            query_file.println("RI{" + v.m() + "}");
+        });
+
+        query_file.println("Query SI_by_m[\"s\"]:");
+        flatbufTestQuery.querySI_by_m(this.api,
+                bldr -> {
+                    return bldr.create_C("s");
+                },
+                v -> {
+                    query_file.println("SI{C{\"" + v.m().x() + "\"}}");
+                });
+        query_file.println("Query SI_by_x[\"s\"]:");
+        flatbufTestQuery.querySI_by_x(this.api, "s",
+                v -> {
+                    query_file.println("SI{C{\"" + v.m().x() + "\"}}");
+                });
+
+        query_file.println("Query TI_by_m[10]:");
+        flatbufTestQuery.queryTI_by_m(this.api,
+                bldr -> {
+                    return bldr.create_std_Some__bit_32_(10);
+                },
+                v -> {
+                    query_file.println(printTI(v));
+                });
+        query_file.println("Query TI_by_some[10]:");
+        flatbufTestQuery.queryTI_by_some(this.api, 10, v -> {
+                    query_file.println(printTI(v));
+                });
+        query_file.println("Query TI_by_none[]:");
+        flatbufTestQuery.queryTI_by_none(this.api, v -> {
+                    query_file.println(printTI(v));
+                });
+
+        query_file.println("Query UI_by_x[\"a\"]:");
+        flatbufTestQuery.queryUI_by_x(this.api, "a",
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Query UI_by_b[false]:");
+        flatbufTestQuery.queryUI_by_b(this.api, false,
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Query UI_by_t[(false, 2, \"zz\")]:");
+        flatbufTestQuery.queryUI_by_t(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "zz");
+                },
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Query UI_by_t1[2]:");
+        flatbufTestQuery.queryUI_by_t1(this.api, 2,
+                v -> { query_file.println(printMany(v)); });
+
+        query_file.println("Query VI_by_a[false]:");
+        flatbufTestQuery.queryVI_by_a(this.api, false,
+                v -> {
+                    query_file.println("VI{" + v.a() + "," + printMany(v.b()) + "}");
+                });
+        query_file.println("Query VI_by_t1[2]:");
+        flatbufTestQuery.queryVI_by_t1(this.api, 2,
+                v -> {
+                    query_file.println("VI{" + v.a() + "," + printMany(v.b()) + "}");
+                });
+
+        query_file.println("Query WI_by_t2[\"foo\"]:");
+        flatbufTestQuery.queryWI_by_t2(this.api, "foo",
+                v -> { query_file.println(printWI(v)); });
+        query_file.println("Query WI_by_t[(false, 2, \"string\")]:");
+        flatbufTestQuery.queryWI_by_t(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string");
+                },
+                v -> { query_file.println(printWI(v)); });
+
+        query_file.println("Query XI_by_m[A{\"aa\"}, B{false}, D{(false,2,\"string\")}]:");
+        flatbufTestQuery.queryXI_by_m(this.api,
+                bldr -> {
+                    ManyWriter[] m = {
+                        bldr.create_A("aa"),
+                        bldr.create_B(false),
+                        bldr.create_D(bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"))
+                    };
+                    return Arrays.asList(m);
+                },
+                v -> { query_file.println(printXI(v)); });
+
+        query_file.println("Query YI_by_v[...]:");
+        flatbufTestQuery.queryYI_by_v(this.api,
+                bldr -> {
+                    std_Option___bool__bit_8___string_Writer[] v = {
+                        bldr.create_std_Some___bool__bit_8___string_(
+                                bldr.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
+                        bldr.create_std_Some___bool__bit_8___string_(
+                                bldr.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
+                        bldr.create_std_None___bool__bit_8___string_()
+                    };
+                    return Arrays.asList(v);
+                },
+                v -> { query_file.println(printYI(v)); });
+        query_file.println("Query YI_by_none[]:");
+        flatbufTestQuery.queryYI_by_none(this.api,
+                v -> { query_file.println(printYI(v)); });
+        query_file.println("Query YI_by_self[...]:");
+        flatbufTestQuery.queryYI_by_self(this.api,
+                bldr -> {
+                    std_Option___bool__bit_8___string_Writer[] v = {
+                        bldr.create_std_Some___bool__bit_8___string_(
+                                bldr.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
+                        bldr.create_std_Some___bool__bit_8___string_(
+                                bldr.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
+                        bldr.create_std_None___bool__bit_8___string_()
+                    };
+                    return bldr.create_YI(Arrays.asList(v));
+                },
+                v -> { query_file.println(printYI(v)); });
+
+        query_file.println("Query ZI_by_d[0]:");
+        flatbufTestQuery.queryZI_by_d(this.api, BigInteger.valueOf(0),
+                v -> { query_file.println("HI{" + v.d() + "}"); });
+
+        query_file.println("Query ZI0_by_self[\"Привіт!\"]:");
+        flatbufTestQuery.queryZI0_by_self(this.api, "Привіт!",
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Query ZI1_by_self[false]:");
+        flatbufTestQuery.queryZI1_by_self(this.api, false,
+                v -> { query_file.println(v); });
+        query_file.println("Query ZI1_by_true[]:");
+        flatbufTestQuery.queryZI1_by_true(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Query ZI2_by_self[1000]:");
+        flatbufTestQuery.queryZI2_by_self(this.api, 1000,
+                v -> { query_file.println(v); });
+        query_file.println("Query ZI2_by_const[]:");
+        flatbufTestQuery.queryZI2_by_const(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Query ZI3_by_self[...]:");
+        flatbufTestQuery.queryZI3_by_self(this.api,
+                bldr -> {
+                    return bldr.create_A("It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ ζ, Η η, Θ θ, Ι ι, Κ κ, Λ λ, Μ μ, Ν ν, Ξ ξ, Ο ο, Π π, Ρ ρ, Σ σ/ς, Τ τ, Υ υ, Φ φ, Χ χ, Ψ ψ, Ω ω.");
+                },
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Query ZI3_by_const[]:");
+        flatbufTestQuery.queryZI3_by_const(this.api,
+                v -> { query_file.println(printMany(v)); });
+
+        query_file.println("Query ZI4_by_self[...]:");
+        {
+            ArrayList<String> strings = new ArrayList<String>();
+            strings.add("Foo\n");
+            strings.add("\tbar");
+            flatbufTestQuery.queryZI4_by_self(this.api, strings,
+                    v -> { query_file.println(printStrings(v)); });
+        }
+
+        query_file.println("Query ZI5_by_self[...]:");
+        flatbufTestQuery.queryZI5_by_self(this.api,
+                bldr -> {
+                    Map<String, ManyWriter> map = new HashMap<String, ManyWriter>();
+                    map.put("key1", bldr.create_B(false));
+                    map.put("key2", bldr.create_A("val2"));
+                    return map;
+                },
+                v -> { query_file.println(printZI5(v)); });
+
+        query_file.println("Query ZI6_by_self[\"ZI6\"]:");
+        flatbufTestQuery.queryZI6_by_self(this.api,
+                bldr -> {
+                    return bldr.create_std_Some__string("ZI6");
+                },
+                v -> { query_file.println(printOptString(v)); });
+        query_file.println("Query ZI6_by_none[]:");
+        flatbufTestQuery.queryZI6_by_none(this.api,
+                v -> { query_file.println(printOptString(v)); });
+
+        query_file.println("Query ZI7_by_self[\"♛\"]:");
+        flatbufTestQuery.queryZI7_by_self(this.api, "♛",
+                v -> { query_file.println("\"" + v + "\""); });
+        query_file.println("Query ZI7_by_val[\"ZI7\"]:");
+        flatbufTestQuery.queryZI7_by_val(this.api, "ZI7",
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Query ZI8_by_self[100]:");
+        flatbufTestQuery.queryZI8_by_self(this.api, 100,
+                v -> { query_file.println(v); });
+
+        query_file.println("Query ZI9_by_self[100]:");
+        flatbufTestQuery.queryZI9_by_self(this.api, 100,
+                v -> { query_file.println(v); });
+        query_file.println("Query ZI9_by_refval[100]:");
+        flatbufTestQuery.queryZI9_by_refval(this.api, 100,
+                v -> { query_file.println(v); });
+        query_file.println("Query ZI9_by_val[100]:");
+        flatbufTestQuery.queryZI9_by_val(this.api, 100,
+                v -> { query_file.println(v); });
+        query_file.println("Query ZI9_by_const[]:");
+        flatbufTestQuery.queryZI9_by_const(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Query ZI10_by_self[\"Ref<IString>\"]:");
+        flatbufTestQuery.queryZI10_by_self(this.api, "Ref<IString>",
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Query ZI11_by_self[\"val2\"=>\"v2\"]:");
+        flatbufTestQuery.queryZI11_by_self(this.api,
+                bldr -> {
+                    Map<ManyWriter, String> map = new HashMap<ManyWriter, String>();
+                    map.put(bldr.create_A("val2"), "v2");
+                    return map;
+                },
+                v -> { query_file.println(printZI11(v)); });
+
+        query_file.println("Query ZI12_by_self[..]:");
+        flatbufTestQuery.queryZI12_by_self(this.api,
+                bldr -> {
+                    ArrayList<BigInteger> ints = new ArrayList<BigInteger>();
+                    ints.add(BigInteger.valueOf(0));
+                    ints.add(BigInteger.valueOf(0));
+                    ints.add(BigInteger.valueOf(1));
+                    return bldr.create_Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_(
+                            "ZI12",
+                            BigInteger.valueOf(1000000),
+                            ints,
+                            bldr.create_Tuple2__bit_16___Many(0x10,
+                                bldr.create_D(bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"))));
+                },
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Query ZI12_by_0[\"ZI12\"]:");
+        flatbufTestQuery.queryZI12_by_0(this.api, "ZI12",
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Query ZI12_by_1[1000000]:");
+        flatbufTestQuery.queryZI12_by_1(this.api, BigInteger.valueOf(1000000),
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Query ZI12_by_2[0,0,1]:");
+        {
+            ArrayList<BigInteger> ints = new ArrayList<BigInteger>();
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(0));
+            ints.add(BigInteger.valueOf(1));
+            flatbufTestQuery.queryZI12_by_2(this.api, ints,
+                    v -> { query_file.println(printZI12(v)); });
+        }
+        query_file.println("Query ZI12_by_3[...]:");
+        flatbufTestQuery.queryZI12_by_3(this.api,
+                bldr -> {
+                    return bldr.create_Tuple2__bit_16___Many(0x10,
+                            bldr.create_D(bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string")));
+                },
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Query ZI12_by_30[0x10]:");
+        flatbufTestQuery.queryZI12_by_30(this.api, 0x10,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Query ZI12_by_31[...]:");
+        flatbufTestQuery.queryZI12_by_31(this.api,
+                bldr -> {
+                    return bldr.create_D(bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string"));
+                },
+                v -> { query_file.println(printZI12(v)); });
+
+        query_file.println("Query ZI13_by_f0[...]:");
+        flatbufTestQuery.queryZI13_by_f0(this.api, "ZI13",
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Query ZI13_by_f1[...]:");
+        flatbufTestQuery.queryZI13_by_f1(this.api,
+                bldr -> {
+                    return bldr.create_Tuple3__bool__bit_8___string(false, (byte)2, "string");
+                },
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Query ZI13_by_f2[...]:");
+        flatbufTestQuery.queryZI13_by_f2(this.api,
+                bldr -> {
+                    return bldr.create_A("ZI13");
+                },
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Query ZI13_by_t2[...]:");
+        flatbufTestQuery.queryZI13_by_t2(this.api, "ZI13",
+                v -> { query_file.println(printZI13(v)); });
+
+        query_file.println("Query ZI14_by_self[...]:");
+        flatbufTestQuery.queryZI14_by_self(this.api,
+                bldr -> {
+                    return bldr.create_First__string__signed_32_("string");
+                },
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+        query_file.println("Query ZI14_by_a[\"string\"]:");
+        flatbufTestQuery.queryZI14_by_a(this.api, "string",
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+        query_file.println("Query ZI14_by_b[5]:");
+        flatbufTestQuery.queryZI14_by_b(this.api, 5,
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+
+        query_file.println("Query ZI15_by_a[\"Or_string\"]:");
+        flatbufTestQuery.queryZI15_by_a(this.api, "Or_string",
+                v -> { query_file.println(printOr("ZI15", v.c())); });
+
+        query_file.println("Query module_ZI16_by_x[\"zi16\"]:");
+        flatbufTestQuery.querymodule_ZI16_by_x(this.api, "zi16",
+                v -> { query_file.println("module_ZI16{\"" + v.x() + "\"}"); });
+
+        query_file.println("Query module_ZI18_by_0[-1]:");
+        flatbufTestQuery.queryZI18_by_0(this.api, -1,
+                v -> { query_file.println("module_ZI18{" + printMTuple(v.t()) + "}"); });
+
+        query_file.println("Query module_ZI19_by_1[\"zi19\"]:");
+        flatbufTestQuery.querymodule_ZI19_by_1(this.api, "zi19",
+                v -> { query_file.println(printMTuple(v)); });
+
+        query_file.println("Query ZI20_by_0[-2]:");
+        flatbufTestQuery.queryZI20_by_0(this.api, -2,
+                v -> { query_file.println("ZI20{" + printMTuple(v.t()) + "}"); });
+
+        query_file.println("Query ZI21_by_m[13]:");
+        flatbufTestQuery.queryZI21_by_m(this.api, 13,
+                v -> { query_file.println("ZI21{" + v.m() + "}"); });
+
+
+
+        /* Dump everything. */
+        query_file.println("Dump CI_by_c:");
+        flatbufTestQuery.dumpCI_by_c(this.api, v -> {
+            query_file.println("CI{" + v.c() + "}");
+        });
+
+        query_file.println("Dump DI_by_d:");
+        flatbufTestQuery.dumpDI_by_d(this.api, v -> {
+            query_file.println("DI{" + v.d() + "}");
+        });
+        query_file.println("Dump DI_by_none:");
+        flatbufTestQuery.dumpDI_by_none(this.api, v -> {
+            query_file.println("DI{" + v.d() + "}");
+        });
+
+        query_file.println("Dump EI_by_e:");
+        flatbufTestQuery.dumpEI_by_e(this.api, v -> {
+            query_file.println("EI{" + v.e() + "}");
+        });
+        query_file.println("Dump EO_by_e:");
+        flatbufTestQuery.dumpEO_by_e(this.api, v -> {
+            query_file.println("EO{" + v.e() + "}");
+        });
+
+        query_file.println("Dump FI_by_s:");
+        flatbufTestQuery.dumpFI_by_s(this.api, v -> {
+            query_file.println("FI{\"" + v.s() + "\"}");
+        });
+
+        query_file.println("Dump GI_by_d:");
+        flatbufTestQuery.dumpGI_by_d(this.api, v -> {
+            query_file.println("GI{" + v.d() + "}");
+        });
+
+        query_file.println("Dump HI_by_d:");
+        flatbufTestQuery.dumpHI_by_d(this.api,  v -> {
+            query_file.println("HI{" + v.d() + "}");
+        });
+
+        query_file.println("Dump II_by_d:");
+        flatbufTestQuery.dumpII_by_d(this.api, v -> {
+            query_file.println("II{" + v.d() + "}");
+        });
+
+        query_file.println("Dump JI_by_0:");
+        flatbufTestQuery.dumpJI_by_0(this.api,  v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_1:");
+        flatbufTestQuery.dumpJI_by_1(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_2:");
+        flatbufTestQuery.dumpJI_by_2(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_01:");
+        flatbufTestQuery.dumpJI_by_01(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_02:");
+        flatbufTestQuery.dumpJI_by_02(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_12:");
+        flatbufTestQuery.dumpJI_by_12(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_012:");
+        flatbufTestQuery.dumpJI_by_012(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+        query_file.println("Dump JI_by_all:");
+        flatbufTestQuery.dumpJI_by_all(this.api,
+                v -> {
+                    query_file.println("JI{" + printTuple(v.a()) + "}");
+                });
+        query_file.println("Dump JI_by_self:");
+        flatbufTestQuery.dumpJI_by_self(this.api,
+                v -> {
+                    query_file.println("JI{" + printTuple(v.a()) + "}");
+                });
+        query_file.println("Dump JI_by_10:");
+        flatbufTestQuery.dumpJI_by_10(this.api, v -> {
+            query_file.println("JI{" + printTuple(v.a()) + "}");
+        });
+
+        query_file.println("Dump KI_by_01:");
+        flatbufTestQuery.dumpKI_by_01(this.api, v -> {
+            query_file.println("KI{" + printTuple(v.t()) + "}");
+        });
+        query_file.println("Dump KI_by_all:");
+        flatbufTestQuery.dumpKI_by_all(this.api,
+                v -> {
+                    query_file.println("KI{" + printTuple(v.t()) + "}");
+                });
+
+        query_file.println("Dump LI_by_01:");
+        flatbufTestQuery.dumpLI_by_01(this.api, v -> {
+            query_file.println(printTuple((Tuple3__bool__bit_8___stringReader)v));
+        });
+        query_file.println("Dump LI_by_all:");
+        flatbufTestQuery.dumpLI_by_all(this.api,
+                v -> {
+                    query_file.println(printTuple((Tuple3__bool__bit_8___stringReader)v));
+                });
+
+        query_file.println("Dump L0I:");
+        flatbufTestQuery.dumpL0I_by_a(this.api, v -> {
+            query_file.println("L0I{" + v.a() + "," + v.b() + ",\"" + v.s() + "\"}");
+        });
+
+        query_file.println("Dump MI_by_v:");
+        flatbufTestQuery.dumpMI_by_v(this.api, v -> {
+            query_file.println("MI{" + v.v() + "}");
+        });
+
+        query_file.println("Dump NI_by_v:");
+        flatbufTestQuery.dumpNI_by_v(this.api, 
+                v -> {
+                    query_file.println(printNI(v));
+                });
+
+        query_file.println("Dump OI_by_v:");
+        flatbufTestQuery.dumpOI_by_v(this.api,
+                v -> {
+                    query_file.println("OI{" + v.v() + "}");
+                });
+
+        query_file.println("Dump PI1_by_s:");
+        flatbufTestQuery.dumpPI1_by_s(this.api, v -> {
+            query_file.println("PI1{" + v.s() + "}");
+        });
+
+        query_file.println("Dump PI2_by_s:");
+        flatbufTestQuery.dumpPI2_by_s(this.api, v -> {
+            query_file.println("PI2{" + v.s() + "}");
+        });
+
+        query_file.println("Dump PI3_by_s:");
+        flatbufTestQuery.dumpPI3_by_s(this.api, v -> {
+            query_file.println("PI3{" + v.s() + "}");
+        });
+
+        query_file.println("Dump PI4_by_s:");
+        flatbufTestQuery.dumpPI4_by_s(this.api, v -> {
+            query_file.println("PI4{" + v.s() + "}");
+        });
+        query_file.println("Dump PI4_by_none:");
+        flatbufTestQuery.dumpPI4_by_none(this.api, v -> {
+            query_file.println("PI4{" + v.s() + "}");
+        });
+        query_file.println("Dump PI4_by_self:");
+        flatbufTestQuery.dumpPI4_by_self(this.api,
+                v -> {
+                    query_file.println("PI4{" + v.s() + "}");
+                });
+
+        query_file.println("Dump PI5_by_s:");
+        flatbufTestQuery.dumpPI5_by_s(this.api, v -> {
+            query_file.println("PI5{" + v.s() + "}");
+        });
+
+        query_file.println("Dump QI_by_m:");
+        flatbufTestQuery.dumpQI_by_m(this.api, v -> {
+            query_file.println(printQI(v));
+        });
+
+        query_file.println("Dump RI_by_refm:");
+        flatbufTestQuery.dumpRI_by_refm(this.api, v -> {
+            query_file.println("RI{" + v.m() + "}");
+        });
+        query_file.println("Dump RI_by_m:");
+        flatbufTestQuery.dumpRI_by_m(this.api, v -> {
+            query_file.println("RI{" + v.m() + "}");
+        });
+
+        query_file.println("Dump SI_by_m:");
+        flatbufTestQuery.dumpSI_by_m(this.api,
+                v -> {
+                    query_file.println("SI{C{\"" + v.m().x() + "\"}}");
+                });
+        query_file.println("Dump SI_by_x:");
+        flatbufTestQuery.dumpSI_by_x(this.api,
+                v -> {
+                    query_file.println("SI{C{\"" + v.m().x() + "\"}}");
+                });
+
+        query_file.println("Dump TI_by_m:");
+        flatbufTestQuery.dumpTI_by_m(this.api,
+                v -> { query_file.println(printTI(v)); });
+        query_file.println("Dump TI_by_some:");
+        flatbufTestQuery.dumpTI_by_some(this.api,
+                v -> { query_file.println(printTI(v)); });
+        query_file.println("Dump TI_by_none:");
+        flatbufTestQuery.dumpTI_by_none(this.api,
+                v -> { query_file.println(printTI(v)); });
+
+        query_file.println("Dump UI_by_x:");
+        flatbufTestQuery.dumpUI_by_x(this.api,
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Dump UI_by_b:");
+        flatbufTestQuery.dumpUI_by_b(this.api,
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Dump UI_by_t:");
+        flatbufTestQuery.dumpUI_by_t(this.api,
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Dump UI_by_t1:");
+        flatbufTestQuery.dumpUI_by_t1(this.api,
+                v -> { query_file.println(printMany(v)); });
+
+        query_file.println("Dump VI_by_a:");
+        flatbufTestQuery.dumpVI_by_a(this.api,
+                v -> {
+                    query_file.println("VI{" + v.a() + "," + printMany(v.b()) + "}");
+                });
+        query_file.println("Dump VI_by_t1:");
+        flatbufTestQuery.dumpVI_by_t1(this.api,
+                v -> {
+                    query_file.println("VI{" + v.a() + "," + printMany(v.b()) + "}");
+                });
+
+        query_file.println("Dump WI_by_t2:");
+        flatbufTestQuery.dumpWI_by_t2(this.api,
+                v -> { query_file.println(printWI(v)); });
+        query_file.println("Dump WI_by_t:");
+        flatbufTestQuery.dumpWI_by_t(this.api,
+                v -> { query_file.println(printWI(v)); });
+
+        query_file.println("Dump XI_by_m:");
+        flatbufTestQuery.dumpXI_by_m(this.api,
+                v -> { query_file.println(printXI(v)); });
+
+        query_file.println("Dump YI_by_v:");
+        flatbufTestQuery.dumpYI_by_v(this.api,
+                v -> { query_file.println(printYI(v)); });
+        query_file.println("Dump YI_by_none:");
+        flatbufTestQuery.dumpYI_by_none(this.api,
+                v -> { query_file.println(printYI(v)); });
+        query_file.println("Dump YI_by_self:");
+        flatbufTestQuery.dumpYI_by_self(this.api,
+                v -> { query_file.println(printYI(v)); });
+
+        query_file.println("Dump ZI_by_d:");
+        flatbufTestQuery.dumpZI_by_d(this.api,
+                v -> { query_file.println("HI{" + v.d() + "}"); });
+
+        query_file.println("Dump ZI0_by_self:");
+        flatbufTestQuery.dumpZI0_by_self(this.api,
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Dump ZI1_by_self:");
+        flatbufTestQuery.dumpZI1_by_self(this.api,
+                v -> { query_file.println(v); });
+        query_file.println("Dump ZI1_by_true:");
+        flatbufTestQuery.dumpZI1_by_true(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Dump ZI2_by_self:");
+        flatbufTestQuery.dumpZI2_by_self(this.api,
+                v -> { query_file.println(v); });
+        query_file.println("Dump ZI2_by_const:");
+        flatbufTestQuery.dumpZI2_by_const(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Dump ZI3_by_self:");
+        flatbufTestQuery.dumpZI3_by_self(this.api,
+                v -> { query_file.println(printMany(v)); });
+        query_file.println("Dump ZI3_by_const:");
+        flatbufTestQuery.dumpZI3_by_const(this.api,
+                v -> { query_file.println(printMany(v)); });
+
+        query_file.println("Dump ZI4_by_self:");
+        flatbufTestQuery.dumpZI4_by_self(this.api,
+                v -> { query_file.println(printStrings(v)); });
+
+        query_file.println("Dump ZI5_by_self:");
+        flatbufTestQuery.dumpZI5_by_self(this.api,
+                v -> { query_file.println(printZI5(v)); });
+
+        query_file.println("Dump ZI6_by_self:");
+        flatbufTestQuery.dumpZI6_by_self(this.api,
+                v -> { query_file.println(printOptString(v)); });
+        query_file.println("Dump ZI6_by_none:");
+        flatbufTestQuery.dumpZI6_by_none(this.api,
+                v -> { query_file.println(printOptString(v)); });
+
+        query_file.println("Dump ZI7_by_self:");
+        flatbufTestQuery.dumpZI7_by_self(this.api,
+                v -> { query_file.println("\"" + v + "\""); });
+        query_file.println("Dump ZI7_by_val:");
+        flatbufTestQuery.dumpZI7_by_val(this.api,
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Dump ZI8_by_self:");
+        flatbufTestQuery.dumpZI8_by_self(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Dump ZI9_by_self:");
+        flatbufTestQuery.dumpZI9_by_self(this.api,
+                v -> { query_file.println(v); });
+        query_file.println("Dump ZI9_by_refval:");
+        flatbufTestQuery.dumpZI9_by_refval(this.api,
+                v -> { query_file.println(v); });
+        query_file.println("Dump ZI9_by_val:");
+        flatbufTestQuery.dumpZI9_by_val(this.api,
+                v -> { query_file.println(v); });
+        query_file.println("Dump ZI9_by_const:");
+        flatbufTestQuery.dumpZI9_by_const(this.api,
+                v -> { query_file.println(v); });
+
+        query_file.println("Dump ZI10_by_self:");
+        flatbufTestQuery.dumpZI10_by_self(this.api,
+                v -> { query_file.println("\"" + v + "\""); });
+
+        query_file.println("Dump ZI11_by_self:");
+        flatbufTestQuery.dumpZI11_by_self(this.api,
+                v -> { query_file.println(printZI11(v)); });
+
+        query_file.println("Dump ZI12_by_self:");
+        flatbufTestQuery.dumpZI12_by_self(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_0:");
+        flatbufTestQuery.dumpZI12_by_0(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_1:");
+        flatbufTestQuery.dumpZI12_by_1(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_2:");
+        flatbufTestQuery.dumpZI12_by_2(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_3:");
+        flatbufTestQuery.dumpZI12_by_3(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_30:");
+        flatbufTestQuery.dumpZI12_by_30(this.api,
+                v -> { query_file.println(printZI12(v)); });
+        query_file.println("Dump ZI12_by_31:");
+        flatbufTestQuery.dumpZI12_by_31(this.api,
+                v -> { query_file.println(printZI12(v)); });
+
+        query_file.println("Dump ZI13_by_f0:");
+        flatbufTestQuery.dumpZI13_by_f0(this.api,
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Dump ZI13_by_f1:");
+        flatbufTestQuery.dumpZI13_by_f1(this.api,
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Dump ZI13_by_f2:");
+        flatbufTestQuery.dumpZI13_by_f2(this.api,
+                v -> { query_file.println(printZI13(v)); });
+        query_file.println("Dump ZI13_by_t2:");
+        flatbufTestQuery.dumpZI13_by_t2(this.api,
+                v -> { query_file.println(printZI13(v)); });
+
+        query_file.println("Dump ZI14_by_self:");
+        flatbufTestQuery.dumpZI14_by_self(this.api,
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+        query_file.println("Dump ZI14_by_a:");
+        flatbufTestQuery.dumpZI14_by_a(this.api,
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+        query_file.println("Dump ZI14_by_b:");
+        flatbufTestQuery.dumpZI14_by_b(this.api,
+                v -> { query_file.println(printCases("ZI14", v.c())); });
+
+        query_file.println("Dump ZI15_by_a:");
+        flatbufTestQuery.dumpZI15_by_a(this.api,
+                v -> { query_file.println(printOr("ZI15", v.c())); });
+
+        query_file.println("Dump module_ZI16_by_x:");
+        flatbufTestQuery.dumpmodule_ZI16_by_x(this.api,
+                v -> { query_file.println("module_ZI16{\"" + v.x() + "\"}"); });
+
+        query_file.println("Dump module_ZI18_by_0:");
+        flatbufTestQuery.dumpZI18_by_0(this.api,
+                v -> { query_file.println("module_ZI18{" + printMTuple(v.t()) + "}"); });
+
+        query_file.println("Dump module_ZI19_by_1:");
+        flatbufTestQuery.dumpmodule_ZI19_by_1(this.api,
+                v -> { query_file.println(printMTuple(v)); });
+
+        query_file.println("Dump ZI20_by_0:");
+        flatbufTestQuery.dumpZI20_by_0(this.api,
+                v -> { query_file.println("ZI20{" + printMTuple(v.t()) + "}"); });
+
+        query_file.println("Dump ZI21_by_m:");
+        flatbufTestQuery.dumpZI21_by_m(this.api,
+                v -> { query_file.println("ZI21{" + v.m() + "}"); });
+
+
         this.fb_file.close();
+        this.query_file.close();
     }
 
     public static void main(String[] args) throws IOException, DDlogException {

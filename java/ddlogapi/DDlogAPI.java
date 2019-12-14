@@ -31,6 +31,8 @@ public class DDlogAPI {
     static native void ddlog_transaction_rollback(long hprog) throws DDlogException;
     static native void ddlog_apply_updates(long hprog, long[] upds) throws DDlogException;
     static native void ddlog_apply_updates_from_flatbuf(long hprog, byte[] bytes, int position) throws DDlogException;
+    static native void ddlog_query_index_from_flatbuf(long hprog, byte[] bytes, int position, FlatBufDescr fb) throws DDlogException;
+    static native void ddlog_dump_index_to_flatbuf(long hprog, long idxid, FlatBufDescr fb) throws DDlogException;
     static native int ddlog_clear_relation(long hprog, int relid);
     static native String ddlog_profile(long hprog);
     static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
@@ -344,6 +346,33 @@ public class DDlogAPI {
     public void applyUpdatesFromFlatBuf(ByteBuffer buf) throws DDlogException {
         checkHandle();
         ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
+    }
+
+    /**
+     * Perform a DDlog index query serialized in a flutbuf; returns result in
+     * another flatbuf.
+     *
+     * See <code>ddlog.h: ddlog_query_index_from_flatbuf()</code>.
+     *
+     * This method is for use by the <code>XXXQuery</code> class only and should not
+     * be invoked by user code.
+     */
+    public void queryIndexFromFlatBuf(ByteBuffer buf, FlatBufDescr resfb) throws DDlogException {
+        checkHandle();
+        ddlog_query_index_from_flatbuf(this.hprog, buf.array(), buf.position(), resfb);
+    }
+
+    /**
+     * Dump all values in a DDlog index to flatbuf.
+     *
+     * See <code>ddlog.h: ddlog_dump_index_to_flatbuf()</code>.
+     *
+     * This method is for use by the <code>XXXQuery</code> class only and should not
+     * be invoked by user code.
+     */
+    public void dumpIndexToFlatBuf(long idxid, FlatBufDescr resfb) throws DDlogException {
+        checkHandle();
+        ddlog_dump_index_to_flatbuf(this.hprog, idxid, resfb);
     }
 
     /// Callback invoked from dump.

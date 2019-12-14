@@ -12,6 +12,8 @@
 // TODO: namespace cleanup
 // TODO: single input relation
 
+use std::collections::btree_map::BTreeMap;
+use std::collections::btree_set::BTreeSet;
 use std::collections::hash_map;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::hash::Hash;
@@ -41,12 +43,14 @@ use differential_dataflow::hashable::Hashable;
 use differential_dataflow::input::{Input, InputSession};
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
+use differential_dataflow::operators::arrange::arrangement::Arranged;
 use differential_dataflow::operators::arrange::*;
 use differential_dataflow::operators::*;
 use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKeyTrace;
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
+//use differential_dataflow::trace::cursor::CursorDebug;
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
@@ -66,9 +70,11 @@ use crate::profile::*;
 use crate::record::Mutator;
 use crate::variable::*;
 
-type TValAgent<S, V> =
-    TraceAgent<DefaultValTrace<V, V, <S as ScopeParent>::Timestamp, Weight, u32>>;
-type TKeyAgent<S, V> = TraceAgent<DefaultKeyTrace<V, <S as ScopeParent>::Timestamp, Weight, u32>>;
+type ValTrace<S, V> = DefaultValTrace<V, V, <S as ScopeParent>::Timestamp, Weight, u32>;
+type KeyTrace<S, V> = DefaultKeyTrace<V, <S as ScopeParent>::Timestamp, Weight, u32>;
+
+type TValAgent<S, V> = TraceAgent<ValTrace<S, V>>;
+type TKeyAgent<S, V> = TraceAgent<KeyTrace<S, V>>;
 
 type TValEnter<'a, P, T, V> = TraceEnter<TValAgent<P, V>, T>;
 type TKeyEnter<'a, P, T, V> = TraceEnter<TKeyAgent<P, V>, T>;
@@ -218,8 +224,11 @@ impl<T> Val for T where
 {
 }
 
-/// Unique identifier of a datalog relation
+/// Unique identifier of a DDlog relation.
 pub type RelId = usize;
+
+/// Unique identifier of an index.
+pub type IdxId = usize;
 
 /// Unique identifier of an arranged relation.
 /// The first element of the tuple identifies relation; the second is the index
@@ -624,6 +633,9 @@ pub enum Arrangement<V: Val> {
         name: String,
         /// Function used to produce arrangement.
         afun: &'static ArrangeFunc<V>,
+        /// The arrangement can be queried using `RunningProgram::query_arrangement`
+        /// and `RunningProgram::dump_arrangement`.
+        queryable: bool,
     },
     /// Arrange into a set of values
     Set {
@@ -642,6 +654,13 @@ impl<V: Val> Arrangement<V> {
         match self {
             Arrangement::Map { name, .. } => name.clone(),
             Arrangement::Set { name, .. } => name.clone(),
+        }
+    }
+
+    fn queryable(&self) -> bool {
+        match self {
+            Arrangement::Map { queryable, .. } => *queryable,
+            Arrangement::Set { .. } => false,
         }
     }
 }
@@ -830,17 +849,20 @@ pub type DeltaSet<V> = FnvHashMap<V, bool>;
 /// of scope. Error occurring as part of that operation are silently
 /// ignored. If you want to handle such errors, call `stop` manually.
 pub struct RunningProgram<V: Val> {
-    /* Producer side of the channel used to send commands to workers.
-     * We use async channel to avoid deadlocks when worker 0 is blocked
+    /* Producer sides of channels used to send commands to workers.
+     * We use async channels to avoid deadlocks when workers are blocked
      * in `step_or_park`. */
-    sender: mpsc::Sender<Msg<V>>,
-    /* Channel to signal completion of flush requests. */
-    flush_ack: mpsc::Receiver<()>,
+    senders: Vec<mpsc::Sender<Msg<V>>>,
+    /* Channels to receive replies from worker threads.  We could use a single
+     * channel with multiple senders, but use many channels instead to avoid
+     * deadlocks when one of the workers has died, but `recv` blocks instead
+     * of failing, since the channel is still considered alive. */
+    reply_recv: Vec<mpsc::Receiver<Reply<V>>>,
     relations: FnvHashMap<RelId, RelationInstance<V>>,
     /* Join handle of the thread running timely computaiton. */
     thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
-    /* Timely worker 0. */
-    worker0: thread::Thread,
+    /* Timely worker threads. */
+    worker_threads: Vec<thread::Thread>,
     transaction_in_progress: bool,
     need_to_flush: bool,
     /* CPU profiling enabled (can be expensive). */
@@ -857,8 +879,8 @@ pub struct RunningProgram<V: Val> {
 impl<V: Val> Debug for RunningProgram<V> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut builder = f.debug_struct("RunningProgram");
-        let _ = builder.field("sender", &self.sender);
-        let _ = builder.field("flush_ack", &self.flush_ack);
+        let _ = builder.field("senders", &self.senders);
+        let _ = builder.field("reply_recv", &self.reply_recv);
         let _ = builder.field(
             "relations",
             &(&self.relations as *const FnvHashMap<RelId, RelationInstance<V>>),
@@ -914,6 +936,7 @@ impl<V: Val> RelationInstance<V> {
 /// `DeleteKey` takes key only and is only defined for relations with 'key_func';
 /// `Modify` takes a key and a `Mutator` trait object that represents an update
 /// to be applied to the given key.
+#[derive(Clone)]
 pub enum Update<V> {
     Insert {
         relid: RelId,
@@ -930,7 +953,7 @@ pub enum Update<V> {
     Modify {
         relid: RelId,
         k: V,
-        m: Box<dyn Mutator<V> + Send>,
+        m: Arc<dyn Mutator<V> + Send + Sync>,
     },
 }
 
@@ -1024,12 +1047,29 @@ impl<V> Update<V> {
     }
 }
 
-/* Messages sent to timely worker threads
- */
+/* Messages sent to timely worker threads.  Most of these messages can be sent
+ * to worker 0 only. */
+#[derive(Debug, Clone)]
 enum Msg<V: Val> {
+    // Update input relation (worker 0 only).
     Update(Vec<Update<V>>),
+    // Propagate changes through the pipeline (worker 0 only).
     Flush,
+    // Query arrangement.  If the second argument is `None`, returns
+    // all values in the collection; otherwise returns values associated
+    // with the specified key.
+    Query(ArrId, Option<V>),
+    // Stop all workers (worker 0 only)
     Stop,
+}
+
+/* Reply messages from timely worker threads. */
+#[derive(Debug)]
+enum Reply<V: Val> {
+    // Acknowledge flush completion (sent by worker 0 only).
+    FlushAck,
+    // Result of a query.
+    QueryRes(Option<BTreeSet<V>>),
 }
 
 impl<V: Val> Program<V> {
@@ -1038,17 +1078,21 @@ impl<V: Val> Program<V> {
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
-        /* Setup channel to communicate with the dataflow.
-         * We use async channel to avoid deadlocks when worker 0 is parked in
+        /* Setup channels to communicate with the dataflow.
+         * We use async channels to avoid deadlocks when workers are parked in
          * `step_or_park`.  This has the downside of introducing an unbounded buffer
          * that is only guaranteed to be fully flushed when the transaction commits.
          */
-        let (tx, rx) = mpsc::channel::<Msg<V>>();
-        let rx = Arc::new(Mutex::new(rx));
+        let (request_send, request_recv): (Vec<_>, Vec<_>) =
+            (0..nworkers).map(|_| mpsc::channel::<Msg<V>>()).unzip();
+        let request_recv: Arc<Mutex<Vec<Option<_>>>> =
+            Arc::new(Mutex::new(request_recv.into_iter().map(Some).collect()));
 
-        /* Channel to send flush acknowledgements. */
-        let (flush_ack_send, flush_ack_recv) = mpsc::sync_channel::<()>(0);
-        let flush_ack_send = flush_ack_send.clone();
+        /* Channels for responses from worker threads. */
+        let (reply_send, reply_recv): (Vec<_>, Vec<_>) =
+            (0..nworkers).map(|_| mpsc::channel::<Reply<V>>()).unzip();
+        let reply_send: Arc<Mutex<Vec<Option<_>>>> =
+            Arc::new(Mutex::new(reply_send.into_iter().map(Some).collect()));
 
         /* Profiling channel */
         let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
@@ -1058,7 +1102,7 @@ impl<V: Val> Program<V> {
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
         /* Channel used by the main timely thread to send worker 0 handle to the caller. */
-        let (w0send, w0recv) = mpsc::sync_channel::<thread::Thread>(0);
+        let (wsend, wrecv) = mpsc::sync_channel::<Vec<thread::Thread>>(0);
 
         /* Profile data structure */
         let profile = Arc::new(Mutex::new(Profile::new()));
@@ -1127,8 +1171,18 @@ impl<V: Val> Program<V> {
                         prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect())).unwrap();
                     });
 
-                    let rx = rx.clone();
-                    let mut all_sessions = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
+                    let request_recv = {
+                        let mut opt_rx = None;
+                        std::mem::swap(&mut request_recv.lock().unwrap()[worker_index], &mut opt_rx);
+                        opt_rx.unwrap()
+                    };
+                    let reply_send = {
+                        let mut opt_tx = None;
+                        std::mem::swap(&mut reply_send.lock().unwrap()[worker_index], &mut opt_tx);
+                        opt_tx.unwrap()
+                    };
+
+                    let (mut all_sessions, mut traces) = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
                         let mut sessions : FnvHashMap<RelId, InputSession<TS, V, Weight>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
@@ -1221,7 +1275,7 @@ impl<V: Val> Program<V> {
                                                 },
                                                 Dep::Arr(arrid) => {
                                                     let arrangement = arrangements.get(&arrid)
-                                                                              .unwrap_or_else(|| panic!("Arr: unknown arrangement {:?}", arrid))
+                                                                              .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
                                                                               .enter(inner);
 
                                                     inner_arrangements.insert(arrid, arrangement);
@@ -1266,7 +1320,7 @@ impl<V: Val> Program<V> {
                                     for rel in rels {
                                         for (i, arr) in rel.rel.arrangements.iter().enumerate() {
                                             /* only if the arrangement is used outside of this node */
-                                            if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n|*n != nodeid) {
+                                            if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n|*n != nodeid) || arr.queryable() {
                                                 with_prof_context(
                                                     &format!("global {}", arr.name()),
                                                     || -> Result<_, String> {
@@ -1294,7 +1348,20 @@ impl<V: Val> Program<V> {
                                 }).probe_with(&mut probe1);
                             }
                         };
-                        Ok(sessions)
+
+                        /* Attach probes to index arrangements, so we know when all updates
+                         * for a given epoch have been added to the arrangement, and return
+                         * arrangement trace. */
+                        let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
+                        for ((relid, arrid), arr) in arrangements.into_iter() {
+                            if let ArrangedCollection::Map(arranged) = arr {
+                                if prog.get_relation(relid).arrangements[arrid].queryable() {
+                                    arranged.as_collection(|k,_| k.clone()).probe_with(&mut probe1);
+                                    traces.insert((relid, arrid), arranged.trace.clone());
+                                }
+                            }
+                        }
+                        Ok((sessions, traces))
                     })?;
                     //println!("worker {} started", worker.index());
 
@@ -1309,22 +1376,22 @@ impl<V: Val> Program<V> {
                               .update(v.clone(), 1);
                         }
                         epoch += 1;
-                        Self::advance(&mut all_sessions, epoch);
+                        Self::advance(&mut all_sessions, &mut traces, epoch);
                         Self::flush(&mut all_sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
-                        flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
+                        reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
-                    // close session handles for non-input sessions
+                    // Close session handles for non-input sessions;
+                    // close all sessions for workers other than worker 0.
                     let mut sessions: FnvHashMap<RelId, InputSession<TS, V, Weight>> =
-                        all_sessions.drain().filter(|(relid,_)|prog.get_relation(*relid).input).collect();
+                        all_sessions.drain().filter(|(relid,_)| worker_index == 0 && prog.get_relation(*relid).input).collect();
 
                     /* Only worker 0 receives data */
                     if worker_index == 0 {
-                        let rx = rx.lock().unwrap();
                         loop {
                             /* Non-blocking receive, so that we can do some garbage collecting
                              * when there is no real work to do. */
-                            match rx.try_recv() {
+                            match request_recv.try_recv() {
                                 Err(mpsc::TryRecvError::Empty) => {
                                     /* Command channel empty: use idle time to work on garbage collection.
                                      * This will block when there is no more compaction left to do.
@@ -1355,22 +1422,25 @@ impl<V: Val> Program<V> {
                                             },
                                             Update::DeleteKey{..} => {
                                                 // workers don't know about keys
-                                                panic!("DeleteKey command received by worker thread")
+                                                Err("DeleteKey command received by worker thread".to_string())?;
                                             },
                                             Update::Modify{..} => {
-                                                panic!("Modify command received by worker thread")
+                                                Err("Modify command received by worker thread".to_string())?
                                             }
                                         }
                                     };
                                     epoch += 1;
                                     //print!("epoch: {}\n", epoch);
-                                    Self::advance(&mut sessions, epoch);
+                                    Self::advance(&mut sessions, &mut traces, epoch);
                                 },
                                 Ok(Msg::Flush) => {
                                     //println!("flushing");
                                     Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
                                     //println!("flushed");
-                                    flush_ack_send.send(()).map_err(|e| format!("failed to send ACK: {}", e))?;
+                                    reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
+                                },
+                                Ok(Msg::Query(arrid, key)) => {
+                                    Self::handle_query(&mut traces, &reply_send, arrid, key)?;
                                 },
                                 Ok(Msg::Stop) => {
                                     Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
@@ -1378,49 +1448,66 @@ impl<V: Val> Program<V> {
                                 }
                             };
                         }
-                    };
-                }
-                if worker_index != 0 {
-                    loop {
-                        /* Differential does not require any synchronization between workers: as
-                         * long as we keep calling `step_or_park`, all workers will eventually
-                         * process all inputs.  Barriers in the following code are needed so that
-                         * worker 0 can know exactly when all other workers have processed all data
-                         * for the `frontier_ts` timestamp, so that it knows when a transaction has
-                         * been fully committed and produced all its outputs. */
-                        progress_barrier.wait();
-                        let time = frontier_ts.load(Ordering::SeqCst);
-                        if time == /*0xffffffffffffffff*/TS::max_value() {
-                            return Ok(())
-                        };
-                        while probe.less_than(&time) {
-                            if !worker.step_or_park(None) {
-                                /* Dataflow terminated. */
+                    } else /* worker_index != 0 */ {
+                        loop {
+                            /* Differential does not require any synchronization between workers: as
+                             * long as we keep calling `step_or_park`, all workers will eventually
+                             * process all inputs.  Barriers in the following code are needed so that
+                             * worker 0 can know exactly when all other workers have processed all data
+                             * for the `frontier_ts` timestamp, so that it knows when a transaction has
+                             * been fully committed and produced all its outputs. */
+                            progress_barrier.wait();
+                            let time = frontier_ts.load(Ordering::SeqCst);
+                            if time == /*0xffffffffffffffff*/TS::max_value() {
                                 return Ok(())
                             };
-                        };
-                        progress_barrier.wait();
-                        /* We're all caught up with `frontier_ts` and can now spend some time
-                         * garbage collecting.  The `step_or_park` call below will block if there
-                         * is no more garbage collecting left to do.  It will wake up when one of
-                         * the following conditions occurs: (1) there is more garbage collecting to
-                         * do as a result of other threads making progress, (2) new inputs have
-                         * been received, (3) worker 0 unparked the thread.  We check if the
-                         * frontier has been advanced by worker 0 and, if so, go back to the
-                         * barrier to synchrnonize with other workers. */
-                        while frontier_ts.load(Ordering::SeqCst) == time {
-                            worker.step_or_park(None);
+                            /* `sessions` is empty, but we must advance trace frontiers, so we
+                             * don't hinder trace compaction. */
+                            Self::advance(&mut sessions, &mut traces, time);
+                            while probe.less_than(&time) {
+                                if !worker.step_or_park(None) {
+                                    /* Dataflow terminated. */
+                                    return Ok(())
+                                };
+                            };
+                            progress_barrier.wait();
+                            /* We're all caught up with `frontier_ts` and can now spend some time
+                             * garbage collecting.  The `step_or_park` call below will block if there
+                             * is no more garbage collecting left to do.  It will wake up when one of
+                             * the following conditions occurs: (1) there is more garbage collecting to
+                             * do as a result of other threads making progress, (2) new inputs have
+                             * been received, (3) worker 0 unparked the thread, (4) main thread sent
+                             * us a message and unparked the thread.  We check if the frontier has been
+                             * advanced by worker 0 and, if so, go back to the barrier to synchrnonize
+                             * with other workers. */
+                            while frontier_ts.load(Ordering::SeqCst) == time {
+                                /* Non-blocking receive, so that we can do some garbage collecting
+                                 * when there is no real work to do. */
+                                match request_recv.try_recv() {
+                                    Ok(Msg::Query(arrid, key)) => {
+                                        Self::handle_query(&mut traces, &reply_send, arrid, key)?;
+                                    },
+                                    Ok(msg) => {
+                                        Err(format!("Worker {} received unexpected message: {:?}", worker_index, msg))?;
+                                    },
+                                    Err(mpsc::TryRecvError::Empty) => {
+                                        /* Command channel empty: use idle time to work on garbage collection. */
+                                        worker.step_or_park(None);
+                                    },
+                                    _ => { }
+                                }
+                            }
                         }
                     }
                 }
                 Ok(())
             }
         ).map(|g| {
-            w0send.send(g.guards()[0].thread().clone()).unwrap();
+            wsend.send(g.guards().iter().map(|wg| wg.thread().clone()).collect()).unwrap();
             g.join();
         }));
 
-        let w0 = w0recv.recv().unwrap();
+        let worker_threads = wrecv.recv().unwrap();
         //println!("timely computation started");
 
         let mut rels = FnvHashMap::default();
@@ -1451,16 +1538,16 @@ impl<V: Val> Program<V> {
             }
         }
         /* Wait for the initial transaction to complete */
-        flush_ack_recv
+        reply_recv[0]
             .recv()
             .map_err(|e| format!("failed to receive ACK: {}", e))?;
 
         Ok(RunningProgram {
-            sender: tx,
-            flush_ack: flush_ack_recv,
+            senders: request_send,
+            reply_recv,
             relations: rels,
             thread_handle: Some(h),
-            worker0: w0,
+            worker_threads,
             transaction_in_progress: false,
             need_to_flush: false,
             profile_cpu,
@@ -1483,10 +1570,22 @@ impl<V: Val> Program<V> {
     }
 
     /* Advance the epoch on all input sessions */
-    fn advance(sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>, epoch: TS) {
+    fn advance<Tr>(
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
+        traces: &mut BTreeMap<ArrId, Tr>,
+        epoch: TS,
+    ) where
+        Tr: TraceReader<Key = V, Val = V, Time = TS, R = Weight>,
+        Tr::Batch: BatchReader<V, V, TS, Weight>,
+        Tr::Cursor: Cursor<V, V, TS, Weight>,
+    {
         for (_, s) in sessions.iter_mut() {
             //print!("advance\n");
             s.advance_to(epoch);
+        }
+        for (_, t) in traces.iter_mut() {
+            t.distinguish_since(&[epoch]);
+            t.advance_by(&[epoch]);
         }
     }
 
@@ -1527,6 +1626,76 @@ impl<V: Val> Program<V> {
         frontier_ts.store(TS::max_value(), Ordering::SeqCst);
         Self::unpark_peers(peers);
         progress_barrier.wait();
+    }
+
+    fn handle_query<Tr>(
+        traces: &mut BTreeMap<ArrId, Tr>,
+        reply_send: &mpsc::Sender<Reply<V>>,
+        arrid: ArrId,
+        key: Option<V>,
+    ) -> Result<(), String>
+    where
+        Tr: TraceReader<Key = V, Val = V, Time = TS, R = Weight>,
+        <Tr as TraceReader>::Batch: BatchReader<V, V, TS, Weight>,
+        <Tr as TraceReader>::Cursor: Cursor<V, V, TS, Weight>,
+    {
+        let trace = match traces.get_mut(&arrid) {
+            None => {
+                reply_send
+                    .send(Reply::QueryRes(None))
+                    .map_err(|e| format!("handle_query: failed to send error response: {}", e))?;
+                return Ok(());
+            }
+            Some(trace) => trace,
+        };
+
+        let (mut cursor, storage) = trace.cursor();
+        // for ((k, v), diffs) in cursor.to_vec(&storage).iter() {
+        //     println!("{:?}:{:?}: {:?}", *k, *v, diffs);
+        // }
+        /* XXX: is this necessary? */
+        cursor.rewind_keys(&storage);
+        cursor.rewind_vals(&storage);
+        let vals = match key {
+            Some(k) => {
+                cursor.seek_key(&storage, &k);
+                if !cursor.key_valid(&storage) {
+                    BTreeSet::new()
+                } else {
+                    let mut vals = BTreeSet::new();
+                    while cursor.val_valid(&storage) && *cursor.key(&storage) == k {
+                        let mut weight = 0;
+                        cursor.map_times(&storage, |_, diff| weight += diff);
+                        assert!(weight >= 0);
+                        if weight > 0 {
+                            vals.insert(cursor.val(&storage).clone());
+                        };
+                        cursor.step_val(&storage);
+                    }
+                    vals
+                }
+            }
+            None => {
+                let mut vals = BTreeSet::new();
+                while cursor.key_valid(&storage) {
+                    while cursor.val_valid(&storage) {
+                        let mut weight = 0;
+                        cursor.map_times(&storage, |_, diff| weight += diff);
+                        assert!(weight >= 0);
+                        if weight > 0 {
+                            vals.insert(cursor.val(&storage).clone());
+                        };
+                        cursor.step_val(&storage);
+                    }
+                    cursor.step_key(&storage);
+                }
+                vals
+            }
+        };
+        reply_send
+            .send(Reply::QueryRes(Some(vals)))
+            .map_err(|e| format!("handle_query: failed to send query response: {}", e))?;
+        Ok(())
     }
 
     fn unpark_peers(peers: &FnvHashMap<usize, thread::Thread>) {
@@ -1919,7 +2088,7 @@ impl<V: Val> RunningProgram<V> {
     pub fn stop(&mut self) -> Response<()> {
         if let Some(thread) = self.thread_handle.take() {
             self.flush()
-                .and_then(|_| self.send(Msg::Stop))
+                .and_then(|_| self.send(0, Msg::Stop))
                 .and_then(|_| match thread.join() {
                     // Note that we intentionally do not join the profiling thread if the timely
                     // thread died, because an unexpected death of the timely thread means we
@@ -2005,7 +2174,7 @@ impl<V: Val> RunningProgram<V> {
         &mut self,
         relid: RelId,
         k: V,
-        m: Box<dyn Mutator<V> + Send>,
+        m: Arc<dyn Mutator<V> + Send + Sync>,
     ) -> Response<()> {
         self.apply_updates(
             vec![Update::Modify {
@@ -2049,7 +2218,7 @@ impl<V: Val> RunningProgram<V> {
             };
         }
 
-        self.send(Msg::Update(filtered_updates)).and_then(|_| {
+        self.send(0, Msg::Update(filtered_updates)).and_then(|_| {
             self.need_to_flush = true;
             Ok(())
         })
@@ -2090,6 +2259,59 @@ impl<V: Val> RunningProgram<V> {
             }
         };
         self.apply_updates(upds.into_iter())
+    }
+
+    /// Returns all values in the arrangement with the specified key.
+    pub fn query_arrangement(&mut self, arrid: ArrId, k: V) -> Response<BTreeSet<V>> {
+        self._query_arrangement(arrid, Some(k))
+    }
+
+    /// Returns the entire content of an arrangement.
+    pub fn dump_arrangement(&mut self, arrid: ArrId) -> Response<BTreeSet<V>> {
+        self._query_arrangement(arrid, None)
+    }
+
+    fn _query_arrangement(&mut self, arrid: ArrId, k: Option<V>) -> Response<BTreeSet<V>> {
+        /* Send query and receive replies from all workers.  If a key is specified, then at most
+         * one worker will send a non-empty reply. */
+        self.broadcast(Msg::Query(arrid, k))?;
+
+        let mut res: BTreeSet<V> = BTreeSet::new();
+        let mut unknown = false;
+        for (worker_index, chan) in self.reply_recv.iter().enumerate() {
+            let reply = chan.recv().map_err(|e| {
+                format!(
+                    "query_arrangement: failed to receive reply from worker {}: {:?}",
+                    worker_index, e
+                )
+            })?;
+            match reply {
+                Reply::QueryRes(Some(mut vals)) => {
+                    if !vals.is_empty() {
+                        if res.is_empty() {
+                            std::mem::swap(&mut res, &mut vals);
+                        } else {
+                            res.append(&mut vals);
+                        }
+                    }
+                }
+                Reply::QueryRes(None) => {
+                    unknown = true;
+                }
+                repl => {
+                    Err(format!(
+                        "query_arrangement: unexpected reply from worker {}: {:?}",
+                        worker_index, repl
+                    ))?;
+                }
+            }
+        }
+
+        if unknown {
+            Err(format!("query_arrangement: unknown index: {:?}", arrid))
+        } else {
+            Ok(res)
+        }
     }
 
     /* increment the counter associated with value `x` in the delta-set
@@ -2289,17 +2511,25 @@ impl<V: Val> RunningProgram<V> {
         })
     }*/
 
-    /* Send message to worker thread */
-    fn send(&self, msg: Msg<V>) -> Response<()> {
-        match self.sender.send(msg) {
+    /* Send message to a worker thread. */
+    fn send(&self, worker_index: usize, msg: Msg<V>) -> Response<()> {
+        match self.senders[worker_index].send(msg) {
             Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
             Ok(()) => {
                 /* Worker 0 may be blocked in `step_or_park`.  Unpark to ensure receipt of the
                  * message. */
-                self.worker0.unpark();
+                self.worker_threads[worker_index].unpark();
                 Ok(())
             }
         }
+    }
+
+    /* Broadcast message to all worker threads. */
+    fn broadcast(&self, msg: Msg<V>) -> Response<()> {
+        for worker_index in 0..self.senders.len() {
+            self.send(worker_index, msg.clone())?;
+        }
+        Ok(())
     }
 
     /* Clear delta sets of all input relations on transaction commit. */
@@ -2352,13 +2582,17 @@ impl<V: Val> RunningProgram<V> {
             return Ok(());
         };
 
-        self.send(Msg::Flush).and_then(|()| {
+        self.send(0, Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
-            match self.flush_ack.recv() {
+            match self.reply_recv[0].recv() {
                 Err(_) => Err(
                     "failed to receive flush ack message from timely dataflow thread".to_string(),
                 ),
-                Ok(()) => Ok(()),
+                Ok(Reply::FlushAck) => Ok(()),
+                Ok(msg) => Err(format!(
+                    "received unexpected reply to flush request: {:?}",
+                    msg
+                )),
             }
         })
     }
