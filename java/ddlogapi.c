@@ -419,6 +419,74 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1apply_1updates_1from_1flatb
     (*env)->ReleaseByteArrayElements(env, bytes, buf, JNI_ABORT);
 }
 
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1query_1index_1from_1flatbuf(
+    JNIEnv *env, jclass obj, jlong progHandle, jbyteArray bytes, jint position, jobject resfbdescr) {
+    jbyte *buf = (*env)->GetByteArrayElements(env, bytes, NULL);
+    size_t size = (*env)->GetArrayLength(env, bytes);
+    unsigned char *resbuf_addr = NULL;
+    size_t resbuf_size         = 0;
+    size_t resbuf_capacity     = 0;
+    size_t resbuf_offset       = 0;
+
+    jclass cls = (*env)->FindClass(env, "ddlogapi/DDlogAPI$FlatBufDescr");
+    if (cls == NULL) {
+        return;
+    }
+    jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
+    if(setMethod == NULL) {
+        return;
+    }
+
+    if (ddlog_query_index_from_flatbuf(
+            (ddlog_prog)progHandle,
+            ((const unsigned char *) buf) + position,
+            size,
+            &resbuf_addr,
+            &resbuf_size,
+            &resbuf_capacity,
+            &resbuf_offset) < 0) {
+        throwDDlogException(env, NULL);
+    };
+
+    jobject direct_buf = (*env)->NewDirectByteBuffer(env, resbuf_addr + resbuf_offset, (jlong)(resbuf_capacity - resbuf_offset));
+
+    (*env)->CallVoidMethod(env, resfbdescr, setMethod,
+            direct_buf, (jlong)resbuf_size, (jlong)resbuf_offset);
+
+    (*env)->ReleaseByteArrayElements(env, bytes, buf, JNI_ABORT);
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1index_1to_1flatbuf(
+    JNIEnv *env, jclass obj, jlong progHandle, jlong idxid, jobject resfbdescr) {
+    unsigned char *resbuf_addr = NULL;
+    size_t resbuf_size         = 0;
+    size_t resbuf_capacity     = 0;
+    size_t resbuf_offset       = 0;
+
+    jclass cls = (*env)->FindClass(env, "ddlogapi/DDlogAPI$FlatBufDescr");
+    if (cls == NULL) {
+        return;
+    }
+    jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
+    if(setMethod == NULL) {
+        return;
+    }
+
+    if (ddlog_dump_index_to_flatbuf(
+            (ddlog_prog)progHandle,
+            (size_t)idxid,
+            &resbuf_addr,
+            &resbuf_size,
+            &resbuf_capacity,
+            &resbuf_offset) < 0) {
+        throwDDlogException(env, NULL);
+    };
+
+    jobject direct_buf = (*env)->NewDirectByteBuffer(env, resbuf_addr + resbuf_offset, (jlong)(resbuf_capacity - resbuf_offset));
+
+    (*env)->CallVoidMethod(env, resfbdescr, setMethod,
+            direct_buf, (jlong)resbuf_size, (jlong)resbuf_offset);
+}
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1clear_1relation(
     JNIEnv *env, jclass obj, jlong progHandle, jint relid) {
     int result = ddlog_clear_relation((ddlog_prog)progHandle, relid);

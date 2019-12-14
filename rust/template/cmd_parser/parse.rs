@@ -26,6 +26,8 @@ pub enum Command {
     Echo(String),
     Sleep(BigInt),
     Update(UpdCmd, bool),
+    QueryIndex(String, Record),
+    DumpIndex(String),
 }
 
 named!(spaces<&[u8], ()>,
@@ -91,6 +93,23 @@ named!(pub parse_command<&[u8], Command>,
                             apply!(sym,";")         >>
                             (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))          |
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback))   |
+                  do_parse!(apply!(sym,"query_index")                         >>
+                            idx: identifier                                   >>
+                            args: delimited!(
+                                apply!(sym,"("), 
+                                separated_list!(apply!(sym,","), record),
+                                apply!(sym,")"))                              >>
+                            apply!(sym,";")                                   >>
+                            (Command::QueryIndex(idx,
+                                                 if args.len() == 1 {
+                                                     args[0].clone()
+                                                 } else {
+                                                     Record::Tuple(args)
+                                                 } )))                                          |
+                  do_parse!(apply!(sym,"dump_index")                          >>
+                            idx: identifier                                   >>
+                            apply!(sym,";")                                   >>
+                            (Command::DumpIndex(idx)))                                          |
                   do_parse!(upd:  update >>
                             last: alt!(map!(apply!(sym,";"), |_|true) | map!(apply!(sym, ","), |_|false)) >>
                             (Command::Update(upd, last)))) >>

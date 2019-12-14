@@ -69,6 +69,9 @@ progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m
 progExprMapCtxM d fun = do
     rels' <- M.fromList <$>
              (mapM (\(rname, rel) -> (rname,) <$> relExprMapCtxM fun rel) $ M.toList $ progRelations d)
+    idxs' <- M.fromList <$>
+             (mapM (\(rname, idx) -> do atom' <- atomExprMapCtxM fun (CtxIndex idx) (idxAtom idx)
+                                        return (rname, idx{idxAtom = atom'})) $ M.toList $ progIndexes d)
     funcs' <- mapM (\f -> do e <- case funcDef f of
                                        Nothing -> return Nothing
                                        Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
@@ -80,6 +83,7 @@ progExprMapCtxM d fun = do
                    $ progRules d
     return d{ progFunctions = funcs'
             , progRelations = rels'
+            , progIndexes   = idxs'
             , progRules     = rules'}
 
 relExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> Relation -> m Relation
@@ -126,11 +130,16 @@ progTypeMapM d@DatalogProgram{..} fun = do
                                                                      return o{hofType = t'}) $ transOutputs t
                                            return t{ transInputs = inputs, transOutputs = outputs }) progTransformers
     rels <- M.traverseWithKey (\_ rel -> setType rel <$> (typeMapM fun $ typ rel)) progRelations
+    idxs <- M.traverseWithKey (\_ idx -> do vars <- mapM (\v -> setType v <$> (typeMapM fun $ typ v)) $ idxVars idx
+                                            atomval <- exprTypeMapM fun $ atomVal $ idxAtom idx
+                                            let atom = (idxAtom idx) { atomVal = atomval }
+                                            return idx { idxVars = vars, idxAtom = atom }) progIndexes
     rules <- mapM (ruleTypeMapM fun) progRules
     return d { progTypedefs     = ts
              , progFunctions    = fs
              , progTransformers = trans
              , progRelations    = rels
+             , progIndexes      = idxs
              , progRules        = rules
              }
 
@@ -169,7 +178,11 @@ progAtomMapM d fun = do
                                rhs              -> return rhs) $ ruleRHS r
                  return r { ruleLHS = lhs, ruleRHS = rhs })
                $ progRules d
-    return d { progRules = rs }
+    is <- mapM (\i -> do a <- fun $ idxAtom i
+                         return i { idxAtom = a })
+               $ progIndexes d
+    return d { progRules = rs
+             , progIndexes = is }
 
 progAtomMap :: DatalogProgram -> (Atom -> Atom) -> DatalogProgram
 progAtomMap d fun = runIdentity $ progAtomMapM d (return . fun)

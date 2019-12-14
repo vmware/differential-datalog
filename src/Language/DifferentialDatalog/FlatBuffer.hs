@@ -60,6 +60,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
+import Language.DifferentialDatalog.Index
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
@@ -134,7 +135,21 @@ compileFlatBufferSchema d prog_name =
     ""                                                                          $$
     "// Union of all program relation types"                                    $$
     "union __Value"                                                             $$
-    (braces' $ vcommaSep $ nub $ map typeTableName rels)                        $$
+    (braces' $ vcommaSep $ nub $ map typeTableName progValTypes)                $$
+    ""                                                                          $$
+    "table __ValueTable {"                                                      $$
+    "    v: __Value;"                                                           $$
+    "}"                                                                         $$
+    ""                                                                          $$
+    "table __Values {"                                                          $$
+    "    values: [__ValueTable];"                                               $$
+    "}"                                                                         $$
+    ""                                                                          $$
+    "// Query DDlog index"                                                      $$
+    "table __Query {"                                                           $$
+    "    idxid: uint64;"                                                        $$
+    "    key: __Value;"                                                         $$
+    "}"                                                                         $$
     ""                                                                          $$
     "// DDlog commands"                                                         $$
     "enum __CommandKind: uint8 { Insert, Delete }"                              $$
@@ -175,7 +190,13 @@ compileFlatBufferJavaBindings d prog_name =
     let writers = mapMaybe typeFlatbufJavaWriter progTypesToSerialize
         readers = mapMaybe typeFlatbufJavaReader progTypesToSerialize
     in
-    mkJavaRelEnum : mkJavaBuilder : mkJavaParser : mkCommandReader : writers ++ readers
+    mkJavaRelEnum :
+    mkJavaBuilder :
+    mkJavaUpdateBuilder :
+    mkJavaParser :
+    mkCommandReader :
+    mkJavaQuery :
+    writers ++ readers
 
 {- Helpers -}
 
@@ -265,6 +286,16 @@ typeIsScalar x =
          TSigned{..} -> typeWidth <= 64
          _           -> False
 
+-- 'true' iff manufacturing a Java convenience type for the DDlog type requires an
+-- instance of FlatBufferBuilder.
+typeRequiresBuilder :: (WithType a, ?d::DatalogProgram) => a -> Bool
+typeRequiresBuilder x =
+    case typeNormalizeForFlatBuf x of
+         TUser{}     -> True
+         TTuple{}    -> True
+         TOpaque{..} -> any typeRequiresBuilder typeArgs
+         _           -> False
+
 -- Table name to the type of 'a'.  Defined even if 'a' is of a type
 -- that is not declared as a table, in which case this is the name of the
 -- wrapper table.
@@ -314,14 +345,23 @@ typeIsVector x =
 
 -- Types for which FlatBuffers schema, including FlatBuffers 'table' declaration
 -- must be generated.  This includes all types that occur in input and output
--- relations, except for primitive types, unless the primitive type is used as
--- relation type, in which case we still need a table for it.
+-- relations (except for primitive types, unless the primitive type is used as
+-- relation type, in which case we still need a table for it) and indexes.
 progTypesToSerialize :: (?d::DatalogProgram) => [Type]
 progTypesToSerialize =
-    nub
-    $ concatMap relTypesToSerialize
-    $ progIORelations
+    nub $
+    concatMap relTypesToSerialize progIORelations ++ 
+    concatMap idxTypesToSerialize (M.elems $ progIndexes ?d) ++
+    concatMap (relTypesToSerialize . idxRelation ?d) (M.elems $ progIndexes ?d)
 
+-- Types to be included in `union __Value`.
+progValTypes :: (?d::DatalogProgram) => [Type]
+progValTypes =
+    nub $
+    map (typeNormalizeForFlatBuf . relType) progIORelations ++
+    map (typeNormalizeForFlatBuf . idxKeyType) (M.elems $ progIndexes ?d) ++
+    map (typeNormalizeForFlatBuf . relType . idxRelation ?d) (M.elems $ progIndexes ?d)
+    
 progIORelations :: (?d::DatalogProgram) => [Relation]
 progIORelations =
     filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
@@ -335,6 +375,13 @@ relTypesToSerialize Relation{..} =
               [typeNormalizeForFlatBuf relType] -- Relation type must appear in 'union Value'; therefore we
                                                 -- generate a table for it even if it's a primitive
                                                 -- type.
+
+-- Types used in index declaration (possibly, recursively), for which serialization
+-- logic must be generated.
+idxTypesToSerialize :: (?d::DatalogProgram) => Index -> [Type]
+idxTypesToSerialize idx@Index{..} =
+    execState (typeSubtypes $ idxKeyType idx)
+              [typeNormalizeForFlatBuf $ idxKeyType idx]
 
 -- Types that occur in type expression `t`, for which serialization logic must be
 -- generated, including:
@@ -502,6 +549,9 @@ fbConstructorName args c | consIsUnique ?d (name c) = fbStructName (name $ consT
 mkRelId :: (?d::DatalogProgram) => Relation -> Doc
 mkRelId Relation{..} = pp $ legalize relName
 
+mkIdxId :: (?d::DatalogProgram) => Index -> Doc
+mkIdxId Index{..} = pp $ legalize idxName
+
 -- capitalize the first letter of a string
 capitalize :: String -> String
 capitalize str = (toUpper (head str) : tail str)
@@ -531,11 +581,11 @@ typeNormalizeForFlatBuf x =
 jFBCallConstructor :: (?prog_name::String) => Doc -> [Doc] -> Doc
 jFBCallConstructor table [] =
     "((java.util.function.Supplier<Integer>) (() -> " $$
-    (braces' $ jFBPackage <> "." <> table <> ".start" <> table <> "(this.fbbuilder);"            $$
-              "return Integer.valueOf(" <+> jFBPackage <> "." <> table <> ".end" <> table <> "(this.fbbuilder));") <> ")).get()"
+    (braces' $ jFBPackage <> "." <> table <> ".start" <> table <> "(fbbuilder);"            $$
+              "return Integer.valueOf(" <+> jFBPackage <> "." <> table <> ".end" <> table <> "(fbbuilder));") <> ")).get()"
 jFBCallConstructor table args =
     jFBPackage <> "." <> table <> ".create" <> table <>
-           (parens $ commaSep $ "this.fbbuilder" : args)
+           (parens $ commaSep $ "fbbuilder" : args)
 
 {- Java convenience API. -}
 
@@ -712,14 +762,14 @@ jConv2FBType fbctx e t =
                 -> jFBCallConstructor (typeTableName t) [jConv2FBType (FBField (typeTableName t) "v") e t]
         -- FlatBuffers has a special method for embedding vectors in a buffer
         FBField{..} | typeIsVector t
-                -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize fbctxField) <> "Vector(this.fbbuilder," <> e' <> ")"
+                -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize fbctxField) <> "Vector(fbbuilder," <> e' <> ")"
                     | otherwise
                 -> e'
     where
     e' = case typeNormalizeForFlatBuf t of
             TBool{}            -> e
             TInt{}             -> bigint
-            TString{}          -> "this.fbbuilder.createString(" <> e <> ")"
+            TString{}          -> "fbbuilder.createString(" <> e <> ")"
             TBit{..} | typeWidth <= 64
                                -> e
             TBit{..}           -> biguint
@@ -732,15 +782,15 @@ jConv2FBType fbctx e t =
                          | otherwise
                                -> e <> ".type," <+> e <> ".offset"
             ot@TOpaque{typeArgs = [_], ..}
-                               -> "this.create_" <> mkTypeIdentifier ot <> parens e
+                               -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
             ot@TOpaque{typeArgs = [_,_], ..} | typeName == mAP_TYPE
-                               -> "this.create_" <> mkTypeIdentifier ot <> parens e
+                               -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
             t'                 -> error $ "FlatBuffer.jConv2FBType: unsupported type " ++ show t'
-    bigint = jFBPackage <> ".__BigInt.create__BigInt(this.fbbuilder,"
+    bigint = jFBPackage <> ".__BigInt.create__BigInt(fbbuilder,"
          <+> e <> ".signum() < 0 ? false : true,"
-         <+> jFBPackage <> ".__BigInt.createBytesVector(this.fbbuilder," <+> e <> ".abs().toByteArray()))"
-    biguint = jFBPackage <> ".__BigUint.create__BigUint(this.fbbuilder,"
-          <+> jFBPackage <> ".__BigUint.createBytesVector(this.fbbuilder," <+> e <> ".toByteArray()))"
+         <+> jFBPackage <> ".__BigInt.createBytesVector(fbbuilder," <+> e <> ".abs().toByteArray()))"
+    biguint = jFBPackage <> ".__BigUint.create__BigUint(fbbuilder,"
+          <+> jFBPackage <> ".__BigUint.createBytesVector(fbbuilder," <+> e <> ".toByteArray()))"
 
 -- Like jConv2FBType, but assumes that input is a Java object type, not a
 -- primitive.
@@ -797,11 +847,16 @@ jConvCreateTable t cons =
 
     where
     -- Table for primitive type
-    prim = jFBPackage <> "." <> typeTableName t <> ".create" <> typeTableName t <> "(this.fbbuilder, v)"
-
+    prim = jFBPackage <> "." <> typeTableName t <> ".create" <> typeTableName t <> "(fbbuilder, v)"
 
 builderClass :: (?prog_name::String) => String
-builderClass = ?prog_name ++ "UpdateBuilder"
+builderClass = ?prog_name ++ "FlatBufferBuilder"
+
+updateBuilderClass :: (?prog_name::String) => String
+updateBuilderClass = ?prog_name ++ "UpdateBuilder"
+
+queryClass :: (?prog_name::String) => String
+queryClass = ?prog_name ++ "Query"
 
 parserClass :: (?prog_name::String) => String
 parserClass = ?prog_name ++ "UpdateParser"
@@ -826,17 +881,98 @@ mkJavaRelEnum = ("ddlog" </> ?prog_name </> relEnum <.> "java",
 -- types.
 mkJavaBuilder :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
 mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
+    "// Automatically generated by the DDlog compiler."                             $$
+    "package ddlog." <> pp ?prog_name <> ";"                                        $$
+    "import ddlogapi.DDlogAPI;"                                                     $$
+    "import ddlogapi.DDlogException;"                                               $$
+    "import com.google.flatbuffers.*;"                                              $$
+    "public class" <+> pp builderClass                                              $$
+    (braces' $ "protected FlatBufferBuilder fbbuilder;"                             $$
+               "public" <+> pp builderClass <> "() {"                               $$
+               "    fbbuilder = new FlatBufferBuilder();"                           $$
+               "}"                                                                  $$
+               "public" <+> pp builderClass <> "(FlatBufferBuilder fbbuilder) {"    $$
+               "    this.fbbuilder = fbbuilder;"                                    $$
+               "}"                                                                  $$
+               (vcat $ map mk_type_factory progTypesToSerialize)))
+    where
+    -- Create constructor methods
+    mk_type_factory t@TUser{..} | typeHasUniqueConstructor t =
+        -- Unique constructor: generate a single 'create_XXX' method with the
+        -- name that matches type name, not constructor name.
+        "public" <+> tname <+> "create_" <> typeTableName t <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
+        (braces' $ "return new" <+> tname <> "(" <>
+                   (jFBCallConstructor (typeTableName t) $ map (\a -> jConv2FBType (FBField (fbType t) (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
+                                | otherwise =
+        -- Multiple constructors: create method per constructor with method name
+        -- matching constructor name.
+        vcat (map (mk_cons_factory t) $ typeCons tstruct)
+        where
+        tname = jConvTypeW t
+        tstruct = typ' ?d t
+        Constructor{..} = head $ typeCons tstruct
+
+    mk_type_factory t@TTuple{..}  =
+        "public" <+> jConvTypeW t <+> "create_" <> typeTableName t <> "(" <> commaSep (mapIdx (\a i -> jConvTypeW a <+> "a" <> pp i) typeTupArgs) <> ")" $$
+        (braces' $ "return new" <+> jConvTypeW t <> "(" <>
+                   (jFBCallConstructor (typeTableName t) $ mapIdx (\a i -> jConv2FBType (FBField (fbType t) ("a" ++ show i)) ("a" <> pp i) a) typeTupArgs) <> ");")
+
+    mk_type_factory t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES =
+        -- Generate a protected method to convert vector of 'elemType'
+        -- into vector of offsets (the method is only used by code generated by
+        -- 'jConv2FBType')
+        "protected static" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t
+                           <> (parens $ "FlatBufferBuilder fbbuilder," <+> jConvTypeW t <+> "v")                    $$
+        (braces' $ jFBWriteType False t <+> "res = new" <+> jFBWriteType True elemType <> "[v.size()];"             $$
+                   "for (int __i = 0; __i < v.size(); __i++)"                                                       $$
+                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v.get(__i)" elemType <> ";")                   $$
+                   "return res;")
+
+    mk_type_factory t@TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE =
+        -- Generate a protected method to Map<keyType,valType> into vector of offsets
+        "protected static" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t
+                            <> (parens $ "FlatBufferBuilder fbbuilder," <+> jConvTypeW t <+> "v")                               $$
+        (braces' $ "int [] res = new int[v.size()];"                                                                            $$
+                   "int __i = 0;"                                                                                               $$
+                   "java.util.Iterator<" <> tentry <> "> it = v.entrySet().iterator();"                                         $$
+                   "while (it.hasNext()) {"                                                                                     $$
+                   "    " <> tentry <+> "pair = (" <> tentry <> ")it.next();"                                                   $$
+                   "    res[__i] =" <+> jFBCallConstructor entry_table [jConvObj2FBType (FBField entry_table "a0") "pair.getKey()" keyType,
+                                                                        jConvObj2FBType (FBField entry_table "a1") "pair.getValue()" valType] <> ";"
+                                                                                                                                $$
+                   "    __i++;"                                                                                                 $$
+                   "}"                                                                                                          $$
+                   "return res;")
+        where
+        tentry = "java.util.Map.Entry<" <> jConvObjTypeW keyType <> "," <+> jConvObjTypeW valType <> ">"
+        entry_table = typeTableName $ tTuple [keyType, valType]
+
+    mk_type_factory _ = empty
+
+    mk_cons_factory t c@Constructor{..} =
+        "public" <+> tname <+> "create_" <> cname <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
+        (braces' $ "return new" <+> tname <> "(" <>
+                   jFBPackage <> "." <> fbtname <> "." <> cname <> "," <+>
+                   (jFBCallConstructor cname $ map (\a -> jConv2FBType (FBField cname (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
+        where
+        tname = jConvTypeW t
+        cname = fbConstructorName (typeArgs t) c
+        fbtname = fbType t
+
+-- Create update builder class with methods to create FlatBuffer-backed instances of DDlog
+-- update commands.
+mkJavaUpdateBuilder :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
     "// Automatically generated by the DDlog compiler."                 $$
     "package ddlog." <> pp ?prog_name <> ";"                            $$
     "import ddlogapi.DDlogAPI;"                                         $$
     "import ddlogapi.DDlogException;"                                   $$
     "import com.google.flatbuffers.*;"                                  $$
-    "public class" <+> pp builderClass                                  $$
-    (braces' $ "private FlatBufferBuilder fbbuilder;"                   $$
-               "private java.util.Vector<Integer> commands;"            $$
+    "public class" <+> pp updateBuilderClass
+                   <+> "extends" <+> pp builderClass                    $$
+    (braces' $ "private java.util.Vector<Integer> commands;"            $$
                "private boolean finished;"                              $$
-               "public" <+> pp builderClass <> "() {"                   $$
-               "    this.fbbuilder = new FlatBufferBuilder();"          $$
+               "public" <+> pp updateBuilderClass <> "() {"             $$
                "    this.commands = new java.util.Vector<Integer>();"   $$
                "    this.finished = false;"                             $$
                "}"                                                      $$
@@ -844,22 +980,21 @@ mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
                "    throws DDlogException {"                            $$
                "    if (this.finished) {"                               $$
                "        throw new IllegalStateException(\"applyUpdates() can only be invoked once for a" <+>
-                                    pp builderClass <+> "instance.\");" $$
+                              pp updateBuilderClass <+> "instance.\");" $$
                "    }"                                                  $$
                "    int[] cmds = new int[this.commands.size()];"        $$
                "    for(int i = 0; i < cmds.length; i++)"               $$
                "        cmds[i] = this.commands.get(i);"                $$
                "    int cmdvec =" <+> jFBCallConstructor "__Commands"
-                    [jFBPackage <> ".__Commands.createCommandsVector(this.fbbuilder,cmds)"] <> ";"
+                    [jFBPackage <> ".__Commands.createCommandsVector(fbbuilder,cmds)"] <> ";"
                                                                         $$
-               "    this.fbbuilder.finish(cmdvec);"                     $$
+               "    fbbuilder.finish(cmdvec);"                          $$
                "    this.finished = true;"                              $$
-               "    hddlog.applyUpdatesFromFlatBuf(this.fbbuilder.dataBuffer());" $$
+               "    hddlog.applyUpdatesFromFlatBuf(fbbuilder.dataBuffer());" $$
                "}"                                                      $$
                (vcat $ map mk_command_constructors
                      $ filter ((== RelInput) . relRole)
-                     $ M.elems $ progRelations ?d)                      $$
-               (vcat $ map mk_type_factory progTypesToSerialize)))
+                     $ M.elems $ progRelations ?d)))
     where
     mk_command_constructors :: Relation -> Doc
     mk_command_constructors rel =
@@ -895,67 +1030,85 @@ mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
                                 "this.commands.add(Integer.valueOf(cmd));"))
                     $ typeCons $ typ' ?d $ typeNormalizeForFlatBuf relType
 
-    -- Create constructor methods
-    mk_type_factory t@TUser{..} | typeHasUniqueConstructor t =
-        -- Unique constructor: generate a single 'create_XXX' method with the
-        -- name that matches type name, not constructor name.
-        "public" <+> tname <+> "create_" <> typeTableName t <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
-        (braces' $ "return new" <+> tname <> "(" <>
-                   (jFBCallConstructor (typeTableName t) $ map (\a -> jConv2FBType (FBField (fbType t) (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
-                                | otherwise =
-        -- Multiple constructors: create method per constructor with method name
-        -- matching constructor name.
-        vcat (map (mk_cons_factory t) $ typeCons tstruct)
+-- Class with methods to query DDlog indexes.
+mkJavaQuery :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
+mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
+    "// Automatically generated by the DDlog compiler."                 $$
+    "package ddlog." <> pp ?prog_name <> ";"                            $$
+    "import ddlogapi.DDlogAPI;"                                         $$
+    "import ddlogapi.DDlogException;"                                   $$
+    "import com.google.flatbuffers.*;"                                  $$
+    "public class" <+> pp queryClass                                    $$
+    (braces' $ (vcat $ map mk_query $ M.elems $ progIndexes ?d) $$
+               (vcat $ map mk_dump $ M.elems $ progIndexes ?d)))
+    where
+    mk_query idx@Index{..} =
+        "public static void query" <> mkIdxId idx <>
+            (parens $ commaSep 
+             $ "DDlogAPI hddlog" :
+               (map (\v -> (if typeRequiresBuilder v
+                               then "java.util.function.Function<" <> pp builderClass <> "," <+> jConvTypeW v <> ">" 
+                               else jConvTypeW v)
+                            <+> pp (name v)) idxVars)
+               ++ ["java.util.function.Consumer<" <> jConvObjTypeR rel <> "> callback"]) <>
+            "throws DDlogException" $$
+        (braces' $
+            "FlatBufferBuilder fbbuilder = new FlatBufferBuilder();"                                                $$
+            (vcat $ map (\v -> jConvTypeW v <+> "__" <> (pp $ name v) <+> "="
+                               <+> (pp $ name v) <> ".apply(new" <+> pp builderClass <> "(fbbuilder));")
+                  $ filter typeRequiresBuilder idxVars)                                                             $$
+            -- Create query.
+            "int query =" <+> jFBCallConstructor "__Query" 
+                              [ (pp $ idxIdentifier ?d idx)
+                              , jFBPackage <> ".__Value." <> typeTableName idx_type
+                              , val ] <> ";"                                                                        $$
+            -- Seal the buffer.
+            "fbbuilder.finish(query);"                                                                              $$
+            -- Call ddlog_query.
+            "DDlogAPI.FlatBufDescr resfb = new DDlogAPI.FlatBufDescr();"                                            $$
+            "hddlog.queryIndexFromFlatBuf(fbbuilder.dataBuffer(), resfb);"                                          $$
+            deserialize idx
+        )
         where
-        tname = jConvTypeW t
-        tstruct = typ' ?d t
-        Constructor{..} = head $ typeCons tstruct
+        arg v = if typeRequiresBuilder v
+                   then "__" <> (pp $ name v)
+                   else pp $ name v
+        rel = idxRelation ?d idx
+        idx_type = tTuple $ map typ $ idxVars
+        val = case idxVars of
+                   [v] -> jConv2FBType FBUnion (arg v) (typ v)
+                   vs  -> let table = typeTableName idx_type in
+                          jFBCallConstructor table
+                                             (mapIdx (\v i -> jConv2FBType (FBField table ("a" ++ show i)) (arg v) (typ v)) vs)
 
-    mk_type_factory t@TTuple{..}  =
-        "public" <+> jConvTypeW t <+> "create_" <> typeTableName t <> "(" <> commaSep (mapIdx (\a i -> jConvTypeW a <+> "a" <> pp i) typeTupArgs) <> ")" $$
-        (braces' $ "return new" <+> jConvTypeW t <> "(" <>
-                   (jFBCallConstructor (typeTableName t) $ mapIdx (\a i -> jConv2FBType (FBField (fbType t) ("a" ++ show i)) ("a" <> pp i) a) typeTupArgs) <> ");")
-
-    mk_type_factory t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES =
-        -- Generate a private method to convert vector of 'elemType'
-        -- into vector of offsets (the method is only used by code generated by
-        -- 'jConv2FBType')
-        "private" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvTypeW t <+> "v")    $$
-        (braces' $ jFBWriteType False t <+> "res = new" <+> jFBWriteType True elemType <> "[v.size()];"             $$
-                   "for (int __i = 0; __i < v.size(); __i++)"                                                       $$
-                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v.get(__i)" elemType <> ";")                   $$
-                   "return res;")
-
-    mk_type_factory t@TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE =
-        -- Generate a private method to Map<keyType,valType> into vector of offsets
-        "private" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t <> (parens $ jConvTypeW t <+> "v")                $$
-        (braces' $ "int [] res = new int[v.size()];"                                                                            $$
-                   "int __i = 0;"                                                                                               $$
-                   "java.util.Iterator<" <> tentry <> "> it = v.entrySet().iterator();"                                         $$
-                   "while (it.hasNext()) {"                                                                                     $$
-                   "    " <> tentry <+> "pair = (" <> tentry <> ")it.next();"                                                   $$
-                   "    res[__i] =" <+> jFBCallConstructor entry_table [jConvObj2FBType (FBField entry_table "a0") "pair.getKey()" keyType,
-                                                                        jConvObj2FBType (FBField entry_table "a1") "pair.getValue()" valType] <> ";"
-                                                                                                                                $$
-                   "    __i++;"                                                                                                 $$
-                   "}"                                                                                                          $$
-                   "return res;")
+    mk_dump idx@Index{..} =
+        "public static void dump" <> mkIdxId idx <>
+            (parens $ commaSep 
+             $ ["DDlogAPI hddlog",
+               "java.util.function.Consumer<" <> jConvObjTypeR rel <> "> callback"]) <>
+            "throws DDlogException" $$
+        (braces' $
+            -- Call ddlog_dump.
+            "DDlogAPI.FlatBufDescr resfb = new DDlogAPI.FlatBufDescr();"                    $$
+            "hddlog.dumpIndexToFlatBuf(" <> (pp $ idxIdentifier ?d idx) <> ", resfb);"      $$
+            deserialize idx
+        )
         where
-        tentry = "java.util.Map.Entry<" <> jConvObjTypeW keyType <> "," <+> jConvObjTypeW valType <> ">"
-        entry_table = typeTableName $ tTuple [keyType, valType]
+        rel = idxRelation ?d idx
 
-    mk_type_factory _ = empty
-
-    mk_cons_factory t c@Constructor{..} =
-        "public" <+> tname <+> "create_" <> cname <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
-        (braces' $ "return new" <+> tname <> "(" <>
-                   jFBPackage <> "." <> fbtname <> "." <> cname <> "," <+>
-                   (jFBCallConstructor cname $ map (\a -> jConv2FBType (FBField cname (name a)) (pp $ name a) (typ a)) consArgs) <> ");")
+    -- deserialize response
+    deserialize idx@Index{..} =
+            "try {"                                                                                                 $$
+            "    " <> jFBPackage <> ".__Values vals =" <+> jFBPackage <> ".__Values.getRootAs__Values(resfb.buf);"  $$
+            "    int len = vals.valuesLength();"                                                                    $$
+            "    for (int i = 0; i < len; i++) {"                                                                   $$
+            "        " <> rel_fb_type <+> "__val = (" <> rel_fb_type <> ")vals.values(i).v(new" <+> rel_fb_type <> "());" $$
+            "        callback.accept(" <> jReadField 0 FBUnion "__val" (typ rel) <> ");"                            $$
+            "    }"                                                                                                 $$
+            "} finally { hddlog.flatbufFree(resfb); }"
         where
-        tname = jConvTypeW t
-        cname = fbConstructorName (typeArgs t) c
-        fbtname = fbType t
-
+        rel = idxRelation ?d idx
+        rel_fb_type = jFBPackage <> "." <> typeTableName rel
 
 -- Create parser class with methods to extract updates from FlatBuffer
 mkJavaParser :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
@@ -1160,8 +1313,9 @@ jReadField nesting fbctx e t =
          FBField{..} | typeIsVector t
                      -> do_read (e <> "." <> pp fbctxField)
                      | not (typeHasUniqueConstructor t)
-                     -> do_read (e <> "." <> jAccessorName fbctxField <> "Type()," <+>
-                                 "(Table t) ->" <+> e <> "." <> jAccessorName fbctxField <> "(t)")
+                     -> let tab = "__t" <> pp nesting in
+                        do_read (e <> "." <> jAccessorName fbctxField <> "Type()," <+>
+                                "(Table" <+> tab <> ") ->" <+> e <> "." <> jAccessorName fbctxField <> "(" <> tab <> ")")
                      | otherwise
                      -> do_read (e <> "." <> jAccessorName fbctxField <> "()")
     where
@@ -1188,7 +1342,7 @@ jReadField nesting fbctx e t =
                               vlen = "len" <> pp nesting
                               vlst = "lst" <> pp nesting
                               vi   = "i"   <> pp nesting
-                              _vi  = "_i"   <> pp nesting
+                              _vi  = "_i"  <> pp nesting
                               vx   = "x"   <> pp nesting in
                           "((java.util.function.Supplier<" <> ltype <> ">) (() ->"                                          $$
                           (braces' $ "int" <+> vlen <+> "=" <+> e' <> "Length();"                                           $$
@@ -1231,10 +1385,16 @@ jReadField nesting fbctx e t =
 rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
 rustValueFromFlatbuf =
     "impl Value {"                                                                                  $$
-    "    fn from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<Self> {"                         $$
+    "    fn relval_from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<Self> {"                  $$
     "        match relid {"                                                                         $$
-    (nest' $ nest' $ nest' $ vcat enums)                                                            $$
-    "            _ => Err(format!(\"Value::from_flatbuf: invalid relation id {}\", relid))"         $$
+    (nest' $ nest' $ nest' $ vcat rel_enums)                                                        $$
+    "            _ => Err(format!(\"Value::relval_from_flatbuf: invalid relid {}\", relid))"        $$
+    "        }"                                                                                     $$
+    "    }"                                                                                         $$
+    "    fn idxkey_from_flatbuf(idxid: IdxId, v: fbrt::Table) -> Response<Self> {"                  $$
+    "        match idxid {"                                                                         $$
+    (nest' $ nest' $ nest' $ vcat idx_enums)                                                        $$
+    "            _ => Err(format!(\"Value::idxkey_from_flatbuf: invalid idxid {}\", idxid))"        $$
     "        }"                                                                                     $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
@@ -1246,19 +1406,40 @@ rustValueFromFlatbuf =
     "            val => panic!(\"Value::to_flatbuf: invalid value {}\", val)"                       $$
     "        }"                                                                                     $$
     "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferTable<'b> for Value {"                                                   $$
+    "    type Target = fb::__ValueTable<'b>;"                                                       $$
+    "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"  $$
+    "        let (v_type, v) = self.to_flatbuf(fbb);"                                               $$
+    "        let v = Some(v);"                                                                      $$
+    "        fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
+    "    }"                                                                                         $$
+    "}"                                                                                             $$
+    "impl <'b> ToFlatBufferVectorElement<'b> for Value {"                                           $$
+    "    type Target = fbrt::WIPOffset<fb::__ValueTable<'b>>;"                                      $$
+    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {" $$
+    "        self.to_flatbuf_table(fbb)"                                                            $$
+    "    }"                                                                                         $$
     "}"
     where
-    enums = map (\rel@Relation{..} ->
-                 pp (relIdentifier ?d rel) <+> "=> Ok(" <>
-                     R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
-                               relType <> "),")
-                progIORelations
+    rel_enums = map (\rel@Relation{..} ->
+                     pp (relIdentifier ?d rel) <+> "=> Ok(" <>
+                         R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
+                                   relType <> "),")
+                    progIORelations
+    idx_enums = map (\idx@Index{..} ->
+                     let t = idxKeyType idx in
+                     pp (idxIdentifier ?d idx) <+> "=> Ok(" <>
+                         R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?") t <> "),")
+                    $ M.elems $ progIndexes ?d
     to_enums = map (\t ->
                     "Value::" <> R.mkValConstructorName ?d t <> "(v) => {"                                   $$
                     "    (fb::__Value::" <> typeTableName t <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
                     "},")
                    $ nubBy (\t1 t2 -> R.mkValConstructorName ?d t1 == R.mkValConstructorName ?d t2)
-                   $ map relType progIORelations
+                   $ map relType progIORelations ++
+                     map idxKeyType (M.elems $ progIndexes ?d) ++
+                     map (relType . idxRelation ?d) (M.elems $ progIndexes ?d)
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.

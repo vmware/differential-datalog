@@ -147,6 +147,7 @@ ctxMVars d ctx =
          CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxKey Relation{..}      -> ([], [(keyVar $ fromJust relPrimaryKey, Just relType)])
+         CtxIndex Index{..}       -> ([], map f2mf idxVars)
          CtxApply _ _ _           -> ([], plvars ++ prvars)
          CtxField _ _             -> (plvars, prvars)
          CtxTupField _ _          -> (plvars, prvars)

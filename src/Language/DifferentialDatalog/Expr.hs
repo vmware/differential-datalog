@@ -39,12 +39,14 @@ module Language.DifferentialDatalog.Expr (
     exprCollect,
     exprVarOccurrences,
     exprVars,
+    exprFreeVars,
     exprIsConst,
     exprVarDecls,
     exprFuncs,
     exprFuncsRec,
     isLVar,
     exprIsPattern,
+    exprIsPatternImpl,
     exprContainsPHolders,
     exprIsDeconstruct,
     exprIsVarOrFieldLVal,
@@ -222,6 +224,14 @@ exprVars e = nub $ exprCollect (\case
                                 _        -> [])
                                (++) e
 
+-- | Free variables, i.e., variables that are used in the expression, but declared
+-- outside of it
+exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [String]
+exprFreeVars d ctx e = visible_vars `intersect` used_vars
+    where
+    visible_vars = map name $ ctxAllVars d ctx
+    used_vars = exprVars e
+
 -- True if expression evaluates to a constant
 -- Note: this does not guarantee that the expression can be evaluated at compile
 -- time.  It may contain a call to an external function, which cannot be
@@ -299,6 +309,25 @@ exprIsPattern' (ETyped _ e _)   = e
 exprIsPattern' (ERef _ e)       = e
 exprIsPattern' (EBinding _ _ e) = e
 exprIsPattern' _                = False
+
+-- | Like 'exprIsPattern', but matches implicit variable declarations.
+exprIsPatternImpl :: Expr -> Bool
+exprIsPatternImpl e = exprFold exprIsPatternImpl' e
+
+exprIsPatternImpl' :: ExprNode Bool -> Bool
+exprIsPatternImpl' EString{}        = True
+exprIsPatternImpl' EBit{}           = True
+exprIsPatternImpl' ESigned{}        = True
+exprIsPatternImpl' EBool{}          = True
+exprIsPatternImpl' EInt{}           = True
+exprIsPatternImpl' EVar{}           = True
+exprIsPatternImpl' (ETuple _ as)    = and as
+exprIsPatternImpl' (EStruct _ _ as) = all snd as
+exprIsPatternImpl' EPHolder{}       = True
+exprIsPatternImpl' (ETyped _ e _)   = e
+exprIsPatternImpl' (ERef _ e)       = e
+exprIsPatternImpl' (EBinding _ _ e) = e
+exprIsPatternImpl' _                = False
 
 -- | True if 'e' contains a placeholder ('_')
 exprContainsPHolders :: Expr -> Bool

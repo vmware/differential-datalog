@@ -1,3 +1,18 @@
-From 9 Insert Span{10000,[100]}
-From 9 DeleteVal Span{10000,[100]}
-From 9 Insert Span{20000,[200]}
+From 19 Insert Span{10000,[100]}
+From 19 Insert Span{20000,[100]}
+Query ExtDdlogDependency_by_child[20000]:
+ExtDdlogDependency{10000,20000}
+Query ExtDdlogDependency_by_parent[10000]:
+ExtDdlogDependency{10000,20000}
+Query Span_by_entity[10000]:
+Span{10000,[100]}
+Dump ExtDdlogDependency_by_child:
+ExtDdlogDependency{10000,20000}
+Dump ExtDdlogDependency_by_parent:
+ExtDdlogDependency{10000,20000}
+Dump Span_by_entity:
+Span{10000,[100]}
+Span{20000,[100]}
+From 19 DeleteVal Span{10000,[100]}
+From 19 DeleteVal Span{20000,[100]}
+From 19 Insert Span{20000,[200]}

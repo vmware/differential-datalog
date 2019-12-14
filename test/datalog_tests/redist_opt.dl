@@ -25,6 +25,8 @@ relation ValidDependency(parent: entid_t, child: entid_t)
 ValidDependency(parent, child) :- DdlogDependency(parent, child), DdlogNode(parent, _), DdlogNode(child, _).
 
 relation ExtDdlogDependency(parent: entid_t, child: entid_t)
+index ExtDdlogDependency_by_parent(parent: entid_t) on ExtDdlogDependency(parent, _)
+index ExtDdlogDependency_by_child(child: entid_t) on ExtDdlogDependency(_, child)
 
 ExtDdlogDependency(parent, child) :-
     ValidDependency(parent, child).
@@ -100,6 +102,8 @@ SCCSpan(parent, tns) :-
  * same as the SCC span.
  */
 output relation Span(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+index Span_by_entity(entity: entid_t) on Span(.entity = entity, .tns = _)
+
 Span(node, span) :- SCCSpan(scc, span), LabeledNode(node, scc).
 
 

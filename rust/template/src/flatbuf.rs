@@ -468,7 +468,7 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for Update<Value> {
         let val_table = cmd.val().ok_or_else(|| {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
-        let val = Value::from_flatbuf(relid, val_table)?;
+        let val = Value::relval_from_flatbuf(relid, val_table)?;
         match cmd.kind() {
             fb::__CommandKind::Insert => Ok(Update::Insert { relid, v: val }),
             fb::__CommandKind::Delete => Ok(Update::DeleteValue { relid, v: val }),
@@ -567,6 +567,44 @@ pub fn updates_to_flatbuf(delta: &DeltaMap<Value>) -> (Vec<u8>, usize) {
     );
 
     fb::finish___commands_buffer(&mut fbb, cmd_table);
+    fbb.collapse()
+}
+
+pub fn query_from_flatbuf<'a>(buf: &'a [u8]) -> Response<(IdxId, Value)> {
+    let q = flatbuffers::get_root::<fb::__Query<'a>>(buf);
+    if let Some(key) = q.key() {
+        Ok((
+            q.idxid() as usize,
+            Value::idxkey_from_flatbuf(q.idxid() as usize, key)?,
+        ))
+    } else {
+        Err("Invalid buffer: failed to extract key".to_string())
+    }
+}
+
+pub fn values_to_flatbuf<'a, I>(vals: I) -> (Vec<u8>, usize)
+where
+    I: Iterator<Item = &'a Value>,
+{
+    let size = vals.size_hint().0;
+
+    /* Each value takes at least 4 bytes of FlatBuffer space. */
+    let mut fbb = fbrt::FlatBufferBuilder::new_with_capacity(4 * size);
+    let mut val_tables = Vec::with_capacity(size);
+
+    for val in vals {
+        val_tables.push(val.to_flatbuf_vector_element(&mut fbb));
+    }
+
+    let val_vec = fbb.create_vector(val_tables.as_slice());
+    let vals_table = fb::__Values::create(
+        &mut fbb,
+        &fb::__ValuesArgs {
+            values: Some(val_vec),
+        },
+    );
+
+    fbb.finish(vals_table, None);
     fbb.collapse()
 }
 

@@ -1,5 +1,9 @@
 input relation ZI16(x: string)
+index ZI16_by_x(x: string) on ZI16(x)
+
 input relation ZI17[string]
 typedef mtuple = (bit<32>, string)
 input relation ZI18(t: mtuple)
+
 input relation ZI19[mtuple]
+index ZI19_by_1(x: string) on ZI19[(_,x)]

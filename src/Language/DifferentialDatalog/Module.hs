@@ -132,6 +132,7 @@ mergeModules mods = do
         progFunctions    = M.unions $ map progFunctions mods,
         progTransformers = M.unions $ map progTransformers mods,
         progRelations    = M.unions $ map progRelations mods,
+        progIndexes      = M.unions $ map progIndexes mods,
         progRules        = concatMap progRules mods,
         progApplys       = concatMap progApplys mods
     }
@@ -141,6 +142,8 @@ mergeModules mods = do
          $ M.elems $ progTransformers prog
     uniq (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
          $ M.elems $ progRelations prog
+    uniq (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
+         $ M.elems $ progIndexes prog
     uniq (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
          $ M.elems $ progTypedefs prog
     return prog
@@ -200,10 +203,12 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
         funcs' = namedListToMap $ map (namedFlatten mod) (M.elems $ progFunctions moduleDefs)
         trans' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTransformers moduleDefs)
         rels'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progRelations moduleDefs)
+        idxs'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progIndexes moduleDefs)
     let prog1 = moduleDefs { progTypedefs     = types'
                            , progFunctions    = funcs'
                            , progTransformers = trans'
-                           , progRelations    = rels' }
+                           , progRelations    = rels'
+                           , progIndexes      = idxs' }
     -- flatten relation references
     prog2 <- progAtomMapM prog1 (\a -> setName a <$> flattenRelName mmap mod (pos a) (name a))
     applys <- mapM (applyFlattenNames mod mmap) $ progApplys prog2

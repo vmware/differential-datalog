@@ -1465,49 +1465,88 @@ library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Ma
 This library is imported automatically into every DDlog program; therefore the path to the
 `lib` directory must always be specified using the `-L` switch.
 
-## Using DDlog programs as libraries
+## Indexes
 
-The text-based interface to DDlog, described so far, is primarily intended for
-testing and debugging purposes.  In production use, a DDlog program is typically
-invoked as a library from a program written in a different language (e.g., C or Java).
+DDlog normally operates on **changes** to relations: it accepts changes to
+`input` relations as inputs and produces changes to `output` relations as
+outputs.  In some applications, however, it is necessary to know the current
+state of a relation, i.e., the set of all records in the relation, or the set of
+records with specific values in a subset of columns.  For example, given a
+relation that stores edges of a digraph
 
-Compile your program as explained [above](#compiling-the-hello-world-program).
-Let's assume your program is `playpen.dl`.
-When compilation completes, the `playpen_ddlog` directory will be created,
-containing generated Rust crate for the DDlog program.  You can invoke this
-crate from programs written in Rust, C/C++, Java, or any other language that
-is able to invoke DDlog's C API through a foreign function interface.
-
-1. **Rust**
-In order to use the generated crate directly from another Rust program,
-add it as a dependency to your `Cargo.toml`, e.g.,
 ```
-[dependencies]
-playpen = {path = "../playpen_ddlog"}
+relation Edge(from: node_t, to: node_t)
 ```
-And invoke it through the API defined in the `./playpen_ddlog/api.rs` file.
 
-**TODO: link to a separate API document**
+one may need to query the set of edges with a given `from` or `to` node.  To do
+so, the developer must create an **index** on the `Edge` relation in the DDlog
+program for each subset of columns used as a key in a query:
 
-1. **C/C++**
-The compiled program will contain a static library `playpen_ddlog/target/release/libplaypen_ddlog.a`
-that can be linked against your C or C++ application.  The C API to DDlog is defined in
-`playpen_ddlog/ddlog.h`.  To generare a dynamic library instead, pass the
-`--dynlib` flag to `ddlog` to generate a `.so` (or `.dylib` on a Mac) file,
-along with `--no-staticlib` to disable generation of the static library.
+```
+// Index the `Edge` relation by `from` node.
+index Edge_by_from(from: node_t) on Edge(from, _)
+```
 
-1. **Java**
-If you plan to use the library from a Java program, make sure to use
-`--dynlib` and `--no-staticlib` flags to generate a dynamically linked library.
-The Java bindings to the DDlog API are imlemented by classes in the `java/ddlogapi`
-directory. See an example Java project in `java/test`.
+This declaration creates an index that can be used to lookup all records in the
+`Edge` relation with the given `from` node.  It consists of a unique name
+(`Edge_by_from`), a set of typed arguments that form the **key** (`from:
+node_t`), and a pattern, which defines the set of values associated with each
+key (`Edge(from, _)`).
 
-    **TODO: link to a separate API document**
+Once an index has been created, it can be queried at runtime, e.g., using the
+`query_index` [CLI](../testing/testing.md#command-reference) command or an
+equivalent method in your favorite language API:
 
-1. The text-based interface is implemented by an
-auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is
-primarily meant for testing and debugging purposes, as it does not offer the same performance and
-flexibility as the API-based interfaces.
+```
+# Output all edges where `from=100`.
+query_index Edge_by_from(100);
+```
+
+It is also possible to dump the entire content of an index:
+
+``` 
+# Output all records in the `Edge` relation.
+dump_index Edge_by_from;
+```
+
+One can create multiple indexes on the same relation:
+
+```
+// Index the `Edge` relation by `to` node.
+index Edge_by_to(to: node_t) on Edge(_, to)
+```
+
+One can also define an index over multiple fields of the relation,
+for example, we can index `Edge` by both `from` and `to` nodes:
+
+```
+// Index `Edge` by both source and destination nodes.
+index Edge_by_to(from: node_t, to: node_t) on Edge(from, to)
+```
+
+The pattern expression simultaneously constraints the set of values and projects
+it on the subset of columns that form the key.
+
+```
+// Type with multiple constructors.
+typedef Many = A{x: string}
+             | B{b: bool}
+             | D{t: tuple}
+
+relation VI(a: bool, b: Many)
+
+// Index over a subset of records with `a` field equal to `true`,
+// `b` field having type constructor `D`, and using the second
+// element of the `b.t` tuple as key.
+index VI_by_t1(x: bit<8>) on VI(.a=true,.b=D{(_, x, _)})
+```
+
+DDlog indexes can be associated with any input, output, or internal relation.
+
+Although similar in spirit to indexes in SQL, DDlog indexes serve a different
+purpose.  They do not affect the performance of the DDlog program and cannot be
+used as an optimization technique (DDlog does use indexes for performance, but
+these indexes are constructed automatically and are not visible to the user).
 
 ## Input/output to DDlog
 
@@ -1536,6 +1575,50 @@ declarations to the program to pre-populate `Word1` and `Word2` relations:
 Word1("Hello,", CategoryOther).
 Word2("world!", CategoryOther).
 ```
+
+### Using DDlog programs as libraries
+
+The text-based interface to DDlog, described so far, is primarily intended for
+testing and debugging purposes.  In production use, a DDlog program is typically
+invoked as a library from a program written in a different language (e.g., C or Java).
+
+Compile your program as explained [above](#compiling-the-hello-world-program).
+Let's assume your program is `playpen.dl`.
+When compilation completes, the `playpen_ddlog` directory will be created,
+containing generated Rust crate for the DDlog program.  You can invoke this
+crate from programs written in Rust, C/C++, Java, or any other language that
+is able to invoke DDlog's C API through a foreign function interface.
+
+1. **Rust**
+In order to use the generated crate directly from another Rust program,
+add it as a dependency to your `Cargo.toml`, e.g.,
+ ```
+ [dependencies]
+ playpen = {path = "../playpen_ddlog"}
+ ```
+ And invoke it through the API defined in the `./playpen_ddlog/api.rs` file.
+
+ **TODO: link to a separate API document**
+
+1. **C/C++**
+The compiled program will contain a static library `playpen_ddlog/target/release/libplaypen_ddlog.a`
+that can be linked against your C or C++ application.  The C API to DDlog is defined in
+`playpen_ddlog/ddlog.h`.  To generare a dynamic library instead, pass the
+`--dynlib` flag to `ddlog` to generate a `.so` (or `.dylib` on a Mac) file,
+along with `--no-staticlib` to disable generation of the static library.
+
+1. **Java**
+If you plan to use the library from a Java program, make sure to use
+`--dynlib` and `--no-staticlib` flags to generate a dynamically linked library.
+    See [Java API documentation](../java_api.md) for a detailed description of
+    the Java API.
+
+1. The text-based interface is implemented by an
+auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is
+primarily meant for testing and debugging purposes, as it does not offer the same performance and
+flexibility as the API-based interfaces.
+    See [CLI documentation](../testing/testing.md#command-reference) for a complete list of commands
+supported by the CLI tool.
 
 ## Profiling
 

@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2019 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,6 +44,8 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsRuleRCond,
      ctxInRuleRHSPositivePattern,
      ctxInRuleRHSPattern,
+     ctxIsIndex,
+     ctxInIndex,
      ctxIsFunc)
 where
 
@@ -106,6 +108,13 @@ ctxIsTyped _          = False
 ctxIsRuleRCond :: ECtx -> Bool
 ctxIsRuleRCond CtxRuleRCond{} = True
 ctxIsRuleRCond _              = False
+
+ctxIsIndex :: ECtx -> Bool
+ctxIsIndex CtxIndex{} = True
+ctxIsIndex _          = False
+
+ctxInIndex :: ECtx -> Bool
+ctxInIndex ctx = any ctxIsIndex $ ctxAncestors ctx
 
 -- | True if context is inside a positive right-hand-side literal of a
 -- rule, in a pattern expression, i.e., an expression where new

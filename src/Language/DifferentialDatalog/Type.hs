@@ -496,6 +496,8 @@ ctxExpectType d (CtxRuleL Rule{..} i)                =
     Just $ relType $ getRelation d (atomRelation $ ruleLHS !! i)
 ctxExpectType d (CtxRuleRAtom Rule{..} i)            =
     Just $ relType $ getRelation d (atomRelation $ rhsAtom $ ruleRHS !! i)
+ctxExpectType d (CtxIndex idx)                       =
+    Just $ relType $ getRelation d (atomRelation $ idxAtom idx)
 ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
     case rhsExpr $ ruleRHS !! i of
          E ESet{} -> Just $ tTuple []

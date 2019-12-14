@@ -98,6 +98,10 @@ impl DDlogConvert for DDlogConverter {
         relid2name(relId)
     }
 
+    fn indexid2name(idxId: IdxId) -> Option<&'static str> {
+        indexid2name(idxId)
+    }
+
     fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {
         updcmd2upd(upd_cmd)
     }
@@ -151,6 +155,27 @@ impl TryFrom<RelId> for Relations {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Indexes {
+    X = 0,
+}
+
+impl TryFrom<&str> for Indexes {
+    type Error = ();
+
+    fn try_from(_iname: &str) -> Result<Self, Self::Error> {
+        panic!("Indexes::try_from::<&str> not implemented")
+    }
+}
+
+impl TryFrom<IdxId> for Indexes {
+    type Error = ();
+
+    fn try_from(_iid: IdxId) -> Result<Self, Self::Error> {
+        panic!("Indexes::try_from::<IdxId> not implemented")
+    }
+}
+
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub enum Value {
     empty(),
@@ -191,16 +216,16 @@ pub fn relkey_from_record(_rel: Relations, _rec: &record::Record) -> Result<Valu
     panic!("relkey_from_record not implemented")
 }
 
+pub fn idxkey_from_record(idx: Indexes, _rec: &record::Record) -> Result<Value, String> {
+    panic!("idxkey_from_record not implemented")
+}
+
 pub fn relid2name(_rid: RelId) -> Option<&'static str> {
     panic!("relid2name not implemented")
 }
 
 pub fn relid2cname(_rid: RelId) -> Option<&'static ffi::CStr> {
-    panic!("relid2name not implemented")
-}
-
-pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
-    panic!("prog not implemented")
+    panic!("relid2cname not implemented")
 }
 
 lazy_static! {
@@ -213,4 +238,24 @@ lazy_static! {
 
 lazy_static! {
     pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = { FnvHashMap::default() };
+}
+
+pub fn indexid2name(_iid: IdxId) -> Option<&'static str> {
+    panic!("indexid2name not implemented")
+}
+
+pub fn indexid2cname(_iid: IdxId) -> Option<&'static ffi::CStr> {
+    panic!("indexid2cname not implemented")
+}
+
+pub fn indexes2arrid(idx: Indexes) -> ArrId {
+    panic!("indexes2arrid not implemented")
+}
+
+pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
+    panic!("prog not implemented")
+}
+
+lazy_static! {
+    pub static ref IDXIDMAP: FnvHashMap<Indexes, &'static str> = { FnvHashMap::default() };
 }

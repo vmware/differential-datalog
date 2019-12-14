@@ -263,6 +263,7 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
+    use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
 
@@ -279,6 +280,10 @@ mod tests {
         type Value = ();
 
         fn relid2name(_rel_id: RelId) -> Option<&'static str> {
+            unimplemented!()
+        }
+
+        fn indexid2name(_idx_id: IdxId) -> Option<&'static str> {
             unimplemented!()
         }
 
