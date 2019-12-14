@@ -1,9 +1,18 @@
 default:
     image: ddlog/gitlab-ci:latest
 
-# controls differential dataflow's eager compaction behavior
 variables:
+    # Controls differential dataflow's eager compaction behavior
     DIFFERENTIAL_EAGER_MERGE: 100000
+    # Some of our tests assume certain functionality to be available in
+    # the CI pipeline (and will fail if that is not the case). This
+    # variable is how this information is conveyed. Note that GitLab
+    # already provides similar variables (e.g., `CI`; see
+    # https://docs.gitlab.com/ee/ci/variables/predefined_variables.html)
+    # but we opted to have our own, in order to not depend on
+    # potentially changing GitLab behavior as well as to achieve some
+    # form of independence of the underlying CI pipeline.
+    IS_CI_RUN: 1
 
 # Template for tests that expect ddlog to be in the $PATH.
 .install-ddlog:
@@ -12,10 +21,16 @@ variables:
 
 # Test Rust template only.
 test-rust:
+    variables:
+      ZOOKEEPER_ENDPOINTS: "127.0.0.1:2181"
     script:
+    - /usr/share/zookeeper/bin/zkServer.sh start
     - (cd rust/template/ && cargo fmt --all -- --check)
     - (cd lib && rustfmt *.rs --check)
     - (cd rust/template/ && cargo clippy --all -- -D warnings)
+    - for i in $(seq 100); do
+        /usr/share/zookeeper/bin/zkServer.sh status && break;
+      done
     - (cd rust/template/ && cargo test --all)
     - (cd rust/template/distributed_datalog && (
         i=0;
