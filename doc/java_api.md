@@ -368,7 +368,28 @@ public class graphQuery
 ```
 
 Both methods take a callback invoked once for each record returned by the query.
+Both methods return *after* enumerating all records via the callback.
 
+Here is a more exotic example:
+
+```
+input relation Rel(m: Option<bit<32>>)
+index Rel_by_m(m: Option<bit<32>>) on Rel(m)
+```
+
+Here, the index has a comlpex key type (`Option<bit<32>>`).  Serializing this
+type into a flatbuffer requires a FlatBuffer builder; therefore the generated
+query method has a more complex signature:
+
+```
+public static void queryRel_by_m(DDlogAPI hddlog,
+                                 Function<testFlatBufferBuilder, std_Option__bit_32_Writer> m,
+                                 Consumer<TIReader> callback) throws DDlogException
+```
+
+Note how instead of supplying the value of `m`, the caller supplies a callback
+that takes a `FlatBufferBuilder` instance and returns a handle to the serialized
+representation of `m`.
 
 #### DDlog-to-Java type mapping summary
 
