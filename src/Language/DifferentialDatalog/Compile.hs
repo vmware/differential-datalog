@@ -973,7 +973,7 @@ mkOutputRelIdMap d =
     mkrel :: Relation -> Doc
     mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
 
--- Convert string to `enum Relations`
+-- Convert string to `enum Indexes`
 mkIndexesTryFromStr :: DatalogProgram -> Doc
 mkIndexesTryFromStr d =
     "impl TryFrom<&str> for Indexes {"                                    $$
