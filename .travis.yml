@@ -93,40 +93,9 @@ script:
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
 
 before_deploy:
-    # add date and OS name to the tag
-    - export DIST_NAME=ddlog-$TRAVIS_TAG-$(date +'%Y%m%d%H%M%S')-$TRAVIS_OS_NAME
-    #- git tag $TRAVIS_TAG
-    # copy distribution files to a separate directory
-    - stack install --no-terminal
-    - export DIST_DIR=ddlog
-    - mkdir -p $DIST_DIR/bin
-    - export BIN="$(stack path --local-install-root)/bin/ddlog"
-    - export OVSDB_BIN="$(stack path --local-install-root)/bin/ovsdb2ddlog"
-    - cp "$BIN" "$DIST_DIR/bin/"
-    - cp "$OVSDB_BIN" "$DIST_DIR/bin/"
-    - cp -r lib "$DIST_DIR/"
-    # Include Rust dependencies for offline build
-    - cd rust/template
-    - cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml
-    - cp Cargo.full.toml Cargo.toml
-    # Set relative path to vendor directory in `.cargo/config`
-    - cargo vendor -s Cargo.toml > config.tmp
-    - if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
-    - echo "directory = \"vendor\"" >> config
-    - cp -r vendor "../../$DIST_DIR/"
-    - mkdir "../../$DIST_DIR/.cargo"
-    - cp config "../../$DIST_DIR/.cargo/"
-    - cp Cargo.lock "../../$DIST_DIR/"
-    - cd ../../
-    # First copy Java sources only, then build and copy the .jar
-    - cp -r java "$DIST_DIR/"
-    - cd java
-    - make
-    - cd ..
-    - cp java/ddlogapi.jar "$DIST_DIR/java/"
-    - cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
-    - cp -r doc "$DIST_DIR/"
-    - tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
+    # Run the script under the current shell, so the $DIST_NAME variable it sets
+    # is visible to us.
+    - . ./build_distro.sh $TRAVIS_TAG
 
 deploy:
   provider: releases
