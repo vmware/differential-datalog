@@ -347,7 +347,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
         return;
     }
     jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
-    if(setMethod == NULL) {
+    if (setMethod == NULL) {
         return;
     }
 
@@ -433,7 +433,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1query_1index_1from_1flatbuf
         return;
     }
     jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
-    if(setMethod == NULL) {
+    if (setMethod == NULL) {
         return;
     }
 
@@ -468,7 +468,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1index_1to_1flatbuf(
         return;
     }
     jmethodID setMethod = (*env)->GetMethodID(env, cls, "set", "(Ljava/nio/ByteBuffer;JJ)V");
-    if(setMethod == NULL) {
+    if (setMethod == NULL) {
         return;
     }
 
