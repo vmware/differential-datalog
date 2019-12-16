@@ -356,7 +356,7 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
                                             size_t n);
 
 /*
- * Perform a query selialized in a flatbuf; return result in another flatbuf.
+ * Perform a query serialized in a flatbuf; return result in another flatbuf.
  *
  * The FlatBuffer schema is auto-generated from DDlog code and is stored in
  * `flatbuf/flatbuf.rs`.

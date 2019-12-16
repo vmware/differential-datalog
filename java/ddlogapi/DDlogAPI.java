@@ -349,7 +349,7 @@ public class DDlogAPI {
     }
 
     /**
-     * Perform a DDlog index query serialized in a flutbuf; returns result in
+     * Perform a DDlog index query serialized in a flatbuf; returns result in
      * another flatbuf.
      *
      * See <code>ddlog.h: ddlog_query_index_from_flatbuf()</code>.
