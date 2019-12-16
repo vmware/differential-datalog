@@ -1,7 +1,12 @@
 #!/bin/bash
 # Shell script which generates a Java program from a DDlog program and compiles it
 
-stack install
+# Only run `stack install` if we are inside the DDlog source tree;
+# otherwise expect `ddlog` to already be in `$PATH`
+if test -f "../../stack.yaml"; then
+    stack install
+fi
+
 if command clang -v 2>/dev/null; then
     export CC=clang
 else
