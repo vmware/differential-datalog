@@ -41,15 +41,15 @@ cp -r lib "$DIST_DIR/"
  # In addition to dependencies specified in `Cargo.toml`, add dependencies from
  # all `.toml` filesin the lib directory.
  cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml  &&
+ # Backup original `Cargo.toml`.
  mv Cargo.toml Cargo.toml.bak  &&
 
- # Backup original `Cargo.toml`.
  cp Cargo.full.toml Cargo.toml  &&
 
  # Set relative path to vendor directory in `.cargo/config`
  cargo vendor -s Cargo.toml > config.tmp &&
 
- # Restor `Cargo.toml`.
+ # Restore `Cargo.toml`.
  mv Cargo.toml.bak Cargo.toml
 
  # The last line of config.tmp contains absolute path to the `vendor` directory,
