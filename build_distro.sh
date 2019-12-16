@@ -78,3 +78,4 @@ cp -r doc "$DIST_DIR/"
 tar -czf "$DIST_NAME.tar.gz" "$DIST_DIR"
 
 echo Distribution archive generated in $DIST_NAME.tar.gz
+echo 'To install DDlog, extract the archive to your chosen installation directory and add ddlog/bin to $PATH.'
