@@ -1101,7 +1101,7 @@ impl<V: Val> Program<V> {
         let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
-        /* Channel used by the main timely thread to send worker 0 handle to the caller. */
+        /* Channel used by the main timely thread to send worker handles to the caller. */
         let (wsend, wrecv) = mpsc::sync_channel::<Vec<thread::Thread>>(0);
 
         /* Profile data structure */
