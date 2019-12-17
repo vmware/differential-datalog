@@ -247,7 +247,7 @@ fn multi_transaction_tcp() -> Result<(), String> {
         let _ = mux.add_observable(Box::new(recv1)).unwrap();
         let _ = mux.add_observable(Box::new(recv2)).unwrap();
 
-        Ok(Box::new(mux))
+        Ok(Box::new((mux, observable1, observable2)))
     }
 
     multi_transaction_test(do_test)
