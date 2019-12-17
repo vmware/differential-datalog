@@ -93,9 +93,8 @@ script:
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
 
 before_deploy:
-    # Run the script under the current shell, so the $DIST_NAME variable it sets
-    # is visible to us.
-    - . ./build_distro.sh $TRAVIS_TAG
+    - export DIST_NAME=ddlog-$TRAVIS_TAG-$(date +'%Y%m%d%H%M%S')-$OS_NAME
+    - ./build_distro.sh $TRAVIS_TAG
 
 deploy:
   provider: releases

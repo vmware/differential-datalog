@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -xe
 
 echo Building DDlog distribution.
 echo IMPORTANT: this script must be run in a clean copy of the DDlog source tree.
@@ -37,31 +37,35 @@ stack install --no-terminal --local-bin-path "$DIST_DIR/bin"
 cp -r lib "$DIST_DIR/"
 
 # Step 3: Include Rust dependencies for offline build.
-(cd rust/template   &&
- # In addition to dependencies specified in `Cargo.toml`, add dependencies from
- # all `.toml` filesin the lib directory.
- cat Cargo.toml `find ../../lib/ -name "*.toml"` > Cargo.full.toml  &&
- # Backup original `Cargo.toml`.
- mv Cargo.toml Cargo.toml.bak  &&
+cd rust/template
 
- cp Cargo.full.toml Cargo.toml  &&
+# In addition to dependencies specified in `Cargo.toml`, add dependencies from
+# all `.toml` filesin the lib directory.
+cat Cargo.toml ../../lib/*.toml > Cargo.full.toml
 
- # Set relative path to vendor directory in `.cargo/config`
- cargo vendor -s Cargo.toml > config.tmp &&
+# Backup original `Cargo.toml`.
+mv Cargo.toml Cargo.toml.bak
 
- # Restore `Cargo.toml`.
- mv Cargo.toml.bak Cargo.toml
+cp Cargo.full.toml Cargo.toml
 
- # The last line of config.tmp contains absolute path to the `vendor` directory,
- # which we don't want, so chop it off.
- if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi  &&
+# Set relative path to vendor directory in `.cargo/config`
+cargo vendor -s Cargo.toml > config.tmp
 
- # Use relative path instead.
- echo "directory = \"vendor\"" >> config    &&
- cp -r vendor "../../$DIST_DIR/"    &&
- mkdir "../../$DIST_DIR/.cargo" &&
- cp config "../../$DIST_DIR/.cargo/" &&
- cp Cargo.lock "../../$DIST_DIR/")
+# Restore `Cargo.toml`.
+mv Cargo.toml.bak Cargo.toml
+
+# The last line of config.tmp contains absolute path to the `vendor` directory,
+# which we don't want, so chop it off.
+if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
+
+# Use relative path instead.
+echo "directory = \"vendor\"" >> config
+cp -r vendor "../../$DIST_DIR/"
+mkdir "../../$DIST_DIR/.cargo"
+cp config "../../$DIST_DIR/.cargo/"
+cp Cargo.lock "../../$DIST_DIR/"
+
+cd ../../
 
 # Step 4: Add DDlog Java libraries.
 
