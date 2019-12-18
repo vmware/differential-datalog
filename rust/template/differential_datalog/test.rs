@@ -14,16 +14,10 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
-use std::fmt;
-use std::fmt::Display;
-use std::fmt::Formatter;
 use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
-use abomonation::Abomonation;
 use fnv::FnvHashMap;
-use serde::Deserialize;
-use serde::Serialize;
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::worker::Worker;
@@ -32,84 +26,10 @@ use differential_dataflow::operators::Join;
 use differential_dataflow::Collection;
 
 use crate::program::*;
+use crate::test_value::*;
 use crate::uint::*;
 
 const TEST_SIZE: u64 = 1000;
-
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-struct P {
-    f1: Q,
-    f2: bool,
-}
-
-impl Abomonation for P {}
-
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-struct Q {
-    f1: bool,
-    f2: String,
-}
-
-impl Abomonation for Q {}
-
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-enum S {
-    S1 {
-        f1: u32,
-        f2: String,
-        f3: Q,
-        f4: Uint,
-    },
-    S2 {
-        e1: bool,
-    },
-    S3 {
-        g1: Q,
-        g2: Q,
-    },
-}
-
-impl Abomonation for S {}
-
-impl S {
-    fn f1(&mut self) -> &mut u32 {
-        match self {
-            S::S1 { ref mut f1, .. } => f1,
-            _ => panic!(""),
-        }
-    }
-}
-
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-enum Value {
-    empty(),
-    bool(bool),
-    Uint(Uint),
-    String(String),
-    u8(u8),
-    u16(u16),
-    u32(u32),
-    u64(u64),
-    i64(i64),
-    BoolTuple((bool, bool)),
-    Tuple2(Box<Value>, Box<Value>),
-    Q(Q),
-    S(S),
-}
-
-impl Abomonation for Value {}
-
-impl Default for Value {
-    fn default() -> Value {
-        Value::bool(false)
-    }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_str("test::Value")
-    }
-}
 
 fn _filter_fun1(v: &Value) -> bool {
     match &v {
@@ -333,10 +253,10 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
 
 type Delta = BTreeMap<Value, Weight>;
 
-fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &Value, w: Weight) {
+fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &DDValue, w: Weight) {
     let mut delta = s.lock().unwrap();
 
-    let entry = delta.entry(x.clone());
+    let entry = delta.entry(Value::from_ddval_ref(x).clone());
     match entry {
         Entry::Vacant(vacant) => {
             vacant.insert(w);
@@ -356,7 +276,7 @@ fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &Value, w: Weight) {
 /// Check that a program can be stopped multiple times without failure.
 #[test]
 fn test_multiple_stops() {
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![],
         init_data: vec![],
     };
@@ -370,14 +290,14 @@ fn test_multiple_stops() {
 /// relation and fail gracefully.
 #[test]
 fn test_insert_non_existent_relation() {
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![],
         init_data: vec![],
     };
 
     let mut running = prog.run(3).unwrap();
     running.transaction_start().unwrap();
-    let result = running.insert(1, Value::u64(42));
+    let result = running.insert(1, Value::U64(42).into_ddval());
     assert_eq!(
         &result.unwrap_err(),
         "apply_updates: unknown input relation 1"
@@ -410,7 +330,7 @@ fn test_input_relation_nested() {
         arrangements: vec![],
         change_cb: None,
     };
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: parent },
             ProgNode::SCC {
@@ -447,7 +367,7 @@ fn test_one_relation(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![ProgNode::Rel { rel }],
         init_data: vec![],
     };
@@ -456,11 +376,11 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -471,7 +391,7 @@ fn test_one_relation(nthreads: usize) {
     running.transaction_start().unwrap();
     for (x, _) in &set {
         set2.remove(x);
-        running.delete_value(1, x.clone()).unwrap();
+        running.delete_value(1, x.clone().into_ddval()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(), set2);
     }
     running.transaction_commit().unwrap();
@@ -479,17 +399,17 @@ fn test_one_relation(nthreads: usize) {
 
     /* 3. Test set semantics: insert twice, delete once */
     running.transaction_start().unwrap();
-    running.insert(1, Value::u64(1)).unwrap();
-    running.insert(1, Value::u64(1)).unwrap();
-    running.delete_value(1, Value::u64(1)).unwrap();
+    running.insert(1, Value::U64(1).into_ddval()).unwrap();
+    running.insert(1, Value::U64(1).into_ddval()).unwrap();
+    running.delete_value(1, Value::U64(1).into_ddval()).unwrap();
     running.transaction_commit().unwrap();
 
     assert_eq!(relset.lock().unwrap().len(), 0);
 
     /* 4. Set semantics: delete before insert */
     running.transaction_start().unwrap();
-    running.delete_value(1, Value::u64(1)).unwrap();
-    running.insert(1, Value::u64(1)).unwrap();
+    running.delete_value(1, Value::U64(1).into_ddval()).unwrap();
+    running.insert(1, Value::U64(1).into_ddval()).unwrap();
     running.transaction_commit().unwrap();
 
     assert_eq!(relset.lock().unwrap().len(), 1);
@@ -498,7 +418,7 @@ fn test_one_relation(nthreads: usize) {
     let before = relset.lock().unwrap().clone();
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
     }
     //println!("delta: {:?}", *running.relation_delta(1).unwrap().lock().unwrap());
     //    assert_eq!(*relset.lock().unwrap(), set);
@@ -561,7 +481,7 @@ fn test_two_relations(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![ProgNode::Rel { rel: rel1 }, ProgNode::Rel { rel: rel2 }],
         init_data: vec![],
     };
@@ -570,11 +490,11 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     }
@@ -586,7 +506,7 @@ fn test_two_relations(nthreads: usize) {
     /* 2. Clear T1 */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.delete_value(1, x.clone()).unwrap();
+        running.delete_value(1, x.clone().into_ddval()).unwrap();
         //        assert_eq!(running.relation_clone_content(1).unwrap(),
         //                   running.relation_clone_content(2).unwrap());
     }
@@ -598,7 +518,7 @@ fn test_two_relations(nthreads: usize) {
     /* 3. Rollback */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     }
@@ -639,15 +559,15 @@ fn test_semijoin(nthreads: usize) {
             })))),
         }
     };
-    fn fmfun1(v: Value) -> Option<Value> {
-        match v {
-            Value::Tuple2(v1, _v2) => Some(*v1),
+    fn fmfun1(v: DDValue) -> Option<DDValue> {
+        match *Value::from_ddval(v) {
+            Value::Tuple2(v1, _v2) => Some(v1.into_ddval()),
             _ => None,
         }
     }
-    fn afun1(v: Value) -> Option<(Value, Value)> {
-        match v {
-            Value::Tuple2(v1, v2) => Some((*v1, *v2)),
+    fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
+        match *Value::from_ddval(v) {
+            Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
             _ => None,
         }
     }
@@ -664,7 +584,7 @@ fn test_semijoin(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![Arrangement::Set {
                 name: "arrange2.0".to_string(),
-                fmfun: &(fmfun1 as FilterMapFunc<Value>),
+                fmfun: &(fmfun1 as FilterMapFunc),
                 distinct: false,
             }],
             change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
@@ -672,8 +592,11 @@ fn test_semijoin(nthreads: usize) {
             })))),
         }
     };
-    fn jfun(_key: &Value, v1: &Value, _v2: &()) -> Option<Value> {
-        Some(Value::Tuple2(Box::new(v1.clone()), Box::new(v1.clone())))
+    fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
+        Some(
+            Value::Tuple2(Value::from_ddval(v1.clone()), Value::from_ddval(v1.clone()))
+                .into_ddval(),
+        )
     }
 
     let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -690,12 +613,12 @@ fn test_semijoin(nthreads: usize) {
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
                     description: "arrange by .0".to_string(),
-                    afun: &(afun1 as ArrangeFunc<Value>),
+                    afun: &(afun1 as ArrangeFunc),
                     next: Box::new(XFormArrangement::Semijoin {
                         description: "1.semijoin (2,0)".to_string(),
                         ffun: None,
                         arrangement: (2, 0),
-                        jfun: &(jfun as SemijoinFunc<Value>),
+                        jfun: &(jfun as SemijoinFunc),
                         next: Box::new(None),
                     }),
                 }),
@@ -707,7 +630,7 @@ fn test_semijoin(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: rel1 },
             ProgNode::Rel { rel: rel2 },
@@ -721,15 +644,15 @@ fn test_semijoin(nthreads: usize) {
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
         (
-            Value::Tuple2(Box::new(Value::u64(*x)), Box::new(Value::u64(*x))),
+            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
             1,
         )
     }));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
-        running.insert(2, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(2, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -767,9 +690,9 @@ fn test_join(nthreads: usize) {
             })))),
         }
     };
-    fn afun1(v: Value) -> Option<(Value, Value)> {
-        match v {
-            Value::Tuple2(v1, v2) => Some((*v1, *v2)),
+    fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
+        match *Value::from_ddval(v) {
+            Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
             _ => None,
         }
     }
@@ -785,7 +708,7 @@ fn test_join(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
                 name: "arrange2.0".to_string(),
-                afun: &(afun1 as ArrangeFunc<Value>),
+                afun: &(afun1 as ArrangeFunc),
                 queryable: true,
             }],
             change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
@@ -793,8 +716,11 @@ fn test_join(nthreads: usize) {
             })))),
         }
     };
-    fn jfun(_key: &Value, v1: &Value, v2: &Value) -> Option<Value> {
-        Some(Value::Tuple2(Box::new(v1.clone()), Box::new(v2.clone())))
+    fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
+        Some(
+            Value::Tuple2(Value::from_ddval(v1.clone()), Value::from_ddval(v2.clone()))
+                .into_ddval(),
+        )
     }
 
     let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -811,12 +737,12 @@ fn test_join(nthreads: usize) {
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
                     description: "arrange by .0".to_string(),
-                    afun: &(afun1 as ArrangeFunc<Value>),
+                    afun: &(afun1 as ArrangeFunc),
                     next: Box::new(XFormArrangement::Join {
                         description: "1.semijoin (2,0)".to_string(),
                         ffun: None,
                         arrangement: (2, 0),
-                        jfun: &(jfun as JoinFunc<Value>),
+                        jfun: &(jfun as JoinFunc),
                         next: Box::new(None),
                     }),
                 }),
@@ -847,7 +773,7 @@ fn test_join(nthreads: usize) {
 
     fn join_transformer() -> Box<
         dyn for<'a> Fn(
-            &mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, Value, Weight>>,
+            &mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>,
         ),
     > {
         Box::new(|collections| {
@@ -856,15 +782,15 @@ fn test_join(nthreads: usize) {
                 let rel1_kv = rel1.flat_map(afun1);
                 let rel2 = collections.get(&2).unwrap();
                 let rel2_kv = rel2.flat_map(afun1);
-                rel1_kv
-                    .join(&rel2_kv)
-                    .map(|(_, (v1, v2))| Value::Tuple2(Box::new(v1), Box::new(v2)))
+                rel1_kv.join(&rel2_kv).map(|(_, (v1, v2))| {
+                    Value::Tuple2(Value::from_ddval(v1), Value::from_ddval(v2)).into_ddval()
+                })
             };
             collections.insert(4, rel4);
         })
     }
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: rel1 },
             ProgNode::Rel { rel: rel2 },
@@ -882,15 +808,15 @@ fn test_join(nthreads: usize) {
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
         (
-            Value::Tuple2(Box::new(Value::u64(*x)), Box::new(Value::u64(*x))),
+            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
             1,
         )
     }));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
-        running.insert(2, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(2, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -900,13 +826,15 @@ fn test_join(nthreads: usize) {
     let rel2dump = running.dump_arrangement((2, 0)).unwrap();
     assert_eq!(
         rel2dump,
-        BTreeSet::from_iter(vals.iter().map(|x| Value::u64(*x)))
+        BTreeSet::from_iter(vals.iter().map(|x| Value::U64(*x).into_ddval()))
     );
 
     for key in vals.iter() {
-        let vals = running.query_arrangement((2, 0), Value::u64(*key)).unwrap();
+        let vals = running
+            .query_arrangement((2, 0), Value::U64(*key).into_ddval())
+            .unwrap();
         let mut expect = BTreeSet::new();
-        expect.insert(Value::u64(*key));
+        expect.insert(Value::U64(*key).into_ddval());
         assert_eq!(vals, expect);
     }
 
@@ -942,20 +870,20 @@ fn test_antijoin(nthreads: usize) {
             })))),
         }
     };
-    fn afun1(v: Value) -> Option<(Value, Value)> {
-        let (v1, v) = match &v {
-            Value::Tuple2(v1, _) => ((**v1).clone(), v.clone()),
+    fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
+        let (v1, v) = match Value::from_ddval_ref(&v) {
+            Value::Tuple2(v1, _) => ((**v1).clone().into_ddval(), v.clone()),
             _ => return None,
         };
         Some((v1, v))
     }
 
-    fn _afunx(v: Value) -> Option<(Value, Value)> {
-        let (v1, v2): (&bool, &bool) = match &v {
+    fn _afunx(v: DDValue) -> Option<(DDValue, DDValue)> {
+        let (v1, v2): (&bool, &bool) = match Value::from_ddval_ref(&v) {
             Value::BoolTuple((v1, v2)) => (v1, v2),
             _ => return None,
         };
-        Some((Value::bool(*v1), Value::bool(*v2)))
+        Some((Value::Bool(*v1).into_ddval(), Value::Bool(*v2).into_ddval()))
     }
 
     let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -975,14 +903,14 @@ fn test_antijoin(nthreads: usize) {
         }
     };
 
-    fn mfun(v: Value) -> Value {
-        match v {
-            Value::Tuple2(v1, _) => *v1,
+    fn mfun(v: DDValue) -> DDValue {
+        match *Value::from_ddval(v) {
+            Value::Tuple2(v1, _) => v1.into_ddval(),
             _ => panic!("unexpected value"),
         }
     }
 
-    fn fmnull_fun(v: Value) -> Option<Value> {
+    fn fmnull_fun(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
 
@@ -1000,13 +928,13 @@ fn test_antijoin(nthreads: usize) {
                 rel: 2,
                 xform: Some(XFormCollection::Map {
                     description: "map by .0".to_string(),
-                    mfun: &(mfun as MapFunc<Value>),
+                    mfun: &(mfun as MapFunc),
                     next: Box::new(None),
                 }),
             }],
             arrangements: vec![Arrangement::Set {
                 name: "arrange2.1".to_string(),
-                fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                fmfun: &(fmnull_fun as FilterMapFunc),
                 distinct: true,
             }],
             change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
@@ -1029,7 +957,7 @@ fn test_antijoin(nthreads: usize) {
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
                     description: "arrange by .0".to_string(),
-                    afun: &(afun1 as ArrangeFunc<Value>),
+                    afun: &(afun1 as ArrangeFunc),
                     next: Box::new(XFormArrangement::Antijoin {
                         description: "1.antijoin (21,0)".to_string(),
                         ffun: None,
@@ -1045,7 +973,7 @@ fn test_antijoin(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: rel1 },
             ProgNode::Rel { rel: rel2 },
@@ -1060,7 +988,7 @@ fn test_antijoin(nthreads: usize) {
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set = BTreeMap::from_iter(vals.iter().map(|x| {
         (
-            Value::Tuple2(Box::new(Value::u64(*x)), Box::new(Value::u64(*x))),
+            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
             1,
         )
     }));
@@ -1068,8 +996,8 @@ fn test_antijoin(nthreads: usize) {
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
-        running.insert(2, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(2, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -1078,7 +1006,7 @@ fn test_antijoin(nthreads: usize) {
     /* 1. T2 is empty; antijoin is identical to T1 */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.delete_value(2, x.clone()).unwrap();
+        running.delete_value(2, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
     assert_eq!(*relset3.lock().unwrap(), set);
@@ -1116,41 +1044,41 @@ fn test_map(nthreads: usize) {
         }
     };
 
-    fn mfun(v: Value) -> Value {
-        match &v {
-            Value::u64(uv) => Value::u64(uv * 2),
+    fn mfun(v: DDValue) -> DDValue {
+        match Value::from_ddval_ref(&v) {
+            Value::U64(uv) => Value::U64(uv * 2).into_ddval(),
             _ => v.clone(),
         }
     }
 
-    fn gfun3(v: Value) -> Option<(Value, Value)> {
-        Some((Value::empty(), v))
+    fn gfun3(v: DDValue) -> Option<(DDValue, DDValue)> {
+        Some((Value::Empty().into_ddval(), v))
     }
 
-    fn agfun3(_key: &Value, src: &[(&Value, Weight)]) -> Value {
-        Value::u64(src.len() as u64)
+    fn agfun3(_key: &DDValue, src: &[(&DDValue, Weight)]) -> DDValue {
+        Value::U64(src.len() as u64).into_ddval()
     }
 
-    fn gfun4(v: Value) -> Option<(Value, Value)> {
+    fn gfun4(v: DDValue) -> Option<(DDValue, DDValue)> {
         Some((v.clone(), v))
     }
 
-    fn agfun4(key: &Value, _src: &[(&Value, Weight)]) -> Value {
+    fn agfun4(key: &DDValue, _src: &[(&DDValue, Weight)]) -> DDValue {
         key.clone()
     }
 
-    fn ffun(v: &Value) -> bool {
-        match &v {
-            Value::u64(uv) => *uv > 10,
+    fn ffun(v: &DDValue) -> bool {
+        match Value::from_ddval_ref(&v) {
+            Value::U64(uv) => *uv > 10,
             _ => false,
         }
     }
 
-    fn fmfun(v: Value) -> Option<Value> {
-        match &v {
-            Value::u64(uv) => {
+    fn fmfun(v: DDValue) -> Option<DDValue> {
+        match Value::from_ddval_ref(&v) {
+            Value::U64(uv) => {
                 if *uv > 12 {
-                    Some(Value::u64((*uv) * 2))
+                    Some(Value::U64((*uv) * 2).into_ddval())
                 } else {
                     None
                 }
@@ -1159,12 +1087,16 @@ fn test_map(nthreads: usize) {
         }
     }
 
-    fn flatmapfun(v: Value) -> Option<Box<dyn Iterator<Item = Value>>> {
-        match &v {
-            Value::u64(i) => {
+    fn flatmapfun(v: DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>> {
+        match Value::from_ddval_ref(&v) {
+            Value::U64(i) => {
                 if *i > 12 {
                     Some(Box::new(
-                        vec![Value::i64(-(*i as i64)), Value::i64(-(2 * (*i as i64)))].into_iter(),
+                        vec![
+                            Value::I64(-(*i as i64)).into_ddval(),
+                            Value::I64(-(2 * (*i as i64))).into_ddval(),
+                        ]
+                        .into_iter(),
                     ))
                 } else {
                     None
@@ -1188,16 +1120,16 @@ fn test_map(nthreads: usize) {
                 rel: 1,
                 xform: Some(XFormCollection::Map {
                     description: "map x2".to_string(),
-                    mfun: &(mfun as MapFunc<Value>),
+                    mfun: &(mfun as MapFunc),
                     next: Box::new(Some(XFormCollection::Filter {
                         description: "filter >10".to_string(),
-                        ffun: &(ffun as FilterFunc<Value>),
+                        ffun: &(ffun as FilterFunc),
                         next: Box::new(Some(XFormCollection::FilterMap {
                             description: "filter >12 map x2".to_string(),
-                            fmfun: &(fmfun as FilterMapFunc<Value>),
+                            fmfun: &(fmfun as FilterMapFunc),
                             next: Box::new(Some(XFormCollection::FlatMap {
                                 description: "flat-map >12 [-x,-2x]".to_string(),
-                                fmfun: &(flatmapfun as FlatMapFunc<Value>),
+                                fmfun: &(flatmapfun as FlatMapFunc),
                                 next: Box::new(None),
                             })),
                         })),
@@ -1224,11 +1156,11 @@ fn test_map(nthreads: usize) {
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
                     description: "arrange by ()".to_string(),
-                    afun: &(gfun3 as ArrangeFunc<Value>),
+                    afun: &(gfun3 as ArrangeFunc),
                     next: Box::new(XFormArrangement::Aggregate {
                         description: "2.aggregate".to_string(),
                         ffun: None,
-                        aggfun: &(agfun3 as AggFunc<Value>),
+                        aggfun: &(agfun3 as AggFunc),
                         next: Box::new(None),
                     }),
                 }),
@@ -1254,11 +1186,11 @@ fn test_map(nthreads: usize) {
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
                     description: "arrange by self".to_string(),
-                    afun: &(gfun4 as ArrangeFunc<Value>),
+                    afun: &(gfun4 as ArrangeFunc),
                     next: Box::new(XFormArrangement::Aggregate {
                         description: "2.aggregate".to_string(),
                         ffun: None,
-                        aggfun: &(agfun4 as AggFunc<Value>),
+                        aggfun: &(agfun4 as AggFunc),
                         next: Box::new(None),
                     }),
                 }),
@@ -1270,7 +1202,7 @@ fn test_map(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: rel1 },
             ProgNode::Rel { rel: rel2 },
@@ -1283,10 +1215,10 @@ fn test_map(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::u64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
     let expected2 = BTreeMap::from_iter(
         vals.iter()
-            .map(|x| Value::u64(*x))
+            .map(|x| Value::U64(*x).into_ddval())
             .map(|x| mfun(x))
             .filter(|x| ffun(&x))
             .filter_map(|x| fmfun(x))
@@ -1294,14 +1226,14 @@ fn test_map(nthreads: usize) {
                 Some(iter) => iter,
                 None => Box::new(None.into_iter()),
             })
-            .map(|x| (x, 1)),
+            .map(|x| (*Value::from_ddval(x), 1)),
     );
     let mut expected3 = BTreeMap::default();
-    expected3.insert(Value::u64(expected2.len() as u64), 1);
+    expected3.insert(Value::U64(expected2.len() as u64), 1);
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -1325,50 +1257,60 @@ fn test_map_multi() {
 /* Recursion
 */
 fn test_recursion(nthreads: usize) {
-    fn arrange_by_fst(v: Value) -> Option<(Value, Value)> {
-        match &v {
-            Value::Tuple2(fst, snd) => Some(((**fst).clone(), (**snd).clone())),
+    fn arrange_by_fst(v: DDValue) -> Option<(DDValue, DDValue)> {
+        match Value::from_ddval_ref(&v) {
+            Value::Tuple2(fst, snd) => {
+                Some(((**fst).clone().into_ddval(), (**snd).clone().into_ddval()))
+            }
             _ => None,
         }
     }
-    fn arrange_by_snd(v: Value) -> Option<(Value, Value)> {
-        match &v {
-            Value::Tuple2(fst, snd) => Some(((**snd).clone(), (**fst).clone())),
+    fn arrange_by_snd(v: DDValue) -> Option<(DDValue, DDValue)> {
+        match Value::from_ddval_ref(&v) {
+            Value::Tuple2(fst, snd) => {
+                Some(((**snd).clone().into_ddval(), (**fst).clone().into_ddval()))
+            }
             _ => None,
         }
     }
-    fn anti_arrange1(v: Value) -> Option<(Value, Value)> {
+    fn anti_arrange1(v: DDValue) -> Option<(DDValue, DDValue)> {
         //println!("anti_arrange({:?})", v);
         let res = Some((v.clone(), v.clone()));
         //println!("res: {:?}", res);
         res
     }
 
-    fn anti_arrange2(v: Value) -> Option<(Value, Value)> {
-        match &v {
+    fn anti_arrange2(v: DDValue) -> Option<(DDValue, DDValue)> {
+        match Value::from_ddval_ref(&v) {
             Value::Tuple2(fst, snd) => Some((
-                Value::Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())),
+                Value::Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())).into_ddval(),
                 v.clone(),
             )),
             _ => None,
         }
     }
 
-    fn jfun(_parent: &Value, ancestor: &Value, child: &Value) -> Option<Value> {
-        Some(Value::Tuple2(
-            Box::new(ancestor.clone()),
-            Box::new(child.clone()),
-        ))
+    fn jfun(_parent: &DDValue, ancestor: &DDValue, child: &DDValue) -> Option<DDValue> {
+        Some(
+            Value::Tuple2(
+                Box::new(Value::from_ddval_ref(ancestor).clone()),
+                Box::new(Value::from_ddval_ref(child).clone()),
+            )
+            .into_ddval(),
+        )
     }
 
-    fn jfun2(_ancestor: &Value, descendant1: &Value, descendant2: &Value) -> Option<Value> {
-        Some(Value::Tuple2(
-            Box::new(descendant1.clone()),
-            Box::new(descendant2.clone()),
-        ))
+    fn jfun2(_ancestor: &DDValue, descendant1: &DDValue, descendant2: &DDValue) -> Option<DDValue> {
+        Some(
+            Value::Tuple2(
+                Box::new(Value::from_ddval_ref(descendant1).clone()),
+                Box::new(Value::from_ddval_ref(descendant2).clone()),
+            )
+            .into_ddval(),
+        )
     }
 
-    fn fmnull_fun(v: Value) -> Option<Value> {
+    fn fmnull_fun(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
 
@@ -1384,7 +1326,7 @@ fn test_recursion(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
                 name: "arrange_by_parent".to_string(),
-                afun: &(arrange_by_fst as ArrangeFunc<Value>),
+                afun: &(arrange_by_fst as ArrangeFunc),
                 queryable: false,
             }],
             change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
@@ -1415,7 +1357,7 @@ fn test_recursion(nthreads: usize) {
                         description: "(2,2).join (1,0)".to_string(),
                         ffun: None,
                         arrangement: (1, 0),
-                        jfun: &(jfun as JoinFunc<Value>),
+                        jfun: &(jfun as JoinFunc),
                         next: Box::new(None),
                     },
                 },
@@ -1423,17 +1365,17 @@ fn test_recursion(nthreads: usize) {
             arrangements: vec![
                 Arrangement::Map {
                     name: "arrange_by_ancestor".to_string(),
-                    afun: &(arrange_by_fst as ArrangeFunc<Value>),
+                    afun: &(arrange_by_fst as ArrangeFunc),
                     queryable: false,
                 },
                 Arrangement::Set {
                     name: "arrange_by_self".to_string(),
-                    fmfun: &(fmnull_fun as FilterMapFunc<Value>),
+                    fmfun: &(fmnull_fun as FilterMapFunc),
                     distinct: true,
                 },
                 Arrangement::Map {
                     name: "arrange_by_snd".to_string(),
-                    afun: &(arrange_by_snd as ArrangeFunc<Value>),
+                    afun: &(arrange_by_snd as ArrangeFunc),
                     queryable: false,
                 },
             ],
@@ -1443,8 +1385,8 @@ fn test_recursion(nthreads: usize) {
         }
     };
 
-    fn ffun(v: &Value) -> bool {
-        match &v {
+    fn ffun(v: &DDValue) -> bool {
+        match Value::from_ddval_ref(&v) {
             Value::Tuple2(fst, snd) => fst != snd,
             _ => false,
         }
@@ -1466,24 +1408,24 @@ fn test_recursion(nthreads: usize) {
                     description: "(2,0).join (2,0)".to_string(),
                     ffun: None,
                     arrangement: (2, 0),
-                    jfun: &(jfun2 as JoinFunc<Value>),
+                    jfun: &(jfun2 as JoinFunc),
                     next: Box::new(Some(XFormCollection::Arrange {
                         description: "arrange by self".to_string(),
-                        afun: &(anti_arrange1 as ArrangeFunc<Value>),
+                        afun: &(anti_arrange1 as ArrangeFunc),
                         next: Box::new(XFormArrangement::Antijoin {
                             description: "(2,0).antijoin (2,1)".to_string(),
                             ffun: None,
                             arrangement: (2, 1),
                             next: Box::new(Some(XFormCollection::Arrange {
                                 description: "arrange by .1".to_string(),
-                                afun: &(anti_arrange2 as ArrangeFunc<Value>),
+                                afun: &(anti_arrange2 as ArrangeFunc),
                                 next: Box::new(XFormArrangement::Antijoin {
                                     description: "...join (2,1)".to_string(),
                                     ffun: None,
                                     arrangement: (2, 1),
                                     next: Box::new(Some(XFormCollection::Filter {
                                         description: "filter .0 != .1".to_string(),
-                                        ffun: &(ffun as FilterFunc<Value>),
+                                        ffun: &(ffun as FilterFunc),
                                         next: Box::new(None),
                                     })),
                                 }),
@@ -1499,7 +1441,7 @@ fn test_recursion(nthreads: usize) {
         }
     };
 
-    let prog: Program<Value> = Program {
+    let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: parent },
             ProgNode::SCC {
@@ -1611,7 +1553,7 @@ fn test_recursion(nthreads: usize) {
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone()).unwrap();
+        running.insert(1, x.clone().into_ddval()).unwrap();
     }
     running.transaction_commit().unwrap();
     //println!("commit done");
@@ -1622,7 +1564,9 @@ fn test_recursion(nthreads: usize) {
 
     /* 2. Remove record from "parent" relation */
     running.transaction_start().unwrap();
-    running.delete_value(1, vals[0].clone()).unwrap();
+    running
+        .delete_value(1, vals[0].clone().into_ddval())
+        .unwrap();
     running.transaction_commit().unwrap();
 
     let expect_vals3 = vec![

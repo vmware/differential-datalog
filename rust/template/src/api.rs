@@ -32,15 +32,13 @@ use flatbuf;
 #[cfg(feature = "flatbuf")]
 use flatbuf::FromFlatBuffer;
 
-// TODO: Long term we would want to make HDDlog independent of the
-//       `Value` type used by the generated code and move it into the
-//       differential_datalog crate.
+// TODO: Move HDDlog into the differential_datalog crate.
 #[derive(Debug)]
 pub struct HDDlog {
-    pub prog: Mutex<RunningProgram<Value>>,
-    pub update_handler: Box<dyn IMTUpdateHandler<Value>>,
-    pub db: Option<Arc<Mutex<DeltaMap<Value>>>>,
-    pub deltadb: Arc<Mutex<Option<DeltaMap<Value>>>>,
+    pub prog: Mutex<RunningProgram>,
+    pub update_handler: Box<dyn IMTUpdateHandler>,
+    pub db: Option<Arc<Mutex<DeltaMap<DDValue>>>>,
+    pub deltadb: Arc<Mutex<Option<DeltaMap<DDValue>>>>,
     pub print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     /* When set, all commands sent to the program are recorded in
      * the specified `.dat` file so that they can be replayed later. */
@@ -162,7 +160,6 @@ impl HDDlog {
 
 impl DDlog for HDDlog {
     type Convert = DDlogConverter;
-    type Value = Value;
 
     fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<Self, String>
     where
@@ -177,7 +174,7 @@ impl DDlog for HDDlog {
         self.prog.lock().unwrap().transaction_start()
     }
 
-    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<Self::Value>, String> {
+    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
         self.record_transaction_commit(true);
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
 
@@ -216,7 +213,7 @@ impl DDlog for HDDlog {
         self.prog.lock().unwrap().transaction_rollback()
     }
 
-    /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `Value`s.
+    /* Two implementations of `apply_updates`: one that takes `Record`s and one that takes `DDValue`s.
      */
     fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
     where
@@ -254,32 +251,32 @@ impl DDlog for HDDlog {
     #[cfg(feature = "flatbuf")]
     fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String> {
         let cmditer = flatbuf::updates_from_flatbuf(buf)?;
-        let upds: Result<Vec<Update<Self::Value>>, String> =
+        let upds: Result<Vec<Update<DDValue>>, String> =
             cmditer.map(|cmd| Update::from_flatbuf(cmd)).collect();
         self.apply_valupdates(upds?.into_iter())
     }
 
     fn apply_valupdates<I>(&self, upds: I) -> Result<(), String>
     where
-        I: Iterator<Item = Update<Self::Value>>,
+        I: Iterator<Item = Update<DDValue>>,
     {
         if let Some(ref f) = self.replay_file {
             let mut file = f.lock().unwrap();
-            let upds = record_val_upds::<Self::Convert, _, _, _, _>(&mut *file, upds, |_| ());
+            let upds = record_val_upds::<Self::Convert, _, _, _>(&mut *file, upds, |_| ());
             self.prog.lock().unwrap().apply_updates(upds)
         } else {
             self.prog.lock().unwrap().apply_updates(upds)
         }
     }
 
-    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<Self::Value>, String> {
+    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String> {
         self.record_dump_index(index);
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
         let arrid = indexes2arrid(idx);
         self.prog.lock().unwrap().dump_arrangement(arrid)
     }
 
-    fn query_index(&self, index: IdxId, key: Self::Value) -> Result<BTreeSet<Self::Value>, String> {
+    fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
         self.record_query_index(index, &key);
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
         let arrid = indexes2arrid(idx);
@@ -287,7 +284,7 @@ impl DDlog for HDDlog {
     }
 
     #[cfg(feature = "flatbuf")]
-    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<Value>, String> {
+    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<DDValue>, String> {
         let (idxid, key) = flatbuf::query_from_flatbuf(buf)?;
         self.query_index(idxid, key)
     }
@@ -306,17 +303,17 @@ impl HDDlog {
         print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     ) -> Result<Self, String>
     where
-        UH: UpdateHandler<Value> + Send + 'static,
+        UH: UpdateHandler + Send + 'static,
     {
         let workers = if workers == 0 { 1 } else { workers };
 
-        let db: Arc<Mutex<DeltaMap<Value>>> = Arc::new(Mutex::new(DeltaMap::new()));
+        let db: Arc<Mutex<DeltaMap<DDValue>>> = Arc::new(Mutex::new(DeltaMap::new()));
         let db2 = db.clone();
 
         let deltadb: Arc<Mutex<Option<DeltaMap<_>>>> = Arc::new(Mutex::new(None));
         let deltadb2 = deltadb.clone();
 
-        let handler: Box<dyn IMTUpdateHandler<Value>> = {
+        let handler: Box<dyn IMTUpdateHandler> = {
             let handler_generator = move || {
                 /* Always use delta handler, which costs nothing unless it is
                  * actually used*/
@@ -328,14 +325,14 @@ impl HDDlog {
                     None
                 };
 
-                let cb_handler = Box::new(cb) as Box<dyn UpdateHandler<Value> + Send>;
-                let mut handlers: Vec<Box<dyn UpdateHandler<Value>>> = Vec::new();
+                let cb_handler = Box::new(cb) as Box<dyn UpdateHandler + Send>;
+                let mut handlers: Vec<Box<dyn UpdateHandler>> = Vec::new();
                 handlers.push(Box::new(delta_handler));
                 if let Some(h) = store_handler {
                     handlers.push(Box::new(h))
                 };
                 handlers.push(cb_handler);
-                Box::new(ChainedUpdateHandler::new(handlers)) as Box<dyn UpdateHandler<Value>>
+                Box::new(ChainedUpdateHandler::new(handlers)) as Box<dyn UpdateHandler>
             };
             Box::new(ThreadUpdateHandler::new(handler_generator))
         };
@@ -357,7 +354,7 @@ impl HDDlog {
         })
     }
 
-    fn db_dump_table<F>(db: &mut DeltaMap<Value>, table: libc::size_t, cb: Option<F>)
+    fn db_dump_table<F>(db: &mut DeltaMap<DDValue>, table: libc::size_t, cb: Option<F>)
     where
         F: Fn(&record::Record) -> bool,
     {
@@ -404,7 +401,7 @@ impl HDDlog {
             let _ = f
                 .lock()
                 .unwrap()
-                .record_clear::<DDlogConverter, _>(rid)
+                .record_clear::<DDlogConverter>(rid)
                 .map_err(|e| {
                     self.eprintln("failed to record invocation in replay file");
                 });
@@ -416,7 +413,7 @@ impl HDDlog {
             let _ = f
                 .lock()
                 .unwrap()
-                .record_dump::<DDlogConverter, _>(rid)
+                .record_dump::<DDlogConverter>(rid)
                 .map_err(|e| {
                     self.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
                 });
@@ -428,19 +425,19 @@ impl HDDlog {
             let _ = f
                 .lock()
                 .unwrap()
-                .record_dump_index::<DDlogConverter, _>(iid)
+                .record_dump_index::<DDlogConverter>(iid)
                 .map_err(|e| {
                     self.eprintln("ddlog_dump_index(): failed to record invocation in replay file");
                 });
         }
     }
 
-    fn record_query_index(&self, iid: IdxId, key: &Value) {
+    fn record_query_index(&self, iid: IdxId, key: &DDValue) {
         if let Some(ref f) = self.replay_file {
             let _ = f
                 .lock()
                 .unwrap()
-                .record_query_index::<DDlogConverter, _>(iid, key)
+                .record_query_index::<DDlogConverter>(iid, key)
                 .map_err(|e| {
                     self.eprintln("ddlog_dump_index(): failed to record invocation in replay file");
                 });
@@ -466,7 +463,7 @@ impl HDDlog {
     }
 }
 
-pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
+pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
     match c {
         record::UpdCmd::Insert(rident, rec) => {
             let relid =
@@ -474,7 +471,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert {
                 relid: relid as RelId,
-                v: val,
+                v: val.into_ddval(),
             })
         }
         record::UpdCmd::Delete(rident, rec) => {
@@ -483,7 +480,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue {
                 relid: relid as RelId,
-                v: val,
+                v: val.into_ddval(),
             })
         }
         record::UpdCmd::DeleteKey(rident, rec) => {
@@ -492,7 +489,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey {
                 relid: relid as RelId,
-                k: key,
+                k: key.into_ddval(),
             })
         }
         record::UpdCmd::Modify(rident, key, rec) => {
@@ -501,7 +498,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<Value>, String> {
             let key = relkey_from_record(relid, key)?;
             Ok(Update::Modify {
                 relid: relid as RelId,
-                k: key,
+                k: key.into_ddval(),
                 m: Arc::new(rec.clone()),
             })
         }

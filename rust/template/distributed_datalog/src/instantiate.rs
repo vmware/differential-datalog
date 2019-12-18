@@ -8,14 +8,13 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt::Debug;
 use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
 
+use differential_datalog::program::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::program::Val;
 use differential_datalog::record::Record;
 use differential_datalog::DDlog;
 
@@ -97,7 +96,7 @@ where
 }
 
 /// Create a transaction multiplexer wrapping the given server.
-fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<P::Value>, String>, String>
+fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<DDValue>, String>, String>
 where
     P: Send + DDlog + 'static,
 {
@@ -140,13 +139,10 @@ where
 
 /// Add a `TcpReceiver` feeding the given server if one is needed given
 /// the provided node configuration.
-fn add_tcp_receiver<V>(
-    txnmux: &mut TxnMux<Update<V>, String>,
+fn add_tcp_receiver(
+    txnmux: &mut TxnMux<Update<DDValue>, String>,
     addr: &SocketAddr,
-) -> Result<(), String>
-where
-    V: Val,
-{
+) -> Result<(), String> {
     let receiver =
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
     txnmux
@@ -208,7 +204,7 @@ where
 /// Add file sources as per the node configuration to the given `TxnMux`
 /// object.
 fn add_file_sources<P>(
-    txnmux: &mut TxnMux<Update<P::Value>, String>,
+    txnmux: &mut TxnMux<Update<DDValue>, String>,
     node_cfg: &NodeCfg,
 ) -> Result<(), String>
 where
@@ -218,7 +214,7 @@ where
     deduce_sinks_or_sources(node_cfg, false)
         .iter()
         .try_for_each(|(path, _rel_ids)| {
-            let source = FileSource::<P::Convert, _>::new(path);
+            let source = FileSource::<P::Convert>::new(path);
             txnmux
                 .add_observable(Box::new(source))
                 .map_err(|_| format!("failed to add file source {} to TxnMux", path.display()))?;
@@ -235,7 +231,7 @@ fn realize<P>(
     addr: &Addr,
     node_cfg: &NodeCfg,
     assignment: &Assignment,
-) -> Result<Realization<P::Value>, String>
+) -> Result<Realization, String>
 where
     P: Send + DDlog + 'static,
     P::Convert: Send,
@@ -258,12 +254,9 @@ where
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
 #[derive(Debug)]
-pub struct Realization<V>
-where
-    V: Debug + Send,
-{
+pub struct Realization {
     /// The transaction multiplexer everything is registered to.
-    txnmux: TxnMux<Update<V>, String>,
+    txnmux: TxnMux<Update<DDValue>, String>,
 }
 
 /// Instantiate a configuration on a particular node under the given
@@ -272,7 +265,7 @@ pub fn instantiate<P>(
     sys_cfg: SysCfg,
     addr: &Addr,
     assignment: &Assignment,
-) -> Result<Vec<Realization<P::Value>>, String>
+) -> Result<Vec<Realization>, String>
 where
     P: Send + DDlog + 'static,
     P::Convert: Send,

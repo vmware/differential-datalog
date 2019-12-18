@@ -155,6 +155,7 @@ rustLibFiles specname =
         , (dir </> "differential_datalog/record.rs"                  , $(embedFile "rust/template/differential_datalog/record.rs"))
         , (dir </> "differential_datalog/replay.rs"                  , $(embedFile "rust/template/differential_datalog/replay.rs"))
         , (dir </> "differential_datalog/test.rs"                    , $(embedFile "rust/template/differential_datalog/test.rs"))
+        , (dir </> "differential_datalog/test_value.rs"              , $(embedFile "rust/template/differential_datalog/test_value.rs"))
         , (dir </> "differential_datalog/test_record.rs"             , $(embedFile "rust/template/differential_datalog/test_record.rs"))
         , (dir </> "differential_datalog/uint.rs"                    , $(embedFile "rust/template/differential_datalog/uint.rs"))
         , (dir </> "differential_datalog/valmap.rs"                  , $(embedFile "rust/template/differential_datalog/valmap.rs"))
@@ -198,10 +199,10 @@ rustLibFiles specname =
 -- There are two kinds of arrangements:
 --
 -- + 'ArrangementMap' arranges the collection into key-value pairs of type
---   '(Value,Value)', where the second value in the pair is a record from the
+--   '(DDValue,DDValue)', where the second value in the pair is a record from the
 --   original collection.  These arrangements are used in joins and semi-joins.
 --
--- + 'ArrangementSet' arranges the collection in '(Value, ())' pairs, where the
+-- + 'ArrangementSet' arranges the collection in '(DDValue, ())' pairs, where the
 --   value is the key extracted from relation.  These arrangements are used in
 --   antijoins and semijoins.
 --
@@ -1086,7 +1087,7 @@ mkFunc d f@Function{..} | isJust funcDef =
     mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType a
     tvars = case funcTypeVars f of
                  []  -> empty
-                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Eq + Ord + Clone + Hash + PartialEq + PartialOrd") . pp) tvs) <> ">"
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
 
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: (?cfg::CompilerConfig) => DatalogProgram -> S.Set Type -> Doc
@@ -1216,7 +1217,7 @@ where
 -}
 compileApplyNode :: (?cfg::CompilerConfig) => DatalogProgram -> Apply -> ProgNode
 compileApplyNode d Apply{..} = ApplyNode $
-    "{fn transformer() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,Value,Weight>>)> {" $$
+    "{fn transformer() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,DDValue,Weight>>)> {" $$
     "    Box::new(|collections| {"                                                                                                                             $$
     "        let (" <> commaSep outputs <> ") =" <+> rname applyTransformer <> (parens $ commaSep inputs) <> ";"                                               $$
     (nest' $ nest' $ vcat update_collections)                                                                                                                  $$
@@ -1230,15 +1231,15 @@ compileApplyNode d Apply{..} = ApplyNode $
                             else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
                        (zip applyInputs transInputs)
              ++
-             map (\o -> parens $ "|v|" <> mkValue d "v" (relType $ getRelation d o)) applyOutputs
+             map (\o -> parens $ "|v|" <> mkValue d "v" (relType $ getRelation d o) <> ".into_ddval()") applyOutputs
     outputs = map rname applyOutputs
     update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rname o <> ");") applyOutputs
 
 extractValue :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
-        "|" <> vALUE_VAR <> ": Value| {"                                                              $$
-        "match" <+> vALUE_VAR <+> "{"                                                                 $$
-        "    Value::" <> mkValConstructorName d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"      $$
+        "|" <> vALUE_VAR <> ": DDValue| {"                                                            $$
+        "match *Value::from_ddval(" <> vALUE_VAR <> ") {"                                             $$
+        "    Value::" <> mkValConstructorName d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"       $$
         "    _ => unreachable!()"                                                                     $$
         "}}"
     where t' = typeNormalize d t
@@ -1326,12 +1327,12 @@ compileKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> KeyExpr ->
 compileKey d rel@Relation{..} KeyExpr{..} = do
     v <- mkValue' d (CtxKey rel) keyExpr
     return $
-        "(|" <> kEY_VAR <> ": &Value|"                                                                $$
-        "match" <+> kEY_VAR <+> "{"                                                                   $$
-        "    Value::" <> mkValConstructorName d relType <> "(__" <> pp keyVar <> ") => {"            $$
-        "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                   $$
-        "       " <> v <> "},"                                                                      $$
-        "    _ => unreachable!()"                                                                     $$
+        "(|" <> kEY_VAR <> ": &DDValue|"                                                                $$
+        "match Value::from_ddval_ref(" <> kEY_VAR <> ") {"                                              $$
+        "    Value::" <> mkValConstructorName d relType <> "(__" <> pp keyVar <> ") => {"               $$
+        "       let" <+> pp keyVar <+> "= &*__" <> pp keyVar <> ";"                                     $$
+        "       " <> v <> "},"                                                                          $$
+        "    _ => unreachable!()"                                                                       $$
         "})"
 
 {- Generate Rust representation of a ground fact -}
@@ -1407,8 +1408,8 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                else return Nothing
     -- Open up input constructor; bring Datalog variables into scope
     open <- if input_val
-               then openAtom  d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "return None"
-               else openTuple d vALUE_VAR $ rhsVarsAfter d rl last_rhs_idx
+               then openAtom  d ("&" <> vALUE_VAR) rl 0 (rhsAtom $ head ruleRHS) "return None"
+               else openTuple d ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and rhs_idx
     let filters = mkFilters d rl last_rhs_idx
     let prefix = open $+$ vcat filters
@@ -1455,7 +1456,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             xform' <- mkArrangedOperator [] False
                             return $ "XFormCollection::Arrange {"                                                                                    $$
                                      "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+> ".to_string(),"                                                                                                                             $$
-                                     (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")              $$
+                                     (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")        $$
                                      "    next: Box::new(" <> xform' <> ")"                                                                          $$
                                      "}"
                         Nothing -> mkCollectionOperator
@@ -1508,7 +1509,7 @@ mkFlatMap d prefix rl idx v e = do
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Box<dyn Iterator<Item=Value>>>" $$ fmfun $$ "__f},")$$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -1523,7 +1524,7 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     open <- if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
                else openTuple d vALUE_VAR group_vars
-    let project = "&{fn __f(" <> vALUE_VAR <> ": &Value) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
+    let project = "&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
                   (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                   $$
                   "__f}"
     -- Aggregate function:
@@ -1535,7 +1536,7 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
                     "::<" <> tparams <> ">(&std_Group::new(" <> gROUP_VAR <> "," <+> project <> "));"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
     let key_vars = map (getVar d ctx) rhsGroupBy
-    open_key <- openTuple d ("*" <> kEY_VAR) key_vars
+    open_key <- openTuple d kEY_VAR key_vars
     let agfun = braces'
                 $ open_key  $$
                   aggregate $$
@@ -1545,7 +1546,7 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
         "XFormArrangement::Aggregate{"                                                                                           $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                 $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
-        "    aggfun: &{fn __f(" <> kEY_VAR <> ": &Value," <+> gROUP_VAR <> ": &[(&Value, Weight)]) -> Value" $$ agfun $$ "__f}," $$
+        "    aggfun: &{fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> DDValue" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                     $$
         "}"
 
@@ -1565,7 +1566,7 @@ openAtom d var rl idx Atom{..} on_error = do
         vars = tuple varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
     return $
-        "let" <+> vars <+> "= match " <> var <> "{"                                    $$
+        "let" <+> vars <+> "= match Value::from_ddval_ref(" <> var <> "){"             $$
         "    " <> constructor <> parens ("ref" <+> bOX_VAR) <+> "=> {"                 $$
         "        match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                      $$
         (nest' $ nest' mtch)                                                           $$
@@ -1582,7 +1583,7 @@ openTuple d var vs = do
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     let vars = tuple $ map (pp . name) vs
     return $
-        "let" <+> vars <+> "= match" <+> var <+> "{"                                                    $$
+        "let" <+> vars <+> "= match Value::from_ddval_ref(" <+> var <+> "){"                            $$
         "    " <> cons <> parens ("ref" <+> bOX_VAR) <+> "=> {"                                         $$
         "        match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                                       $$
         "            " <> pattern <+> "=>" <+> vars <> ","                                              $$
@@ -1625,7 +1626,7 @@ mkValue' :: (?cfg::CompilerConfig) => DatalogProgram -> ECtx -> Expr -> Compiler
 mkValue' d ctx e = do
     let t = exprType d ctx e
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal)
+    return $ constructor <> (parens $ box d t $ mkExpr d ctx e EVal) <> ".into_ddval()"
 
 mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
 mkValue d v t = "Value::" <> mkValConstructorName d (typeNormalize d t) <> (parens $ box d t v)
@@ -1634,13 +1635,13 @@ mkTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [(Expr, ECtx)] -> Co
 mkTupleValue d es = do
     let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ box d t $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es)
+    return $ constructor <> (parens $ box d t $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddval()"
 
 mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
     let t = tTuple $ map typ vs
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs)
+    return $ constructor <> (parens $ box d t $ tupleStruct $ map ((<> ".clone()") . pp . name) vs) <> ".into_ddval()"
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: DatalogProgram -> Rule -> Int -> [Doc]
@@ -1679,10 +1680,10 @@ mkCondFilter d ctx e =
 mkFFun :: (?cfg::CompilerConfig) => DatalogProgram -> Rule -> [Int] -> CompilerMonad Doc
 mkFFun _ Rule{} [] = return "None"
 mkFFun d rl@Rule{..} input_filters = do
-   open <- openAtom d ("*" <> vALUE_VAR) rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
+   open <- openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
    let checks = hsep $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   return $ "Some(&{fn __f(" <> vALUE_VAR <> ": &Value) -> bool"   $$
+   return $ "Some(&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool"   $$
             (braces' $ open $$ checks)                             $$
             "    __f"                                              $$
             "})"
@@ -1725,9 +1726,9 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
         simplify _                  = ePHolder
     -- Join function: open up both values, apply filters.
     open <- if is_semi
-               then open_input ("*" <> vALUE_VAR1)
-               else liftM2 ($$) (open_input ("*" <> vALUE_VAR1))
-                           (openAtom d ("*" <> vALUE_VAR2) rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None")
+               then open_input vALUE_VAR1
+               else liftM2 ($$) (open_input vALUE_VAR1)
+                           (openAtom d vALUE_VAR2 rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None")
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
@@ -1746,7 +1747,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value,_" <> vALUE_VAR2 <> ": &()) -> Option<Value>"       $$
+                "    jfun: &{fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"       $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next  <> ")"                                                                           $$
@@ -1755,7 +1756,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: &{fn __f(_: &Value ," <> vALUE_VAR1 <> ": &Value," <> vALUE_VAR2 <> ": &Value) -> Option<Value>"     $$
+                "    jfun: &{fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"     $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next <> ")"                                                                            $$
@@ -1940,7 +1941,7 @@ mkHead d prefix rl = do
     return $
         "XFormCollection::FilterMap{"                                                               $$
         "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
-        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")  $$
+        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
         "    next: Box::new(None)"                                                                  $$
         "}"
 
@@ -1972,7 +1973,7 @@ mkProg nodes = do
                "    ]"                                          $$
                "}"
     return $
-        "pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {"  $$
+        "pub fn prog(__update_cb: Box<dyn CBFn>) -> Program {"  $$
         (nest' $ rels $$ prog)                                                 $$
         "}"
 
@@ -1996,7 +1997,7 @@ mkArrangement d rel ArrangementMap{..} = do
     return $
         "Arrangement::Map{"                                                                                 $$
         "   name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                         $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<(Value,Value)>" $$ afun $$ "__f},")  $$
+        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
         "    queryable:" <+> (if null arngIndexes then "false" else "true")                                 $$
         "}"
 
@@ -2011,7 +2012,7 @@ mkArrangement d rel ArrangementSet{..} = do
     return $
         "Arrangement::Set{"                                                                            $$
         "    name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                   $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": Value) -> Option<Value>" $$ fmfun $$ "__f},")   $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")   $$
         "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false") $$
         "}"
 
@@ -2043,7 +2044,7 @@ mkArrangementKey d rel pattern = do
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
     return $ braces' $
-             "if let" <+> constructor <> parens bOX_VAR <+> "=" <+> vALUE_VAR <+> "{" $$
+             "if let" <+> constructor <> parens bOX_VAR <+> "= *Value::from_ddval(" <> vALUE_VAR <> ") {" $$
              "    match" <+> boxDeref d t bOX_VAR <+> "{"                             $$
              nest' mtch                                                               $$
              "    }"                                                                  $$

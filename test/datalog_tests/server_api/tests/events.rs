@@ -2,6 +2,7 @@ use std::any::Any;
 use std::sync::Mutex;
 
 use differential_datalog::program::Update;
+use differential_datalog::program::DDValue;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
@@ -19,7 +20,6 @@ use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::Relations::*;
-use server_api_ddlog::Value;
 
 use maplit::hashmap;
 use maplit::hashset;
@@ -28,7 +28,7 @@ use test_env_log::test;
 
 type DDlogServer = DDlogServerT<HDDlog>;
 type MockObserver = SharedObserver<Mock>;
-type UpdatesObservable = UpdatesObservableT<Update<Value>, String>;
+type UpdatesObservable = UpdatesObservableT<Update<DDValue>, String>;
 
 /// Verify that `on_commit` is called even if we haven't received any
 /// updates.
@@ -292,7 +292,7 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
 
-    let mut recv = TcpReceiver::<Update<Value>>::new("127.0.0.1:0").unwrap();
+    let mut recv = TcpReceiver::<Update<DDValue>>::new("127.0.0.1:0").unwrap();
     let send = TcpSender::new(*recv.addr()).unwrap();
 
     let _ = stream.subscribe(Box::new(send)).unwrap();

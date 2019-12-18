@@ -21,7 +21,7 @@ use crate::program::{TSNested, Weight};
 /// When the `distinct` flag is `true`, the `threshold` operator will be applied to the collection
 /// before closing the loop to ensure convergence.  Set to `false` when the body of the cycle
 /// bounds weights by construction.
-pub struct Variable<'a, G: Scope, D: ExchangeData + Default + Data + Hashable>
+pub struct Variable<'a, G: Scope, D: ExchangeData + Data + Hashable>
 where
     G::Timestamp: Lattice + Ord,
 {
@@ -37,7 +37,7 @@ where
     pub distinct: bool,
 }
 
-impl<'a, G: Scope, D: ExchangeData + Default + Data + Hashable> Variable<'a, G, D>
+impl<'a, G: Scope, D: ExchangeData + Data + Hashable> Variable<'a, G, D>
 where
     G::Timestamp: Lattice + Ord,
 {
@@ -76,8 +76,7 @@ where
     }
 }
 
-impl<'a, G: Scope, D: ExchangeData + Default + Data + Hashable> ::std::ops::Deref
-    for Variable<'a, G, D>
+impl<'a, G: Scope, D: ExchangeData + Data + Hashable> ::std::ops::Deref for Variable<'a, G, D>
 where
     G::Timestamp: Lattice + Ord,
 {
@@ -87,7 +86,7 @@ where
     }
 }
 
-impl<'a, G: Scope, D: ExchangeData + Default + Data + Hashable> Drop for Variable<'a, G, D>
+impl<'a, G: Scope, D: ExchangeData + Data + Hashable> Drop for Variable<'a, G, D>
 where
     G::Timestamp: Lattice + Ord,
 {

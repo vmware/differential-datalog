@@ -462,13 +462,13 @@ impl<'b> ToFlatBufferVectorElement<'b> for Uint {
     }
 }
 
-impl<'a> FromFlatBuffer<fb::__Command<'a>> for Update<Value> {
+impl<'a> FromFlatBuffer<fb::__Command<'a>> for Update<DDValue> {
     fn from_flatbuf(cmd: fb::__Command<'a>) -> Response<Self> {
         let relid = cmd.relid() as RelId;
         let val_table = cmd.val().ok_or_else(|| {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
-        let val = Value::relval_from_flatbuf(relid, val_table)?;
+        let val = Value::relval_from_flatbuf(relid, val_table)?.into_ddval();
         match cmd.kind() {
             fb::__CommandKind::Insert => Ok(Update::Insert { relid, v: val }),
             fb::__CommandKind::Delete => Ok(Update::DeleteValue { relid, v: val }),
@@ -539,7 +539,7 @@ pub fn updates_from_flatbuf<'a>(
     }
 }
 
-pub fn updates_to_flatbuf(delta: &DeltaMap<Value>) -> (Vec<u8>, usize) {
+pub fn updates_to_flatbuf(delta: &DeltaMap<DDValue>) -> (Vec<u8>, usize) {
     /* Pre-compute size of delta. */
     let mut delta_size: usize = 0;
 
@@ -554,7 +554,7 @@ pub fn updates_to_flatbuf(delta: &DeltaMap<Value>) -> (Vec<u8>, usize) {
     for (relid, rel) in delta.as_ref().iter() {
         for (v, w) in rel.iter() {
             assert!(*w == 1 || *w == -1);
-            cmds.push((*relid as usize, v, *w == 1).to_flatbuf(&mut fbb));
+            cmds.push((*relid as usize, Value::from_ddval_ref(v), *w == 1).to_flatbuf(&mut fbb));
         }
     }
 
@@ -570,12 +570,12 @@ pub fn updates_to_flatbuf(delta: &DeltaMap<Value>) -> (Vec<u8>, usize) {
     fbb.collapse()
 }
 
-pub fn query_from_flatbuf<'a>(buf: &'a [u8]) -> Response<(IdxId, Value)> {
+pub fn query_from_flatbuf<'a>(buf: &'a [u8]) -> Response<(IdxId, DDValue)> {
     let q = flatbuffers::get_root::<fb::__Query<'a>>(buf);
     if let Some(key) = q.key() {
         Ok((
             q.idxid() as usize,
-            Value::idxkey_from_flatbuf(q.idxid() as usize, key)?,
+            Value::idxkey_from_flatbuf(q.idxid() as usize, key)?.into_ddval(),
         ))
     } else {
         Err("Invalid buffer: failed to extract key".to_string())
@@ -584,7 +584,7 @@ pub fn query_from_flatbuf<'a>(buf: &'a [u8]) -> Response<(IdxId, Value)> {
 
 pub fn values_to_flatbuf<'a, I>(vals: I) -> (Vec<u8>, usize)
 where
-    I: Iterator<Item = &'a Value>,
+    I: Iterator<Item = &'a DDValue>,
 {
     let size = vals.size_hint().0;
 
@@ -593,7 +593,7 @@ where
     let mut val_tables = Vec::with_capacity(size);
 
     for val in vals {
-        val_tables.push(val.to_flatbuf_vector_element(&mut fbb));
+        val_tables.push(Value::from_ddval_ref(val).to_flatbuf_vector_element(&mut fbb));
     }
 
     let val_vec = fbb.create_vector(val_tables.as_slice());

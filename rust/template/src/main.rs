@@ -30,7 +30,7 @@ fn handle_cmd(
     hddlog: &HDDlog,
     print_deltas: bool,
     interactive: bool,
-    upds: &mut Vec<Update<Value>>,
+    upds: &mut Vec<Update<DDValue>>,
     cmd: Command,
 ) -> (Result<(), String>, bool) {
     let resp = (if !is_upd_cmd(&cmd) {
@@ -166,7 +166,7 @@ fn handle_cmd(
             .map_err(|_| format!("Unknown index {}", idx))
             .and_then(|idxid| {
                 idxkey_from_record(idxid, &key)
-                    .and_then(|keyval| hddlog.query_index(idxid as IdxId, keyval))
+                    .and_then(|keyval| hddlog.query_index(idxid as IdxId, keyval.into_ddval()))
             })
             .map(|vals| {
                 for val in vals.into_iter() {
@@ -193,7 +193,7 @@ fn handle_cmd(
     }
 }
 
-fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<Value>>) -> Response<()> {
+fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<DDValue>>) -> Response<()> {
     if !upds.is_empty() {
         hddlog.apply_valupdates(upds.drain(..))
     } else {

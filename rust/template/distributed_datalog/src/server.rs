@@ -5,9 +5,9 @@ use std::sync::Arc;
 use log::trace;
 use uid::Id;
 
+use differential_datalog::program::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::program::Val;
 use differential_datalog::DDlog;
 
 use crate::observe::Observer;
@@ -18,12 +18,9 @@ use crate::observe::UpdatesObservable;
 
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
-pub struct Outlet<V>
-where
-    V: Val,
-{
+pub struct Outlet {
     tables: HashSet<RelId>,
-    observer: SharedObserver<OptionalObserver<ObserverBox<Update<V>, String>>>,
+    observer: SharedObserver<OptionalObserver<ObserverBox<Update<DDValue>, String>>>,
 }
 
 /// A DDlog server wraps a DDlog program, and writes deltas to the
@@ -35,7 +32,7 @@ where
 {
     id: usize,
     prog: Option<P>,
-    outlets: Vec<Outlet<P::Value>>,
+    outlets: Vec<Outlet>,
     redirect: HashMap<RelId, RelId>,
 }
 
@@ -60,7 +57,7 @@ where
     pub fn add_stream(
         &mut self,
         tables: HashSet<RelId>,
-    ) -> UpdatesObservable<Update<P::Value>, String> {
+    ) -> UpdatesObservable<Update<DDValue>, String> {
         trace!("DDlogServer({})::add_stream", self.id);
 
         let observer = SharedObserver::default();
@@ -73,7 +70,7 @@ where
     }
 
     /// Remove an outlet.
-    pub fn remove_stream(&mut self, stream: UpdatesObservable<Update<P::Value>, String>) {
+    pub fn remove_stream(&mut self, stream: UpdatesObservable<Update<DDValue>, String>) {
         trace!("DDlogServer({})::remove_stream", self.id);
         self.outlets
             .retain(|o| !Arc::ptr_eq(&o.observer, &stream.observer));
@@ -96,7 +93,7 @@ where
     }
 }
 
-impl<P> Observer<Update<P::Value>, String> for DDlogServer<P>
+impl<P> Observer<Update<DDValue>, String> for DDlogServer<P>
 where
     P: Debug + Send + DDlog,
 {
@@ -162,7 +159,7 @@ where
     /// Apply a series of updates.
     fn on_updates<'a>(
         &mut self,
-        updates: Box<dyn Iterator<Item = Update<P::Value>> + 'a>,
+        updates: Box<dyn Iterator<Item = Update<DDValue>> + 'a>,
     ) -> Result<(), String> {
         trace!("DDlogServer({})::on_updates", self.id);
 

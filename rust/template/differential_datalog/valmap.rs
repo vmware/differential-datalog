@@ -6,11 +6,11 @@
 
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::convert::{AsMut, AsRef};
+use std::fmt::Display;
 use std::io;
 
 use crate::ddlog::DDlogConvert;
 use crate::program::RelId;
-use crate::program::Val;
 
 /* Stores a set of changes to output tables.
  */
@@ -31,7 +31,7 @@ impl<V> AsRef<BTreeMap<RelId, BTreeMap<V, isize>>> for DeltaMap<V> {
     }
 }
 
-impl<V: Val> DeltaMap<V> {
+impl<V: Display + Ord + Clone> DeltaMap<V> {
     pub fn new() -> Self {
         Self {
             map: BTreeMap::default(),
@@ -94,7 +94,7 @@ impl<V: Val> DeltaMap<V> {
             .map
             .entry(relid)
             .or_insert_with(BTreeMap::default)
-            .entry(x.clone());
+            .entry((*x).clone());
         match entry {
             Entry::Vacant(vacant) => {
                 vacant.insert(diff);
