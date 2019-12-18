@@ -75,6 +75,10 @@ pub mod flatbuf;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuf_generated;
 
+pub trait Val: Eq + Ord + Clone + Hash + PartialEq + PartialOrd {}
+
+impl<T> Val for T where T: Eq + Ord + Clone + Hash + PartialEq + PartialOrd {}
+
 pub fn string_append_str(mut s1: String, s2: &str) -> String {
     s1.push_str(s2);
     s1
@@ -92,8 +96,6 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
 pub struct DDlogConverter {}
 
 impl DDlogConvert for DDlogConverter {
-    type Value = Value;
-
     fn relid2name(relId: RelId) -> Option<&'static str> {
         relid2name(relId)
     }
@@ -102,7 +104,7 @@ impl DDlogConvert for DDlogConverter {
         indexid2name(idxId)
     }
 
-    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {
+    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
         updcmd2upd(upd_cmd)
     }
 }
@@ -115,6 +117,65 @@ impl TryFrom<&RelIdentifier> for Relations {
             RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()),
             RelIdentifier::RelId(id) => Relations::try_from(*id),
         }
+    }
+}
+
+impl Value {
+    fn from_val_ref(v: &dyn DDVal) -> &Value {
+        v.as_any().downcast_ref::<Value>().unwrap()
+    }
+    pub fn from_val_mut_ref(v: &mut dyn DDVal) -> &mut Value {
+        v.as_mut_any().downcast_mut::<Value>().unwrap()
+    }
+    pub fn from_ddval_ref(v: &DDValue) -> &Value {
+        Self::from_val_ref(v.val())
+    }
+    pub fn from_ddval_mut_ref(v: &mut DDValue) -> &mut Value {
+        Self::from_val_mut_ref(v.mut_val())
+    }
+    pub fn from_ddval(v: DDValue) -> Box<Value> {
+        Self::from_val(v.into_val())
+    }
+    pub fn from_val(v: Box<dyn DDVal>) -> Box<Value> {
+        v.into_any().downcast::<Value>().unwrap()
+    }
+    pub fn into_ddval(self) -> DDValue {
+        DDValue::new(Box::new(self))
+    }
+}
+
+#[typetag::serde]
+impl DDVal for Value {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+    fn val_eq(&self, other: &dyn DDVal) -> bool {
+        self.eq(Value::from_val_ref(other))
+    }
+    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(Value::from_val_ref(other))
+    }
+    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
+        self.cmp(Value::from_val_ref(other))
+    }
+    fn val_clone(&self) -> Box<dyn DDVal> {
+        Box::new(self.clone())
+    }
+    fn val_hash(&self, mut state: &mut dyn Hasher) {
+        self.hash(&mut state)
+    }
+    fn val_into_record(self: Box<Self>) -> record::Record {
+        (*self).into_record()
+    }
+
+    fn val_mutate(&mut self, record: &record::Record) -> Result<(), String> {
+        record.mutate(self)
     }
 }
 
@@ -252,7 +313,7 @@ pub fn indexes2arrid(idx: Indexes) -> ArrId {
     panic!("indexes2arrid not implemented")
 }
 
-pub fn prog(__update_cb: Box<dyn CBFn<Value>>) -> Program<Value> {
+pub fn prog(__update_cb: Box<dyn CBFn>) -> Program {
     panic!("prog not implemented")
 }
 

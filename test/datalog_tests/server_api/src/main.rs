@@ -25,7 +25,6 @@ use distributed_datalog::ReadMembers;
 use distributed_datalog::Realization;
 
 use server_api_ddlog::api::HDDlog;
-use server_api_ddlog::Value;
 use server_api_test::config;
 
 #[derive(StructOpt, Debug)]
@@ -114,7 +113,7 @@ fn manual(
     Ok(())
 }
 
-fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<Value>>, String> {
+fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization>, String> {
     let members = zookeeper.members()?;
     let sys_cfg = zookeeper.config()?;
 
@@ -152,7 +151,7 @@ fn reconfig_state(member: &Addr, state: &Mutex<State>) -> Result<(), String> {
 #[derive(Default)]
 struct State {
     zookeeper: Option<ZooKeeper>,
-    realization: Option<Vec<Realization<Value>>>,
+    realization: Option<Vec<Realization>>,
 }
 
 impl State {

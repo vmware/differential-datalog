@@ -20,7 +20,7 @@ pub fn graph_SCC<S, V, E, N, EF, LF>(
 where
     S: Scope,
     S::Timestamp: Lattice + Ord,
-    V: Val,
+    V: Val + 'static,
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
@@ -53,7 +53,7 @@ pub fn graph_ConnectedComponents<S, V, E, N, EF, LF>(
 where
     S: Scope,
     S::Timestamp: Lattice + Ord,
-    V: Val,
+    V: Val + 'static,
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
@@ -81,7 +81,7 @@ where
     S: Scope,
     S::Timestamp: Lattice + Ord,
     u64: From<N>,
-    V: Val,
+    V: Val + 'static,
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
@@ -114,7 +114,7 @@ pub fn graph_UnsafeBidirectionalEdges<S, V, E, N, EF, LF>(
 where
     S: Scope,
     S::Timestamp: TotalOrder + Lattice + Ord,
-    V: Val,
+    V: Val + 'static,
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,

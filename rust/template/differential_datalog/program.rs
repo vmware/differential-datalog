@@ -12,11 +12,12 @@
 // TODO: namespace cleanup
 // TODO: single input relation
 
+use std::any::Any;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use std::collections::hash_map;
 use std::fmt::{self, Debug, Display, Formatter};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, Deref, Mul};
 use std::result::Result;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -67,17 +68,17 @@ use timely::progress::{PathSummary, Timestamp};
 use timely::worker::Worker;
 
 use crate::profile::*;
-use crate::record::Mutator;
+use crate::record::{IntoRecord, Mutator, Record};
 use crate::variable::*;
 
-type ValTrace<S, V> = DefaultValTrace<V, V, <S as ScopeParent>::Timestamp, Weight, u32>;
-type KeyTrace<S, V> = DefaultKeyTrace<V, <S as ScopeParent>::Timestamp, Weight, u32>;
+type ValTrace<S> = DefaultValTrace<DDValue, DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
+type KeyTrace<S> = DefaultKeyTrace<DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
 
-type TValAgent<S, V> = TraceAgent<ValTrace<S, V>>;
-type TKeyAgent<S, V> = TraceAgent<KeyTrace<S, V>>;
+type TValAgent<S> = TraceAgent<ValTrace<S>>;
+type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 
-type TValEnter<'a, P, T, V> = TraceEnter<TValAgent<P, V>, T>;
-type TKeyEnter<'a, P, T, V> = TraceEnter<TKeyAgent<P, V>, T>;
+type TValEnter<'a, P, T> = TraceEnter<TValAgent<P>, T>;
+type TKeyEnter<'a, P, T> = TraceEnter<TKeyAgent<P>, T>;
 
 /* 16-bit timestamp.
  * TODO: get rid of this and use `u16` directly when/if differential implements
@@ -186,42 +187,127 @@ const PROF_MSG_BUF_SIZE: usize = 10000;
 /// Result type returned by this library
 pub type Response<X> = Result<X, String>;
 
-/// Value trait describes types that can be stored in a collection
-pub trait Val:
-    Eq
-    + Ord
-    + Clone
-    + Send
-    + Hash
-    + PartialEq
-    + PartialOrd
-    + Serialize
-    + DeserializeOwned
-    + Debug
-    + Display
-    + Abomonation
-    + Default
-    + Sync
-    + 'static
-{
+/// Trait for values that can be stored in DDlog relations.
+#[typetag::serde]
+pub trait DDVal: Send + Debug + Display + Sync + 'static {
+    fn as_any(&self) -> &dyn Any;
+    fn as_mut_any(&mut self) -> &mut dyn Any;
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
+    fn val_into_record(self: Box<Self>) -> Record;
+    fn val_eq(&self, other: &dyn DDVal) -> bool;
+    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering>;
+    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering;
+    fn val_clone(&self) -> Box<dyn DDVal>;
+    fn val_hash(&self, state: &mut dyn Hasher);
+    fn val_mutate(&mut self, record: &Record) -> Result<(), String>;
 }
-impl<T> Val for T where
-    T: Eq
-        + Ord
-        + Clone
-        + Send
-        + Hash
-        + PartialEq
-        + PartialOrd
-        + Serialize
-        + DeserializeOwned
-        + Debug
-        + Display
-        + Abomonation
-        + Default
-        + Sync
-        + 'static
-{
+
+#[derive(Debug)]
+pub struct DDValue {
+    val: Box<dyn DDVal>,
+}
+
+impl DDValue {
+    pub fn new(val: Box<dyn DDVal>) -> DDValue {
+        DDValue { val }
+    }
+
+    pub fn val(&self) -> &dyn DDVal {
+        &(*self.val)
+    }
+
+    pub fn mut_val(&mut self) -> &mut dyn DDVal {
+        &mut (*self.val)
+    }
+
+    pub fn into_val(self) -> Box<dyn DDVal> {
+        self.val
+    }
+}
+
+impl Mutator<DDValue> for Record {
+    fn mutate(&self, x: &mut DDValue) -> Result<(), String> {
+        x.mut_val().val_mutate(self)
+    }
+}
+
+impl IntoRecord for DDValue {
+    fn into_record(self) -> Record {
+        self.val.val_into_record()
+    }
+}
+
+impl Abomonation for DDValue {
+    unsafe fn entomb<W: std::io::Write>(&self, _write: &mut W) -> std::io::Result<()> {
+        panic!("DDValue::entomb: not implemented")
+    }
+    unsafe fn exhume<'a, 'b>(&'a mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
+        panic!("DDValue::exhume: not implemented")
+    }
+    fn extent(&self) -> usize {
+        panic!("DDValue::extent: not implemented")
+    }
+}
+
+impl Serialize for DDValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.val.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for DDValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let val: Box<dyn DDVal> = Deserialize::deserialize(deserializer)?;
+        Ok(DDValue { val })
+    }
+}
+
+impl Display for DDValue {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        Display::fmt(&self.val, f)
+    }
+}
+impl PartialOrd for DDValue {
+    fn partial_cmp(&self, other: &DDValue) -> Option<std::cmp::Ordering> {
+        self.val.val_partial_cmp(&*other.val)
+    }
+}
+
+impl PartialEq for DDValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.val.val_eq(&*other.val)
+    }
+}
+
+impl Eq for DDValue {}
+
+impl Ord for DDValue {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.val.val_cmp(&*other.val)
+    }
+}
+
+impl Clone for DDValue {
+    fn clone(&self) -> Self {
+        DDValue {
+            val: self.val.val_clone(),
+        }
+    }
+}
+
+impl Hash for DDValue {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.val.val_hash(state)
+    }
 }
 
 /// Unique identifier of a DDlog relation.
@@ -244,55 +330,54 @@ pub type ArrId = (RelId, usize);
 /// individual non-recursive relations and strongly connected components
 /// comprised of one or more mutually recursive relations.
 #[derive(Clone)]
-pub struct Program<V: Val> {
-    pub nodes: Vec<ProgNode<V>>,
-    pub init_data: Vec<(RelId, V)>,
+pub struct Program {
+    pub nodes: Vec<ProgNode>,
+    pub init_data: Vec<(RelId, DDValue)>,
 }
 
-type TransformerMap<'a, V> =
-    FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, V, Weight>>;
+type TransformerMap<'a> =
+    FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
 
 /// Represents a dataflow fragment implemented outside of DDlog directly in
 /// differential-dataflow.  Takes the set of already constructed collections and modifies this
 /// set, adding new collections.  Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
 /// transformer is monotonic and thus it may not converge if used in a nested scope.
-pub type TransformerFuncRes<V> = Box<dyn for<'a> Fn(&mut TransformerMap<'a, V>)>;
-pub type TransformerFunc<V> = fn() -> TransformerFuncRes<V>;
+pub type TransformerFuncRes = Box<dyn for<'a> Fn(&mut TransformerMap<'a>)>;
+pub type TransformerFunc = fn() -> TransformerFuncRes;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
 /// a vector of one or more mutually recursive relations.
 #[derive(Clone)]
-pub enum ProgNode<V: Val> {
-    Rel { rel: Relation<V> },
-    Apply { tfun: TransformerFunc<V> },
-    SCC { rels: Vec<RecursiveRelation<V>> },
+pub enum ProgNode {
+    Rel { rel: Relation },
+    Apply { tfun: TransformerFunc },
+    SCC { rels: Vec<RecursiveRelation> },
 }
 
 /// Relation computed in a nested scope as a fixed point.  The `distinct` flag
 /// indicates that the `distinct` operator should be applied to the relation before
 /// closing the loop to enforce convergence of the fixed point computation.
 #[derive(Clone)]
-pub struct RecursiveRelation<V: Val> {
-    pub rel: Relation<V>,
+pub struct RecursiveRelation {
+    pub rel: Relation,
     pub distinct: bool,
 }
 
-pub trait CBFn<V>: FnMut(RelId, &V, Weight) + Send {
-    fn clone_boxed(&self) -> Box<dyn CBFn<V>>;
+pub trait CBFn: FnMut(RelId, &DDValue, Weight) + Send {
+    fn clone_boxed(&self) -> Box<dyn CBFn>;
 }
 
-impl<T, V> CBFn<V> for T
+impl<T> CBFn for T
 where
-    V: Val,
-    T: 'static + Send + Clone + FnMut(RelId, &V, Weight),
+    T: 'static + Send + Clone + FnMut(RelId, &DDValue, Weight),
 {
-    fn clone_boxed(&self) -> Box<dyn CBFn<V>> {
+    fn clone_boxed(&self) -> Box<dyn CBFn> {
         Box::new(self.clone())
     }
 }
 
-impl<V: Val> Clone for Box<dyn CBFn<V>> {
+impl Clone for Box<dyn CBFn> {
     fn clone(&self) -> Self {
         self.as_ref().clone_boxed()
     }
@@ -304,7 +389,7 @@ impl<V: Val> Clone for Box<dyn CBFn<V>> {
 /// rules.  The set of rules can be empty (if this is a ground relation); the set of arrangements
 /// can also be empty if the relation is not used in the RHS of any rules.
 #[derive(Clone)]
-pub struct Relation<V: Val> {
+pub struct Relation {
     /// Relation name; does not have to be unique
     pub name: String,
     /// `true` if this is an input relation. Input relations are populated by the client
@@ -314,51 +399,51 @@ pub struct Relation<V: Val> {
     pub distinct: bool,
     /// if this `key_func` is present, this indicates that the relation is indexed with a unique
     /// key computed by key_func
-    pub key_func: Option<fn(&V) -> V>,
+    pub key_func: Option<fn(&DDValue) -> DDValue>,
     /// Unique relation id
     pub id: RelId,
     /// Rules that define the content of the relation.
     /// Input relations cannot have rules.
     /// Rules can only refer to relations introduced earlier in the program as well as relations in the same strongly connected
     /// component.
-    pub rules: Vec<Rule<V>>,
+    pub rules: Vec<Rule>,
     /// Arrangements of the relation used to compute other relations.  Index in this vector
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
-    pub arrangements: Vec<Arrangement<V>>,
+    pub arrangements: Vec<Arrangement>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb: Option<Arc<Mutex<Box<dyn CBFn<V>>>>>,
+    pub change_cb: Option<Arc<Mutex<Box<dyn CBFn>>>>,
 }
 
 /// Function type used to map the content of a relation
 /// (see `XFormCollection::Map`).
-pub type MapFunc<V> = fn(V) -> V;
+pub type MapFunc = fn(DDValue) -> DDValue;
 
 /// (see `XFormCollection::FlatMap`).
-pub type FlatMapFunc<V> = fn(V) -> Option<Box<dyn Iterator<Item = V>>>;
+pub type FlatMapFunc = fn(DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>>;
 
 /// Function type used to filter a relation
 /// (see `XForm*::Filter`).
-pub type FilterFunc<V> = fn(&V) -> bool;
+pub type FilterFunc = fn(&DDValue) -> bool;
 
 /// Function type used to simultaneously filter and map a relation
 /// (see `XFormCollection::FilterMap`).
-pub type FilterMapFunc<V> = fn(V) -> Option<V>;
+pub type FilterMapFunc = fn(DDValue) -> Option<DDValue>;
 
 /// Function type used to arrange a relation into key-value pairs
 /// (see `XFormArrangement::Join`, `XFormArrangement::Antijoin`).
-pub type ArrangeFunc<V> = fn(V) -> Option<(V, V)>;
+pub type ArrangeFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
 
 /// Function type used to assemble the result of a join into a value.
 /// Takes join key and a pair of values from the two joined relation
 /// (see `XFormArrangement::Join`).
-pub type JoinFunc<V> = fn(&V, &V, &V) -> Option<V>;
+pub type JoinFunc = fn(&DDValue, &DDValue, &DDValue) -> Option<DDValue>;
 
 /// Function type used to assemble the result of a semijoin into a value.
 /// Takes join key and value (see `XFormArrangement::Semijoin`).
-pub type SemijoinFunc<V> = fn(&V, &V, &()) -> Option<V>;
+pub type SemijoinFunc = fn(&DDValue, &DDValue, &()) -> Option<DDValue>;
 
 /// Aggregation function: aggregates multiple values into a single value.
-pub type AggFunc<V> = fn(&V, &[(&V, Weight)]) -> V;
+pub type AggFunc = fn(&DDValue, &[(&DDValue, Weight)]) -> DDValue;
 
 /// A Datalog relation or rule can depend on other relations and their
 /// arrangements.
@@ -390,69 +475,69 @@ impl Dep {
 ///
 /// `XFormArrangement` - arrangement transformation.
 #[derive(Clone)]
-pub enum XFormArrangement<V: Val> {
+pub enum XFormArrangement {
     /// FlatMap arrangement into a collection
     FlatMap {
         description: String,
-        fmfun: &'static FlatMapFunc<V>,
+        fmfun: &'static FlatMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
     FilterMap {
         description: String,
-        fmfun: &'static FilterMapFunc<V>,
+        fmfun: &'static FilterMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
     /// Aggregate
     Aggregate {
         description: String,
         /// Filter arrangement before grouping
-        ffun: Option<&'static FilterFunc<V>>,
+        ffun: Option<&'static FilterFunc>,
         /// Aggregation to apply to each group.
-        aggfun: &'static AggFunc<V>,
+        aggfun: &'static AggFunc,
         /// Apply transformation to the resulting collection.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
     /// Join
     Join {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc<V>>,
+        ffun: Option<&'static FilterFunc>,
         /// Arrangement to join with.
         arrangement: ArrId,
         /// Function used to put together ouput value.
-        jfun: &'static JoinFunc<V>,
+        jfun: &'static JoinFunc,
         /// Join returns a collection: apply `next` transformation to it.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
     /// Semijoin
     Semijoin {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc<V>>,
+        ffun: Option<&'static FilterFunc>,
         /// Arrangement to semijoin with.
         arrangement: ArrId,
         /// Function used to put together ouput value.
-        jfun: &'static SemijoinFunc<V>,
+        jfun: &'static SemijoinFunc,
         /// Join returns a collection: apply `next` transformation to it.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
     /// Return a subset of values that correspond to keys not present in `arrangement`.
     Antijoin {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc<V>>,
+        ffun: Option<&'static FilterFunc>,
         /// Arrangement to antijoin with
         arrangement: ArrId,
         /// Antijoin returns a collection: apply `next` transformation to it.
-        next: Box<Option<XFormCollection<V>>>,
+        next: Box<Option<XFormCollection>>,
     },
 }
 
-impl<V: Val> XFormArrangement<V> {
+impl XFormArrangement {
     pub fn description(&self) -> &str {
         match self {
             XFormArrangement::FlatMap { description, .. } => &description,
@@ -514,40 +599,40 @@ impl<V: Val> XFormArrangement<V> {
 
 /// `XFormCollection` - collection transformation.
 #[derive(Clone)]
-pub enum XFormCollection<V: Val> {
+pub enum XFormCollection {
     /// Arrange the collection, apply `next` transformation to the resulting collection.
     Arrange {
         description: String,
-        afun: &'static ArrangeFunc<V>,
-        next: Box<XFormArrangement<V>>,
+        afun: &'static ArrangeFunc,
+        next: Box<XFormArrangement>,
     },
     /// Apply `mfun` to each element in the collection
     Map {
         description: String,
-        mfun: &'static MapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>,
+        mfun: &'static MapFunc,
+        next: Box<Option<XFormCollection>>,
     },
     /// FlatMap
     FlatMap {
         description: String,
-        fmfun: &'static FlatMapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>,
+        fmfun: &'static FlatMapFunc,
+        next: Box<Option<XFormCollection>>,
     },
     /// Filter collection
     Filter {
         description: String,
-        ffun: &'static FilterFunc<V>,
-        next: Box<Option<XFormCollection<V>>>,
+        ffun: &'static FilterFunc,
+        next: Box<Option<XFormCollection>>,
     },
     /// Map and filter
     FilterMap {
         description: String,
-        fmfun: &'static FilterMapFunc<V>,
-        next: Box<Option<XFormCollection<V>>>,
+        fmfun: &'static FilterMapFunc,
+        next: Box<Option<XFormCollection>>,
     },
 }
 
-impl<V: Val> XFormCollection<V> {
+impl XFormCollection {
     pub fn description(&self) -> &str {
         match self {
             XFormCollection::Arrange { description, .. } => &description,
@@ -584,20 +669,20 @@ impl<V: Val> XFormCollection<V> {
 /// Datalog rule (more precisely, the body of a rule) starts with a collection
 /// or arrangement and applies a chain of transformations to it.
 #[derive(Clone)]
-pub enum Rule<V: Val> {
+pub enum Rule {
     CollectionRule {
         description: String,
         rel: RelId,
-        xform: Option<XFormCollection<V>>,
+        xform: Option<XFormCollection>,
     },
     ArrangementRule {
         description: String,
         arr: ArrId,
-        xform: XFormArrangement<V>,
+        xform: XFormArrangement,
     },
 }
 
-impl<V: Val> Rule<V> {
+impl Rule {
     pub fn description(&self) -> &str {
         match self {
             Rule::CollectionRule { description, .. } => description.as_ref(),
@@ -626,13 +711,13 @@ impl<V: Val> Rule<V> {
 
 /// Describes arrangement of a relation.
 #[derive(Clone)]
-pub enum Arrangement<V: Val> {
+pub enum Arrangement {
     /// Arrange into (key,value) pairs
     Map {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
-        afun: &'static ArrangeFunc<V>,
+        afun: &'static ArrangeFunc,
         /// The arrangement can be queried using `RunningProgram::query_arrangement`
         /// and `RunningProgram::dump_arrangement`.
         queryable: bool,
@@ -642,14 +727,14 @@ pub enum Arrangement<V: Val> {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
-        fmfun: &'static FilterMapFunc<V>,
+        fmfun: &'static FilterMapFunc,
         /// Apply distinct_total() before arranging filtered collection.
         /// This is necessary if the arrangement is to be used in an antijoin.
         distinct: bool,
     },
 }
 
-impl<V: Val> Arrangement<V> {
+impl Arrangement {
     fn name(&self) -> String {
         match self {
             Arrangement::Map { name, .. } => name.clone(),
@@ -665,14 +750,14 @@ impl<V: Val> Arrangement<V> {
     }
 }
 
-impl<V: Val> Arrangement<V> {
+impl Arrangement {
     fn build_arrangement_root<S>(
         &self,
-        collection: &Collection<S, V, Weight>,
-    ) -> ArrangedCollection<S, V, TValAgent<S, V>, TKeyAgent<S, V>>
+        collection: &Collection<S, DDValue, Weight>,
+    ) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
     where
         S: Scope,
-        Collection<S, V, Weight>: ThresholdTotal<S, V, Weight>,
+        Collection<S, DDValue, Weight>: ThresholdTotal<S, DDValue, Weight>,
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
         match self {
@@ -699,8 +784,8 @@ impl<V: Val> Arrangement<V> {
 
     fn build_arrangement<S>(
         &self,
-        collection: &Collection<S, V, Weight>,
-    ) -> ArrangedCollection<S, V, TValAgent<S, V>, TKeyAgent<S, V>>
+        collection: &Collection<S, DDValue, Weight>,
+    ) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
     where
         S: Scope,
         S::Timestamp: Lattice + Ord,
@@ -728,26 +813,24 @@ impl<V: Val> Arrangement<V> {
     }
 }
 
-enum ArrangedCollection<S, V, T1, T2>
+enum ArrangedCollection<S, T1, T2>
 where
     S: Scope,
-    V: Val,
     S::Timestamp: Lattice + Ord,
-    T1: TraceReader<Key = V, Val = V, Time = S::Timestamp, R = Weight> + Clone,
-    T1::Batch: BatchReader<V, V, S::Timestamp, Weight>,
-    T1::Cursor: Cursor<V, V, S::Timestamp, Weight>,
-    T2: TraceReader<Key = V, Val = (), Time = S::Timestamp, R = Weight> + Clone,
-    T2::Batch: BatchReader<V, (), S::Timestamp, Weight>,
-    T2::Cursor: Cursor<V, (), S::Timestamp, Weight>,
+    T1: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = Weight> + Clone,
+    T1::Batch: BatchReader<DDValue, DDValue, S::Timestamp, Weight>,
+    T1::Cursor: Cursor<DDValue, DDValue, S::Timestamp, Weight>,
+    T2: TraceReader<Key = DDValue, Val = (), Time = S::Timestamp, R = Weight> + Clone,
+    T2::Batch: BatchReader<DDValue, (), S::Timestamp, Weight>,
+    T2::Cursor: Cursor<DDValue, (), S::Timestamp, Weight>,
 {
     Map(Arranged<S, T1>),
     Set(Arranged<S, T2>),
 }
 
-impl<S, V> ArrangedCollection<S, V, TValAgent<S, V>, TKeyAgent<S, V>>
+impl<S> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
 where
     S: Scope,
-    V: Val,
     S::Timestamp: Lattice + Ord,
 {
     fn enter<'a>(
@@ -755,9 +838,8 @@ where
         inner: &Child<'a, S, Product<S::Timestamp, TSNested>>,
     ) -> ArrangedCollection<
         Child<'a, S, Product<S::Timestamp, TSNested>>,
-        V,
-        TValEnter<S, Product<S::Timestamp, TSNested>, V>,
-        TKeyEnter<S, Product<S::Timestamp, TSNested>, V>,
+        TValEnter<S, Product<S::Timestamp, TSNested>>,
+        TKeyEnter<S, Product<S::Timestamp, TSNested>>,
     > {
         match self {
             ArrangedCollection::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
@@ -769,59 +851,48 @@ where
 /* Helper type that represents an arranged collection of one of two
  * types (e.g., an arrangement created in a local scope or entered from
  * the parent scope) */
-enum A<'a, 'b, V, P, T>
+enum A<'a, 'b, P, T>
 where
     P: ScopeParent,
     P::Timestamp: Lattice + Ord,
     T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    V: Val,
     'a: 'b,
 {
     Arrangement1(
         &'b ArrangedCollection<
             Child<'a, P, T>,
-            V,
-            TValAgent<Child<'a, P, T>, V>,
-            TKeyAgent<Child<'a, P, T>, V>,
+            TValAgent<Child<'a, P, T>>,
+            TKeyAgent<Child<'a, P, T>>,
         >,
     ),
-    Arrangement2(
-        &'b ArrangedCollection<Child<'a, P, T>, V, TValEnter<'a, P, T, V>, TKeyEnter<'a, P, T, V>>,
-    ),
+    Arrangement2(&'b ArrangedCollection<Child<'a, P, T>, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>),
 }
 
-struct Arrangements<'a, 'b, V, P, T>
+struct Arrangements<'a, 'b, P, T>
 where
     P: ScopeParent,
     P::Timestamp: Lattice + Ord,
     T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    V: Val,
     'a: 'b,
 {
     arrangements1: &'b FnvHashMap<
         ArrId,
-        ArrangedCollection<
-            Child<'a, P, T>,
-            V,
-            TValAgent<Child<'a, P, T>, V>,
-            TKeyAgent<Child<'a, P, T>, V>,
-        >,
+        ArrangedCollection<Child<'a, P, T>, TValAgent<Child<'a, P, T>>, TKeyAgent<Child<'a, P, T>>>,
     >,
     arrangements2: &'b FnvHashMap<
         ArrId,
-        ArrangedCollection<Child<'a, P, T>, V, TValEnter<'a, P, T, V>, TKeyEnter<'a, P, T, V>>,
+        ArrangedCollection<Child<'a, P, T>, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
     >,
 }
 
-impl<'a, 'b, V, P, T> Arrangements<'a, 'b, V, P, T>
+impl<'a, 'b, P, T> Arrangements<'a, 'b, P, T>
 where
     P: ScopeParent,
     P::Timestamp: Lattice + Ord,
     T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    V: Val,
     'a: 'b,
 {
-    fn lookup_arr(&self, arrid: ArrId) -> A<'a, 'b, V, P, T> {
+    fn lookup_arr(&self, arrid: ArrId) -> A<'a, 'b, P, T> {
         self.arrangements1.get(&arrid).map_or_else(
             || {
                 self.arrangements2
@@ -835,30 +906,30 @@ where
 }
 
 /* Relation content. */
-pub type ValSet<V> = FnvHashSet<V>;
+pub type ValSet = FnvHashSet<DDValue>;
 
 /* Indexed relation content. */
-pub type IndexedValSet<V> = FnvHashMap<V, V>;
+pub type IndexedValSet = FnvHashMap<DDValue, DDValue>;
 
 /* Relation delta */
-pub type DeltaSet<V> = FnvHashMap<V, bool>;
+pub type DeltaSet = FnvHashMap<DDValue, bool>;
 
 /// Runtime representation of a datalog program.
 ///
 /// The program will be automatically stopped when the object goes out
 /// of scope. Error occurring as part of that operation are silently
 /// ignored. If you want to handle such errors, call `stop` manually.
-pub struct RunningProgram<V: Val> {
+pub struct RunningProgram {
     /* Producer sides of channels used to send commands to workers.
      * We use async channels to avoid deadlocks when workers are blocked
      * in `step_or_park`. */
-    senders: Vec<mpsc::Sender<Msg<V>>>,
+    senders: Vec<mpsc::Sender<Msg>>,
     /* Channels to receive replies from worker threads.  We could use a single
      * channel with multiple senders, but use many channels instead to avoid
      * deadlocks when one of the workers has died, but `recv` blocks instead
      * of failing, since the channel is still considered alive. */
-    reply_recv: Vec<mpsc::Receiver<Reply<V>>>,
-    relations: FnvHashMap<RelId, RelationInstance<V>>,
+    reply_recv: Vec<mpsc::Receiver<Reply>>,
+    relations: FnvHashMap<RelId, RelationInstance>,
     /* Join handle of the thread running timely computaiton. */
     thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
     /* Timely worker threads. */
@@ -876,14 +947,14 @@ pub struct RunningProgram<V: Val> {
 // Right now this Debug implementation is more or less a short cut.
 // Ideally we would want to implement Debug for `RelationInstance`, but
 // that quickly gets very cumbersome.
-impl<V: Val> Debug for RunningProgram<V> {
+impl Debug for RunningProgram {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let mut builder = f.debug_struct("RunningProgram");
         let _ = builder.field("senders", &self.senders);
         let _ = builder.field("reply_recv", &self.reply_recv);
         let _ = builder.field(
             "relations",
-            &(&self.relations as *const FnvHashMap<RelId, RelationInstance<V>>),
+            &(&self.relations as *const FnvHashMap<RelId, RelationInstance>),
         );
         let _ = builder.field("thread_handle", &self.thread_handle);
         let _ = builder.field("transaction_in_progress", &self.transaction_in_progress);
@@ -896,33 +967,33 @@ impl<V: Val> Debug for RunningProgram<V> {
 }
 
 /* Runtime representation of relation */
-enum RelationInstance<V: Val> {
+enum RelationInstance {
     Flat {
         /* Set of all elements in the relation. Used to enforce set semantics for input relations
          * (repeated inserts and deletes are ignored). */
-        elements: ValSet<V>,
+        elements: ValSet,
         /* Changes since start of transaction. */
-        delta: DeltaSet<V>,
+        delta: DeltaSet,
     },
     Indexed {
-        key_func: fn(&V) -> V,
+        key_func: fn(&DDValue) -> DDValue,
         /* Set of all elements in the relation indexed by key. Used to enforce set semantics,
          * uniqueness of keys, and to query input relations by key. */
-        elements: IndexedValSet<V>,
+        elements: IndexedValSet,
         /* Changes since start of transaction.  Only maintained for input relations and is used to
          * enforce set semantics. */
-        delta: DeltaSet<V>,
+        delta: DeltaSet,
     },
 }
 
-impl<V: Val> RelationInstance<V> {
-    pub fn delta(&self) -> &DeltaSet<V> {
+impl RelationInstance {
+    pub fn delta(&self) -> &DeltaSet {
         match self {
             RelationInstance::Flat { delta, .. } => delta,
             RelationInstance::Indexed { delta, .. } => delta,
         }
     }
-    pub fn delta_mut(&mut self) -> &mut DeltaSet<V> {
+    pub fn delta_mut(&mut self) -> &mut DeltaSet {
         match self {
             RelationInstance::Flat { delta, .. } => delta,
             RelationInstance::Indexed { delta, .. } => delta,
@@ -1050,31 +1121,31 @@ impl<V> Update<V> {
 /* Messages sent to timely worker threads.  Most of these messages can be sent
  * to worker 0 only. */
 #[derive(Debug, Clone)]
-enum Msg<V: Val> {
+enum Msg {
     // Update input relation (worker 0 only).
-    Update(Vec<Update<V>>),
+    Update(Vec<Update<DDValue>>),
     // Propagate changes through the pipeline (worker 0 only).
     Flush,
     // Query arrangement.  If the second argument is `None`, returns
     // all values in the collection; otherwise returns values associated
     // with the specified key.
-    Query(ArrId, Option<V>),
+    Query(ArrId, Option<DDValue>),
     // Stop all workers (worker 0 only)
     Stop,
 }
 
 /* Reply messages from timely worker threads. */
 #[derive(Debug)]
-enum Reply<V: Val> {
+enum Reply {
     // Acknowledge flush completion (sent by worker 0 only).
     FlushAck,
     // Result of a query.
-    QueryRes(Option<BTreeSet<V>>),
+    QueryRes(Option<BTreeSet<DDValue>>),
 }
 
-impl<V: Val> Program<V> {
+impl Program {
     /// Instantiate the program with `nworkers` timely threads.
-    pub fn run(&self, nworkers: usize) -> Result<RunningProgram<V>, String> {
+    pub fn run(&self, nworkers: usize) -> Result<RunningProgram, String> {
         /* Clone the program, so that it can be moved into the timely computation */
         let prog = self.clone();
 
@@ -1084,13 +1155,13 @@ impl<V: Val> Program<V> {
          * that is only guaranteed to be fully flushed when the transaction commits.
          */
         let (request_send, request_recv): (Vec<_>, Vec<_>) =
-            (0..nworkers).map(|_| mpsc::channel::<Msg<V>>()).unzip();
+            (0..nworkers).map(|_| mpsc::channel::<Msg>()).unzip();
         let request_recv: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(request_recv.into_iter().map(Some).collect()));
 
         /* Channels for responses from worker threads. */
         let (reply_send, reply_recv): (Vec<_>, Vec<_>) =
-            (0..nworkers).map(|_| mpsc::channel::<Reply<V>>()).unzip();
+            (0..nworkers).map(|_| mpsc::channel::<Reply>()).unzip();
         let reply_send: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(reply_send.into_iter().map(Some).collect()));
 
@@ -1101,7 +1172,7 @@ impl<V: Val> Program<V> {
         let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
-        /* Channel used by the main timely thread to send worker handles to the caller. */
+        /* Channel used by the main timely thread to send worker 0 handle to the caller. */
         let (wsend, wrecv) = mpsc::sync_channel::<Vec<thread::Thread>>(0);
 
         /* Profile data structure */
@@ -1183,8 +1254,8 @@ impl<V: Val> Program<V> {
                     };
 
                     let (mut all_sessions, mut traces) = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
-                        let mut sessions : FnvHashMap<RelId, InputSession<TS, V, Weight>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,V,Weight>> = FnvHashMap::default();
+                        let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
+                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,DDValue,Weight>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
@@ -1192,7 +1263,7 @@ impl<V: Val> Program<V> {
                                     /* Relation may already be in the map if it was created by an `Apply` node */
                                     let mut collection = match collections.remove(&rel.id) {
                                         None => {
-                                            let (session, collection) = outer.new_collection::<V,Weight>();
+                                            let (session, collection) = outer.new_collection::<DDValue,Weight>();
                                             sessions.insert(rel.id, session);
                                             collection
                                         },
@@ -1227,7 +1298,7 @@ impl<V: Val> Program<V> {
                                     /* create collections; add them to map; we will overwrite them with
                                      * updated collections returned from the inner scope. */
                                     for r in rels.iter() {
-                                        let (session, collection) = outer.new_collection::<V,Weight>();
+                                        let (session, collection) = outer.new_collection::<DDValue,Weight>();
                                         assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
                                         sessions.insert(r.rel.id, session);
                                         collections.insert(r.rel.id, collection);
@@ -1383,7 +1454,7 @@ impl<V: Val> Program<V> {
 
                     // Close session handles for non-input sessions;
                     // close all sessions for workers other than worker 0.
-                    let mut sessions: FnvHashMap<RelId, InputSession<TS, V, Weight>> =
+                    let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> =
                         all_sessions.drain().filter(|(relid,_)| worker_index == 0 && prog.get_relation(*relid).input).collect();
 
                     /* Only worker 0 receives data */
@@ -1571,13 +1642,13 @@ impl<V: Val> Program<V> {
 
     /* Advance the epoch on all input sessions */
     fn advance<Tr>(
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
         traces: &mut BTreeMap<ArrId, Tr>,
         epoch: TS,
     ) where
-        Tr: TraceReader<Key = V, Val = V, Time = TS, R = Weight>,
-        Tr::Batch: BatchReader<V, V, TS, Weight>,
-        Tr::Cursor: Cursor<V, V, TS, Weight>,
+        Tr: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
+        Tr::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
+        Tr::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
     {
         for (_, s) in sessions.iter_mut() {
             //print!("advance\n");
@@ -1591,7 +1662,7 @@ impl<V: Val> Program<V> {
 
     /* Propagate all changes through the pipeline */
     fn flush(
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, V, Weight>>,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
         probe: &ProbeHandle<TS>,
         worker: &mut Worker<Allocator>,
         peers: &FnvHashMap<usize, thread::Thread>,
@@ -1630,14 +1701,14 @@ impl<V: Val> Program<V> {
 
     fn handle_query<Tr>(
         traces: &mut BTreeMap<ArrId, Tr>,
-        reply_send: &mpsc::Sender<Reply<V>>,
+        reply_send: &mpsc::Sender<Reply>,
         arrid: ArrId,
-        key: Option<V>,
+        key: Option<DDValue>,
     ) -> Result<(), String>
     where
-        Tr: TraceReader<Key = V, Val = V, Time = TS, R = Weight>,
-        <Tr as TraceReader>::Batch: BatchReader<V, V, TS, Weight>,
-        <Tr as TraceReader>::Cursor: Cursor<V, V, TS, Weight>,
+        Tr: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
+        <Tr as TraceReader>::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
+        <Tr as TraceReader>::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
     {
         let trace = match traces.get_mut(&arrid) {
             None => {
@@ -1705,7 +1776,7 @@ impl<V: Val> Program<V> {
     }
 
     /* Lookup relation by id */
-    fn get_relation(&self, relid: RelId) -> &Relation<V> {
+    fn get_relation(&self, relid: RelId) -> &Relation {
         for node in &self.nodes {
             match node {
                 ProgNode::Rel { rel: r } => {
@@ -1741,7 +1812,7 @@ impl<V: Val> Program<V> {
             .collect()
     }
 
-    fn node_uses_arrangement(n: &ProgNode<V>, arrid: ArrId) -> bool {
+    fn node_uses_arrangement(n: &ProgNode, arrid: ArrId) -> bool {
         match n {
             ProgNode::Rel { rel } => Self::rel_uses_arrangement(rel, arrid),
             ProgNode::Apply { .. } => false,
@@ -1751,13 +1822,13 @@ impl<V: Val> Program<V> {
         }
     }
 
-    fn rel_uses_arrangement(r: &Relation<V>, arrid: ArrId) -> bool {
+    fn rel_uses_arrangement(r: &Relation, arrid: ArrId) -> bool {
         r.rules
             .iter()
             .any(|rule| Self::rule_uses_arrangement(rule, arrid))
     }
 
-    fn rule_uses_arrangement(r: &Rule<V>, arrid: ArrId) -> bool {
+    fn rule_uses_arrangement(r: &Rule, arrid: ArrId) -> bool {
         r.dependencies().contains(&Dep::Arr(arrid))
     }
 
@@ -1785,7 +1856,7 @@ impl<V: Val> Program<V> {
     }
 
     /* Return all relations required to compute rels, excluding recursive dependencies on rels */
-    fn dependencies(rels: &[&Relation<V>]) -> FnvHashSet<Dep> {
+    fn dependencies(rels: &[&Relation]) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
             for rule in &rel.rules {
@@ -1799,10 +1870,10 @@ impl<V: Val> Program<V> {
     }
 
     fn xform_collection<'a, 'b, P, T>(
-        col: Collection<Child<'a, P, T>, V, Weight>,
-        xform: &Option<XFormCollection<V>>,
-        arrangements: &Arrangements<'a, 'b, V, P, T>,
-    ) -> Collection<Child<'a, P, T>, V, Weight>
+        col: Collection<Child<'a, P, T>, DDValue, Weight>,
+        xform: &Option<XFormCollection>,
+        arrangements: &Arrangements<'a, 'b, P, T>,
+    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
     where
         P: ScopeParent,
         P::Timestamp: Lattice,
@@ -1815,10 +1886,10 @@ impl<V: Val> Program<V> {
     }
 
     fn xform_collection_ref<'a, 'b, P, T>(
-        col: &Collection<Child<'a, P, T>, V, Weight>,
-        xform: &XFormCollection<V>,
-        arrangements: &Arrangements<'a, 'b, V, P, T>,
-    ) -> Collection<Child<'a, P, T>, V, Weight>
+        col: &Collection<Child<'a, P, T>, DDValue, Weight>,
+        xform: &XFormCollection,
+        arrangements: &Arrangements<'a, 'b, P, T>,
+    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
     where
         P: ScopeParent,
         P::Timestamp: Lattice,
@@ -1875,16 +1946,16 @@ impl<V: Val> Program<V> {
 
     fn xform_arrangement<'a, 'b, P, T, TR>(
         arr: &Arranged<Child<'a, P, T>, TR>,
-        xform: &XFormArrangement<V>,
-        arrangements: &Arrangements<'a, 'b, V, P, T>,
-    ) -> Collection<Child<'a, P, T>, V, Weight>
+        xform: &XFormArrangement,
+        arrangements: &Arrangements<'a, 'b, P, T>,
+    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
     where
         P: ScopeParent,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        TR: TraceReader<Key = V, Val = V, Time = T, R = Weight> + Clone + 'static,
-        TR::Batch: BatchReader<V, V, T, Weight>,
-        TR::Cursor: Cursor<V, V, T, Weight>,
+        TR: TraceReader<Key = DDValue, Val = DDValue, Time = T, R = Weight> + Clone + 'static,
+        TR::Batch: BatchReader<DDValue, DDValue, T, Weight>,
+        TR::Cursor: Cursor<DDValue, DDValue, T, Weight>,
     {
         match xform {
             XFormArrangement::FlatMap {
@@ -2026,15 +2097,15 @@ impl<V: Val> Program<V> {
     /* Compile right-hand-side of a rule to a collection */
     fn mk_rule<'a, 'b, P, T, F>(
         &self,
-        rule: &Rule<V>,
+        rule: &Rule,
         lookup_collection: F,
-        arrangements: Arrangements<'a, 'b, V, P, T>,
-    ) -> Collection<Child<'a, P, T>, V, Weight>
+        arrangements: Arrangements<'a, 'b, P, T>,
+    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
     where
         P: ScopeParent + 'a,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        F: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, V, Weight>>,
+        F: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
         'a: 'b,
     {
         match rule {
@@ -2075,7 +2146,7 @@ impl<V: Val> Program<V> {
  */
 /* This should not panic, so that the client has a chance to recover from failures */
 // TODO: error messages
-impl<V: Val> RunningProgram<V> {
+impl RunningProgram {
     /// Controls forwarding of `TimelyEvent::Schedule` event to the CPU
     /// profiling thread.
     /// `enable = true`  - enables forwarding. This can be expensive in large dataflows.
@@ -2155,17 +2226,17 @@ impl<V: Val> RunningProgram<V> {
 
     /// Insert one record into input relation. Relations have set semantics, i.e.,
     /// adding an existing record is a no-op.
-    pub fn insert(&mut self, relid: RelId, v: V) -> Response<()> {
+    pub fn insert(&mut self, relid: RelId, v: DDValue) -> Response<()> {
         self.apply_updates(vec![Update::Insert { relid: relid, v: v }].into_iter())
     }
 
     /// Remove a record if it exists in the relation.
-    pub fn delete_value(&mut self, relid: RelId, v: V) -> Response<()> {
+    pub fn delete_value(&mut self, relid: RelId, v: DDValue) -> Response<()> {
         self.apply_updates(vec![Update::DeleteValue { relid: relid, v: v }].into_iter())
     }
 
     /// Remove a key if it exists in the relation.
-    pub fn delete_key(&mut self, relid: RelId, k: V) -> Response<()> {
+    pub fn delete_key(&mut self, relid: RelId, k: DDValue) -> Response<()> {
         self.apply_updates(vec![Update::DeleteKey { relid: relid, k: k }].into_iter())
     }
 
@@ -2173,8 +2244,8 @@ impl<V: Val> RunningProgram<V> {
     pub fn modify_key(
         &mut self,
         relid: RelId,
-        k: V,
-        m: Arc<dyn Mutator<V> + Send + Sync>,
+        k: DDValue,
+        m: Arc<dyn Mutator<DDValue> + Send + Sync>,
     ) -> Response<()> {
         self.apply_updates(
             vec![Update::Modify {
@@ -2188,7 +2259,10 @@ impl<V: Val> RunningProgram<V> {
 
     /// Apply multiple insert and delete operations in one batch.
     /// Updates can only be applied to input relations (see `struct Relation`).
-    pub fn apply_updates<I: Iterator<Item = Update<V>>>(&mut self, updates: I) -> Response<()> {
+    pub fn apply_updates<I: Iterator<Item = Update<DDValue>>>(
+        &mut self,
+        updates: I,
+    ) -> Response<()> {
         if !self.transaction_in_progress {
             return Err("apply_updates: no transaction in progress".to_string());
         };
@@ -2237,7 +2311,7 @@ impl<V: Val> RunningProgram<V> {
                 .ok_or_else(|| format!("clear_relation: unknown input relation {}", relid))?;
             match rel {
                 RelationInstance::Flat { elements, .. } => {
-                    let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
+                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
                     for v in elements.iter() {
                         upds.push(Update::DeleteValue {
                             relid,
@@ -2247,7 +2321,7 @@ impl<V: Val> RunningProgram<V> {
                     upds
                 }
                 RelationInstance::Indexed { elements, .. } => {
-                    let mut upds: Vec<Update<V>> = Vec::with_capacity(elements.len());
+                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
                     for k in elements.keys() {
                         upds.push(Update::DeleteKey {
                             relid,
@@ -2262,21 +2336,25 @@ impl<V: Val> RunningProgram<V> {
     }
 
     /// Returns all values in the arrangement with the specified key.
-    pub fn query_arrangement(&mut self, arrid: ArrId, k: V) -> Response<BTreeSet<V>> {
+    pub fn query_arrangement(&mut self, arrid: ArrId, k: DDValue) -> Response<BTreeSet<DDValue>> {
         self._query_arrangement(arrid, Some(k))
     }
 
     /// Returns the entire content of an arrangement.
-    pub fn dump_arrangement(&mut self, arrid: ArrId) -> Response<BTreeSet<V>> {
+    pub fn dump_arrangement(&mut self, arrid: ArrId) -> Response<BTreeSet<DDValue>> {
         self._query_arrangement(arrid, None)
     }
 
-    fn _query_arrangement(&mut self, arrid: ArrId, k: Option<V>) -> Response<BTreeSet<V>> {
+    fn _query_arrangement(
+        &mut self,
+        arrid: ArrId,
+        k: Option<DDValue>,
+    ) -> Response<BTreeSet<DDValue>> {
         /* Send query and receive replies from all workers.  If a key is specified, then at most
          * one worker will send a non-empty reply. */
         self.broadcast(Msg::Query(arrid, k))?;
 
-        let mut res: BTreeSet<V> = BTreeSet::new();
+        let mut res: BTreeSet<DDValue> = BTreeSet::new();
         let mut unknown = false;
         for (worker_index, chan) in self.reply_recv.iter().enumerate() {
             let reply = chan.recv().map_err(|e| {
@@ -2319,7 +2397,7 @@ impl<V: Val> RunningProgram<V> {
      * x not in delta => delta(x) := true
      * delta(x) == true => error
      */
-    fn delta_inc(ds: &mut DeltaSet<V>, x: &V) {
+    fn delta_inc(ds: &mut DeltaSet, x: &DDValue) {
         let e = ds.entry(x.clone());
         match e {
             hash_map::Entry::Occupied(mut oe) => {
@@ -2333,7 +2411,7 @@ impl<V: Val> RunningProgram<V> {
     }
 
     /* reverse of delta_inc */
-    fn delta_dec(ds: &mut DeltaSet<V>, key: &V) {
+    fn delta_dec(ds: &mut DeltaSet, key: &DDValue) {
         let e = ds.entry(key.clone());
         match e {
             hash_map::Entry::Occupied(mut oe) => {
@@ -2353,10 +2431,10 @@ impl<V: Val> RunningProgram<V> {
      * `insert` indicates type of update (`true` for insert, `false` for delete).
      * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
     fn set_update(
-        s: &mut ValSet<V>,
-        ds: &mut DeltaSet<V>,
-        upd: Update<V>,
-        updates: &mut Vec<Update<V>>,
+        s: &mut ValSet,
+        ds: &mut DeltaSet,
+        upd: Update<DDValue>,
+        updates: &mut Vec<Update<DDValue>>,
     ) -> Response<()> {
         let ok = match &upd {
             Update::Insert { v, .. } => {
@@ -2406,11 +2484,11 @@ impl<V: Val> RunningProgram<V> {
      *          - ds(v)--
      */
     fn indexed_set_update(
-        key_func: fn(&V) -> V,
-        s: &mut IndexedValSet<V>,
-        ds: &mut DeltaSet<V>,
-        upd: Update<V>,
-        updates: &mut Vec<Update<V>>,
+        key_func: fn(&DDValue) -> DDValue,
+        s: &mut IndexedValSet,
+        ds: &mut DeltaSet,
+        upd: Update<DDValue>,
+        updates: &mut Vec<Update<DDValue>>,
     ) -> Response<()> {
         match upd {
             Update::Insert { relid, v } => match s.entry(key_func(&v)) {
@@ -2474,7 +2552,7 @@ impl<V: Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet<V>> {
+    pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
             Some(RelationInstance::Flat { .. }) => {
@@ -2488,7 +2566,7 @@ impl<V: Val> RunningProgram<V> {
      * If called in the middle of a transaction, returns state snapshot including changes
      * made by the current transaction.
      */
-    pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet<V>> {
+    pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
             Some(RelationInstance::Indexed { .. }) => Err(format!("not a flat relation {}", relid)),
@@ -2512,7 +2590,7 @@ impl<V: Val> RunningProgram<V> {
     }*/
 
     /* Send message to a worker thread. */
-    fn send(&self, worker_index: usize, msg: Msg<V>) -> Response<()> {
+    fn send(&self, worker_index: usize, msg: Msg) -> Response<()> {
         match self.senders[worker_index].send(msg) {
             Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
             Ok(()) => {
@@ -2525,7 +2603,7 @@ impl<V: Val> RunningProgram<V> {
     }
 
     /* Broadcast message to all worker threads. */
-    fn broadcast(&self, msg: Msg<V>) -> Response<()> {
+    fn broadcast(&self, msg: Msg) -> Response<()> {
         for worker_index in 0..self.senders.len() {
             self.send(worker_index, msg.clone())?;
         }
@@ -2598,7 +2676,7 @@ impl<V: Val> RunningProgram<V> {
     }
 }
 
-impl<V: Val> Drop for RunningProgram<V> {
+impl Drop for RunningProgram {
     fn drop(&mut self) {
         let _ = self.stop();
     }

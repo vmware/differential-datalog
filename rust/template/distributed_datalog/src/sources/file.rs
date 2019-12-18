@@ -1,5 +1,4 @@
 use std::convert::TryFrom;
-use std::fmt::Debug;
 use std::fs::File as FsFile;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -23,6 +22,7 @@ use uid::Id;
 use cmd_parser::err_str;
 use cmd_parser::parse_command;
 use cmd_parser::Command;
+use differential_datalog::program::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::DDlogConvert;
 
@@ -35,14 +35,13 @@ use crate::ObserverBox;
 ///
 /// `updates` acts as an inter-procedural cache of updates that we will
 /// push into the observer eventually.
-fn handle<C, V>(
+fn handle<C>(
     id: usize,
     command: Command,
-    updates: &mut Vec<Update<V>>,
-    observer: &mut dyn Observer<Update<V>, String>,
+    updates: &mut Vec<Update<DDValue>>,
+    observer: &mut dyn Observer<Update<DDValue>, String>,
 ) where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send,
+    C: DDlogConvert,
 {
     trace!("File({})::handle: {:?}", id, command);
 
@@ -76,15 +75,14 @@ fn handle<C, V>(
     }
 }
 
-fn process<C, V>(
+fn process<C>(
     id: usize,
     file: FsFile,
     fd: Arc<Fd>,
-    mut observer: ObserverBox<Update<V>, String>,
-) -> ObserverBox<Update<V>, String>
+    mut observer: ObserverBox<Update<DDValue>, String>,
+) -> ObserverBox<Update<DDValue>, String>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send,
+    C: DDlogConvert,
 {
     // TODO: The logic here somewhat resembles that in
     //       `cmd_parser/lib.rs`. We may want to deduplicate at some
@@ -106,7 +104,7 @@ where
                         // TODO: Remove unnecessary allocation. (Replace
                         //       with Vec::splice perhaps?)
                         buffer = rest.to_owned();
-                        handle::<C, _>(id, command, &mut updates, &mut observer);
+                        handle::<C>(id, command, &mut updates, &mut observer);
                     }
                     Err(Err::Incomplete(_)) => (),
                     Err(e) => {
@@ -131,34 +129,32 @@ where
 }
 
 #[derive(Debug)]
-struct State<V> {
+struct State {
     /// The raw handle of the file we are reading from.
     fd: Arc<Fd>,
     /// The thread reading from the file.
-    thread: JoinHandle<ObserverBox<Update<V>, String>>,
+    thread: JoinHandle<ObserverBox<Update<DDValue>, String>>,
 }
 
 /// An object adapting a file to the `Observable` interface.
 #[derive(Debug)]
-pub struct File<C, V>
+pub struct File<C>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send + 'static,
+    C: DDlogConvert,
 {
     /// The file source's unique ID.
     id: usize,
     /// The path to the file we want to adapt to.
     path: PathBuf,
     /// The state we maintain.
-    state: Option<State<V>>,
+    state: Option<State>,
     /// Unused phantom data.
     _unused: PhantomData<C>,
 }
 
-impl<C, V> File<C, V>
+impl<C> File<C>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send + 'static,
+    C: DDlogConvert,
 {
     /// Create a new adapter streaming data from the file at the given
     /// `path`.
@@ -177,8 +173,8 @@ where
     fn start(
         id: usize,
         path: &Path,
-        observer: ObserverBox<Update<V>, String>,
-    ) -> Result<State<V>, ObserverBox<Update<V>, String>> {
+        observer: ObserverBox<Update<DDValue>, String>,
+    ) -> Result<State, ObserverBox<Update<DDValue>, String>> {
         let file = match FsFile::open(path) {
             Ok(file) => file,
             Err(e) => {
@@ -190,34 +186,32 @@ where
         let fd = Arc::new(Fd::new(fd));
         let state = State {
             fd: fd.clone(),
-            thread: spawn(move || process::<C, _>(id, file, fd, observer)),
+            thread: spawn(move || process::<C>(id, file, fd, observer)),
         };
 
         Ok(state)
     }
 }
 
-impl<C, V> Drop for File<C, V>
+impl<C> Drop for File<C>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send + 'static,
+    C: DDlogConvert,
 {
     fn drop(&mut self) {
         let _ = self.unsubscribe(&());
     }
 }
 
-impl<C, V> Observable<Update<V>, String> for File<C, V>
+impl<C> Observable<Update<DDValue>, String> for File<C>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug + Send + 'static,
+    C: DDlogConvert,
 {
     type Subscription = ();
 
     fn subscribe(
         &mut self,
-        observer: ObserverBox<Update<V>, String>,
-    ) -> Result<Self::Subscription, ObserverBox<Update<V>, String>> {
+        observer: ObserverBox<Update<DDValue>, String>,
+    ) -> Result<Self::Subscription, ObserverBox<Update<DDValue>, String>> {
         trace!("File({})::subscribe", self.id);
 
         if self.state.is_some() {
@@ -232,7 +226,7 @@ where
     fn unsubscribe(
         &mut self,
         _subscription: &Self::Subscription,
-    ) -> Option<ObserverBox<Update<V>, String>> {
+    ) -> Option<ObserverBox<Update<DDValue>, String>> {
         trace!("File({})::unsubscribe", self.id);
 
         if let Some(state) = self.state.take() {
@@ -271,6 +265,7 @@ mod tests {
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
+    use differential_datalog::test_value::Value;
 
     use crate::await_expected;
     use crate::MockObserver;
@@ -282,8 +277,6 @@ mod tests {
     struct DummyConverter;
 
     impl DDlogConvert for DummyConverter {
-        type Value = ();
-
         fn relid2name(_rel_id: RelId) -> Option<&'static str> {
             unimplemented!()
         }
@@ -292,17 +285,20 @@ mod tests {
             unimplemented!()
         }
 
-        fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {
+        fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
             // Exact details do not matter in this context, so just fake
             // some data.
-            Ok(Update::Insert { relid: 0, v: () })
+            Ok(Update::Insert {
+                relid: 0,
+                v: Value::Empty().into_ddval(),
+            })
         }
     }
 
     #[test]
     fn non_existent_file() {
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter, _>::new("i-dont-actually-exist");
+        let mut adapter = File::<DummyConverter>::new("i-dont-actually-exist");
         let result = adapter.subscribe(Box::new(mock.clone()));
 
         assert!(result.is_err(), result);
@@ -315,7 +311,7 @@ mod tests {
         file.flush().unwrap();
 
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter, _>::new(file.path());
+        let mut adapter = File::<DummyConverter>::new(file.path());
         let _ = adapter.subscribe(Box::new(mock.clone())).unwrap();
 
         await_expected(|| {

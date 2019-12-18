@@ -9,8 +9,6 @@ mod callback;
 mod ddlog;
 mod profile;
 mod replay;
-#[cfg(test)]
-mod test;
 mod valmap;
 mod variable;
 
@@ -21,6 +19,11 @@ pub mod uint;
 
 #[macro_use]
 pub mod record;
+
+pub mod test_value;
+
+#[cfg(test)]
+mod test;
 
 #[cfg(test)]
 mod test_record;

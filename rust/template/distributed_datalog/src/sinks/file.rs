@@ -1,11 +1,10 @@
-use std::fmt::Debug;
-use std::fmt::Display;
 use std::fs::File as FsFile;
 use std::marker::PhantomData;
 
 use log::trace;
 use uid::Id;
 
+use differential_datalog::program::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::record_val_upds;
 use differential_datalog::DDlogConvert;
@@ -39,10 +38,9 @@ impl<C> File<C> {
     }
 }
 
-impl<C, V> Observer<Update<V>, String> for File<C>
+impl<C> Observer<Update<DDValue>, String> for File<C>
 where
-    C: Send + DDlogConvert<Value = V>,
-    V: Debug + Display + Send,
+    C: Send + DDlogConvert,
 {
     fn on_start(&mut self) -> Result<(), String> {
         trace!("File({})::on_start", self.id);
@@ -62,12 +60,12 @@ where
 
     fn on_updates<'a>(
         &mut self,
-        updates: Box<dyn Iterator<Item = Update<V>> + 'a>,
+        updates: Box<dyn Iterator<Item = Update<DDValue>> + 'a>,
     ) -> Result<(), String> {
         trace!("File({})::on_updates", self.id);
 
         let mut result = Ok(());
-        record_val_upds::<C, _, _, _, _>(&mut self.file, updates, |e| {
+        record_val_upds::<C, _, _, _>(&mut self.file, updates, |e| {
             result = Err(e);
         })
         .for_each(|_| ());
@@ -94,13 +92,12 @@ mod tests {
     use differential_datalog::record::Record;
     use differential_datalog::record::RelIdentifier;
     use differential_datalog::record::UpdCmd;
+    use differential_datalog::test_value::Value;
 
     #[derive(Debug)]
     struct DummyConverter;
 
     impl DDlogConvert for DummyConverter {
-        type Value = String;
-
         fn relid2name(rel_id: RelId) -> Option<&'static str> {
             match rel_id {
                 1 => Some("test_rel"),
@@ -112,7 +109,7 @@ mod tests {
             panic!("unexpected IdxId {}", idx_id)
         }
 
-        fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<Self::Value>, String> {
+        fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
             match upd_cmd {
                 UpdCmd::Insert(relident, record) => {
                     let relid = match relident {
@@ -123,7 +120,7 @@ mod tests {
                         ),
                     };
                     let v = match record {
-                        Record::String(string) => string.clone(),
+                        Record::String(string) => Value::String(string.clone()).into_ddval(),
                         _ => panic!("encountered unexpected Record variant: {:?}", record),
                     };
                     Ok(Update::Insert { relid, v })
@@ -138,7 +135,7 @@ mod tests {
         let tempfile = NamedTempFile::new().unwrap();
         let mut file = tempfile.reopen().unwrap();
         let mut sink = File::<DummyConverter>::new(tempfile.into_file());
-        let observer = &mut sink as &mut dyn Observer<Update<String>, _>;
+        let observer = &mut sink as &mut dyn Observer<Update<DDValue>, _>;
 
         observer.on_start().unwrap();
         observer.on_commit().unwrap();
@@ -147,7 +144,7 @@ mod tests {
             .into_iter()
             .map(|val| Update::Insert {
                 relid: 1,
-                v: val.to_string(),
+                v: Value::String(val.to_string()).into_ddval(),
             });
 
         observer.on_start().unwrap();
@@ -159,12 +156,12 @@ mod tests {
         let expected = r#"start;
 commit;
 start;
-insert test_rel[5],
-insert test_rel[4],
-insert test_rel[9],
-insert test_rel[1],
-insert test_rel[2],
-insert test_rel[3];
+insert test_rel[String("5")],
+insert test_rel[String("4")],
+insert test_rel[String("9")],
+insert test_rel[String("1")],
+insert test_rel[String("2")],
+insert test_rel[String("3")];
 commit;
 "#;
         assert_eq!(content, expected);

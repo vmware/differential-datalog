@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 use std::fmt::Display;
 use std::io::Error;
 use std::io::Result;
@@ -6,6 +5,7 @@ use std::io::Write;
 use std::iter::Peekable;
 
 use crate::ddlog::DDlogConvert;
+use crate::program::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;
@@ -49,10 +49,9 @@ where
 }
 
 /// Convert a `RelIdentifier` into its symbolic name.
-fn relident2name<C, V>(rel_ident: &RelIdentifier) -> Option<&str>
+fn relident2name<C>(rel_ident: &RelIdentifier) -> Option<&str>
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug,
+    C: DDlogConvert,
 {
     match rel_ident {
         RelIdentifier::RelName(rname) => Some(rname.as_ref()),
@@ -92,19 +91,18 @@ where
 /// `error` is a function that is invoked whenever writing out a record
 /// failed. Note that such errors do not cause the overall operation to
 /// fail.
-pub fn record_upd_cmds<'w, C, V, W, I, F>(
+pub fn record_upd_cmds<'w, C, W, I, F>(
     writer: &'w mut W,
     upds: I,
     error: F,
 ) -> impl Iterator<Item = &'w UpdCmd> + 'w
 where
-    C: DDlogConvert<Value = V>,
-    V: Debug,
+    C: DDlogConvert,
     W: Write,
     I: Iterator<Item = &'w UpdCmd> + 'w,
     F: FnMut(Error) + 'w,
 {
-    record_updates(writer, upds, |w, u| w.record_upd_cmd::<C, _>(&u), error)
+    record_updates(writer, upds, |w, u| w.record_upd_cmd::<C>(&u), error)
 }
 
 /// Record a list of `Update` objects into the given writable object.
@@ -112,19 +110,18 @@ where
 /// `error` is a function that is invoked whenever writing out a record
 /// failed. Note that such errors do not cause the overall operation to
 /// fail.
-pub fn record_val_upds<'w, C, W, I, F, V>(
+pub fn record_val_upds<'w, C, W, I, F>(
     writer: &'w mut W,
     upds: I,
     error: F,
-) -> impl Iterator<Item = Update<V>> + 'w
+) -> impl Iterator<Item = Update<DDValue>> + 'w
 where
-    C: DDlogConvert<Value = V>,
-    V: Display + Debug + 'w,
+    C: DDlogConvert,
     W: Write,
-    I: Iterator<Item = Update<V>> + 'w,
+    I: Iterator<Item = Update<DDValue>> + 'w,
     F: FnMut(Error) + 'w,
 {
-    record_updates(writer, upds, |w, u| w.record_val_upd::<C, _>(&u), error)
+    record_updates(writer, upds, |w, u| w.record_val_upd::<C>(&u), error)
 }
 
 /// A trait for recording various operations into something that can be written
@@ -143,31 +140,30 @@ pub trait RecordReplay: Write {
     }
 
     /// Record an `UpdCmd`.
-    fn record_upd_cmd<C, V>(&mut self, upd: &UpdCmd) -> Result<()>
+    fn record_upd_cmd<C>(&mut self, upd: &UpdCmd) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Debug,
+        C: DDlogConvert,
     {
         match upd {
             UpdCmd::Insert(rel, record) => {
-                self.record_insert(relident2name::<C, _>(rel).unwrap_or(&"???"), record)
+                self.record_insert(relident2name::<C>(rel).unwrap_or(&"???"), record)
             }
             UpdCmd::Delete(rel, record) => write!(
                 self,
                 "delete {}[{}]",
-                relident2name::<C, _>(rel).unwrap_or(&"???"),
+                relident2name::<C>(rel).unwrap_or(&"???"),
                 record,
             ),
             UpdCmd::DeleteKey(rel, record) => write!(
                 self,
                 "delete_key {} {}",
-                relident2name::<C, _>(rel).unwrap_or(&"???"),
+                relident2name::<C>(rel).unwrap_or(&"???"),
                 record,
             ),
             UpdCmd::Modify(rel, key, mutator) => write!(
                 self,
                 "modify {} {} <- {}",
-                relident2name::<C, _>(rel).unwrap_or(&"???"),
+                relident2name::<C>(rel).unwrap_or(&"???"),
                 key,
                 mutator,
             ),
@@ -175,10 +171,9 @@ pub trait RecordReplay: Write {
     }
 
     /// Record an `Update`.
-    fn record_val_upd<C, V>(&mut self, upd: &Update<V>) -> Result<()>
+    fn record_val_upd<C>(&mut self, upd: &Update<DDValue>) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Display + Debug,
+        C: DDlogConvert,
     {
         match upd {
             Update::Insert { relid, v } => {
@@ -221,28 +216,25 @@ pub trait RecordReplay: Write {
     }
 
     /// Record a clear command.
-    fn record_clear<C, V>(&mut self, rid: RelId) -> Result<()>
+    fn record_clear<C>(&mut self, rid: RelId) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Debug,
+        C: DDlogConvert,
     {
         writeln!(self, "clear {};", C::relid2name(rid).unwrap_or(&"???"))
     }
 
     /// Record a dump command.
-    fn record_dump<C, V>(&mut self, rid: RelId) -> Result<()>
+    fn record_dump<C>(&mut self, rid: RelId) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Debug,
+        C: DDlogConvert,
     {
         writeln!(self, "dump {};", C::relid2name(rid).unwrap_or(&"???"))
     }
 
     /// Record a dump_index command.
-    fn record_dump_index<C, V>(&mut self, iid: IdxId) -> Result<()>
+    fn record_dump_index<C>(&mut self, iid: IdxId) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Debug,
+        C: DDlogConvert,
     {
         writeln!(
             self,
@@ -252,10 +244,9 @@ pub trait RecordReplay: Write {
     }
 
     /// Record a dump_index command.
-    fn record_query_index<C, V>(&mut self, iid: IdxId, key: &V) -> Result<()>
+    fn record_query_index<C>(&mut self, iid: IdxId, key: &DDValue) -> Result<()>
     where
-        C: DDlogConvert<Value = V>,
-        V: Display + Debug,
+        C: DDlogConvert,
     {
         writeln!(
             self,

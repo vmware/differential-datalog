@@ -65,7 +65,7 @@ fn apply_updates(
 
     record_updatecmds(prog, &commands);
 
-    let updates: Result<Vec<Update<Value>>, String> =
+    let updates: Result<Vec<Update<DDValue>>, String> =
         commands.iter().map(|c| updcmd2upd(c)).collect();
     prog.prog
         .lock()
@@ -77,7 +77,7 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &[UpdCmd]) {
     if let Some(ref f) = prog.replay_file {
         let mut file = f.lock().unwrap();
         let iter = upds.iter();
-        record_upd_cmds::<DDlogConverter, _, _, _, _>(&mut *file, iter, |_| {
+        record_upd_cmds::<DDlogConverter, _, _, _>(&mut *file, iter, |_| {
             prog.eprintln("ddlog_apply_ovsdb_updates(): failed to record invocation in replay file")
         })
         .for_each(|_| ());
@@ -120,8 +120,8 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(
     res
 }
 
-fn dump_delta<V: Val + IntoRecord>(
-    db: &mut DeltaMap<V>,
+fn dump_delta(
+    db: &mut DeltaMap<DDValue>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {

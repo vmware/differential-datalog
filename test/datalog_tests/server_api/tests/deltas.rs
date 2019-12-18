@@ -4,6 +4,7 @@ use std::sync::Mutex;
 use std::thread::spawn;
 
 use differential_datalog::program::Update;
+use differential_datalog::program::DDValue;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::DDlog;
 use distributed_datalog::await_expected;
@@ -25,7 +26,6 @@ use server_api_ddlog::Relations::server_api_2_P2Out;
 use server_api_ddlog::Relations::server_api_3_P1Out;
 use server_api_ddlog::Relations::server_api_3_P2Out;
 use server_api_ddlog::Relations::server_api_3_P3Out;
-use server_api_ddlog::Value;
 
 use maplit::hashmap;
 use maplit::hashset;
@@ -33,7 +33,7 @@ use maplit::hashset;
 use test_env_log::test;
 
 type DDlogServer = DDlogServerT<HDDlog>;
-type UpdatesObservable = UpdatesObservableT<Update<Value>, String>;
+type UpdatesObservable = UpdatesObservableT<Update<DDValue>, String>;
 
 fn single_delta_test<F>(setup: F) -> Result<(), String>
 where
