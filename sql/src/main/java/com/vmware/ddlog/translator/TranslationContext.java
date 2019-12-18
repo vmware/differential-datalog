@@ -234,10 +234,9 @@ class TranslationContext {
 
     @Nullable
     DDlogExpression lookupIdentifier(String identifier) {
-        for (int i = 0; i < this.translationScope.size(); i++) {
+        for (int i = this.translationScope.size() - 1; i >= 0; i--) {
             // Look starting from the end.
-            int index = this.translationScope.size() - 1 - i;
-            Scope scope = this.translationScope.get(index);
+            Scope scope = this.translationScope.get(i);
             if (this.searchScopeName) {
                 if (identifier.equals(scope.scopeName))
                     return new DDlogScope(scope);
