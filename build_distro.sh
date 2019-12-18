@@ -5,24 +5,10 @@ set -xe
 echo Building DDlog distribution.
 echo IMPORTANT: this script must be run in a clean copy of the DDlog source tree.
 
-if [ `uname -s` = Darwin ]
-then OS_NAME=osx
-elif [ `uname -s` = Linux ]
-then OS_NAME=linux
-else
-    echo Unsupported OS `uname -s` 1>&2
-    exit 1
+if [ -z ${DIST_NAME} ]
+then
+    DIST_NAME=ddlog
 fi
-
-if [ $# -eq 0 ]
-  then
-      TAG=
-  else
-      TAG=$1-
-fi
-
-# add date and OS name to the tag
-export DIST_NAME=ddlog-$TAG$(date +'%Y%m%d%H%M%S')-$OS_NAME
 
 # Directory for distribution files.
 DIST_DIR=ddlog
