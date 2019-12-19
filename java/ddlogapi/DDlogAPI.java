@@ -130,14 +130,18 @@ public class DDlogAPI {
      */
     public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
             throws DDlogException {
-        if (!nativeLibraryLoaded) {
-            System.loadLibrary("ddlogapi");
-            nativeLibraryLoaded = true;
-        }
+        ensureDllLoaded();
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
         this.hprog = this.ddlog_run(storeData, workers, onCommit);
+    }
+
+    static void ensureDllLoaded() {
+        if (!nativeLibraryLoaded) {
+            System.loadLibrary("ddlogapi");
+            nativeLibraryLoaded = true;
+        }
     }
 
     /// Callback invoked from commit.
@@ -437,6 +441,7 @@ public class DDlogAPI {
      *                  (i.e., the callback will not be invoked for  those messages).
      */
     static public synchronized void logSetCallback(int module, ObjIntConsumer<String> cb, int max_level) {
+        ensureDllLoaded();
         Long old_cbinfo = logCBInfo.remove(module);
         long new_cbinfo = ddlog_log_replace_callback(module, old_cbinfo == null ? 0 : old_cbinfo, cb, max_level);
         /* Store pointer to CallbackInfo in internal map */
