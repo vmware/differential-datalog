@@ -1,5 +1,6 @@
 import java.io.IOException;
 import java.io.File;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -114,6 +115,7 @@ public class SpanTest {
         private int ruleSpanTableId;
         private int containerSpanTableId;
         private boolean localTables = false;
+        private PrintStream logStream;
 
         /* LOGGING: Module id's for logging purposes.  Must match declarations in
          * `span_uuid.dl`
@@ -121,16 +123,17 @@ public class SpanTest {
         static int MOD_SPAN_UUID1 = 100;
         static int MOD_SPAN_UUID2 = 200;
 
-        SpanParser() throws DDlogException {
+        SpanParser(PrintStream logStream) throws DDlogException {
             /* LOGGING: Log level definitions should be imported from log4j. We use magic
              * numbers instead to avoid extra dependencies. */
+            this.logStream = logStream;
             DDlogAPI.logSetCallback(
                     MOD_SPAN_UUID1,
-                    (msg, level) -> System.err.println("Log msg from module1 (" + level + "): " + msg),
+                    (msg, level) -> logStream.println("Log msg from module1 (" + level + "): " + msg),
                     2147483647/*log4j.ALL*/);
             DDlogAPI.logSetCallback(
                     MOD_SPAN_UUID2,
-                    (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
+                    (msg, level) -> logStream.println("Log msg from module2 (" + level + "): " + msg),
                     100/*log4j.FATAL*/);
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
@@ -326,7 +329,7 @@ public class SpanTest {
                     DDlogAPI.logSetCallback(MOD_SPAN_UUID1, null, 0/*log4j.OFF*/);
                     DDlogAPI.logSetCallback(
                             MOD_SPAN_UUID2,
-                            (msg, level) -> System.err.println("Log msg from module2 (" + level + "): " + msg),
+                            (msg, level) -> this.logStream.println("Log msg from module2 (" + level + "): " + msg),
                             500/*log4j.DEBUG*/);
 
                     // Start recording after the first commit. Dump current
@@ -424,10 +427,13 @@ public class SpanTest {
             System.exit(-1);
         };
         Instant start = Instant.now();
-        SpanParser parser = new SpanParser();
+        File logFile = new File("span_uuid.log");
+        PrintStream logStream = new PrintStream(logFile);
+        SpanParser parser = new SpanParser(logStream);
         parser.run(args[0]);
         Instant end = Instant.now();
         if (true)
             System.err.println("Elapsed time " + Duration.between(start, end));
+        logStream.close();
     }
 }
