@@ -560,13 +560,13 @@ fn test_semijoin(nthreads: usize) {
         }
     };
     fn fmfun1(v: DDValue) -> Option<DDValue> {
-        match *Value::from_ddval(v) {
+        match (*Value::from_ddval(v)).clone() {
             Value::Tuple2(v1, _v2) => Some(v1.into_ddval()),
             _ => None,
         }
     }
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match *Value::from_ddval(v) {
+        match (*Value::from_ddval(v)).clone() {
             Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
             _ => None,
         }
@@ -594,8 +594,11 @@ fn test_semijoin(nthreads: usize) {
     };
     fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
         Some(
-            Value::Tuple2(Value::from_ddval(v1.clone()), Value::from_ddval(v1.clone()))
-                .into_ddval(),
+            Value::Tuple2(
+                Box::new((*Value::from_ddval(v1.clone())).clone()),
+                Box::new((*Value::from_ddval(v1.clone())).clone()),
+            )
+            .into_ddval(),
         )
     }
 
@@ -691,7 +694,7 @@ fn test_join(nthreads: usize) {
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match *Value::from_ddval(v) {
+        match (*Value::from_ddval(v)).clone() {
             Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
             _ => None,
         }
@@ -718,8 +721,11 @@ fn test_join(nthreads: usize) {
     };
     fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
-            Value::Tuple2(Value::from_ddval(v1.clone()), Value::from_ddval(v2.clone()))
-                .into_ddval(),
+            Value::Tuple2(
+                Box::new((*Value::from_ddval(v1.clone())).clone()),
+                Box::new((*Value::from_ddval(v2.clone())).clone()),
+            )
+            .into_ddval(),
         )
     }
 
@@ -783,7 +789,11 @@ fn test_join(nthreads: usize) {
                 let rel2 = collections.get(&2).unwrap();
                 let rel2_kv = rel2.flat_map(afun1);
                 rel1_kv.join(&rel2_kv).map(|(_, (v1, v2))| {
-                    Value::Tuple2(Value::from_ddval(v1), Value::from_ddval(v2)).into_ddval()
+                    Value::Tuple2(
+                        Box::new((*Value::from_ddval(v1)).clone()),
+                        Box::new((*Value::from_ddval(v2)).clone()),
+                    )
+                    .into_ddval()
                 })
             };
             collections.insert(4, rel4);
@@ -904,7 +914,7 @@ fn test_antijoin(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        match *Value::from_ddval(v) {
+        match (*Value::from_ddval(v)).clone() {
             Value::Tuple2(v1, _) => v1.into_ddval(),
             _ => panic!("unexpected value"),
         }
@@ -1226,7 +1236,7 @@ fn test_map(nthreads: usize) {
                 Some(iter) => iter,
                 None => Box::new(None.into_iter()),
             })
-            .map(|x| (*Value::from_ddval(x), 1)),
+            .map(|x| ((*Value::from_ddval(x)).clone(), 1)),
     );
     let mut expected3 = BTreeMap::default();
     expected3.insert(Value::U64(expected2.len() as u64), 1);

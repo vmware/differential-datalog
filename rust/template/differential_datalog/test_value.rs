@@ -5,6 +5,7 @@ use std::any::Any;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 use crate::program::*;
 use crate::record::*;
@@ -50,14 +51,14 @@ impl Value {
     pub fn from_ddval_ref(v: &DDValue) -> &Value {
         Self::from_val_ref(v.val())
     }
-    pub fn from_val(v: Box<dyn DDVal>) -> Box<Value> {
+    pub fn from_val(v: Arc<dyn DDVal>) -> Arc<Value> {
         v.into_any().downcast::<Value>().unwrap()
     }
-    pub fn from_ddval(v: DDValue) -> Box<Value> {
+    pub fn from_ddval(v: DDValue) -> Arc<Value> {
         Self::from_val(v.into_val())
     }
     pub fn into_ddval(self) -> DDValue {
-        DDValue::new(Box::new(self))
+        DDValue::new(Arc::new(self))
     }
 }
 
@@ -69,7 +70,7 @@ impl DDVal for Value {
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync> {
         self
     }
     fn val_eq(&self, other: &dyn DDVal) -> bool {
@@ -81,13 +82,13 @@ impl DDVal for Value {
     fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
         self.cmp(Value::from_val_ref(other))
     }
-    fn val_clone(&self) -> Box<dyn DDVal> {
-        Box::new(self.clone())
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
     }
     fn val_hash(&self, mut state: &mut dyn Hasher) {
         self.hash(&mut state)
     }
-    fn val_into_record(self: Box<Self>) -> Record {
+    fn val_into_record(self: Arc<Self>) -> Record {
         panic!("Value::val_into_record not implemented")
     }
     fn val_mutate(&mut self, _record: &Record) -> Result<(), String> {

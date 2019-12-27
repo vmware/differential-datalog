@@ -192,23 +192,23 @@ pub type Response<X> = Result<X, String>;
 pub trait DDVal: Send + Debug + Display + Sync + 'static {
     fn as_any(&self) -> &dyn Any;
     fn as_mut_any(&mut self) -> &mut dyn Any;
-    fn into_any(self: Box<Self>) -> Box<dyn Any>;
-    fn val_into_record(self: Box<Self>) -> Record;
+    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync>;
+    fn val_into_record(self: Arc<Self>) -> Record;
     fn val_eq(&self, other: &dyn DDVal) -> bool;
     fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering>;
     fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering;
-    fn val_clone(&self) -> Box<dyn DDVal>;
+    fn val_clone(&self) -> Arc<dyn DDVal>;
     fn val_hash(&self, state: &mut dyn Hasher);
     fn val_mutate(&mut self, record: &Record) -> Result<(), String>;
 }
 
 #[derive(Debug)]
 pub struct DDValue {
-    val: Box<dyn DDVal>,
+    val: Arc<dyn DDVal>,
 }
 
 impl DDValue {
-    pub fn new(val: Box<dyn DDVal>) -> DDValue {
+    pub fn new(val: Arc<dyn DDVal>) -> DDValue {
         DDValue { val }
     }
 
@@ -217,10 +217,16 @@ impl DDValue {
     }
 
     pub fn mut_val(&mut self) -> &mut dyn DDVal {
-        &mut (*self.val)
+        // The borrow checker does not allow the following optimization.
+        /*if let Some(v) = Arc::get_mut(&mut self.val) {
+            return v;
+        };*/
+
+        self.val = (*self.val).val_clone();
+        Arc::get_mut(&mut self.val).unwrap()
     }
 
-    pub fn into_val(self) -> Box<dyn DDVal> {
+    pub fn into_val(self) -> Arc<dyn DDVal> {
         self.val
     }
 }
@@ -264,7 +270,9 @@ impl<'de> Deserialize<'de> for DDValue {
         D: Deserializer<'de>,
     {
         let val: Box<dyn DDVal> = Deserialize::deserialize(deserializer)?;
-        Ok(DDValue { val })
+        Ok(DDValue {
+            val: From::from(val),
+        })
     }
 }
 
@@ -296,7 +304,7 @@ impl Ord for DDValue {
 impl Clone for DDValue {
     fn clone(&self) -> Self {
         DDValue {
-            val: self.val.val_clone(),
+            val: self.val.clone(),
         }
     }
 }
