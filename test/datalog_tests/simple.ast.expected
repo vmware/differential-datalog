@@ -228,7 +228,7 @@ function f1 (x: T1, y: T2, q: T3): bool =
           C12{.f3=_, .f4=_} -> false
       };
       (match (y) {
-           C21{.f1=_, .f2=_} -> true,
+           (C21{.f1=(_: T1), .f2=_}: T2) -> true,
            C22{.f3=(_, C11{.f1=_, .f2=_})} -> true,
            _ -> false
        };
@@ -314,7 +314,7 @@ function patterns (): () =
                   C1{.x=_} -> false
               };
       (var i: bit<32>) = match (a) {
-                             C0{.x=var v} -> v,
+                             C0{.x=(var v: bit<32>)} -> v,
                              C1{.x=var v} -> v
                          }))
 extern function regex.regex_match (regex: string, str: string): bool
@@ -334,7 +334,7 @@ function shadow (): string =
     ((var b: std.Option<string>) = std.None{};
      (var a = std.Some{.x="foo"};
       match (a) {
-          std.Some{.x=var v} -> v,
+          std.Some{.x=(var v: string)} -> v,
           std.None{} -> ""
       }))
 function souffle_lib.castTo32 (i: bit<64>): souffle_types.Tnumber =

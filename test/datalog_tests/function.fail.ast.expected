@@ -4,6 +4,13 @@ error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field f2 in con
 
 error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already defined in this scope
 
+error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Couldn't match expected type bit<32> with actual type bool (context: CtxTop
+CtxFunc            shadow
+CtxSeq2            ((var a: Alt) = C0{.x=1};  (var i: bit<32>) = match (a) {                         C0{.x=(var w: b...
+CtxSetR            (var i: bit<32>) = match (a) {                        C0{.x=(var w: bool)} -> w,                 ...
+CtxMatchPat        match (a) {     C0{.x=(var w: bool)} -> w,     C1{.x=var w} -> w } 0
+CtxStruct          C0{.x=(var w: bool)} x)
+
 error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already defined in this scope
 
 error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field "x"
