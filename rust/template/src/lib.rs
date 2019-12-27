@@ -133,14 +133,14 @@ impl Value {
     pub fn from_ddval_mut_ref(v: &mut DDValue) -> &mut Value {
         Self::from_val_mut_ref(v.mut_val())
     }
-    pub fn from_ddval(v: DDValue) -> Box<Value> {
+    pub fn from_ddval(v: DDValue) -> sync::Arc<Value> {
         Self::from_val(v.into_val())
     }
-    pub fn from_val(v: Box<dyn DDVal>) -> Box<Value> {
+    pub fn from_val(v: sync::Arc<dyn DDVal>) -> sync::Arc<Value> {
         v.into_any().downcast::<Value>().unwrap()
     }
     pub fn into_ddval(self) -> DDValue {
-        DDValue::new(Box::new(self))
+        DDValue::new(sync::Arc::new(self))
     }
 }
 
@@ -152,7 +152,7 @@ impl DDVal for Value {
     fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
-    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+    fn into_any(self: sync::Arc<Self>) -> sync::Arc<dyn std::any::Any + 'static + Send + Sync> {
         self
     }
     fn val_eq(&self, other: &dyn DDVal) -> bool {
@@ -164,14 +164,14 @@ impl DDVal for Value {
     fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
         self.cmp(Value::from_val_ref(other))
     }
-    fn val_clone(&self) -> Box<dyn DDVal> {
-        Box::new(self.clone())
+    fn val_clone(&self) -> sync::Arc<dyn DDVal> {
+        sync::Arc::new(self.clone())
     }
     fn val_hash(&self, mut state: &mut dyn Hasher) {
         self.hash(&mut state)
     }
-    fn val_into_record(self: Box<Self>) -> record::Record {
-        (*self).into_record()
+    fn val_into_record(self: sync::Arc<Self>) -> record::Record {
+        (*self).clone().into_record()
     }
 
     fn val_mutate(&mut self, record: &record::Record) -> Result<(), String> {

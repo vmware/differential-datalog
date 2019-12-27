@@ -1239,7 +1239,7 @@ extractValue :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
         "|" <> vALUE_VAR <> ": DDValue| {"                                                            $$
         "match *Value::from_ddval(" <> vALUE_VAR <> ") {"                                             $$
-        "    Value::" <> mkValConstructorName d t' <> "(x) => {" <+> boxDeref d t' "x" <+> "},"       $$
+        "    Value::" <> mkValConstructorName d t' <> "(ref x) => {" <+> boxDeref d t' "x.clone()" <+> "},"       $$
         "    _ => unreachable!()"                                                                     $$
         "}}"
     where t' = typeNormalize d t
@@ -2044,8 +2044,8 @@ mkArrangementKey d rel pattern = do
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
     return $ braces' $
-             "if let" <+> constructor <> parens bOX_VAR <+> "= *Value::from_ddval(" <> vALUE_VAR <> ") {" $$
-             "    match" <+> boxDeref d t bOX_VAR <+> "{"                             $$
+             "if let" <+> constructor <> parens ("ref" <+> bOX_VAR) <+> "= *Value::from_ddval(" <> vALUE_VAR <> ") {" $$
+             "    match" <+> boxDeref d t ("*" <> bOX_VAR) <+> "{"                             $$
              nest' mtch                                                               $$
              "    }"                                                                  $$
              "} else { None }"
