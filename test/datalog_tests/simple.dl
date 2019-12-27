@@ -159,7 +159,7 @@ function patterns(): () = {
     };
 
     var i: bit<32> = match (a) {
-        C0{.x = v} -> v,
+        C0{.x = var v: bit<32>} -> v,
         C1{v} -> v
     }
 }
@@ -168,7 +168,7 @@ function shadow(): string = {
     var b: Option<string> = None;
     var a = Some{"foo"};
     match (a) {
-        Some{v} -> v,
+        Some{v: string} -> v,
         None    -> ""
     }
 }
@@ -243,7 +243,7 @@ function f1(x: T1, y: T2, q: T3) : bool = {
     };
 
     match (y) {
-        C21{_,_}        -> true,
+        C21{_: T1,_}: T2-> true,
         C22{(_, C11{})} -> true,
         _               -> false
     };

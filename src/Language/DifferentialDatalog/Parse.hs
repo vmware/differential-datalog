@@ -487,7 +487,14 @@ evar = eVar <$> varIdent
 
 ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
-pattern = (withPos $
+
+{- Match pattern -}
+pattern = buildExpressionParser petable pterm
+      <?> "match pattern"
+
+petable = [[postf postType]]
+
+pterm = (withPos $
            eTuple   <$> (parens $ commaSep pattern)
        <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
        <|> eVarDecl <$> varIdent
@@ -496,7 +503,7 @@ pattern = (withPos $
        <|> ebool
        <|> epattern_string
        <|> eint)
-      <?> "match pattern"
+      <?> "match term"
 
 anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
@@ -688,7 +695,7 @@ sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ re
 
 assign = Infix $ (\l r  -> E $ ESet (fst $ pos l, snd $ pos r) l r) <$ reservedOp "="
 
-{- F-expression (variable of field name) -}
+{- F-expression (variable or field name) -}
 fexpr =  buildExpressionParser fetable fterm
     <?> "column or field name"
 
