@@ -423,7 +423,7 @@ mod tests {
         recv.subscribe(Box::new(mock.clone())).unwrap();
 
         let t1 = spawn(move || {
-            let observer1 = &mut send1 as (&mut dyn Observer<u64, _>);
+            let observer1 = &mut send1 as &mut dyn Observer<u64, _>;
             let updates1 = vec![1u64];
             observer1.on_start().unwrap();
             observer1
@@ -434,7 +434,7 @@ mod tests {
         });
 
         let t2 = spawn(move || {
-            let observer2 = &mut send2 as (&mut dyn Observer<u64, _>);
+            let observer2 = &mut send2 as &mut dyn Observer<u64, _>;
             let updates2 = vec![2u64, 3, 4];
             observer2.on_start().unwrap();
             observer2
@@ -445,7 +445,7 @@ mod tests {
         });
 
         let t3 = spawn(move || {
-            let observer3 = &mut send3 as (&mut dyn Observer<u64, _>);
+            let observer3 = &mut send3 as &mut dyn Observer<u64, _>;
             let updates3 = vec![5u64, 6, 7, 8];
             observer3.on_start().unwrap();
             observer3

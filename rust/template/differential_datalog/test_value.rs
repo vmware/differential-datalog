@@ -1,116 +1,329 @@
 use abomonation::Abomonation;
 use serde::Deserialize;
 use serde::Serialize;
-use std::any::Any;
 use std::fmt;
-use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
+use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::sync::Arc;
 
-use crate::program::*;
-use crate::record::*;
-use crate::uint::*;
+use crate::ddval::DDVal;
+use crate::record::IntoRecord;
+use crate::record::Mutator;
+use crate::record::Record;
+use crate::uint;
 
 /// `Value` type that implements `trait DDVal` and is thus useful for testing Rust modules that
 /// interact with the DDlog API, but do not define their own `DDVal` type.
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub enum Value {
-    Empty(),
-    Bool(bool),
-    Uint(Uint),
-    String(String),
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    I64(i64),
-    BoolTuple((bool, bool)),
-    Tuple2(Box<Value>, Box<Value>),
-    Q(Q),
-    S(S),
-}
 
-impl Abomonation for Value {}
-
-impl Default for Value {
-    fn default() -> Value {
-        Value::Bool(false)
-    }
-}
-
-impl Display for Value {
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct Empty {}
+impl Abomonation for Empty {}
+impl Display for Empty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+        Debug::fmt(self, f)
     }
 }
-
-impl Value {
-    pub fn from_val_ref(v: &dyn DDVal) -> &Value {
-        v.as_any().downcast_ref::<Value>().unwrap()
-    }
-    pub fn from_ddval_ref(v: &DDValue) -> &Value {
-        Self::from_val_ref(v.val())
-    }
-    pub fn from_val(v: Arc<dyn DDVal>) -> Arc<Value> {
-        v.into_any().downcast::<Value>().unwrap()
-    }
-    pub fn from_ddval(v: DDValue) -> Arc<Value> {
-        Self::from_val(v.into_val())
-    }
-    pub fn into_ddval(self) -> DDValue {
-        DDValue::new(Arc::new(self))
+impl IntoRecord for Empty {
+    fn into_record(self) -> Record {
+        unimplemented!("Empty::IntoRecord");
     }
 }
-
-#[typetag::serde(name = "test_Value")]
-impl DDVal for Value {
-    fn as_any(&self) -> &dyn Any {
-        self
+impl Mutator<Empty> for Record {
+    fn mutate(&self, _v: &mut Empty) -> Result<(), std::string::String> {
+        unimplemented!("Empty::Mutator");
     }
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync> {
-        self
-    }
-    fn val_eq(&self, other: &dyn DDVal) -> bool {
-        self.eq(Value::from_val_ref(other))
-    }
-    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering> {
-        self.partial_cmp(Value::from_val_ref(other))
-    }
-    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
-        self.cmp(Value::from_val_ref(other))
-    }
+}
+#[typetag::serde]
+impl DDVal for Empty {
     fn val_clone(&self) -> Arc<dyn DDVal> {
         Arc::new(self.clone())
     }
-    fn val_hash(&self, mut state: &mut dyn Hasher) {
-        self.hash(&mut state)
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct Bool(pub bool);
+impl Abomonation for Bool {}
+impl Display for Bool {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
     }
-    fn val_into_record(self: Arc<Self>) -> Record {
-        panic!("Value::val_into_record not implemented")
+}
+impl IntoRecord for Bool {
+    fn into_record(self) -> Record {
+        unimplemented!("Bool::IntoRecord");
     }
-    fn val_mutate(&mut self, _record: &Record) -> Result<(), String> {
-        panic!("Value::val_mutate not implemented")
+}
+impl Mutator<Bool> for Record {
+    fn mutate(&self, _v: &mut Bool) -> Result<(), std::string::String> {
+        unimplemented!("Bool::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for Bool {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
     }
 }
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub struct P {
-    pub f1: Q,
-    pub f2: bool,
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct Uint(pub uint::Uint);
+impl Abomonation for Uint {}
+impl Display for Uint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for Uint {
+    fn into_record(self) -> Record {
+        unimplemented!("Uint::IntoRecord");
+    }
+}
+impl Mutator<Uint> for Record {
+    fn mutate(&self, _v: &mut Uint) -> Result<(), std::string::String> {
+        unimplemented!("Uint::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for Uint {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
 }
 
-impl Abomonation for P {}
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct String(pub std::string::String);
+impl Abomonation for String {}
+impl Display for String {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for String {
+    fn into_record(self) -> Record {
+        unimplemented!("String::IntoRecord");
+    }
+}
+impl Mutator<String> for Record {
+    fn mutate(&self, _v: &mut String) -> Result<(), std::string::String> {
+        unimplemented!("String::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for String {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct U8(pub u8);
+impl Abomonation for U8 {}
+impl Display for U8 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for U8 {
+    fn into_record(self) -> Record {
+        unimplemented!("U8::IntoRecord");
+    }
+}
+impl Mutator<U8> for Record {
+    fn mutate(&self, _v: &mut U8) -> Result<(), std::string::String> {
+        unimplemented!("U8::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for U8 {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct U16(pub u16);
+impl Abomonation for U16 {}
+impl Display for U16 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for U16 {
+    fn into_record(self) -> Record {
+        unimplemented!("U16::IntoRecord");
+    }
+}
+impl Mutator<U16> for Record {
+    fn mutate(&self, _v: &mut U16) -> Result<(), std::string::String> {
+        unimplemented!("U16::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for U16 {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct U32(pub u32);
+impl Abomonation for U32 {}
+impl Display for U32 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for U32 {
+    fn into_record(self) -> Record {
+        unimplemented!("U32::IntoRecord");
+    }
+}
+impl Mutator<U32> for Record {
+    fn mutate(&self, _v: &mut U32) -> Result<(), std::string::String> {
+        unimplemented!("U32::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for U32 {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct U64(pub u64);
+impl Abomonation for U64 {}
+impl Display for U64 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for U64 {
+    fn into_record(self) -> Record {
+        unimplemented!("U64::IntoRecord");
+    }
+}
+impl Mutator<U64> for Record {
+    fn mutate(&self, _v: &mut U64) -> Result<(), std::string::String> {
+        unimplemented!("U64::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for U64 {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct I64(pub i64);
+impl Abomonation for I64 {}
+impl Display for I64 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for I64 {
+    fn into_record(self) -> Record {
+        unimplemented!("I64::IntoRecord");
+    }
+}
+impl Mutator<I64> for Record {
+    fn mutate(&self, _v: &mut I64) -> Result<(), std::string::String> {
+        unimplemented!("I64::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for I64 {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct BoolTuple(pub (bool, bool));
+impl Abomonation for BoolTuple {}
+impl Display for BoolTuple {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for BoolTuple {
+    fn into_record(self) -> Record {
+        unimplemented!("BoolTuple::IntoRecord");
+    }
+}
+impl Mutator<BoolTuple> for Record {
+    fn mutate(&self, _v: &mut BoolTuple) -> Result<(), std::string::String> {
+        unimplemented!("BoolTuple::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for BoolTuple {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct Tuple2<T>(pub Box<T>, pub Box<T>);
+impl<T: Abomonation> Abomonation for Tuple2<T> {}
+impl<T: Debug> Display for Tuple2<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl<T> IntoRecord for Tuple2<T> {
+    fn into_record(self) -> Record {
+        unimplemented!("Tuple2::IntoRecord");
+    }
+}
+impl<T> Mutator<Tuple2<T>> for Record {
+    fn mutate(&self, _v: &mut Tuple2<T>) -> Result<(), std::string::String> {
+        unimplemented!("Tuple2::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for Tuple2<U64> {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+#[typetag::serde]
+impl DDVal for Tuple2<String> {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Q {
     pub f1: bool,
     pub f2: String,
 }
-
 impl Abomonation for Q {}
+impl Display for Q {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for Q {
+    fn into_record(self) -> Record {
+        unimplemented!("Q::IntoRecord");
+    }
+}
+impl Mutator<Q> for Record {
+    fn mutate(&self, _v: &mut Q) -> Result<(), std::string::String> {
+        unimplemented!("Q::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for Q {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub enum S {
@@ -128,9 +341,7 @@ pub enum S {
         g2: Q,
     },
 }
-
 impl Abomonation for S {}
-
 impl S {
     pub fn f1(&mut self) -> &mut u32 {
         match self {
@@ -139,3 +350,41 @@ impl S {
         }
     }
 }
+impl Default for S {
+    fn default() -> S {
+        S::S1 {
+            f1: u32::default(),
+            f2: String::default(),
+            f3: Q::default(),
+            f4: Uint::default(),
+        }
+    }
+}
+impl Display for S {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+impl IntoRecord for S {
+    fn into_record(self) -> Record {
+        unimplemented!("S::IntoRecord");
+    }
+}
+impl Mutator<S> for Record {
+    fn mutate(&self, _v: &mut S) -> Result<(), std::string::String> {
+        unimplemented!("S::Mutator");
+    }
+}
+#[typetag::serde]
+impl DDVal for S {
+    fn val_clone(&self) -> Arc<dyn DDVal> {
+        Arc::new(self.clone())
+    }
+}
+
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+pub struct P {
+    pub f1: Q,
+    pub f2: bool,
+}
+impl Abomonation for P {}

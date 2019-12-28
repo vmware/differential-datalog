@@ -5,7 +5,7 @@ use std::io::Write;
 use std::iter::Peekable;
 
 use crate::ddlog::DDlogConvert;
-use crate::program::DDValue;
+use crate::ddval::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;

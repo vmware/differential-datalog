@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use log::trace;
 use uid::Id;
 
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::record_val_upds;
 use differential_datalog::DDlogConvert;
@@ -87,12 +87,13 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
+    use differential_datalog::ddval::DDValConvert;
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::Record;
     use differential_datalog::record::RelIdentifier;
     use differential_datalog::record::UpdCmd;
-    use differential_datalog::test_value::Value;
+    use differential_datalog::test_value::*;
 
     #[derive(Debug)]
     struct DummyConverter;
@@ -109,7 +110,7 @@ mod tests {
             panic!("unexpected IdxId {}", idx_id)
         }
 
-        fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
+        fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, std::string::String> {
             match upd_cmd {
                 UpdCmd::Insert(relident, record) => {
                     let relid = match relident {
@@ -120,7 +121,7 @@ mod tests {
                         ),
                     };
                     let v = match record {
-                        Record::String(string) => Value::String(string.clone()).into_ddval(),
+                        Record::String(string) => String(string.clone()).into_ddvalue(),
                         _ => panic!("encountered unexpected Record variant: {:?}", record),
                     };
                     Ok(Update::Insert { relid, v })
@@ -144,14 +145,14 @@ mod tests {
             .into_iter()
             .map(|val| Update::Insert {
                 relid: 1,
-                v: Value::String(val.to_string()).into_ddval(),
+                v: String(val.to_string()).into_ddvalue(),
             });
 
         observer.on_start().unwrap();
         observer.on_updates(Box::new(updates)).unwrap();
         observer.on_commit().unwrap();
 
-        let mut content = String::new();
+        let mut content = std::string::String::new();
         let _ = file.read_to_string(&mut content).unwrap();
         let expected = r#"start;
 commit;

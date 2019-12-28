@@ -995,7 +995,7 @@ impl IntoRecord for tuple0 {
 
 macro_rules! decl_tuple {
     ( $name:ident, $( $t:tt ),+ ) => {
-        #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
+        #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
         pub struct $name< $($t),* >($(pub $t),*);
         impl <$($t: FromRecord),*> FromRecord for $name<$($t),*> {
             fn from_record(val: &Record) -> Result<Self, String> {

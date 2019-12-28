@@ -13,6 +13,7 @@ mod valmap;
 mod variable;
 
 pub mod arcval;
+pub mod ddval;
 pub mod int;
 pub mod program;
 pub mod uint;

@@ -53,7 +53,6 @@ data TOption = Help
              | NoDynLib
              | StaticLib
              | NoStaticLib
-             | BoxThreshold String
 
 data DLAction = ActionCompile
               | ActionValidate
@@ -74,10 +73,6 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
-          , Option []    ["box-threshold"]    (ReqArg BoxThreshold "THRESHOLD") ("Maximum inline DDlog record size. Records larger than this\n"  ++
-                                                                                 "threshold will be stored on the heap. Used to fine-tune the\n" ++
-                                                                                 "memory footprint of the program. THRESHOLD must be >=8.\n"     ++
-                                                                                 "Recommended values are in the [8,32] range. Default is " ++ (show $ cconfBoxThreshold defaultCompilerConfig) ++ ".")
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
@@ -88,7 +83,6 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confDynamicLib    :: Bool
                      , confJava          :: Bool
                      , confOutputInternal:: Bool
-                     , confBoxThreshold  :: Int
                      }
 
 defaultConfig :: Config
@@ -100,7 +94,6 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confOutputInternal= False
                        , confOutputInput   = ""
                        , confJava          = False
-                       , confBoxThreshold  = cconfBoxThreshold defaultCompilerConfig
                        }
 
 
@@ -121,13 +114,6 @@ addOption config StaticLib        = return config { confStaticLib = True }
 addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
 addOption config Version          = return config { confAction = ActionVersion}
-addOption config (BoxThreshold t) =
-    case reads t of
-        [(tint, "")] -> if tint < 8
-                           then errorWithoutStackTrace "Box threshold must be greater than or equal to 8."
-                           else return config { confBoxThreshold = tint }
-        _  -> errorWithoutStackTrace "Box threshold must be a positive integer."
-
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
@@ -181,6 +167,5 @@ compileProg conf@Config{..} = do
     let dir = takeDirectory confDatalogFile
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    let ?cfg = CompilerConfig{ cconfBoxThreshold = confBoxThreshold
-                             , cconfJava = confJava }
+    let ?cfg = CompilerConfig{ cconfJava = confJava }
     compile prog specname rs_code toml_code dir crate_types

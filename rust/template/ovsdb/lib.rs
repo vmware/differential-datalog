@@ -118,7 +118,7 @@ fn cmd_from_row_update(
             if m.contains_key("delete") {
                 cmds.push(UpdCmd::DeleteKey(
                     RelIdentifier::RelName(Cow::from(table.to_owned())),
-                    uuid.clone(),
+                    uuid,
                 ));
                 return Ok(());
             };

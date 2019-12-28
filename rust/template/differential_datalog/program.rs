@@ -12,12 +12,10 @@
 // TODO: namespace cleanup
 // TODO: single input relation
 
-use std::any::Any;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use std::collections::hash_map;
-use std::fmt::{self, Debug, Display, Formatter};
-use std::hash::{Hash, Hasher};
+use std::fmt::{self, Debug, Formatter};
 use std::ops::{Add, Deref, Mul};
 use std::result::Result;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -67,8 +65,9 @@ use timely::progress::timestamp::Refines;
 use timely::progress::{PathSummary, Timestamp};
 use timely::worker::Worker;
 
+use crate::ddval::*;
 use crate::profile::*;
-use crate::record::{IntoRecord, Mutator, Record};
+use crate::record::Mutator;
 use crate::variable::*;
 
 type ValTrace<S> = DefaultValTrace<DDValue, DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
@@ -186,137 +185,6 @@ const PROF_MSG_BUF_SIZE: usize = 10000;
 
 /// Result type returned by this library
 pub type Response<X> = Result<X, String>;
-
-/// Trait for values that can be stored in DDlog relations.
-#[typetag::serde]
-pub trait DDVal: Send + Debug + Display + Sync + 'static {
-    fn as_any(&self) -> &dyn Any;
-    fn as_mut_any(&mut self) -> &mut dyn Any;
-    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync>;
-    fn val_into_record(self: Arc<Self>) -> Record;
-    fn val_eq(&self, other: &dyn DDVal) -> bool;
-    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering>;
-    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering;
-    fn val_clone(&self) -> Arc<dyn DDVal>;
-    fn val_hash(&self, state: &mut dyn Hasher);
-    fn val_mutate(&mut self, record: &Record) -> Result<(), String>;
-}
-
-#[derive(Debug)]
-pub struct DDValue {
-    val: Arc<dyn DDVal>,
-}
-
-impl DDValue {
-    pub fn new(val: Arc<dyn DDVal>) -> DDValue {
-        DDValue { val }
-    }
-
-    pub fn val(&self) -> &dyn DDVal {
-        &(*self.val)
-    }
-
-    pub fn mut_val(&mut self) -> &mut dyn DDVal {
-        // The borrow checker does not allow the following optimization.
-        /*if let Some(v) = Arc::get_mut(&mut self.val) {
-            return v;
-        };*/
-
-        self.val = (*self.val).val_clone();
-        Arc::get_mut(&mut self.val).unwrap()
-    }
-
-    pub fn into_val(self) -> Arc<dyn DDVal> {
-        self.val
-    }
-}
-
-impl Mutator<DDValue> for Record {
-    fn mutate(&self, x: &mut DDValue) -> Result<(), String> {
-        x.mut_val().val_mutate(self)
-    }
-}
-
-impl IntoRecord for DDValue {
-    fn into_record(self) -> Record {
-        self.val.val_into_record()
-    }
-}
-
-impl Abomonation for DDValue {
-    unsafe fn entomb<W: std::io::Write>(&self, _write: &mut W) -> std::io::Result<()> {
-        panic!("DDValue::entomb: not implemented")
-    }
-    unsafe fn exhume<'a, 'b>(&'a mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
-        panic!("DDValue::exhume: not implemented")
-    }
-    fn extent(&self) -> usize {
-        panic!("DDValue::extent: not implemented")
-    }
-}
-
-impl Serialize for DDValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.val.serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for DDValue {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let val: Box<dyn DDVal> = Deserialize::deserialize(deserializer)?;
-        Ok(DDValue {
-            val: From::from(val),
-        })
-    }
-}
-
-impl Display for DDValue {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        Display::fmt(&self.val, f)
-    }
-}
-impl PartialOrd for DDValue {
-    fn partial_cmp(&self, other: &DDValue) -> Option<std::cmp::Ordering> {
-        self.val.val_partial_cmp(&*other.val)
-    }
-}
-
-impl PartialEq for DDValue {
-    fn eq(&self, other: &Self) -> bool {
-        self.val.val_eq(&*other.val)
-    }
-}
-
-impl Eq for DDValue {}
-
-impl Ord for DDValue {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.val.val_cmp(&*other.val)
-    }
-}
-
-impl Clone for DDValue {
-    fn clone(&self) -> Self {
-        DDValue {
-            val: self.val.clone(),
-        }
-    }
-}
-
-impl Hash for DDValue {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.val.val_hash(state)
-    }
-}
 
 /// Unique identifier of a DDlog relation.
 pub type RelId = usize;
@@ -2408,8 +2276,8 @@ impl RunningProgram {
     fn delta_inc(ds: &mut DeltaSet, x: &DDValue) {
         let e = ds.entry(x.clone());
         match e {
-            hash_map::Entry::Occupied(mut oe) => {
-                debug_assert!(!*oe.get_mut());
+            hash_map::Entry::Occupied(oe) => {
+                debug_assert!(!*oe.get());
                 oe.remove_entry();
             }
             hash_map::Entry::Vacant(ve) => {
@@ -2422,8 +2290,8 @@ impl RunningProgram {
     fn delta_dec(ds: &mut DeltaSet, key: &DDValue) {
         let e = ds.entry(key.clone());
         match e {
-            hash_map::Entry::Occupied(mut oe) => {
-                debug_assert!(*oe.get_mut());
+            hash_map::Entry::Occupied(oe) => {
+                debug_assert!(*oe.get());
                 oe.remove_entry();
             }
             hash_map::Entry::Vacant(ve) => {
@@ -2512,7 +2380,7 @@ impl RunningProgram {
                     Ok(())
                 }
             },
-            Update::DeleteValue { relid, v } => match s.entry(key_func(&v).clone()) {
+            Update::DeleteValue { relid, v } => match s.entry(key_func(&v)) {
                 hash_map::Entry::Occupied(oe) => {
                     if *oe.get() != v {
                         Err(format!("DeleteValue: key exists with a different value. Value specified: {:?}; existing value: {:?}", v, oe.get()))

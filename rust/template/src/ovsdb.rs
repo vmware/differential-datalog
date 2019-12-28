@@ -7,6 +7,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync;
 
 use ddlog_ovsdb_adapter::*;
+use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, UpdCmd};
 use differential_datalog::record_upd_cmds;
@@ -16,7 +17,6 @@ use differential_datalog::RecordReplay;
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;
 use crate::Relations;
-use crate::Value;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
 ///

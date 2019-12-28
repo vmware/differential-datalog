@@ -18,7 +18,6 @@ use std::boxed;
 use std::convert::TryFrom;
 use std::ffi;
 use std::fmt;
-use std::fmt::Display;
 use std::fs;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -29,6 +28,7 @@ use std::os::raw;
 use std::os::unix;
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::ptr;
+use std::result;
 use std::sync;
 
 use differential_dataflow::collection;
@@ -39,8 +39,9 @@ use timely::worker;
 use serde::Deserialize;
 use serde::Serialize;
 
-use abomonation::Abomonation;
+use abomonation;
 use differential_datalog::arcval;
+use differential_datalog::ddval::*;
 use differential_datalog::decl_enum_into_record;
 use differential_datalog::decl_record_mutator_enum;
 use differential_datalog::decl_record_mutator_struct;
@@ -50,9 +51,10 @@ use differential_datalog::decl_val_enum_into_record;
 use differential_datalog::int::*;
 use differential_datalog::program::*;
 use differential_datalog::record;
+use differential_datalog::record::FromRecord;
+use differential_datalog::record::IntoRecord;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
-use differential_datalog::record::{FromRecord, IntoRecord, Mutator};
 use differential_datalog::uint::*;
 use differential_datalog::DDlogConvert;
 
@@ -104,7 +106,7 @@ impl DDlogConvert for DDlogConverter {
         indexid2name(idxId)
     }
 
-    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
+    fn updcmd2upd(upd_cmd: &UpdCmd) -> result::Result<Update<DDValue>, String> {
         updcmd2upd(upd_cmd)
     }
 }
@@ -112,70 +114,11 @@ impl DDlogConvert for DDlogConverter {
 impl TryFrom<&RelIdentifier> for Relations {
     type Error = ();
 
-    fn try_from(rel_id: &RelIdentifier) -> Result<Self, Self::Error> {
+    fn try_from(rel_id: &RelIdentifier) -> result::Result<Self, Self::Error> {
         match rel_id {
             RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()),
             RelIdentifier::RelId(id) => Relations::try_from(*id),
         }
-    }
-}
-
-impl Value {
-    fn from_val_ref(v: &dyn DDVal) -> &Value {
-        v.as_any().downcast_ref::<Value>().unwrap()
-    }
-    pub fn from_val_mut_ref(v: &mut dyn DDVal) -> &mut Value {
-        v.as_mut_any().downcast_mut::<Value>().unwrap()
-    }
-    pub fn from_ddval_ref(v: &DDValue) -> &Value {
-        Self::from_val_ref(v.val())
-    }
-    pub fn from_ddval_mut_ref(v: &mut DDValue) -> &mut Value {
-        Self::from_val_mut_ref(v.mut_val())
-    }
-    pub fn from_ddval(v: DDValue) -> sync::Arc<Value> {
-        Self::from_val(v.into_val())
-    }
-    pub fn from_val(v: sync::Arc<dyn DDVal>) -> sync::Arc<Value> {
-        v.into_any().downcast::<Value>().unwrap()
-    }
-    pub fn into_ddval(self) -> DDValue {
-        DDValue::new(sync::Arc::new(self))
-    }
-}
-
-#[typetag::serde]
-impl DDVal for Value {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-    fn into_any(self: sync::Arc<Self>) -> sync::Arc<dyn std::any::Any + 'static + Send + Sync> {
-        self
-    }
-    fn val_eq(&self, other: &dyn DDVal) -> bool {
-        self.eq(Value::from_val_ref(other))
-    }
-    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering> {
-        self.partial_cmp(Value::from_val_ref(other))
-    }
-    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
-        self.cmp(Value::from_val_ref(other))
-    }
-    fn val_clone(&self) -> sync::Arc<dyn DDVal> {
-        sync::Arc::new(self.clone())
-    }
-    fn val_hash(&self, mut state: &mut dyn Hasher) {
-        self.hash(&mut state)
-    }
-    fn val_into_record(self: sync::Arc<Self>) -> record::Record {
-        (*self).clone().into_record()
-    }
-
-    fn val_mutate(&mut self, record: &record::Record) -> Result<(), String> {
-        record.mutate(self)
     }
 }
 
@@ -203,7 +146,7 @@ impl Relations {
 impl TryFrom<&str> for Relations {
     type Error = ();
 
-    fn try_from(rname: &str) -> Result<Self, Self::Error> {
+    fn try_from(rname: &str) -> result::Result<Self, Self::Error> {
         panic!("Relations::try_from::<&str> not implemented")
     }
 }
@@ -211,7 +154,7 @@ impl TryFrom<&str> for Relations {
 impl TryFrom<RelId> for Relations {
     type Error = ();
 
-    fn try_from(rid: RelId) -> Result<Self, Self::Error> {
+    fn try_from(rid: RelId) -> result::Result<Self, Self::Error> {
         panic!("Relations::try_from::<RelId> not implemented")
     }
 }
@@ -224,7 +167,7 @@ pub enum Indexes {
 impl TryFrom<&str> for Indexes {
     type Error = ();
 
-    fn try_from(_iname: &str) -> Result<Self, Self::Error> {
+    fn try_from(_iname: &str) -> result::Result<Self, Self::Error> {
         panic!("Indexes::try_from::<&str> not implemented")
     }
 }
@@ -232,52 +175,26 @@ impl TryFrom<&str> for Indexes {
 impl TryFrom<IdxId> for Indexes {
     type Error = ();
 
-    fn try_from(_iid: IdxId) -> Result<Self, Self::Error> {
+    fn try_from(_iid: IdxId) -> result::Result<Self, Self::Error> {
         panic!("Indexes::try_from::<IdxId> not implemented")
     }
 }
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub enum Value {
-    empty(),
-    bool(bool),
-}
-
-impl Abomonation for Value {}
-
-impl Default for Value {
-    fn default() -> Value {
-        Value::bool(false)
-    }
-}
-
-impl fmt::Display for Value {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        panic!("Value::fmt not implemented")
-    }
-}
-
-impl IntoRecord for Value {
-    fn into_record(self) -> record::Record {
-        panic!("Value::into_record not implemented")
-    }
-}
-
-impl Mutator<Value> for record::Record {
-    fn mutate(&self, _x: &mut Value) -> Result<(), String> {
-        panic!("Value::mutate not implemented")
-    }
-}
-
-pub fn relval_from_record(_rel: Relations, _rec: &record::Record) -> Result<Value, String> {
+pub fn relval_from_record(
+    _rel: Relations,
+    _rec: &record::Record,
+) -> result::Result<DDValue, String> {
     panic!("relval_from_record not implemented")
 }
 
-pub fn relkey_from_record(_rel: Relations, _rec: &record::Record) -> Result<Value, String> {
+pub fn relkey_from_record(
+    _rel: Relations,
+    _rec: &record::Record,
+) -> result::Result<DDValue, String> {
     panic!("relkey_from_record not implemented")
 }
 
-pub fn idxkey_from_record(idx: Indexes, _rec: &record::Record) -> Result<Value, String> {
+pub fn idxkey_from_record(idx: Indexes, _rec: &record::Record) -> result::Result<DDValue, String> {
     panic!("idxkey_from_record not implemented")
 }
 
