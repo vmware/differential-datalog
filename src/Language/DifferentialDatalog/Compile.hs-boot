@@ -8,7 +8,6 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Type
 
 data CompilerConfig = CompilerConfig {
-    cconfBoxThreshold :: Int,
     cconfJava         :: Bool
 }
 

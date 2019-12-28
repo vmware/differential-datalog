@@ -179,7 +179,7 @@ impl<T: u64set::Fits64> FromIterator<T> for tinyset_Set64<T> {
     }
 }
 
-impl<T: Display + u64set::Fits64 + Ord> Display for tinyset_Set64<T> {
+impl<T: fmt::Display + u64set::Fits64 + Ord> fmt::Display for tinyset_Set64<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let len = self.x.len();
         formatter.write_str("[")?;

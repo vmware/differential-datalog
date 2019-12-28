@@ -5,7 +5,7 @@ use std::sync::Arc;
 use log::trace;
 use uid::Id;
 
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use differential_datalog::DDlog;

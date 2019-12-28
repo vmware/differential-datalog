@@ -4,7 +4,7 @@ use std::iter::Iterator;
 use std::ops::Deref;
 
 use crate::callback::Callback;
-use crate::program::DDValue;
+use crate::ddval::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;

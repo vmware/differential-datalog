@@ -25,197 +25,11 @@ use timely::worker::Worker;
 use differential_dataflow::operators::Join;
 use differential_dataflow::Collection;
 
+use crate::ddval::*;
 use crate::program::*;
 use crate::test_value::*;
-use crate::uint::*;
 
 const TEST_SIZE: u64 = 1000;
-
-fn _filter_fun1(v: &Value) -> bool {
-    match &v {
-        Value::S(S::S1 { .. }) => true,
-        _ => false,
-    }
-}
-
-fn some_fun(x: &u32) -> u32 {
-    (*x) + 1
-}
-
-fn _arrange_fun1(v: Value) -> Option<(Value, Value)> {
-    let (x, _2) = match &v {
-        Value::S(S::S1 {
-            f1: ref x,
-            f2: _0,
-            f3: _2,
-            f4: _3,
-        }) if *_0 == "foo".to_string() && *_3 == (Uint::from_u64(32) & Uint::from_u64(0xff)) => {
-            (x, _2)
-        }
-        _ => return None,
-    };
-    if (*_2).f1 && (*x) + 1 > 5 {
-        return None;
-    };
-    if some_fun(x) > 5 {
-        return None;
-    };
-    if some_fun(&((*x) + 1)) > 5 {
-        return None;
-    };
-    if {
-        let y = 5;
-        some_fun(&y) > 5
-    } {
-        return None;
-    };
-    if {
-        let x = 0;
-        x < 4
-    } {
-        return None;
-    };
-    if (*_2
-        == Q {
-            f1: _2.f1,
-            f2: _2.f2.clone(),
-        })
-    {
-        return None;
-    };
-    if {
-        let v = &((*x) + 1);
-        (*v) > 0
-    } {
-        return None;
-    };
-    if {
-        let v = &(*_2).f1;
-        *v
-    } {
-        return None;
-    };
-    if {
-        let V = _2.f1;
-        V
-    } {
-        return None;
-    };
-    if {
-        let s = &mut S::S1 {
-            f1: 0,
-            f2: "foo".to_string(),
-            f3: Q {
-                f1: true,
-                f2: "bar".to_string(),
-            },
-            f4: Uint::from_u64(10),
-        };
-        *s.f1() = 5;
-        let q = s.f1();
-        (*q) > 0
-        //q == Q{f1: false, f2: "buzz".to_string()}
-    } {
-        return None;
-    };
-    if {
-        let ref mut p = P {
-            f1: Q {
-                f1: true,
-                f2: "x".to_string(),
-            },
-            f2: true,
-        };
-        let ref mut b = false;
-        p.f1 = Q {
-            f1: true,
-            f2: "x".to_string(),
-        };
-        let ref mut _pf1 = p.f1.clone();
-        let ref mut _pf11 = p.f1.clone();
-        let ref mut _pf2 = p.f1.f1 || p.f1.f1;
-        let ref mut _pf22 = p.f2.clone();
-        let ref mut z = true;
-        let ref mut _pclone = p.clone();
-        let Q {
-            f1: ref mut qf1,
-            f2: ref mut qf2,
-        } = p.f1.clone();
-        *qf1 = true;
-        let ref mut neq = Q {
-            f1: *qf1,
-            f2: qf2.clone(),
-        };
-        *z = true;
-
-        //*f2 = false.clone();
-        //*f1 = Q{f1: true, f2: "x".to_string()};
-        let (ref mut _v1, ref mut _v2): (Q, bool) = (
-            Q {
-                f1: true,
-                f2: "x".to_string(),
-            },
-            false,
-        );
-        (*b) = false;
-
-        let ref mut s = S::S1 {
-            f1: 0,
-            f2: "f2".to_string(),
-            f3: neq.clone(),
-            f4: Uint::from_u64(10),
-        };
-        match s {
-            S::S1 { f1, .. } => {
-                *f1 = 2;
-            }
-            _ => return None,
-        };
-        /*
-        match p {
-            P{f1, f2: true} => *f1 = p.f1.clone(),
-            _               => return None
-        };*/
-        /*match &mut p.f1 {
-            Q{f1: true, f2} => *f2 = p.f1.f2.clone(),
-            _               => return None
-        };*/
-        let ref mut a: u64 = 5 as u64;
-        let ref mut b: u64 = 5;
-        let ref mut _c: u64 = *(a) + *(b);
-        *a = *a + *a + *a;
-        let ref mut str1: String = ("str1".to_string()) as String;
-        let ref mut str2 = "str2".to_string();
-        let ref mut _str3 = (*str1).push_str(str2.as_str());
-        let (ref mut _str4, _) = ("str4".to_string(), "str5".to_string());
-        match &(a, b) {
-            (5, _) => (),
-            _ => return None,
-        }
-        *z
-    } {
-        return None;
-    };
-    match *_2 {
-        Q { f1: true, .. } => {}
-        _ => return None,
-    }
-    Some((
-        Value::S(S::S3 {
-            g1: _2.clone(),
-            g2: _2.clone(),
-        }),
-        v.clone(),
-    ))
-}
-
-/*
-fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
-    match v {
-        Value::Tuple2(v1,v2) => Some((*v1, *v2)),
-        _ => None
-    }
-}*/
 
 /*fn set_update(s: &Arc<Mutex<Delta>>, ds: &Arc<Mutex<DeltaSet<Value>>>, x : &Value, insert: bool)
 {
@@ -251,12 +65,15 @@ fn arrange_fun1(v: Value) -> Option<(Value, Value)> {
     }
 }*/
 
-type Delta = BTreeMap<Value, Weight>;
+type Delta<T> = BTreeMap<T, Weight>;
 
-fn set_update(_rel: &str, s: &Arc<Mutex<Delta>>, x: &DDValue, w: Weight) {
+fn set_update<T>(_rel: &str, s: &Arc<Mutex<Delta<T>>>, x: &DDValue, w: Weight)
+where
+    T: Ord + DDValConvert + Clone,
+{
     let mut delta = s.lock().unwrap();
 
-    let entry = delta.entry(Value::from_ddval_ref(x).clone());
+    let entry = delta.entry(T::from_ddvalue_ref(x).clone());
     match entry {
         Entry::Vacant(vacant) => {
             vacant.insert(w);
@@ -297,7 +114,7 @@ fn test_insert_non_existent_relation() {
 
     let mut running = prog.run(3).unwrap();
     running.transaction_start().unwrap();
-    let result = running.insert(1, Value::U64(42).into_ddval());
+    let result = running.insert(1, U64(42).into_ddvalue());
     assert_eq!(
         &result.unwrap_err(),
         "apply_updates: unknown input relation 1"
@@ -350,7 +167,7 @@ fn test_input_relation_nested() {
 /* Test insertion/deletion into a database with a single table and no rules
  */
 fn test_one_relation(nthreads: usize) {
-    let relset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel = {
         let relset1 = relset.clone();
         Relation {
@@ -376,11 +193,11 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -391,7 +208,7 @@ fn test_one_relation(nthreads: usize) {
     running.transaction_start().unwrap();
     for (x, _) in &set {
         set2.remove(x);
-        running.delete_value(1, x.clone().into_ddval()).unwrap();
+        running.delete_value(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(), set2);
     }
     running.transaction_commit().unwrap();
@@ -399,17 +216,17 @@ fn test_one_relation(nthreads: usize) {
 
     /* 3. Test set semantics: insert twice, delete once */
     running.transaction_start().unwrap();
-    running.insert(1, Value::U64(1).into_ddval()).unwrap();
-    running.insert(1, Value::U64(1).into_ddval()).unwrap();
-    running.delete_value(1, Value::U64(1).into_ddval()).unwrap();
+    running.insert(1, U64(1).into_ddvalue()).unwrap();
+    running.insert(1, U64(1).into_ddvalue()).unwrap();
+    running.delete_value(1, U64(1).into_ddvalue()).unwrap();
     running.transaction_commit().unwrap();
 
     assert_eq!(relset.lock().unwrap().len(), 0);
 
     /* 4. Set semantics: delete before insert */
     running.transaction_start().unwrap();
-    running.delete_value(1, Value::U64(1).into_ddval()).unwrap();
-    running.insert(1, Value::U64(1).into_ddval()).unwrap();
+    running.delete_value(1, U64(1).into_ddvalue()).unwrap();
+    running.insert(1, U64(1).into_ddvalue()).unwrap();
     running.transaction_commit().unwrap();
 
     assert_eq!(relset.lock().unwrap().len(), 1);
@@ -418,7 +235,7 @@ fn test_one_relation(nthreads: usize) {
     let before = relset.lock().unwrap().clone();
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     //println!("delta: {:?}", *running.relation_delta(1).unwrap().lock().unwrap());
     //    assert_eq!(*relset.lock().unwrap(), set);
@@ -444,7 +261,7 @@ fn test_one_relation_multi() {
 /* Two tables + 1 rule that keeps the two synchronized
  */
 fn test_two_relations(nthreads: usize) {
-    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -460,7 +277,7 @@ fn test_two_relations(nthreads: usize) {
             })))),
         }
     };
-    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset2: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -490,11 +307,11 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     }
@@ -506,7 +323,7 @@ fn test_two_relations(nthreads: usize) {
     /* 2. Clear T1 */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.delete_value(1, x.clone().into_ddval()).unwrap();
+        running.delete_value(1, x.clone().into_ddvalue()).unwrap();
         //        assert_eq!(running.relation_clone_content(1).unwrap(),
         //                   running.relation_clone_content(2).unwrap());
     }
@@ -518,7 +335,7 @@ fn test_two_relations(nthreads: usize) {
     /* 3. Rollback */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
     }
@@ -543,7 +360,7 @@ fn test_two_relations_multi() {
 /* Semijoin
  */
 fn test_semijoin(nthreads: usize) {
-    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -560,19 +377,15 @@ fn test_semijoin(nthreads: usize) {
         }
     };
     fn fmfun1(v: DDValue) -> Option<DDValue> {
-        match (*Value::from_ddval(v)).clone() {
-            Value::Tuple2(v1, _v2) => Some(v1.into_ddval()),
-            _ => None,
-        }
+        let Tuple2(ref v1, ref _v2) = *Tuple2::<U64>::from_ddvalue(v);
+        Some(v1.clone().into_ddvalue())
     }
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match (*Value::from_ddval(v)).clone() {
-            Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
-            _ => None,
-        }
+        let Tuple2(ref v1, ref v2) = *Tuple2::<U64>::from_ddvalue(v);
+        Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
 
-    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -594,15 +407,15 @@ fn test_semijoin(nthreads: usize) {
     };
     fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
         Some(
-            Value::Tuple2(
-                Box::new((*Value::from_ddval(v1.clone())).clone()),
-                Box::new((*Value::from_ddval(v1.clone())).clone()),
+            Tuple2(
+                Box::new((*U64::from_ddvalue(v1.clone())).clone()),
+                Box::new((*U64::from_ddvalue(v1.clone())).clone()),
             )
-            .into_ddval(),
+            .into_ddvalue(),
         )
     }
 
-    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset3: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -645,17 +458,15 @@ fn test_semijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| {
-        (
-            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
-            1,
-        )
-    }));
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
-        running.insert(2, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
+        running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -677,7 +488,7 @@ fn test_semijoin_multi() {
 /* Inner join
  */
 fn test_join(nthreads: usize) {
-    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -694,12 +505,10 @@ fn test_join(nthreads: usize) {
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match (*Value::from_ddval(v)).clone() {
-            Value::Tuple2(v1, v2) => Some((v1.into_ddval(), v2.into_ddval())),
-            _ => None,
-        }
+        let Tuple2(ref v1, ref v2) = *Tuple2::<U64>::from_ddvalue(v);
+        Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
-    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -721,15 +530,15 @@ fn test_join(nthreads: usize) {
     };
     fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
-            Value::Tuple2(
-                Box::new((*Value::from_ddval(v1.clone())).clone()),
-                Box::new((*Value::from_ddval(v2.clone())).clone()),
+            Tuple2(
+                Box::new((*U64::from_ddvalue_ref(v1)).clone()),
+                Box::new((*U64::from_ddvalue_ref(v2)).clone()),
             )
-            .into_ddval(),
+            .into_ddvalue(),
         )
     }
 
-    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset3: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -760,7 +569,7 @@ fn test_join(nthreads: usize) {
         }
     };
 
-    let relset4: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset4: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
@@ -789,11 +598,11 @@ fn test_join(nthreads: usize) {
                 let rel2 = collections.get(&2).unwrap();
                 let rel2_kv = rel2.flat_map(afun1);
                 rel1_kv.join(&rel2_kv).map(|(_, (v1, v2))| {
-                    Value::Tuple2(
-                        Box::new((*Value::from_ddval(v1)).clone()),
-                        Box::new((*Value::from_ddval(v2)).clone()),
+                    Tuple2(
+                        Box::new((*U64::from_ddvalue(v1)).clone()),
+                        Box::new((*U64::from_ddvalue(v2)).clone()),
                     )
-                    .into_ddval()
+                    .into_ddvalue()
                 })
             };
             collections.insert(4, rel4);
@@ -816,17 +625,15 @@ fn test_join(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| {
-        (
-            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
-            1,
-        )
-    }));
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
-        running.insert(2, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
+        running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -836,15 +643,15 @@ fn test_join(nthreads: usize) {
     let rel2dump = running.dump_arrangement((2, 0)).unwrap();
     assert_eq!(
         rel2dump,
-        BTreeSet::from_iter(vals.iter().map(|x| Value::U64(*x).into_ddval()))
+        BTreeSet::from_iter(vals.iter().map(|x| U64(*x).into_ddvalue()))
     );
 
     for key in vals.iter() {
         let vals = running
-            .query_arrangement((2, 0), Value::U64(*key).into_ddval())
+            .query_arrangement((2, 0), U64(*key).into_ddvalue())
             .unwrap();
         let mut expect = BTreeSet::new();
-        expect.insert(Value::U64(*key).into_ddval());
+        expect.insert(U64(*key).into_ddvalue());
         assert_eq!(vals, expect);
     }
 
@@ -864,7 +671,7 @@ fn test_join_multi() {
 /* Antijoin
  */
 fn test_antijoin(nthreads: usize) {
-    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -881,22 +688,11 @@ fn test_antijoin(nthreads: usize) {
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let (v1, v) = match Value::from_ddval_ref(&v) {
-            Value::Tuple2(v1, _) => ((**v1).clone().into_ddval(), v.clone()),
-            _ => return None,
-        };
-        Some((v1, v))
+        let Tuple2(ref v1, _) = Tuple2::<U64>::from_ddvalue_ref(&v);
+        Some(((*v1).clone().into_ddvalue(), v.clone()))
     }
 
-    fn _afunx(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let (v1, v2): (&bool, &bool) = match Value::from_ddval_ref(&v) {
-            Value::BoolTuple((v1, v2)) => (v1, v2),
-            _ => return None,
-        };
-        Some((Value::Bool(*v1).into_ddval(), Value::Bool(*v2).into_ddval()))
-    }
-
-    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -914,17 +710,15 @@ fn test_antijoin(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        match (*Value::from_ddval(v)).clone() {
-            Value::Tuple2(v1, _) => v1.into_ddval(),
-            _ => panic!("unexpected value"),
-        }
+        let Tuple2(ref v1, _) = *Tuple2::<U64>::from_ddvalue(v);
+        v1.clone().into_ddvalue()
     }
 
     fn fmnull_fun(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
 
-    let relset21: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset21: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel21 = {
         let relset21 = relset21.clone();
         Relation {
@@ -953,7 +747,7 @@ fn test_antijoin(nthreads: usize) {
         }
     };
 
-    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset3: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -996,18 +790,16 @@ fn test_antijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| {
-        (
-            Value::Tuple2(Box::new(Value::U64(*x)), Box::new(Value::U64(*x))),
-            1,
-        )
-    }));
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
-        running.insert(2, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
+        running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -1016,7 +808,7 @@ fn test_antijoin(nthreads: usize) {
     /* 1. T2 is empty; antijoin is identical to T1 */
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.delete_value(2, x.clone().into_ddval()).unwrap();
+        running.delete_value(2, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
     assert_eq!(*relset3.lock().unwrap(), set);
@@ -1037,7 +829,7 @@ fn test_antijoin_multi() {
 /* Maps and filters
  */
 fn test_map(nthreads: usize) {
-    let relset1: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
@@ -1055,18 +847,16 @@ fn test_map(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        match Value::from_ddval_ref(&v) {
-            Value::U64(uv) => Value::U64(uv * 2).into_ddval(),
-            _ => v.clone(),
-        }
+        let U64(ref uv) = U64::from_ddvalue_ref(&v);
+        U64(uv.clone() * 2).into_ddvalue()
     }
 
     fn gfun3(v: DDValue) -> Option<(DDValue, DDValue)> {
-        Some((Value::Empty().into_ddval(), v))
+        Some((Empty {}.into_ddvalue(), v))
     }
 
     fn agfun3(_key: &DDValue, src: &[(&DDValue, Weight)]) -> DDValue {
-        Value::U64(src.len() as u64).into_ddval()
+        U64(src.len() as u64).into_ddvalue()
     }
 
     fn gfun4(v: DDValue) -> Option<(DDValue, DDValue)> {
@@ -1078,45 +868,35 @@ fn test_map(nthreads: usize) {
     }
 
     fn ffun(v: &DDValue) -> bool {
-        match Value::from_ddval_ref(&v) {
-            Value::U64(uv) => *uv > 10,
-            _ => false,
-        }
+        let U64(ref uv) = U64::from_ddvalue_ref(&v);
+        *uv > 10
     }
 
     fn fmfun(v: DDValue) -> Option<DDValue> {
-        match Value::from_ddval_ref(&v) {
-            Value::U64(uv) => {
-                if *uv > 12 {
-                    Some(Value::U64((*uv) * 2).into_ddval())
-                } else {
-                    None
-                }
-            }
-            _ => None,
+        let U64(uv) = U64::from_ddvalue_ref(&v);
+        if *uv > 12 {
+            Some(U64(uv.clone() * 2).into_ddvalue())
+        } else {
+            None
         }
     }
 
     fn flatmapfun(v: DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>> {
-        match Value::from_ddval_ref(&v) {
-            Value::U64(i) => {
-                if *i > 12 {
-                    Some(Box::new(
-                        vec![
-                            Value::I64(-(*i as i64)).into_ddval(),
-                            Value::I64(-(2 * (*i as i64))).into_ddval(),
-                        ]
-                        .into_iter(),
-                    ))
-                } else {
-                    None
-                }
-            }
-            _ => None,
+        let U64(i) = U64::from_ddvalue_ref(&v);
+        if *i > 12 {
+            Some(Box::new(
+                vec![
+                    I64(-(*i as i64)).into_ddvalue(),
+                    I64(-(2 * (*i as i64))).into_ddvalue(),
+                ]
+                .into_iter(),
+            ))
+        } else {
+            None
         }
     }
 
-    let relset2: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset2: Arc<Mutex<Delta<I64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
@@ -1152,7 +932,7 @@ fn test_map(nthreads: usize) {
             })))),
         }
     };
-    let relset3: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset3: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
@@ -1182,7 +962,7 @@ fn test_map(nthreads: usize) {
         }
     };
 
-    let relset4: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let relset4: Arc<Mutex<Delta<I64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
@@ -1225,10 +1005,10 @@ fn test_map(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (Value::U64(*x), 1)));
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
     let expected2 = BTreeMap::from_iter(
         vals.iter()
-            .map(|x| Value::U64(*x).into_ddval())
+            .map(|x| U64(*x).into_ddvalue())
             .map(|x| mfun(x))
             .filter(|x| ffun(&x))
             .filter_map(|x| fmfun(x))
@@ -1236,14 +1016,14 @@ fn test_map(nthreads: usize) {
                 Some(iter) => iter,
                 None => Box::new(None.into_iter()),
             })
-            .map(|x| ((*Value::from_ddval(x)).clone(), 1)),
+            .map(|x| ((*I64::from_ddvalue(x)).clone(), 1)),
     );
     let mut expected3 = BTreeMap::default();
-    expected3.insert(Value::U64(expected2.len() as u64), 1);
+    expected3.insert(U64(expected2.len() as u64), 1);
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
 
@@ -1268,20 +1048,15 @@ fn test_map_multi() {
 */
 fn test_recursion(nthreads: usize) {
     fn arrange_by_fst(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match Value::from_ddval_ref(&v) {
-            Value::Tuple2(fst, snd) => {
-                Some(((**fst).clone().into_ddval(), (**snd).clone().into_ddval()))
-            }
-            _ => None,
-        }
+        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        Some(((*fst).clone().into_ddvalue(), (*snd).clone().into_ddvalue()))
     }
     fn arrange_by_snd(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match Value::from_ddval_ref(&v) {
-            Value::Tuple2(fst, snd) => {
-                Some(((**snd).clone().into_ddval(), (**fst).clone().into_ddval()))
-            }
-            _ => None,
-        }
+        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        Some((
+            (**snd).clone().into_ddvalue(),
+            (**fst).clone().into_ddvalue(),
+        ))
     }
     fn anti_arrange1(v: DDValue) -> Option<(DDValue, DDValue)> {
         //println!("anti_arrange({:?})", v);
@@ -1291,32 +1066,30 @@ fn test_recursion(nthreads: usize) {
     }
 
     fn anti_arrange2(v: DDValue) -> Option<(DDValue, DDValue)> {
-        match Value::from_ddval_ref(&v) {
-            Value::Tuple2(fst, snd) => Some((
-                Value::Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())).into_ddval(),
-                v.clone(),
-            )),
-            _ => None,
-        }
+        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        Some((
+            Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())).into_ddvalue(),
+            v.clone(),
+        ))
     }
 
     fn jfun(_parent: &DDValue, ancestor: &DDValue, child: &DDValue) -> Option<DDValue> {
         Some(
-            Value::Tuple2(
-                Box::new(Value::from_ddval_ref(ancestor).clone()),
-                Box::new(Value::from_ddval_ref(child).clone()),
+            Tuple2(
+                Box::new(String::from_ddvalue_ref(ancestor).clone()),
+                Box::new(String::from_ddvalue_ref(child).clone()),
             )
-            .into_ddval(),
+            .into_ddvalue(),
         )
     }
 
     fn jfun2(_ancestor: &DDValue, descendant1: &DDValue, descendant2: &DDValue) -> Option<DDValue> {
         Some(
-            Value::Tuple2(
-                Box::new(Value::from_ddval_ref(descendant1).clone()),
-                Box::new(Value::from_ddval_ref(descendant2).clone()),
+            Tuple2(
+                Box::new(String::from_ddvalue_ref(descendant1).clone()),
+                Box::new(String::from_ddvalue_ref(descendant2).clone()),
             )
-            .into_ddval(),
+            .into_ddvalue(),
         )
     }
 
@@ -1324,7 +1097,7 @@ fn test_recursion(nthreads: usize) {
         Some(v)
     }
 
-    let parentset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let parentset: Arc<Mutex<Delta<Tuple2<String>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let parent = {
         let parentset = parentset.clone();
         Relation {
@@ -1345,7 +1118,7 @@ fn test_recursion(nthreads: usize) {
         }
     };
 
-    let ancestorset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let ancestorset: Arc<Mutex<Delta<Tuple2<String>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let ancestor = {
         let ancestorset = ancestorset.clone();
         Relation {
@@ -1396,13 +1169,12 @@ fn test_recursion(nthreads: usize) {
     };
 
     fn ffun(v: &DDValue) -> bool {
-        match Value::from_ddval_ref(&v) {
-            Value::Tuple2(fst, snd) => fst != snd,
-            _ => false,
-        }
+        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        *fst != *snd
     }
 
-    let common_ancestorset: Arc<Mutex<Delta>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let common_ancestorset: Arc<Mutex<Delta<Tuple2<String>>>> =
+        Arc::new(Mutex::new(BTreeMap::default()));
     let common_ancestor = {
         let common_ancestorset = common_ancestorset.clone();
         Relation {
@@ -1477,93 +1249,93 @@ fn test_recursion(nthreads: usize) {
         |-->E
     */
     let vals = vec![
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("B".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("B".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("C".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("E".to_string())),
         ),
     ];
     let set = BTreeMap::from_iter(vals.iter().map(|x| (x.clone(), 1)));
 
     let expect_vals = vec![
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("B".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("B".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("C".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("E".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("C".to_string())),
         ),
     ];
 
     let expect_set = BTreeMap::from_iter(expect_vals.iter().map(|x| (x.clone(), 1)));
 
     let expect_vals2 = vec![
-        Value::Tuple2(
-            Box::new(Value::String("C".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("C".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("D".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("D".to_string())),
+            Box::new(String("C".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("C".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("C".to_string())),
+            Box::new(String("E".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("E".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("E".to_string())),
+            Box::new(String("C".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("D".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("D".to_string())),
+            Box::new(String("E".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("E".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("E".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("E".to_string())),
-            Box::new(Value::String("B".to_string())),
+        Tuple2(
+            Box::new(String("E".to_string())),
+            Box::new(String("B".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("E".to_string())),
         ),
     ];
     let expect_set2 = BTreeMap::from_iter(expect_vals2.iter().map(|x| (x.clone(), 1)));
 
     running.transaction_start().unwrap();
     for (x, _) in &set {
-        running.insert(1, x.clone().into_ddval()).unwrap();
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
     //println!("commit done");
@@ -1575,22 +1347,22 @@ fn test_recursion(nthreads: usize) {
     /* 2. Remove record from "parent" relation */
     running.transaction_start().unwrap();
     running
-        .delete_value(1, vals[0].clone().into_ddval())
+        .delete_value(1, vals[0].clone().into_ddvalue())
         .unwrap();
     running.transaction_commit().unwrap();
 
     let expect_vals3 = vec![
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("C".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("B".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("B".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("A".to_string())),
-            Box::new(Value::String("E".to_string())),
+        Tuple2(
+            Box::new(String("A".to_string())),
+            Box::new(String("E".to_string())),
         ),
     ];
     let expect_set3 = BTreeMap::from_iter(expect_vals3.iter().map(|x| (x.clone(), 1)));
@@ -1598,13 +1370,13 @@ fn test_recursion(nthreads: usize) {
     assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
 
     let expect_vals4 = vec![
-        Value::Tuple2(
-            Box::new(Value::String("C".to_string())),
-            Box::new(Value::String("D".to_string())),
+        Tuple2(
+            Box::new(String("C".to_string())),
+            Box::new(String("D".to_string())),
         ),
-        Value::Tuple2(
-            Box::new(Value::String("D".to_string())),
-            Box::new(Value::String("C".to_string())),
+        Tuple2(
+            Box::new(String("D".to_string())),
+            Box::new(String("C".to_string())),
         ),
     ];
     let expect_set4 = BTreeMap::from_iter(expect_vals4.iter().map(|x| (x.clone(), 1)));

@@ -15,6 +15,7 @@ use std::time::Duration;
 use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
 use datalog_example_ddlog::*;
+use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
 use differential_datalog::DDlog;
@@ -166,7 +167,7 @@ fn handle_cmd(
             .map_err(|_| format!("Unknown index {}", idx))
             .and_then(|idxid| {
                 idxkey_from_record(idxid, &key)
-                    .and_then(|keyval| hddlog.query_index(idxid as IdxId, keyval.into_ddval()))
+                    .and_then(|keyval| hddlog.query_index(idxid as IdxId, keyval))
             })
             .map(|vals| {
                 for val in vals.into_iter() {

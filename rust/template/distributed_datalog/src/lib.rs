@@ -29,7 +29,6 @@
     type_alias_bounds,
     tyvar_behind_raw_pointer,
     unconditional_recursion,
-    unions_with_drop_fields,
     unreachable_code,
     unreachable_patterns,
     unstable_features,

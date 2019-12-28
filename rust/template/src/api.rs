@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use libc::size_t;
 
+use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record;
 use differential_datalog::record::IntoRecord;
@@ -471,7 +472,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
             let val = relval_from_record(relid, rec)?;
             Ok(Update::Insert {
                 relid: relid as RelId,
-                v: val.into_ddval(),
+                v: val,
             })
         }
         record::UpdCmd::Delete(rident, rec) => {
@@ -480,7 +481,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
             let val = relval_from_record(relid, rec)?;
             Ok(Update::DeleteValue {
                 relid: relid as RelId,
-                v: val.into_ddval(),
+                v: val,
             })
         }
         record::UpdCmd::DeleteKey(rident, rec) => {
@@ -489,7 +490,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
             let key = relkey_from_record(relid, rec)?;
             Ok(Update::DeleteKey {
                 relid: relid as RelId,
-                k: key.into_ddval(),
+                k: key,
             })
         }
         record::UpdCmd::Modify(rident, key, rec) => {
@@ -498,7 +499,7 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
             let key = relkey_from_record(relid, key)?;
             Ok(Update::Modify {
                 relid: relid as RelId,
-                k: key.into_ddval(),
+                k: key,
                 m: Arc::new(rec.clone()),
             })
         }
@@ -801,16 +802,17 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
     };
     let prog = Arc::from_raw(prog);
 
-    let ret = prog
-        .query_index_from_flatbuf(slice::from_raw_parts(buf, n))
-        .map(|res| {
-            let (fbvec, fboffset) = flatbuf::values_to_flatbuf(res.iter());
-            *resbuf = fbvec.as_ptr();
-            *resbuf_size = fbvec.len() as libc::size_t;
-            *resbuf_capacity = fbvec.capacity() as libc::size_t;
-            *resbuf_offset = fboffset as libc::size_t;
-            mem::forget(fbvec);
-            0
+    let ret = flatbuf::query_from_flatbuf(slice::from_raw_parts(buf, n))
+        .and_then(|(idxid, key)| {
+            prog.query_index(idxid, key).map(|res| {
+                let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
+                *resbuf = fbvec.as_ptr();
+                *resbuf_size = fbvec.len() as libc::size_t;
+                *resbuf_capacity = fbvec.capacity() as libc::size_t;
+                *resbuf_offset = fboffset as libc::size_t;
+                mem::forget(fbvec);
+                0
+            })
         })
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_query_index_from_flatbuf(): error: {}", e));
@@ -865,7 +867,7 @@ pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
     let ret = prog
         .dump_index(idxid as IdxId)
         .map(|res| {
-            let (fbvec, fboffset) = flatbuf::values_to_flatbuf(res.iter());
+            let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
             *resbuf = fbvec.as_ptr();
             *resbuf_size = fbvec.len() as libc::size_t;
             *resbuf_capacity = fbvec.capacity() as libc::size_t;

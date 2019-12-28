@@ -12,7 +12,7 @@ use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
 
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use differential_datalog::record::Record;

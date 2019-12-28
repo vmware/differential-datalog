@@ -2,7 +2,7 @@ use std::any::Any;
 use std::sync::Mutex;
 
 use differential_datalog::program::Update;
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;

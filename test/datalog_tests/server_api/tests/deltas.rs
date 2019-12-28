@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::thread::spawn;
 
 use differential_datalog::program::Update;
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::DDlog;
 use distributed_datalog::await_expected;

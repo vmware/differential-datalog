@@ -22,7 +22,7 @@ use uid::Id;
 use cmd_parser::err_str;
 use cmd_parser::parse_command;
 use cmd_parser::Command;
-use differential_datalog::program::DDValue;
+use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::DDlogConvert;
 
@@ -262,10 +262,11 @@ mod tests {
     use tempfile::NamedTempFile;
     use test_env_log::test;
 
+    use differential_datalog::ddval::DDValConvert;
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
-    use differential_datalog::test_value::Value;
+    use differential_datalog::test_value::*;
 
     use crate::await_expected;
     use crate::MockObserver;
@@ -285,12 +286,12 @@ mod tests {
             unimplemented!()
         }
 
-        fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String> {
+        fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<DDValue>, std::string::String> {
             // Exact details do not matter in this context, so just fake
             // some data.
             Ok(Update::Insert {
                 relid: 0,
-                v: Value::Empty().into_ddval(),
+                v: Empty {}.into_ddvalue(),
             })
         }
     }

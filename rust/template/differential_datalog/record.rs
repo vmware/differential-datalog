@@ -1378,7 +1378,7 @@ macro_rules! decl_record_mutator_enum {
                                 ($n::$cons{$($arg),*}, stringify!($cons)) => {
                                     $(
                                         if let Some(arg_upd) = $crate::record::arg_find(args, stringify!($arg)) {
-                                            <dyn Mutator<$type>>::mutate(arg_upd, $arg)?;
+                                            <dyn $crate::record::Mutator<$type>>::mutate(arg_upd, $arg)?;
                                         };
                                      )*
                                 },

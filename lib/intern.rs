@@ -1,5 +1,5 @@
 use differential_datalog::record;
-use differential_datalog::record::Record;
+use differential_datalog::record::*;
 use lazy_static::lazy_static;
 use serde;
 use std::collections;

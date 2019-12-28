@@ -1384,62 +1384,62 @@ jReadField nesting fbctx e t =
 
 rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
 rustValueFromFlatbuf =
-    "impl Value {"                                                                                  $$
-    "    fn relval_from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<Self> {"                  $$
-    "        match relid {"                                                                         $$
-    (nest' $ nest' $ nest' $ vcat rel_enums)                                                        $$
-    "            _ => Err(format!(\"Value::relval_from_flatbuf: invalid relid {}\", relid))"        $$
-    "        }"                                                                                     $$
-    "    }"                                                                                         $$
-    "    fn idxkey_from_flatbuf(idxid: IdxId, v: fbrt::Table) -> Response<Self> {"                  $$
-    "        match idxid {"                                                                         $$
-    (nest' $ nest' $ nest' $ vcat idx_enums)                                                        $$
-    "            _ => Err(format!(\"Value::idxkey_from_flatbuf: invalid idxid {}\", idxid))"        $$
-    "        }"                                                                                     $$
-    "    }"                                                                                         $$
-    "}"                                                                                             $$
-    "impl <'b> ToFlatBuffer<'b> for Value {"                                                        $$
-    "    type Target = (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>);"                       $$
-    "    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {"             $$
-    "        match self {"                                                                          $$
-    (nest' $ nest' $ nest' $ vcat to_enums)                                                         $$
-    "            val => panic!(\"Value::to_flatbuf: invalid value {}\", val)"                       $$
-    "        }"                                                                                     $$
-    "    }"                                                                                         $$
-    "}"                                                                                             $$
-    "impl <'b> ToFlatBufferTable<'b> for Value {"                                                   $$
-    "    type Target = fb::__ValueTable<'b>;"                                                       $$
-    "    fn to_flatbuf_table(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<Self::Target> {"  $$
-    "        let (v_type, v) = self.to_flatbuf(fbb);"                                               $$
-    "        let v = Some(v);"                                                                      $$
-    "        fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
-    "    }"                                                                                         $$
-    "}"                                                                                             $$
-    "impl <'b> ToFlatBufferVectorElement<'b> for Value {"                                           $$
-    "    type Target = fbrt::WIPOffset<fb::__ValueTable<'b>>;"                                      $$
-    "    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {" $$
-    "        self.to_flatbuf_table(fbb)"                                                            $$
-    "    }"                                                                                         $$
+    "fn relval_from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<DDValue> {"               $$
+    "    match relid {"                                                                         $$
+    (nest' $ nest' $ vcat rel_enums)                                                            $$
+    "        _ => Err(format!(\"DDValue::relval_from_flatbuf: invalid relid {}\", relid))"      $$
+    "    }"                                                                                     $$
+    "}"                                                                                         $$
+    "fn idxkey_from_flatbuf(idxid: IdxId, v: fbrt::Table) -> Response<DDValue> {"               $$
+    "    match idxid {"                                                                         $$
+    (nest' $ nest' $ vcat idx_enums)                                                            $$
+    "        _ => Err(format!(\"DDValue::idxkey_from_flatbuf: invalid idxid {}\", idxid))"      $$
+    "    }"                                                                                     $$
+    "}"                                                                                         $$
+    "fn relval_to_flatbuf<'b>(relid: RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
+    "    match relid {"                                                                         $$
+    (nest' $ nest' $ vcat rel_to_enums)                                                         $$
+    "        val => panic!(\"relval_to_flatbuf: invalid relid {}\", relid)"                     $$
+    "    }"                                                                                     $$
+    "}"                                                                                         $$
+    "fn relval_to_flatbuf_table<'b>(relid: RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
+    "    let (v_type, v) = relval_to_flatbuf(relid, val, fbb);"                                 $$
+    "    let v = Some(v);"                                                                      $$
+    "    fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
+    "}"                                                                                         $$
+    "fn idxval_to_flatbuf<'b>(idxid: IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
+    "    match idxid {"                                                                         $$
+    (nest' $ nest' $ vcat idx_to_enums)                                                         $$
+    "        val => panic!(\"idxval_to_flatbuf: invalid idxid {}\", idxid)"                     $$
+    "    }"                                                                                     $$
+    "}"                                                                                         $$
+    "fn idxval_to_flatbuf_vector_element<'b>(idxid: IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
+    "    let (v_type, v) = idxval_to_flatbuf(idxid, val, fbb);"                                 $$
+    "    let v = Some(v);"                                                                      $$
+    "    fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
     "}"
     where
     rel_enums = map (\rel@Relation{..} ->
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
                          R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
-                                   relType <> "),")
+                                   relType <> ".into_ddvalue()),")
                     progIORelations
     idx_enums = map (\idx@Index{..} ->
                      let t = idxKeyType idx in
                      pp (idxIdentifier ?d idx) <+> "=> Ok(" <>
-                         R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?") t <> "),")
+                         R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?") t <> ".into_ddvalue()),")
                     $ M.elems $ progIndexes ?d
-    to_enums = map (\t ->
-                    "Value::" <> R.mkValConstructorName ?d t <> "(v) => {"                                   $$
-                    "    (fb::__Value::" <> typeTableName t <> ", v.to_flatbuf_table(fbb).as_union_value())" $$
+    rel_to_enums = map (\rel@Relation{..} ->
+                    pp (relIdentifier ?d rel) <+> "=> {"                                                                           $$
+                    "    (fb::__Value::" <> typeTableName relType <> ", Value::" <> R.mkValConstructorName ?d relType <> "::from_ddvalue_ref(val).0.to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
-                   $ nubBy (\t1 t2 -> R.mkValConstructorName ?d t1 == R.mkValConstructorName ?d t2)
-                   $ map relType progIORelations ++
-                     map idxKeyType (M.elems $ progIndexes ?d) ++
-                     map (relType . idxRelation ?d) (M.elems $ progIndexes ?d)
+                   $ progIORelations
+    idx_to_enums = map (\idx@Index{..} ->
+                    let t = relType $ idxRelation ?d idx in
+                    pp (idxIdentifier ?d idx) <+> "=> {"                                                                           $$
+                    "    (fb::__Value::" <> typeTableName t <> ", Value::" <> R.mkValConstructorName ?d t <> "::from_ddvalue_ref(val).0.to_flatbuf_table(fbb).as_union_value())"   $$
+                    "},")
+                   $ M.elems $ progIndexes ?d
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.
