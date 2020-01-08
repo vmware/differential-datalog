@@ -14,16 +14,15 @@ package com.vmware.ddlog.ir;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
-import java.util.List;
 
 public class DDlogFunction implements DDlogIRNode {
     final String name;
-    final List<DDlogFuncArg> args;
+    final DDlogFuncArg[] args;
     final DDlogType type;
     @Nullable
     final DDlogExpression def;
 
-    public DDlogFunction(String name, List<DDlogFuncArg> args, DDlogType type, @Nullable DDlogExpression def) {
+    public DDlogFunction(String name, DDlogType type, @Nullable DDlogExpression def, DDlogFuncArg... args) {
         this.name = name;
         this.args = args;
         this.type = type;
@@ -36,7 +35,7 @@ public class DDlogFunction implements DDlogIRNode {
         if (this.def == null)
             result = "extern ";
         result += "function " + this.name + "(" +
-            String.join(", ", Linq.map(this.args, DDlogFuncArg::toString)) + "):" +
+            String.join(", ", Linq.map(this.args, DDlogFuncArg::toString, String.class)) + "):" +
             this.type.toString();
         if (this.def != null)
             result += " =\n" + this.def.toString();

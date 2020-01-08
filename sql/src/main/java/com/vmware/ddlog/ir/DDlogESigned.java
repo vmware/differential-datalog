@@ -23,6 +23,10 @@ public class DDlogESigned extends DDlogExpression {
         this.ival = ival;
     }
 
+    public DDlogESigned(long value) {
+        this(64, BigInteger.valueOf(value));
+    }
+
     @Override
     public String toString() {
         String result = "";

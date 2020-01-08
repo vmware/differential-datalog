@@ -83,9 +83,8 @@ public class Translator {
     }
 
     public DDlogProgram generateLibrary() {
-        return this.translationContext.generateLibrary();
+        return SqlSemantics.semantics.generateLibrary();
     }
-
 
     /**
      * Run an external process by executing the specified command.

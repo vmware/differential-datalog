@@ -28,6 +28,10 @@ public class DDlogTTuple extends DDlogType {
         this.tupArgs = tupArgs;
     }
 
+    public int size() {
+        return this.tupArgs.length;
+    }
+
     @Override
     public String toString() {
         return "(" + String.join(",",

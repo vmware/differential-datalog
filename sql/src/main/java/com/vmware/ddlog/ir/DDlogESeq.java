@@ -11,6 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
+import javax.annotation.Nullable;
+
 public class DDlogESeq extends DDlogExpression {
     private final DDlogExpression left;
     private final DDlogExpression right;
@@ -21,8 +23,22 @@ public class DDlogESeq extends DDlogExpression {
         this.right = right;
     }
 
+    @Nullable
+    public static DDlogExpression seq(DDlogExpression... seq) {
+        DDlogExpression result = null;
+        if (seq.length == 0)
+            return result;
+        for (DDlogExpression e: seq) {
+            if (result == null)
+                result = e;
+            else if (e != null)
+                result = new DDlogESeq(result, e);
+        }
+        return result;
+    }
+
     @Override
     public String toString() {
-        return "(" + this.left.toString() + "; " + this.right.toString() + ")";
+        return this.left.toString() + ";\n" + "(" + this.right.toString() + ")";
     }
 }
