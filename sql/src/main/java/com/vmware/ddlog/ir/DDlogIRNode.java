@@ -16,6 +16,11 @@ import javax.annotation.Nullable;
 public interface DDlogIRNode {
     String toString();
 
+    default CodeFormatter format(CodeFormatter formatter) {
+        formatter.append(this.toString());
+        return formatter;
+    }
+
     default <T> T checkNull(@Nullable T value) {
         if (value == null)
             throw new NullPointerException();

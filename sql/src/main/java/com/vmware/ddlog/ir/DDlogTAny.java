@@ -29,6 +29,8 @@ public class DDlogTAny extends DDlogType {
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
+        if (this.mayBeNull == mayBeNull)
+            return this;
         return new DDlogTAny(mayBeNull);
     }
 }

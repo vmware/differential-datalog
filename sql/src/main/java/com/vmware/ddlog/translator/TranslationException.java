@@ -16,7 +16,7 @@ import com.facebook.presto.sql.tree.NodeLocation;
 
 import javax.annotation.Nullable;
 
-class TranslationException extends RuntimeException {
+public class TranslationException extends RuntimeException {
     TranslationException(String message, @Nullable Node node) {
         super(message + "\n" + getPosition(node));
     }

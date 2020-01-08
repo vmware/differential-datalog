@@ -11,15 +11,13 @@
 
 package com.vmware.ddlog.ir;
 
-import java.util.List;
-
 public class DDlogRHSAggregate extends DDlogRuleRHS {
     final String var;
-    final List<String> groupBy;
+    final String[] groupBy;
     final String aggFunc;
     final DDlogExpression aggExpr;
 
-    public DDlogRHSAggregate(String var, List<String> groupBy, String aggFunc, DDlogExpression aggExpr) {
+    public DDlogRHSAggregate(String var, String aggFunc, DDlogExpression aggExpr, String... groupBy) {
         this.var = var;
         this.groupBy = groupBy;
         this.aggFunc = aggFunc;
@@ -28,8 +26,8 @@ public class DDlogRHSAggregate extends DDlogRuleRHS {
 
     @Override
     public String toString() {
-        return "var " + this.var + " = Aggregate(" +
-                String.join(", ", this.groupBy) + ", " + this.aggFunc +
+        return "var " + this.var + " = Aggregate((" +
+                String.join(", ", this.groupBy) + "), " + this.aggFunc +
                 "(" + this.aggExpr.toString() + "))";
     }
 }

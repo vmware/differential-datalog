@@ -13,22 +13,17 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Objects;
 
 public class DDlogTUser extends DDlogType {
     private final String name;
-    private final List<DDlogType> typeArgs;
+    private final DDlogType[] typeArgs;
 
-    public DDlogTUser(String name, List<DDlogType> typeArgs, boolean mayBeNull) {
+    public DDlogTUser(String name, boolean mayBeNull, DDlogType... typeArgs) {
         super(mayBeNull);
         this.name = name;
         this.typeArgs = typeArgs;
-    }
-
-    public DDlogTUser(String name, boolean mayBeNull) {
-        this(name, new ArrayList<DDlogType>(), mayBeNull);
     }
 
     public String getName() {
@@ -38,15 +33,17 @@ public class DDlogTUser extends DDlogType {
     @Override
     public String toString() {
         String result = this.name;
-        if (!this.typeArgs.isEmpty())
+        if (this.typeArgs.length > 0)
             result += "<" + String.join(", ",
-                    Linq.map(this.typeArgs, DDlogType::toString)) + ">";
+                    Linq.map(this.typeArgs, DDlogType::toString, String.class)) + ">";
         return this.wrapOption(result);
     }
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
-        return new DDlogTUser(this.name, this.typeArgs, mayBeNull);
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        return new DDlogTUser(this.name, mayBeNull, this.typeArgs);
     }
 
     @Override
@@ -55,11 +52,13 @@ public class DDlogTUser extends DDlogType {
         if (o == null || getClass() != o.getClass()) return false;
         DDlogTUser that = (DDlogTUser) o;
         return name.equals(that.name) &&
-                typeArgs.equals(that.typeArgs);
+                Arrays.equals(typeArgs, that.typeArgs);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, typeArgs);
+        int result = Objects.hash(name);
+        result = 31 * result + Arrays.hashCode(typeArgs);
+        return result;
     }
 }
