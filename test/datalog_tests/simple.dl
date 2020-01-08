@@ -1091,3 +1091,20 @@ LongJoin(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x
     Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19),
     Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19),
     Long(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19).
+
+typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}
+typedef Tt2 = Tt2{column1:signed<64>}
+typedef Ttmp0 = Ttmp0{col4:signed<64>}
+function agg1(g1: Group<(Tt1)>):Ttmp0 =
+    var first3 = true;
+    (var max5 = 64'sd0);
+    (for (i2 in g1) {
+        var v0 = i2;
+        (max5 = if first3 {
+            v0.column1
+        } else {
+            first3 = false;
+            0
+        })
+    });
+    (Ttmp0{.col4 = max5})

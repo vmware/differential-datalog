@@ -175,7 +175,7 @@ ctxMVars d ctx =
                                        in (plvars_not_iter, prvars_not_iter ++ [loopvar])
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
-         CtxSetR _ _              -> ([], plvars ++ prvars)
+         CtxSetR _ _              -> (plvars, prvars)
          CtxBinOpL _ _            -> ([], plvars ++ prvars)
          CtxBinOpR _ _            -> ([], plvars ++ prvars)
          CtxUnOp _ _              -> ([], plvars ++ prvars)
