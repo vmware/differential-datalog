@@ -148,7 +148,7 @@ typedef station = string
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'A>
 extern type std.Map<'K,'V>
-typedef std.Option<'A> = std.Some{x: 'A} | std.None{}
+typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
 extern type std.Ref<'A>
 extern type std.Set<'A>
@@ -666,6 +666,8 @@ Compare(.label="C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value=(C{.f1="a", .f2="b"} 
 Compare(.label="C0{32'd3} > C1{32'd4}", .value=(C0{.x=32'd3} > C1{.x=32'd4})).
 Compare(.label="C0{32'd3} < C0{32'd4}", .value=(C0{.x=32'd3} < C0{.x=32'd4})).
 Compare(.label="C0{32'd3} < C1{32'd4}", .value=(C0{.x=32'd3} < C1{.x=32'd4})).
+Compare(.label="None < Some{1}", .value=(std.None{} < std.Some{.x=1})).
+Compare(.label="Some{0} < Some{1}", .value=(std.Some{.x=0} < std.Some{.x=1})).
 VecTest(.x=std.vec_empty()).
 VecTest(.x=((var v: std.Vec<string>) = std.vec_empty();
             (std.vec_push(v, "Hello,");

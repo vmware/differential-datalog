@@ -163,6 +163,8 @@ Compare([|C{"a", "b"} < C{"a", "e"}|], C{"a", "b"} < C{"a", "e"}).
 Compare("C0{32'd3} > C1{32'd4}", C0{32'd3} > C1{32'd4}).
 Compare("C0{32'd3} < C0{32'd4}", C0{32'd3} < C0{32'd4}).
 Compare("C0{32'd3} < C1{32'd4}", C0{32'd3} < C1{32'd4}).
+Compare("None < Some{1}", None < Some{1}).
+Compare("Some{0} < Some{1}", Some{0} < Some{1}).
 
 function patterns(): () = {
     var a: Alt = C0{1};

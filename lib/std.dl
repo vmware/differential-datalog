@@ -1,7 +1,7 @@
 /* Description: DDlog "standard library" automatically imported into every module */
 
 /* Ensure that `log.rs` gets linked into the program even if noone imports
- * its functionality, as it exports the `ddlog_log_set_callback`, expected, e.g., 
+ * its functionality, as it exports the `ddlog_log_set_callback`, expected, e.g.,
  * by Java bindings. */
 import log
 
@@ -29,8 +29,8 @@ extern function pow32(base:'A, exp: bit<32>): 'A
  * Option
  */
 
-typedef Option<'A> = Some{x: 'A}
-                   | None
+typedef Option<'A> = None
+                   | Some{x: 'A}
 
 function is_none(x: Option<'A>): bool = {
     match (x) {

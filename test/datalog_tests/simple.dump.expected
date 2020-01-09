@@ -133,6 +133,8 @@ Compare{"C0{32'd3} < C1{32'd4}",true}
 Compare{"C0{32'd3} > C1{32'd4}",false}
 Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
 Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
+Compare{"None < Some{1}",true}
+Compare{"Some{0} < Some{1}",true}
 Compare{"true >= false",true}
 
 J:
@@ -333,6 +335,8 @@ Compare{"C0{32'd3} < C1{32'd4}",true}
 Compare{"C0{32'd3} > C1{32'd4}",false}
 Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
 Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
+Compare{"None < Some{1}",true}
+Compare{"Some{0} < Some{1}",true}
 Compare{"true >= false",true}
 
 J:
