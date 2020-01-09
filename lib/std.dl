@@ -17,8 +17,8 @@ extern function deref(x: Ref<'A>): 'A
 /*
  * max(), min()
  */
-extern function max(x: 'A, y: 'A): 'A
-extern function min(x: 'A, y: 'A): 'A
+function min(x: 'A, y: 'A): 'A = if (x < y) x else y
+function max(x: 'A, y: 'A): 'A = if (x > y) x else y
 
 /*
  * Arithmetic functions

@@ -91,23 +91,6 @@ where
     }
 }
 
-// min/max
-pub fn std_max<A: Ord + Clone>(x: &A, y: &A) -> A {
-    if *x >= *y {
-        x.clone()
-    } else {
-        y.clone()
-    }
-}
-
-pub fn std_min<A: Ord + Clone>(x: &A, y: &A) -> A {
-    if *x <= *y {
-        x.clone()
-    } else {
-        y.clone()
-    }
-}
-
 // Arithmetic functions
 pub fn std_pow32<T: num::One + ops::Mul + Clone>(base: &T, exp: &u32) -> T {
     num::pow::pow(base.clone(), *exp as usize)
