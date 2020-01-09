@@ -542,6 +542,7 @@ str3: ${str3}.|];
     var str6 = "${str1 ++ str2}";
     var str7 = "${{var x = str1 ++ str2; x}}";
     var str8 = "${{var x = str1 ++ str2; dummy(x)}}";
+    var b = str1 < str2;
     ()
 }
 
