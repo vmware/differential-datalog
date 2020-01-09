@@ -12,11 +12,7 @@
 package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
-
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
 
 public class DDlogTTuple extends DDlogType {
     final DDlogType[] tupArgs;

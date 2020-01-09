@@ -25,9 +25,9 @@ public class DDlogESeq extends DDlogExpression {
 
     @Nullable
     public static DDlogExpression seq(DDlogExpression... seq) {
-        DDlogExpression result = null;
         if (seq.length == 0)
-            return result;
+            return null;
+        DDlogExpression result = null;
         for (DDlogExpression e: seq) {
             if (result == null)
                 result = e;

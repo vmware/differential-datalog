@@ -194,7 +194,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     private DDlogType intermediateType(String aggregate, DDlogType aggregatedType) {
         switch (aggregate) {
             case "count":
-                return DDlogTSigned.signed64;
             case "sum":
                 return DDlogTSigned.signed64;
             case "min":
@@ -205,19 +204,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         DDlogTSigned.signed64,  // sum
                         DDlogTSigned.signed64   // count
                 );
-            default:
-                throw new RuntimeException("Unexpected aggregate: " + aggregate);
-        }
-    }
-
-    private DDlogType aggregateType(String aggregate, DDlogType aggregatedType) {
-        switch (aggregate) {
-            case "count":
-            case "avg": // TODO: this should be "double"
-                return DDlogTSigned.signed64;
-            case "min":
-            case "max":
-                return aggregatedType;
             default:
                 throw new RuntimeException("Unexpected aggregate: " + aggregate);
         }
