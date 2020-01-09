@@ -290,8 +290,8 @@ SI{C{"s"}}
 Dump SI_by_x:
 SI{C{"s"}}
 Dump TI_by_m:
-TI{std_Some{10}}
 TI{std_None{}}
+TI{std_Some{10}}
 Dump TI_by_some:
 TI{std_Some{10}}
 Dump TI_by_none:
@@ -345,8 +345,8 @@ Dump ZI4_by_self:
 Dump ZI5_by_self:
 {"key1"=>B{false}, "key2"=>A{"val2"}}
 Dump ZI6_by_self:
-std_Some{"ZI6"}
 std_None{}
+std_Some{"ZI6"}
 Dump ZI6_by_none:
 std_None{}
 Dump ZI7_by_self:
