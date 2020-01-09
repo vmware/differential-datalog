@@ -8,6 +8,28 @@ function strings(): () = {
 
 //---
 
+function strings(): () = {
+    var b = "" > 2;
+    ()
+}
+
+//---
+
+function strings(): () = {
+    var c = "" != 2;
+    ()
+}
+
+//---
+
+function strings(): () = {
+    var s = "string";
+    var d = s < true;
+    ()
+}
+
+//---
+
 typedef Type1 = Cons1 | Cons2
 
 function strings(): () = {
