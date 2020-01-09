@@ -44,11 +44,8 @@ function abs_N(value: Option<signed<64>>): Option<signed<64>> =
 function agg_count_R(left: signed<64>, right: 'T): signed<64> =
     left + 1
 
-function agg_min_R(left: signed<64>, right: signed<64>): signed<64> =
-    if (left < right) left else right
-
-function agg_max_R(left: signed<64>, right: signed<64>): signed<64> =
-    if (left > right) left else right
+function agg_min_R(left: 'T, right: 'T): 'T = min(left, right)
+function agg_max_R(left: 'T, right: 'T): 'T = max(left, right)
 
 function agg_sum_R(left: signed<64>, right: signed<64>): signed<64> =
     left + right
@@ -62,15 +59,15 @@ function agg_count_N(left: signed<64>, right: Option<'T>): signed<64> =
       None    -> left
    }
 
-function agg_min_N(left: signed<64>, right: Option<signed<64>>): signed<64> =
+function agg_min_N(left: 'T, right: Option<'T>): 'T =
    match (right) {
-      Some{x} -> if (left < x) left else x,
+      Some{x} -> min(left, x),
       None    -> left
    }
 
-function agg_max_N(left: signed<64>, right: Option<signed<64>>): signed<64> =
+function agg_max_N(left: 'T, right: Option<'T>): 'T =
     match (right) {
-        Some{x} -> if (left > x) left else x,
+        Some{x} -> max(left, x),
         None    -> left
     }
 
