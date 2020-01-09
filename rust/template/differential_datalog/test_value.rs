@@ -5,16 +5,14 @@ use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
 
-use crate::ddval::DDVal;
 use crate::record::IntoRecord;
 use crate::record::Mutator;
 use crate::record::Record;
 use crate::uint;
 
-/// `Value` type that implements `trait DDVal` and is thus useful for testing Rust modules that
-/// interact with the DDlog API, but do not define their own `DDVal` type.
+/// `Value` type that implements `trait DDValConvert` and is thus useful for testing Rust modules that
+/// interact with the DDlog API, but do not define their own value type.
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Empty {}
@@ -34,12 +32,9 @@ impl Mutator<Empty> for Record {
         unimplemented!("Empty::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for Empty {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {Empty}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Bool(pub bool);
@@ -59,12 +54,9 @@ impl Mutator<Bool> for Record {
         unimplemented!("Bool::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for Bool {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {Bool}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Uint(pub uint::Uint);
@@ -84,12 +76,9 @@ impl Mutator<Uint> for Record {
         unimplemented!("Uint::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for Uint {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {Uint}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct String(pub std::string::String);
@@ -109,12 +98,9 @@ impl Mutator<String> for Record {
         unimplemented!("String::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for String {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {String}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct U8(pub u8);
@@ -134,12 +120,9 @@ impl Mutator<U8> for Record {
         unimplemented!("U8::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for U8 {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {U8}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct U16(pub u16);
@@ -159,12 +142,9 @@ impl Mutator<U16> for Record {
         unimplemented!("U16::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for U16 {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {U16}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct U32(pub u32);
@@ -184,12 +164,9 @@ impl Mutator<U32> for Record {
         unimplemented!("U32::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for U32 {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {U32}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct U64(pub u64);
@@ -209,12 +186,9 @@ impl Mutator<U64> for Record {
         unimplemented!("U64::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for U64 {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {U64}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct I64(pub i64);
@@ -234,12 +208,9 @@ impl Mutator<I64> for Record {
         unimplemented!("I64::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for I64 {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {I64}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct BoolTuple(pub (bool, bool));
@@ -259,12 +230,9 @@ impl Mutator<BoolTuple> for Record {
         unimplemented!("BoolTuple::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for BoolTuple {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {BoolTuple}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Tuple2<T>(pub Box<T>, pub Box<T>);
@@ -284,18 +252,12 @@ impl<T> Mutator<Tuple2<T>> for Record {
         unimplemented!("Tuple2::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for Tuple2<U64> {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
-#[typetag::serde]
-impl DDVal for Tuple2<String> {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {Tuple2<U64>}
+
+// #[typetag::serde]
+decl_ddval_convert! {Tuple2<String>}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct Q {
@@ -318,12 +280,9 @@ impl Mutator<Q> for Record {
         unimplemented!("Q::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for Q {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {Q}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub enum S {
@@ -375,12 +334,9 @@ impl Mutator<S> for Record {
         unimplemented!("S::Mutator");
     }
 }
-#[typetag::serde]
-impl DDVal for S {
-    fn val_clone(&self) -> Arc<dyn DDVal> {
-        Arc::new(self.clone())
-    }
-}
+
+// #[typetag::serde]
+decl_ddval_convert! {S}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
 pub struct P {

@@ -1431,13 +1431,13 @@ rustValueFromFlatbuf =
                     $ M.elems $ progIndexes ?d
     rel_to_enums = map (\rel@Relation{..} ->
                     pp (relIdentifier ?d rel) <+> "=> {"                                                                           $$
-                    "    (fb::__Value::" <> typeTableName relType <> ", Value::" <> R.mkValConstructorName ?d relType <> "::from_ddvalue_ref(val).0.to_flatbuf_table(fbb).as_union_value())"   $$
+                    "    (fb::__Value::" <> typeTableName relType <> ", unsafe { Value::" <> R.mkValConstructorName ?d relType <> "::from_ddvalue_ref(val) }.0.to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
                    $ progIORelations
     idx_to_enums = map (\idx@Index{..} ->
                     let t = relType $ idxRelation ?d idx in
                     pp (idxIdentifier ?d idx) <+> "=> {"                                                                           $$
-                    "    (fb::__Value::" <> typeTableName t <> ", Value::" <> R.mkValConstructorName ?d t <> "::from_ddvalue_ref(val).0.to_flatbuf_table(fbb).as_union_value())"   $$
+                    "    (fb::__Value::" <> typeTableName t <> ", unsafe { Value::" <> R.mkValConstructorName ?d t <> "::from_ddvalue_ref(val) }.0.to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
                    $ M.elems $ progIndexes ?d
 

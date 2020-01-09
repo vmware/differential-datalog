@@ -13,6 +13,8 @@ mod valmap;
 mod variable;
 
 pub mod arcval;
+
+#[macro_use]
 pub mod ddval;
 pub mod int;
 pub mod program;

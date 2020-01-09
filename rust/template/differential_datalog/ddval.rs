@@ -1,10 +1,61 @@
-use std::any::Any;
+//! DDValue: Generic value type stored in all differential-dataflow relations.
+//!
+//! Rationale: Differential dataflow allows the user to assign an arbitrary user-defined type to
+//! each collection.  It relies on Rust's static dispatch mechanism to specialize its internal
+//! machinery for each user-defined type.  Unfortunately, beyond very simple programs this leads to
+//! extremely long compilation times.  One workaround that we used to rely on is to declare a
+//! single enum type with a variant per concrete type used in at least one relation.  This make
+//! compilation feasible, but still very slow (~6 minutes for a simple DDlog program and ~10
+//! minutes for complex programs).
+//!
+//! Another alternative we implement here is to use a fixed value type that does not depend on
+//! a concrete DDlog program and rely on dynamic dispatch to forward operations that DD expects
+//! all values to implement (comparison, hashing, etc.) to their concrete implementations.  This
+//! way this crate (differential-datalog) can be compiled all the way to binary code separately
+//! from the DDlog program using it and does not need to be re-compiled when the DDlog program
+//! changes.  Thus, the only part that must be re-compiled on changes to the DDlog code is the
+//! auto-generated crate that declares concrete value types and rules.  This is much faster than
+//! re-compiling both crates together.
+//!
+//! The next design decision is how to implement dynamic dispatch.  Rust trait objects is an
+//! obvious choice, with value type being declared as `Box<dyn SomeTrait>`.  However, this proved
+//! suboptimal in our experiments, as this design requires a dynamic memory allocation per value,
+//! no matter how small.  Furthermore, cloning a value (which DD does a lot, e.g., during
+//! compaction) requires another allocation.
+//!
+//! We improve over this naive design in two ways.  First, we use `Arc` instead of `Box`, which
+//! introduces extra space overhead to store the reference count, but avoids memory allocation due
+//! to cloning and shares the same heap allocation across multiple copies of the value.  Second, we
+//! store small objects <=`usize` bytes inline instead of wrapping them in an Arc to avoid dynamic
+//! memory allocation for such objects altogether.  Unfortunately, Rust's dynamic dispatch
+//! mechanism does not support this, so we roll our own instead, with the following `DDValue`
+//! declaration:
+//!
+//! ```
+//! use differential_datalog::ddval::*;
+//! pub struct DDValue {
+//!    val: DDVal,
+//!    vtable: &'static DDValMethods,
+//! }
+//! ```
+//!
+//! where `DDVal` is a `usize` that stores either an `Arc<T>` or `T` (where `T` is the actual type
+//! of value stored in the DDlog relation), and `DDValMethods` is a virtual table of methods that
+//! must be implemented for all DD values.
+//!
+//! This design still requires a separate heap allocation for each value >8 bytes, which slows
+//! things down quite a bit.  Nevertheless, it has the same performance as our earlier
+//! implementation using static dispatch and at least in some benchmarks uses less memory.  The
+//! only way to improve things further I can think of is to somehow co-design this with DD to use
+//! DD's knowledge of the context where a value is being created to, e.g., allocate blocks of
+//! values when possible.
+//!
+
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::sync::Arc;
 
 use serde::de::Deserialize;
 use serde::de::Deserializer;
@@ -17,96 +68,62 @@ use crate::record::IntoRecord;
 use crate::record::Mutator;
 use crate::record::Record;
 
-/// Trait for values that can be stored in DDlog relations.
-#[typetag::serde]
-pub trait DDVal: DDValMethods {
-    fn val_clone(&self) -> Arc<dyn DDVal>;
+/// Type-erased representation of a value.  Can store the actual value or a pointer to it.
+/// This could be just a `usize`, but we wrap it in a struct as we don't want it to implement
+/// `Copy`.
+pub struct DDVal {
+    pub v: usize,
 }
 
-pub trait DDValMethods: Send + Debug + Display + Sync + 'static {
-    fn as_any(&self) -> &dyn Any;
-    fn as_mut_any(&mut self) -> &mut dyn Any;
-    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync>;
-    fn val_into_record(self: Arc<Self>) -> Record;
-    fn val_eq(&self, other: &dyn DDVal) -> bool;
-    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering>;
-    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering;
-    fn val_hash(&self, state: &mut dyn Hasher);
-    fn val_mutate(&mut self, record: &Record) -> Result<(), String>;
-}
-
-impl<T> DDValMethods for T
-where
-    T: Eq + Ord + Clone + Send + Debug + Display + Sync + Hash + PartialOrd + IntoRecord + 'static,
-    Record: Mutator<T>,
-{
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_mut_any(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-    fn into_any(self: Arc<Self>) -> Arc<dyn Any + 'static + Send + Sync> {
-        self
-    }
-    fn val_eq(&self, other: &dyn DDVal) -> bool {
-        self.eq(other.as_any().downcast_ref::<T>().unwrap())
-    }
-    fn val_partial_cmp(&self, other: &dyn DDVal) -> Option<std::cmp::Ordering> {
-        self.partial_cmp(other.as_any().downcast_ref::<T>().unwrap())
-    }
-    fn val_cmp(&self, other: &dyn DDVal) -> std::cmp::Ordering {
-        self.cmp(other.as_any().downcast_ref::<T>().unwrap())
-    }
-    fn val_hash(&self, mut state: &mut dyn Hasher) {
-        self.hash(&mut state)
-    }
-    fn val_into_record(self: Arc<Self>) -> Record {
-        (*self).clone().into_record()
-    }
-    fn val_mutate(&mut self, record: &Record) -> Result<(), String> {
-        record.mutate(self)
-    }
-}
-
-#[derive(Debug)]
+/// DDValue: this type is stored in all DD collections.
+/// It consists of value and associated vtable.
 pub struct DDValue {
-    val: Arc<dyn DDVal>,
+    val: DDVal,
+    vtable: &'static DDValMethods,
+}
+
+/// vtable of methods to be implemented by every value stored in DD.
+pub struct DDValMethods {
+    pub clone: fn(this: &DDVal) -> DDVal,
+    pub into_record: fn(this: DDVal) -> Record,
+    pub eq: fn(this: &DDVal, other: &DDVal) -> bool,
+    pub partial_cmp: fn(this: &DDVal, other: &DDVal) -> Option<std::cmp::Ordering>,
+    pub cmp: fn(this: &DDVal, other: &DDVal) -> std::cmp::Ordering,
+    pub hash: fn(this: &DDVal, state: &mut dyn Hasher),
+    pub mutate: fn(this: &mut DDVal, record: &Record) -> Result<(), String>,
+    pub fmt_debug: fn(this: &DDVal, f: &mut Formatter) -> Result<(), std::fmt::Error>,
+    pub fmt_display: fn(this: &DDVal, f: &mut Formatter) -> Result<(), std::fmt::Error>,
+    pub drop: fn(this: &mut DDVal),
+    pub ddval_serialize: fn(this: &DDVal) -> &dyn DDValSerialize,
+}
+
+impl Drop for DDValue {
+    fn drop(&mut self) {
+        (self.vtable.drop)(&mut self.val);
+    }
 }
 
 impl DDValue {
-    pub fn new(val: Arc<dyn DDVal>) -> DDValue {
-        DDValue { val }
+    pub fn new(val: DDVal, vtable: &'static DDValMethods) -> DDValue {
+        DDValue { val, vtable }
     }
 
-    pub fn val(&self) -> &dyn DDVal {
-        &(*self.val)
-    }
-
-    pub fn mut_val(&mut self) -> &mut dyn DDVal {
-        // The borrow checker does not allow the following optimization.
-        /*if let Some(v) = Arc::get_mut(&mut self.val) {
-            return v;
-        };*/
-
-        self.val = (*self.val).val_clone();
-        Arc::get_mut(&mut self.val).unwrap()
-    }
-
-    pub fn into_val(self) -> Arc<dyn DDVal> {
-        self.val
+    pub fn into_ddval(self) -> DDVal {
+        let res = DDVal { v: self.val.v };
+        std::mem::forget(self);
+        res
     }
 }
 
 impl Mutator<DDValue> for Record {
     fn mutate(&self, x: &mut DDValue) -> Result<(), String> {
-        x.mut_val().val_mutate(self)
+        (x.vtable.mutate)(&mut x.val, self)
     }
 }
 
 impl IntoRecord for DDValue {
     fn into_record(self) -> Record {
-        self.val.val_into_record()
+        (self.vtable.into_record)(self.into_ddval())
     }
 }
 
@@ -127,7 +144,7 @@ impl Serialize for DDValue {
     where
         S: Serializer,
     {
-        self.val.serialize(serializer)
+        (self.vtable.ddval_serialize)(&self.val).serialize(serializer)
     }
 }
 
@@ -136,27 +153,32 @@ impl<'de> Deserialize<'de> for DDValue {
     where
         D: Deserializer<'de>,
     {
-        let val: Box<dyn DDVal> = Deserialize::deserialize(deserializer)?;
-        Ok(DDValue {
-            val: From::from(val),
-        })
+        let val: Box<dyn DDValSerialize> = Deserialize::deserialize(deserializer)?;
+        Ok(val.ddvalue())
     }
 }
 
 impl Display for DDValue {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        Display::fmt(&self.val, f)
+        (self.vtable.fmt_display)(&self.val, f)
     }
 }
+
+impl Debug for DDValue {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        (self.vtable.fmt_debug)(&self.val, f)
+    }
+}
+
 impl PartialOrd for DDValue {
     fn partial_cmp(&self, other: &DDValue) -> Option<std::cmp::Ordering> {
-        self.val.val_partial_cmp(&*other.val)
+        (self.vtable.partial_cmp)(&self.val, &other.val)
     }
 }
 
 impl PartialEq for DDValue {
     fn eq(&self, other: &Self) -> bool {
-        self.val.val_eq(&*other.val)
+        (self.vtable.eq)(&self.val, &other.val)
     }
 }
 
@@ -164,14 +186,15 @@ impl Eq for DDValue {}
 
 impl Ord for DDValue {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.val.val_cmp(&*other.val)
+        (self.vtable.cmp)(&self.val, &other.val)
     }
 }
 
 impl Clone for DDValue {
     fn clone(&self) -> Self {
         DDValue {
-            val: self.val.clone(),
+            val: (self.vtable.clone)(&self.val),
+            vtable: self.vtable,
         }
     }
 }
@@ -181,50 +204,220 @@ impl Hash for DDValue {
     where
         H: Hasher,
     {
-        self.val.val_hash(state)
+        (self.vtable.hash)(&self.val, state)
     }
 }
 
-/// Trait to convert `DDValue` into concrete value types and back.
-pub trait DDValConvert {
-    /// Extract reference to concrete type from `DDValue`.  Panics if `v` does not contain a
+/// Trait to convert `DDVal` into concrete value type and back.
+pub trait DDValConvert: Sized {
+    /// Extract reference to concrete type from `&DDVal`.  This causes undefined behavior
+    /// if `v` does not contain a value of type `Self`.
+    unsafe fn from_ddval_ref(v: &DDVal) -> &Self;
+
+    unsafe fn from_ddvalue_ref(v: &DDValue) -> &Self {
+        Self::from_ddval_ref(&v.val)
+    }
+
+    /// Extract mutable reference to concrete type from `&mut DDVal`.  This causes
+    /// undefined behavior if `v` does not contain a value of type `Self`.
+    unsafe fn from_ddval_mut_ref(v: &mut DDVal) -> &mut Self;
+
+    /// Extracts concrete value contained in `v`.  Panics if `v` does not contain a
     /// value of type `Self`.
-    fn from_ddvalue_ref(v: &DDValue) -> &Self;
+    unsafe fn from_ddval(v: DDVal) -> Self;
 
-    /// Extracts the concrete value contained in `v`.  Panics if `v` does not contain a value of
-    /// type `Self`.
-    fn from_ddvalue(v: DDValue) -> Arc<Self>;
+    unsafe fn from_ddvalue(v: DDValue) -> Self {
+        Self::from_ddval(v.into_ddval())
+    }
 
-    /// Extract reference to concrete type from `&dyn DDVal`.  Panics if `v` does not contain a
-    /// value of type `Self`.
-    fn from_ddval_ref(v: &dyn DDVal) -> &Self;
+    /// Convert a value to a `DDVal`, erasing its original type.  This is a safe conversion
+    /// that cannot fail.
+    fn into_ddval(self) -> DDVal;
 
-    /// Extracts the concrete value contained in `v`.  Panics if `v` does not contain a value of
-    /// type `Self`.
-    fn from_ddval(v: Arc<dyn DDVal>) -> Arc<Self>;
-
-    /// Wrap a value in a `DDValue`, erasing its original type.  This is a safe conversion that
-    /// cannot fail.
     fn into_ddvalue(self) -> DDValue;
 }
 
-impl<T> DDValConvert for T
-where
-    T: DDVal,
-{
-    fn from_ddvalue_ref(v: &DDValue) -> &T {
-        Self::from_ddval_ref(v.val())
-    }
-    fn from_ddvalue(v: DDValue) -> Arc<T> {
-        Self::from_ddval(v.into_val())
-    }
-    fn from_ddval_ref(v: &dyn DDVal) -> &T {
-        v.as_any().downcast_ref::<T>().unwrap()
-    }
-    fn from_ddval(v: Arc<dyn DDVal>) -> Arc<T> {
-        v.into_any().downcast::<T>().unwrap()
-    }
-    fn into_ddvalue(self) -> DDValue {
-        DDValue::new(Arc::new(self))
-    }
+#[typetag::serde]
+pub trait DDValSerialize {
+    fn ddvalue(&self) -> DDValue;
+}
+
+/// Macro to implement `DDValConvert` for type `t` that satisfies the following type bounds:
+///
+/// t: Eq + Ord + Clone + Send + Debug + Sync + Hash + PartialOrd + IntoRecord + 'static,
+/// Record: Mutator<t>
+///
+#[macro_export]
+macro_rules! decl_ddval_convert {
+    ( $t:ty ) => {
+        #[typetag::serde]
+        impl $crate::ddval::DDValSerialize for $t {
+            fn ddvalue(&self) -> $crate::ddval::DDValue {
+                $crate::ddval::DDValConvert::into_ddvalue(self.clone())
+            }
+        }
+
+        impl $crate::ddval::DDValConvert for $t {
+            unsafe fn from_ddval_ref(v: &$crate::ddval::DDVal) -> &Self {
+                if std::mem::size_of::<Self>() <= std::mem::size_of::<usize>() {
+                    &*(&v.v as *const usize as *const Self)
+                } else {
+                    &*(v.v as *const Self)
+                }
+            }
+
+            unsafe fn from_ddval_mut_ref(v: &mut $crate::ddval::DDVal) -> &mut Self {
+                if std::mem::size_of::<Self>() <= std::mem::size_of::<usize>() {
+                    &mut *(&mut v.v as *mut usize as *mut Self)
+                } else {
+                    let arc = std::sync::Arc::from_raw(v.v as *const Self);
+                    v.v = std::sync::Arc::into_raw(arc) as usize;
+                    &mut *(v.v as *mut Self)
+                }
+            }
+
+            unsafe fn from_ddval(v: $crate::ddval::DDVal) -> Self {
+                if std::mem::size_of::<Self>() <= std::mem::size_of::<usize>() {
+                    let res: Self = std::mem::transmute::<[u8; std::mem::size_of::<Self>()], Self>(
+                        *(&v.v as *const usize as *const [u8; std::mem::size_of::<Self>()]),
+                    );
+                    std::mem::forget(v);
+                    res
+                } else {
+                    let arc = std::sync::Arc::from_raw(v.v as *const Self);
+                    std::sync::Arc::try_unwrap(arc).unwrap_or_else(|a| (*a).clone())
+                }
+            }
+
+            fn into_ddval(self) -> $crate::ddval::DDVal {
+                if std::mem::size_of::<Self>() <= std::mem::size_of::<usize>() {
+                    let mut v: usize = 0;
+                    unsafe {
+                        *(&mut v as *mut usize as *mut [u8; std::mem::size_of::<Self>()]) =
+                            std::mem::transmute::<Self, [u8; std::mem::size_of::<Self>()]>(self);
+                    };
+                    $crate::ddval::DDVal { v }
+                } else {
+                    $crate::ddval::DDVal {
+                        v: std::sync::Arc::into_raw(std::sync::Arc::new(self)) as usize,
+                    }
+                }
+            }
+
+            fn into_ddvalue(self) -> $crate::ddval::DDValue {
+                const VTABLE: $crate::ddval::DDValMethods = $crate::ddval::DDValMethods {
+                    clone: {
+                        fn __f(this: &$crate::ddval::DDVal) -> $crate::ddval::DDVal {
+                            if std::mem::size_of::<$t>() <= std::mem::size_of::<usize>() {
+                                unsafe { <$t>::from_ddval_ref(this) }.clone().into_ddval()
+                            } else {
+                                let arc = unsafe { std::sync::Arc::from_raw(this.v as *const $t) };
+                                let res = $crate::ddval::DDVal {
+                                    v: std::sync::Arc::into_raw(arc.clone()) as usize,
+                                };
+                                std::sync::Arc::into_raw(arc);
+                                res
+                            }
+                        };
+                        __f
+                    },
+                    into_record: {
+                        fn __f(this: $crate::ddval::DDVal) -> $crate::record::Record {
+                            unsafe { <$t>::from_ddval(this) }.into_record()
+                        };
+                        __f
+                    },
+                    eq: {
+                        fn __f(this: &$crate::ddval::DDVal, other: &$crate::ddval::DDVal) -> bool {
+                            unsafe { <$t>::from_ddval_ref(this).eq(<$t>::from_ddval_ref(other)) }
+                        };
+                        __f
+                    },
+                    partial_cmp: {
+                        fn __f(
+                            this: &$crate::ddval::DDVal,
+                            other: &$crate::ddval::DDVal,
+                        ) -> Option<std::cmp::Ordering> {
+                            unsafe {
+                                <$t>::from_ddval_ref(this).partial_cmp(<$t>::from_ddval_ref(other))
+                            }
+                        };
+                        __f
+                    },
+                    cmp: {
+                        fn __f(
+                            this: &$crate::ddval::DDVal,
+                            other: &$crate::ddval::DDVal,
+                        ) -> std::cmp::Ordering {
+                            unsafe { <$t>::from_ddval_ref(this).cmp(<$t>::from_ddval_ref(other)) }
+                        };
+                        __f
+                    },
+                    hash: {
+                        fn __f(this: &$crate::ddval::DDVal, mut state: &mut dyn std::hash::Hasher) {
+                            std::hash::Hash::hash(
+                                unsafe { <$t>::from_ddval_ref(this) },
+                                &mut state,
+                            );
+                        };
+                        __f
+                    },
+                    mutate: {
+                        fn __f(
+                            this: &mut $crate::ddval::DDVal,
+                            record: &$crate::record::Record,
+                        ) -> Result<(), std::string::String> {
+                            $crate::record::Mutator::mutate(record, unsafe {
+                                <$t>::from_ddval_mut_ref(this)
+                            })
+                        };
+                        __f
+                    },
+                    fmt_debug: {
+                        fn __f(
+                            this: &$crate::ddval::DDVal,
+                            f: &mut std::fmt::Formatter,
+                        ) -> Result<(), std::fmt::Error> {
+                            std::fmt::Debug::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
+                        };
+                        __f
+                    },
+                    fmt_display: {
+                        fn __f(
+                            this: &$crate::ddval::DDVal,
+                            f: &mut std::fmt::Formatter,
+                        ) -> Result<(), std::fmt::Error> {
+                            std::fmt::Display::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
+                        };
+                        __f
+                    },
+                    drop: {
+                        fn __f(this: &mut $crate::ddval::DDVal) {
+                            if std::mem::size_of::<$t>() <= std::mem::size_of::<usize>() {
+                                unsafe {
+                                    let _v: $t =
+                                        std::mem::transmute::<[u8; std::mem::size_of::<$t>()], $t>(
+                                            *(&this.v as *const usize
+                                                as *const [u8; std::mem::size_of::<$t>()]),
+                                        );
+                                };
+                            // v's destructor will do the rest.
+                            } else {
+                                let _arc = unsafe { std::sync::Arc::from_raw(this.v as *const $t) };
+                                // arc's destructor will do the rest.
+                            }
+                        };
+                        __f
+                    },
+                    ddval_serialize: {
+                        fn __f(this: &$crate::ddval::DDVal) -> &dyn $crate::ddval::DDValSerialize {
+                            unsafe { <$t>::from_ddval_ref(this) }
+                        };
+                        __f
+                    },
+                };
+                $crate::ddval::DDValue::new(self.into_ddval(), &VTABLE)
+            }
+        }
+    };
 }
