@@ -41,7 +41,9 @@ use serde::Serialize;
 
 use abomonation;
 use differential_datalog::arcval;
+
 use differential_datalog::ddval::*;
+use differential_datalog::decl_ddval_convert;
 use differential_datalog::decl_enum_into_record;
 use differential_datalog::decl_record_mutator_enum;
 use differential_datalog::decl_record_mutator_struct;

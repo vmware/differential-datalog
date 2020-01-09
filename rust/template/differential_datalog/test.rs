@@ -73,7 +73,7 @@ where
 {
     let mut delta = s.lock().unwrap();
 
-    let entry = delta.entry(T::from_ddvalue_ref(x).clone());
+    let entry = delta.entry(unsafe { T::from_ddvalue_ref(x).clone() });
     match entry {
         Entry::Vacant(vacant) => {
             vacant.insert(w);
@@ -377,11 +377,11 @@ fn test_semijoin(nthreads: usize) {
         }
     };
     fn fmfun1(v: DDValue) -> Option<DDValue> {
-        let Tuple2(ref v1, ref _v2) = *Tuple2::<U64>::from_ddvalue(v);
+        let Tuple2(ref v1, ref _v2) = unsafe { Tuple2::<U64>::from_ddvalue(v) };
         Some(v1.clone().into_ddvalue())
     }
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref v1, ref v2) = *Tuple2::<U64>::from_ddvalue(v);
+        let Tuple2(ref v1, ref v2) = unsafe { Tuple2::<U64>::from_ddvalue(v) };
         Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
 
@@ -408,8 +408,8 @@ fn test_semijoin(nthreads: usize) {
     fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
         Some(
             Tuple2(
-                Box::new((*U64::from_ddvalue(v1.clone())).clone()),
-                Box::new((*U64::from_ddvalue(v1.clone())).clone()),
+                Box::new(unsafe { U64::from_ddvalue(v1.clone()) }),
+                Box::new(unsafe { U64::from_ddvalue(v1.clone()) }),
             )
             .into_ddvalue(),
         )
@@ -505,7 +505,7 @@ fn test_join(nthreads: usize) {
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref v1, ref v2) = *Tuple2::<U64>::from_ddvalue(v);
+        let Tuple2(ref v1, ref v2) = unsafe { Tuple2::<U64>::from_ddvalue(v) };
         Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -531,8 +531,8 @@ fn test_join(nthreads: usize) {
     fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
-                Box::new((*U64::from_ddvalue_ref(v1)).clone()),
-                Box::new((*U64::from_ddvalue_ref(v2)).clone()),
+                Box::new((*unsafe { U64::from_ddvalue_ref(v1) }).clone()),
+                Box::new((*unsafe { U64::from_ddvalue_ref(v2) }).clone()),
             )
             .into_ddvalue(),
         )
@@ -599,8 +599,8 @@ fn test_join(nthreads: usize) {
                 let rel2_kv = rel2.flat_map(afun1);
                 rel1_kv.join(&rel2_kv).map(|(_, (v1, v2))| {
                     Tuple2(
-                        Box::new((*U64::from_ddvalue(v1)).clone()),
-                        Box::new((*U64::from_ddvalue(v2)).clone()),
+                        Box::new(unsafe { U64::from_ddvalue(v1) }),
+                        Box::new(unsafe { U64::from_ddvalue(v2) }),
                     )
                     .into_ddvalue()
                 })
@@ -688,7 +688,7 @@ fn test_antijoin(nthreads: usize) {
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref v1, _) = Tuple2::<U64>::from_ddvalue_ref(&v);
+        let Tuple2(ref v1, _) = unsafe { Tuple2::<U64>::from_ddvalue_ref(&v) };
         Some(((*v1).clone().into_ddvalue(), v.clone()))
     }
 
@@ -710,7 +710,7 @@ fn test_antijoin(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        let Tuple2(ref v1, _) = *Tuple2::<U64>::from_ddvalue(v);
+        let Tuple2(ref v1, _) = unsafe { Tuple2::<U64>::from_ddvalue(v) };
         v1.clone().into_ddvalue()
     }
 
@@ -847,7 +847,7 @@ fn test_map(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        let U64(ref uv) = U64::from_ddvalue_ref(&v);
+        let U64(ref uv) = unsafe { U64::from_ddvalue_ref(&v) };
         U64(uv.clone() * 2).into_ddvalue()
     }
 
@@ -868,12 +868,12 @@ fn test_map(nthreads: usize) {
     }
 
     fn ffun(v: &DDValue) -> bool {
-        let U64(ref uv) = U64::from_ddvalue_ref(&v);
+        let U64(ref uv) = unsafe { U64::from_ddvalue_ref(&v) };
         *uv > 10
     }
 
     fn fmfun(v: DDValue) -> Option<DDValue> {
-        let U64(uv) = U64::from_ddvalue_ref(&v);
+        let U64(uv) = unsafe { U64::from_ddvalue_ref(&v) };
         if *uv > 12 {
             Some(U64(uv.clone() * 2).into_ddvalue())
         } else {
@@ -882,7 +882,7 @@ fn test_map(nthreads: usize) {
     }
 
     fn flatmapfun(v: DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>> {
-        let U64(i) = U64::from_ddvalue_ref(&v);
+        let U64(i) = unsafe { U64::from_ddvalue_ref(&v) };
         if *i > 12 {
             Some(Box::new(
                 vec![
@@ -1016,7 +1016,7 @@ fn test_map(nthreads: usize) {
                 Some(iter) => iter,
                 None => Box::new(None.into_iter()),
             })
-            .map(|x| ((*I64::from_ddvalue(x)).clone(), 1)),
+            .map(|x| (unsafe { I64::from_ddvalue(x) }, 1)),
     );
     let mut expected3 = BTreeMap::default();
     expected3.insert(U64(expected2.len() as u64), 1);
@@ -1048,11 +1048,11 @@ fn test_map_multi() {
 */
 fn test_recursion(nthreads: usize) {
     fn arrange_by_fst(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         Some(((*fst).clone().into_ddvalue(), (*snd).clone().into_ddvalue()))
     }
     fn arrange_by_snd(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         Some((
             (**snd).clone().into_ddvalue(),
             (**fst).clone().into_ddvalue(),
@@ -1066,7 +1066,7 @@ fn test_recursion(nthreads: usize) {
     }
 
     fn anti_arrange2(v: DDValue) -> Option<(DDValue, DDValue)> {
-        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         Some((
             Tuple2(Box::new((**snd).clone()), Box::new((**fst).clone())).into_ddvalue(),
             v.clone(),
@@ -1076,8 +1076,8 @@ fn test_recursion(nthreads: usize) {
     fn jfun(_parent: &DDValue, ancestor: &DDValue, child: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
-                Box::new(String::from_ddvalue_ref(ancestor).clone()),
-                Box::new(String::from_ddvalue_ref(child).clone()),
+                Box::new(unsafe { String::from_ddvalue_ref(ancestor) }.clone()),
+                Box::new(unsafe { String::from_ddvalue_ref(child) }.clone()),
             )
             .into_ddvalue(),
         )
@@ -1086,8 +1086,8 @@ fn test_recursion(nthreads: usize) {
     fn jfun2(_ancestor: &DDValue, descendant1: &DDValue, descendant2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
-                Box::new(String::from_ddvalue_ref(descendant1).clone()),
-                Box::new(String::from_ddvalue_ref(descendant2).clone()),
+                Box::new(unsafe { String::from_ddvalue_ref(descendant1) }.clone()),
+                Box::new(unsafe { String::from_ddvalue_ref(descendant2) }.clone()),
             )
             .into_ddvalue(),
         )
@@ -1169,7 +1169,7 @@ fn test_recursion(nthreads: usize) {
     };
 
     fn ffun(v: &DDValue) -> bool {
-        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         *fst != *snd
     }
 

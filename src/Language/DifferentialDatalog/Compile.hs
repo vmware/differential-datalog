@@ -1089,10 +1089,8 @@ mkValType d types =
         "        self.mutate(&mut v.0)"                                                                             $$
         "    }"                                                                                                     $$
         "}"                                                                                                         $$
-        "#[typetag::serde]"                                                                                         $$
-        "impl DDVal for" <+> tname <+> "{"                                                                          $$
-        "    fn val_clone(&self) -> sync::Arc<dyn DDVal> { sync::Arc::new(self.clone()) }"                          $$
-        "}"
+        "//#[typetag::serde]"                                                                                       $$
+        "decl_ddval_convert!{" <> tname <> "}"
         where tname = mkValConstructorName d t
 
 -- Precompute the set of arrangements used by the program.  This is done as a separate
@@ -1212,7 +1210,7 @@ compileApplyNode d Apply{..} = ApplyNode $
 
 extractValue :: (?cfg::CompilerConfig) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
-        "|" <> vALUE_VAR <> ": DDValue| (*Value::" <> mkValConstructorName d t' <> "::from_ddvalue(" <> vALUE_VAR <> ")).0.clone()"
+        "|" <> vALUE_VAR <> ": DDValue| unsafe { Value::" <> mkValConstructorName d t' <> "::from_ddvalue(" <> vALUE_VAR <> ") }.0.clone()"
     where t' = typeNormalize d t
 
 compileSCCNode :: (?cfg::CompilerConfig) => DatalogProgram -> [String] -> CompilerMonad ProgNode
@@ -1298,9 +1296,9 @@ compileKey :: (?cfg::CompilerConfig) => DatalogProgram -> Relation -> KeyExpr ->
 compileKey d rel@Relation{..} KeyExpr{..} = do
     v <- mkValue' d (CtxKey rel) keyExpr
     return $
-        "(|" <> kEY_VAR <> ": &DDValue| {"                                                                                          $$
-        "    let ref" <+> pp keyVar <+> "= Value::" <> mkValConstructorName d relType <> "::from_ddvalue_ref(" <> kEY_VAR <> ").0;" $$
-        "    " <> v                                                                                                                 $$
+        "(|" <> kEY_VAR <> ": &DDValue| {"                                                                                                      $$
+        "    let ref" <+> pp keyVar <+> "= unsafe { Value::" <> mkValConstructorName d relType <> "::from_ddvalue_ref(" <> kEY_VAR <> ") }.0;"  $$
+        "    " <> v                                                                                                                             $$
         "})"
 
 {- Generate Rust representation of a ground fact -}
@@ -1534,8 +1532,8 @@ openAtom d var rl idx Atom{..} on_error = do
         vars = tuple varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
     return $
-        "let" <+> vars <+> "= match" <+> constructor <> "::from_ddvalue_ref(" <> var <> ").0 {"     $$
-        (nest' mtch)                                                                                $$
+        "let" <+> vars <+> "= match unsafe { " <+> constructor <> "::from_ddvalue_ref(" <> var <> ") }.0 {" $$
+        (nest' mtch)                                                                                        $$
         "};"
 
 -- Generate Rust code to open up tuples and bring variables into scope.
@@ -1544,7 +1542,7 @@ openTuple d var vs = do
     let t = tTuple $ map typ vs
     cons <- mkValConstructorName' d t
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
-    return $ "let" <+> pattern <+> "=" <+> cons <> "::from_ddvalue_ref(" <+> var <+> ").0;"
+    return $ "let" <+> pattern <+> "= unsafe {" <+> cons <> "::from_ddvalue_ref(" <+> var <+> ") }.0;"
 
 -- Generate Rust constructor name for a type;
 -- add type to CompilerMonad
@@ -1996,7 +1994,7 @@ mkArrangementKey d rel pattern = do
     constructor <- mkValConstructorName' d t
     let res = "Some(" <> patvars <> ")"
     let mtch = mkMatch (mkPatExpr d CtxTop pattern EReference) res "None"
-    return $ "match" <+> "(*" <> constructor <> "::from_ddvalue(" <> vALUE_VAR <> ")).0 {"  $$
+    return $ "match" <+> "unsafe {" <+> constructor <> "::from_ddvalue(" <> vALUE_VAR <> ") }.0 {"  $$
              nest' mtch                                                                     $$
              "}"
 
