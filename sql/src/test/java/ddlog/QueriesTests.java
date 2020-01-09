@@ -203,6 +203,32 @@ public class QueriesTests {
     }
 
     @Test
+    public void testCountJoin() {
+        String query = "create view v1 as SELECT COUNT(t1.column2) FROM t1 JOIN t2 ON t1.column1 = t2.column1";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                "typedef Ttmp1 = Ttmp1{col6:signed<64>}\n" +
+                "function agg2(g3: Group<(Tt1,Tt2)>):Ttmp1 =\n" +
+                "var first5 = true;\n" +
+                "(var count8 = 64'sd0);\n" +
+                "(for (i4 in g3) {\n" +
+                "var v0 = i4.0;\n" +
+                "(var v1 = i4.1);\n" +
+                "(var incr7 = v0.column2);\n" +
+                "(count8 = if first5 {\n" +
+                "64'sd1} else {\n" +
+                "agg_count_R(count8, incr7)});\n" +
+                "(first5 = false)}\n" +
+                ");\n" +
+                "(Ttmp1{.col6 = count8})" +
+                this.relations(false) +
+                "relation Rtmp1[Ttmp1]\n" +
+                "output relation Rv1[Ttmp1]\n" +
+                "Rv1[v10] :- Rt1[v0],Rt2[v1],(v0.column1 == v1.column1),true,var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column10 = v1.column1},var v9 = Aggregate((), agg2((v0, v1))),var v10 = v9.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testCountColumn() {
         String query = "create view v1 as SELECT COUNT(column1) FROM t1";
         String program = this.header(false) +
