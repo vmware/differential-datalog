@@ -28,16 +28,16 @@ From 35 Insert PI5{[2, 3, 72057594037927935]}
 From 36 Insert QI{{2=>"here", 3=>"there"}}
 From 37 Insert RI{2}
 From 38 Insert SI{C{"s"}}
-From 39 Insert TI{std_Some{10}}
 From 39 Insert TI{std_None{}}
+From 39 Insert TI{std_Some{10}}
 From 40 Insert A{"a"}
 From 40 Insert B{false}
 From 40 Insert D{(false, 2, "zz")}
 From 41 Insert VI{false,A{"aa"}}
 From 41 Insert VI{false,D{(false, 2, "string")}}
 From 41 Insert VI{true,B{false}}
-From 42 Insert WI{std_Some{B{true}}}
 From 42 Insert WI{std_None{}}
+From 42 Insert WI{std_Some{B{true}}}
 From 43 Insert XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
 From 44 Insert YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
 From 45 Insert ZI{1234566788901239813761283}
@@ -61,8 +61,8 @@ From 57 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ �
 From 58 Insert ["Foo
 ", "	bar"]
 From 59 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
-From 60 Insert std_Some{"ZI6"}
 From 60 Insert std_None{}
+From 60 Insert std_Some{"ZI6"}
 From 61 Insert "ZI7"
 From 61 Insert "♛"
 From 62 Insert 100
