@@ -492,7 +492,8 @@ str3: ${str3}.|];
                               x));
            (var str8 = ("" ++ (var x = (str1 ++ str2);
                                dummy(x)));
-            ()))))))))
+            (var b = (str1 < str2);
+             ())))))))))
 function tostring1 (): () =
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
