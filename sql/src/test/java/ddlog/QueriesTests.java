@@ -238,7 +238,7 @@ public class QueriesTests {
                 "var v0 = i2;\n" +
                 "(var incr5 = v0.column1);\n" +
                 "(count6 = if first3 {\n" +
-                "64'sd1} else {\n" +
+                "isNullAsInt(incr5)} else {\n" +
                 "agg_count_N(count6, incr5)});\n" +
                 "(first3 = false)}\n" +
                 ");\n" +
