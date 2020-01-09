@@ -453,6 +453,26 @@ y = "x:{udf_t2string(x)}";
 
 1. Number and types of arguments to a function must match function
    declaration.
+1. Comparisons for equality and ordering are supported for all base types
+   and derived types, but both arguments of a comparison must have the same type.
+   Strings and tuples are compared lexicographically.
+   Types with multiple constructors also compare lexicographically,
+   first by constructor, using the order of constructor declaration.
+
+   The following comparisons all return `true`:
+   ```
+   false <= true
+   "a" <= "b"
+   "A" <= "a"
+   (0, 1) <= (0, 2)
+   (1, 0) <= (2, 0)
+   (0, 1) <= (0, 1)
+   C{"a"} <= C{"b"}
+   TwoFields{"a", "b"} <= TwoFields{"a", "c"}
+   None <= Some{0}
+   Some{0} <= Some{1}
+   ```
+
 1. Variable declarations can occur in the left-hand side of an
    assignment or as a separate statement followed by another
    statement.  In the latter case variable type must be explicitly

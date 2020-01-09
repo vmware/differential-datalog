@@ -585,6 +585,13 @@ Casting to a wider type sign extends (for signed bit vectors) or zero-extends
 between signed and unsigned bitvectors does not change the underlying
 representation.
 
+### Comparisons
+
+All datatypes support comparison for equality (`==` and difference
+`!=`) and ordering comparisons (`>`, `>=`, `<=`, `<`).  Only values
+with the same type can be compared.  Comparison of complex types
+(strings, tuples, types with constructors) is done lexicographically.
+
 ### Control flow
 
 DDlog functions are written using an *expression-oriented language*,
@@ -1504,7 +1511,7 @@ query_index Edge_by_from(100);
 
 It is also possible to dump the entire content of an index:
 
-``` 
+```
 # Output all records in the `Edge` relation.
 dump_index Edge_by_from;
 ```
