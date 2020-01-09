@@ -122,6 +122,19 @@ Cast_u32{"32'd100  as bit<32>",100,100}
 Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
 Cast_u32{"8'd100   as bit<32>",100,100}
 
+Compare:
+Compare{"\"\" >= \"a\"",false}
+Compare{"(1, 2) < (1, 4)",true}
+Compare{"(1, 2) < (3, 4)",true}
+Compare{"(1, 2) >= (3, 4)",false}
+Compare{"5 <= 3",false}
+Compare{"C0{32'd3} < C0{32'd4}",true}
+Compare{"C0{32'd3} < C1{32'd4}",true}
+Compare{"C0{32'd3} > C1{32'd4}",false}
+Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
+Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
+Compare{"true >= false",true}
+
 J:
 J{true}
 
@@ -308,6 +321,19 @@ Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,42949
 Cast_u32{"32'd100  as bit<32>",100,100}
 Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
 Cast_u32{"8'd100   as bit<32>",100,100}
+
+Compare:
+Compare{"\"\" >= \"a\"",false}
+Compare{"(1, 2) < (1, 4)",true}
+Compare{"(1, 2) < (3, 4)",true}
+Compare{"(1, 2) >= (3, 4)",false}
+Compare{"5 <= 3",false}
+Compare{"C0{32'd3} < C0{32'd4}",true}
+Compare{"C0{32'd3} < C1{32'd4}",true}
+Compare{"C0{32'd3} > C1{32'd4}",false}
+Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
+Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
+Compare{"true >= false",true}
 
 J:
 J{true}

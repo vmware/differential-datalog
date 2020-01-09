@@ -613,10 +613,10 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
     case op of
         Eq     -> m
         Neq    -> m
-        Lt     -> do {m; isintOrString1}
-        Gt     -> do {m; isintOrString1}
-        Lte    -> do {m; isintOrString1}
-        Gte    -> do {m; isintOrString1}
+        Lt     -> m -- support comparisons for all datatypes
+        Gt     -> m
+        Lte    -> m
+        Gte    -> m
         And    -> do {m; isbool}
         Or     -> do {m; isbool}
         Impl   -> do {m; isbool}
@@ -635,7 +635,6 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
           isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
-          isintOrString1 = check (isInt d e1 || isBit d e1 || isSigned d e1 || isString d e1) (pos e1) "Not an integer or string"
           isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
           isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
           isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"

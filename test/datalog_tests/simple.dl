@@ -150,6 +150,20 @@ function vars(): () = {
     C{var c, var d} = y
 }
 
+output relation Compare(label: string, value: bool)
+
+Compare("true >= false", true >= false).
+Compare([|"" >= "a"|], "" >= "a").
+Compare("5 <= 3", 5 <= 3).
+Compare("(1, 2) >= (3, 4)", (1, 2) >= (3, 4)).
+Compare("(1, 2) < (3, 4)", (1, 2) < (3, 4)).
+Compare("(1, 2) < (1, 4)", (1, 2) < (1, 4)).
+Compare([|C{"a", "b"} > C{"b", "e"}|], C{"a", "b"} > C{"b", "e"}).
+Compare([|C{"a", "b"} < C{"a", "e"}|], C{"a", "b"} < C{"a", "e"}).
+Compare("C0{32'd3} > C1{32'd4}", C0{32'd3} > C1{32'd4}).
+Compare("C0{32'd3} < C0{32'd4}", C0{32'd3} < C0{32'd4}).
+Compare("C0{32'd3} < C1{32'd4}", C0{32'd3} < C1{32'd4}).
+
 function patterns(): () = {
     var a: Alt = C0{1};
 
@@ -226,7 +240,6 @@ typedef T1 = C11{f1: bigint, f2: (bigint, string)}
 
 typedef T2 = C21{f1: T1, f2: bigint}
            | C22{f3: (bool, T1)}
-
 
 typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>}
            | C32{f3: ((bool, (bool, bool, bool)), T1)}
@@ -543,6 +556,9 @@ str3: ${str3}.|];
     var str7 = "${{var x = str1 ++ str2; x}}";
     var str8 = "${{var x = str1 ++ str2; dummy(x)}}";
     var b = str1 < str2;
+    var b1 = "" < str1;
+    var b2 = [|${}|] < "";
+    var b3 = str1 != str2 and str1 >= str2;
     ()
 }
 

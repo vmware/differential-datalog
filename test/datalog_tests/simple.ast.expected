@@ -27,6 +27,7 @@ typedef Cast_s32 = Cast_s32{description: string, expected: signed<32>, actual: s
 typedef Cast_u24 = Cast_u24{description: string, expected: bit<24>, actual: bit<24>}
 typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: bit<256>}
 typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
+typedef Compare = Compare{label: string, value: bool}
 typedef ConcatString = ConcatString{s: string}
 typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
 typedef DdlogBinding = DdlogBinding{tn: tnid_t, entity: entid_t}
@@ -493,7 +494,10 @@ str3: ${str3}.|];
            (var str8 = ("" ++ (var x = (str1 ++ str2);
                                dummy(x)));
             (var b = (str1 < str2);
-             ())))))))))
+             (var b1 = ("" < str1);
+              (var b2 = ([|${}|] < "");
+               (var b3 = ((str1 != str2) and (str1 >= str2));
+                ()))))))))))))
 function tostring1 (): () =
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
@@ -558,6 +562,7 @@ output relation Cast_s32 [Cast_s32]
 output relation Cast_u24 [Cast_u24]
 output relation Cast_u256 [Cast_u256]
 output relation Cast_u32 [Cast_u32]
+output relation Compare [Compare]
 output relation ConcatString [ConcatString]
 output relation DMethod [DMethod]
 input relation DdlogBinding [DdlogBinding]
@@ -650,6 +655,17 @@ Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (
 Parent(.child="Alice", .parent="Bob").
 Parent(.child="Ben", .parent="Bob").
 Parent(.child="Bob", .parent="Bob").
+Compare(.label="true >= false", .value=(true >= false)).
+Compare(.label="\"\" >= \"a\"", .value=("" >= "a")).
+Compare(.label="5 <= 3", .value=(5 <= 3)).
+Compare(.label="(1, 2) >= (3, 4)", .value=((1, 2) >= (3, 4))).
+Compare(.label="(1, 2) < (3, 4)", .value=((1, 2) < (3, 4))).
+Compare(.label="(1, 2) < (1, 4)", .value=((1, 2) < (1, 4))).
+Compare(.label="C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value=(C{.f1="a", .f2="b"} > C{.f1="b", .f2="e"})).
+Compare(.label="C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value=(C{.f1="a", .f2="b"} < C{.f1="a", .f2="e"})).
+Compare(.label="C0{32'd3} > C1{32'd4}", .value=(C0{.x=32'd3} > C1{.x=32'd4})).
+Compare(.label="C0{32'd3} < C0{32'd4}", .value=(C0{.x=32'd3} < C0{.x=32'd4})).
+Compare(.label="C0{32'd3} < C1{32'd4}", .value=(C0{.x=32'd3} < C1{.x=32'd4})).
 VecTest(.x=std.vec_empty()).
 VecTest(.x=((var v: std.Vec<string>) = std.vec_empty();
             (std.vec_push(v, "Hello,");
