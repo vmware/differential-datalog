@@ -79,8 +79,13 @@ test-path:
         - stack --no-terminal test --ta "-p path"
 
 test-souffle0:
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
     script:
-        - stack --no-terminal test --ta "-p souffle0"
+        - (cd test/souffle0 &&
+          ../../tools/souffle_converter.py test.dl souffle --convert-dnf &&
+          ../datalog_tests/run-test.sh souffle.dl release)
 
 test-redist:
     extends: .install-ddlog
