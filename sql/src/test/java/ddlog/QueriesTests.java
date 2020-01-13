@@ -151,6 +151,30 @@ public class QueriesTests {
     }
 
     @Test
+    public void testStringAggregate() {
+        String query = "create view v1 as SELECT MIN(column2) FROM t1";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{col4:string}\n" +
+                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "var first3 = true;\n" +
+                "(var min6 = \"\");\n" +
+                "(for (i2 in g1) {\n" +
+                "var v0 = i2;\n" +
+                "(var incr5 = v0.column2);\n" +
+                "(min6 = if first3 {\n" +
+                "incr5} else {\n" +
+                "agg_min_R(min6, incr5)});\n" +
+                "(first3 = false)}\n" +
+                ");\n" +
+                "(Ttmp0{.col4 = min6})" +
+                this.relations(false) +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v8] :- Rt1[v0],var v7 = Aggregate((), agg1((v0))),var v8 = v7.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testParallelAggregates() {
         String query = "create view v1 as SELECT COUNT(column1), SUM(column1) FROM t1";
         String program = this.header(false) +
