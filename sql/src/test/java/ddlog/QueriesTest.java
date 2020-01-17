@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Unit test for simple Translator.
  */
 @SuppressWarnings("FieldCanBeLocal")
-public class QueriesTests {
+public class QueriesTest {
     // These strings are part of almost all expected outputs
     private final String imports = "import sql\nimport sqlop\n";
     private final String t1t2 =
@@ -112,7 +112,7 @@ public class QueriesTests {
         DDlogProgram ddprogram = t.getDDlogProgram();
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
-        System.out.println(s);
+        //System.out.println(s);
         Assert.assertEquals(program, s);
         this.compiledDDlog(s);
     }

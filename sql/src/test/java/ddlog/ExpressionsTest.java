@@ -11,7 +11,7 @@ import org.junit.Test;
 
 import java.util.Optional;
 
-public class ExpressionsTests {
+public class ExpressionsTest {
     @Test
     public void testFormat() {
         final String createStatement = "create table t1(column1 integer, column2 varchar(36), column3 boolean)";

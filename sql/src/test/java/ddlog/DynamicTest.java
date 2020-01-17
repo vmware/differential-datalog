@@ -17,7 +17,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-public class DynamicTests {
+public class DynamicTest {
     /*
      * Sets up an H2 in-memory database that we use for all tests.
      */
