@@ -6,7 +6,7 @@ import com.vmware.ddlog.translator.Translator;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class WeaveTests {
+public class WeaveTest {
     @Test
     public void testWeave() {
         Translator t = new Translator(null);
