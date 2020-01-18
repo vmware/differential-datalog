@@ -208,3 +208,9 @@ test-ovn-northd:
         - git clone https://github.com/ryzhyk/ovn.git
         - git clone https://github.com/ddlog-dev/ovn-test-data.git
         - ./test-ovn.sh
+
+# Test the SQL-to-DDlog compiler.
+test-sql:
+    extends: .install-ddlog
+    script:
+        - (cd sql && mvn test)
