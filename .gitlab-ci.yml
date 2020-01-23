@@ -213,4 +213,5 @@ test-ovn-northd:
 test-sql:
     extends: .install-ddlog
     script:
-        - (cd sql && mvn test)
+        - (cd java && make)
+        - (cd sql && ./install-ddlog-jar.sh && mvn test)
