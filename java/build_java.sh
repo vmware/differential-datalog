@@ -57,7 +57,7 @@ function compile {
     # Compile Java program
     javac -encoding utf8 -Xlint:unchecked ${JAVAPROG}
     # Create a shared library containing all the native code: ddlogapi.c, ${DLPROG}_ddlog.a
-    ${CC} -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I${DLDIR}/${DLPROG}_ddlog -I../../lib ../ddlogapi.c -L${DLDIR}/${DLPROG}_ddlog/target/${BUILD}/ -l${DLPROG}_ddlog -o libddlogapi.${SHLIBEXT}
+    ${CC} -std=gnu11 -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I${DLDIR}/${DLPROG}_ddlog -I../../lib ../ddlogapi.c -L${DLDIR}/${DLPROG}_ddlog/target/${BUILD}/ -l${DLPROG}_ddlog -o libddlogapi.${SHLIBEXT}
 }
 
 function cleanup {
