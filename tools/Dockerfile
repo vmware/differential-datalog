@@ -19,7 +19,8 @@ RUN apt-get update &&   \
     libssl-dev          \
     time                \
     zookeeper           \
-    libgoogle-perftools-dev
+    libgoogle-perftools-dev \
+    maven
 
 # Install haskell stack
 RUN wget -qO- https://get.haskellstack.org/ | sh
