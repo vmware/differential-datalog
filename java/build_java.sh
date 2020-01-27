@@ -38,7 +38,7 @@ function compile {
         DLDIR="."
     fi
 
-    CLASSPATH=$(pwd)/${DLDIR}/${DLPROG}_ddlog/flatbuf/java:$(pwd)/../ddlogapi.jar:..:$CLASSPATH
+    CLASSPATH=$(pwd)/${DLDIR}/${DLPROG}_ddlog/flatbuf/java:$(pwd)/../ddlogapi.jar:..:.:$CLASSPATH
     # Compile the DDlog program
     ddlog ${DDLFLAGS} -i ${DLFILE} -L../../lib -j
     # Compile the generated rust program; generates ${DLDIR}/${DLPROG}_ddlog/target/${BUILD}/lib${DLPROG}_ddlog.a
