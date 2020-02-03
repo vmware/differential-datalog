@@ -1,0 +1,351 @@
+/*
+ * DDlog implementation of Antrea controller logic (see networkpolicy_controller.go).
+ */
+
+import intern
+import k8spolicy as k8s
+import types
+
+// TODO(leonid)
+function log_error(e: string): () = ()
+
+/* In DDlog, we split the AppliedToGroup struct into three relations:
+ * AppliedToGroup: stores group name, id, and GroupSelector
+ * AppliedToGroupPodsByNode: stores the node-to-pods mapping.
+ * AppliedToGroupSpan: group span (nodes where the group must be sent).
+ */
+
+output relation AppliedToGroup (
+    // UID is generated from the hash value of GroupSelector.NormalizedName.
+    uid: k8s.UID,
+    // Name of this group, currently it's same as UID.
+    name: string,
+    // Selector describes how the group selects pods.
+    selector: GroupSelector
+)
+
+// PodsByNode is a mapping from nodeName to a set of Pods on the Node.
+output relation AppliedToGroupPodsByNode(appliedToGroup: k8s.UID, podsByNode: Map<string, Set<k8s.UID>>)
+
+// AppliedToGroupSpan: set of node names that this AddressGroup should be sent to.
+output relation AppliedToGroupSpan(appliedToGroup: k8s.UID, span: Set<k8s.UID>)
+
+/* In DDlog, we split the AddressGroup struct into three relations:
+ * AddressGroup: stores group name, id, and GroupSelector
+ * AddressGroupAddress: stores addresses of nodes that match the group selector.
+ * AddressGroupSpan: group span (nodes where the group must be sent).
+ */
+
+// AddressGroup describes a set of addresses used as source or destination of Network Policy rules.
+output relation AddressGroup (
+    // UID is generated from the hash value of GroupSelector.NormalizedName.
+    uid: k8s.UID,
+    // Name of this group, currently it's same as UID.
+    name: string,
+    // Selector describes how the group selects pods to get their addresses.
+    selector: GroupSelector
+)
+
+// Addresses is a set of IP addresses selected by this group.
+output relation AddressGroupAddress(addresGroup: k8s.UID, address: string)
+
+// AddressGroupSpan: set of node names that this AddressGroup should be sent to.
+output relation AddressGroupSpan(addressGroup: k8s.UID, span: Set<k8s.UID>)
+
+// NetworkPolicy describes what network traffic is allowed for a set of Pods.
+output relation NetworkPolicy (
+    // UID of the original K8s Network Policy.
+    uid: k8s.UID,
+    // Name of the original K8s Network Policy.
+    name: string,
+    // Namespace of the original K8s Network Policy.
+    namespace: string,
+    // Rules is a list of rules to be applied to the selected Pods.
+    rules: Vec<NetworkPolicyRule>,
+    // AppliedToGroups is a list of names of AppliedToGroups to which this policy applies.
+    appliedToGroups: Vec<string>
+)
+
+// NetworkPolicySpan: set of node names that this NetworkPolicy should be sent to.
+output relation NetworkPolicySpan(policy: k8s.UID, span: Set<k8s.UID>)
+
+// createAppliedToGroup creates an AppliedToGroup object.
+function createAppliedToGroup(np: k8s.NetworkPolicy): AppliedToGroup =
+{
+    var groupSelector = toGroupSelector(np.namespace, Some{np.spec.podSelector}, None);
+    var appliedToGroupUID = getNormalizedUID(groupSelector.normalizedName);
+    // Construct a new AppliedToGroup.
+    AppliedToGroup {
+        .name       = appliedToGroupUID,
+        .uid        = k8s.UID{appliedToGroupUID},
+        .selector   = groupSelector
+    }
+}
+
+function toAntreaPeer(peers: Vec<k8s.NetworkPolicyPeer>, np: k8s.NetworkPolicy): (NetworkPolicyPeer, Vec<AddressGroup>) =
+{
+    // Empty NetworkPolicyPeer is supposed to match all addresses.
+    // See https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-allow-all-ingress-traffic.
+    // It's treated as an IPBlock "0.0.0.0/0".
+    if (vec_is_empty(peers)) {
+        (matchAllPeer(), vec_empty())
+    } else {
+        var ipBlocks: Vec<IPBlock> = vec_empty();
+        var addressGroupNames: Vec<string> = vec_empty();
+        var addressGroups: Vec<AddressGroup> = vec_empty();
+
+        for (peer in peers) {
+            // A networking.NetworkPolicyPeer will either have an IPBlock or a
+            // podSelector and/or namespaceSelector set.
+            match (peer.ipBlock) {
+                Some{peerIPBlock} -> {
+                    match (toAntreaIPBlock(peerIPBlock)) {
+                        Err{err} -> {
+                            log_error("Failure processing NetworkPolicy ${np.namespace}/${np.name} IPBlock ${peerIPBlock}: ${err}")
+                        },
+                        Ok{ipBlock} -> {
+                            vec_push(ipBlocks, ipBlock)
+                        }
+                    }
+                },
+                None -> {
+                    var addressGroup = createAddressGroup(peer, np);
+                    vec_push(addressGroups, addressGroup);
+                    vec_push(addressGroupNames, addressGroup.name)
+                }
+            }
+        };
+        var nppeer = NetworkPolicyPeer {
+            .addressGroups  = addressGroupNames,
+            .ipBlocks       = ipBlocks
+        };
+        (nppeer, addressGroups)
+    }
+}
+
+// toAntreaProtocol converts a v1.Protocol object to an Antrea Protocol object.
+function toAntreaProtocol(npProtocol: Option<k8s.Protocol>): Protocol =
+{
+    // If Protocol is unset, it must default to TCP protocol.
+    match (npProtocol) {
+        None -> protocolTCP(),
+        Some{proto} -> proto
+    }
+}
+
+// toAntreaServices converts a networkingv1.NetworkPolicyPort object to an
+// Antrea Service object.
+function toAntreaServices(npPorts: Vec<k8s.NetworkPolicyPort>): Vec<Service> =
+{
+    var antreaServices: Vec<Service> = vec_empty();
+    for (npPort in npPorts) {
+        var antreaService = Service {
+            .protocol   = toAntreaProtocol(npPort.protocol),
+            .port       = match (npPort.port) {
+                None    -> None: Option<signed<32>>,
+                // TODO(abhiraut): Retrieve ports for named ports.
+                Some{p} -> Some{ k8s.intOrStringIntValue(p) }
+            }
+        };
+        vec_push(antreaServices, antreaService)
+    };
+    antreaServices
+}
+
+// toAntreaIPBlock converts a networkingv1.IPBlock to an Antrea IPBlock.
+function toAntreaIPBlock(ipBlock: k8s.IPBlock): Result<IPBlock,string> =
+{
+    // Convert the allowed IPBlock to networkpolicy.IPNet.
+    match (cidrStrToIPNet(ipBlock.cidr)) {
+        Err{err} -> Err{err},
+        Ok{ipNet} -> {
+            var exceptNets: Vec<IPNet> = vec_empty();
+            for (exc in ipBlock.except) {
+                // Convert the except IPBlock to networkpolicy.IPNet.
+                match (cidrStrToIPNet(exc)) {
+                    Err{e} -> {
+                        return Err{e}
+                    },
+                    Ok{exceptNet} -> {
+                        vec_push(exceptNets, exceptNet)
+                    }
+                }
+            };
+            Ok { IPBlock { .cidr   = ipNet, .except = exceptNets } }
+        }
+    }
+}
+
+// createAddressGroup creates an AddressGroup object corresponding to a
+// NetworkPolicyPeer object in NetworkPolicyRule. This function simply
+// creates the object without actually populating the PodAddresses as the
+// affected Pods are calculated during sync process.
+function createAddressGroup(peer: k8s.NetworkPolicyPeer, np: k8s.NetworkPolicy): AddressGroup =
+{
+    var groupSelector = toGroupSelector(np.namespace, peer.podSelector, peer.namespaceSelector);
+    var normalizedUID = getNormalizedUID(groupSelector.normalizedName);
+
+    // Create an AddressGroup object per Peer object.
+    AddressGroup{
+        .uid        = k8s.UID{normalizedUID},
+        .name       = normalizedUID,
+        .selector   = groupSelector
+    }
+}
+
+// processNetworkPolicy creates an internal NetworkPolicy instance corresponding
+// to the networkingv1.NetworkPolicy object. This method does not commit the
+// internal NetworkPolicy in store, instead returns an instance to the caller
+// wherein, it will be either stored as a new Object in case of ADD event or
+// modified and store the updated instance, in case of an UPDATE event.
+function processNetworkPolicy(np: k8s.NetworkPolicy): (NetworkPolicy, AppliedToGroup, Vec<AddressGroup>) =
+{
+    var appliedToGroup = createAppliedToGroup(np);
+    var rules: Vec<NetworkPolicyRule> = vec_empty();
+    var addressGroups: Vec<AddressGroup> = vec_empty();
+    var ingressRuleExists = false;
+    var egressRuleExists  = false;
+
+    // Compute NetworkPolicyRule for Ingress Rule.
+    for (ingressRule in np.spec.ingress) {
+        ingressRuleExists = true;
+        (var from, var agroups) = toAntreaPeer(ingressRule.from, np);
+        vec_append(addressGroups, agroups);
+        vec_push(rules, NetworkPolicyRule{
+            .direction = DirectionIn,
+            .from      = from,
+            .to        = networkPolicyPeerEmpty(),
+            .services  = toAntreaServices(ingressRule.ports)
+        })
+    };
+    // Compute NetworkPolicyRule for Egress Rule.
+    for (egressRule in np.spec.egress) {
+        egressRuleExists = true;
+        (var to, var agroups) = toAntreaPeer(egressRule.to, np);
+        vec_append(addressGroups, agroups);
+        vec_push(rules, NetworkPolicyRule {
+            .direction = DirectionOut,
+            .from      = networkPolicyPeerEmpty(),
+            .to        = to,
+            .services  = toAntreaServices(egressRule.ports)
+        })
+    };
+
+    // Traffic in a direction must be isolated if Spec.PolicyTypes specify it explicitly.
+    var ingressIsolated = false;
+    var egressIsolated = false;
+    for (policyType in np.spec.policyTypes) {
+        match (policyType) {
+            k8s.PolicyTypeIngress -> ingressIsolated = true,
+            k8s.PolicyTypeEgress  -> egressIsolated = true
+        }
+    };
+
+    // If ingress isolation is specified explicitly and there's no ingress rule, append a deny-all ingress rule.
+    // See https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-ingress-traffic
+    if (ingressIsolated and (not ingressRuleExists)) {
+        vec_push(rules, denyAllIngressRule())
+    };
+    // If egress isolation is specified explicitly and there's no egress rule, append a deny-all egress rule.
+    // See https://kubernetes.io/docs/concepts/services-networking/network-policies/#default-deny-all-egress-traffic
+    if (egressIsolated and (not egressRuleExists)) {
+        vec_push(rules, denyAllEgressRule())
+    };
+
+    var policy = NetworkPolicy {
+        .name               = np.name,
+        .namespace          = np.namespace,
+        .uid                = np.uid,
+        .appliedToGroups    = vec_singleton(appliedToGroup.name),
+        .rules              = rules
+    };
+
+    (policy, appliedToGroup, addressGroups)
+}
+
+// Intermediate relation that stores policy and all associated address groups.
+// This relation does not get indexed and therefore should not take any memory.
+relation NetworkPolicyExt(
+    policy: NetworkPolicy,
+    addressGroups: Vec<AddressGroup>
+)
+
+NetworkPolicyExt(internalPolicy, addrGroups),
+AppliedToGroup[appliedTo] :-
+    k8s.NetworkPolicy[policy],
+    (var internalPolicy, var appliedTo, var addrGroups) = processNetworkPolicy(policy).
+
+NetworkPolicy[policy] :- NetworkPolicyExt(policy, _).
+
+AddressGroup[group] :-
+    NetworkPolicyExt(_, groups),
+    var group = FlatMap(groups).
+
+AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
+    // Namespace presence indicates Pods must be selected from the same Namespace.
+    addressGroup in AddressGroup(.selector = GroupSelector{.nsSelector = NSSelectorNS{ns}}),
+    pod in k8s.Pod(.namespace = Some{ns}),
+    pod.status.podIP != "",
+    k8s.labelSelectorMatches(addressGroup.selector.podSelector, pod.labels).
+
+AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
+    // Pods must be selected from Namespaces matching nsSelector.
+    addressGroup in AddressGroup(.selector = GroupSelector{.nsSelector = NSSelectorLS{namespaceSelector}, .podSelector = podSelector}),
+    namespace in k8s.Namespace(),
+    k8s.labelSelectorMatches(Some{namespaceSelector}, namespace.labels),
+    pod in k8s.Pod(.namespace = Some{namespace.name}),
+    pod.status.podIP != "",
+    is_none(podSelector) or k8s.labelSelectorMatches(podSelector, pod.labels).
+
+// NetworkPolicyAddressGroup: stores all address groups that a network policy references;
+// used to compute AddressGroupSpan.
+relation NetworkPolicyAddressGroup(np: k8s.UID, addressGroup: string)
+
+NetworkPolicyAddressGroup(np, addressGroup) :-
+    NetworkPolicy(.uid = np, .rules = rules),
+    var addressGroups = {
+        var addressGroups: Vec<string> = vec_empty();
+        for (rule in rules) {
+            vec_append(addressGroups, rule.from.addressGroups);
+            vec_append(addressGroups, rule.to.addressGroups)
+        };
+        addressGroups
+    },
+    var addressGroup = FlatMap(addressGroups).
+
+AddressGroupSpan(k8s.UID{addressGroup}, span) :-
+    AddressGroup(.uid = k8s.UID{addressGroup}),
+    // Get all internal NetworkPolicy objects that refers this AddressGroup.
+    NetworkPolicyAddressGroup(np, addressGroup),
+    NetworkPolicySpan(np, npSpan),
+    var span = Aggregate((addressGroup), group_set_unions(npSpan)).
+
+// AppliedToGroupPod: pods that belong to a group along with nodes
+// where the pod is scheduled;
+// used to compute AppliedToGroupPodsByNode and AppliedToGroupSpan.
+relation AppliedToGroupPod(appliedToGroup: k8s.UID, pod: k8s.UID, nodeName: string)
+
+AppliedToGroupPod(appliedToGroup, pod.uid, pod.spec.nodeName) :-
+    // TODO(leonid): Is it correct that we only consider selectors with namespace name set?
+    AppliedToGroup(.uid = appliedToGroup,
+                   .selector = GroupSelector{.nsSelector = NSSelectorNS{namespace}, .podSelector = podSelector}),
+    // Retrieve all Pods matching the podSelector.
+    pod in k8s.Pod(.namespace = Some{namespace}),
+    // No need to process Pod when it's not scheduled.
+    pod.spec.nodeName != "",
+    k8s.labelSelectorMatches(podSelector, pod.labels).
+
+AppliedToGroupPodsByNode(appliedToGroup, podsByNode) :-
+    AppliedToGroupPod(appliedToGroup, pod, nodeName),
+    var podsOnNode = Aggregate((appliedToGroup, nodeName), group2set(pod)),
+    var podsByNode = Aggregate((appliedToGroup), group2map((nodeName, podsOnNode))).
+
+AppliedToGroupSpan(appliedToGroup, span) :-
+    AppliedToGroupPod(appliedToGroup, pod, _),
+    var span = Aggregate((appliedToGroup), group2set(pod)).
+
+NetworkPolicySpan(policy, span) :-
+    NetworkPolicy(.uid = policy, .appliedToGroups = appliedToGroups),
+    var appliedToGroup = FlatMap(appliedToGroups),
+    AppliedToGroupSpan(k8s.UID{appliedToGroup}, groupSpan),
+    var span = Aggregate((policy), group_set_unions(groupSpan)).

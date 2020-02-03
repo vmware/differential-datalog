@@ -1,0 +1,347 @@
+/*
+ * Inputs consumed by Antrea controller from Kuberneters: pods, namespaces,
+ * network policies.
+ */
+
+// TODO(leonid): this module should probably be broken up into several to match Go module hierachy.
+
+import intern
+
+typedef UID = UID{uid: string}
+
+// PodSpec is a description of a pod.
+typedef PodSpec = PodSpec {
+    // NodeName is a request to schedule this pod onto a specific node. If it is non-empty,
+    // the scheduler simply schedules this pod onto that node, assuming that it fits resource
+    // requirements.
+    nodeName: string
+}
+
+// PodStatus represents information about the status of a pod. Status may trail the actual
+// state of a system, especially if the node that hosts the pod cannot contact the control
+// plane.
+typedef PodStatus = PodStatus {
+    // IP address allocated to the pod. Routable at least within the cluster.
+    // Empty if not yet allocated.
+    podIP: string
+}
+
+// Pod is a collection of containers that can run on a host. This resource is created
+// by clients and scheduled onto hosts. */
+// TODO(leonid): primary key
+input relation Pod (
+    // Name must be unique within a namespace.
+    name: Option<string>,
+    // Namespace defines the space within each name must be unique.
+    namespace: Option<string>,
+    // UID is the unique in time and space value for this object.
+    uid: UID,
+    // Map of string keys and values that can be used to organize and categorize
+    // (scope and select) objects. May match selectors of replication controllers
+    // and services.
+    // More info: http://kubernetes.io/docs/user-guide/labels
+    // +optional
+    labels: Map<string, string>,
+    // Specification of the desired behavior of the pod.
+    spec: PodSpec,
+    // Most recently observed status of the pod.
+    status: PodStatus
+)
+
+// Namespace provides a scope for Names.
+// Use of multiple namespaces is optional.
+input relation Namespace (
+    // Name must be unique within a namespace.
+    name: string,
+    // UID is the unique in time and space value for this object.
+    uid: UID,
+    // Map of string keys and values that can be used to organize and categorize
+    // (scope and select) objects. May match selectors of replication controllers
+    // and services.
+    // More info: http://kubernetes.io/docs/user-guide/labels
+    // +optional
+    labels: Map<string, string>
+)
+
+// A label selector is a label query over a set of resources. The result of matchLabels and
+// matchExpressions are ANDed. An empty label selector matches all objects. A null
+// label selector matches no objects.
+typedef LabelSelector = LabelSelector {
+    // matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+    // map is equivalent to an element of matchExpressions, whose key field is "key", the
+    // operator is "In", and the values array contains only "value". The requirements are ANDed.
+    // +optional
+    matchLabels: Map<string,string>,
+    // matchExpressions is a list of label selector requirements. The requirements are ANDed.
+    // +optional
+    matchExpressions: Vec<LabelSelectorRequirement>
+}
+
+/* The native Antrea implementation converts LabelSelector to a generic selector
+ * struct before . */
+// Matches returns true if the Requirement matches the input Labels.
+// There is a match in the following cases:
+// (1) The operator is Exists and Labels has the Requirement's key.
+// (2) The operator is In, Labels has the Requirement's key and Labels'
+//     value for that key is in Requirement's value set.
+// (3) The operator is NotIn, Labels has the Requirement's key and
+//     Labels' value for that key is not in Requirement's value set.
+// (4) The operator is DoesNotExist or NotIn and Labels does not have the
+//     Requirement's key.
+function labelSelectorMatches(selector: Option<Ref<LabelSelector>>, labels: Map<string, string>): bool =
+{
+    match (selector) {
+        None -> false,
+        Some{s} -> {
+            var sel = deref(s);
+            if (map_is_empty(sel.matchLabels) and vec_is_empty(sel.matchExpressions)) {
+                true
+            } else {
+                for (lab in sel.matchLabels) {
+                    if (map_get(labels, lab.0) != Some{lab.1}) { return false }
+                };
+                for (e in sel.matchExpressions) {
+                    var matches = match (e.operator) {
+                        LabelSelectorOpIn -> {
+                            match (map_get(labels, e.reqkey)) {
+                                None -> false,
+                                Some{val} -> vec_contains(e.values, val)
+                            }
+                        },
+                        LabelSelectorOpNotIn -> {
+                            match (map_get(labels, e.reqkey)) {
+                                None -> true,
+                                Some{val} -> not vec_contains(e.values, val)
+                            }
+                        },
+                        LabelSelectorOpExists -> map_contains_key(labels, e.reqkey),
+                        LabelSelectorOpDoesNotExist -> not map_contains_key(labels, e.reqkey)
+                    };
+                    if (not matches) { return false }
+                };
+                true
+            }
+        }
+    }
+}
+
+// A label selector operator is the set of operators that can be used in a selector requirement.
+typedef LabelSelectorOperator = LabelSelectorOpIn
+                              | LabelSelectorOpNotIn
+                              | LabelSelectorOpExists
+                              | LabelSelectorOpDoesNotExist
+
+// DDlog looks for a function with this name when converting
+// LabelSelectorOperator to string.
+function labelSelectorOperator2string(op: LabelSelectorOperator): string =
+{
+    match (op) {
+        LabelSelectorOpIn           -> "In",
+        LabelSelectorOpNotIn        -> "NotIn",
+        LabelSelectorOpExists       -> "Exists",
+        LabelSelectorOpDoesNotExist -> "DoesNotExist"
+    }
+}
+
+// A label selector requirement is a selector that contains values, a key, and an operator that
+// relates the key and values.
+typedef LabelSelectorRequirement = LabelSelectorRequirement {
+    // key is the label key that the selector applies to.
+    // +patchMergeKey=key
+    // +patchStrategy=merge
+    reqkey: string,
+    // operator represents a key's relationship to a set of values.
+    // Valid operators are In, NotIn, Exists and DoesNotExist.
+    operator: LabelSelectorOperator,
+    // values is an array of string values. If the operator is In or NotIn,
+    // the values array must be non-empty. If the operator is Exists or DoesNotExist,
+    // the values array must be empty. This array is replaced during a strategic
+    // merge patch.
+    // +optional
+    values: Vec<string>
+}
+
+typedef PolicyType = PolicyTypeIngress
+                   | PolicyTypeEgress
+
+// NetworkPolicySpec provides the specification of a NetworkPolicy
+typedef NetworkPolicySpec = NetworkPolicySpec {
+    // Selects the pods to which this NetworkPolicy object applies. The array of
+    // ingress rules is applied to any pods selected by this field. Multiple network
+    // policies can select the same set of pods. In this case, the ingress rules for
+    // each are combined additively. This field is NOT optional and follows standard
+    // label selector semantics. An empty podSelector matches all pods in this
+    // namespace.
+    podSelector: Ref<LabelSelector>,
+
+    // List of ingress rules to be applied to the selected pods. Traffic is allowed to
+    // a pod if there are no NetworkPolicies selecting the pod
+    // (and cluster policy otherwise allows the traffic), OR if the traffic source is
+    // the pod's local node, OR if the traffic matches at least one ingress rule
+    // across all of the NetworkPolicy objects whose podSelector matches the pod. If
+    // this field is empty then this NetworkPolicy does not allow any traffic (and serves
+    // solely to ensure that the pods it selects are isolated by default)
+    // +optional
+    ingress: Vec<NetworkPolicyIngressRule>,
+
+    // List of egress rules to be applied to the selected pods. Outgoing traffic is
+    // allowed if there are no NetworkPolicies selecting the pod (and cluster policy
+    // otherwise allows the traffic), OR if the traffic matches at least one egress rule
+    // across all of the NetworkPolicy objects whose podSelector matches the pod. If
+    // this field is empty then this NetworkPolicy limits all outgoing traffic (and serves
+    // solely to ensure that the pods it selects are isolated by default).
+    // This field is beta-level in 1.8
+    // +optional
+    egress: Vec<NetworkPolicyEgressRule>,
+
+    // List of rule types that the NetworkPolicy relates to.
+    // Valid options are "Ingress", "Egress", or "Ingress,Egress".
+    // If this field is not specified, it will default based on the existence of Ingress or Egress rules;
+    // policies that contain an Egress section are assumed to affect Egress, and all policies
+    // (whether or not they contain an Ingress section) are assumed to affect Ingress.
+    // If you want to write an egress-only policy, you must explicitly specify policyTypes [ "Egress" ].
+    // Likewise, if you want to write a policy that specifies that no egress is allowed,
+    // you must specify a policyTypes value that include "Egress" (since such a policy would not include
+    // an Egress section and would otherwise default to just [ "Ingress" ]).
+    // This field is beta-level in 1.8
+    // +optional
+    policyTypes: Vec<PolicyType>
+}
+
+// NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods
+// matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and from.
+typedef NetworkPolicyIngressRule = NetworkPolicyIngressRule {
+    // List of ports which should be made accessible on the pods selected for this
+    // rule. Each item in this list is combined using a logical OR. If this field is
+    // empty or missing, this rule matches all ports (traffic not restricted by port).
+    // If this field is present and contains at least one item, then this rule allows
+    // traffic only if the traffic matches at least one port in the list.
+    // +optional
+    ports: Vec<NetworkPolicyPort>,
+
+    // List of sources which should be able to access the pods selected for this rule.
+    // Items in this list are combined using a logical OR operation. If this field is
+    // empty or missing, this rule matches all sources (traffic not restricted by
+    // source). If this field is present and contains at least on item, this rule
+    // allows traffic only if the traffic matches at least one item in the from list.
+    // +optional
+    from: Vec<NetworkPolicyPeer>
+}
+
+// NetworkPolicyEgressRule describes a particular set of traffic that is allowed out of pods
+// matched by a NetworkPolicySpec's podSelector. The traffic must match both ports and to.
+// This type is beta-level in 1.8
+typedef NetworkPolicyEgressRule = NetworkPolicyEgressRule {
+    // List of destination ports for outgoing traffic.
+    // Each item in this list is combined using a logical OR. If this field is
+    // empty or missing, this rule matches all ports (traffic not restricted by port).
+    // If this field is present and contains at least one item, then this rule allows
+    // traffic only if the traffic matches at least one port in the list.
+    // +optional
+    ports: Vec<NetworkPolicyPort>,
+    // List of destinations for outgoing traffic of pods selected for this rule.
+    // Items in this list are combined using a logical OR operation. If this field is
+    // empty or missing, this rule matches all destinations (traffic not restricted by
+    // destination). If this field is present and contains at least one item, this rule
+    // allows traffic only if the traffic matches at least one item in the to list.
+    // +optional
+    to: Vec<NetworkPolicyPeer>
+}
+
+// NetworkPolicy describes what network traffic is allowed for a set of Pods
+input relation NetworkPolicy (
+    // Name must be unique within a namespace.
+    name: string,
+    // Namespace defines the space within each name must be unique.
+    namespace: string,
+    // UID is the unique in time and space value for this object.
+    uid: UID,
+    // Specification of the desired behavior for this NetworkPolicy.
+    spec: NetworkPolicySpec
+)
+
+
+typedef Protocol = IString
+
+typedef IntOrString = Either<signed<32>, string>
+
+function intOrStringIntValue(x: IntOrString): signed<32> =
+{
+    match (x) {
+        Left{i} -> i,
+        Right{s} -> {
+            match (parse_dec_i64(s)) {
+                None -> 0,
+                Some{i} -> i as signed<32>
+            }
+        }
+    }
+}
+
+// NetworkPolicyPort describes a port to allow traffic on
+typedef NetworkPolicyPort = NetworkPolicyPort {
+    // The protocol (TCP, UDP, or SCTP) which traffic must match. If not specified, this
+    // field defaults to TCP.
+    // +optional
+    protocol: Option<Protocol>,
+
+    // The port on the given protocol. This can either be a numerical or named port on
+    // a pod. If this field is not provided, this matches all port names and numbers.
+    // +optional
+    port: Option<IntOrString>
+}
+
+// IPBlock describes a particular CIDR (Ex. "192.168.1.1/24") that is allowed to the pods
+// matched by a NetworkPolicySpec's podSelector. The except entry describes CIDRs that should
+// not be included within this rule.
+typedef IPBlock = IPBlock {
+    // CIDR is a string representing the IP Block
+    // Valid examples are "192.168.1.1/24"
+    cidr: string,
+    // Except is a slice of CIDRs that should not be included within an IP Block
+    // Valid examples are "192.168.1.1/24"
+    // Except values will be rejected if they are outside the CIDR range
+    // +optional
+    except: Vec<string>
+}
+
+function iPBlock2string(x: IPBlock): string =
+{
+    "IPBlock{${x.cidr},${string_join(x.except,\",\")}}"
+}
+
+
+// NetworkPolicyPeer describes a peer to allow traffic from. Only certain combinations of
+// fields are allowed
+typedef NetworkPolicyPeer = NetworkPolicyPeer {
+    // This is a label selector which selects Pods. This field follows standard label
+    // selector semantics; if present but empty, it selects all pods.
+    //
+    // If NamespaceSelector is also set, then the NetworkPolicyPeer as a whole selects
+    // the Pods matching PodSelector in the Namespaces selected by NamespaceSelector.
+    // Otherwise it selects the Pods matching PodSelector in the policy's own Namespace.
+    // +optional
+    podSelector: Option<Ref<LabelSelector>>,
+
+    // Selects Namespaces using cluster-scoped labels. This field follows standard label
+    // selector semantics; if present but empty, it selects all namespaces.
+    //
+    // If PodSelector is also set, then the NetworkPolicyPeer as a whole selects
+    // the Pods matching PodSelector in the Namespaces selected by NamespaceSelector.
+    // Otherwise it selects all Pods in the Namespaces selected by NamespaceSelector.
+    // +optional
+    namespaceSelector: Option<Ref<LabelSelector>>,
+
+    // IPBlock defines policy on a particular IPBlock. If this field is set then
+    // neither of the other fields can be.
+    // +optional
+    ipBlock: Option<IPBlock>
+}
+
+// PodReference represents a Pod Reference.
+typedef PodReference = PodReference {
+    // The name of this pod.
+    name: string,
+    // The namespace of this pod.
+    namespace: string
+}
