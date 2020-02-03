@@ -29,6 +29,9 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 {-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, OverloadedStrings #-}
 
 module Language.DifferentialDatalog.Module(
+    nameScope,
+    nameLocal,
+    scoped,
     parseDatalogProgram) where
 
 import Prelude hiding((<>), mod, readFile, writeFile)
