@@ -47,6 +47,7 @@ import Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Relation
+import Language.DifferentialDatalog.Module
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
@@ -724,7 +725,9 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
     return $ E $ EBinOp p Concat l r'
     where te = exprType'' d ctx $ E e
           tr = exprType'' d (CtxBinOpR e ctx) r
-          mk2string_func cs = ((toLower $ head cs) : tail cs) ++ tOSTRING_FUNC_SUFFIX
+          mk2string_func cs = scoped scope $ ((toLower $ head local) : tail local) ++ tOSTRING_FUNC_SUFFIX
+              where scope = nameScope cs
+                    local = nameLocal cs
 
 exprInjectStringConversions _ _   e = return $ E e
 
