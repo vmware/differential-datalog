@@ -43,8 +43,7 @@ RUN cd differential-datalog && stack --no-terminal --install-ghc test --only-dep
 RUN rm -rf differential-datalog
 
 # Python packages needed by souffle scripts
-RUN pip install     \
-    parglare
+RUN pip install parglare==0.10.0
 
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF8"
