@@ -35,4 +35,16 @@ error: ./test/datalog_tests/function.fail.dl:3:37-5:1: Cannot type-cast expressi
 
 error: ./test/datalog_tests/function.fail.dl:3:35-5:1: Cannot type-cast expression to bool.  Only bit<>, signed<>, and bigint types can be cast to.
 
-error: ./test/datalog_tests/function.fail.dl:3:34-4:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for bit<> and signed<> types.
+error: ./test/datalog_tests/function.fail.dl:3:34-5:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for bit<> and signed<> types.
+
+error: ./test/datalog_tests/function.fail.dl:6:5-7:1: "continue" outside of a loop
+
+error: ./test/datalog_tests/function.fail.dl:8:9-8:18: Expression continue is not an l-value
+
+error: ./test/datalog_tests/function.fail.dl:6:12-7:1: Couldn't match expected type () with actual type bool (context: CtxTop
+CtxFunc            control_flow
+CtxReturn          return false)
+
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 8, column 1):
+unexpected end of input
+expecting "," or "."

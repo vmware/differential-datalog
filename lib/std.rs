@@ -174,6 +174,9 @@ impl<T: Clone> std_Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.x.extend_from_slice(other);
     }
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.x.resize(new_len, value);
+    }
 }
 
 impl<T: FromRecord> FromRecord for std_Vec<T> {
@@ -284,8 +287,18 @@ pub fn std_vec_empty<X: Ord + Clone>() -> std_Vec<X> {
     std_Vec::new()
 }
 
+pub fn std_vec_with_length<X: Ord + Clone>(len: &u64, x: &X) -> std_Vec<X> {
+    let mut res = std_Vec::with_capacity(*len as usize);
+    res.resize(*len as usize, x.clone());
+    res
+}
+
 pub fn std_vec_singleton<X: Ord + Clone>(x: &X) -> std_Vec<X> {
     std_Vec { x: vec![x.clone()] }
+}
+
+pub fn std_vec_append<X: Ord + Clone>(v: &mut std_Vec<X>, other: &std_Vec<X>) {
+    v.extend_from_slice(other.x.as_slice());
 }
 
 pub fn std_vec_push<X: Ord + Clone>(v: &mut std_Vec<X>, x: &X) {

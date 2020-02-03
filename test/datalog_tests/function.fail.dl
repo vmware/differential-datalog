@@ -127,3 +127,38 @@ function cast(x: bit<16>): bool = x as bool
 //---
 
 function cast(x: string): bool = x as bool
+
+//---
+
+// continue outside of loop
+
+function control_flow(): () = {
+    continue
+}
+
+//---
+
+// continue in LHS of assignment.
+
+function control_flow(): () = {
+    var v: Vec<bool> = vec_empty();
+    for (x in v) {
+        continue = true
+    }
+}
+
+//---
+
+// return incorrect type.
+
+function control_flow(): () = {
+    return false
+}
+
+//---
+
+// return outside ofa function
+
+relation NotFunction(x: bool)
+
+NotFunction(true) :- NotFunction(return false)
