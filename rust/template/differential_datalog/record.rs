@@ -1185,7 +1185,7 @@ macro_rules! decl_arr_from_record {
             fn into_record(self) -> Record {
                 Record::Array(
                     CollectionKind::Vector,
-                    self.into_iter()
+                    self.iter()
                         .map(|x: &T| (*x).clone().into_record())
                         .collect(),
                 )
