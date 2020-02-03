@@ -16,7 +16,6 @@
     overflowing_literals,
     path_statements,
     patterns_in_fns_without_body,
-    plugin_as_library,
     private_in_public,
     proc_macro_derive_resolution_fallback,
     renamed_and_removed_lints,

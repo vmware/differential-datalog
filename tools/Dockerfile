@@ -33,7 +33,7 @@ ENV PATH=/root/.local/bin:/root/.cargo/bin:$PATH
 ENV CLASSPATH=$CLASSPATH:/flatbuffers/java
 
 # Install Rust
-RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.36.0 -y
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.39.0 -y
 RUN rustup component add rustfmt
 RUN rustup component add clippy
 
