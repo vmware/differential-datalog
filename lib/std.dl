@@ -46,11 +46,45 @@ function is_some(x: Option<'A>): bool = {
     }
 }
 
+function option_unwrap_or(x: Option<'A>, def: 'A): 'A = {
+    match (x) {
+        Some{v} -> v,
+        None -> def
+    }
+}
+
 /*
  * Either
  */
 typedef Either<'A,'B> = Left{l: 'A}
                       | Right{r: 'B}
+
+/*
+ * Result
+ */
+typedef Result<'V,'E> = Ok{res: 'V}
+                      | Err{err: 'E}
+
+function is_ok(res: Result<'V,'E>): bool = {
+    match (res) {
+        Ok{} -> true,
+        Err{} -> false
+    }
+}
+
+function is_err(res: Result<'V,'E>): bool = {
+    match (res) {
+        Ok{} -> false,
+        Err{} -> true
+    }
+}
+
+function result_unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
+    match (res) {
+        Ok{v} -> v,
+        Err{} -> def
+    }
+} 
 
 /*
  * Range
@@ -137,9 +171,11 @@ extern function group_max(g: Group<'A>): 'A
 extern type Vec<'A>
 
 extern function vec_empty(): Vec<'A>
+extern function vec_with_length(len: bit<64>, x: 'A): Vec<'A>
 extern function vec_len(v: Vec<'X>): bit<64>
 extern function vec_singleton(x: 'X): Vec<'X>
 extern function vec_push(v: mut Vec<'X>, x: 'X): ()
+extern function vec_append(v: mut Vec<'X>, other: Vec<'X>): ()
 extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
 extern function vec_contains(v: Vec<'X>, x: 'X): bool
 extern function vec_is_empty(v: Vec<'X>): bool

@@ -19,6 +19,7 @@ typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
 typedef Answer = Answer{x: station}
 typedef Arithm = Arithm{n: bit<32>}
 typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
+typedef BigintVectors = BigintVectors{expr: string, vec: std.Vec<bigint>}
 typedef Blacklist = Blacklist{addr: ip_addr_t}
 typedef C = C{f1: string, f2: string}
 typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
@@ -151,6 +152,7 @@ extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
 extern type std.Ref<'A>
+typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef string_syn = string
@@ -295,6 +297,17 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
+function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
+    ((var res: std.Vec<bigint>) = std.vec_empty();
+     (for (x in xs) {
+          ((if (x <= threshold) {
+                continue
+            } else {
+                  ()
+              }: ());
+           std.vec_push(res, x))
+      };
+      return res))
 function fnested (x: nested_t): string =
     (N{.field=C{.f1=var res, .f2=_}} = x;
      res)
@@ -426,10 +439,20 @@ extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
+function std.is_err (res: std.Result<'V,'E>): bool =
+    match (res) {
+        std.Ok{.res=_} -> false,
+        std.Err{.err=_} -> true
+    }
 function std.is_none (x: std.Option<'A>): bool =
     match (x) {
         std.None{} -> true,
         _ -> false
+    }
+function std.is_ok (res: std.Result<'V,'E>): bool =
+    match (res) {
+        std.Ok{.res=_} -> true,
+        std.Err{.err=_} -> false
     }
 function std.is_some (x: std.Option<'A>): bool =
     match (x) {
@@ -459,11 +482,21 @@ function std.min (x: 'A, y: 'A): 'A =
       }
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A =
+    match (x) {
+        std.Some{.x=var v} -> v,
+        std.None{} -> def
+    }
 extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.pow32 (base: 'A, exp: bit<32>): 'A
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
+function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V =
+    match (res) {
+        std.Ok{.res=var v} -> v,
+        std.Err{.err=_} -> def
+    }
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
@@ -482,6 +515,7 @@ extern function std.string_len (s: string): bit<64>
 extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
 extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
 extern function std.vec_is_empty (v: std.Vec<'X>): bool
@@ -490,6 +524,7 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function std.vec_with_length (len: bit<64>, x: 'A): std.Vec<'A>
 function strings (): () =
     (var str1 = ("foo" ++ "bar");
      (var str2 = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
@@ -565,6 +600,7 @@ output relation Allocation [Allocation]
 output relation Answer [Answer]
 output relation Arithm [Arithm]
 input relation BMethod [BMethod]
+output relation BigintVectors [BigintVectors]
 input relation Blacklist [Blacklist]
 output relation CMethod [CMethod]
 output relation Cast_bigint [Cast_bigint]
@@ -928,4 +964,9 @@ R14(.t=(1, (true, ("", 32'd1)))).
 R14(.t=(0, (true, ("", 32'd1)))).
 J(.b=b) :- R13(.t=a), R14(.t=c), (a.3 == c.1.1.1), var b = a.1.
 LongJoin(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19) :- Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19).
+ControlFlow(.expr="all(true, true, false)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), false))))).
+ControlFlow(.expr="all(true, true, true)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), true))))).
+ControlFlow(.expr="any(false, true, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
+ControlFlow(.expr="any(false, false, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), false), false))))).
+BigintVectors(.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 10), 20), 30), 15)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
