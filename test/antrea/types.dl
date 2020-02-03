@@ -1,0 +1,272 @@
+/*
+ * Types used in internal Antrea NetworkPolicy definition.
+ */
+
+import intern
+import k8spolicy as k8s
+
+// getNormalizedUID generates a unique UUID based on a given string.
+// For example, it can be used to generate keys using normalized selectors
+// unique within the Namespace by adding the constant UID.
+function getNormalizedUID(name: string): string = {
+    var uuid = hash128(name);
+    // TODO: implement proper UUID formatter.
+    "${uuid}"
+}
+
+// normalizeExpr converts an expression to the form "key1 OP [value1...]".
+function normalizeExpr(ekey: string, operator: k8s.LabelSelectorOperator, values: Vec<string>): string =
+{
+    if vec_is_empty(values) {
+        "${ekey} ${operator}"
+    } else {
+        "${ekey} ${operator} [${string_join(values, \",\")}]"
+    }
+}
+
+// selectorToString creates a string corresponding to a labelSelector in the form of
+// "key1 IN [value1,...] And key2 NotIn [value2,...] And ...".
+function selectorToString(selector: Ref<k8s.LabelSelector>): string =
+{
+    var sel = deref(selector);
+    var selSlice: Set<string> = set_empty();
+    // Append labels in matchLabels as "key In [value]".
+    for (kv in sel.matchLabels) {
+        set_insert(selSlice, normalizeExpr(kv.0, k8s.LabelSelectorOpIn, vec_singleton(kv.1)))
+    };
+    for (expr in sel.matchExpressions) {
+        match (expr.operator) {
+            k8s.LabelSelectorOpIn -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpIn, expr.values))
+            },
+            k8s.LabelSelectorOpNotIn -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpNotIn, expr.values))
+            },
+            k8s.LabelSelectorOpExists -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpExists, vec_empty()))
+            },
+            k8s.LabelSelectorOpDoesNotExist -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpDoesNotExist, vec_empty()))
+            }
+        }
+    };
+    string_join(set2vec(selSlice), " And ")
+}
+
+// A namespace selector is either a namespace name (or "")
+// or a namespace label selector.
+typedef NSSelector = NSSelectorNS{ns: string}
+                   | NSSelectorLS{selector: Ref<k8s.LabelSelector>}
+
+// GroupSelector describes how to select pods.
+typedef GroupSelector = GroupSelector {
+    // The normalized name is calculated from Namespace, PodSelector, and NamespaceSelector.
+    // If multiple policies have same selectors, they should share this group by comparing NormalizedName.
+    // It's also used to generate Name and UUID of group.
+    normalizedName: string,
+    // Only pods from these namespaces will be matched.
+    nsSelector: NSSelector,
+    // This is a label selector which selects pods. If Namespace is also set, it selects the pods in the namespace.
+    // If NamespaceSelector is also set, it selects the pods in the namespaces selected by NamespaceSelector.
+    podSelector: Option<Ref<k8s.LabelSelector>>
+}
+
+// generateNormalizedName generates a string, based on the selectors, in
+// the following format: "namespace=NamespaceName And podSelector=normalizedPodSelector".
+// Note: Namespace and nsSelector may or may not be set depending on the
+// selector. However, they cannot be set simultaneously.
+function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<k8s.LabelSelector>>): string =
+{
+    var normalizedName: Set<string> = set_empty();
+    match (nsSelector) {
+        NSSelectorLS{ls} -> {
+            set_insert(normalizedName, "namespaceSelector=${selectorToString(ls)}")
+        },
+        NSSelectorNS{ns} -> {
+            if (ns != "") {
+                set_insert(normalizedName, "namespace=${ns}")
+            }
+        }
+    };
+    match (podSelector) {
+        Some{ls} -> set_insert(normalizedName, "podSelector=${selectorToString(ls)}"),
+        _ -> ()
+    };
+    string_join(set2vec(normalizedName), " And ")
+}
+
+// toGroupSelector converts the podSelector and namespaceSelector
+// and NetworkPolicy Namespace to a networkpolicy.GroupSelector object.
+function toGroupSelector(namespace: string,
+                         podSelector: Option<Ref<k8s.LabelSelector>>,
+                         nsLabelSelector: Option<Ref<k8s.LabelSelector>>): GroupSelector =
+{
+    var nsSelector = match (nsLabelSelector) {
+        // No namespaceSelector indicates that the pods must be selected within
+        // the NetworkPolicy's Namespace.
+        None            -> NSSelectorNS{namespace},
+        Some{selector}  -> NSSelectorLS{selector}
+    };
+    GroupSelector {
+        .normalizedName = generateNormalizedName(nsSelector, podSelector),
+        .podSelector    = podSelector,
+        .nsSelector     = nsSelector
+    }
+}
+
+// PodSet is a set of Pod references.
+typedef PodSet = Set<k8s.PodReference>
+
+typedef Direction = DirectionIn
+                  | DirectionOut
+
+// NetworkPolicyPeer describes a peer of NetworkPolicyRules.
+// It could be a list of names of AddressGroups and/or a list of IPBlock.
+typedef NetworkPolicyPeer = NetworkPolicyPeer {
+    // A list of names of AddressGroups.
+    addressGroups: Vec<string>,
+    // A list of IPBlock.
+    ipBlocks: Vec<IPBlock>
+}
+
+function networkPolicyPeerEmpty(): NetworkPolicyPeer =
+{
+    NetworkPolicyPeer {
+        .addressGroups = vec_empty(),
+        .ipBlocks = vec_empty()
+    }
+}
+
+// matchAllPeer is a NetworkPolicyPeer matching all source/destination IP addresses.
+function matchAllPeer(): NetworkPolicyPeer =
+{
+    NetworkPolicyPeer {
+        .addressGroups = vec_empty(),
+        .ipBlocks      = vec_singleton(IPBlock{
+            .cidr = IPNet {
+                .ip             = ipv4zero(),
+                .prefixLength   = 32'sd0
+            },
+            .except = vec_empty(): Vec<IPNet>
+        })
+    }
+}
+
+typedef IPAddress = IPAddress{addr: Vec<bit<8>>}
+
+function ipv4zero(): IPAddress = {
+    ipv4(0, 0, 0, 0)
+}
+
+function ipv4(a: bit<8>, b: bit<8>, c: bit<8>, d: bit<8>): IPAddress =
+{
+    var bytes: Vec<bit<8>> = vec_with_length(12, 8'd0);
+    vec_push(bytes, a);
+    vec_push(bytes, b);
+    vec_push(bytes, c);
+    vec_push(bytes, d);
+    IPAddress{bytes}
+}
+
+// IPNet describes an IP network.
+typedef IPNet = IPNet {
+    ip:             IPAddress,
+    prefixLength:   signed<32>
+}
+
+// TODO(leonid)
+function parseIP(s: string): Vec<bit<8>> = {
+    vec_empty()
+}
+
+// IPStrToIPAddress converts an IP string to networkpolicy.IPAddress.
+// nil will returned if the IP string is not valid.
+function ipStrToIPAddress(ip: string): IPAddress =
+{
+    IPAddress{parseIP(ip)}
+}
+
+// CIDRStrToIPNet converts a CIDR (eg. 10.0.0.0/16) to a *networkpolicy.IPNet.
+function cidrStrToIPNet(cidr: string): Result<IPNet,string> =
+{
+    // Split the cidr to retrieve the IP and prefix.
+    var s = string_split(cidr, "/");
+    if (vec_len(s) != (2:bit<64>)) {
+        Err{"invalid format for IPBlock CIDR: ${cidr}"}
+    } else {
+        // Convert prefix length to int32
+        match (parse_dec_i64(option_unwrap_or(vec_nth(s,1),""))) {
+            None -> Err{"invalid prefix length: ${option_unwrap_or(vec_nth(s,1),\"\")}"},
+            Some{prefixLen64} -> {
+                Ok {
+                    IPNet {
+                        .ip             = ipStrToIPAddress(option_unwrap_or(vec_nth(s,0),"")),
+                        .prefixLength   = prefixLen64 as signed<32>
+                    }
+                }
+            }
+        }
+    }
+}
+
+// IPBlock describes a particular CIDR (Ex. "192.168.1.1/24"). The except entry describes CIDRs that should
+// not be included within this rule.
+typedef IPBlock = IPBlock {
+    // CIDR is an IPNet represents the IP Block.
+    cidr: IPNet,
+    // Except is a slice of IPNets that should not be included within an IP Block.
+    // Except values will be rejected if they are outside the CIDR range.
+    // +optional
+    except: Vec<IPNet>
+}
+
+typedef Protocol = IString
+
+function protocolTCP(): Protocol = string_intern("TCP")
+function protocolUDP(): Protocol = string_intern("UDP")
+function protocolSCTP(): Protocol = string_intern("SCTP")
+
+// Service describes a port to allow traffic on.
+typedef Service = Service {
+    // The protocol (TCP, UDP, or SCTP) which traffic must match. If not specified, this
+    // field defaults to TCP.
+    // +optional
+    protocol: Protocol,
+    // The port on the given protocol. If not specified, this matches all port numbers.
+    // +optional
+    port: Option<signed<32>>
+}
+
+// NetworkPolicyRule describes a particular set of traffic that is allowed.
+typedef NetworkPolicyRule = NetworkPolicyRule {
+    // The direction of this rule.
+    // If it's set to In, From must be set and To must not be set.
+    // If it's set to Out, To must be set and From must not be set.
+    direction: Direction,
+    // From represents sources which should be able to access the pods selected by the policy.
+    from: NetworkPolicyPeer,
+    // To represents destinations which should be able to be accessed by the pods selected by the policy.
+    to: NetworkPolicyPeer,
+    // Services is a list of services which should be matched.
+    services: Vec<Service>
+}
+
+// denyAllIngressRule is a NetworkPolicyRule which denies all ingress traffic.
+function denyAllIngressRule(): NetworkPolicyRule = {
+    NetworkPolicyRule {
+        .direction  = DirectionIn,
+        .from       = networkPolicyPeerEmpty(),
+        .to         = networkPolicyPeerEmpty(),
+        .services   = vec_empty()
+    }
+}
+
+// denyAllEgressRule is a NetworkPolicyRule which denies all egress traffic.
+function denyAllEgressRule(): NetworkPolicyRule = {
+    NetworkPolicyRule {
+        .direction  = DirectionOut,
+        .from       = networkPolicyPeerEmpty(),
+        .to         = networkPolicyPeerEmpty(),
+        .services   = vec_empty()
+    }
+}

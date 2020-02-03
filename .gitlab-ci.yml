@@ -209,6 +209,15 @@ test-ovn-northd:
         - git clone https://github.com/ddlog-dev/ovn-test-data.git
         - ./test-ovn.sh
 
+# Test antrea
+test-antrea:
+    extends: .install-ddlog
+    tags:
+        - ddlog-ci-1
+    script:
+        - cd test/antrea
+        - ../datalog_tests/run-test.sh networkpolicy_controller.dl release
+
 # Test the SQL-to-DDlog compiler.
 test-sql:
     extends: .install-ddlog
