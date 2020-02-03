@@ -168,11 +168,11 @@ ctxMVars d ctx =
          CtxITEElse _ _           -> (plvars, prvars)
          CtxForIter _ _           -> (plvars, prvars)
          CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter)
-                                           -- variables that occur in the iterator expression are not
-                                           -- accessible inside the loop
+                                           -- variables that occur in the iterator expression cannot
+                                           -- be modified inside the loop
                                            plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars
-                                           prvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) prvars
-                                       in (plvars_not_iter, prvars_not_iter ++ [loopvar])
+                                           plvars_iter = filter (\(v,_) -> elem v $ exprVars exprIter) plvars
+                                       in (plvars_not_iter, prvars ++ plvars_iter ++ [loopvar])
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> (plvars, prvars)
