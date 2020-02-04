@@ -179,7 +179,7 @@ compileFlatBufferRustBindings d prog_name dir = do
         (vcat $ map rustTypeFromFlatbuf
               -- One FromFlatBuffer implementation per Rust type
               $ nubBy (\t1 t2 -> R.mkType t1 == R.mkType t2)
-              $ progTypesToSerialize)
+              $ progRustTypesToSerialize)
 
 -- | Generate Java convenience API that provides a type-safe way to serialize/deserialize
 -- commands to a FlatBuffer.
@@ -343,16 +343,22 @@ typeIsVector x =
          TOpaque{..} -> elem typeName sET_TYPES || typeName == mAP_TYPE
          _ -> False
 
--- Types for which FlatBuffers schema, including FlatBuffers 'table' declaration
--- must be generated.  This includes all types that occur in input and output
--- relations (except for primitive types, unless the primitive type is used as
--- relation type, in which case we still need a table for it) and indexes.
-progTypesToSerialize :: (?d::DatalogProgram) => [Type]
-progTypesToSerialize =
+-- Types for which Rust FromFlatBuffer trait must be implemented.
+progRustTypesToSerialize :: (?d::DatalogProgram) => [Type]
+progRustTypesToSerialize =
     nub $
     concatMap relTypesToSerialize progIORelations ++ 
     concatMap idxTypesToSerialize (M.elems $ progIndexes ?d) ++
     concatMap (relTypesToSerialize . idxRelation ?d) (M.elems $ progIndexes ?d)
+
+-- Types for which FlatBuffers schema, including FlatBuffers 'table' declaration
+-- must be generated.  This includes all types that occur in input and output
+-- relations (except for primitive types, unless the primitive type is used as
+-- relation type, in which case we still need a table for it) and indexes,
+-- normalized by applying the 'typeNormalizeForFlatBuf' function.
+progTypesToSerialize :: (?d::DatalogProgram) => [Type]
+progTypesToSerialize =
+    nub $ map typeNormalizeForFlatBuf progRustTypesToSerialize
 
 -- Types to be included in `union __Value`.
 progValTypes :: (?d::DatalogProgram) => [Type]
@@ -372,16 +378,16 @@ progIORelations =
 relTypesToSerialize :: (?d::DatalogProgram) => Relation -> [Type]
 relTypesToSerialize Relation{..} =
     execState (typeSubtypes relType)
-              [typeNormalizeForFlatBuf relType] -- Relation type must appear in 'union Value'; therefore we
-                                                -- generate a table for it even if it's a primitive
-                                                -- type.
+              [typeNormalize ?d relType] -- Relation type must appear in 'union Value'; therefore we
+                                         -- generate a table for it even if it's a primitive
+                                         -- type.
 
 -- Types used in index declaration (possibly, recursively), for which serialization
 -- logic must be generated.
 idxTypesToSerialize :: (?d::DatalogProgram) => Index -> [Type]
 idxTypesToSerialize idx@Index{..} =
     execState (typeSubtypes $ idxKeyType idx)
-              [typeNormalizeForFlatBuf $ idxKeyType idx]
+              [typeNormalize ?d $ idxKeyType idx]
 
 -- Types that occur in type expression `t`, for which serialization logic must be
 -- generated, including:
@@ -425,7 +431,7 @@ typeSubtypes t =
     -- Prepend 'x' to the list so that dependency declarations are generated before
     -- types that depend on them.
     addtype x = modify (nub . (x:))
-    t'' = typeNormalizeForFlatBuf t
+    t'' = typeNormalize ?d t
 
 {- FlatBuffer schema generation -}
 
@@ -567,14 +573,17 @@ legalize n =
 legalizeChar :: Char -> Char
 legalizeChar c = if isAlphaNum c then c else '_'
 
--- Like 'Type.typeNormalize', but also unwraps Ref<> and IObj<> types, which are
--- transparent to FlatBuffers.
+-- Recursively unwraps Ref<> and IObj<> types in type arguments.
 typeNormalizeForFlatBuf :: (WithType a, ?d::DatalogProgram) => a -> Type
-typeNormalizeForFlatBuf x =
-    case typeNormalize ?d x of
+typeNormalizeForFlatBuf x = typeMap _typeNormalizeForFlatBuf $ typ x
+
+_typeNormalizeForFlatBuf :: (?d::DatalogProgram) => Type -> Type
+_typeNormalizeForFlatBuf t =
+    case t' of
          TOpaque{typeArgs = [innerType],..} | elem typeName [rEF_TYPE,  iNTERNED_TYPE]
-                                            -> typeNormalizeForFlatBuf innerType
-         t'                                 -> t'
+                                            -> innerType
+         _                  -> t'
+    where t' = typ'' ?d t
 
 {- Functions to work with the FlatBuffers-generated Java API. -}
 
@@ -1609,7 +1618,8 @@ rustTypeFromFlatbuf t@TTuple{..} =
 -- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
 -- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
 -- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
-rustTypeFromFlatbuf t@TOpaque{} =
+rustTypeFromFlatbuf t@TOpaque{..} | elem typeName [rEF_TYPE, iNTERNED_TYPE] = empty
+                                  | otherwise =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
     "        let vec = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested vector\"))?;"       $$

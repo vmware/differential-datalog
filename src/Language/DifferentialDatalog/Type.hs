@@ -46,6 +46,7 @@ module Language.DifferentialDatalog.Type(
     typeConsTree,
     consTreeAbduct,
     typeMapM,
+    typeMap,
     funcTypeArgSubsts,
     funcGroupArgTypes,
     sET_TYPES,
@@ -60,6 +61,7 @@ module Language.DifferentialDatalog.Type(
 import Data.Maybe
 import Data.List
 import Control.Monad.Except
+import Control.Monad.Identity
 import qualified Data.Map as M
 --import Debug.Trace
 
@@ -749,6 +751,9 @@ typeMapM fun t@TVar{}      = fun t
 typeMapM fun t@TOpaque{..} = do
     args <- mapM (typeMapM fun) typeArgs
     fun $ t { typeArgs = args }
+
+typeMap :: (Type -> Type) -> Type -> Type
+typeMap f t = runIdentity $ typeMapM (return . f) t
 
 typeIterType :: DatalogProgram -> Type -> Maybe Type
 typeIterType d t =
