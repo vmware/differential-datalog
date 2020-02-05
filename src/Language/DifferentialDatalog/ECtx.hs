@@ -46,7 +46,10 @@ module Language.DifferentialDatalog.ECtx(
      ctxInRuleRHSPattern,
      ctxIsIndex,
      ctxInIndex,
-     ctxIsFunc)
+     ctxIsFunc,
+     ctxInFunc,
+     ctxIsForLoopBody,
+     ctxInForLoopBody)
 where
 
 import Data.Maybe
@@ -143,3 +146,17 @@ ctxInRuleRHSPattern _                     = False
 ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True
 ctxIsFunc _         = False
+
+-- | Returns the function that the context belongs to or 'Nothing'
+-- if 'ctx' is outside the body of a function.
+ctxInFunc :: ECtx -> Maybe Function
+ctxInFunc (CtxFunc f) = Just f
+ctxInFunc CtxTop      = Nothing
+ctxInFunc ctx         = ctxInFunc (ctxParent ctx)
+
+ctxIsForLoopBody :: ECtx -> Bool
+ctxIsForLoopBody CtxForBody{} = True
+ctxIsForLoopBody _            = False
+
+ctxInForLoopBody :: ECtx -> Bool
+ctxInForLoopBody ctx = any ctxIsForLoopBody $ ctxAncestors ctx

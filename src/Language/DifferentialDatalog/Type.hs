@@ -312,6 +312,9 @@ exprNodeType' _ ctx (EITE p _ Nothing e)  = mtype2me p ctx e
 exprNodeType' _ _   (EITE _ _ (Just t) _) = return t
 exprNodeType' _ _   (EFor _ _ _ _)        = return $ tTuple []
 exprNodeType' _ _   (ESet _ _ _)          = return $ tTuple []
+exprNodeType' d ctx (EContinue _)         = return $ maybe (tTuple []) id (ctxExpectType d ctx)
+exprNodeType' d ctx (EBreak _)            = return $ maybe (tTuple []) id (ctxExpectType d ctx)
+exprNodeType' d ctx (EReturn _ _)         = return $ maybe (tTuple []) id (ctxExpectType d ctx)
 
 exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
     case op of
@@ -559,6 +562,9 @@ ctxExpectType _ (CtxForBody _ _)                     = Just $ tTuple []
 ctxExpectType d (CtxSetL e@(ESet _ _ rhs) ctx)       = exprTypeMaybe d (CtxSetR e ctx) rhs
 ctxExpectType d (CtxSetR (ESet _ lhs _) ctx)         = -- avoid infinite recursion by evaluating lhs standalone
                                                        exprTypeMaybe d (CtxSeq1 (ESeq nopos lhs (error "ctxExpectType: should be unreachable")) ctx) lhs
+ctxExpectType _ (CtxReturn _ ctx)                    = case ctxInFunc ctx of
+                                                            Just f  -> Just $ funcType f
+                                                            Nothing -> Nothing
 ctxExpectType d (CtxBinOpL e ctx)                    =
     case exprBOp e of
          Eq     -> trhs

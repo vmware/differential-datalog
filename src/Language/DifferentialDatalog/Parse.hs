@@ -71,6 +71,8 @@ reservedNames = ["as",
                  "and",
                  "bit",
                  "bool",
+                 "break",
+                 "continue",
                  "default",
                  "extern",
                  "else",
@@ -87,6 +89,7 @@ reservedNames = ["as",
                  "not",
                  "or",
                  "relation",
+                 "return",
                  "signed",
                  "skip",
                  "string",
@@ -473,6 +476,13 @@ term' = withPos $
      <|> eite
      <|> efor
      <|> evardcl
+     <|> econtinue
+     <|> ebreak
+     <|> ereturn
+
+econtinue = eContinue <$ reserved "continue"
+ebreak    = eBreak <$ reserved "break"
+ereturn   = eReturn <$ reserved "return" <*> option (eTuple []) expr
 
 eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do

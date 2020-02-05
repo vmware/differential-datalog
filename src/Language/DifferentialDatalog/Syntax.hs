@@ -96,6 +96,9 @@ module Language.DifferentialDatalog.Syntax (
         eITE,
         eFor,
         eSet,
+        eBreak,
+        eContinue,
+        eReturn,
         eBinOp,
         eUnOp,
         eNot,
@@ -606,6 +609,9 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EITE          {exprPos :: Pos, exprCond :: e, exprThen :: e, exprElse :: e}
                 | EFor          {exprPos :: Pos, exprLoopVar :: String, exprIter :: e, exprBody :: e}
                 | ESet          {exprPos :: Pos, exprLVal :: e, exprRVal :: e}
+                | EBreak        {exprPos :: Pos}
+                | EContinue     {exprPos :: Pos}
+                | EReturn       {exprPos :: Pos, exprRetVal :: e}
                 | EBinOp        {exprPos :: Pos, exprBOp :: BOp, exprLeft :: e, exprRight :: e}
                 | EUnOp         {exprPos :: Pos, exprUOp :: UOp, exprOp :: e}
                 | EPHolder      {exprPos :: Pos}
@@ -633,6 +639,9 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EITE _ i1 t1 e1)        (EITE _ i2 t2 e2)          = i1 == i2 && t1 == t2 && e1 == e2
     (==) (EFor _ v1 e1 b1)        (EFor _ v2 e2 b2)          = v1 == v2 && e1 == e2 && b1 == b2
     (==) (ESet _ l1 r1)           (ESet _ l2 r2)             = l1 == l2 && r1 == r2
+    (==) (EBreak _)               (EBreak _)                 = True
+    (==) (EContinue _)            (EContinue _)              = True
+    (==) (EReturn _ e1)           (EReturn _ e2)             = e1 == e2
     (==) (EBinOp _ o1 l1 r1)      (EBinOp _ o2 l2 r2)        = o1 == o2 && l1 == l2 && r1 == r2
     (==) (EUnOp _ o1 e1)          (EUnOp _ o2 e2)            = o1 == o2 && e1 == e2
     (==) (EPHolder _)             (EPHolder _)               = True
@@ -680,6 +689,9 @@ instance PP e => PP (ExprNode e) where
                                (nest' $ pp b)                                         $$
                                rbrace
     pp (ESet _ l r)          = pp l <+> "=" <+> pp r
+    pp (EBreak _)            = "break"
+    pp (EContinue _)         = "continue"
+    pp (EReturn _ e)         = "return" <+> pp e
     pp (EBinOp _ op e1 e2)   = parens $ pp e1 <+> pp op <+> pp e2
     pp (EUnOp _ op e)        = parens $ pp op <+> pp e
     pp (EPHolder _)          = "_"
@@ -731,6 +743,9 @@ eSeq l r            = E $ ESeq      nopos l r
 eITE i t e          = E $ EITE      nopos i t e
 eFor v e b          = E $ EFor      nopos v e b
 eSet l r            = E $ ESet      nopos l r
+eBreak              = E $ EBreak    nopos
+eContinue           = E $ EContinue nopos
+eReturn e           = E $ EReturn   nopos e
 eBinOp op l r       = E $ EBinOp    nopos op l r
 eUnOp op e          = E $ EUnOp     nopos op e
 eNot e              = eUnOp Not e
@@ -1078,12 +1093,14 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxITEElse        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | 'for (.. in e)'
           | CtxForIter        {ctxParExpr::ENode, ctxPar::ECtx}
-            -- | 'for (.. in e)'
+            -- | 'for (.. in ..) e'
           | CtxForBody        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Left-hand side of an assignment: 'X = y'
           | CtxSetL           {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Righ-hand side of an assignment: 'y = X'
           | CtxSetR           {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a 'return' statement
+          | CtxReturn         {ctxParExpr::ENode, ctxPar::ECtx}
             -- | First operand of a binary operator: 'X op y'
           | CtxBinOpL         {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Second operand of a binary operator: 'y op X'
@@ -1136,6 +1153,7 @@ instance PP ECtx where
                     CtxForBody{..}        -> "CtxForBody        " <+> epar
                     CtxSetL{..}           -> "CtxSetL           " <+> epar
                     CtxSetR{..}           -> "CtxSetR           " <+> epar
+                    CtxReturn{..}         -> "CtxReturn         " <+> epar
                     CtxBinOpL{..}         -> "CtxBinOpL         " <+> epar
                     CtxBinOpR{..}         -> "CtxBinOpR         " <+> epar
                     CtxUnOp{..}           -> "CtxUnOp           " <+> epar

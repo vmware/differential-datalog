@@ -107,6 +107,9 @@ exprFoldCtxM' f ctx e@(ESet p l r)            = do -- XXX: start with RHS, e.g.,
                                                    r' <- exprFoldCtxM f (CtxSetR e ctx) r
                                                    l' <- exprFoldCtxM f (CtxSetL e ctx) l
                                                    f ctx $ ESet p l' r'
+exprFoldCtxM' f ctx   (EContinue p)           = f ctx $ EContinue p
+exprFoldCtxM' f ctx   (EBreak p)              = f ctx $ EBreak p
+exprFoldCtxM' f ctx e@(EReturn p v)           = f ctx =<< EReturn p <$> exprFoldCtxM f (CtxReturn e ctx) v
 exprFoldCtxM' f ctx e@(EBinOp p op l r)       = f ctx =<< EBinOp p op <$> exprFoldCtxM f (CtxBinOpL e ctx) l <*>
                                                                           exprFoldCtxM f (CtxBinOpR e ctx) r
 exprFoldCtxM' f ctx e@(EUnOp p op x)          = f ctx =<< EUnOp p op <$> (exprFoldCtxM f (CtxUnOp e ctx) x)
@@ -140,6 +143,9 @@ exprMapM g e = case e of
                    EITE p i t el       -> EITE p <$> g i <*> g t <*> g el
                    EFor p v i b        -> EFor p v <$> g i <*> g b
                    ESet p l r          -> ESet p <$> g l <*> g r
+                   EBreak p            -> return $ EBreak p
+                   EContinue p         -> return $ EContinue p
+                   EReturn p v         -> EReturn p <$> g v
                    EBinOp p op l r     -> EBinOp p op <$> g l <*> g r
                    EUnOp p op v        -> EUnOp p op <$> g v
                    EPHolder p          -> return $ EPHolder p
@@ -192,6 +198,9 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EITE _ i t el         -> x' `op` i `op` t `op` el
                                      EFor _ _ i b          -> x' `op` i `op` b
                                      ESet _ l r            -> x' `op` l `op` r
+                                     EBreak _              -> x'
+                                     EContinue _           -> x'
+                                     EReturn _ v           -> x' `op` v
                                      EBinOp _ _ l r        -> x' `op` l `op` r
                                      EUnOp _ _ v           -> x' `op` v
                                      EPHolder _            -> x'

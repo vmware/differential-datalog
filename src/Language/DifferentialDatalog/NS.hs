@@ -176,6 +176,7 @@ ctxMVars d ctx =
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> (plvars, prvars)
+         CtxReturn _ _            -> (plvars, prvars)
          CtxBinOpL _ _            -> ([], plvars ++ prvars)
          CtxBinOpR _ _            -> ([], plvars ++ prvars)
          CtxUnOp _ _              -> ([], plvars ++ prvars)
