@@ -195,21 +195,25 @@ fn test_fromrecord() {
     );
 }
 
-impl Shr<usize> for Int {
+impl Shr<u32> for Int {
     type Output = Int;
 
     #[inline]
-    fn shr(self, rhs: usize) -> Int {
-        Int { x: self.x.shr(rhs) }
+    fn shr(self, rhs: u32) -> Int {
+        Int {
+            x: self.x.shr(rhs as usize),
+        }
     }
 }
 
-impl Shl<usize> for Int {
+impl Shl<u32> for Int {
     type Output = Int;
 
     #[inline]
-    fn shl(self, rhs: usize) -> Int {
-        Int { x: self.x.shl(rhs) }
+    fn shl(self, rhs: u32) -> Int {
+        Int {
+            x: self.x.shl(rhs as usize),
+        }
     }
 }
 
