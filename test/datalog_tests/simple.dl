@@ -1139,6 +1139,7 @@ function all(xs: Vec<bool>): bool =
     return true
 }
 
+// At least one element of xs is true.
 function any(xs: Vec<bool>): bool =
 {
     var res = false;
@@ -1149,6 +1150,16 @@ function any(xs: Vec<bool>): bool =
         }
     };
     return res
+}
+
+// A weird implementation of any using continue inside return.
+function weird_any(xs: Vec<bool>): bool =
+{
+    var res = false;
+    for (x in xs) {
+        return if (x == true) { true } else { continue }
+    };
+    false
 }
 
 output relation ControlFlow(expr: string, value: string)
@@ -1165,16 +1176,71 @@ ControlFlow("any(false, true, false)",
 ControlFlow("any(false, false, false)",
     "${any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), false), false))}").
 
+ControlFlow("weird_any(false, true, false)",
+    "${weird_any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), true), false))}").
+
+ControlFlow("weird_any(false, false, false)",
+    "${weird_any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), false), false))}").
+
 function filter_gt(xs: Vec<bigint>, threshold: bigint): Vec<bigint> =
 {
     var res: Vec<bigint> = vec_empty();
     for (x in xs) {
-        if (x <= threshold) continue: ();
+        if (x <= threshold) continue;
         vec_push(res, x)
     };
     return res
 }
 
+// Filter out C0's; stop processing when reaching C1{1}.
+function filter_C0(xs: Vec<Alt>): Vec<bigint> =
+{
+    var res: Vec<bigint> = vec_empty();
+    for (x in xs) {
+        var val: bigint = match (x) {
+            C0{v} -> continue,
+            C1{v} -> if (v > 0) {
+                v as bigint
+            } else {
+                break
+            }
+        };
+        vec_push(res, val)
+    };
+    res
+}
+
+// Test the use of continue, break, and return in function call arguments.
+
+function double(x: bigint): bigint = x << 1
+
+function double_evens(xs: Vec<bigint>): Vec<bigint> =
+{
+    var res: Vec<bigint> = vec_empty();
+
+    for (x in xs) {
+        vec_push(res, double({
+            if (x == 0) {
+                break
+            } else if (x < 0) {
+                return res
+            } else if (x % 2 != 0) { 
+                continue
+            } else {
+                x
+            }
+        }))
+    };
+    res
+}
+
 output relation BigintVectors(expr: string, vec: Vec<bigint>)
 BigintVectors("filter_gt((10, 20, 30), 15)",
     filter_gt(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 10), 20), 30), 15)).
+BigintVectors("filter_C0(C0{1}, C1{2}, C1{0}, C1{3})",
+    filter_C0(vec_push_imm(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<Alt>, C0{32'd1}), C1{32'd2}), C1{32'd0}), C1{32'd3}))).
+
+BigintVectors("double_evens(1,2,-1,4)",
+    double_evens(vec_push_imm(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 1), 2), -1), 4))).
+BigintVectors("double_evens(1,2,0,4)",
+    double_evens(vec_push_imm(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 1), 2), 0), 4))).

@@ -65,6 +65,9 @@ Arithm{13}
 Arithm{14}
 
 BigintVectors:
+BigintVectors{"double_evens(1,2,-1,4)",[4]}
+BigintVectors{"double_evens(1,2,0,4)",[4]}
+BigintVectors{"filter_C0(C0{1}, C1{2}, C1{0}, C1{3})",[2]}
 BigintVectors{"filter_gt((10, 20, 30), 15)",[20,30]}
 
 Cast_bigint:
@@ -145,6 +148,8 @@ ControlFlow{"all(true, true, false)","false"}
 ControlFlow{"all(true, true, true)","true"}
 ControlFlow{"any(false, false, false)","false"}
 ControlFlow{"any(false, true, false)","true"}
+ControlFlow{"weird_any(false, false, false)","false"}
+ControlFlow{"weird_any(false, true, false)","true"}
 
 J:
 J{true}
@@ -276,6 +281,9 @@ Arithm{13}
 Arithm{14}
 
 BigintVectors:
+BigintVectors{"double_evens(1,2,-1,4)",[4]}
+BigintVectors{"double_evens(1,2,0,4)",[4]}
+BigintVectors{"filter_C0(C0{1}, C1{2}, C1{0}, C1{3})",[2]}
 BigintVectors{"filter_gt((10, 20, 30), 15)",[20,30]}
 
 Cast_bigint:
@@ -356,6 +364,8 @@ ControlFlow{"all(true, true, false)","false"}
 ControlFlow{"all(true, true, true)","true"}
 ControlFlow{"any(false, false, false)","false"}
 ControlFlow{"any(false, true, false)","true"}
+ControlFlow{"weird_any(false, false, false)","false"}
+ControlFlow{"weird_any(false, true, false)","true"}
 
 J:
 J{true}
