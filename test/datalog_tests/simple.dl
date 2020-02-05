@@ -1127,3 +1127,54 @@ function agg1(g1: Group<(Tt1)>):Ttmp0 =
         })
     });
     (Ttmp0{.col4 = max5})
+
+
+/* tests for `break`, `continue`, and `return` statements. */
+
+function all(xs: Vec<bool>): bool =
+{
+    for (x in xs) {
+        if (not x) return false
+    };
+    return true
+}
+
+function any(xs: Vec<bool>): bool =
+{
+    var res = false;
+    for (x in xs) {
+        if (x) {
+            res = true;
+            break
+        }
+    };
+    return res
+}
+
+output relation ControlFlow(expr: string, value: string)
+
+ControlFlow("all(true, true, false)",
+    "${all(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, true), true), false))}").
+
+ControlFlow("all(true, true, true)",
+    "${all(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, true), true), true))}").
+
+ControlFlow("any(false, true, false)",
+    "${any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), true), false))}").
+
+ControlFlow("any(false, false, false)",
+    "${any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), false), false))}").
+
+function filter_gt(xs: Vec<bigint>, threshold: bigint): Vec<bigint> =
+{
+    var res: Vec<bigint> = vec_empty();
+    for (x in xs) {
+        if (x <= threshold) continue: ();
+        vec_push(res, x)
+    };
+    return res
+}
+
+output relation BigintVectors(expr: string, vec: Vec<bigint>)
+BigintVectors("filter_gt((10, 20, 30), 15)",
+    filter_gt(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 10), 20), 30), 15)).

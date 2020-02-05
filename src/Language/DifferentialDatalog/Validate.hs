@@ -544,6 +544,9 @@ exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx EFor{..}            = checkNoVar exprPos d ctx exprLoopVar
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
+exprValidate1 _ _ ctx (EContinue p)       = check (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
+exprValidate1 _ _ ctx (EBreak p)          = check (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
+exprValidate1 _ _ ctx (EReturn p _)       = check (isJust $ ctxInFunc ctx) p "\"return\" outside of a function body"
 exprValidate1 _ _ _   EBinOp{}            = return ()
 exprValidate1 _ _ _   EUnOp{}             = return ()
 

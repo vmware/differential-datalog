@@ -231,35 +231,40 @@ arngIsDistinct ArrangementSet{arngDistinct} = arngDistinct
 data EKind = EVal         -- normal value
            | ELVal        -- l-value that can be written to or moved
            | EReference   -- reference (mutable or immutable)
+           | ENoReturn    -- expression does not return (e.g., break, continue, or return).
            deriving (Eq, Show)
 
 -- convert any expression into reference
 ref :: (Doc, EKind, ENode) -> Doc
 ref (x, EReference, _)  = x
-ref (x, _, _)     = parens $ "&" <> x
+ref (x, ENoReturn, _)   = x
+ref (x, _, _)           = parens $ "&" <> x
 
 -- dereference expression if it is a reference; leave it alone
 -- otherwise
 deref :: (Doc, EKind, ENode) -> Doc
 deref (x, EReference, _) = parens $ "*" <> x
-deref (x, _, _)    = x
+deref (x, _, _)          = x
 
 -- convert any expression into mutable reference
 mutref :: (Doc, EKind, ENode) -> Doc
 mutref (x, EReference, _)  = x
-mutref (x, _, _)     = parens $ "&mut" <> x
+mutref (x, ENoReturn, _)   = x
+mutref (x, _, _)           = parens $ "&mut" <> x
 
 -- convert any expression to EVal by cloning it if necessary
 val :: (Doc, EKind, ENode) -> Doc
-val (x, EVal, _) = x
-val (x, _, _)    = x <> ".clone()"
+val (x, EVal, _)      = x
+val (x, ENoReturn, _) = x
+val (x, _, _)         = x <> ".clone()"
 
 -- convert expression to l-value
 lval :: (Doc, EKind, ENode) -> Doc
-lval (x, ELVal, _) = x
+lval (x, ELVal, _)      = x
 -- this can only be mutable reference in a valid program
-lval (x, EReference, _)  = parens $ "*" <> x
-lval (x, EVal, _)  = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
+lval (x, EReference, _) = parens $ "*" <> x
+lval (x, EVal, _)       = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
+lval (x, ENoReturn, _)  = error $ "Compile.lval: cannot convert expression to l-value: " ++ show x
 
 -- | 'CompilerConfig'
 -- 'cconfJava' - generate Java bindings to the DDlog program
@@ -2113,6 +2118,7 @@ mkExpr d ctx e k =
          EVal       -> val e'
          EReference -> ref e'
          ELVal      -> lval e'
+         ENoReturn  -> sel1 e'
     where
     e' = exprFoldCtx (mkExpr_ d) ctx e
 
@@ -2229,6 +2235,10 @@ mkExpr' d ctx ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
     assign = lval exprLVal <+> "=" <+> val exprRVal
     optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
+
+mkExpr' _ _ EBreak{} = ("break", ENoReturn)
+mkExpr' _ _ EContinue{} = ("continue", ENoReturn)
+mkExpr' _ _ EReturn{..} = ("return" <+> val exprRetVal, ENoReturn)
 
 -- operators take values or lvalues and return values
 mkExpr' d ctx e@EBinOp{..} = (v', EVal)

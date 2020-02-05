@@ -30,6 +30,7 @@ typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: b
 typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
 typedef Compare = Compare{label: string, value: bool}
 typedef ConcatString = ConcatString{s: string}
+typedef ControlFlow = ControlFlow{expr: string, value: string}
 typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
 typedef DdlogBinding = DdlogBinding{tn: tnid_t, entity: entid_t}
 typedef DdlogDependency = DdlogDependency{parent: entid_t, child: entid_t}
@@ -219,10 +220,30 @@ function agg1 (g1: std.Group<Tt1>): Ttmp0 =
                      })
        };
        Ttmp0{.col4=max5})))
+function all (xs: std.Vec<bool>): bool =
+    (for (x in xs) {
+         if (not x) {
+             return false
+         } else {
+               ()
+           }
+     };
+     return true)
 extern function allocate.adjust_allocation (allocated: std.Map<'A,'N>, toallocate: std.Vec<'A>, min_val: 'N, max_val: 'N): std.Vec<('A, 'N)>
 extern function allocate.allocate (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
 extern function allocate.allocate_opt (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, std.Option<'N>)>
 extern function allocate.allocate_with_hint (allocated: std.Set<'N>, toallocate: std.Vec<('B, std.Option<'N>)>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
+function any (xs: std.Vec<bool>): bool =
+    (var res = false;
+     (for (x in xs) {
+          if x {
+              (res = true;
+               break)
+          } else {
+                ()
+            }
+      };
+      return res))
 function b0 (): bool =
     (true and false)
 function b1 (a: bool): bool =
@@ -610,6 +631,7 @@ output relation Cast_u256 [Cast_u256]
 output relation Cast_u32 [Cast_u32]
 output relation Compare [Compare]
 output relation ConcatString [ConcatString]
+output relation ControlFlow [ControlFlow]
 output relation DMethod [DMethod]
 input relation DdlogBinding [DdlogBinding]
 input relation DdlogDependency [DdlogDependency]
