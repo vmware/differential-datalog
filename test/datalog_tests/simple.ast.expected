@@ -251,6 +251,26 @@ function b1 (a: bool): bool =
 function c0 (a: bit<32>, b: bit<16>): bit<16> =
     (a;
      b)
+function double (x: bigint): bigint =
+    (x << 32'd1)
+function double_evens (xs: std.Vec<bigint>): std.Vec<bigint> =
+    ((var res: std.Vec<bigint>) = std.vec_empty();
+     (for (x in xs) {
+          std.vec_push(res, double(if (x == 0) {
+                                       break
+                                   } else {
+                                         if (x < 0) {
+                                             return res
+                                         } else {
+                                               if ((x % 2) != 0) {
+                                                   continue
+                                               } else {
+                                                     x
+                                                 }
+                                           }
+                                     }))
+      };
+      res))
 function dummy (x: string): string =
     (x ++ " dummy")
 function edge_from (e: Edge): bigint =
@@ -318,14 +338,28 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
+function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint> =
+    ((var res: std.Vec<bigint>) = std.vec_empty();
+     (for (x in xs) {
+          ((var val: bigint) = match (x) {
+                                   C0{.x=var v} -> continue,
+                                   C1{.x=var v} -> if (v > 32'd0) {
+                                                       (v as bigint)
+                                                   } else {
+                                                         break
+                                                     }
+                               };
+           std.vec_push(res, val))
+      };
+      res))
 function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
     ((var res: std.Vec<bigint>) = std.vec_empty();
      (for (x in xs) {
-          ((if (x <= threshold) {
-                continue
-            } else {
-                  ()
-              }: ());
+          (if (x <= threshold) {
+               continue
+           } else {
+                 ()
+             };
            std.vec_push(res, x))
       };
       return res))
@@ -595,6 +629,16 @@ function vars (): () =
         ((var a, var b) = ((x + 5), (x - 5));
          (C{.f1=var e, .f2=_} = y;
           C{.f1=var c, .f2=var d} = y))))))
+function weird_any (xs: std.Vec<bool>): bool =
+    (var res = false;
+     (for (x in xs) {
+          return if (x == true) {
+                     true
+                 } else {
+                       continue
+                   }
+      };
+      false))
 function x (): Alt =
     C0{.x=32'd5}
 extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
@@ -990,5 +1034,10 @@ ControlFlow(.expr="all(true, true, false)", .value=("" ++ std.__builtin_2string(
 ControlFlow(.expr="all(true, true, true)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), true))))).
 ControlFlow(.expr="any(false, true, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
 ControlFlow(.expr="any(false, false, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), false), false))))).
+ControlFlow(.expr="weird_any(false, true, false)", .value=("" ++ std.__builtin_2string(weird_any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
+ControlFlow(.expr="weird_any(false, false, false)", .value=("" ++ std.__builtin_2string(weird_any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), false), false))))).
 BigintVectors(.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 10), 20), 30), 15)).
+BigintVectors(.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<Alt>), C0{.x=32'd1}), C1{.x=32'd2}), C1{.x=32'd0}), C1{.x=32'd3}))).
+BigintVectors(.expr="double_evens(1,2,-1,4)", .vec=double_evens(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1), 2), (- 1)), 4))).
+BigintVectors(.expr="double_evens(1,2,0,4)", .vec=double_evens(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1), 2), 0), 4))).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
