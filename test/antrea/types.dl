@@ -3,6 +3,7 @@
  */
 
 import intern
+import uuid as uuid
 import k8spolicy as k8s
 
 // getNormalizedUID generates a unique UUID based on a given string.
@@ -10,8 +11,7 @@ import k8spolicy as k8s
 // unique within the Namespace by adding the constant UID.
 function getNormalizedUID(name: string): string = {
     var uuid = hash128(name);
-    // TODO: implement proper UUID formatter.
-    "${uuid}"
+    uuid.to_hyphenated_lower(uuid.from_u128(uuid))
 }
 
 // normalizeExpr converts an expression to the form "key1 OP [value1...]".
