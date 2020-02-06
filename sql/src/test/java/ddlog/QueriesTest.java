@@ -122,6 +122,53 @@ public class QueriesTest {
     }
 
     @Test
+    public void testGroupBy() {
+        String query = "create view v1 as SELECT COUNT(*) FROM t1 GROUP BY column2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
+                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "var first3 = true;\n" +
+                "(var count5 = 64'sd0);\n" +
+                "(for (i2 in g1) {\n" +
+                "var v0 = i2;\n" +
+                "(count5 = if first3 {\n" +
+                "64'sd1} else {\n" +
+                "agg_count_R(count5, 64'sd1)});\n" +
+                "(first3 = false)}\n" +
+                ");\n" +
+                "(Ttmp0{.col4 = count5})" +
+                this.relations(false) +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v8] :- Rt1[v0],var g7 = v0.column2,var v6 = Aggregate((g7), agg1((v0))),var v8 = v6.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testGroupBy1() {
+        String query = "create view v1 as SELECT column2, COUNT(*) FROM t1 GROUP BY column2";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column2:string, col5:signed<64>}\n" +
+                "typedef Tagg12 = Tagg12{col5:signed<64>}\n" +
+                "function agg1(g2: Group<(Tt1)>):Tagg12 =\n" +
+                "var first4 = true;\n" +
+                "(var count6 = 64'sd0);\n" +
+                "(for (i3 in g2) {\n" +
+                "var v0 = i3;\n" +
+                "(count6 = if first4 {\n" +
+                "64'sd1} else {\n" +
+                "agg_count_R(count6, 64'sd1)});\n" +
+                "(first4 = false)}\n" +
+                ");\n" +
+                "(Tagg12{.col5 = count6})" +
+                this.relations(false) +
+                "relation Rtmp0[Ttmp0]\n" +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v9] :- Rt1[v0],var gb1 = v0.column2,var aggResult8 = Aggregate((gb1), agg1((v0))),var v7 = Ttmp0{.column2 = gb1,.col5 = aggResult8.col5},var v9 = v7.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testTwoAggregations() {
         String query = "create view v1 as SELECT MIN(column1) + MAX(column1) FROM t1";
         String program = this.header(false) +
@@ -494,6 +541,18 @@ public class QueriesTest {
                 this.relations(false) +
                 "output relation Rv1[Ttmp0]\n" +
                 "Rv1[v3] :- Rt1[v0],Rt2[v1],(true and (v0.column1 == v1.column1)),var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3},var v3 = v2.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testNaturalJoinWhere() {
+        String query = "create view v1 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2 WHERE column3";
+        String program = this.header(false) +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool}\n" +
+                this.relations(false) +
+                "output relation Rv1[Ttmp0]\n" +
+                "Rv1[v3] :- Rt1[v0],Rt2[v1],(true and (v0.column1 == v1.column1))," +
+                "var v2 = Ttmp0{.column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3},v0.column3,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
