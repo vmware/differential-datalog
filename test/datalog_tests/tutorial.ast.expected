@@ -6,6 +6,8 @@ typedef Bytes = Bytes{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef Category = CategoryStarWars{} | CategoryOther{}
 typedef Endpoint = Endpoint{ip: ip_addr_t, proto: string, preferred_port: bit<16>}
 typedef EndpointString = EndpointString{s: string}
+typedef Evens = Evens{evens_and_odds: std.Vec<bigint>, evens: std.Vec<bigint>}
+typedef EvensAndOdds = EvensAndOdds{vec: std.Vec<bigint>}
 typedef First5 = First5{str: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
@@ -30,6 +32,7 @@ typedef Packet = Packet{pkt: eth_pkt_t}
 typedef Person = Person{name: string, nationality: string, occupation: string}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
+typedef Prefix = Prefix{vec: std.Vec<string>}
 typedef Price = Price{item: string, vendor: string, price: bit<64>}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
@@ -43,6 +46,7 @@ typedef TopScore = TopScore{school: string, top_score: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
 typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
+typedef Vector = Vector{vec: std.Vec<string>, sep: string}
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef WorstPrice = WorstPrice{item: string, price: bit<64>}
@@ -79,7 +83,7 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                _ -> if (preferred_port != 16'd0) {
                                         preferred_port
                                     } else {
-                                          16'd80
+                                          return (("" ++ ip_addr_t2string(ip)) ++ ":80")
                                       }
                            };
      ((("" ++ ip_addr_t2string(ip)) ++ ":") ++ std.__builtin_2string(port)))
@@ -97,6 +101,17 @@ function best_vendor (g: std.Group<(string, bit<64>)>): (string, bit<64>) =
              }
        };
        (min_vendor, min_price))))
+function evens (vec: std.Vec<bigint>): std.Vec<bigint> =
+    ((var res: std.Vec<bigint>) = std.vec_empty();
+     (for (x in vec) {
+          (if ((x % 2) != 0) {
+               continue
+           } else {
+                 ()
+             };
+           std.vec_push(res, x))
+      };
+      res))
 function ip_addr_t2string (ip: ip_addr_t): string =
     ((((((("" ++ std.__builtin_2string(ip.addr[31:24])) ++ ".") ++ std.__builtin_2string(ip.addr[23:16])) ++ ".") ++ std.__builtin_2string(ip.addr[15:8])) ++ ".") ++ std.__builtin_2string(ip.addr[7:0]))
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t =
@@ -132,6 +147,17 @@ function pkt_udp_port2 (pkt: eth_pkt_t): std.Option<bit<16>> =
         EthPacket{.src=_, .dst=_, .payload=EthIP6{.ip6=IP6Pkt{.ttl=_, .src=_, .dst=_, .payload=IPUDP{.udp=UDPPkt{.src=_, .dst=var port, .len=_}}}}} -> std.Some{.x=port},
         _ -> std.None{}
     }
+function prefixBefore (vec: std.Vec<'A>, v: 'A): std.Vec<'A> =
+    ((var res: std.Vec<'A>) = std.vec_empty();
+     (for (x in vec) {
+          (if (x == v) {
+               break
+           } else {
+                 ()
+             };
+           std.vec_push(res, x))
+      };
+      res))
 extern function split (s: string, sep: string): std.Vec<string>
 function split_ip_list (x: string): std.Vec<string> =
     split(x, " ")
@@ -264,6 +290,8 @@ input relation Blacklisted [Blacklisted]
 input relation Bytes [Bytes]
 input relation Endpoint [Endpoint]
 output relation EndpointString [EndpointString]
+output relation Evens [Evens]
+input relation EvensAndOdds [EvensAndOdds]
 output relation First5 [First5]
 output relation Flow [Flow]
 output relation Flow1 [Flow1]
@@ -286,6 +314,7 @@ input relation Packet [Packet]
 input relation Person [Person]
 output relation Phrases [Phrases]
 output relation Pow2 [Pow2]
+output relation Prefix [Prefix]
 input relation Price [Price]
 output relation Product [Product]
 output relation SanitizedEndpoint [SanitizedEndpoint]
@@ -299,6 +328,7 @@ output relation TargetAudience [Person]
 output relation TopScore [TopScore]
 output relation UDPDstPort [UDPDstPort]
 output relation UDPDstPort2 [UDPDstPort2]
+input relation Vector [Vector]
 input relation Word1 [Word1]
 input relation Word2 [Word2]
 output relation WorstPrice [WorstPrice]
@@ -316,6 +346,8 @@ First5(.str=string_slice_unsafe(p, 64'd0, 64'd5)) :- Phrases(.phrase=p).
 SanitizedEndpoint(.ep=endpoint) :- Endpoint(.ip=ip, .proto=proto, .preferred_port=preferred_port), var endpoint = addr_port(ip, proto, preferred_port), not Blacklisted(.ep=endpoint).
 HostIP(.host=host, .addr=addr) :- HostAddress(.host=host, .addrs=addrs), var addr = FlatMap(split_ip_list(addrs)).
 HostIPVSep(.host=host, .addrs=vaddrs) :- HostAddress(.host=host, .addrs=addrs), var vaddrs = vsep(split_ip_list(addrs)).
+Evens(.evens_and_odds=vec, .evens=evens(vec)) :- EvensAndOdds(.vec=vec).
+Prefix(.vec=prefixBefore(vec, sep)) :- Vector(.vec=vec, .sep=sep).
 Sum(.x=x, .y=y, .sum=(x + y)),
 Product(.x=x, .y=y, .prod=(x * y)) :- X(.x=x), X(.x=y).
 BestPrice(.item=item, .price=best_price) :- Price(.item=item, .vendor=_, .price=price), var best_price = Aggregate((item), std.group_min(price)).

@@ -128,7 +128,7 @@ function addr_port(ip: ip_addr_t,
                 if (preferred_port != 0)
                     preferred_port
                 else
-                    16'd80 // assume HTTP
+                    return "${ip}:80" // assume HTTP
             }
         };
     "${ip}:${port}"
@@ -195,6 +195,40 @@ output relation HostIPVSep(host: bit<64>, addrs: string)
 
 HostIPVSep(host, vaddrs) :- HostAddress(host, addrs),
                             var vaddrs = vsep(split_ip_list(addrs)).
+
+/*
+ * Example: `continue` and `break` statements.
+ */
+
+// Returns only even elements of the vector.
+function evens(vec: Vec<bigint>): Vec<bigint> = {
+    var res: Vec<bigint> = vec_empty();
+    for (x in vec) {
+        if (x % 2 != 0) { continue };
+        vec_push(res, x)
+    };
+    res
+}
+
+input relation EvensAndOdds(vec: Vec<bigint>)
+output relation Evens(evens_and_odds: Vec<bigint>, evens: Vec<bigint>)
+
+Evens(vec, evens(vec)) :- EvensAndOdds(vec).
+
+// Returns prefix of `vec` before the first occurrence of value `v`.
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> = {
+    var res: Vec<'A> = vec_empty();
+    for (x in vec) {
+        if (x == v) { break };
+        vec_push(res, x)
+    };
+    res
+}
+
+input relation Vector(vec: Vec<string>, sep: string)
+output relation Prefix(vec: Vec<string>)
+
+Prefix(prefixBefore(vec, sep)) :- Vector(vec, sep).
 
 /*
  * Example: Multiple heads

@@ -334,6 +334,9 @@ term ::= "_"                 (* wildcard *)
        | match_term          (* match term *)
        | ite_term            (* if-then-else term *)
        | for_term            (* for-loop *)
+       | "continue"          (* abort current loop iteration *)
+       | "break"             (* break out of a loop *)
+       | return_term         (* return from a function *)
        | vardecl_term        (* local variable declaration *)
 ```
 
@@ -398,6 +401,7 @@ apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
 ite_term     ::= "if" term term [ "else" term ]
 for_term     ::= "for" "(" var_name "in" expr ")" term
+return_term  ::= "return" [expr]
 vardecl_term ::= "var" var_name
 
 match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"
