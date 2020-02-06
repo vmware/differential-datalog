@@ -142,6 +142,22 @@ dump HostIP;
 echo HostIPVSep:;
 dump HostIPVSep;
 
+start;
+insert EvensAndOdds([0,1,2,3,4,5]),
+insert EvensAndOdds([1,3,5,7]),
+commit;
+
+echo Evens:;
+dump Evens;
+
+start;
+insert Vector(["a", "--", "b"], "--"),
+insert Vector(["--", "a", "b"], "--"),
+insert Vector(["a", "b", "--"], "--"),
+commit;
+
+echo Prefix:;
+dump Prefix;
 
 start;
 

@@ -609,6 +609,12 @@ Evaluation order can be controlled using several constructs:
 
 1. A for loop
 
+1. `continue` terminates current loop iteration
+
+1. `break` terminates a loop
+
+1. `return [expr]` returns from a function
+
 The following example illustrates the first four of these constructs.  Loops are explained [below](#container-types-flatmap-and-for-loops).
 
 ```
@@ -621,7 +627,7 @@ function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): strin
             if (preferred_port != 0)
                 preferred_port // return preferred_port if specified
             else
-                16'd80         // assume HTTP otherwise
+                return "${ip}:80" // assume HTTP otherwise
         }
     };  // semicolon required for sequencing
     // Return the address:port string
@@ -629,12 +635,12 @@ function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): strin
 }
 ```
 
-The result computed by a function is the result of the last expression
-evaluated.  There is no `return` statement.  If the `else` is
-missing the value `()` (empty tuple) is used for the `else` branch.
-In `match` expressions the patterns must cover
-all possible cases (for instance, the match expression above would not
-be correct without the last "catch-all" (`_`) case).
+The result computed by a function is the value of the last expression evaluated
+or the value produced by the first `return` statement encountered when
+evaluating the function.  If the `else` is missing the value `()` (empty tuple)
+is used for the `else` branch.  In `match` expressions the patterns must cover
+all possible cases (for instance, the match expression above would not be
+correct without the last "catch-all" (`_`) case).
 
 DDlog variables must always be initialized when declared.  In this
 example, the `port` variable is assigned the result of the `match`
@@ -840,6 +846,35 @@ function vsep(strs: Vec<string>): string = {
 Loops can only iterate over container types: sets, maps, and vectors.  When iterating over sets
 and vectors, the loop variable (`s` in the above example) has the same type as elements of the container
 (e.g., `string`).  When iterating over maps, the loop variable is a 2-tuple `(key,value)`.
+
+A `continue` statement used anywhere inside the body of a loop terminates the
+current loop iteration:
+
+```
+// Returns only even elements of the vector.
+function evens(vec: Vec<bigint>): Vec<bigint> = {
+    var res: Vec<bigint> = vec_empty();
+    for (x in vec) {
+        if (x % 2 != 0) { continue };
+        vec_push(res, x)
+    };
+    res
+}
+```
+
+A `break` statement used anywhere inside the body of a loop terminates the loop:
+
+```
+// Returns prefix of `vec` before the first occurrence of value `v`.
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> = {
+    var res: Vec<'A> = vec_empty();
+    for (x in vec) {
+        if (x == v) { break };
+        vec_push(res, x)
+    };
+    res
+}
+```
 
 #### Rules with multiple heads
 
