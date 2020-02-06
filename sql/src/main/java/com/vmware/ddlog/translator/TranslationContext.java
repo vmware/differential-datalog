@@ -37,6 +37,15 @@ class TranslationContext {
      * instead of performing the translation proper.
      */
     private final HashMap<Node, DDlogExpression> substitutions;
+    /**
+     * Global to the whole program.
+     */
+    public SymbolTable globalSymbols;
+    /**
+     * Local to a query.
+     */
+    @Nullable
+    private SymbolTable localSymbols;
 
     TranslationContext() {
         this.substitutions = new HashMap<Node, DDlogExpression>();
@@ -47,6 +56,8 @@ class TranslationContext {
         this.etv = new ExpressionTranslationVisitor();
         this.translationScope = new ArrayList<Scope>();
         this.searchScopeName = false;
+        this.localSymbols = null;
+        this.globalSymbols = new SymbolTable();
     }
 
     public DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
@@ -151,21 +162,17 @@ class TranslationContext {
         this.relations.put(relation.getName(), relation);
     }
 
-    private int globalCounter = 0;
     @SuppressWarnings("SameParameterValue")
     String freshGlobalName(String prefix) {
-        // TODO: maintain a real symbol table
-        return prefix + this.globalCounter++;
+        return this.globalSymbols.freshName(prefix);
     }
 
-    private int localCounter = 0;
     String freshLocalName(String prefix) {
-        // TODO: maintain a real symbol table
-        return prefix + this.localCounter++;
+        return this.localSymbols.freshName(prefix);
     }
 
     void beginTranslation() {
-        this.localCounter = 0;
+        this.localSymbols = new SymbolTable();
     }
 
     void endTranslation() {

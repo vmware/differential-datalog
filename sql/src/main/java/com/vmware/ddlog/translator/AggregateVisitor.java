@@ -39,7 +39,7 @@ public class AggregateVisitor
         }
     }
 
-    Decomposition result;
+    Decomposition decomposition;
     private final List<TranslationVisitor.GroupByInfo> aggregates;
 
     /**
@@ -47,23 +47,28 @@ public class AggregateVisitor
      * @param aggregates   Columns that are already being aggregated.
      */
     public AggregateVisitor(List<TranslationVisitor.GroupByInfo> aggregates) {
-        this.result = new Decomposition();
+        this.decomposition = new Decomposition();
         this.aggregates = aggregates;
     }
 
     @Override
     protected Ternary visitFunctionCall(FunctionCall node, TranslationContext context) {
+        if (this.isGroupedBy(node)) {
+            this.decomposition.addNode(node);
+            return Ternary.Yes;
+        }
         String name = TranslationVisitor.convertQualifiedName(node.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
+        if (isAggregate) {
+            this.decomposition.addNode(node);
+        }
         for (Expression e: node.getArguments()) {
             Ternary arg = this.process(e, context);
             if (isAggregate && arg == Ternary.Yes)
                 throw new TranslationException("Nested aggregation", node);
-            if (arg != Ternary.Maybe)
-                result = arg;
+            result = this.combine(node, result, arg);
         }
-        this.result.addNode(node);
         if (isAggregate)
             return Ternary.Yes;
         return result;

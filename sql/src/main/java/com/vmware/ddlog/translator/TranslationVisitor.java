@@ -58,10 +58,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             DDlogIRNode field = this.process(te, context);
             fields.add(field.as(DDlogField.class, null));
         }
-        DDlogTStruct type = new DDlogTStruct(DDlogType.typeName(name), fields);
+        String typeName = context.freshGlobalName(DDlogType.typeName(name));
+        DDlogTStruct type = new DDlogTStruct(typeName, fields);
         DDlogTUser tuser = context.createTypedef(type);
+        String relName = DDlogRelation.relationName(name);
+        context.globalSymbols.addName(relName);
         DDlogRelation rel = new DDlogRelation(
-                DDlogRelation.RelationRole.RelInput, name, tuser);
+                DDlogRelation.RelationRole.RelInput, DDlogRelation.relationName(name), tuser);
         context.add(rel);
         return rel;
     }
@@ -71,7 +74,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
         RelationRHS relation = subquery.as(RelationRHS.class, null);
 
-        String relName = context.freshGlobalName("tmp");
+        String relName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
         DDlogRelation rel = new DDlogRelation(
                 DDlogRelation.RelationRole.RelInternal, relName, relation.getType());
         context.add(rel);
@@ -116,7 +119,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     protected DDlogIRNode visitTable(Table table, TranslationContext context) {
         String name = convertQualifiedName(table.getName());
-        DDlogRelation relation = context.getRelation(name);
+        DDlogRelation relation = context.getRelation(DDlogRelation.relationName(name));
         if (relation == null)
             throw new TranslationException("Could not find relation", table);
         String var = context.freshLocalName("v");
@@ -141,13 +144,14 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         boolean foundNonAggregate = false;
 
         List<SelectItem> items = select.getSelectItems();
+        AggregateVisitor visitor = new AggregateVisitor(groupBy);
         for (SelectItem s: items) {
             if (s instanceof AllColumns) {
                 foundNonAggregate = true;
             } else {
                 SingleColumn sc = (SingleColumn)s;
-                AggregateVisitor visitor = new AggregateVisitor(groupBy);
-                if (visitor.process(sc.getExpression(), context) == Ternary.Yes)
+                Expression e = sc.getExpression();
+                if (visitor.process(e, context) == Ternary.Yes)
                     foundAggregate = true;
                 else
                     foundNonAggregate = true;
@@ -163,7 +167,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      */
     private DDlogIRNode processSimpleSelect(RelationRHS relation, Select select,
                                             TranslationContext context) {
-        String outRelName = context.freshGlobalName("tmp");
+        String outRelName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
         // Special case for SELECT *
         List<SelectItem> items = select.getSelectItems();
         if (items.size() == 1) {
@@ -199,7 +203,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             }
         }
 
-        String newTypeName = DDlogType.typeName(outRelName);
+        String newTypeName = context.freshGlobalName(DDlogType.typeName(outRelName));
         DDlogTStruct type = new DDlogTStruct(newTypeName, typeList);
         DDlogType tuser = context.createTypedef(type);
         String var = context.freshLocalName("v");
@@ -326,7 +330,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     private DDlogIRNode processSelectAggregate(RelationRHS relation, Select select,
                                                List<GroupByInfo> groupBy,
                                                TranslationContext context) {
-        String outRelName = context.freshGlobalName("tmp");
+        String outRelName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
         DDlogExpression functionBody;
         DDlogExpression loopBody = null;
         String paramName = context.freshLocalName("g");
@@ -402,7 +406,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
                 AggregateVisitor aggv = new AggregateVisitor(groupBy);
                 aggv.process(expression, context);
-                AggregateVisitor.Decomposition decomposition = aggv.result;
+                AggregateVisitor.Decomposition decomposition = aggv.decomposition;
 
                 // For each aggregation function in the decomposition we generate a temporary
                 for (FunctionCall f: decomposition.aggregateNodes) {
@@ -451,12 +455,20 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
 
         loopBody = DDlogESeq.seq(loopBody, new DDlogESet(firstVar, new DDlogEBool(false)));
-        String newTypeName = DDlogType.typeName(outRelName);
+        String newTypeName = context.freshGlobalName(DDlogType.typeName(outRelName));
         DDlogTStruct resultType = new DDlogTStruct(newTypeName, resultTypeFields);
-        String funcTypeName = DDlogType.typeName(context.freshGlobalName(agg));
-        DDlogTStruct functionType = new DDlogTStruct(funcTypeName, functionTypeFields);
         DDlogTUser tUserResult = context.createTypedef(resultType);
-        DDlogType tUserFunction = context.createTypedef(functionType);
+
+        DDlogTUser tUserFunction;
+        String funcTypeName;
+        if (resultTypeFields.size() == functionTypeFields.size()) {
+            funcTypeName = newTypeName;
+            tUserFunction = tUserResult;
+        } else {
+            funcTypeName = context.freshGlobalName(DDlogType.typeName(agg));
+            DDlogTStruct functionType = new DDlogTStruct(funcTypeName, functionTypeFields);
+            tUserFunction = context.createTypedef(functionType);
+        }
         String var = context.freshLocalName("v");
         RelationRHS result = new RelationRHS(var, tUserResult);
         for (DDlogRuleRHS rhs: relation.getDefinitions())
@@ -486,23 +498,28 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogRelation outRel = new DDlogRelation(DDlogRelation.RelationRole.RelInternal, outRelName, tUserResult);
         context.add(outRel);
 
-        // The final result copies all the aggregated groupby fields and all fields computed by the function
-        List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
-        for (GroupByInfo gr : groupBy) {
-            assert gr.fieldName != null;
-            fields.add(new DDlogEStruct.FieldValue(gr.fieldName,
-                    new DDlogEVar(gr.varName, gr.translation.getType())));
-        }
-        for (DDlogEStruct.FieldValue field: project.fields) {
-            fields.add(new DDlogEStruct.FieldValue(field.getName(),
-                    new DDlogEField(
-                            new DDlogEVar(aggregateVarName, tUserFunction),
-                            field.getName(),
-                            field.getValue().getType())));
+        DDlogExpression copy;
+        if (groupBy.size() != 0) {
+            // The final result copies all the aggregated groupby fields and all fields computed by the function
+            List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
+            for (GroupByInfo gr : groupBy) {
+                if (gr.fieldName != null)
+                    fields.add(new DDlogEStruct.FieldValue(gr.fieldName,
+                            new DDlogEVar(gr.varName, gr.translation.getType())));
+            }
+            for (DDlogEStruct.FieldValue field : project.fields) {
+                fields.add(new DDlogEStruct.FieldValue(field.getName(),
+                        new DDlogEField(
+                                new DDlogEVar(aggregateVarName, tUserFunction),
+                                field.getName(),
+                                field.getValue().getType())));
+            }
+            DDlogExpression resultFields = new DDlogEStruct(tUserResult.getName(), fields, tUserResult);
+            copy = new DDlogESet(result.getRowVariable(true), resultFields);
+        } else {
+            copy = new DDlogESet(result.getRowVariable(true), new DDlogEVar(aggregateVarName, tUserFunction));
         }
 
-        DDlogExpression resultFields = new DDlogEStruct(tUserResult.getName(), fields, tUserResult);
-        DDlogExpression copy = new DDlogESet(result.getRowVariable(true), resultFields);
         result.addDefinition(copy);
         return result;
     }
@@ -556,8 +573,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String name = convertQualifiedName(view.getName());
         DDlogIRNode query = this.process(view.getQuery(), context);
         RelationRHS rel = query.as(RelationRHS.class, null);
+        String relName = DDlogRelation.relationName(name);
+        context.globalSymbols.addName(relName);
         DDlogRelation out = new DDlogRelation(
-                DDlogRelation.RelationRole.RelOutput, name, rel.getType());
+                DDlogRelation.RelationRole.RelOutput, relName, rel.getType());
 
         String outVarName = context.freshLocalName("v");
         DDlogExpression outRowVarDecl = new DDlogEVarDecl(outVarName, rel.getType());
@@ -565,7 +584,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<DDlogRuleRHS> rhs = rel.getDefinitions();
         DDlogESet set = new DDlogESet(outRowVarDecl, inRowVar);
         rhs.add(new DDlogRHSCondition(set));
-        DDlogAtom lhs = new DDlogAtom(name, new DDlogEVar(outVarName, out.getType()));
+        DDlogAtom lhs = new DDlogAtom(relName, new DDlogEVar(outVarName, out.getType()));
         DDlogRule rule = new DDlogRule(lhs, rhs);
         context.add(out);
         context.add(rule);
@@ -652,7 +671,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         // For the result we take all fields from the left and right but we skip
         // the joinColumn fields from the right.
-        String tmp = DDlogType.typeName(context.freshGlobalName("tmp"));
+        String tmp = context.freshGlobalName(DDlogType.typeName("tmp"));
         List<DDlogField> tfields = new ArrayList<DDlogField>();
         List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
 
