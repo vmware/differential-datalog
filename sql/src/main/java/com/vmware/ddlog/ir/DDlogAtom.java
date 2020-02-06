@@ -26,11 +26,11 @@ public class DDlogAtom implements DDlogIRNode {
     public String toString() {
         if (this.val instanceof DDlogEStruct) {
             DDlogEStruct struct = (DDlogEStruct)this.val;
-            return DDlogRelation.relationName(this.relation) + "(" + String.join(",",
+            return this.relation + "(" + String.join(",",
                 Linq.map(struct.fields, f ->
                         (f.getName().isEmpty() ? "" : "." + f.getName()) + " = "
                                 + f.getValue().toString())) + ")";
         }
-        return DDlogRelation.relationName(this.relation) + "[" + this.val.toString() + "]";
+        return this.relation + "[" + this.val.toString() + "]";
     }
 }

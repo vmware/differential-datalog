@@ -385,7 +385,7 @@ public class WeaveTest {
                 "select *, count(*) over (partition by pod_name) as num_matches from inter_pod_affinity_matches_inner";
         create = t.translateSqlStatement(inter_pod_affinity_matches);
         Assert.assertNotNull(create);
-
+        */
         String spare_capacity =
                 "-- Spare capacity\n" +
                 "create view spare_capacity_per_node as\n" +
@@ -401,6 +401,7 @@ public class WeaveTest {
         create = t.translateSqlStatement(spare_capacity);
         Assert.assertNotNull(create);
 
+        /*
         String view_pods_that_tolerate_node_taints =
                 "-- Taints and tolerations\n" +
                 "create view pods_that_tolerate_node_taints as\n" +
@@ -448,11 +449,11 @@ public class WeaveTest {
                 "typedef Tpod_tolerations = Tpod_tolerations{pod_name:string, tolerations_key:Option<string>, tolerations_value:Option<string>, tolerations_effect:Option<string>, tolerations_operator:Option<string>}\n" +
                 "typedef Tnode_images = Tnode_images{node_name:string, image_name:string, image_size:bigint}\n" +
                 "typedef Tpod_images = Tpod_images{pod_name:string, image_name:string}\n" +
-                "typedef Ttmp0 = Ttmp0{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool}\n" +
+                "typedef TRtmp = TRtmp{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool}\n" +
                 "typedef Tbatch_size = Tbatch_size{pendingPodsLimit:signed<64>}\n" +
-                "typedef Ttmp2 = Ttmp2{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, host_ip:string, host_port:signed<64>, host_protocol:string}\n" +
-                "typedef Ttmp3 = Ttmp3{controllable__node_name:Option<string>, host_port:signed<64>, host_ip:string, host_protocol:string}\n" +
-                "typedef Ttmp4 = Ttmp4{node_name:string}\n" +
+                "typedef Ttmp = Ttmp{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, host_ip:string, host_port:signed<64>, host_protocol:string}\n" +
+                "typedef TRtmp1 = TRtmp1{controllable__node_name:Option<string>, host_port:signed<64>, host_ip:string, host_protocol:string}\n" +
+                "typedef TRtmp2 = TRtmp2{node_name:string}\n" +
                 "\n" +
                 "input relation Rnode_info[Tnode_info]\n" +
                 "input relation Rpod_info[Tpod_info]\n" +
@@ -471,18 +472,23 @@ public class WeaveTest {
                 "input relation Rpod_tolerations[Tpod_tolerations]\n" +
                 "input relation Rnode_images[Tnode_images]\n" +
                 "input relation Rpod_images[Tpod_images]\n" +
-                "relation Rtmp0[Ttmp0]\n" +
-                "output relation Rpods_to_assign_no_limit[Ttmp0]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rpods_to_assign_no_limit[TRtmp]\n" +
                 "input relation Rbatch_size[Tbatch_size]\n" +
-                "output relation Rpods_to_assign[Ttmp0]\n" +
-                "relation Rtmp3[Ttmp3]\n" +
-                "output relation Rpods_with_port_requests[Ttmp3]\n" +
-                "relation Rtmp4[Ttmp4]\n" +
-                "output relation Rnodes_that_have_tolerations[Ttmp4]\n" +
-                "Rpods_to_assign_no_limit[v2] :- Rpod_info[v0],unwrapBool(b_and_RN(((v0.status == \"Pending\") and isNull(v0.node_name)), s_eq_NR(v0.schedulerName, \"dcm-scheduler\"))),var v1 = Ttmp0{.pod_name = v0.pod_name,.status = v0.status,.controllable__node_name = v0.node_name,.namespace = v0.namespace,.cpu_request = v0.cpu_request,.memory_request = v0.memory_request,.ephemeral_storage_request = v0.ephemeral_storage_request,.pods_request = v0.pods_request,.owner_name = v0.owner_name,.creation_timestamp = v0.creation_timestamp,.has_node_selector_labels = v0.has_node_selector_labels,.has_pod_affinity_requirements = v0.has_pod_affinity_requirements},var v2 = v1.\n" +
-                "Rpods_to_assign[v1] :- Rpods_to_assign_no_limit[v0],var v1 = v0.\n" +
-                "Rpods_with_port_requests[v4] :- Rpods_to_assign[v0],Rpod_ports_request[v1],(v1.pod_name == v0.pod_name),true,var v2 = Ttmp2{.pod_name = v0.pod_name,.status = v0.status,.controllable__node_name = v0.controllable__node_name,.namespace = v0.namespace,.cpu_request = v0.cpu_request,.memory_request = v0.memory_request,.ephemeral_storage_request = v0.ephemeral_storage_request,.pods_request = v0.pods_request,.owner_name = v0.owner_name,.creation_timestamp = v0.creation_timestamp,.has_node_selector_labels = v0.has_node_selector_labels,.has_pod_affinity_requirements = v0.has_pod_affinity_requirements,.pod_name0 = v1.pod_name,.host_ip = v1.host_ip,.host_port = v1.host_port,.host_protocol = v1.host_protocol},var v3 = Ttmp3{.controllable__node_name = v0.controllable__node_name,.host_port = v1.host_port,.host_ip = v1.host_ip,.host_protocol = v1.host_protocol},var v4 = v3.\n" +
-                "Rnodes_that_have_tolerations[v2] :- Rnode_taints[v0],var v1 = Ttmp4{.node_name = v0.node_name},var v2 = v1.";
+                "output relation Rpods_to_assign[TRtmp]\n" +
+                "relation Rtmp1[TRtmp1]\n" +
+                "output relation Rpods_with_port_requests[TRtmp1]\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "output relation Rnodes_that_have_tolerations[TRtmp2]\n" +
+                "Rpods_to_assign_no_limit[v1] :- Rpod_info[v],unwrapBool(b_and_RN(((v.status == \"Pending\") and isNull(v.node_name))," +
+                " s_eq_NR(v.schedulerName, \"dcm-scheduler\")))," +
+                "var v0 = TRtmp{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request,.ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request,.owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp,.has_node_selector_labels = v.has_node_selector_labels,.has_pod_affinity_requirements = v.has_pod_affinity_requirements}," +
+                "var v1 = v0.\n" +
+                "Rpods_to_assign[v0] :- Rpods_to_assign_no_limit[v],var v0 = v.\n" +
+                "Rpods_with_port_requests[v3] :- Rpods_to_assign[v],Rpod_ports_request[v0]," +
+                "(v0.pod_name == v.pod_name),true,var v1 = Ttmp{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.controllable__node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request,.ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request,.owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp,.has_node_selector_labels = v.has_node_selector_labels,.has_pod_affinity_requirements = v.has_pod_affinity_requirements,.pod_name0 = v0.pod_name,.host_ip = v0.host_ip,.host_port = v0.host_port,.host_protocol = v0.host_protocol}," +
+                "var v2 = TRtmp1{.controllable__node_name = v.controllable__node_name,.host_port = v0.host_port,.host_ip = v0.host_ip,.host_protocol = v0.host_protocol},var v3 = v2.\n" +
+                "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp2{.node_name = v.node_name},var v1 = v0.";
         Assert.assertEquals(expected, p);
     }
 }
