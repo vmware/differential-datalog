@@ -771,7 +771,7 @@ jConv2FBType fbctx e t =
                 -> jFBCallConstructor (typeTableName t) [jConv2FBType (FBField (typeTableName t) "v") e t]
         -- FlatBuffers has a special method for embedding vectors in a buffer
         FBField{..} | typeIsVector t
-                -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize fbctxField) <> "Vector(fbbuilder," <> e' <> ")"
+                -> jFBPackage <> "." <> fbctxTable <> ".create" <> pp (capitalize $ render $ jAccessorName fbctxField) <> "Vector(fbbuilder," <> e' <> ")"
                     | otherwise
                 -> e'
     where
@@ -1320,7 +1320,7 @@ jReadField nesting fbctx e t =
          -- Vectors are accessed via a pair of methods: `e.<field>Size` and
          -- `e.<field>(i)`
          FBField{..} | typeIsVector t
-                     -> do_read (e <> "." <> pp fbctxField)
+                     -> do_read (e <> "." <> jAccessorName fbctxField)
                      | not (typeHasUniqueConstructor t)
                      -> let tab = "__t" <> pp nesting in
                         do_read (e <> "." <> jAccessorName fbctxField <> "Type()," <+>
