@@ -170,6 +170,14 @@ impl<T> std_Vec<T> {
     }
 }
 
+impl<T> Deref for std_Vec<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        self.x.deref()
+    }
+}
+
 impl<T: Clone> std_Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.x.extend_from_slice(other);

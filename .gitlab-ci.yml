@@ -46,6 +46,14 @@ test-rust:
 test-tutorial:
     script: stack --no-terminal test --ta "-p tutorial"
 
+# Test individual libraries
+
+test-uuid:
+    extends: .install-ddlog
+    script:
+        - (cd test/datalog_tests &&
+           ./run-test.sh uuid_test.dl release)
+
 test-server_api:
     script:
     # The NF variable is defined by the Haskell tasty package, documented here:
