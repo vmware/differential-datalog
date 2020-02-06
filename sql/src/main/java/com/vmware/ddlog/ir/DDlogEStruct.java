@@ -30,7 +30,7 @@ public class DDlogEStruct extends DDlogExpression {
     }
 
     private final String constructor;
-    final List<FieldValue> fields;
+    public final List<FieldValue> fields;
 
     public DDlogEStruct(String constructor, List<FieldValue> fields, DDlogType type) {
         super(type);

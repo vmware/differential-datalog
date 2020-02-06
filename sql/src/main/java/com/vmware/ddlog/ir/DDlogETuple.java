@@ -16,7 +16,7 @@ import com.vmware.ddlog.util.Linq;
 import java.util.List;
 
 public class DDlogETuple extends DDlogExpression {
-    private final DDlogExpression[] tupFields;
+    public final DDlogExpression[] tupFields;
 
     public DDlogETuple(DDlogExpression... tupFields) {
         super(new DDlogTTuple(Linq.map(tupFields, DDlogExpression::getType, DDlogType.class)));
