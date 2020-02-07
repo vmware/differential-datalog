@@ -1,0 +1,134 @@
+/* An IPv6 address.
+ *
+ * IPv6 addresses are defined as 128-bit integers in IETF RFC 4291. They are
+ * usually represented as eight 16-bit segments.
+ *
+ * See IpAddr for a type encompassing both IPv4 and IPv6 addresses.
+ *
+ * The size of an Ipv6Addr struct may vary depending on the target operating
+ * system.
+ */
+
+import net.ipv4
+
+extern type Ipv6Addr
+
+/* Creates a new IPv6 address from eight 16-bit segments.
+ *
+ * The result will represent the IP address a:b:c:d:e:f:g:h.
+ */
+extern function ipv6_new(
+    a: u16,
+    b: u16,
+    c: u16,
+    d: u16,
+    e: u16,
+    f: u16,
+    g: u16,
+    h: u16
+): Ipv6Addr
+
+/* Creates a new IPv6 address from a vector of 16-bit segments.
+ *
+ * Returns None if the length of `segments` is not 8.
+ */
+extern function ipv6_from_segment_vec(segments: Vec<u16>): Option<Ipv6Addr>
+
+/* Creates a new IPv6 address from 16 octets.
+ */
+extern function ipv6_from_octets(
+    b0: u8,
+    b1: u8,
+    b2: u8,
+    b3: u8,
+    b4: u8,
+    b5: u8,
+    b6: u8,
+    b7: u8,
+    b8: u8,
+    b9: u8,
+    b10: u8,
+    b11: u8,
+    b12: u8,
+    b13: u8,
+    b14: u8,
+    b15: u8
+): Ipv6Addr
+
+/* Creates a new IPv6 address from a vector of octets.
+ *
+ * Returns None if the length of `octets` is not 16.
+ */
+extern function ipv6_from_octet_vec(octets: Vec<u8>): Option<Ipv6Addr>
+
+/* Convert a host byte order u128 into an `Ipv6Addr`.
+ */
+extern function ipv6_from_u128(ip: u128): Ipv6Addr
+
+/* Parse `Ipv6Addr` from string.
+ *
+ * There are many ways to represent an IPv6 address in text, but in general,
+ * each segments is written in hexadecimal notation, and segments are
+ * separated by :.
+ *
+ * For more information, see IETF RFC 5952.
+ */
+extern function ipv6_from_str(s: string): Result<Ipv6Addr, string>
+
+/* Format IPv6 address.
+ */
+extern function ipv6Addr2string(addr: Ipv6Addr): string
+
+/* Convert an `Ipv6Addr` into a host byte order u128.
+ */
+extern function ipv6_to_u128(addr: Ipv6Addr): u128
+
+/* An IPv6 address representing localhost: ::1.
+ */
+extern function iPV6_LOCALHOST(): Ipv6Addr
+
+/* An IPv6 address representing the unspecified address: `::`.
+ */
+extern function iPV6_UNSPECIFIED(): Ipv6Addr
+
+/* Returns the eight 16-bit segments that make up this address.
+ */
+extern function ipv6_segments(addr: Ipv6Addr): (u16, u16, u16, u16, u16, u16, u16, u16)
+
+/* Returns a vector of eight 16t-bit integers that make up this address.
+ */
+extern function ipv6_segment_vec(addr: Ipv6Addr): Vec<u16>
+
+/* Returns the sixteen eight-bit integers the IPv6 address consists of.
+ */
+extern function ipv6_octets(addr: Ipv6Addr): (u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8)
+
+/* Returns a vector of sixteen eight-bit integers the IPv6 address consists of.
+ */
+extern function ipv6_octet_vec(addr: Ipv6Addr): Vec<u8>
+
+/* Returns true for the special 'unspecified' address (::).
+ *
+ * This property is defined in IETF RFC 4291.
+ */
+extern function ipv6_is_unspecified(addr: Ipv6Addr): bool
+
+/* Returns true if this is a loopback address (::1).
+ *
+ * This property is defined in IETF RFC 4291.
+ */
+extern function ipv6_is_loopback(addr: Ipv6Addr): bool
+
+/* Returns true if this is a multicast address (ff00::/8).
+ *
+ * This property is defined by IETF RFC 4291.
+ */
+extern function ipv6_is_multicast(addr: Ipv6Addr): bool
+
+/* Converts this address to an IPv4 address. Returns None if this address is
+ * neither IPv4-compatible or IPv4-mapped.
+ *
+ * ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
+ */
+extern function ipv6_to_ipv4(addr: Ipv6Addr): Option<Ipv4Addr>
+

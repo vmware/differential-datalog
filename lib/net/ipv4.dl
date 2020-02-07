@@ -1,0 +1,126 @@
+/* An IPv4 address.
+ *
+ * IPv4 addresses are defined as 32-bit integers in IETF RFC 791. They are
+ * usually represented as four octets.
+ *
+ * See IpAddr for a type encompassing both IPv4 and IPv6 addresses.
+ *
+ * The size of an Ipv4Addr struct may vary depending on the target operating
+ * system.
+ */
+
+import net.ipv6
+
+extern type Ipv4Addr
+
+/* Creates a new IPv4 address from four eight-bit octets.
+ *
+ * The result will represent the IP address a.b.c.d.
+ */
+extern function ipv4_new(a: u8, b: u8, c: u8, d: u8): Ipv4Addr
+
+/* Creates a new IPv4 address from a vector of octets.
+ *
+ * Returns None if the length of `octets` is not 4.
+ */
+extern function ipv4_from_octet_vec(octets: Vec<u8>): Option<Ipv4Addr>
+
+/* Converts a host byte order u32 into an Ipv4Addr.
+ */
+extern function ipv4_from_u32(ip: u32): Ipv4Addr
+
+/* Parse IPv4 address string in decimal notation, divided by .
+ * (this is called "dot-decimal notation").
+ */
+extern function ipv4_from_str(s: string): Result<Ipv4Addr, string>
+
+/* Format IPv4 address using dot-decimal notation.
+ */
+extern function ipv4Addr2string(addr: Ipv4Addr): string
+
+/* An IPv4 address with the address pointing to localhost: 127.0.0.1.
+ */
+extern function iPV4_LOCALHOST(): Ipv4Addr
+
+/* An IPv4 address representing an unspecified address: 0.0.0.0.
+ */
+extern function iPV4_UNSPECIFIED(): Ipv4Addr
+
+/* An IPv4 address representing the broadcast address: 255.255.255.255.
+ */
+extern function iPV4_BROADCAST(): Ipv4Addr
+
+/* Returns the four eight-bit integers that make up this address.
+ */
+extern function ipv4_octets(addr: Ipv4Addr): (u8, u8, u8, u8)
+
+/* Returns a vector of four eight-bit integers the IPv4 address consists of.
+ */
+extern function ipv4_octet_vec(addr: Ipv4Addr): Vec<u8>
+
+/* Returns true for the special 'unspecified' address (0.0.0.0).
+ *
+ * This property is defined in UNIX Network Programming, Second Edition,
+ * W. Richard Stevens, p. 891; see also ip7.
+ */
+extern function ipv4_is_unspecified(addr: Ipv4Addr): bool
+
+/* Returns true if this is a loopback address (127.0.0.0/8).
+ *
+ * This property is defined by IETF RFC 1122.
+ */ 
+extern function ipv4_is_loopback(addr: Ipv4Addr): bool
+
+/* Returns true if this is a private address.
+ *
+ * The private address ranges are defined in IETF RFC 1918 and include:
+ * - 10.0.0.0/8
+ * - 172.16.0.0/12
+ * - 192.168.0.0/16
+ */
+extern function ipv4_is_private(addr: Ipv4Addr): bool
+
+/* Returns true if the address is link-local (169.254.0.0/16).
+ *
+ * This property is defined by IETF RFC 3927.
+ */
+extern function ipv4_is_link_local(addr: Ipv4Addr): bool
+
+/* Returns true if this is a multicast address (224.0.0.0/4).
+ *
+ * Multicast addresses have a most significant octet between 224 and 239, and
+ * is defined by IETF RFC 5771.
+ */
+extern function ipv4_is_multicast(addr: Ipv4Addr): bool
+
+/* Returns true if this is a broadcast address (255.255.255.255).
+ *
+ * A broadcast address has all octets set to 255 as defined in IETF RFC 919.
+ */
+extern function ipv4_is_broadcast(addr: Ipv4Addr): bool
+
+/* Returns true if this address is in a range designated for documentation.
+ *
+ * This is defined in IETF RFC 5737:
+ *
+ * - 192.0.2.0/24 (TEST-NET-1)
+ * - 198.51.100.0/24 (TEST-NET-2)
+ * - 203.0.113.0/24 (TEST-NET-3)
+ */
+extern function ipv4_is_documentation(addr: Ipv4Addr): bool
+
+/* Converts this address to an IPv4-compatible IPv6 address.
+ *
+ * a.b.c.d becomes ::a.b.c.d
+ */
+extern function ipv4_to_ipv6_compatible(addr: Ipv4Addr): Ipv6Addr
+
+/* Converts this address to an IPv4-mapped IPv6 address.
+ *
+ * a.b.c.d becomes ::ffff:a.b.c.d
+ */
+extern function ipv4_to_ipv6_mapped(addr: Ipv4Addr): Ipv6Addr
+
+/* Converts an Ipv4Addr into a host byte order u32.
+ */
+extern function ipv4_to_u32(addr: Ipv4Addr): u32

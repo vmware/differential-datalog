@@ -1,0 +1,158 @@
+import net.ipaddr
+import net.ipv4
+import net.ipv6
+
+output relation NetChecks(description: string, value: string)
+
+NetChecks("ipv4_new(192, 168, 0, 1)", "${ipv4_new(192, 168, 0, 1)}").
+NetChecks("ipv4_from_u32('h0a0b0c0d)", "${ipv4_from_u32('h0a0b0c0d)}").
+NetChecks("ipv4_from_str(10.10.10.101)", "${result_unwrap_or(ipv4_from_str(\"10.10.10.101\"), iPV4_UNSPECIFIED())}").
+NetChecks("ipv4_from_str(10.10.10.10.1)", "${result_unwrap_or(ipv4_from_str(\"10.10.10.10.1\"), iPV4_UNSPECIFIED())}").
+NetChecks("ipv4_from_octet_vec(ipv4_octet_vec(ipv4_new(192, 168, 0, 1)))",
+        "${option_unwrap_or(ipv4_from_octet_vec(ipv4_octet_vec(ipv4_new(192, 168, 0, 1))), iPV4_UNSPECIFIED())}").
+NetChecks("iPV4_LOCALHOST()", "${iPV4_LOCALHOST()}").
+NetChecks("iPV4_UNSPECIFIED()", "${iPV4_UNSPECIFIED()}").
+NetChecks("iPV4_BROADCAST()", "${iPV4_BROADCAST()}").
+NetChecks("ipv4_octets(ipv4_new(192,168,0,1))",
+    { (var a, var b, var c, var d) = ipv4_octets(ipv4_new(192, 168, 0, 1));
+      "(${a},${b},${c},${d})"
+    }).
+
+NetChecks("ipv4_is_unspecified(iPV4_UNSPECIFIED())", "${ipv4_is_unspecified(iPV4_UNSPECIFIED())}").
+NetChecks("ipv4_is_unspecified(ipv4_new(10,0,0,0))", "${ipv4_is_unspecified(ipv4_new(10,0,0,0))}").
+
+NetChecks("ipv4_is_loopback(ipv4_new(127,0,0,5))", "${ipv4_is_loopback(ipv4_new(127,0,0,5))}").
+NetChecks("ipv4_is_loopback(ipv4_new(128,0,0,5))", "${ipv4_is_loopback(ipv4_new(128,0,0,5))}").
+
+NetChecks("ipv4_is_private(ipv4_new(127,0,0,5))", "${ipv4_is_private(ipv4_new(127,0,0,5))}").
+NetChecks("ipv4_is_private(ipv4_new(193,5,5,5))", "${ipv4_is_private(ipv4_new(193,5,5,5))}").
+NetChecks("ipv4_is_private(ipv4_new(10,10,10,101))", "${ipv4_is_private(ipv4_new(10,10,10,101))}").
+NetChecks("ipv4_is_private(ipv4_new(172,16,1,2))", "${ipv4_is_private(ipv4_new(172,16,1,2))}").
+NetChecks("ipv4_is_private(ipv4_new(192,168,10,12))", "${ipv4_is_private(ipv4_new(192,168,10,12))}").
+
+NetChecks("ipv4_is_link_local(ipv4_new(192,168,10,12))", "${ipv4_is_link_local(ipv4_new(192,168,10,12))}").
+NetChecks("ipv4_is_link_local(ipv4_new(169,254,1,1))", "${ipv4_is_link_local(ipv4_new(169,254,1,1))}").
+
+NetChecks("ipv4_is_multicast(ipv4_new(173,10,10,12))", "${ipv4_is_multicast(ipv4_new(173,10,10,12))}").
+NetChecks("ipv4_is_multicast(ipv4_new(230,254,1,1))", "${ipv4_is_multicast(ipv4_new(230,254,1,1))}").
+
+NetChecks("ipv4_is_broadcast(iPV4_BROADCAST())", "${ipv4_is_broadcast(iPV4_BROADCAST())}").
+NetChecks("ipv4_is_broadcast(ipv4_new(230,254,1,1))", "${ipv4_is_broadcast(ipv4_new(230,254,1,1))}").
+NetChecks("ipv4_is_broadcast(ipv4_new(255,255,255,255))", "${ipv4_is_broadcast(ipv4_new(255,255,255,255))}").
+
+NetChecks("ipv4_is_documentation(ipv4_new(192,0,2,10))", "${ipv4_is_documentation(ipv4_new(192,0,2,10))}").
+NetChecks("ipv4_is_documentation(ipv4_new(198,51,100,5))", "${ipv4_is_documentation(ipv4_new(198,51,100,5))}").
+NetChecks("ipv4_is_documentation(ipv4_new(203,0,113,101))", "${ipv4_is_documentation(ipv4_new(203,0,113,101))}").
+NetChecks("ipv4_is_documentation(ipv4_new(175,16,1,2))", "${ipv4_is_documentation(ipv4_new(175,16,1,2))}").
+NetChecks("ipv4_is_documentation(ipv4_new(192,168,10,12))", "${ipv4_is_documentation(ipv4_new(192,168,10,12))}").
+
+NetChecks("ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10))", "${ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10))}").
+NetChecks("ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5))", "${ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5))}").
+NetChecks("ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101))", "${ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101))}").
+NetChecks("ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2))", "${ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2))}").
+NetChecks("ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12))", "${ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12))}").
+
+NetChecks("ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10))", "${ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10))}").
+NetChecks("ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5))", "${ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5))}").
+NetChecks("ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101))", "${ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101))}").
+NetChecks("ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2))", "${ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2))}").
+NetChecks("ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12))", "${ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12))}").
+
+NetChecks("ipv4_to_u32(ipv4_new(192,0,2,10))", "${hex(ipv4_to_u32(ipv4_new(192,0,2,10)))}").
+NetChecks("ipv4_to_u32(ipv4_new(198,51,100,5))", "${hex(ipv4_to_u32(ipv4_new(198,51,100,5)))}").
+NetChecks("ipv4_to_u32(ipv4_new(203,0,113,101))", "${hex(ipv4_to_u32(ipv4_new(203,0,113,101)))}").
+NetChecks("ipv4_to_u32(ipv4_new(175,16,1,2))", "${hex(ipv4_to_u32(ipv4_new(175,16,1,2)))}").
+NetChecks("ipv4_to_u32(ipv4_new(192,168,10,12))", "${hex(ipv4_to_u32(ipv4_new(192,168,10,12)))}").
+
+NetChecks("ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)", "${ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)}").
+NetChecks("iPV6_LOCALHOST()", "${iPV6_LOCALHOST()}").
+NetChecks("iPV6_UNSPECIFIED()", "${iPV6_UNSPECIFIED()}").
+
+NetChecks("ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))",
+        "${option_unwrap_or(ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))), iPV6_UNSPECIFIED())}").
+
+NetChecks("ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff, 'h10)))",
+        "${option_unwrap_or(ipv6_from_segment_vec(vec_push_imm(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)), 16'h10)), iPV6_UNSPECIFIED())}").
+
+NetChecks("ipv6_from_octets(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'hff, 'hff, 'hc0, 'h0a, 'h2, 'hff)",
+        "${ipv6_from_octets(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'hff, 'hff, 'hc0, 'h0a, 'h2, 'hff)}").
+
+NetChecks("ipv6_from_octet_vec(ipv6_octet_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))",
+        "${option_unwrap_or(ipv6_from_octet_vec(ipv6_octet_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))), iPV6_UNSPECIFIED())}").
+
+NetChecks("ipv6_from_u128(128'h102030405060708090A0B0C0D0E0F00)", "${ipv6_from_u128(128'h102030405060708090A0B0C0D0E0F00)}").
+NetChecks("ipv6_from_str(102:304:506:708:90a:b0c:d0e:f00)", "${result_unwrap_or(ipv6_from_str(\"102:304:506:708:90a:b0c:d0e:f00\"), iPV6_UNSPECIFIED())}").
+NetChecks("ipv6_from_str(::ffff:192.10.2.255)", "${result_unwrap_or(ipv6_from_str(\"::ffff:192.10.2.255\"), iPV6_UNSPECIFIED())}").
+NetChecks("ipv6_from_str(::175.16.1.2)", "${result_unwrap_or(ipv6_from_str(\"::175.16.1.2\"), iPV6_UNSPECIFIED())}").
+NetChecks("ipv6_from_str(ffff:192.10.2.255)", "${result_unwrap_or(ipv6_from_str(\"ffff:192.10.2.255\"), iPV6_UNSPECIFIED())}").
+NetChecks("ipv6_from_str(::)", "${result_unwrap_or(ipv6_from_str(\"::\"), iPV6_LOCALHOST())}").
+
+NetChecks("ipv6_to_u128(ipv6_from_str(::ffff:192.10.2.255))", "${hex(ipv6_to_u128(result_unwrap_or(ipv6_from_str(\"::ffff:192.10.2.255\"), iPV6_UNSPECIFIED())))}").
+
+NetChecks("ipv6_segments(ipv6_from_str(::ffff:192.10.2.255))",
+    {
+        (var a, var b, var c, var d, var e, var f, var g, var h) = ipv6_segments(result_unwrap_or(ipv6_from_str("::ffff:192.10.2.255"), iPV6_UNSPECIFIED()));
+        "(${a},${b},${c},${d},${e},${f},${g},${h})"
+    }).
+NetChecks("ipv6_octets(ipv6_from_str(::ffff:192.10.2.255))",
+    {
+        (var a, var b, var c, var d, var e, var f, var g, var h, var i, var j, var k, var l, var m, var n, var o, var p) = ipv6_octets(result_unwrap_or(ipv6_from_str("::ffff:192.10.2.255"), iPV6_UNSPECIFIED()));
+        "(${a},${b},${c},${d},${e},${f},${g},${h},${i},${j},${k},${l},${m},${n},${o},${p})"
+    }).
+
+NetChecks("ipv6_from_segment_vec(ipv6_segment_vec(ipv6_from_str(::ffff:192.10.2.255)))", "${option_unwrap_or(ipv6_from_segment_vec(ipv6_segment_vec(result_unwrap_or(ipv6_from_str(\"::ffff:192.10.2.255\"), iPV6_UNSPECIFIED()))), iPV6_UNSPECIFIED())}").
+
+NetChecks("ipv6_from_octet_vec(ipv6_octet_vec(ipv6_from_str(::ffff:192.10.2.255)))", "${option_unwrap_or(ipv6_from_octet_vec(ipv6_octet_vec(result_unwrap_or(ipv6_from_str(\"::ffff:192.10.2.255\"), iPV6_UNSPECIFIED()))), iPV6_UNSPECIFIED())}").
+
+NetChecks("ipv6_is_unspecified(iPV6_UNSPECIFIED())", "${ipv6_is_unspecified(iPV6_UNSPECIFIED())}").
+NetChecks("ipv6_is_unspecified(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", "${ipv6_is_unspecified(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))}").
+
+NetChecks("ipv6_is_loopback(iPV6_LOCALHOST())", "${ipv6_is_loopback(iPV6_LOCALHOST())}").
+NetChecks("ipv6_is_loopback(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", "${ipv6_is_loopback(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))}").
+
+NetChecks("ipv6_is_multicast(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", "${ipv6_is_multicast(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))}").
+NetChecks("ipv6_is_multicast(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", "${ipv6_is_multicast(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))}").
+
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12)))", "${option_unwrap_or(ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12))), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${option_unwrap_or(ipv6_to_ipv4(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)), iPV4_UNSPECIFIED())}").
+NetChecks("ipv6_to_ipv4(ipv6_new('h0a0b, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${option_unwrap_or(ipv6_to_ipv4(ipv6_new('h0a0b, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)), iPV4_UNSPECIFIED())}").
+
+
+NetChecks("ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1))", "${ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1))}").
+NetChecks("ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", "${ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))}").
+
+NetChecks("ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+
+NetChecks("ipaddr_is_ipv6(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_ipv6(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_ipv6(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_ipv6(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+
+NetChecks("ipaddr_is_unspecified(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_unspecified(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_unspecified(ipaddr_from_ipv4addr(iPV4_UNSPECIFIED()))", "${ipaddr_is_unspecified(ipaddr_from_ipv4addr(iPV4_UNSPECIFIED()))}").
+
+NetChecks("ipaddr_is_unspecified(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_unspecified(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+NetChecks("ipaddr_is_unspecified(ipaddr_from_ipv6addr(iPV6_UNSPECIFIED()))", "${ipaddr_is_unspecified(ipaddr_from_ipv6addr(iPV6_UNSPECIFIED()))}").
+
+NetChecks("ipaddr_is_loopback(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_loopback(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_loopback(ipaddr_from_ipv4addr(iPV4_LOCALHOST()))", "${ipaddr_is_loopback(ipaddr_from_ipv4addr(iPV4_LOCALHOST()))}").
+
+NetChecks("ipaddr_is_loopback(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_loopback(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+NetChecks("ipaddr_is_loopback(ipaddr_from_ipv6addr(iPV6_LOCALHOST()))", "${ipaddr_is_loopback(ipaddr_from_ipv6addr(iPV6_LOCALHOST()))}").
+
+NetChecks("ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(230, 254, 1, 1)))", "${ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(230, 254, 1, 1)))}").
+
+NetChecks("ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+NetChecks("ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").
+
+NetChecks("ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", "${ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))}").
+NetChecks("ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", "${ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))}").

@@ -52,6 +52,16 @@ extern type std.Ref<'A>
 typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
+typedef std.s128 = signed<128>
+typedef std.s16 = signed<16>
+typedef std.s32 = signed<32>
+typedef std.s64 = signed<64>
+typedef std.s8 = signed<8>
+typedef std.u128 = bit<128>
+typedef std.u16 = bit<16>
+typedef std.u32 = bit<32>
+typedef std.u64 = bit<64>
+typedef std.u8 = bit<8>
 function cast_bit64_to_bigint (x: bit<64>): bigint =
     (x as bigint)
 function cast_bit64_to_signedbit64 (x: bit<64>): signed<64> =

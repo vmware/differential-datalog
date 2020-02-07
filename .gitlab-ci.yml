@@ -48,11 +48,11 @@ test-tutorial:
 
 # Test individual libraries
 
-test-uuid:
+test-libs:
     extends: .install-ddlog
     script:
         - (cd test/datalog_tests &&
-           ./run-test.sh uuid_test.dl release)
+           ./test-libs.sh)
 
 test-server_api:
     script:

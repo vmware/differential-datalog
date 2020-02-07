@@ -31,6 +31,18 @@ use flatbuffers as fbrt;
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+// Result
+
+/* Convert Rust result type to DDlog's std.Result. */
+pub fn res2std<T, E: Display>(res: Result<T, E>) -> std_Result<T, String> {
+    match res {
+        Ok(res) => std_Result::std_Ok { res },
+        Err(e) => std_Result::std_Err {
+            err: format!("{}", e),
+        },
+    }
+}
+
 // Ref
 pub type std_Ref<A> = arcval::ArcVal<A>;
 
@@ -167,6 +179,12 @@ impl<T> std_Vec<T> {
     }
     pub fn push(&mut self, v: T) {
         self.x.push(v);
+    }
+}
+
+impl<T: Clone> From<&[T]> for std_Vec<T> {
+    fn from(s: &[T]) -> std_Vec<T> {
+        std_Vec { x: Vec::from(s) }
     }
 }
 

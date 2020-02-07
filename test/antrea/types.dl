@@ -5,6 +5,7 @@
 import intern
 import uuid as uuid
 import k8spolicy as k8s
+import net.ipv4
 
 // getNormalizedUID generates a unique UUID based on a given string.
 // For example, it can be used to generate keys using normalized selectors
@@ -152,15 +153,15 @@ function matchAllPeer(): NetworkPolicyPeer =
     }
 }
 
-typedef IPAddress = IPAddress{addr: Vec<bit<8>>}
+typedef IPAddress = IPAddress{addr: Vec<u8>}
 
 function ipv4zero(): IPAddress = {
     ipv4(0, 0, 0, 0)
 }
 
-function ipv4(a: bit<8>, b: bit<8>, c: bit<8>, d: bit<8>): IPAddress =
+function ipv4(a: u8, b: u8, c: u8, d: u8): IPAddress =
 {
-    var bytes: Vec<bit<8>> = vec_with_length(12, 8'd0);
+    var bytes: Vec<u8> = vec_with_length(12, 8'd0);
     vec_push(bytes, a);
     vec_push(bytes, b);
     vec_push(bytes, c);
@@ -174,9 +175,11 @@ typedef IPNet = IPNet {
     prefixLength:   signed<32>
 }
 
-// TODO(leonid)
-function parseIP(s: string): Vec<bit<8>> = {
-    vec_empty()
+function parseIP(s: string): Vec<u8> = {
+    match (ipv4_from_str(s)) {
+        Ok{ip} -> ipv4_octet_vec(ip),
+        Err{}  -> vec_empty()
+    }
 }
 
 // IPStrToIPAddress converts an IP string to networkpolicy.IPAddress.
@@ -191,7 +194,7 @@ function cidrStrToIPNet(cidr: string): Result<IPNet,string> =
 {
     // Split the cidr to retrieve the IP and prefix.
     var s = string_split(cidr, "/");
-    if (vec_len(s) != (2:bit<64>)) {
+    if (vec_len(s) != (2:u64)) {
         Err{"invalid format for IPBlock CIDR: ${cidr}"}
     } else {
         // Convert prefix length to int32
