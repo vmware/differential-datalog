@@ -59,7 +59,7 @@ parseDatalogString program file = do
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
-rustKeywords = ["type", "match"]
+rustKeywords = ["type", "match", "self"]
 
 reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"]
