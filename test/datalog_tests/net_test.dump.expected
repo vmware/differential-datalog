@@ -1,0 +1,99 @@
+net_test.NetChecks{"iPV4_BROADCAST()","255.255.255.255"}
+net_test.NetChecks{"iPV4_LOCALHOST()","127.0.0.1"}
+net_test.NetChecks{"iPV4_UNSPECIFIED()","0.0.0.0"}
+net_test.NetChecks{"iPV6_LOCALHOST()","::1"}
+net_test.NetChecks{"iPV6_UNSPECIFIED()","::"}
+net_test.NetChecks{"ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1))","192.168.0.1"}
+net_test.NetChecks{"ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))","true"}
+net_test.NetChecks{"ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","false"}
+net_test.NetChecks{"ipaddr_is_ipv6(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))","false"}
+net_test.NetChecks{"ipaddr_is_ipv6(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","true"}
+net_test.NetChecks{"ipaddr_is_loopback(ipaddr_from_ipv4addr(iPV4_LOCALHOST()))","true"}
+net_test.NetChecks{"ipaddr_is_loopback(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))","false"}
+net_test.NetChecks{"ipaddr_is_loopback(ipaddr_from_ipv6addr(iPV6_LOCALHOST()))","true"}
+net_test.NetChecks{"ipaddr_is_loopback(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","false"}
+net_test.NetChecks{"ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))","false"}
+net_test.NetChecks{"ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(230, 254, 1, 1)))","true"}
+net_test.NetChecks{"ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","true"}
+net_test.NetChecks{"ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","false"}
+net_test.NetChecks{"ipaddr_is_unspecified(ipaddr_from_ipv4addr(iPV4_UNSPECIFIED()))","true"}
+net_test.NetChecks{"ipaddr_is_unspecified(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))","false"}
+net_test.NetChecks{"ipaddr_is_unspecified(ipaddr_from_ipv6addr(iPV6_UNSPECIFIED()))","true"}
+net_test.NetChecks{"ipaddr_is_unspecified(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","false"}
+net_test.NetChecks{"ipv4_from_octet_vec(ipv4_octet_vec(ipv4_new(192, 168, 0, 1)))","192.168.0.1"}
+net_test.NetChecks{"ipv4_from_str(10.10.10.10.1)","0.0.0.0"}
+net_test.NetChecks{"ipv4_from_str(10.10.10.101)","10.10.10.101"}
+net_test.NetChecks{"ipv4_from_u32('h0a0b0c0d)","10.11.12.13"}
+net_test.NetChecks{"ipv4_is_broadcast(iPV4_BROADCAST())","true"}
+net_test.NetChecks{"ipv4_is_broadcast(ipv4_new(230,254,1,1))","false"}
+net_test.NetChecks{"ipv4_is_broadcast(ipv4_new(255,255,255,255))","true"}
+net_test.NetChecks{"ipv4_is_documentation(ipv4_new(175,16,1,2))","false"}
+net_test.NetChecks{"ipv4_is_documentation(ipv4_new(192,0,2,10))","true"}
+net_test.NetChecks{"ipv4_is_documentation(ipv4_new(192,168,10,12))","false"}
+net_test.NetChecks{"ipv4_is_documentation(ipv4_new(198,51,100,5))","true"}
+net_test.NetChecks{"ipv4_is_documentation(ipv4_new(203,0,113,101))","true"}
+net_test.NetChecks{"ipv4_is_link_local(ipv4_new(169,254,1,1))","true"}
+net_test.NetChecks{"ipv4_is_link_local(ipv4_new(192,168,10,12))","false"}
+net_test.NetChecks{"ipv4_is_loopback(ipv4_new(127,0,0,5))","true"}
+net_test.NetChecks{"ipv4_is_loopback(ipv4_new(128,0,0,5))","false"}
+net_test.NetChecks{"ipv4_is_multicast(ipv4_new(173,10,10,12))","false"}
+net_test.NetChecks{"ipv4_is_multicast(ipv4_new(230,254,1,1))","true"}
+net_test.NetChecks{"ipv4_is_private(ipv4_new(10,10,10,101))","true"}
+net_test.NetChecks{"ipv4_is_private(ipv4_new(127,0,0,5))","false"}
+net_test.NetChecks{"ipv4_is_private(ipv4_new(172,16,1,2))","true"}
+net_test.NetChecks{"ipv4_is_private(ipv4_new(192,168,10,12))","true"}
+net_test.NetChecks{"ipv4_is_private(ipv4_new(193,5,5,5))","false"}
+net_test.NetChecks{"ipv4_is_unspecified(iPV4_UNSPECIFIED())","true"}
+net_test.NetChecks{"ipv4_is_unspecified(ipv4_new(10,0,0,0))","false"}
+net_test.NetChecks{"ipv4_new(192, 168, 0, 1)","192.168.0.1"}
+net_test.NetChecks{"ipv4_octets(ipv4_new(192,168,0,1))","(192,168,0,1)"}
+net_test.NetChecks{"ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2))","::175.16.1.2"}
+net_test.NetChecks{"ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10))","::192.0.2.10"}
+net_test.NetChecks{"ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12))","::192.168.10.12"}
+net_test.NetChecks{"ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5))","::198.51.100.5"}
+net_test.NetChecks{"ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101))","::203.0.113.101"}
+net_test.NetChecks{"ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2))","::ffff:175.16.1.2"}
+net_test.NetChecks{"ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10))","::ffff:192.0.2.10"}
+net_test.NetChecks{"ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12))","::ffff:192.168.10.12"}
+net_test.NetChecks{"ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5))","::ffff:198.51.100.5"}
+net_test.NetChecks{"ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101))","::ffff:203.0.113.101"}
+net_test.NetChecks{"ipv4_to_u32(ipv4_new(175,16,1,2))","af100102"}
+net_test.NetChecks{"ipv4_to_u32(ipv4_new(192,0,2,10))","c000020a"}
+net_test.NetChecks{"ipv4_to_u32(ipv4_new(192,168,10,12))","c0a80a0c"}
+net_test.NetChecks{"ipv4_to_u32(ipv4_new(198,51,100,5))","c6336405"}
+net_test.NetChecks{"ipv4_to_u32(ipv4_new(203,0,113,101))","cb007165"}
+net_test.NetChecks{"ipv6_from_octet_vec(ipv6_octet_vec(ipv6_from_str(::ffff:192.10.2.255)))","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_octet_vec(ipv6_octet_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_octets(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'hff, 'hff, 'hc0, 'h0a, 'h2, 'hff)","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_segment_vec(ipv6_segment_vec(ipv6_from_str(::ffff:192.10.2.255)))","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff, 'h10)))","::"}
+net_test.NetChecks{"ipv6_from_str(102:304:506:708:90a:b0c:d0e:f00)","102:304:506:708:90a:b0c:d0e:f00"}
+net_test.NetChecks{"ipv6_from_str(::)","::"}
+net_test.NetChecks{"ipv6_from_str(::175.16.1.2)","::175.16.1.2"}
+net_test.NetChecks{"ipv6_from_str(::ffff:192.10.2.255)","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_from_str(ffff:192.10.2.255)","::"}
+net_test.NetChecks{"ipv6_from_u128(128'h102030405060708090A0B0C0D0E0F00)","102:304:506:708:90a:b0c:d0e:f00"}
+net_test.NetChecks{"ipv6_is_loopback(iPV6_LOCALHOST())","true"}
+net_test.NetChecks{"ipv6_is_loopback(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))","false"}
+net_test.NetChecks{"ipv6_is_multicast(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))","true"}
+net_test.NetChecks{"ipv6_is_multicast(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))","false"}
+net_test.NetChecks{"ipv6_is_unspecified(iPV6_UNSPECIFIED())","true"}
+net_test.NetChecks{"ipv6_is_unspecified(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))","false"}
+net_test.NetChecks{"ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)","::ffff:192.10.2.255"}
+net_test.NetChecks{"ipv6_octets(ipv6_from_str(::ffff:192.10.2.255))","(0,0,0,0,0,0,0,0,0,0,255,255,192,10,2,255)"}
+net_test.NetChecks{"ipv6_segments(ipv6_from_str(::ffff:192.10.2.255))","(0,0,0,0,0,65535,49162,767)"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2)))","175.16.1.2"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10)))","192.0.2.10"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12)))","192.168.10.12"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5)))","198.51.100.5"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101)))","203.0.113.101"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2)))","175.16.1.2"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10)))","192.0.2.10"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12)))","192.168.10.12"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5)))","198.51.100.5"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101)))","203.0.113.101"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv6_new('h0a0b, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","0.0.0.0"}
+net_test.NetChecks{"ipv6_to_ipv4(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))","192.10.2.255"}
+net_test.NetChecks{"ipv6_to_u128(ipv6_from_str(::ffff:192.10.2.255))","ffffc00a02ff"}

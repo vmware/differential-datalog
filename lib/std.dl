@@ -5,6 +5,18 @@
  * by Java bindings. */
 import log
 
+typedef u8   = bit<8>
+typedef u16  = bit<16>
+typedef u32  = bit<32>
+typedef u64  = bit<64>
+typedef u128 = bit<128>
+
+typedef s8   = signed<8>
+typedef s16  = signed<16>
+typedef s32  = signed<32>
+typedef s64  = signed<64>
+typedef s128 = signed<128>
+
 /*
  * Ref
  */
