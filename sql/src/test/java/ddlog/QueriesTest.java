@@ -126,7 +126,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT MIN(column1) + MAX(column1) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var min6 = 64'sd0);\n" +
                 "(var max8 = 64'sd0);\n" +
@@ -155,7 +155,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT MIN(column2) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:string}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var min6 = \"\");\n" +
                 "(for (i2 in g1) {\n" +
@@ -179,7 +179,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT COUNT(column1), SUM(column1) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>, col7:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var count6 = 64'sd0);\n" +
                 "(var sum9 = 64'sd0);\n" +
@@ -208,7 +208,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT COUNT(*) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var count5 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +
@@ -232,7 +232,7 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
                 "typedef Ttmp1 = Ttmp1{col6:signed<64>}\n" +
-                "function agg2(g3: Group<(Tt1,Tt2)>):Ttmp1 =\n" +
+                "function agg2(g3: Group<'K, (Tt1,Tt2)>):Ttmp1 =\n" +
                 "var first5 = true;\n" +
                 "(var count8 = 64'sd0);\n" +
                 "(for (i4 in g3) {\n" +
@@ -257,7 +257,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT COUNT(column1) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var count6 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +
@@ -281,7 +281,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT COUNT(column1) FROM t1";
         String program = this.header(true) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var count6 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +
@@ -305,7 +305,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT AVG(column1) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var avg6 = (64'sd0, 64'sd0));\n" +
                 "(for (i2 in g1) {\n" +
@@ -329,7 +329,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT AVG(column1) FROM t1";
         String program = this.header(true) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var avg6 = (64'sd0, 64'sd0));\n" +
                 "(for (i2 in g1) {\n" +
@@ -353,7 +353,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT COUNT(*) FROM t1";
         String program = this.header(true) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var count5 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +
@@ -572,7 +572,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT MAX(CASE WHEN column2 = 'foo' THEN column1 ELSE 0 END) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var max6 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +
@@ -622,7 +622,7 @@ public class QueriesTest {
         String query = "create view v1 as SELECT MAX(column1) FROM t1";
         String program = this.header(false) +
                 "typedef Ttmp0 = Ttmp0{col4:signed<64>}\n" +
-                "function agg1(g1: Group<(Tt1)>):Ttmp0 =\n" +
+                "function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =\n" +
                 "var first3 = true;\n" +
                 "(var max6 = 64'sd0);\n" +
                 "(for (i2 in g1) {\n" +

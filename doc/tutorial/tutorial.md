@@ -919,7 +919,7 @@ describes constraints on the recursive programs accepted by DDlog.
 #### Aggregation
 
 The `Aggregate` operator groups records that have the same values of a subset of
-variables and applies an aggregation function to each group.
+variables (group-by variables) and applies an aggregation function to each group.
 The following program groups the `Price` relation by `item` and selects the minimal
 price for each item:
 
@@ -933,7 +933,19 @@ BestPrice(item, best_price) :-
 ```
 
 Here `group_min()` is one of several aggregation functions defined in
-`lib/std.rs`.  What if we wanted to return the name of the vendor along with the
+`lib/std.rs`.
+
+It is possible to group a relation by multiple fields.  For
+example, the following rule computes the lowest price that each vendor
+charged for each item:
+
+```
+BestPricePerVendor(item, vendor, best_price) :-
+    Price(.item = item, .vendor = vendor, .price = price),
+    var best_price = Aggregate((item, vendor), group_min(price)).
+```
+
+What if we wanted to return the name of the vendor along with the
 lowest price for each item?  The following naive attempt will not work:
 
 ```
@@ -958,7 +970,7 @@ aggregation functions:
 
 ```
 /* User-defined aggregate that picks a tuple with the smallest price */
-function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
+function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>) =
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -977,14 +989,33 @@ BestVendor(item, best_vendor, best_price) :-
     (var best_vendor, var best_price) = best_vendor_price.
 ```
 
-Finally, it is possible to group a relation by multiple fields.  For
-example, the following rule computes the lowest price that each vendor
-charged for each item:
+The aggregation function takes an argument of type `Group`, parameterized by
+group key and group value types.  The group key is a tuple consisting of all
+group-by variables.  The value type is the type of records in the group and.
+
+The aggregation function can access the group key using the `group_key()`
+function.  The following custom aggregation function computes the cheapest
+vendor for each item and returns a string containing item name, vendor,
+and price:
 
 ```
-BestPricePerVendor(item, vendor, best_price) :-
-    Price(.item = item, .vendor = vendor, .price = price),
-    var best_price = Aggregate((item, vendor), group_min(price)).
+function best_vendor_string(g: Group<string, (string, bit<64>)>): string =
+{
+    var min_vendor = "";
+    var min_price: bit<64> = 'hffffffffffffffff;
+    for (vendor_price in g) {
+        if (vendor_price.1 < min_price) {
+            min_vendor = vendor_price.0;
+            min_price = vendor_price.1
+        }
+    };
+    "Best deal for ${group_key(g)}: ${min_vendor}, $${min_price}"
+}
+
+output relation BestDeal(best: string)
+BestDeal(best) :-
+    Price(item, vendor, price),
+    var best = Aggregate((item), best_vendor_string((vendor, price))).
 ```
 
 ## Advanced types

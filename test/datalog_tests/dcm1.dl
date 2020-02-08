@@ -129,7 +129,7 @@ relation NODETAINTSGROUP(node_name:IString, num_taints: bit<64>)
 /**assumption -- because underlying datastructures are sets, values will be unique**/
 output relation NODESTHATHAVETOLERATIONS(node_name:IString)
 
-function sum(g: Group<(signed<64>)>): (signed<64>) =
+function sum(g: Group<'K, (signed<64>)>): (signed<64>) =
 {
     var sum: signed<64> = 0;
     for (resource in g) {
@@ -138,7 +138,7 @@ function sum(g: Group<(signed<64>)>): (signed<64>) =
     sum
 }
 
-function count_uniq(g: Group<(signed<64>)>): (bit<64>) =
+function count_uniq(g: Group<'K, (signed<64>)>): (bit<64>) =
 {
     var set: Set<signed<64>> = set_empty();
     for (item in g) {
@@ -243,7 +243,7 @@ PodLabelSelector(pod_name, expressions) :-
 
 /* Convert a group of (match_expression, operator, key, value) tuples into a
  * vector of match expressions. */
-function group2expressions(g: Group<(signed<64>, IString, IString, IString)>): Vec<(IString, IString, Set<IString>)> =
+function group2expressions(g: Group<'K, (signed<64>, IString, IString, IString)>): Vec<(IString, IString, Set<IString>)> =
 {
     var expressions: Map<signed<64>, (IString, IString, Set<IString>)> = map_empty();
     for (e in g) {

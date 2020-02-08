@@ -1,6 +1,5 @@
 //! An untyped representation of DDlog values and database update commands.
 
-use libc;
 use num::{BigInt, BigUint, ToPrimitive};
 use std::borrow::Cow;
 use std::collections::{btree_map, BTreeMap, BTreeSet};

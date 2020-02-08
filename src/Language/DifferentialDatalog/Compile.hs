@@ -1502,9 +1502,12 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     -- - compute aggregate
     -- - return variables still in scope after this term
     let tmap = ruleAggregateTypeParams d rl idx
-    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars $ getFunc d rhsAggFunc
+    let agg_func = getFunc d rhsAggFunc
+    -- Pass group-by variables to the aggregate function.
+    let grp = "&std_Group::new(&" <> (tupleStruct $ map (\v -> pp v <> ".clone()") rhsGroupBy) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars agg_func
     let aggregate = "let" <+> pp rhsVar <+> "=" <+> rname rhsAggFunc <>
-                    "::<" <> tparams <> ">(&std_Group::new(" <> gROUP_VAR <> "," <+> project <> "));"
+                    "::<" <> tparams <> ">(" <> grp <> ");"
     result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
     let key_vars = map (getVar d ctx) rhsGroupBy
     open_key <- openTuple d kEY_VAR key_vars

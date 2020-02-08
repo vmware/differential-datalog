@@ -499,50 +499,60 @@ Rel3{.x = 0, .y = IP4{.ip4 = 100}, .z = Option1{.f1 = 0, .f2 = IP4{.ip4 = 300}, 
 Rel3:
 Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
 Aggregate1:
-Aggregate1{.x = "a", .cnt = 3}: +1
+Aggregate1{.x = "a", .cnt = 4}: +1
 Aggregate1{.x = "b", .cnt = 3}: +1
 Aggregate2:
-Aggregate2{.x = "a", .set = ["1", "2", "3"]}: +1
+Aggregate2{.x = "a", .set = ["1", "2", "3", "a"]}: +1
 Aggregate2{.x = "b", .set = ["1", "2", "3"]}: +1
 Aggregate3:
-Aggregate3{.x = "a", .vec = ["1", "2", "3"]}: +1
+Aggregate3{.x = "a", .vec = ["1", "2", "3", "a"]}: +1
 Aggregate3{.x = "b", .vec = ["1", "2", "3"]}: +1
 Aggregate4:
-Aggregate4{.x = "a", .map = [("a", "3")]}: +1
+Aggregate4{.x = "a", .map = [("a", "a")]}: +1
 Aggregate4{.x = "b", .map = [("b", "3")]}: +1
 AggregateByX:
 AggregateByX{.x = "a", .cnt = 3}: +1
 AggregateByX{.x = "b", .cnt = 3}: +1
 AggregateCnt:
-AggregateCnt{.cnt = 6}: +1
+AggregateCnt{.cnt = 7}: +1
 AggregateCnt2:
-AggregateCnt2{.cnt = 6}: +1
+AggregateCnt2{.cnt = 7}: +1
 AggregateCnt3:
-AggregateCnt3{.cnt = 4}: +1
+AggregateCnt3{.cnt = 5}: +1
+Concat:
+Concat{.s = "a-z:123"}: +1
+Concat{.s = "b-z:123"}: +1
+Counts1:
+Counts1{.x = "a", .occurrences = 1}: +1
+Counts1{.x = "b", .occurrences = 0}: +1
 Disaggregate:
 Disaggregate{.x = "a", .y = "1"}: +1
 Disaggregate{.x = "a", .y = "2"}: +1
 Disaggregate{.x = "a", .y = "3"}: +1
+Disaggregate{.x = "a", .y = "a"}: +1
 Disaggregate{.x = "b", .y = "1"}: +1
 Disaggregate{.x = "b", .y = "2"}: +1
 Disaggregate{.x = "b", .y = "3"}: +1
+Symmetric1:
+Symmetric1{.x = "a", .sym = true}: +1
+Symmetric1{.x = "b", .sym = false}: +1
 Aggregate1
-Aggregate1{"a",3}
+Aggregate1{"a",4}
 Aggregate1{"b",3}
 AggregateCnt
-AggregateCnt{6}
+AggregateCnt{7}
 AggregateCnt2
-AggregateCnt2{6}
+AggregateCnt2{7}
 AggregateCnt3
-AggregateCnt3{4}
+AggregateCnt3{5}
 Aggregate2
-Aggregate2{"a",["1","2","3"]}
+Aggregate2{"a",["1","2","3","a"]}
 Aggregate2{"b",["1","2","3"]}
 Aggregate3
-Aggregate3{"a",["1","2","3"]}
+Aggregate3{"a",["1","2","3","a"]}
 Aggregate3{"b",["1","2","3"]}
 Aggregate4
-Aggregate4{"a",[("a","3")]}
+Aggregate4{"a",[("a","a")]}
 Aggregate4{"b",[("b","3")]}
 AggregateByX
 AggregateByX{"a",3}
@@ -551,6 +561,7 @@ Disaggregate
 Disaggregate{"a","1"}
 Disaggregate{"a","2"}
 Disaggregate{"a","3"}
+Disaggregate{"a","a"}
 Disaggregate{"b","1"}
 Disaggregate{"b","2"}
 Disaggregate{"b","3"}

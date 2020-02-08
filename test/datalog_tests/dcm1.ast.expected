@@ -44,7 +44,7 @@ typedef intern.IString = intern.IObj<string>
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
-extern type std.Group<'A>
+extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
@@ -66,14 +66,14 @@ function cast_bit64_to_bigint (x: bit<64>): bigint =
     (x as bigint)
 function cast_bit64_to_signedbit64 (x: bit<64>): signed<64> =
     (x as signed<64>)
-function count_uniq (g: std.Group<signed<64>>): bit<64> =
+function count_uniq (g: std.Group<'K,signed<64>>): bit<64> =
     ((var set: std.Set<signed<64>>) = std.set_empty();
      (for (item in g) {
           std.set_insert(set, item)
       };
       ((var count: bit<64>) = std.set_size(set);
        count)))
-function group2expressions (g: std.Group<(signed<64>, intern.IString, intern.IString, intern.IString)>): std.Vec<(intern.IString, intern.IString, std.Set<intern.IString>)> =
+function group2expressions (g: std.Group<'K,(signed<64>, intern.IString, intern.IString, intern.IString)>): std.Vec<(intern.IString, intern.IString, std.Set<intern.IString>)> =
     ((var expressions: std.Map<signed<64>,(intern.IString, intern.IString, std.Set<intern.IString>)>) = std.map_empty();
      (for (e in g) {
           match (std.map_get(expressions, e.0)) {
@@ -126,18 +126,19 @@ function pod_matches_label_selector (expressions: std.Vec<(intern.IString, inter
       matches))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
-extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
-extern function std.group2set (g: std.Group<'A>): std.Set<'A>
-extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
-extern function std.group_count (g: std.Group<'A>): bit<64>
-extern function std.group_first (g: std.Group<'A>): 'A
-extern function std.group_max (g: std.Group<'A>): 'A
-extern function std.group_min (g: std.Group<'A>): 'A
-extern function std.group_nth (g: std.Group<'A>, n: bit<64>): std.Option<'A>
-extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
-extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
-extern function std.group_sum (g: std.Group<'A>): 'A
-function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+extern function std.group_count (g: std.Group<'K,'V>): bit<64>
+extern function std.group_first (g: std.Group<'K,'V>): 'V
+extern function std.group_key (g: std.Group<'K,'V>): 'K
+extern function std.group_max (g: std.Group<'K,'V>): 'V
+extern function std.group_min (g: std.Group<'K,'V>): 'V
+extern function std.group_nth (g: std.Group<'K,'V>, n: bit<64>): std.Option<'V>
+extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'K,'V>): 'V
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
     ((var xs: std.Vec<'X>) = std.vec_empty();
      ((var ys: std.Vec<'Y>) = std.vec_empty();
       (for (v in g) {
@@ -237,7 +238,7 @@ extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
 extern function std.vec_with_length (len: bit<64>, x: 'A): std.Vec<'A>
-function sum (g: std.Group<signed<64>>): signed<64> =
+function sum (g: std.Group<'K,signed<64>>): signed<64> =
     ((var sum: signed<64>) = 64'sd0;
      (for (resource in g) {
           sum = (resource + sum)

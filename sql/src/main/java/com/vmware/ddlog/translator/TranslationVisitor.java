@@ -282,6 +282,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             tupleVars.add(new DDlogEVar(s.rowVariable, s.type));
         }
 
+        DDlogTVar key = new DDlogTVar("K");
         DDlogTTuple tuple = new DDlogTTuple(tupleFields.toArray(new DDlogType[0]));
         String iter = context.freshLocalName("i");  // loop iteration variable
         DDlogEVar iterVar = new DDlogEVar(iter, tuple);
@@ -300,7 +301,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
 
         String agg = context.freshGlobalName("agg");
-        DDlogTUser paramType = new DDlogTUser("Group", false, tuple);
+        DDlogTUser paramType = new DDlogTUser("Group", false, key, tuple);
         DDlogFuncArg param = new DDlogFuncArg(paramName, false, paramType);
         DDlogETuple callArg = new DDlogETuple(tupleVars.toArray(new DDlogExpression[0]));
         DDlogExpression init = new DDlogEBool(true);

@@ -53,7 +53,6 @@ use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
-use timely;
 use timely::communication::initialize::Configuration;
 use timely::communication::Allocator;
 use timely::dataflow::operators::*;
@@ -1549,7 +1548,7 @@ impl Program {
             //print!("flush\n");
             r.flush();
         }
-        if let Some((_, session)) = sessions.iter_mut().nth(0) {
+        if let Some((_, session)) = sessions.iter_mut().next() {
             /* Do nothing if timestamp has not advanced since the last
              * transaction (i.e., no updates have arrived). */
             if frontier_ts.load(Ordering::SeqCst) < *session.time() {

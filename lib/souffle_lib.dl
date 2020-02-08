@@ -25,4 +25,4 @@ function random(): Tnumber = 0
 function land(l: Tnumber, r: Tnumber): Tnumber = if (l != 0 and r != 0) 1 else 0
 function lor(l: Tnumber, r: Tnumber): Tnumber = if (l == 0 and r == 0) 0 else 1
 function lnot(l: Tnumber): Tnumber = if (l != 0) 0 else 1
-function group_count32(g: Group<'A>): Tnumber = castTo32(group_count(g))
+function group_count32(g: Group<'K, 'V>): Tnumber = castTo32(group_count(g))

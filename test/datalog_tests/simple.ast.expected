@@ -29,8 +29,10 @@ typedef Cast_u24 = Cast_u24{description: string, expected: bit<24>, actual: bit<
 typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: bit<256>}
 typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
 typedef Compare = Compare{label: string, value: bool}
+typedef Concat = Concat{s: string}
 typedef ConcatString = ConcatString{s: string}
 typedef ControlFlow = ControlFlow{expr: string, value: string}
+typedef Counts1 = Counts1{x: string, occurrences: std.u64}
 typedef DMethod = DMethod{c1: Symbol, c2: Symbol}
 typedef DdlogBinding = DdlogBinding{tn: tnid_t, entity: entid_t}
 typedef DdlogDependency = DdlogDependency{parent: entid_t, child: entid_t}
@@ -100,6 +102,7 @@ typedef Strings = Strings{s: string}
 typedef Sum = Sum{x: string, sum: bit<32>}
 typedef Suspect = Suspect{name: string}
 typedef Symbol = intern.IString
+typedef Symmetric1 = Symmetric1{x: string, sym: bool}
 typedef T = T{x: bigint, y: string}
 typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T16 = t15
@@ -148,7 +151,7 @@ typedef souffle_types.Tnumber = signed<32>
 typedef souffle_types.Tsymbol = intern.IString
 typedef station = string
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
-extern type std.Group<'A>
+extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
@@ -217,7 +220,7 @@ function a8 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
 function a9 (): bit<32> =
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
-function agg1 (g1: std.Group<Tt1>): Ttmp0 =
+function agg1 (g1: std.Group<'K,Tt1>): Ttmp0 =
     (var first3 = true;
      (var max5 = 64'sd0;
       (for (i2 in g1) {
@@ -261,6 +264,23 @@ function b1 (a: bool): bool =
 function c0 (a: bit<32>, b: bit<16>): bit<16> =
     (a;
      b)
+function concat_ys (ys: std.Group<(string, string),string>): string =
+    ((var x, var z) = std.group_key(ys);
+     (var res = (((x ++ "-") ++ z) ++ ":");
+      (for (y in ys) {
+           res = (res ++ y)
+       };
+       res)))
+function count_xs (ys: std.Group<string,string>): std.u64 =
+    ((var res: std.u64) = 64'd0;
+     (for (y in ys) {
+          if (y == std.group_key(ys)) {
+              res = (res + 64'd1)
+          } else {
+                ()
+            }
+      };
+      res))
 function double (x: bigint): bigint =
     (x << 32'd1)
 function double_evens (xs: std.Vec<bigint>): std.Vec<bigint> =
@@ -373,6 +393,15 @@ function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
            std.vec_push(res, x))
       };
       return res))
+function find_x_in_group (ys: std.Group<'A,'A>): bool =
+    (for (y in ys) {
+         if (y == std.group_key(ys)) {
+             return true
+         } else {
+               ()
+           }
+     };
+     false)
 function fnested (x: nested_t): string =
     (N{.field=C{.f1=var res, .f2=_}} = x;
      res)
@@ -440,7 +469,7 @@ function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString 
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
 function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
     std.string_contains(intern.istring_str(i), intern.istring_str(s))
-function souffle_lib.group_count32 (g: std.Group<'A>): souffle_types.Tnumber =
+function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber =
     souffle_lib.castTo32(std.group_count(g))
 function souffle_lib.land (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber =
     if ((l != 32'sd0) and (r != 32'sd0)) {
@@ -479,18 +508,19 @@ function souffle_lib.to_string (n: souffle_types.Tnumber): intern.IString =
     intern.string_intern(std.__builtin_2string(n))
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
-extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
-extern function std.group2set (g: std.Group<'A>): std.Set<'A>
-extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
-extern function std.group_count (g: std.Group<'A>): bit<64>
-extern function std.group_first (g: std.Group<'A>): 'A
-extern function std.group_max (g: std.Group<'A>): 'A
-extern function std.group_min (g: std.Group<'A>): 'A
-extern function std.group_nth (g: std.Group<'A>, n: bit<64>): std.Option<'A>
-extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
-extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
-extern function std.group_sum (g: std.Group<'A>): 'A
-function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+extern function std.group_count (g: std.Group<'K,'V>): bit<64>
+extern function std.group_first (g: std.Group<'K,'V>): 'V
+extern function std.group_key (g: std.Group<'K,'V>): 'K
+extern function std.group_max (g: std.Group<'K,'V>): 'V
+extern function std.group_min (g: std.Group<'K,'V>): 'V
+extern function std.group_nth (g: std.Group<'K,'V>, n: bit<64>): std.Option<'V>
+extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'K,'V>): 'V
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
     ((var xs: std.Vec<'X>) = std.vec_empty();
      ((var ys: std.Vec<'Y>) = std.vec_empty();
       (for (v in g) {
@@ -684,8 +714,10 @@ output relation Cast_u24 [Cast_u24]
 output relation Cast_u256 [Cast_u256]
 output relation Cast_u32 [Cast_u32]
 output relation Compare [Compare]
+output relation Concat [Concat]
 output relation ConcatString [ConcatString]
 output relation ControlFlow [ControlFlow]
+output relation Counts1 [Counts1]
 output relation DMethod [DMethod]
 input relation DdlogBinding [DdlogBinding]
 input relation DdlogDependency [DdlogDependency]
@@ -753,6 +785,7 @@ output relation StringOrd [StringOrd]
 input relation Strings [Strings]
 output relation Sum [Sum]
 input relation Suspect [Suspect]
+output relation Symmetric1 [Symmetric1]
 output relation T [T]
 input relation Table1 [Table1]
 output relation Table12 [Table12]
@@ -905,6 +938,8 @@ Strings(.s="word1 word2").
 Strings(.s="line1\nline2").
 Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).
 Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}).
+Counts1(.x=x, .occurrences=count) :- AggregateMe1(.x=x, .y=y), var count = Aggregate((x), count_xs(y)).
+Symmetric1(.x=x, .sym=sym) :- AggregateMe1(.x=x, .y=y), var sym = Aggregate((x), find_x_in_group(y)).
 Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(y)).
 AggregateCnt(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_count(())).
 AggregateCnt2(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_sum((64'd1: bit<64>))).
@@ -915,6 +950,8 @@ Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), var map = Aggregate((x),
 Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)), var y = FlatMap(set).
 Sum(.x=x, .sum=sum) :- AggregateMeInts(.x=x, .y=y), var sum = Aggregate((x), std.group_sum(y)).
 AggregateByX(.x=x, .cnt=cnt) :- AggregateMe3(.x=x, .y=y, .z=z), AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(())).
+Concat(.s=s) :- AggregateMe3(.x=x, .y=y, .z=z), var s = Aggregate((x,
+                                                                   z), concat_ys(y)).
 WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
 Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
 ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).

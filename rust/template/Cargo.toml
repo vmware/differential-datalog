@@ -54,6 +54,9 @@ profile = ["cpuprofiler"]
 opt-level = 2
 debug = false
 rpath = false
+# false: Performs "thin local LTO" which performs "thin" LTO on the local crate
+# only across its codegen units. No LTO is performed if codegen units is 1 or
+# opt-level is 0.
 lto = false
 debug-assertions = false
 
