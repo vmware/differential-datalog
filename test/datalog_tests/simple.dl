@@ -658,6 +658,38 @@ Rel4(x,y,b) :- Rel1(x,y),
 
 input relation AggregateMe1(x: string, y: string)
 
+output relation Counts1(x: string, occurrences: u64)
+
+Counts1(x, count) :-
+    AggregateMe1(x, y),
+    var count = Aggregate((x), count_xs(y)).
+
+// Count the number of occurrences of `x` in `ys`
+function count_xs(ys: Group<string, string>): u64 = {
+    var res: u64 = 0;
+    for (y in ys) {
+        if (y == group_key(ys)) {
+            res = res + 1
+        }
+    };
+    res
+}
+output relation Symmetric1(x: string, sym: bool)
+
+Symmetric1(x, sym) :-
+    AggregateMe1(x, y),
+    var sym = Aggregate((x), find_x_in_group(y)).
+
+// Check if `x` occurs in `ys`
+function find_x_in_group(ys: Group<'A, 'A>): bool = {
+    for (y in ys) {
+        if (y == group_key(ys)) {
+            return true
+        }
+    };
+    false
+}
+
 output relation Aggregate1(x: string, cnt: bit<64>)
 Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), group_count(y)).
 
@@ -693,6 +725,21 @@ output relation AggregateByX(x: string, cnt: bit<64>)
 
 AggregateByX(x, cnt) :- AggregateMe3(x,y,z), AggregateMe1(x,y),
                         var cnt = Aggregate((x), group_count(())).
+
+output relation Concat(s: string)
+Concat(s) :-
+    AggregateMe3(x,y,z),
+    var s = Aggregate((x,z), concat_ys(y)).
+
+// Convert group into a string prefixed by group-by variable names
+function concat_ys(ys: Group<(string, string),string>): string = {
+    (var x, var z) = group_key(ys);
+    var res = x ++ "-" ++ z ++ ":";
+    for (y in ys) {
+        res = res ++ y
+    };
+    res
+}
 
 /* Primary key */
 input relation WithKey(key: bit<128>, val: string)
@@ -1114,7 +1161,7 @@ LongJoin(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x
 typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}
 typedef Tt2 = Tt2{column1:signed<64>}
 typedef Ttmp0 = Ttmp0{col4:signed<64>}
-function agg1(g1: Group<(Tt1)>):Ttmp0 =
+function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =
     var first3 = true;
     (var max5 = 64'sd0);
     (for (i2 in g1) {

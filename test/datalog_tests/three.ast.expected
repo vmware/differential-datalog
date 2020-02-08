@@ -4,7 +4,7 @@ typedef O = O{x: bit<32>}
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
-extern type std.Group<'A>
+extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
@@ -25,18 +25,19 @@ typedef std.u8 = bit<8>
 extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
-extern function std.group2map (g: std.Group<('K, 'V)>): std.Map<'K,'V>
-extern function std.group2set (g: std.Group<'A>): std.Set<'A>
-extern function std.group2vec (g: std.Group<'A>): std.Vec<'A>
-extern function std.group_count (g: std.Group<'A>): bit<64>
-extern function std.group_first (g: std.Group<'A>): 'A
-extern function std.group_max (g: std.Group<'A>): 'A
-extern function std.group_min (g: std.Group<'A>): 'A
-extern function std.group_nth (g: std.Group<'A>, n: bit<64>): std.Option<'A>
-extern function std.group_set_unions (g: std.Group<std.Set<'A>>): std.Set<'A>
-extern function std.group_setref_unions (g: std.Group<std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
-extern function std.group_sum (g: std.Group<'A>): 'A
-function std.group_unzip (g: std.Group<('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+extern function std.group_count (g: std.Group<'K,'V>): bit<64>
+extern function std.group_first (g: std.Group<'K,'V>): 'V
+extern function std.group_key (g: std.Group<'K,'V>): 'K
+extern function std.group_max (g: std.Group<'K,'V>): 'V
+extern function std.group_min (g: std.Group<'K,'V>): 'V
+extern function std.group_nth (g: std.Group<'K,'V>, n: bit<64>): std.Option<'V>
+extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'K,'V>): 'V
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
     ((var xs: std.Vec<'X>) = std.vec_empty();
      ((var ys: std.Vec<'Y>) = std.vec_empty();
       (for (v in g) {

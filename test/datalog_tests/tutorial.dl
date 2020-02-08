@@ -260,7 +260,7 @@ WorstPrice(item, best_price) :-
 
 output relation BestVendor(item: string, vendor: string, price: bit<64>)
 
-function best_vendor(g: Group<(string, bit<64>)>): (string, bit<64>) =
+function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>) =
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -277,6 +277,24 @@ BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
     var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
     (var best_vendor, var best_price) = best_vendor_price.
+
+function best_vendor_string(g: Group<string, (string, bit<64>)>): string =
+{
+    var min_vendor = "";
+    var min_price: bit<64> = 'hffffffffffffffff;
+    for (vendor_price in g) {
+        if (vendor_price.1 < min_price) {
+            min_vendor = vendor_price.0;
+            min_price = vendor_price.1
+        }
+    };
+    "Best deal for ${group_key(g)}: ${min_vendor}, $${min_price}"
+}
+
+output relation BestDeal(best: string)
+BestDeal(best) :-
+    Price(item, vendor, price),
+    var best = Aggregate((item), best_vendor_string((vendor, price))).
 
 /*
  * Example: tagged unions

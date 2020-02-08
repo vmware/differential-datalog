@@ -120,6 +120,9 @@ WorstPrice{"B",150}
 BestVendor:
 BestVendor{"A","Discount Corp",100}
 BestVendor{"B","Discount Corp",111}
+BestDeal:
+BestDeal{"Best deal for A: Discount Corp, $100"}
+BestDeal{"Best deal for B: Discount Corp, $111"}
 TCPDstPort:
 TCPDstPort{80}
 TCPDstPort{8080}

@@ -323,7 +323,7 @@ pub fn tinyset_unions<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: s }
 }
 
-pub fn tinyset_group2set<X: u64set::Fits64>(g: &std_Group<X>) -> tinyset_Set64<X> {
+pub fn tinyset_group2set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
     let mut res = tinyset_Set64::new();
     for ref v in g.iter() {
         tinyset_insert(&mut res, v);
@@ -331,9 +331,9 @@ pub fn tinyset_group2set<X: u64set::Fits64>(g: &std_Group<X>) -> tinyset_Set64<X
     res
 }
 
-pub fn tinyset_group_set_unions<X: u64set::Fits64 + Clone>(
-    g: &std_Group<tinyset_Set64<X>>,
-) -> tinyset_Set64<X> {
+pub fn tinyset_group_set_unions<K, V: u64set::Fits64 + Clone>(
+    g: &std_Group<K, tinyset_Set64<V>>,
+) -> tinyset_Set64<V> {
     let mut res = u64set::Set64::new();
     for gr in g.iter() {
         for v in gr.unsorted_iter() {
@@ -345,9 +345,9 @@ pub fn tinyset_group_set_unions<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: res }
 }
 
-pub fn tinyset_group_setref_unions<X: u64set::Fits64 + Ord + Clone>(
-    g: &std_Group<std_Ref<tinyset_Set64<X>>>,
-) -> std_Ref<tinyset_Set64<X>> {
+pub fn tinyset_group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
+    g: &std_Group<K, std_Ref<tinyset_Set64<V>>>,
+) -> std_Ref<tinyset_Set64<V>> {
     if std_group_count(g) == 1 {
         std_group_first(g)
     } else {

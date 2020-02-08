@@ -194,6 +194,9 @@ dump WorstPrice;
 echo BestVendor:;
 dump BestVendor;
 
+echo BestDeal:;
+dump BestDeal;
+
 start;
 
 insert Packet(EthPacket{

@@ -18,9 +18,9 @@ extern function union(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 extern function unions(sets: Vec<Set64<'X>>): Set64<'X>
 
 /* Aggregates */
-extern function group2set(g: Group<'A>): Set64<'A>
-extern function group_set_unions(g: Group<Set64<'A>>): Set64<'A>
+extern function group2set(g: Group<'K, 'V>): Set64<'V>
+extern function group_set_unions(g: Group<'K, Set64<'V>>): Set64<'V>
 
 /* Optimized version of group_set_unions that, when the group consits of
  * a single set, simply returns the reference to this set. */
-extern function group_setref_unions(g: Group<Ref<Set64<'A>>>): Ref<Set64<'A>>
+extern function group_setref_unions(g: Group<'K, Ref<Set64<'V>>>): Ref<Set64<'V>>

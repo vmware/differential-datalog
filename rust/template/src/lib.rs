@@ -39,7 +39,6 @@ use timely::worker;
 use serde::Deserialize;
 use serde::Serialize;
 
-use abomonation;
 use differential_datalog::arcval;
 
 use differential_datalog::ddval::*;

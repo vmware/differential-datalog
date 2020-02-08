@@ -343,16 +343,15 @@ ruleCheckAggregate d rl idx = do
     let RHSAggregate v vs fname e = ruleRHS rl !! idx
     let ctx = CtxRuleRAggregate rl idx
     exprValidate d [] ctx e
-    -- group-by variables are visible in this scope
+    -- Group-by variables are visible in this scope.
     mapM_ (checkVar (pos e) d ctx) vs
+    let group_by_types = map (typ . getVar d ctx) vs
     check (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
-    -- aggregation function exists and takes a group as its sole argument
+    -- Aggregation function exists and takes a group as its sole argument.
     f <- checkFunc (pos e) d fname
     check (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
                                                fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
-    -- figure out type of the aggregate
-    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [exprType d ctx e]]
-
+    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [tTuple group_by_types, exprType d ctx e]]
 
 -- | Validate relation transformer
 -- * input and output argument names must be unique

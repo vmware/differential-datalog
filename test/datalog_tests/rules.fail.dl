@@ -24,4 +24,41 @@ relation R3(a3: string, b3: string)
 R2(x) :- R1(x), not R3(x, "foo").
 R3(x,"foo") :- R2(x).
 
+//---
 
+// Aggregate function does not take enough arguments.
+
+input relation AggregateMe3(x: string, y: string, z: string)
+output relation Concat(s: string)
+Concat(s) :-
+    AggregateMe3(x,y,z),
+    var s = Aggregate((x,z), concat_ys(y)).
+
+// Convert group into a string prefixed by group-by variable names
+function concat_ys(ys: Group<string, string>): string = {
+    var res = group_key(ys) ++ ":";
+    for (y in ys) {
+        res = res ++ y
+    };
+    res
+}
+
+//---
+
+// Aggregate function has wrong signature
+
+input relation AggregateMe3(x: string, y: string, z: string)
+output relation Concat(s: string)
+Concat(s) :-
+    AggregateMe3(x,y,z),
+    var s = Aggregate((x,z), concat_ys(y)).
+
+// Convert group into a string prefixed by group-by variable names
+function concat_ys(ys: Group<(string, bigint), string>): string = {
+    (var x, var z) = group_key(ys);
+    var res = x ++ ":";
+    for (y in ys) {
+        res = res ++ y
+    };
+    res
+}

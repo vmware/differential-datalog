@@ -55,6 +55,7 @@ start;
 insert AggregateMe1("a", "1"),
 insert AggregateMe1("a", "2"),
 insert AggregateMe1("a", "3"),
+insert AggregateMe1("a", "a"),
 insert AggregateMe1("b", "1"),
 insert AggregateMe1("b", "2"),
 insert AggregateMe1("b", "3");

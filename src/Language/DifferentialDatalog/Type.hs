@@ -760,7 +760,7 @@ typeIterType d t =
     case typ' d t of
          TOpaque _ tname [t']  | elem tname sET_TYPES -> Just t'
          TOpaque _ tname [k,v] | tname == mAP_TYPE    -> Just $ tTuple [k,v]
-         TOpaque _ tname [t']  | tname == gROUP_TYPE  -> Just $ t'
+         TOpaque _ tname [_,v] | tname == gROUP_TYPE  -> Just v
          _                                            -> Nothing
 
 typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
