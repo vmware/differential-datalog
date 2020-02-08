@@ -224,7 +224,7 @@ test-antrea:
         - ddlog-ci-1
     script:
         - cd test/antrea
-        - ../datalog_tests/run-test.sh networkpolicy_controller.dl release
+        - ./test-antrea.sh
 
 # Test the SQL-to-DDlog compiler.
 test-sql:
