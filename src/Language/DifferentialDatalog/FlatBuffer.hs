@@ -342,6 +342,8 @@ typeTableName x =
          TBool{}       -> "__Bool"
          TInt{}        -> "__BigInt"
          TString{}     -> "__String"
+         TDouble{}     -> "__Double"
+         TFloat{}      -> "__Float"
          TBit{..}    | typeWidth <= 8
                        -> "__Bit8"
          TBit{..}    | typeWidth <= 16
@@ -384,7 +386,7 @@ typeIsVector x =
 progRustTypesToSerialize :: (?d::DatalogProgram) => [Type]
 progRustTypesToSerialize =
     nub $
-    concatMap relTypesToSerialize progIORelations ++ 
+    concatMap relTypesToSerialize progIORelations ++
     concatMap idxTypesToSerialize (M.elems $ progIndexes ?d) ++
     concatMap (relTypesToSerialize . idxRelation ?d) (M.elems $ progIndexes ?d)
 
@@ -404,7 +406,7 @@ progValTypes =
     map (typeNormalizeForFlatBuf . relType) progIORelations ++
     map (typeNormalizeForFlatBuf . idxKeyType) (M.elems $ progIndexes ?d) ++
     map (typeNormalizeForFlatBuf . relType . idxRelation ?d) (M.elems $ progIndexes ?d)
-    
+
 progIORelations :: (?d::DatalogProgram) => [Relation]
 progIORelations =
     filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
@@ -452,6 +454,8 @@ typeSubtypes stack t | elem t stack = -- prevent infinite recursion when process
         TString{}     -> return ()
         TBit{}        -> return ()
         TSigned{}     -> return ()
+        TDouble{}     -> return ()
+        TFloat{}      -> return ()
         TTuple{..} -> do addtype t''
                          mapM_ (typeSubtypes (t:stack)) typeTupArgs
         TUser{}    -> do addtype t''
@@ -485,6 +489,8 @@ typeFlatbufSchema x =
          TBit{}      -> empty
          TSigned{}   -> empty
          TInt{}      -> empty
+         TDouble{}   -> empty
+         TFloat{}    -> empty
          TTuple{..}  -> tupleFlatBufferSchema typeTupArgs
          t@TUser{..} ->
              -- For structs, only generate a union if the struct has more than one
@@ -532,6 +538,8 @@ fbType x =
          TBool{}            -> "bool"
          TInt{}             -> "__BigInt"
          TString{}          -> "string"
+         TDouble{}          -> "double"
+         TFloat{}           -> "float"
          TBit{..} | typeWidth <= 8
                             -> "uint8"
          TBit{..} | typeWidth <= 16
@@ -645,6 +653,8 @@ jFBWriteType nested x =
         TBool{}            -> "boolean"
         TInt{}             -> "int"
         TString{}          -> "int"
+        TDouble{}          -> "double"
+        TFloat{}           -> "float"
         -- FlatBuffers currently have what I think is a bug, where 'uint' types
         -- are represented differently in array and non-array context on the
         -- write path only:
@@ -690,6 +700,8 @@ jFBReadType x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
         TString{}          -> "String"
+        TFloat{}           -> "float"
+        TDouble{}          -> "double"
         TBit{..} | typeWidth <= 16
                            -> "int"
         TBit{..} | typeWidth <= 64
@@ -708,6 +720,8 @@ jConvType rw x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
         TInt{}             -> "java.math.BigInteger"
+        TDouble{}          -> "double"
+        TFloat{}           -> "float"
         TString{}          -> "String"
         TBit{..} | typeWidth <= 16
                            -> "int"
@@ -817,6 +831,8 @@ jConv2FBType fbctx e t =
     e' = case typeNormalizeForFlatBuf t of
             TBool{}            -> e
             TInt{}             -> bigint
+            TDouble{}          -> e
+            TFloat{}           -> e
             TString{}          -> "fbbuilder.createString(" <> e <> ")"
             TBit{..} | typeWidth <= 64
                                -> e
@@ -870,6 +886,8 @@ jConvCreateTable t cons =
     case typeNormalizeForFlatBuf t of
          TBool{}            -> prim
          TInt{}             -> jConv2FBType FBUnion "v" t
+         TDouble{}          -> prim
+         TFloat{}           -> prim
          TString{}          -> jConv2FBType FBUnion "v" t
          TBit{..} | typeWidth <= 64
                             -> prim
@@ -1092,10 +1110,10 @@ mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
     where
     mk_query idx@Index{..} =
         "public static void query" <> mkIdxId idx <>
-            (parens $ commaSep 
+            (parens $ commaSep
              $ "DDlogAPI hddlog" :
                (map (\v -> (if typeRequiresBuilder v
-                               then "java.util.function.Function<" <> pp builderClass <> "," <+> jConvTypeW v <> ">" 
+                               then "java.util.function.Function<" <> pp builderClass <> "," <+> jConvTypeW v <> ">"
                                else jConvTypeW v)
                             <+> pp (name v)) idxVars)
                ++ ["java.util.function.Consumer<" <> jConvObjTypeR rel <> "> callback"]) <>
@@ -1106,7 +1124,7 @@ mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
                                <+> (pp $ name v) <> ".apply(new" <+> pp builderClass <> "(fbbuilder));")
                   $ filter typeRequiresBuilder idxVars)                                                             $$
             -- Create query.
-            "int query =" <+> jFBCallConstructor "__Query" 
+            "int query =" <+> jFBCallConstructor "__Query"
                               [ (pp $ idxIdentifier ?d idx)
                               , jFBPackage <> ".__Value." <> typeTableName idx_type
                               , val ] <> ";"                                                                        $$
@@ -1131,7 +1149,7 @@ mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
 
     mk_dump idx@Index{..} =
         "public static void dump" <> mkIdxId idx <>
-            (parens $ commaSep 
+            (parens $ commaSep
              $ ["DDlogAPI hddlog",
                "java.util.function.Consumer<" <> jConvObjTypeR rel <> "> callback"]) <>
             "throws DDlogException" $$
@@ -1370,6 +1388,8 @@ jReadField nesting fbctx e t =
     do_read e' = case typeNormalizeForFlatBuf t of
                       TBool{}            -> e'
                       TInt{}             -> bigint
+                      TDouble{}          -> e'
+                      TFloat{}           -> e'
                       TString{}          -> e'
                       TBit{..} | typeWidth <= 64
                                          -> (parens $ jConvTypeR t) <> e'
@@ -1407,8 +1427,8 @@ jReadField nesting fbctx e t =
                               mtype = "java.util.Map<" <> ktype <> "," <+> vtype <> ">"
                               ttable = typeTableName $ tTuple [keyType, valType]
                               vmap = "map" <> pp nesting
-                              vi   = "i"   <> pp nesting 
-                              _vi   = "_i"   <> pp nesting 
+                              vi   = "i"   <> pp nesting
+                              _vi   = "_i"   <> pp nesting
                           in
                           "((java.util.function.Supplier<" <> mtype <> ">) (() -> "         $$
                           (braces' $ mtype <+> vmap <+> "= new java.util.HashMap<" <> ktype <> "," <+> vtype <> ">();"  $$

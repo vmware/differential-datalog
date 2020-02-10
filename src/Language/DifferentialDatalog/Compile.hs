@@ -1605,6 +1605,8 @@ mkValConstructorName d t' =
          TString{}   -> "__Stringval"
          TBit{..}    -> "__Bitval" <> pp typeWidth
          TSigned{..} -> "__Signedval" <> pp typeWidth
+         TDouble{}   -> "__Doubleval"
+         TFloat{}    -> "__Floatval"
          TUser{}     -> "__" <> consuser
          TOpaque{}   -> "__" <> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
@@ -1976,7 +1978,7 @@ mkNode (RelNode (ProgRel rel _ _)) =
 mkNode (SCCNode rels) =
     "ProgNode::SCC{rels: vec![" <>
     (commaSep $ map (\RecProgRel{..} ->
-                      "RecursiveRelation{rel: " <> (rname $ prelName rprelRel) <> 
+                      "RecursiveRelation{rel: " <> (rname $ prelName rprelRel) <>
                       ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"
 mkNode (ApplyNode fun) =
     "ProgNode::Apply{tfun:" <+> fun <> "}"
@@ -2303,11 +2305,10 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     arg =  val exprOp
     e' = exprMap (E . sel3) e
     t = exprType' d ctx (E e')
-    uint = (not $ isInt d t) && (typeWidth (typ' d t) <= 128)
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
              BNeg   -> mkTruncate (parens $ "!" <> arg) t
-             UMinus | uint
+             UMinus | smallInt d t
                     -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
              UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
@@ -2393,6 +2394,8 @@ mkType' t@TSigned{..} | typeWidth == 8  = "i8"
                       | typeWidth == 64 = "i64"
                       | typeWidth == 128= "i128"
                       | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
+mkType' TDouble{}                  = "OrderedFloat<f64>"
+mkType' TFloat{}                   = "OrderedFloat<f32>"
 mkType' TTuple{..} | length typeTupArgs <= 12
                                    = parens $ commaSep $ map mkType' typeTupArgs
 mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
@@ -2410,6 +2413,12 @@ mkType' TOpaque{..}                = rname typeName <>
 mkType' TVar{..}                   = pp tvarName
 mkType' t                          = error $ "Compile.mkType' " ++ show t
 
+smallInt :: DatalogProgram -> Type -> Bool
+smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
+
+isFP :: DatalogProgram -> Type -> Bool
+isFP d t = (isDouble d t) || (isFloat d t)
+
 mkBinOp :: DatalogProgram -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
 mkBinOp d op (e1, t1) (e2, t2) =
     case op of
@@ -2422,40 +2431,46 @@ mkBinOp d op (e1, t1) (e2, t2) =
         And    -> parens $ e1 <+> "&&" <+> e2
         Or     -> parens $ e1 <+> "||" <+> e2
         Impl   -> parens $ "!" <> e1 <+> "||" <+> e2
-        Mod    | uint
+        Mod    | smallInt d t1
                -> parens $ e1 <> ".wrapping_rem(" <> e2 <> ")"
                | otherwise
                -> parens $ e1 <+> "%" <+> e2
-        Div    | uint
+        Div    | smallInt d t1
                -> parens $ e1 <> ".wrapping_div(" <> e2 <> ")"
+               | isFP d t1
+               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "/" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "/" <+> e2
-        ShiftR | uint
+        ShiftR | smallInt d t1
                -> parens $ e1 <> ".wrapping_shr(" <> e2 <> ")"
                | otherwise
                -> parens $ e1 <+> ">>" <+> e2
-        ShiftL | uint
+        ShiftL | smallInt d t1
                -> parens $ e1 <> ".wrapping_shl(" <> e2 <> ")"
                | otherwise
                -> parens $ e1 <+> "<<" <+> e2
         BAnd   -> parens $ e1 <+> "&"  <+> e2
         BOr    -> parens $ e1 <+> "|"  <+> e2
         BXor   -> parens $ e1 <+> "^"  <+> e2
-        Plus   | uint
+        Plus   | smallInt d t1
                -> parens $ e1 <> ".wrapping_add(" <> e2 <> ")"
+               | isFP d t1
+               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "+" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "+" <+> e2
-        Minus  | uint
+        Minus  | smallInt d t1
                -> parens $ e1 <> ".wrapping_sub(" <> e2 <> ")"
+               | isFP d t1
+               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "-" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "-" <+> e2
-        Times  | uint
+        Times  | smallInt d t1
                -> parens $ e1 <> ".wrapping_mul(" <> e2 <> ")"
+               | isFP d t1
+               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "*" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "*" <+> e2
         Concat -> mkConcat (e1, typeWidth t1) (e2, typeWidth t2)
-    where
-    uint = (not $ isInt d t1) && (typeWidth (typ' d t1) <= 128)
 
 -- These operators require truncating the output value to correct
 -- width.

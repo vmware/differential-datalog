@@ -40,6 +40,8 @@ module Language.DifferentialDatalog.Syntax (
         typeTypeVars,
         tBool,
         tInt,
+        tDouble,
+        tFloat,
         tString,
         tBit,
         tSigned,
@@ -209,6 +211,8 @@ data Type = TBool     {typePos :: Pos}
           | TString   {typePos :: Pos}
           | TBit      {typePos :: Pos, typeWidth :: Int}
           | TSigned   {typePos :: Pos, typeWidth :: Int}
+          | TDouble   {typePos :: Pos}
+          | TFloat    {typePos :: Pos}
           | TStruct   {typePos :: Pos, typeCons :: [Constructor]}
           | TTuple    {typePos :: Pos, typeTupArgs :: [Type]}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
@@ -220,6 +224,8 @@ tInt       = TInt      nopos
 tString    = TString   nopos
 tBit       = TBit      nopos
 tSigned    = TSigned   nopos
+tDouble    = TDouble   nopos
+tFloat     = TFloat    nopos
 tStruct    = TStruct   nopos
 tTuple [t] = t
 tTuple ts  = TTuple    nopos ts
@@ -255,6 +261,8 @@ instance Eq Type where
     (==) TString{}          TString{}           = True
     (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
     (==) (TSigned _ w1)     (TSigned _ w2)      = w1 == w2
+    (==) (TDouble _)        (TDouble _)         = True
+    (==) (TFloat _)         (TFloat _)          = True
     (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
     (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
     (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
@@ -269,11 +277,13 @@ trank TInt   {} = 1
 trank TString{} = 2
 trank TBit   {} = 3
 trank TSigned{} = 4
-trank TStruct{} = 5
-trank TTuple {} = 6
-trank TUser  {} = 7
-trank TVar   {} = 8
-trank TOpaque{} = 9
+trank TDouble{} = 5
+trank TFloat {} = 6
+trank TStruct{} = 7
+trank TTuple {} = 8
+trank TUser  {} = 9
+trank TVar   {} =10
+trank TOpaque{} =11
 
 instance Ord Type where
     compare TBool{}            TBool{}             = EQ
@@ -281,6 +291,8 @@ instance Ord Type where
     compare TString{}          TString{}           = EQ
     compare (TBit _ w1)        (TBit _ w2)         = compare w1 w2
     compare (TSigned _ w1)     (TSigned _ w2)      = compare w1 w2
+    compare (TDouble _)        (TDouble _)         = EQ
+    compare (TFloat _)         (TFloat _)          = EQ
     compare (TStruct _ cs1)    (TStruct _ cs2)     = compare cs1 cs2
     compare (TTuple _ ts1)     (TTuple _ ts2)      = compare ts1 ts2
     compare (TUser _ n1 as1)   (TUser _ n2 as2)    = compare (n1, as1) (n2, as2)
@@ -299,6 +311,8 @@ instance PP Type where
     pp (TString _)      = "string"
     pp (TBit _ w)       = "bit<" <> pp w <> ">"
     pp (TSigned _ w)    = "signed<" <> pp w <> ">"
+    pp (TDouble _)      = "double"
+    pp (TFloat _)       = "float"
     pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
     pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
@@ -322,6 +336,8 @@ typeTypeVars TInt{}      = []
 typeTypeVars TString{}   = []
 typeTypeVars TBit{}      = []
 typeTypeVars TSigned{}   = []
+typeTypeVars TDouble{}   = []
+typeTypeVars TFloat{}    = []
 typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
                                $ concatMap consArgs typeCons
 typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
