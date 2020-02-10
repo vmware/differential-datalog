@@ -30,6 +30,8 @@ typedef t19 = C000 { f0: bigint }
             | C111 { f0: bigint }
             | C222 { f0: bigint }
 typedef t20 = signed<32>
+typedef t21 = double
+typedef t22 = float
 
 typedef person = string
 
@@ -149,6 +151,9 @@ function vars(): () = {
 
     C{var c, var d} = y
 }
+
+function dbl(): double = 0: double
+function flt(): float = 0: float
 
 output relation Compare(label: string, value: bool)
 
@@ -1275,7 +1280,7 @@ function double_evens(xs: Vec<bigint>): Vec<bigint> =
                 break
             } else if (x < 0) {
                 return res
-            } else if (x % 2 != 0) { 
+            } else if (x % 2 != 0) {
                 continue
             } else {
                 x
@@ -1310,3 +1315,8 @@ Trees({
     var nonleaf = NonLeafNode{vec_push_imm(vec_push_imm(vec_empty(): Vec<Tree<u64>>, leaf1), leaf2)};
     NonLeafNode{vec_push_imm(vec_push_imm(vec_empty(): Vec<Tree<u64>>, leaf3), nonleaf)}
 }).
+
+output relation Doubles(s: string, d: double)
+Doubles("5", 5: double).
+Doubles("5 + 3", 5: double + 3: double).
+Doubles("5/3", 5: double / 3: double).

@@ -186,6 +186,8 @@ typeValidate :: (MonadError String me) => DatalogProgram -> [String] -> Type -> 
 typeValidate _ _     TString{}        = return ()
 typeValidate _ _     TInt{}           = return ()
 typeValidate _ _     TBool{}          = return ()
+typeValidate _ _     TDouble{}        = return ()
+typeValidate _ _     TFloat{}         = return ()
 typeValidate _ _     (TBit p w)       =
     check (w>0) p "Integer width must be greater than 0"
 typeValidate _ _     (TSigned p w)       =
@@ -652,13 +654,13 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
         And    -> do {m; isbool}
         Or     -> do {m; isbool}
         Impl   -> do {m; isbool}
-        Plus   -> do {m; isint1}
-        Minus  -> do {m; isint1}
+        Plus   -> do {m; isNumber1}
+        Minus  -> do {m; isNumber1}
         ShiftR -> do isint1
         ShiftL -> do isint1
         Mod    -> do {m; isint1; isint2}
-        Times  -> do {m; isint1; isint2}
-        Div    -> do {m; isint1; isint2}
+        Times  -> do {m; isNumber1; isNumber2}
+        Div    -> do {m; isNumber1; isNumber2}
         BAnd   -> do {m; isbitOrSigned1}
         BOr    -> do {m; isbitOrSigned1}
         BXor   -> do {m; isbitOrSigned1}
@@ -668,6 +670,8 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
     where m = checkTypesMatch p d e1 e2
           isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
           isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
+          isNumber1 = check (isInt d e1 || isBit d e1 || isSigned d e1 || isDouble d e1 || isFloat d e1) (pos e1) "Not a number"
+          isNumber2 = check (isInt d e2 || isBit d e1 || isSigned d e2 || isDouble d e2 || isFloat d e2) (pos e2) "Not a number"
           isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
           isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
           isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
@@ -676,16 +680,16 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
 exprValidate2 d _   (EUnOp _ BNeg e)    =
     check (isBit d e || isSigned d e) (pos e) "Not a bit vector"
 exprValidate2 d _   (EUnOp _ UMinus e)    =
-    check (isSigned d e || isInt d e) (pos e)
+    check (isSigned d e || isInt d e || isDouble d e || isFloat d e) (pos e)
         $ "Cannot negate expression of type " ++ show e ++ ". Negation applies to signed<> and bigint values only."
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d _   (EFor p _ i _)       = checkIterable "iterator" p d i
 exprValidate2 d _   (EAs p e t)          = do
-    check (isBit d e || isSigned d e) p
+    check (isBit d e || isSigned d e || isDouble d e || isFloat d e) p
         $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for bit<> and signed<> types."
-    check (isBit d t || isSigned d t || isInt d t) p
+    check (isBit d t || isSigned d t || isInt d t || isDouble d t || isFloat d t) p
         $ "Cannot type-cast expression to " ++ show t ++ ".  Only bit<>, signed<>, and bigint types can be cast to."
     when (not $ isInt d t) $
         check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
@@ -732,6 +736,8 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
                   TString{}   -> return $ bUILTIN_2STRING_FUNC
                   TBit{}      -> return $ bUILTIN_2STRING_FUNC
                   TSigned{}   -> return $ bUILTIN_2STRING_FUNC
+                  TDouble{}   -> return $ bUILTIN_2STRING_FUNC
+                  TFloat{}    -> return $ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"

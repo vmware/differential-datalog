@@ -110,6 +110,8 @@ type_spec ::= bigint_type
             | string_type
             | bitvector_type
             | integer_type
+            | double_type
+            | float_type
             | tuple_type
             | union_type     (* tagged union *)
             | type_alias     (* reference to user-defined type *)
@@ -122,6 +124,8 @@ simple_type_spec ::= bigint_type
                    | bool_type
                    | string_type
                    | bitvector_type
+                   | double_type
+                   | float_type
                    | tuple_type
                    | type_alias
                    | typevar_name
@@ -133,6 +137,8 @@ bool_type        ::= "bool"
 string_type      ::= "string" (* UTF-8 string *)
 bitvector_type   ::= "bit" "<" decimal ">"
 integer_type     ::= "signed" "<" decimal ">"
+double_type      ::= "double"
+float_type       ::= "float"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
 type_alias       ::= type_name           (* type name declared using typedef*)

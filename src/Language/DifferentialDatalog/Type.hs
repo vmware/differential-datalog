@@ -36,7 +36,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap, isRef,
+    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -123,6 +123,8 @@ typeIsPolymorphic TInt{}      = False
 typeIsPolymorphic TString{}   = False
 typeIsPolymorphic TBit{}      = False
 typeIsPolymorphic TSigned{}   = False
+typeIsPolymorphic TDouble{}   = False
+typeIsPolymorphic TFloat{}    = False
 typeIsPolymorphic TStruct{..} = any (any (typeIsPolymorphic . typ) . consArgs) typeCons
 typeIsPolymorphic TTuple{..}  = any typeIsPolymorphic typeTupArgs
 typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
@@ -162,6 +164,8 @@ unifyTypes' d p ctx (a, c) =
         (TBool{}         , TBool{})          -> return M.empty
         (TInt{}          , TInt{})           -> return M.empty
         (TString{}       , TString{})        -> return M.empty
+        (TDouble{}       , TDouble{})        -> return M.empty
+        (TFloat{}        , TFloat{})         -> return M.empty
         (TBit _ w1       , TBit _ w2)        | w1 == w2
                                              -> return M.empty
         (TSigned _ w1    , TSigned _ w2)     | w1 == w2
@@ -297,6 +301,8 @@ exprNodeType' d ctx (EInt p _)            = do
          Just t@(TBit _ _)    -> return t
          Just t@(TSigned _ _) -> return t
          Just t@(TInt _)      -> return t
+         Just t@(TDouble _)   -> return t
+         Just t@(TFloat _)    -> return t
          Nothing              -> return tInt
          _                    -> eunknown p ctx
 
@@ -334,10 +340,8 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
          And    -> return tBool
          Or     -> return tBool
          Impl   -> return tBool
-         Plus   -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else
-                            if isSigned d t1 then tSigned (max (typeWidth t1) (typeWidth t2)) else tInt
-         Minus  -> return $ if isBit d t1 then tBit (max (typeWidth t1) (typeWidth t2)) else
-                            if isSigned d t1 then tSigned (max (typeWidth t1) (typeWidth t2)) else tInt
+         Plus   -> return t1
+         Minus  -> return t1
          Mod    -> return t1
          Times  -> return t1
          Div    -> return t1
@@ -447,6 +451,16 @@ isInt d a = case typ' d a of
                  TInt _ -> True
                  _      -> False
 
+isDouble :: (WithType a) => DatalogProgram -> a -> Bool
+isDouble d a = case typ' d a of
+                    TDouble _ -> True
+                    _         -> False
+
+isFloat :: (WithType a) => DatalogProgram -> a -> Bool
+isFloat d a = case typ' d a of
+                   TFloat _ -> True
+                   _         -> False
+
 isString :: (WithType a) => DatalogProgram -> a -> Bool
 isString d a = case typ' d a of
                     TString _ -> True
@@ -477,7 +491,7 @@ isRef d a = case typ' d a of
                  TOpaque _ t _ | t == rEF_TYPE -> True
                  _                             -> False
 
--- | Check if 'a' and 'b' have idential types up to type aliasing;
+-- | Check if 'a' and 'b' have identical types up to type aliasing;
 -- throw exception if they don't.
 checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()
 checkTypesMatch p d x y =
@@ -485,7 +499,7 @@ checkTypesMatch p d x y =
           $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
 
 
--- | True iff 'a' and 'b' have idential types up to type aliasing.
+-- | True iff 'a' and 'b' have identical types up to type aliasing.
 typesMatch :: (WithType a, WithType b) => DatalogProgram -> a -> b -> Bool
 typesMatch d x y = typeNormalize d x == typeNormalize d y
 
@@ -502,6 +516,8 @@ typeNormalize' d t =
          TSigned{}          -> t'
          TInt{}             -> t'
          TString{}          -> t'
+         TDouble{}          -> t'
+         TFloat{}           -> t'
          TTuple{..}         -> t'{typeTupArgs = map (typeNormalize d) typeTupArgs}
          TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
@@ -783,6 +799,8 @@ typeMapM fun t@TInt{}      = fun t
 typeMapM fun t@TString{}   = fun t
 typeMapM fun t@TBit{}      = fun t
 typeMapM fun t@TSigned{}   = fun t
+typeMapM fun t@TDouble{}   = fun t
+typeMapM fun t@TFloat{}    = fun t
 typeMapM fun t@TStruct{..} = do
     cons <- mapM (\c -> do
                    cargs <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ consArgs c
