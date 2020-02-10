@@ -74,9 +74,11 @@ reservedNames = ["as",
                  "break",
                  "continue",
                  "default",
+                 "double",
                  "extern",
                  "else",
                  "false",
+                 "float",
                  "for",
                  "function",
                  "if",
@@ -422,6 +424,8 @@ typeSpec = withPos $
             bitType
         <|> signedType
         <|> intType
+        <|> doubleType
+        <|> floatType
         <|> stringType
         <|> boolType
         <|> structType
@@ -433,6 +437,8 @@ typeSpecSimple = withPos $
                   bitType
               <|> signedType
               <|> intType
+              <|> doubleType
+              <|> floatType
               <|> stringType
               <|> boolType
               <|> tupleType
@@ -442,6 +448,8 @@ typeSpecSimple = withPos $
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
 signedType = TSigned nopos <$ reserved "signed" <*> (fromIntegral <$> angles decimal)
 intType    = TInt    nopos <$ reserved "bigint"
+doubleType = TDouble nopos <$ reserved "double"
+floatType  = TFloat  nopos <$ reserved "float"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
 userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")

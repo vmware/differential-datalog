@@ -20,6 +20,8 @@ use std::ptr;
 use std::result;
 use std::sync;
 
+use ordered_float::*;
+
 use differential_dataflow::collection;
 use timely::communication;
 use timely::dataflow::scopes;

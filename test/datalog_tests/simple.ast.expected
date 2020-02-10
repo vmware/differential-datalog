@@ -192,6 +192,8 @@ typedef t15 = Const15{f: bigint}
 typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
 typedef t19 = C000{f0: bigint} | C111{f0: bigint} | C222{f0: bigint}
 typedef t20 = signed<32>
+typedef t21 = double
+typedef t22 = float
 typedef tnid_t = bit<16>
 function a0 (): bigint =
     1
@@ -267,6 +269,7 @@ function b1 (a: bool): bool =
 function c0 (a: bit<32>, b: bit<16>): bit<16> =
     (a;
      b)
+
 function concat_ys (ys: std.Group<(string, string),string>): string =
     ((var x, var z) = std.group_key(ys);
      (var res = (((x ++ "-") ++ z) ++ ":");
@@ -304,6 +307,10 @@ function double_evens (xs: std.Vec<bigint>): std.Vec<bigint> =
                                      }))
       };
       res))
+
+function dbl (): double =
+    (0: double)
+
 function dummy (x: string): string =
     (x ++ " dummy")
 function edge_from (e: Edge): bigint =
@@ -396,6 +403,7 @@ function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
            std.vec_push(res, x))
       };
       return res))
+<<<<<<< HEAD
 function find_x_in_group (ys: std.Group<'A,'A>): bool =
     (for (y in ys) {
          if (y == std.group_key(ys)) {
@@ -405,6 +413,10 @@ function find_x_in_group (ys: std.Group<'A,'A>): bool =
            }
      };
      false)
+=======
+function flt (): float =
+    (0: float)
+>>>>>>> Support for FP; WIP
 function fnested (x: nested_t): string =
     (N{.field=C{.f1=var res, .f2=_}} = x;
      res)
