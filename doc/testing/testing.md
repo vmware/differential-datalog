@@ -75,6 +75,7 @@ outputs.
 | `query_index <index>(<args>);` | `query_index Edge_by_from(100);`                 | dump all values in an indexed relation with the given key              |
 | `dump_index <index>;`          | `dump_index Edge_by_from;`                       | dump all values in an indexed relation                                 |
 | `echo <text>;`                 | `echo Hello world;`                              | copy arbitrary text to stdout                                          |
+| `log_level <level>;`           | `log_level 100000;`                              | set maximum log level for messages output via log API; messages with higher priority will be dropped (see [log.dl](../..//lib/log.dl)) |
 | `insert <record>;`             | `insert Rel1(1,true,"foo");`                     | insert record to relation Rel1                                         |
 |                                | `insert Rel1(.arg2=true,.arg1=1, .arg3="foo");`  | as above, but uses named rather than positional arguments              |
 |                                | `insert Rel2(.x=10, .y=Constructor{"foo", true});` | passing structured data by calling type constructor                    |

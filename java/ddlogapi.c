@@ -583,6 +583,26 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1log_1replace_1callback(
     return (jlong)cbinfo;
 }
 
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1log_1replace_1default_1callback(
+    JNIEnv *env, jobject obj, jlong old_cbinfo, jobject callback, jint max_level) {
+
+    if (callback == NULL) {
+        ddlog_log_set_default_callback(NULL, 0, max_level);
+        deleteCallback((struct CallbackInfo*)old_cbinfo);
+        return 0;
+    }
+
+    struct CallbackInfo* cbinfo = createCallbackByName(env, callback, "accept", "(Ljava/lang/Object;I)V");
+    if (cbinfo == NULL) {
+        deleteCallback((struct CallbackInfo*)old_cbinfo);
+        return 0;
+    }
+
+    ddlog_log_set_default_callback(log_callback, (uintptr_t)cbinfo, max_level);
+
+    deleteCallback((struct CallbackInfo*)old_cbinfo);
+    return (jlong)cbinfo;
+}
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1bool(
     JNIEnv *env, jclass obj, jboolean b) {

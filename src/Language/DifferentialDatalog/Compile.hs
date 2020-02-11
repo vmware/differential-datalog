@@ -130,6 +130,7 @@ templateFiles specname =
         [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
         , (dir </> "src/api.rs"                 , $(embedFile "rust/template/src/api.rs"))
+        , (dir </> "src/log.rs"                 , $(embedFile "rust/template/src/log.rs"))
         , (dir </> "src/ovsdb.rs"               , $(embedFile "rust/template/src/ovsdb.rs"))
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))

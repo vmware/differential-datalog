@@ -5,6 +5,7 @@ use nom::*;
 use num::bigint::*;
 #[cfg(test)]
 use num::Num;
+use num::ToPrimitive;
 use std::borrow::Cow;
 
 #[derive(Copy, Debug, PartialEq, Eq, Clone)]
@@ -24,6 +25,7 @@ pub enum Command {
     Clear(String),
     Exit,
     Echo(String),
+    LogLevel(i32),
     Sleep(BigInt),
     Update(UpdCmd, bool),
     QueryIndex(String, Record),
@@ -92,6 +94,10 @@ named!(pub parse_command<&[u8], Command>,
                             txt: take_until!(";")   >>
                             apply!(sym,";")         >>
                             (Command::Echo(String::from_utf8(txt.to_vec()).unwrap())))          |
+                  do_parse!(apply!(sym,"log_level") >>
+                            level: bigint_val       >>
+                            apply!(sym,";")         >>
+                            (Command::LogLevel(level.to_i32().unwrap())))                       |
                   do_parse!(apply!(sym,"rollback") >> apply!(sym,";") >> (Command::Rollback))   |
                   do_parse!(apply!(sym,"query_index")                         >>
                             idx: identifier                                   >>
@@ -164,6 +170,14 @@ fn test_command() {
     assert_eq!(
         parse_command(br"echo;"),
         Ok((&br""[..], Command::Echo("".to_string())))
+    );
+    assert_eq!(
+        parse_command(br"log_level 100;"),
+        Ok((&br""[..], Command::LogLevel(100)))
+    );
+    assert_eq!(
+        parse_command(br"log_level -100;"),
+        Ok((&br""[..], Command::LogLevel(-100)))
     );
     assert_eq!(
         parse_command(br"rollback;"),
@@ -487,12 +501,14 @@ fn test_struct() {
                                                                     (Cow::from("sfield"), Record::String("foo\nbar".to_string()))]))]))));
 }
 
-named!(int_val<&[u8], Record>,
-    alt!(map!(hex_val, Record::Int) |
-         map!(dec_val, Record::Int) |
+named!(int_val<&[u8], Record>, map!(bigint_val, Record::Int));
+
+named!(bigint_val<&[u8], BigInt>,
+    alt!(hex_val |
+         dec_val |
          do_parse!(apply!(sym,"-") >>
                    val: alt!(hex_val | dec_val) >>
-                   (Record::Int(-val))
+                   (-val)
                   )
         )
 );

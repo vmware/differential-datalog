@@ -5,9 +5,7 @@
 import intern
 import k8spolicy as k8s
 import types
-
-// TODO(leonid)
-function log_error(e: string): () = ()
+import klog as klog
 
 /* In DDlog, we split the AppliedToGroup struct into three relations:
  * AppliedToGroup: stores group name, id, and GroupSelector
@@ -72,6 +70,7 @@ output relation NetworkPolicySpan(policy: k8s.UID, span: Set<k8s.UID>)
 // createAppliedToGroup creates an AppliedToGroup object.
 function createAppliedToGroup(np: k8s.NetworkPolicy): AppliedToGroup =
 {
+    klog.info("createAppliedToGroup ${np.name}");
     var groupSelector = toGroupSelector(np.namespace, Some{np.spec.podSelector}, None);
     var appliedToGroupUID = getNormalizedUID(groupSelector.normalizedName);
     // Construct a new AppliedToGroup.
@@ -101,7 +100,8 @@ function toAntreaPeer(peers: Vec<k8s.NetworkPolicyPeer>, np: k8s.NetworkPolicy):
                 Some{peerIPBlock} -> {
                     match (toAntreaIPBlock(peerIPBlock)) {
                         Err{err} -> {
-                            log_error("Failure processing NetworkPolicy ${np.namespace}/${np.name} IPBlock ${peerIPBlock}: ${err}")
+                            klog.error("Failure processing NetworkPolicy ${np.namespace}/${np.name} IPBlock ${peerIPBlock}: ${err}");
+                            ()
                         },
                         Ok{ipBlock} -> {
                             vec_push(ipBlocks, ipBlock)

@@ -10,6 +10,8 @@ k8spolicy_Pod{.name = std_Some{.x = "ns1.pod2"}, .namespace = std_Some{.x = "ns1
 k8spolicy_Pod{.name = std_Some{.x = "ns2.pod1"}, .namespace = std_Some{.x = "ns2"}, .uid = k8spolicy_UID{.uid = "2fc100dd-a981-47e2-8a62-e9b2dff3a5d3"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
 k8spolicy_Pod{.name = std_Some{.x = "ns2.pod2"}, .namespace = std_Some{.x = "ns2"}, .uid = k8spolicy_UID{.uid = "ad847460-cb25-43e7-a44c-d2ff7bdb65ac"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
 Adding policies
+LOG (0): createAppliedToGroup ns1.policy1
+LOG (0): createAppliedToGroup ns1.policy1
 AddressGroup:
 AddressGroup{.uid = k8spolicy_UID{.uid = "cbb27334-a421-cf3b-dc10-6bf80977f255"}, .name = "cbb27334-a421-cf3b-dc10-6bf80977f255", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}: +1
 AppliedToGroup:

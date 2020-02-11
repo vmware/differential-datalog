@@ -1,3 +1,4 @@
+log_level 100000;
 echo Adding namespace and pods;
 start;
 

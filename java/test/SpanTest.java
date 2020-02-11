@@ -127,6 +127,9 @@ public class SpanTest {
             /* LOGGING: Log level definitions should be imported from log4j. We use magic
              * numbers instead to avoid extra dependencies. */
             this.logStream = logStream;
+            DDlogAPI.logSetDefaultCallback(
+                    (msg, level) -> logStream.println("Log msg (" + level + "): " + msg),
+                    100/*log4j.FATAL*/);
             DDlogAPI.logSetCallback(
                     MOD_SPAN_UUID1,
                     (msg, level) -> logStream.println("Log msg from module1 (" + level + "): " + msg),
@@ -135,6 +138,9 @@ public class SpanTest {
                     MOD_SPAN_UUID2,
                     (msg, level) -> logStream.println("Log msg from module2 (" + level + "): " + msg),
                     100/*log4j.FATAL*/);
+            DDlogAPI.logSetDefaultCallback(
+                    (msg, level) -> logStream.println("Log msg (" + level + "): " + msg),
+                    2147483647/*log4j.ALL*/);
             if (localTables) {
                 //this.api = new DDlogAPI(1, r -> this.onCommit(r));
                 this.api = new DDlogAPI(1, r -> this.onCommitDirect(r), false);

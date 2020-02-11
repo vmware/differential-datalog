@@ -36,6 +36,7 @@ public class DDlogAPI {
     static native String ddlog_profile(long hprog);
     static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
+    static native long ddlog_log_replace_default_callback(long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
 
     static native void ddlog_free(long handle);
 
@@ -110,6 +111,7 @@ public class DDlogAPI {
     // callback.  This is needed so that we can deallocate the `CallbackInfo*`
     // when removing on changing the callback.
     private static Map<Integer, Long> logCBInfo = new HashMap<>();
+    private static Long defaultLogCBInfo;
 
     private void checkHandle() throws DDlogException {
         if (this.hprog == 0) {
@@ -447,6 +449,17 @@ public class DDlogAPI {
         /* Store pointer to CallbackInfo in internal map */
         if (new_cbinfo != 0) {
             logCBInfo.put(module, new_cbinfo);
+        }
+    }
+
+    static public synchronized void logSetDefaultCallback(ObjIntConsumer<String> cb, int max_level) {
+        ensureDllLoaded();
+        Long old_cbinfo = defaultLogCBInfo;
+        defaultLogCBInfo = null;
+        long new_cbinfo = ddlog_log_replace_default_callback(old_cbinfo == null ? 0 : old_cbinfo, cb, max_level);
+        /* Store pointer to CallbackInfo in internal map */
+        if (new_cbinfo != 0) {
+            defaultLogCBInfo = new Long(new_cbinfo);
         }
     }
 }
