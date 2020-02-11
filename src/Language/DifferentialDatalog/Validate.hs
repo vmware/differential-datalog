@@ -552,7 +552,7 @@ exprValidate1 _ _ _   EUnOp{}             = return ()
 
 exprValidate1 _ _ ctx (EPHolder p)        = do
     let msg = case ctx of
-                   CtxStruct EStruct{..} _ f -> "Missing field " ++ f ++ " in constructor " ++ exprConstructor
+                   CtxStruct EStruct{..} _ f -> "Missing field '" ++ f ++ "' in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check (ctxPHolderAllowed ctx) p msg
 exprValidate1 d _ ctx (EBinding p v _)    = do
