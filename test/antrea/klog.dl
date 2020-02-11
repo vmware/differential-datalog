@@ -1,0 +1,17 @@
+/* DDlog bindings for the k8s logging library.
+ */
+
+import log
+
+// These constants identify the log levels in order of increasing severity.
+// A message written to a high-severity log file is also written to each
+// lower-severity log file.
+function infoLog(): s32 = 0
+function warningLog(): s32 = -1
+function errorLog(): s32 = -2
+function fatalLog(): s32 = -3
+
+function info(msg: string): bool    = log(0, infoLog(), msg)
+function warning(msg: string): bool = log(0, warningLog(), msg)
+function error(msg: string): bool   = log(0, errorLog(), msg)
+function fatal(msg: string): bool   = log(0, fatalLog(), msg)

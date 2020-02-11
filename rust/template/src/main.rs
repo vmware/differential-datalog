@@ -41,6 +41,15 @@ fn handle_cmd(
     })
     .and(match cmd {
         Command::Start => hddlog.transaction_start(),
+        Command::LogLevel(level) => {
+            log::log_set_default_callback(
+                Some(Box::new(move |level, msg| {
+                    println!("LOG ({}): {}", level, msg);
+                })),
+                level,
+            );
+            Ok(())
+        }
         Command::Commit(record_delta) => {
             #[cfg(feature = "profile")]
             {
