@@ -1,6 +1,6 @@
 error: ./test/datalog_tests/function.fail.dl:3:5-3:10: Variable declaration is not allowed in this context
 
-error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field f2 in constructor C
+error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field 'f2' in constructor C
 
 error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already defined in this scope
 
