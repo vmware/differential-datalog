@@ -314,6 +314,22 @@ pub unsafe extern "C" fn ddlog_string(s: *const raw::c_char) -> *mut Record {
     Box::into_raw(Box::new(Record::String(s.to_owned())))
 }
 
+/// Returns NULL if s is not a valid UTF8 string.
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_string_with_length(
+    s: *const raw::c_char,
+    len: libc::size_t,
+) -> *mut Record {
+    if s.is_null() {
+        return null_mut();
+    };
+    let s = match std::str::from_utf8(std::slice::from_raw_parts(s as *const u8, len as usize)) {
+        Ok(str) => str,
+        Err(_) => return null_mut(),
+    };
+    Box::into_raw(Box::new(Record::String(s.to_owned())))
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_is_string(rec: *const Record) -> bool {
     match rec.as_ref() {
@@ -331,9 +347,15 @@ pub unsafe extern "C" fn ddlog_get_strlen(rec: *const Record) -> libc::size_t {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_str_non_nul(rec: *const Record) -> *const raw::c_char {
+pub unsafe extern "C" fn ddlog_get_str_with_length(
+    rec: *const Record,
+    len: *mut libc::size_t,
+) -> *const raw::c_char {
     match rec.as_ref() {
-        Some(Record::String(s)) => s.as_ptr() as *const raw::c_char,
+        Some(Record::String(s)) => {
+            *len = s.len() as libc::size_t;
+            s.as_ptr() as *const raw::c_char
+        }
         _ => null(),
     }
 }
@@ -568,6 +590,30 @@ pub unsafe extern "C" fn ddlog_struct(
     )))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_struct_with_length(
+    constructor: *const raw::c_char,
+    constructor_len: libc::size_t,
+    fields: *const *mut Record,
+    len: libc::size_t,
+) -> *mut Record {
+    if constructor.is_null() {
+        return null_mut();
+    };
+    let fields = mk_record_vec(fields, len);
+    let constructor = match std::str::from_utf8(std::slice::from_raw_parts(
+        constructor as *const u8,
+        constructor_len as usize,
+    )) {
+        Ok(str) => str,
+        Err(_) => return null_mut(),
+    };
+    Box::into_raw(Box::new(Record::PosStruct(
+        Cow::from(constructor.to_owned()),
+        fields,
+    )))
+}
+
 /// Similar to `ddlog_struct()`, but expects `constructor` to be static string.
 /// Doesn't allocate memory for a local copy of the string.
 #[no_mangle]
@@ -582,6 +628,27 @@ pub unsafe extern "C" fn ddlog_struct_static_cons(
         Err(_) => {
             return null_mut();
         }
+    };
+    Box::into_raw(Box::new(Record::PosStruct(Cow::from(constructor), fields)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_struct_static_cons_with_length(
+    constructor: *const raw::c_char,
+    constructor_len: libc::size_t,
+    fields: *const *mut Record,
+    len: libc::size_t,
+) -> *mut Record {
+    if constructor.is_null() {
+        return null_mut();
+    };
+    let fields = mk_record_vec(fields, len);
+    let constructor = match std::str::from_utf8(std::slice::from_raw_parts(
+        constructor as *const u8,
+        constructor_len as usize,
+    )) {
+        Ok(str) => str,
+        Err(_) => return null_mut(),
     };
     Box::into_raw(Box::new(Record::PosStruct(Cow::from(constructor), fields)))
 }
@@ -614,7 +681,7 @@ pub unsafe extern "C" fn ddlog_get_struct_field(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_constructor_non_null(
+pub unsafe extern "C" fn ddlog_get_constructor_with_length(
     rec: *const Record,
     len: *mut libc::size_t,
 ) -> *const raw::c_char {
@@ -1496,6 +1563,50 @@ mod tests {
             let actual = unsafe { CString::from_raw(ptr) };
             let expected = CString::new(check.1).unwrap();
             assert_eq!(actual, expected);
+        }
+    }
+
+    /// Test `_with_length` C API functions.
+    #[test]
+    fn strings_with_length1() {
+        unsafe {
+            let string1 = ddlog_string_with_length("pod1".as_ptr() as *const i8, "pod1".len());
+            let string2 = ddlog_string_with_length("ns1".as_ptr() as *const i8, "ns1".len());
+            let strings = &[string1, string2];
+            let structure = ddlog_struct_with_length(
+                "k8spolicy.Pod".as_ptr() as *const i8,
+                "k8spolicy.Pod".len(),
+                strings.as_ptr(),
+                strings.len(),
+            );
+            assert_eq!(
+                CString::from(CStr::from_ptr(ddlog_dump_record(structure)))
+                    .into_string()
+                    .unwrap(),
+                "k8spolicy.Pod{\"pod1\", \"ns1\"}".to_string()
+            );
+            ddlog_free(structure);
+        }
+    }
+    #[test]
+    fn strings_with_length2() {
+        unsafe {
+            let string1 = ddlog_string_with_length("pod1".as_ptr() as *const i8, "pod1".len());
+            let boolean = ddlog_bool(true);
+            let fields = &[string1, boolean];
+            let structure = ddlog_struct_static_cons_with_length(
+                "Cons".as_ptr() as *const i8,
+                "Cons".len(),
+                fields.as_ptr(),
+                fields.len(),
+            );
+            assert_eq!(
+                CString::from(CStr::from_ptr(ddlog_dump_record(structure)))
+                    .into_string()
+                    .unwrap(),
+                "Cons{\"pod1\", true}".to_string()
+            );
+            ddlog_free(structure);
         }
     }
 }
