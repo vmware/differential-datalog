@@ -31,9 +31,9 @@ typedef PodStatus = PodStatus {
 // TODO(leonid): primary key
 input relation Pod (
     // Name must be unique within a namespace.
-    name: Option<string>,
+    name: string,
     // Namespace defines the space within each name must be unique.
-    namespace: Option<string>,
+    namespace: string,
     // UID is the unique in time and space value for this object.
     uid: UID,
     // Map of string keys and values that can be used to organize and categorize
@@ -259,7 +259,6 @@ input relation NetworkPolicy (
     // Specification of the desired behavior for this NetworkPolicy.
     spec: NetworkPolicySpec
 )
-
 
 typedef Protocol = IString
 

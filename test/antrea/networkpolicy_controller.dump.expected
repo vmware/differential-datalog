@@ -3,12 +3,12 @@ Ok8spolicy.Namespace:
 k8spolicy_Namespace{.name = "ns1", .uid = k8spolicy_UID{.uid = "e340296d-84e2-48b2-9b7a-91641db60db5"}, .labels = [("l1", "l1v1")]}: +1
 k8spolicy_Namespace{.name = "ns2", .uid = k8spolicy_UID{.uid = "37e6f556-02f3-4775-93a7-ec924ee78810"}, .labels = []}: +1
 Ok8spolicy.Pod:
-k8spolicy_Pod{.name = std_Some{.x = "<top>.pod1"}, .namespace = std_None{}, .uid = k8spolicy_UID{.uid = "a5f3a901-040d-407c-a842-918e250f79de"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
-k8spolicy_Pod{.name = std_Some{.x = "<top>.pod2"}, .namespace = std_None{}, .uid = k8spolicy_UID{.uid = "23d84e05-e0b6-446d-a919-440d1b74ebfc"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
-k8spolicy_Pod{.name = std_Some{.x = "ns1.pod1"}, .namespace = std_Some{.x = "ns1"}, .uid = k8spolicy_UID{.uid = "adb006eb-07fd-4a4b-9b09-d899267aeadc"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
-k8spolicy_Pod{.name = std_Some{.x = "ns1.pod2"}, .namespace = std_Some{.x = "ns1"}, .uid = k8spolicy_UID{.uid = "17024561-7949-4f63-a248-bc29075f04b2"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
-k8spolicy_Pod{.name = std_Some{.x = "ns2.pod1"}, .namespace = std_Some{.x = "ns2"}, .uid = k8spolicy_UID{.uid = "2fc100dd-a981-47e2-8a62-e9b2dff3a5d3"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
-k8spolicy_Pod{.name = std_Some{.x = "ns2.pod2"}, .namespace = std_Some{.x = "ns2"}, .uid = k8spolicy_UID{.uid = "ad847460-cb25-43e7-a44c-d2ff7bdb65ac"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
+k8spolicy_Pod{.name = "<top>.pod1", .namespace = "", .uid = k8spolicy_UID{.uid = "a5f3a901-040d-407c-a842-918e250f79de"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
+k8spolicy_Pod{.name = "<top>.pod2", .namespace = "", .uid = k8spolicy_UID{.uid = "23d84e05-e0b6-446d-a919-440d1b74ebfc"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
+k8spolicy_Pod{.name = "ns1.pod1", .namespace = "ns1", .uid = k8spolicy_UID{.uid = "adb006eb-07fd-4a4b-9b09-d899267aeadc"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
+k8spolicy_Pod{.name = "ns1.pod2", .namespace = "ns1", .uid = k8spolicy_UID{.uid = "17024561-7949-4f63-a248-bc29075f04b2"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
+k8spolicy_Pod{.name = "ns2.pod1", .namespace = "ns2", .uid = k8spolicy_UID{.uid = "2fc100dd-a981-47e2-8a62-e9b2dff3a5d3"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node1"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.1"}}: +1
+k8spolicy_Pod{.name = "ns2.pod2", .namespace = "ns2", .uid = k8spolicy_UID{.uid = "ad847460-cb25-43e7-a44c-d2ff7bdb65ac"}, .labels = [], .spec = k8spolicy_PodSpec{.nodeName = "node2"}, .status = k8spolicy_PodStatus{.podIP = "192.168.1.2"}}: +1
 Adding policies
 LOG (0): createAppliedToGroup ns1.policy1
 LOG (0): createAppliedToGroup ns1.policy1
