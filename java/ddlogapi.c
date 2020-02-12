@@ -751,8 +751,8 @@ const jstring toJString(JNIEnv* env, const char* nonNullStr, size_t size) {
 
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1str(
     JNIEnv *env, jclass obj, long handle) {
-    const char *s = ddlog_get_str_non_nul((const ddlog_record*)handle);
-    size_t size = ddlog_get_strlen((const ddlog_record*)handle);
+    size_t size;
+    const char *s = ddlog_get_str_with_length((const ddlog_record*)handle, &size);
     return toJString(env, s, size);
 }
 
@@ -829,7 +829,7 @@ JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1struct(
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1constructor(
     JNIEnv *env, jclass obj, jlong handle) {
     size_t size;
-    const char *s = ddlog_get_constructor_non_null((const ddlog_record*)handle, &size);
+    const char *s = ddlog_get_constructor_with_length((const ddlog_record*)handle, &size);
     return toJString(env, s, size);
 }
 
