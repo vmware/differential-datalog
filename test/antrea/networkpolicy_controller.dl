@@ -284,7 +284,7 @@ AddressGroup[group] :-
 AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
     // Namespace presence indicates Pods must be selected from the same Namespace.
     addressGroup in AddressGroup(.selector = GroupSelector{.nsSelector = NSSelectorNS{ns}}),
-    pod in k8s.Pod(.namespace = Some{ns}),
+    pod in k8s.Pod(.namespace = ns),
     pod.status.podIP != "",
     k8s.labelSelectorMatches(addressGroup.selector.podSelector, pod.labels).
 
@@ -293,7 +293,7 @@ AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
     addressGroup in AddressGroup(.selector = GroupSelector{.nsSelector = NSSelectorLS{namespaceSelector}, .podSelector = podSelector}),
     namespace in k8s.Namespace(),
     k8s.labelSelectorMatches(Some{namespaceSelector}, namespace.labels),
-    pod in k8s.Pod(.namespace = Some{namespace.name}),
+    pod in k8s.Pod(.namespace = namespace.name),
     pod.status.podIP != "",
     is_none(podSelector) or k8s.labelSelectorMatches(podSelector, pod.labels).
 
@@ -330,7 +330,7 @@ AppliedToGroupPod(appliedToGroup, pod.uid, pod.spec.nodeName) :-
     AppliedToGroup(.uid = appliedToGroup,
                    .selector = GroupSelector{.nsSelector = NSSelectorNS{namespace}, .podSelector = podSelector}),
     // Retrieve all Pods matching the podSelector.
-    pod in k8s.Pod(.namespace = Some{namespace}),
+    pod in k8s.Pod(.namespace = namespace),
     // No need to process Pod when it's not scheduled.
     pod.spec.nodeName != "",
     k8s.labelSelectorMatches(podSelector, pod.labels).

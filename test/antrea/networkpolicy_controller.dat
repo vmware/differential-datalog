@@ -13,8 +13,8 @@ insert k8spolicy.Namespace(
     .labels = []),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"ns1.pod1"},
-    .namespace = std.Some{"ns1"},
+    .name = "ns1.pod1",
+    .namespace = "ns1",
     .uid = k8spolicy.UID{"adb006eb-07fd-4a4b-9b09-d899267aeadc"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node1"},
@@ -22,8 +22,8 @@ insert k8spolicy.Pod(
 ),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"ns1.pod2"},
-    .namespace = std.Some{"ns1"},
+    .name = "ns1.pod2",
+    .namespace = "ns1",
     .uid = k8spolicy.UID{"17024561-7949-4f63-a248-bc29075f04b2"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node2"},
@@ -31,8 +31,8 @@ insert k8spolicy.Pod(
 ),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"ns2.pod1"},
-    .namespace = std.Some{"ns2"},
+    .name = "ns2.pod1",
+    .namespace = "ns2",
     .uid = k8spolicy.UID{"2fc100dd-a981-47e2-8a62-e9b2dff3a5d3"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node1"},
@@ -40,8 +40,8 @@ insert k8spolicy.Pod(
 ),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"ns2.pod2"},
-    .namespace = std.Some{"ns2"},
+    .name = "ns2.pod2",
+    .namespace = "ns2",
     .uid = k8spolicy.UID{"ad847460-cb25-43e7-a44c-d2ff7bdb65ac"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node2"},
@@ -49,8 +49,8 @@ insert k8spolicy.Pod(
 ),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"<top>.pod1"},
-    .namespace = std.None,
+    .name = "<top>.pod1",
+    .namespace = "",
     .uid = k8spolicy.UID{"a5f3a901-040d-407c-a842-918e250f79de"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node1"},
@@ -58,8 +58,8 @@ insert k8spolicy.Pod(
 ),
 
 insert k8spolicy.Pod(
-    .name = std.Some{"<top>.pod2"},
-    .namespace = std.None,
+    .name = "<top>.pod2",
+    .namespace = "",
     .uid = k8spolicy.UID{"23d84e05-e0b6-446d-a919-440d1b74ebfc"},
     .labels = [],
     .spec = k8spolicy.PodSpec{.nodeName = "node2"},
