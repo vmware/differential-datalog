@@ -48,6 +48,7 @@ data TOption = OVSFile     String
              | ProxyTable  String
              | ConfigJsonI String
              | ConfigJsonO String
+             | OutputFile  String
              | Version
 
 data Action = ActionCompile
@@ -63,9 +64,11 @@ options = [ Option ['v'] ["version"]       (NoArg Version)                     "
           , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
           , Option ['k'] ["key"]           (ReqArg KeyColumn   "TABLE.COLUMN") "Mark COLUMN as key."
           , Option ['p'] ["gen-proxy"]     (ReqArg ProxyTable  "TABLE")        "Generate output proxy table for TABLE."
+          , Option []    ["output-file"]   (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
           ]
 
 data Config = Config { ovsSchemaFile:: FilePath
+                     , outputFile   :: Maybe FilePath
                      , outputTables :: [(String, [String])]
                      , proxyTables  :: [String]
                      , keyColumns   :: M.Map String [String]
@@ -77,6 +80,7 @@ instance ToJSON   Config
 
 defaultConfig :: Config
 defaultConfig = Config { ovsSchemaFile= ""
+                       , outputFile   = Nothing
                        , outputTables = []
                        , proxyTables  = []
                        , keyColumns   = M.empty
@@ -87,6 +91,9 @@ addOption (_, config) Version = do return (ActionVersion, config)
 addOption (a, config) (OVSFile f) = do
     when (ovsSchemaFile config /= "") $ errorWithoutStackTrace "Multiple input files specified"
     return (a, config {ovsSchemaFile = f})
+addOption (a, config) (OutputFile f) = do
+    when (isJust $ outputFile config) $ errorWithoutStackTrace "Multiple output files specified"
+    return (a, config {outputFile = Just f})
 addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t,[]) : outputTables config)})
 addOption (a, config) (ProxyTable t) = return (a, config{ proxyTables = nub (t : proxyTables config)})
 addOption (a, config) (KeyColumn c) = do
@@ -138,6 +145,8 @@ main = do
        then do putStrLn $ "OVSDB-to-DDlog compiler " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
        else do
-           dlschema <- compileSchemaFile ovsSchemaFile outputTables proxyTables keyColumns
-           putStrLn $ render dlschema
+           dlschema <- render <$> compileSchemaFile ovsSchemaFile outputTables proxyTables keyColumns
+           case outputFile of
+                Nothing -> putStrLn dlschema
+                Just ofile -> writeFile ofile dlschema
            return ()
