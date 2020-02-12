@@ -46,6 +46,7 @@ data TOption = Help
              | Datalog String
              | Action String
              | LibDir String
+             | OutputDir String
              | Java
              | OutputInternal
              | OutputInput String
@@ -66,6 +67,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option ['i'] []                   (ReqArg Datalog  "FILE")          "DDlog program to compile."
           , Option []    ["action"]           (ReqArg Action   "ACTION")        "Action: [validate, compile]"
           , Option ['L'] []                   (ReqArg LibDir   "PATH")          "Extra DDlog library directory."
+          , Option ['o'] ["output-dir"]       (ReqArg OutputDir "DIR")          "Output directory (default based on program name)."
           , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
           , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings."
           , Option []    ["output-internal-relations"]  (NoArg OutputInternal)  "All non-input relations are marked as output relations."
@@ -78,6 +80,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
 data Config = Config { confDatalogFile   :: FilePath
                      , confAction        :: DLAction
                      , confLibDirs       :: [FilePath]
+                     , confOutputDir     :: FilePath
                      , confOutputInput   :: String
                      , confStaticLib     :: Bool
                      , confDynamicLib    :: Bool
@@ -89,6 +92,7 @@ defaultConfig :: Config
 defaultConfig = Config { confDatalogFile   = ""
                        , confAction        = ActionCompile
                        , confLibDirs       = []
+                       , confOutputDir     = ""
                        , confStaticLib     = True
                        , confDynamicLib    = False
                        , confOutputInternal= False
@@ -106,6 +110,7 @@ addOption config (Action a)       = do a' <- case a of
                                        return config{confAction = a'}
 addOption config Java             = return config { confJava = True }
 addOption config (LibDir d)       = return config { confLibDirs = nub (d:confLibDirs config)}
+addOption config (OutputDir d)    = return config { confOutputDir = d }
 addOption config DynLib           = return config { confDynamicLib = True }
 addOption config NoDynLib         = return config { confDynamicLib = False }
 addOption config OutputInternal   = return config { confOutputInternal = True }
@@ -164,7 +169,7 @@ compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
     (prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
-    let dir = takeDirectory confDatalogFile
+    let dir = (if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir)
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = CompilerConfig{ cconfJava = confJava }
