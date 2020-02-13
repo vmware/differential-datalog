@@ -22,6 +22,7 @@ use differential_datalog::DDlog;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 use time::precise_time_ns;
+use types::log_set_default_callback;
 
 #[cfg(feature = "profile")]
 use cpuprofiler::PROFILER;
@@ -42,7 +43,7 @@ fn handle_cmd(
     .and(match cmd {
         Command::Start => hddlog.transaction_start(),
         Command::LogLevel(level) => {
-            log::log_set_default_callback(
+            log_set_default_callback(
                 Some(Box::new(move |level, msg| {
                     println!("LOG ({}): {}", level, msg);
                 })),

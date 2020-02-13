@@ -11,6 +11,8 @@ members = [
   "differential_datalog",
   "distributed_datalog",
   "ovsdb",
+  "types",
+  "value"
 ]
 
 [build-dependencies]
@@ -25,6 +27,12 @@ path = "./cmd_parser"
 [dependencies.ddlog_ovsdb_adapter]
 path = "./ovsdb"
 
+[dependencies.types]
+path = "./types"
+
+[dependencies.value]
+path = "./value"
+
 [dependencies]
 abomonation = "0.7"
 cpuprofiler = {version = "0.0", optional = true}
@@ -38,16 +46,10 @@ serde = {version = "1.0", features = ["derive"]}
 time = "0.1"
 timely = "0.11"
 twox-hash = "1.1"
-typetag = "0.1"
-
-# FlatBuffers dependency enabled by the `flatbuf` feature.
-# flatbuffers crate version must be in sync with the flatc compiler and Java
-# libraries: flatbuffers "0.6" <-> FlatBuffers "1.11.0".
-flatbuffers = {version = "0.6", optional = true}
 
 [features]
 default = []
-flatbuf = ["flatbuffers", "differential_datalog/flatbuf"]
+flatbuf = ["differential_datalog/flatbuf", "types/flatbuf", "value/flatbuf"]
 profile = ["cpuprofiler"]
 
 [profile.release]

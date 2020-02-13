@@ -1,3 +1,5 @@
+use fnv::FnvHashSet;
+
 pub type Set<T> = FnvHashSet<T>;
 
 pub fn build_dhcp_netmask(_cidr: &String) -> String {
