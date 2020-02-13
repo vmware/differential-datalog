@@ -2,7 +2,6 @@
 
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
-use std::io::Write;
 use std::os::raw::{c_char, c_int};
 use std::sync;
 
@@ -12,7 +11,6 @@ use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, UpdCmd};
 use differential_datalog::record_upd_cmds;
 use differential_datalog::DeltaMap;
-use differential_datalog::RecordReplay;
 
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;

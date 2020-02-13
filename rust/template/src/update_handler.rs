@@ -21,7 +21,6 @@ use std::sync::mpsc::*;
 use std::sync::{Arc, Barrier, Mutex, MutexGuard};
 use std::thread::*;
 
-use differential_datalog::ddval::*;
 use differential_datalog::Callback;
 use differential_datalog::DeltaMap;
 
