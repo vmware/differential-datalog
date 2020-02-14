@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 /*
  * *Note:* all functions in this library, with the exception of
