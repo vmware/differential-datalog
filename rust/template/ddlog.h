@@ -681,8 +681,10 @@ extern ddlog_record* ddlog_string(const char *s);
  * Create a string value.
  *
  * `s` - points to the start of a UTF8 string.  The string does not have to be
- *       NULL-terminated.
- * `length` - length of string in bytes.
+ *       NULL-terminated.  The pointer must not be `NULL`, unless `len==0`, in
+ *       which case the function ignores the value of the pointer and returns
+ *       a record containing an empty string.
+ * `len` - length of string in bytes.
  *
  * This function copies `s` to an internal buffer, so the caller is responsible for
  * deallocating `s` if it was dynamically allocated.
