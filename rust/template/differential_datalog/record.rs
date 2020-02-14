@@ -320,6 +320,10 @@ pub unsafe extern "C" fn ddlog_string_with_length(
     s: *const raw::c_char,
     len: libc::size_t,
 ) -> *mut Record {
+    // If `len` is zero, return empty string even if `s` is `NULL`.
+    if len == 0 {
+        return Box::into_raw(Box::new(Record::String("".to_owned())));
+    };
     if s.is_null() {
         return null_mut();
     };
@@ -1591,7 +1595,7 @@ mod tests {
     #[test]
     fn strings_with_length2() {
         unsafe {
-            let string1 = ddlog_string_with_length("pod1".as_ptr() as *const i8, "pod1".len());
+            let string1 = ddlog_string_with_length(std::ptr::null(), 0);
             let boolean = ddlog_bool(true);
             let fields = &[string1, boolean];
             let structure = ddlog_struct_static_cons_with_length(
@@ -1604,7 +1608,7 @@ mod tests {
                 CString::from(CStr::from_ptr(ddlog_dump_record(structure)))
                     .into_string()
                     .unwrap(),
-                "Cons{\"pod1\", true}".to_string()
+                "Cons{\"\", true}".to_string()
             );
             ddlog_free(structure);
         }
