@@ -13,6 +13,7 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 import java.util.Arrays;
+import java.util.List;
 
 public class DDlogTTuple extends DDlogType {
     final DDlogType[] tupArgs;
@@ -24,12 +25,18 @@ public class DDlogTTuple extends DDlogType {
         this.tupArgs = tupArgs;
     }
 
+    public DDlogTTuple(List<DDlogType> tupArgs) {
+        this(tupArgs.toArray(new DDlogType[0]));
+    }
+
     public int size() {
         return this.tupArgs.length;
     }
 
     @Override
     public String toString() {
+        if (this.tupArgs.length == 1)
+            return this.tupArgs[0].toString();
         return "(" + String.join(",",
                 Linq.map(this.tupArgs, DDlogType::toString, String.class)) + ")";
     }

@@ -93,6 +93,13 @@ public class AggregateVisitor
     }
 
     @Override
+    protected Ternary visitCast(Cast node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return this.process(node.getExpression(), context);
+    }
+
+    @Override
     protected Ternary visitExpression(Expression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;

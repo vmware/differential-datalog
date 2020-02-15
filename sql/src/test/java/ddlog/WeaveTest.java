@@ -271,7 +271,7 @@ public class WeaveTest {
                         "  has_pod_affinity_requirements\n" +
                         "from pod_info\n" +
                         "where status = 'Pending' and node_name is null and schedulerName = 'dcm-scheduler'\n" +
-                        "/*order by creation_timestamp*/\n";
+                        "-- order by creation_timestamp\n";
         create = t.translateSqlStatement(pods_to_assign_no_limit);
         Assert.assertNotNull(create);
 
@@ -282,14 +282,14 @@ public class WeaveTest {
                         "-- a dynamic \"LIMIT\" clause.\n" +
                         "create table batch_size\n" +
                         "(\n" +
-                        "  pendingPodsLimit integer not null /*primary key*/\n" +
+                        "  pendingPodsLimit integer not null --primary key\n" +
                         ")";
         create = t.translateSqlStatement(batch_size);
         Assert.assertNotNull(create);
 
         String pods_to_assign =
                 "create view pods_to_assign as\n" +
-                        "select DISTINCT * from pods_to_assign_no_limit /*limit 100*/\n";
+                        "select DISTINCT * from pods_to_assign_no_limit -- limit 100\n";
         create = t.translateSqlStatement(pods_to_assign);
         Assert.assertNotNull(create);
 
@@ -453,7 +453,34 @@ public class WeaveTest {
                 "typedef Tbatch_size = Tbatch_size{pendingPodsLimit:signed<64>}\n" +
                 "typedef Ttmp = Ttmp{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, host_ip:string, host_port:signed<64>, host_protocol:string}\n" +
                 "typedef TRtmp1 = TRtmp1{controllable__node_name:Option<string>, host_port:signed<64>, host_ip:string, host_protocol:string}\n" +
-                "typedef TRtmp2 = TRtmp2{node_name:string}\n" +
+                "typedef Ttmp2 = Ttmp2{name:string, unschedulable:bool, out_of_disk:bool, memory_pressure:bool, disk_pressure:bool, pid_pressure:bool, ready:bool, network_unavailable:bool, cpu_capacity:bigint, memory_capacity:bigint, ephemeral_storage_capacity:bigint, pods_capacity:bigint, cpu_allocatable:bigint, memory_allocatable:bigint, ephemeral_storage_allocatable:bigint, pods_allocatable:bigint, pod_name:string, status:string, node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, owner_name:string, creation_timestamp:string, priority:signed<64>, schedulerName:Option<string>, has_node_selector_labels:bool, has_pod_affinity_requirements:bool}\n" +
+                "typedef TRtmp3 = TRtmp3{name:string, cpu_remaining:signed<64>, memory_remaining:signed<64>, pods_remaining:signed<64>}\n" +
+                "typedef Tagg = Tagg{cpu_remaining:signed<64>, memory_remaining:signed<64>, pods_remaining:signed<64>}\n" +
+                "typedef TRtmp4 = TRtmp4{node_name:string}\n" +
+                "function agg(g: Group<(string,bigint,bigint,bigint), (Tnode_info,Tpod_info)>):Tagg =\n" +
+                "(var gb, var gb2, var gb3, var gb4) = group_key(g);\n" +
+                "(var first = true);\n" +
+                "(var sum = 0);\n" +
+                "(var sum6 = 0);\n" +
+                "(var sum8 = 0);\n" +
+                "(for (i in g) {\n" +
+                "var v = i.0;\n" +
+                "(var v0 = i.1);\n" +
+                "(var incr = v0.cpu_request);\n" +
+                "(sum = if first {\n" +
+                "0} else {\n" +
+                "agg_sum_R(sum, incr)});\n" +
+                "(var incr5 = v0.memory_request);\n" +
+                "(sum6 = if first {\n" +
+                "0} else {\n" +
+                "agg_sum_R(sum6, incr5)});\n" +
+                "(var incr7 = v0.pods_request);\n" +
+                "(sum8 = if first {\n" +
+                "0} else {\n" +
+                "agg_sum_R(sum8, incr7)});\n" +
+                "(first = false)}\n" +
+                ");\n" +
+                "(Tagg{.cpu_remaining = (gb2 - sum) as signed<64>,.memory_remaining = (gb3 - sum6) as signed<64>,.pods_remaining = (gb4 - sum8) as signed<64>})" +
                 "\n" +
                 "input relation Rnode_info[Tnode_info]\n" +
                 "input relation Rpod_info[Tpod_info]\n" +
@@ -478,8 +505,10 @@ public class WeaveTest {
                 "output relation Rpods_to_assign[TRtmp]\n" +
                 "relation Rtmp1[TRtmp1]\n" +
                 "output relation Rpods_with_port_requests[TRtmp1]\n" +
-                "relation Rtmp2[TRtmp2]\n" +
-                "output relation Rnodes_that_have_tolerations[TRtmp2]\n" +
+                "relation Rtmp3[TRtmp3]\n" +
+                "output relation Rspare_capacity_per_node[TRtmp3]\n" +
+                "relation Rtmp4[TRtmp4]\n" +
+                "output relation Rnodes_that_have_tolerations[TRtmp4]\n" +
                 "Rpods_to_assign_no_limit[v1] :- Rpod_info[v],unwrapBool(b_and_RN(((v.status == \"Pending\") and isNull(v.node_name))," +
                 " s_eq_NR(v.schedulerName, \"dcm-scheduler\")))," +
                 "var v0 = TRtmp{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request,.ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request,.owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp,.has_node_selector_labels = v.has_node_selector_labels,.has_pod_affinity_requirements = v.has_pod_affinity_requirements}," +
@@ -488,7 +517,24 @@ public class WeaveTest {
                 "Rpods_with_port_requests[v3] :- Rpods_to_assign[v],Rpod_ports_request[v0]," +
                 "(v0.pod_name == v.pod_name),true,var v1 = Ttmp{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.controllable__node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request,.ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request,.owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp,.has_node_selector_labels = v.has_node_selector_labels,.has_pod_affinity_requirements = v.has_pod_affinity_requirements,.pod_name0 = v0.pod_name,.host_ip = v0.host_ip,.host_port = v0.host_port,.host_protocol = v0.host_protocol}," +
                 "var v2 = TRtmp1{.controllable__node_name = v.controllable__node_name,.host_port = v0.host_port,.host_ip = v0.host_ip,.host_protocol = v0.host_protocol},var v3 = v2.\n" +
-                "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp2{.node_name = v.node_name},var v1 = v0.";
+                "Rspare_capacity_per_node[v10] :- Rnode_info[v],Rpod_info[v0],unwrapBool(b_and_NN(s_eq_NR(v0.node_name, v.name), " +
+                "s_neq_NR(v0.node_name, \"null\"))),true," +
+                "var v1 = Ttmp2{.name = v.name,.unschedulable = v.unschedulable,.out_of_disk = v.out_of_disk," +
+                ".memory_pressure = v.memory_pressure,.disk_pressure = v.disk_pressure,.pid_pressure = v.pid_pressure," +
+                ".ready = v.ready,.network_unavailable = v.network_unavailable,.cpu_capacity = v.cpu_capacity," +
+                ".memory_capacity = v.memory_capacity,.ephemeral_storage_capacity = v.ephemeral_storage_capacity," +
+                ".pods_capacity = v.pods_capacity,.cpu_allocatable = v.cpu_allocatable,.memory_allocatable = v.memory_allocatable," +
+                ".ephemeral_storage_allocatable = v.ephemeral_storage_allocatable,.pods_allocatable = v.pods_allocatable," +
+                ".pod_name = v0.pod_name,.status = v0.status,.node_name = v0.node_name,.namespace = v0.namespace," +
+                ".cpu_request = v0.cpu_request,.memory_request = v0.memory_request,.ephemeral_storage_request = v0.ephemeral_storage_request," +
+                ".pods_request = v0.pods_request,.owner_name = v0.owner_name,.creation_timestamp = v0.creation_timestamp," +
+                ".priority = v0.priority,.schedulerName = v0.schedulerName,.has_node_selector_labels = v0.has_node_selector_labels," +
+                ".has_pod_affinity_requirements = v0.has_pod_affinity_requirements}," +
+                "var gb = v.name,var gb2 = v.cpu_allocatable,var gb3 = v.memory_allocatable,var gb4 = v.pods_allocatable," +
+                "var aggResult = Aggregate((gb, gb2, gb3, gb4), agg((v, v0)))," +
+                "var v9 = TRtmp3{.name = gb,.cpu_remaining = aggResult.cpu_remaining,.memory_remaining = aggResult.memory_remaining," +
+                ".pods_remaining = aggResult.pods_remaining},var v10 = v9.\n" +
+                "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp4{.node_name = v.node_name},var v1 = v0.";
         Assert.assertEquals(expected, p);
     }
 }

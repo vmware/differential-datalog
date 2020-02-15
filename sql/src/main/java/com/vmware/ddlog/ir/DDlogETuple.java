@@ -23,6 +23,10 @@ public class DDlogETuple extends DDlogExpression {
         this.tupFields = tupFields;
     }
 
+    public DDlogETuple(List<DDlogExpression> tupFields) {
+        this(tupFields.toArray(new DDlogExpression[0]));
+    }
+
     @Override
     public String toString() {
         return "(" + String.join(", ",

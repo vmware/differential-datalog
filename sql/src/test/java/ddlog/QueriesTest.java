@@ -126,8 +126,9 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(*) FROM t1 GROUP BY column2";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<(Tt1)>):TRtmp =\n" +
-                "var first = true;\n" +
+                "function agg(g: Group<string, Tt1>):TRtmp =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var first = true);\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
@@ -151,8 +152,9 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{column2:string, col:signed<64>}\n" +
                 "typedef Tagg = Tagg{col:signed<64>}\n" +
-                "function agg(g: Group<(Tt1)>):Tagg =\n" +
-                "var first = true;\n" +
+                "function agg(g: Group<string, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var first = true);\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
@@ -171,13 +173,40 @@ public class QueriesTest {
     }
 
     @Test
+    public void testMixAggregateGroupBy() {
+        String query = "create view v0 as SELECT column2, SUM(column1) FROM t1 GROUP BY column2";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{column2:string, col:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>}\n" +
+                "function agg(g: Group<string, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var first = true);\n" +
+                "(var sum = 64'sd0);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(sum = if first {\n" +
+                "64'sd0} else {\n" +
+                "agg_sum_R(sum, incr)});\n" +
+                "(first = false)}\n" +
+                ");\n" +
+                "(Tagg{.col = sum})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.column2 = gb,.col = aggResult.col},var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testGroupByExpression() {
         String query = "create view v0 as SELECT substr(column2, 0, 1), COUNT(*) FROM t1 GROUP BY substr(column2, 0, 1)";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:string, col0:signed<64>}\n" +
                 "typedef Tagg = Tagg{col0:signed<64>}\n" +
-                "function agg(g: Group<(Tt1)>):Tagg =\n" +
-                "var first = true;\n" +
+                "function agg(g: Group<string, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var first = true);\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
@@ -200,8 +229,9 @@ public class QueriesTest {
         String query = "create view v0 as SELECT substr(column2, 0, 1), COUNT(*) FROM t1 GROUP BY column2";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:string, col0:signed<64>}\n" +
-                "function agg(g: Group<(Tt1)>):TRtmp =\n" +
-                "var first = true;\n" +
+                "function agg(g: Group<string, Tt1>):TRtmp =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var first = true);\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
@@ -210,7 +240,7 @@ public class QueriesTest {
                 "agg_count_R(count, 64'sd1)});\n" +
                 "(first = false)}\n" +
                 ");\n" +
-                "(TRtmp{.col = substr(v.column2, 64'sd0, 64'sd1),.col0 = count})" +
+                "(TRtmp{.col = substr(gb, 64'sd0, 64'sd1),.col0 = count})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -224,7 +254,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT MIN(column1) + MAX(column1) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<('K, Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var min = 64'sd0);\n" +
                 "(var max = 64'sd0);\n" +
@@ -253,7 +283,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT MIN(column2) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:string}\n" +
-                "function agg(g: Group<('K, Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var min = \"\");\n" +
                 "(for (i in g) {\n" +
@@ -277,7 +307,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(column1), SUM(column1) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>, col0:signed<64>}\n" +
-                "function agg(g: Group<('K, Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(var sum = 64'sd0);\n" +
@@ -306,7 +336,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(*) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<('K, Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -330,7 +360,7 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1,Tt2)>):TRtmp =\n" +
+                "function agg(g: Group<(), (Tt1,Tt2)>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -357,7 +387,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(column1) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -381,7 +411,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(column1) FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -405,7 +435,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT AVG(column1) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<('K, Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var avg = (64'sd0, 64'sd0));\n" +
                 "(for (i in g) {\n" +
@@ -429,7 +459,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT AVG(column1) FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var avg = (64'sd0, 64'sd0));\n" +
                 "(for (i in g) {\n" +
@@ -453,7 +483,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT COUNT(*) FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var count = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -686,7 +716,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT MAX(CASE WHEN column2 = 'foo' THEN column1 ELSE 0 END) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var max = 64'sd0);\n" +
                 "(for (i in g) {\n" +
@@ -736,7 +766,7 @@ public class QueriesTest {
         String query = "create view v0 as SELECT MAX(column1) FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<'K, (Tt1)>):TRtmp =\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
                 "var first = true;\n" +
                 "(var max = 64'sd0);\n" +
                 "(for (i in g) {\n" +

@@ -56,6 +56,22 @@ public class SqlSemantics {
 
     public static SqlSemantics semantics = new SqlSemantics();
 
+    public static DDlogType createType(String sqltype, boolean mayBeNull) {
+        DDlogType type = null;
+        if (sqltype.equals("boolean")) {
+            type = DDlogTBool.instance;
+        } else if (sqltype.equals("integer")) {
+            type = DDlogTSigned.signed64;
+        } else if (sqltype.startsWith("varchar")) {
+            type = DDlogTString.instance;
+        } else if (sqltype.equals("bigint")) {
+            type = DDlogTInt.instance;
+        }
+        if (type == null)
+            throw new RuntimeException("SQL type not yet implemented: " + sqltype);
+        return type.setMayBeNull(mayBeNull);
+    }
+
     public boolean isAggregateFunction(String functionName) {
         return this.aggregateFunctions.contains(functionName);
     }
