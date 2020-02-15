@@ -68,7 +68,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String relName = DDlogRelation.relationName(name);
         context.globalSymbols.addName(relName);
         DDlogRelation rel = new DDlogRelation(
-                DDlogRelation.RelationRole.RelInput, DDlogRelation.relationName(name), tuser);
+                DDlogRelation.RelationRole.RelInput, relName, tuser);
         context.add(rel);
         return rel;
     }
@@ -374,7 +374,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<DDlogType> keyFields = Linq.map(groupBy, g -> g.translation.getType());
         DDlogTTuple keyType = new DDlogTTuple(keyFields);
         if (keyFields.size() > 0) {
-            List<DDlogExpression> keyVars = Linq.map(groupBy, g -> new DDlogEVarDecl(g.varName, g.translation.getType()));
+            List<DDlogExpression> keyVars =
+                    Linq.map(groupBy, g -> new DDlogEVarDecl(g.varName, g.translation.getType()));
             DDlogESet getKeys = new DDlogESet(new DDlogETuple(keyVars),
                     new DDlogEApply("group_key", keyType, new DDlogEVar("g", keyType)));
             functionBody = DDlogESeq.seq(functionBody, getKeys);
