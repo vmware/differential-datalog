@@ -35,6 +35,13 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
+    protected DDlogExpression visitCast(Cast node, TranslationContext context) {
+        DDlogExpression e = this.process(node.getExpression(), context);
+        DDlogType type = SqlSemantics.createType(node.getType(), e.getType().mayBeNull);
+        return new DDlogEAs(e, type);
+    }
+
+    @Override
     public DDlogExpression process(Node node, @Nullable TranslationContext context) {
         assert context != null;
         DDlogExpression subst = context.getSubstitution(node);
