@@ -5,7 +5,7 @@ start;
 insert k8spolicy.Namespace(
     .name = "ns1",
     .uid = k8spolicy.UID{"e340296d-84e2-48b2-9b7a-91641db60db5"},
-    .labels = [("l1", "l1v1")]),
+    .labels = []),
 
 insert k8spolicy.Namespace(
     .name = "ns2",
@@ -80,6 +80,32 @@ insert k8spolicy.NetworkPolicy(
             .matchLabels = [("l1", "l1v1")],
             .matchExpressions = []
         },
+        .ingress = [],
+        .egress = [],
+        .policyType = []
+    }
+),
+
+
+commit dump_changes;
+
+echo Making changes;
+start;
+
+insert_or_update k8spolicy.Namespace(
+    .name = "ns1",
+    .uid = k8spolicy.UID{"e340296d-84e2-48b2-9b7a-91641db60db5"},
+    .labels = [("l1", "l1v1")]),
+
+insert_or_update k8spolicy.NetworkPolicy(
+    .name = "ns1.policy1",
+    .namespace = "ns1",
+    .uid = k8spolicy.UID{"156bc79a-ee16-47d9-82b6-8bc48849af74"},
+    .spec = k8spolicy.NetworkPolicySpec{
+        .podSelector = k8spolicy.LabelSelector{
+            .matchLabels = [("l1", "l1v1")],
+            .matchExpressions = []
+        },
         .ingress = [k8spolicy.NetworkPolicyIngressRule{
                         .ports = [k8spolicy.NetworkPolicyPort{
                                       .protocol = std.Some{"TCP"},
@@ -105,6 +131,7 @@ insert k8spolicy.NetworkPolicy(
         .policyType = []
     }
 ),
+
 
 
 commit dump_changes;

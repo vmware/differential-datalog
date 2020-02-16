@@ -47,6 +47,7 @@ input relation Pod (
     // Most recently observed status of the pod.
     status: PodStatus
 )
+primary key (x) (x.namespace, x.name)
 
 // Namespace provides a scope for Names.
 // Use of multiple namespaces is optional.
@@ -62,6 +63,7 @@ input relation Namespace (
     // +optional
     labels: Map<string, string>
 )
+primary key (x) x.name
 
 // A label selector is a label query over a set of resources. The result of matchLabels and
 // matchExpressions are ANDed. An empty label selector matches all objects. A null
@@ -259,6 +261,7 @@ input relation NetworkPolicy (
     // Specification of the desired behavior for this NetworkPolicy.
     spec: NetworkPolicySpec
 )
+primary key (x) (x.namespace, x.name)
 
 typedef Protocol = IString
 
