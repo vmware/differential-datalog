@@ -84,6 +84,26 @@ pub fn uuid_nil() -> uuid_Uuid {
     uuid_Uuid::new(Uuid::nil())
 }
 
+pub fn uuid_nAMESPACE_DNS() -> uuid_Uuid {
+    uuid_Uuid::new(Uuid::NAMESPACE_DNS)
+}
+
+pub fn uuid_nAMESPACE_OID() -> uuid_Uuid {
+    uuid_Uuid::new(Uuid::NAMESPACE_OID)
+}
+
+pub fn uuid_nAMESPACE_URL() -> uuid_Uuid {
+    uuid_Uuid::new(Uuid::NAMESPACE_URL)
+}
+
+pub fn uuid_nAMESPACE_X500() -> uuid_Uuid {
+    uuid_Uuid::new(Uuid::NAMESPACE_X500)
+}
+
+pub fn uuid_new_v5(namespace: &uuid_Uuid, name: &std_Vec<u8>) -> uuid_Uuid {
+    uuid_Uuid::new(Uuid::new_v5(namespace, &**name))
+}
+
 pub fn uuid_from_u128(v: &u128) -> uuid_Uuid {
     uuid_Uuid::new(Uuid::from_u128(*v))
 }

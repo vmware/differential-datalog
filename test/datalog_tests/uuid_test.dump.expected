@@ -2,6 +2,9 @@ uuid_test.UUID{"uuid.as_u128(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b
 uuid_test.UUID{"uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))","false"}
 uuid_test.UUID{"uuid.is_nil(uuid.from_u128(0))","true"}
 uuid_test.UUID{"uuid.is_nil(uuid.nil())","true"}
+uuid_test.UUID{"uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")","add8dd4c-920c-5c39-9386-a0c2ca6903fa"}
+uuid_test.UUID{"uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")","a3fc1648-c067-51b3-9bb6-57a1ce78e48f"}
+uuid_test.UUID{"uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")","8567cb53-0bce-5bb0-9a7d-a1abbaf1cb0f"}
 uuid_test.UUID{"uuid.to_hyphenated_lower(test_uuid_from_bytes())","00010203-0405-0607-0809-0a0b0c0d0e0f"}
 uuid_test.UUID{"uuid.to_hyphenated_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))","0436430c-2b02-624c-2032-570501212b57"}
 uuid_test.UUID{"uuid.to_hyphenated_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))","572b2101-0557-3220-4c62-022b0c433604"}

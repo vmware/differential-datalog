@@ -56,3 +56,13 @@ UUID("uuid.to_u128_le(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", 
 UUID("uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", "${uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))}").
 UUID("uuid.is_nil(uuid.from_u128(0))", "${uuid.is_nil(uuid.from_u128(0))}").
 UUID("uuid.is_nil(uuid.nil())", "${uuid.is_nil(uuid.nil())}").
+
+UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")",
+     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+                              string_to_bytes("namespace=nsA And podSelector=")))).
+UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")",
+     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+                              string_to_bytes("namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]")))).
+UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")",
+     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+                              string_to_bytes("namespace=nsA And podSelector=group In [appliedTo] And role In [db app]")))).
