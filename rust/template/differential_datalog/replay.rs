@@ -139,6 +139,13 @@ pub trait RecordReplay: Write {
         write!(self, "insert {}[{}]", name, value)
     }
 
+    fn record_insert_or_update<V>(&mut self, name: &str, value: V) -> Result<()>
+    where
+        V: Display,
+    {
+        write!(self, "insert_or_update {}[{}]", name, value)
+    }
+
     /// Record an `UpdCmd`.
     fn record_upd_cmd<C>(&mut self, upd: &UpdCmd) -> Result<()>
     where
@@ -147,6 +154,9 @@ pub trait RecordReplay: Write {
         match upd {
             UpdCmd::Insert(rel, record) => {
                 self.record_insert(relident2name::<C>(rel).unwrap_or(&"???"), record)
+            }
+            UpdCmd::InsertOrUpdate(rel, record) => {
+                self.record_insert_or_update(relident2name::<C>(rel).unwrap_or(&"???"), record)
             }
             UpdCmd::Delete(rel, record) => write!(
                 self,
@@ -178,6 +188,9 @@ pub trait RecordReplay: Write {
         match upd {
             Update::Insert { relid, v } => {
                 self.record_insert(C::relid2name(*relid).unwrap_or(&"???"), v)
+            }
+            Update::InsertOrUpdate { relid, v } => {
+                self.record_insert_or_update(C::relid2name(*relid).unwrap_or(&"???"), v)
             }
             Update::DeleteValue { relid, v } => write!(
                 self,

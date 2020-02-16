@@ -888,6 +888,10 @@ pub enum Update<V> {
         relid: RelId,
         v: V,
     },
+    InsertOrUpdate {
+        relid: RelId,
+        v: V,
+    },
     DeleteValue {
         relid: RelId,
         v: V,
@@ -913,6 +917,12 @@ where
         match self {
             Update::Insert { relid, v } => {
                 let mut builder = f.debug_struct("Insert");
+                let _ = builder.field("relid", relid);
+                let _ = builder.field("v", v);
+                builder.finish()
+            }
+            Update::InsertOrUpdate { relid, v } => {
+                let mut builder = f.debug_struct("InsertOrUpdate");
                 let _ = builder.field("relid", relid);
                 let _ = builder.field("v", v);
                 builder.finish()
@@ -948,7 +958,7 @@ where
         let upd = match self {
             Update::Insert { relid, v } => (true, relid, v),
             Update::DeleteValue { relid, v } => (false, relid, v),
-            _ => panic!("Cannot serialize Modify/DeleteKey update"),
+            _ => panic!("Cannot serialize InsertOrUpdate/Modify/DeleteKey update"),
         };
 
         upd.serialize(serializer)
@@ -973,6 +983,7 @@ impl<V> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
             Update::Insert { relid, .. } => *relid,
+            Update::InsertOrUpdate { relid, .. } => *relid,
             Update::DeleteValue { relid, .. } => *relid,
             Update::DeleteKey { relid, .. } => *relid,
             Update::Modify { relid, .. } => *relid,
@@ -1365,6 +1376,9 @@ impl Program {
                                                   .get_mut(&relid)
                                                   .ok_or_else(|| format!("no session found for relation ID {}", relid))?
                                                   .update(v, -1);
+                                            },
+                                            Update::InsertOrUpdate{..} => {
+                                                return Err("InsertOrUpdate command received by worker thread".to_string());
                                             },
                                             Update::DeleteKey{..} => {
                                                 // workers don't know about keys
@@ -2105,6 +2119,12 @@ impl RunningProgram {
         self.apply_updates(vec![Update::Insert { relid: relid, v: v }].into_iter())
     }
 
+    /// Insert one record into input relation or replace existing record with the same
+    /// key.
+    pub fn insert_or_update(&mut self, relid: RelId, v: DDValue) -> Response<()> {
+        self.apply_updates(vec![Update::InsertOrUpdate { relid: relid, v: v }].into_iter())
+    }
+
     /// Remove a record if it exists in the relation.
     pub fn delete_value(&mut self, relid: RelId, v: DDValue) -> Response<()> {
         self.apply_updates(vec![Update::DeleteValue { relid: relid, v: v }].into_iter())
@@ -2326,6 +2346,12 @@ impl RunningProgram {
                 };
                 present
             }
+            Update::InsertOrUpdate { relid, .. } => {
+                return Err(format!(
+                    "Cannot perform insert_or_update operation on relation {} that does not have a primary key",
+                    relid
+                ));
+            }
             Update::DeleteKey { relid, .. } => {
                 return Err(format!(
                     "Cannot delete by key from relation {} that does not have a primary key",
@@ -2372,6 +2398,31 @@ impl RunningProgram {
                     key_func(&v),
                     v
                 )),
+                hash_map::Entry::Vacant(ve) => {
+                    ve.insert(v.clone());
+                    Self::delta_inc(ds, &v);
+                    updates.push(Update::Insert { relid, v });
+                    Ok(())
+                }
+            },
+            Update::InsertOrUpdate { relid, v } => match s.entry(key_func(&v)) {
+                hash_map::Entry::Occupied(mut oe) => {
+                    // Delete old value.
+                    let old = oe.get().clone();
+                    Self::delta_dec(ds, oe.get());
+                    updates.push(Update::DeleteValue { relid, v: old });
+
+                    // Insert new value.
+                    Self::delta_inc(ds, &v);
+                    updates.push(Update::Insert {
+                        relid,
+                        v: v.clone(),
+                    });
+
+                    // Update store
+                    *oe.get_mut() = v;
+                    Ok(())
+                }
                 hash_map::Entry::Vacant(ve) => {
                     ve.insert(v.clone());
                     Self::delta_inc(ds, &v);

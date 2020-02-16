@@ -595,6 +595,9 @@ WithKeyDbg{.key = 4, .val = "hello"}: +1
 WithKeyDbg: +3, -2
 WithKeyDbg{1,"bar2"}
 WithKeyDbg{4,"hello"}
+WithKeyDbg:
+WithKeyDbg{.key = 1, .val = "bar2"}: -1
+WithKeyDbg{.key = 1, .val = "bar3"}: +1
 Innocent:
 Innocent{.name = "Bill Smith"}: +1
 Innocent{.name = "John Doe"}: +1

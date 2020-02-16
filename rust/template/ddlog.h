@@ -1062,6 +1062,17 @@ extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
 extern ddlog_cmd* ddlog_insert_cmd(table_id table, ddlog_record *rec);
 
 /*
+ * Create an insert-or-update command.
+ *
+ * `table` is the table to insert to.  The table must have a primary key.
+ * `rec` is the record to insert.  The function takes ownership of this record.
+ *
+ * Returns pointer to a new command, which can be sent to DDlog by calling
+ * `ddlog_apply_updates()`.
+ */
+extern ddlog_cmd* ddlog_insert_or_update_cmd(table_id table, ddlog_record *rec);
+
+/*
  * Create delete-by-value command.
  *
  * `table` is the table to delete from. `rec` is the record to delete.
