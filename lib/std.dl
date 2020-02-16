@@ -116,6 +116,7 @@ extern function string_join(strings: Vec<string>, sep: string): string
 extern function string_split(s: string, sep: string): Vec<string>
 extern function string_contains(s1: string, s2: string): bool
 extern function string_len(s: string): bit<64>
+extern function string_to_bytes(s: string): Vec<u8>
 
 /* Substring of `s` that begins at `start` and continues up to, but not
  * including, `end`.*/

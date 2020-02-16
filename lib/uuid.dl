@@ -12,6 +12,15 @@ typedef Error = string
  * set to zero, as defined in IETF RFC 4122 Section 4.1.7. */
 extern function nil(): Uuid
 
+extern function nAMESPACE_DNS(): Uuid
+extern function nAMESPACE_OID(): Uuid
+extern function nAMESPACE_URL(): Uuid
+extern function nAMESPACE_X500(): Uuid
+
+/* Creates a UUID using a name from a namespace, based on the SHA-1 hash.
+ */
+extern function new_v5(namespace: Uuid, name: Vec<u8>): Uuid
+
 /* Creates a UUID from a 128bit value in big-endian order.
  */
 extern function from_u128(v: u128): Uuid

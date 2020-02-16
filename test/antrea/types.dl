@@ -7,12 +7,14 @@ import uuid as uuid
 import k8spolicy as k8s
 import net.ipv4
 
+function uuidNamespace(): uuid.Uuid =
+    result_unwrap_or(uuid.parse_str("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"), uuid.nil())
+
 // getNormalizedUID generates a unique UUID based on a given string.
 // For example, it can be used to generate keys using normalized selectors
 // unique within the Namespace by adding the constant UID.
 function getNormalizedUID(name: string): string = {
-    var uuid = hash128(name);
-    uuid.to_hyphenated_lower(uuid.from_u128(uuid))
+    uuid.to_hyphenated_lower(uuid.new_v5(uuidNamespace(), string_to_bytes(name)))
 }
 
 // normalizeExpr converts an expression to the form "key1 OP [value1...]".

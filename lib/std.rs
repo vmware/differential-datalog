@@ -809,6 +809,10 @@ pub fn std_string_len(s: &String) -> u64 {
     s.len() as u64
 }
 
+pub fn std_string_to_bytes(s: &String) -> std_Vec<u8> {
+    std_Vec::from(s.as_bytes())
+}
+
 pub fn std_str_to_lower(s: &String) -> String {
     s.to_lowercase()
 }
