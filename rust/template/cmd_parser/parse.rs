@@ -197,6 +197,19 @@ fn test_command() {
         ))
     );
     assert_eq!(
+        parse_command(br"insert_or_update Rel1(true);"),
+        Ok((
+            &br""[..],
+            Command::Update(
+                UpdCmd::InsertOrUpdate(
+                    RelIdentifier::RelName(Cow::from("Rel1")),
+                    Record::PosStruct(Cow::from("Rel1"), vec![Record::Bool(true)])
+                ),
+                true
+            )
+        ))
+    );
+    assert_eq!(
         parse_command(br" insert Rel1[true];"),
         Ok((
             &br""[..],
@@ -275,9 +288,10 @@ fn test_command() {
 }
 
 named!(update<&[u8], UpdCmd>,
-    alt!(do_parse!(apply!(sym,"insert")     >> rec: rel_record >> (UpdCmd::Insert(RelIdentifier::RelName(rec.0), rec.1)))    |
-         do_parse!(apply!(sym,"delete")     >> rec: rel_record >> (UpdCmd::Delete(RelIdentifier::RelName(rec.0), rec.1)))    |
-         do_parse!(apply!(sym,"delete_key") >> rec: rel_key    >> (UpdCmd::DeleteKey(RelIdentifier::RelName(rec.0), rec.1))) |
+    alt!(do_parse!(apply!(sym,"insert")     >> rec: rel_record >> (UpdCmd::Insert(RelIdentifier::RelName(rec.0), rec.1)))               |
+         do_parse!(apply!(sym,"insert_or_update") >> rec: rel_record >> (UpdCmd::InsertOrUpdate(RelIdentifier::RelName(rec.0), rec.1))) |
+         do_parse!(apply!(sym,"delete")     >> rec: rel_record >> (UpdCmd::Delete(RelIdentifier::RelName(rec.0), rec.1)))               |
+         do_parse!(apply!(sym,"delete_key") >> rec: rel_key    >> (UpdCmd::DeleteKey(RelIdentifier::RelName(rec.0), rec.1)))            |
          do_parse!(apply!(sym,"modify") >>
                    rec: rel_key         >>
                    apply!(sym, "<-")    >>

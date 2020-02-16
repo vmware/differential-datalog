@@ -474,6 +474,15 @@ pub fn updcmd2upd(c: &record::UpdCmd) -> Result<Update<DDValue>, String> {
                 v: val,
             })
         }
+        record::UpdCmd::InsertOrUpdate(rident, rec) => {
+            let relid =
+                Relations::try_from(rident).map_err(|_| format!("Unknown relation {}", rident))?;
+            let val = relval_from_record(relid, rec)?;
+            Ok(Update::InsertOrUpdate {
+                relid: relid as RelId,
+                v: val,
+            })
+        }
         record::UpdCmd::Delete(rident, rec) => {
             let relid =
                 Relations::try_from(rident).map_err(|()| format!("Unknown relation {}", rident))?;

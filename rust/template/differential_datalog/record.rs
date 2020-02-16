@@ -146,6 +146,7 @@ impl fmt::Display for RelIdentifier {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum UpdCmd {
     Insert(RelIdentifier, Record),
+    InsertOrUpdate(RelIdentifier, Record),
     Delete(RelIdentifier, Record),
     DeleteKey(RelIdentifier, Record),
     Modify(RelIdentifier, Record, Record),
@@ -717,6 +718,18 @@ unsafe fn mk_record_vec(fields: *const *mut Record, len: libc::size_t) -> Vec<Re
 pub unsafe extern "C" fn ddlog_insert_cmd(table: libc::size_t, rec: *mut Record) -> *mut UpdCmd {
     let rec = Box::from_raw(rec);
     Box::into_raw(Box::new(UpdCmd::Insert(RelIdentifier::RelId(table), *rec)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_insert_or_update_cmd(
+    table: libc::size_t,
+    rec: *mut Record,
+) -> *mut UpdCmd {
+    let rec = Box::from_raw(rec);
+    Box::into_raw(Box::new(UpdCmd::InsertOrUpdate(
+        RelIdentifier::RelId(table),
+        *rec,
+    )))
 }
 
 #[no_mangle]

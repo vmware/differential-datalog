@@ -156,6 +156,12 @@ dump WithKeyDbg;
 
 start;
 
+insert_or_update WithKey(1, "bar3");
+
+commit dump_changes;
+
+start;
+
 insert Gangster("Billy Jack", "Vito Giacalone"),
 insert Gangster("Black Leo", "Leonardo Cellura"),
 insert Gangster("Black Sam", "Sam Todaro"),
