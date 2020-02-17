@@ -332,7 +332,6 @@ extern int ddlog_dump_ovsdb_delta(ddlog_prog hprog, const char *module,
  */
 extern void ddlog_free_json(char *json);
 
-
 /*
  * Apply updates to DDlog tables.  See the ddlog_cmd API below.
  *
@@ -342,6 +341,13 @@ extern void ddlog_free_json(char *json);
  * Whether the function succeeds or fails, it consumes all commands in
  * the `upds` array (but not the array itself), so they can no longer be
  * accessed by the caller after the function returns.
+ *
+ * This function fails non-atomically: upon a failure, it may have applied
+ * a _subset_ of input commands (one exception is when `ddlog_apply_updates`
+ * is called with a single command, in which case it leaves the database
+ * unmodified in case of a failure).  Use `ddlog_transaction_rollback()` to
+ * bring the database back to a known state, specifically the state where it
+ * was before the start of the transaction.
  */
 extern int ddlog_apply_updates(ddlog_prog prog, ddlog_cmd **upds, size_t n);
 
@@ -1053,46 +1059,73 @@ extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
 /*
  * Create an insert command.
  *
- * `table` is the table to insert to.  `rec` is the record to insert.
- * The function takes ownership of this record.
+ * `table` - input table to insert to.
+ * `rec` - record to insert.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
+ *
+ * This function never fails; however the command it creates may fail to
+ * execute, causing `ddlog_apply_updates()` to return an error if:
+ * - `table` is not a valid input table id
+ * - `rec` does not match the record type of `table`
+ * - The table has a primary key and there exists a record with the same key
+ *   as `rec` in the table.
  */
 extern ddlog_cmd* ddlog_insert_cmd(table_id table, ddlog_record *rec);
 
 /*
- * Create an insert-or-update command.
+ * Create an insert-or-update command that inserts a new record, deleting
+ * an existing record with the same primary key, if there is one.
  *
- * `table` is the table to insert to.  The table must have a primary key.
- * `rec` is the record to insert.  The function takes ownership of this record.
+ * `table` - input table to insert to.
+ * `rec` - record to insert.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
+ *
+ * This function never fails; however the command it creates may fail to
+ * execute, causing `ddlog_apply_updates()` to return an error if:
+ * - `table` is not a valid input table id
+ * - `table` does not have a primary key
+ * - `rec` does not match the record type of `table`
  */
 extern ddlog_cmd* ddlog_insert_or_update_cmd(table_id table, ddlog_record *rec);
 
 /*
- * Create delete-by-value command.
+ * Create a delete-by-value command.
  *
- * `table` is the table to delete from. `rec` is the record to delete.
- * The function takes ownership of this record.
+ * `table` - input table to delete from.
+ * `rec` - record to delete.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
+ *
+ * This function never fails; however the command it creates may fail to
+ * execute, causing `ddlog_apply_updates()` to return an error if:
+ * - `table` is not a valid input table id
+ * - `rec` does not match the record type of `table`
+ * - `table` has a primary key and record `rec` does not exist in `table`
+ *   (NOTE: for tables without a primary key, the command succeeds even if
+ *   the record does not exist, in which case it is a no-op)
  */
 extern ddlog_cmd* ddlog_delete_val_cmd(table_id table, ddlog_record *rec);
 
 /*
- * Create delete-by-key command.
+ * Create a delete-by-key command.
  *
- * `table` is the table to delete from.  `rec` is the key to delete.  The
- * table must have a primary key and `rec` type must match the type of the
- * key.  The function takes ownership of `rec`.
+ * `table` - input table to delete from.
+ * `rec` - key to delete.  The function takes ownership of this record.
  *
  * Returns pointer to a new command, which can be sent to DDlog by calling
  * `ddlog_apply_updates()`.
  *
+ * This function never fails; however the command it creates may fail to
+ * execute, causing `ddlog_apply_updates()` to return an error if:
+ * - `table` is not a valid input table id
+ * - `table` does not have a primary key
+ * - `rec` does not match the primary key type of `table`
+ * - a record with the specified key does not exist in `table`
  */
 extern ddlog_cmd* ddlog_delete_key_cmd(table_id table, ddlog_record *rec);
 
