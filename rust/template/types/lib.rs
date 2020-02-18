@@ -20,6 +20,7 @@ use std::ops::Deref;
 use std::os::raw; // TODO: this is  only used by ovn.rs and should be moved there.
 use std::result;
 
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -46,9 +47,15 @@ mod flatbuf_generated;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuf;
 
-pub trait Val: Eq + Ord + Clone + Hash + PartialEq + PartialOrd {}
+pub trait Val:
+    Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned
+{
+}
 
-impl<T> Val for T where T: Eq + Ord + Clone + Hash + PartialEq + PartialOrd {}
+impl<T> Val for T where
+    T: Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned
+{
+}
 
 pub fn string_append_str(mut s1: String, s2: &str) -> String {
     s1.push_str(s2);

@@ -15,3 +15,4 @@ test_lib() {
 
 test_lib uuid_test
 test_lib net_test
+test_lib json_test

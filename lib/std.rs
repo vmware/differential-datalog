@@ -45,6 +45,14 @@ pub fn res2std<T, E: Display>(res: Result<T, E>) -> std_Result<T, String> {
     }
 }
 
+/* Convert Rust result type to DDlog's std.Result. */
+pub fn std_result_unwrap_or_default<T: Default + Clone, E>(res: &std_Result<T, E>) -> T {
+    match res {
+        std_Result::std_Ok { res } => res.clone(),
+        std_Result::std_Err { err } => T::default(),
+    }
+}
+
 // Ref
 pub type std_Ref<A> = arcval::ArcVal<A>;
 

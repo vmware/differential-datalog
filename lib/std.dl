@@ -96,7 +96,11 @@ function result_unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
         Ok{v} -> v,
         Err{} -> def
     }
-} 
+}
+
+// Returns the default value for the given type if `res` is
+// an error.
+extern function result_unwrap_or_default(res: Result<'V,'E>): 'V
 
 /*
  * Range
