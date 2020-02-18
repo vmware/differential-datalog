@@ -108,6 +108,7 @@ function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V =
         std.Ok{.res=var v} -> v,
         std.Err{.err=_} -> def
     }
+extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>

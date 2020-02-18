@@ -1,0 +1,79 @@
+import json
+
+output relation JsonTest(description: string, value: string)
+
+
+typedef BoolStruct = BoolStruct {
+    b: bool
+}
+
+function boolStruct1(): string = [|{"b":true}|]
+function boolStruct2(): string = [|{"b":true, "foo":"bar"}|]
+function boolStruct3(): string = [|{"foo":"bar"}|]
+
+JsonTest(boolStruct1(),
+         result_unwrap_or_default(to_json_string(from_json_string(boolStruct1()): Result<BoolStruct, string>))).
+JsonTest(boolStruct2(),
+         result_unwrap_or_default(to_json_string(from_json_string(boolStruct2()): Result<BoolStruct, string>))).
+JsonTest(boolStruct3(),
+         result_unwrap_or_default(to_json_string(from_json_string(boolStruct3()): Result<BoolStruct, string>))).
+
+typedef Top = Top {
+    t: string,
+    id: string,
+    nested: Nested
+}
+
+typedef Nested = Nested {
+    x: string,
+    z: u64
+}
+
+function nestedStruct1(): string = [|{"t":"foo", "id":"1001001001", "nested": {"x": "x", "z": 100000}}|]
+
+JsonTest(nestedStruct1(),
+         result_unwrap_or_default(to_json_string(from_json_string(nestedStruct1()): Result<Top, string>))).
+
+typedef Array = Vec<BoolStruct>
+
+function array1(): string = [|[{"b":true}, {"b":false}, {"b":true}, {"b":false}]|]
+
+JsonTest(array1(),
+         result_unwrap_or_default(to_json_string(from_json_string(array1()): Result<Array, string>))).
+
+typedef BoolMap = Map<string, BoolStruct>
+
+function map1(): string = [|{"1":{"b":true}, "2":{"b":false}, "3":{"b":true}, "4":{"b":false}}|]
+
+JsonTest(map1(),
+         result_unwrap_or_default(to_json_string(from_json_string(map1()): Result<BoolMap, string>))).
+
+typedef Enum = #[rust="serde(rename = \"Variant1\")"]
+               Variant1 { b: bool }
+             | #[rust="serde(rename = \"Variant2\")"]
+               Variant2 { u: u32 }
+
+function enum1(): string = [|{"Variant1": {"b": true}}|]
+function enum2(): string = [|{"Variant2": {"u": 100}}|]
+
+JsonTest(enum1(),
+         result_unwrap_or_default(to_json_string(from_json_string(enum1()): Result<Enum, string>))).
+JsonTest(enum2(),
+         result_unwrap_or_default(to_json_string(from_json_string(enum2()): Result<Enum, string>))).
+
+#[rust="serde(tag = \"@type\")"]
+typedef TaggedEnum = #[rust="serde(rename = \"t.V1\")"]
+                     TVariant1 { b: bool }
+                   | #[rust="serde(rename = \"t.V2\")"]
+                     TVariant2 { u: u32 }
+
+function tenum1(): string = [|{"@type": "t.V1", "b": true}|]
+function tenum2(): string = [|{"@type": "t.V2", "u": 100}|]
+function tenum3(): string = [|{"@type": "t.V2", "b": false}|]
+
+JsonTest(tenum1(),
+         result_unwrap_or_default(to_json_string(from_json_string(tenum1()): Result<TaggedEnum, string>))).
+JsonTest(tenum2(),
+         result_unwrap_or_default(to_json_string(from_json_string(tenum2()): Result<TaggedEnum, string>))).
+JsonTest(tenum3(),
+         result_unwrap_or_default(to_json_string(from_json_string(tenum3()): Result<TaggedEnum, string>))).

@@ -1,0 +1,19 @@
+/* JSON parsing/serialization library.
+ *
+ * Functions in this library are bindings for functions in
+ * the Rust `serde_json` crate.
+ */
+
+/* Deserialize an instance of type 'T from a string of JSON text.
+ *
+ * This conversion can fail if the structure of the input does not match the
+ * structure expected by 'T, for example if 'T is a struct type but the input
+ * contains something other than a JSON map.
+ */
+extern function from_json_string(json: string): Result<'T, string>
+
+/* Serialize the given data structure as a String of JSON.
+ *
+ * Serialization can fail if 'T contains a map with non-string keys.
+ */
+extern function to_json_string(x: 'T): Result<string, string>
