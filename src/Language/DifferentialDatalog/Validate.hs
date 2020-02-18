@@ -167,15 +167,19 @@ typedefValidate d@DatalogProgram{..} tdef@TypeDef{..} = do
                     $ "The following type variables are not used in type definition: " ++ intercalate "," dif
     uniqNames ("Multiple definitions of attribute " ++) tdefAttrs
     mapM_ (typedefValidateAttr d tdef) tdefAttrs
+    _ <- tdefCheckSizeAttr tdef
+    _ <- checkRustAttrs tdefAttrs
+    return ()
 
 typedefValidateAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> Attribute -> me ()
-typedefValidateAttr _ tdef@TypeDef{..} attr = do
+typedefValidateAttr _ TypeDef{..} attr = do
     case name attr of
          "size" -> do
             check (isNothing tdefType) (pos attr)
                 $ "Only extern types can have a \"size\" attribute"
-            _ <- tdefCheckSizeAttr tdef
-            return ()
+         "rust" -> do
+            check (isJust tdefType) (pos attr)
+                $ "Extern types cannot have a \"rust\" attribute"
          n -> err (pos attr) $ "Unknown attribute " ++ n
 
 typeValidate :: (MonadError String me) => DatalogProgram -> [String] -> Type -> me ()
@@ -186,9 +190,9 @@ typeValidate _ _     (TBit p w)       =
     check (w>0) p "Integer width must be greater than 0"
 typeValidate _ _     (TSigned p w)       =
     check (w>0) p "Integer width must be greater than 0"
-typeValidate d tvars (TStruct p cs)   = do
+typeValidate d tvars struct@(TStruct p cs)   = do
     uniqNames ("Multiple definitions of constructor " ++) cs
-    mapM_ (consValidate d tvars) cs
+    mapM_ (consValidate d tvars struct) cs
     mapM_ (\grp -> check (length (nub $ map typ grp) == 1) p $
                           "Field " ++ (name $ head grp) ++ " is declared with different types")
           $ sortAndGroup name $ concatMap consArgs cs
@@ -206,10 +210,36 @@ typeValidate _ tvars (TVar p v)       =
     check (elem v tvars) p $ "Unknown type variable " ++ v
 typeValidate _ _     t                = error $ "typeValidate " ++ show t
 
-consValidate :: (MonadError String me) => DatalogProgram -> [String] -> Constructor -> me ()
-consValidate d tvars Constructor{..} = do
-    uniqNames ("Multiple definitions of argument " ++) consArgs
-    mapM_ (typeValidate d tvars . fieldType) $ consArgs
+consValidate :: (MonadError String me) => DatalogProgram -> [String] -> Type -> Constructor -> me ()
+consValidate d tvars struct cons@Constructor{..} = do
+    mapM_ (consValidateAttr d struct cons) consAttrs
+    _ <- checkRustAttrs consAttrs
+    fieldsValidate d tvars consArgs
+
+consValidateAttr :: (MonadError String me) => DatalogProgram -> Type -> Constructor -> Attribute -> me ()
+consValidateAttr _ struct Constructor{..} attr = do
+    let TStruct{..} = struct
+    case name attr of
+         "rust" -> check (length typeCons > 1) (pos attr) $ "Per-constructor 'rust' attributes are only supported for types with multiple constructors"
+         n -> err (pos attr) $ "Unknown attribute " ++ n
+
+fieldsValidate :: (MonadError String me) => DatalogProgram -> [String] -> [Field] -> me ()
+fieldsValidate d targs fields = do
+    uniqNames ("Multiple definitions of argument " ++) fields
+    mapM_ (fieldValidate d targs) fields
+
+fieldValidate :: (MonadError String me) => DatalogProgram -> [String] -> Field -> me ()
+fieldValidate d targs field@Field{..} = do
+    typeValidate d targs $ typ field
+    mapM_ (fieldValidateAttr d) fieldAttrs
+    _ <- checkRustAttrs fieldAttrs
+    return ()
+
+fieldValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
+fieldValidateAttr _ attr = do
+    case name attr of
+         "rust" -> return ()
+         n -> err (pos attr) $ "Unknown attribute " ++ n
 
 checkAcyclicTypes :: (MonadError String me) => DatalogProgram -> me ()
 checkAcyclicTypes DatalogProgram{..} = do
@@ -274,8 +304,7 @@ relValidate d rel@Relation{..} = do
 
 indexValidate :: (MonadError String me) => DatalogProgram -> Index -> me ()
 indexValidate d idx@Index{..} = do
-    uniqNames ("Multiple definitions of argument " ++) idxVars
-    mapM_ (typeValidate d [] . typ) idxVars
+    fieldsValidate d [] idxVars
     atomValidate d (CtxIndex idx) idxAtom
     check (exprIsPatternImpl $ atomVal idxAtom) (pos idxAtom)
           $ "Index expression is not a pattern"

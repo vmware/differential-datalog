@@ -92,7 +92,7 @@ ruleRHSVarSet' d rl i =
                                                        TOpaque _ tname     [kt,vt] | tname == mAP_TYPE
                                                                                    -> tTuple [kt,vt]
                                                        t' -> error $ "Rule.ruleRHSVarSet': unexpected FlatMap type " ++ show t'
-                                          in S.insert (Field nopos v t) vs
+                                          in S.insert (Field nopos [] v t) vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
          RHSAggregate avar gvars fname _ -> let ctx = CtxRuleRAggregate rl i
@@ -100,7 +100,7 @@ ruleRHSVarSet' d rl i =
                                                 f = getFunc d fname
                                                 tmap = ruleAggregateTypeParams d rl i
                                                 atype = typeSubstTypeArgs tmap $ funcType f
-                                                avar' = Field nopos avar atype
+                                                avar' = Field nopos [] avar atype
                                             in S.fromList $ avar':gvars'
     where
     vs = ruleRHSVarSet d rl i
@@ -114,12 +114,12 @@ ruleAggregateTypeParams d rl idx =
 exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
 exprDecls d ctx e =
     S.fromList
-        $ map (\(v, ctx') -> Field nopos v $ exprType d ctx' (eVarDecl v))
+        $ map (\(v, ctx') -> Field nopos [] v $ exprType d ctx' (eVarDecl v))
         $ exprVarDecls ctx e
 
 atomVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
 atomVarTypes d ctx e =
-    map (\(v, ctx') -> Field nopos v $ exprType d ctx' (eVar v))
+    map (\(v, ctx') -> Field nopos [] v $ exprType d ctx' (eVar v))
         $ atomVarOccurrences ctx e
 
 atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]

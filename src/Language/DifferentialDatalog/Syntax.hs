@@ -55,6 +55,8 @@ module Language.DifferentialDatalog.Syntax (
         TypeDef(..),
         tdefCheckSizeAttr,
         tdefGetSizeAttr,
+        checkRustAttrs,
+        getRustAttrs,
         Constructor(..),
         consType,
         consIsUnique,
@@ -177,15 +179,16 @@ ppAttributes [] = empty
 ppAttributes attrs = "#[" <> (commaSep $ map pp attrs) <> "]"
 
 data Field = Field { fieldPos  :: Pos
+                   , fieldAttrs:: [Attribute]
                    , fieldName :: String
                    , fieldType :: Type
                    }
 
 instance Eq Field where
-    (==) (Field _ n1 t1) (Field _ n2 t2) = n1 == n2 && t1 == t2
+    (==) (Field _ a1 n1 t1) (Field _ a2 n2 t2) = n1 == n2 && a1 == a2 && t1 == t2
 
 instance Ord Field where
-    compare (Field _ n1 t1) (Field _ n2 t2) = compare (n1, t1) (n2, t2)
+    compare (Field _ _ n1 t1) (Field _ _ n2 t2) = compare (n1, t1) (n2, t2)
 
 instance WithPos Field where
     pos = fieldPos
@@ -196,7 +199,7 @@ instance WithName Field where
     setName f n = f { fieldName = n }
 
 instance PP Field where
-    pp (Field _ n t) = pp n <> ":" <+> pp t
+    pp (Field _ a n t) = ppAttributes a <+> pp n <> ":" <+> pp t
 
 instance Show Field where
     show = render . pp
@@ -363,11 +366,12 @@ instance Eq TypeDef where
 
 tdefCheckSizeAttr :: (MonadError String me) => TypeDef -> me (Maybe Int)
 tdefCheckSizeAttr TypeDef{..} =
-    case find ((== "size") . name) tdefAttrs of
-         Nothing            -> return Nothing
-         Just Attribute{attrVal = E (EInt _ nbytes)} | nbytes <= toInteger (maxBound::Int)
-                            -> return $ Just $ fromInteger nbytes
-         Just Attribute{..} -> err attrPos $ "Invalid size attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
+    case filter ((== "size") . name) tdefAttrs of
+         []                   -> return Nothing
+         [Attribute{attrVal = E (EInt _ nbytes)}] | nbytes <= toInteger (maxBound::Int)
+                              -> return $ Just $ fromInteger nbytes
+         [Attribute{..}] -> err attrPos $ "Invalid 'size' attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
+         _                    -> err tdefPos $ "Multiple 'size' attributes are not allowed"
 
 tdefGetSizeAttr :: TypeDef -> Maybe Int
 tdefGetSizeAttr tdef =
@@ -375,16 +379,31 @@ tdefGetSizeAttr tdef =
          Left e   -> error e
          Right sz -> sz
 
-data Constructor = Constructor { consPos :: Pos
-                               , consName :: String
-                               , consArgs :: [Field]
+checkRustAttrs :: (MonadError String me) => [Attribute] -> me [String]
+checkRustAttrs attrs =
+    mapM (\Attribute{..} ->
+            case attrVal of
+                 E (EString _ str) -> return str
+                 _ -> err attrPos $ "Invalid 'rust' attribute: the value of the attribute must be a string literal, e.g., #[rust=\"serde(tag = \\\"type\\\"\")]")
+         $ filter ((== "rust") . name) attrs
+
+getRustAttrs :: [Attribute] -> [String]
+getRustAttrs attrs =
+    case checkRustAttrs attrs of
+         Left e   -> error e
+         Right as -> as
+
+data Constructor = Constructor { consPos   :: Pos
+                               , consAttrs :: [Attribute]
+                               , consName  :: String
+                               , consArgs  :: [Field]
                                }
 
 instance Eq Constructor where
-    (==) (Constructor _ n1 as1) (Constructor _ n2 as2) = n1 == n2 && as1 == as2
+    (==) (Constructor _ attrs1 n1 as1) (Constructor _ attrs2 n2 as2) = (n1, attrs1, as1) == (n2, attrs2, as2)
 
 instance Ord Constructor where
-    compare (Constructor _ n1 as1) (Constructor _ n2 as2) = compare (n1, as1) (n2, as2)
+    compare (Constructor _ _ n1 as1) (Constructor _ _ n2 as2) = compare (n1, as1) (n2, as2)
 
 instance WithName Constructor where
     name = consName
@@ -395,7 +414,8 @@ instance WithPos Constructor where
     atPos c p = c{consPos = p}
 
 instance PP Constructor where
-    pp Constructor{..} = pp consName <> (braces $ commaSep $ map pp consArgs)
+    pp Constructor{..} = ppAttributes consAttrs $$
+                         (pp consName <> (braces $ commaSep $ map pp consArgs))
 
 instance Show Constructor where
     show = render . pp
