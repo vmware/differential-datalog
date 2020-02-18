@@ -2308,12 +2308,17 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
              UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
--- keep type ascriptions in LHS of assignment and in integer constants
+-- * Use type ascriptions in LHS of assignment
+-- * Do type coercion for integer constants
+-- * Otherwise, introduce an intermediate variable with explicit type
 mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
                          | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
-                         | otherwise     = (e', categ)
+                         | otherwise     = (braces $ "let __typed:" <+> opt_ref <> mkType exprTSpec <+> "=" <+> e' <> "; __typed", categ)
     where
     (e', categ, e) = exprExpr
+    opt_ref = case categ of
+                   EReference -> "&"
+                   _ -> empty
     isint = case e of
                  EInt{} -> True
                  _      -> False
