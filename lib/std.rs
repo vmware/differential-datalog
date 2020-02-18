@@ -4,6 +4,10 @@ extern crate num;
 use differential_datalog::arcval;
 use differential_datalog::record::*;
 
+use serde::de::Deserialize;
+use serde::de::Deserializer;
+use serde::ser::Serialize;
+use serde::ser::Serializer;
 use std::cmp;
 use std::collections::btree_map;
 use std::collections::btree_set;
@@ -131,9 +135,27 @@ pub fn std_range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(
 
 // Vector
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]
 pub struct std_Vec<T> {
     pub x: Vec<T>,
+}
+
+impl<T: Serialize> Serialize for std_Vec<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.x.serialize(serializer)
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for std_Vec<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Vec::deserialize(deserializer).map(|x| std_Vec { x })
+    }
 }
 
 /* This is needed so we can support for-loops over `Vec`'s
@@ -355,9 +377,27 @@ pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
 
 // Set
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]
 pub struct std_Set<T: Ord> {
     pub x: BTreeSet<T>,
+}
+
+impl<T: Ord + Serialize> Serialize for std_Set<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.x.serialize(serializer)
+    }
+}
+
+impl<'de, T: Ord + Deserialize<'de>> Deserialize<'de> for std_Set<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        BTreeSet::deserialize(deserializer).map(|x| std_Set { x })
+    }
 }
 
 /* This is needed so we can support for-loops over `Set`'s
@@ -570,9 +610,27 @@ pub fn std_set_unions<X: Ord + Clone>(sets: &std_Vec<std_Set<X>>) -> std_Set<X> 
 
 // Map
 
-#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
+#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]
 pub struct std_Map<K: Ord, V> {
     pub x: BTreeMap<K, V>,
+}
+
+impl<K: Ord + Serialize, V: Serialize> Serialize for std_Map<K, V> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.x.serialize(serializer)
+    }
+}
+
+impl<'de, K: Ord + Deserialize<'de>, V: Deserialize<'de>> Deserialize<'de> for std_Map<K, V> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        BTreeMap::deserialize(deserializer).map(|x| std_Map { x })
+    }
 }
 
 /* This is needed so we can support for-loops over `Map`'s
