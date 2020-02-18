@@ -564,6 +564,7 @@ addDummyRel d =
 
 mkTypedef :: DatalogProgram -> TypeDef -> Doc
 mkTypedef d tdef@TypeDef{..} =
+    vcat (map (\attr -> "#[" <> pp attr <> "]") rustAttrs) $$
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> derive_struct                                                             $$
@@ -589,6 +590,7 @@ mkTypedef d tdef@TypeDef{..} =
          Just t           -> "pub type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
+    rustAttrs = getRustAttrs tdefAttrs
     derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]"
     derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
     targs = if null tdefArgs
@@ -606,11 +608,15 @@ mkTypedef d tdef@TypeDef{..} =
 
 
     mkField :: Bool -> Field -> Doc
-    mkField pub f = (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
+    mkField pub f = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
+                    (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
+        where rattrs = getRustAttrs $ fieldAttrs f
 
     mkConstructor :: Constructor -> Doc
     mkConstructor c =
-        let args = vcat $ punctuate comma $ map (mkField False) $ consArgs c in
+        let args = vcat $ punctuate comma $ map (mkField False) $ consArgs c
+            rattrs = getRustAttrs $ consAttrs c in
+        vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
         if null $ consArgs c
            then rname (name c)
            else rname (name c) <+> "{" $$
@@ -2021,7 +2027,7 @@ mkArrangementKey d rel pattern = do
         getvars t (E ERef{..})    =
             getvars t' exprPattern
             where TOpaque _ _ [t'] = typ' d t
-        getvars t (E EVar{..})    = [Field nopos exprVar t]
+        getvars t (E EVar{..})    = [Field nopos [] exprVar t]
         getvars _ _               = []
     let t = relType rel
     -- Order variables by their integer value: '_0', '_1', ...

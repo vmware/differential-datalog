@@ -1646,9 +1646,9 @@ rustTypeFromFlatbuf t@TTuple{..} =
                               then n
                               else n <> "_type," <+> n)
                        typeTupArgs
-    from_args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos ("a" ++ show i) a) <> ")?")
+    from_args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos [] ("a" ++ show i) a) <> ")?")
                 typeTupArgs
-    to_args = mapIdx (\a i -> serialize_field "self." (Field nopos (show i) a) ("a" <> pp i))
+    to_args = mapIdx (\a i -> serialize_field "self." (Field nopos [] (show i) a) ("a" <> pp i))
                      typeTupArgs
 
 -- Container types (vectors, sets, maps).  We implement 'FromFlatBuffer<fb::Vector>'
@@ -1688,7 +1688,7 @@ rustTypeFromFlatbuf t@TOpaque{..} | elem typeName [rEF_TYPE, iNTERNED_TYPE] = em
 rustTypeFromFlatbuf t | typeIsScalar t =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
-    "        let v =" <+> extract_field "v" (Field nopos "v" t) <> ";"                                      $$
+    "        let v =" <+> extract_field "v" (Field nopos [] "v" t) <> ";"                                   $$
     "        <" <> rtype <> ">::from_flatbuf(v)"                                                            $$
     "    }"                                                                                                 $$
     "}"                                                                                                     $$

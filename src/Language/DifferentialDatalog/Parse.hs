@@ -325,7 +325,7 @@ relation = do
          pkey <- optionMaybe $ symbol "primary" *> symbol "key" *> key_expr
          end <- getPosition
          let p = (start, end)
-         let tspec = TStruct p [Constructor p relName fields]
+         let tspec = TStruct p [Constructor p [] relName fields]
          let tdef = TypeDef nopos [] relName [] $ Just tspec
          let t = if isref
                     then TUser p "Ref" [TUser p relName []]
@@ -341,7 +341,7 @@ relation = do
 
 key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr
 
-arg = withPos $ (Field nopos) <$> varIdent <*> (colon *> typeSpecSimple)
+arg = withPos $ (Field nopos) <$> option [] attributes <*> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $
                     ForStatement nopos <$ reserved "for"
@@ -447,13 +447,15 @@ boolType   = TBool   nopos <$ reserved "bool"
 userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
 typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
-    where isstruct = try $ lookAhead $ consIdent *> (symbol "{" <|> symbol "|")
+    where isstruct = try $ lookAhead $ (option [] attributes) *> consIdent *> (symbol "{" <|> symbol "|")
 tupleType  = (\fs -> case fs of
                           [f] -> f
                           _   -> TTuple nopos fs)
              <$> (parens $ commaSep typeSpecSimple)
 
-constructor = withPos $ Constructor nopos <$> consIdent <*> (option [] $ braces $ commaSep arg)
+constructor = withPos $ Constructor nopos <$> (option [] attributes) 
+                                          <*> consIdent
+                                          <*> (option [] $ braces $ commaSep arg)
 
 expr =  buildExpressionParser etable term
     <?> "expression"
