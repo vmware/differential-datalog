@@ -77,3 +77,18 @@ JsonTest(tenum2(),
          result_unwrap_or_default(to_json_string(from_json_string(tenum2()): Result<TaggedEnum, string>))).
 JsonTest(tenum3(),
          result_unwrap_or_default(to_json_string(from_json_string(tenum3()): Result<TaggedEnum, string>))).
+
+
+function scalar1(): string = [|true|]
+function scalar2(): string = [|100|]
+function scalar3(): string = [|-100|]
+function scalar4(): string = [|"foo bar"|]
+
+JsonTest(scalar1(),
+         result_unwrap_or_default(to_json_string(from_json_string(scalar1()): Result<JsonScalarValue, string>))).
+JsonTest(scalar2(),
+         result_unwrap_or_default(to_json_string(from_json_string(scalar2()): Result<JsonScalarValue, string>))).
+JsonTest(scalar3(),
+         result_unwrap_or_default(to_json_string(from_json_string(scalar3()): Result<JsonScalarValue, string>))).
+JsonTest(scalar4(),
+         result_unwrap_or_default(to_json_string(from_json_string(scalar4()): Result<JsonScalarValue, string>))).
