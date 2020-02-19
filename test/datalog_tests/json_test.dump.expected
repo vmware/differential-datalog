@@ -12,4 +12,5 @@ json_test.JsonTest{"{\"Variant2\": {\"u\": 100}}","{\"std_Ok\":{\"res\":{\"Varia
 json_test.JsonTest{"{\"b\":true, \"foo\":\"bar\"}","{\"std_Ok\":{\"res\":{\"b\":true}}}"}
 json_test.JsonTest{"{\"b\":true}","{\"std_Ok\":{\"res\":{\"b\":true}}}"}
 json_test.JsonTest{"{\"foo\":\"bar\"}","{\"std_Err\":{\"err\":\"missing field `b` at line 1 column 13\"}}"}
+json_test.JsonTest{"{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}","{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
 json_test.JsonTest{"{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}","{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}
