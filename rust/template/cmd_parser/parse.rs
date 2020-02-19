@@ -314,7 +314,7 @@ named!(rel_key<&[u8], (Name, Record)>,
 );
 
 named!(record<&[u8], Record>,
-    alt!(bool_val | string_val | tuple_val | array_val | struct_val | int_val )
+    alt!(bool_val | string_val | string_val_from_file | tuple_val | array_val | struct_val | int_val )
 );
 
 named!(named_record<&[u8], (Name, Record)>,
@@ -337,7 +337,7 @@ fn test_bool() {
     assert_eq!(record(br"false "), Ok((&br""[..], Record::Bool(false))));
 }
 
-named!(string_val<&[u8], Record>,
+named!(string_literal<&[u8], String>,
     do_parse!(
         str: alt!(
             // I think there is is bug in nom, causing escaped_transform to only work with
@@ -364,7 +364,25 @@ named!(string_val<&[u8], Record>,
         >>
         spaces
         >>
-        (Record::String(String::from_utf8(str).unwrap()))
+        (String::from_utf8(str).unwrap())
+    )
+);
+
+named!(string_val_from_file<&[u8], Record>,
+    do_parse!(
+        tag!("%")
+        >>
+        fname: string_literal
+        >>
+        (Record::String(std::fs::read_to_string(std::path::Path::new(&fname)).map_err(|e|format!("Failed to read string from file {}: {}", fname, e)).unwrap()))
+    )
+);
+
+named!(string_val<&[u8], Record>,
+    do_parse!(
+        str: string_literal
+        >>
+        (Record::String(str))
     )
 );
 
