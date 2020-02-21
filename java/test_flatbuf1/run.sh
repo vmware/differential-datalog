@@ -1,11 +1,11 @@
 #!/bin/bash
-# Compile and run tests related to flatbufTest.dl
+# Compile and run tests related to typesTest.dl
 
 set -ex
 
 source ../build_java.sh
 DDLFLAGS="--output-input-relations=O"
-compile flatbufTest.dl Test.java release
+compile ../../test/types_test/typesTest.dl Test.java release
 java -Djava.library.path=. Test
 diff fb.dump rec.dump
 diff fb.dump fb.dump.expected
@@ -13,4 +13,4 @@ diff query.dump query.dump.expected
 cleanup
 rm fb.dump rec.dump
 # Additional cleanup
-# rm -rf flatbufTest_ddlog
+# rm -rf typesTest_ddlog
