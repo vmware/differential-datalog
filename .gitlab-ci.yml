@@ -232,3 +232,10 @@ test-sql:
     script:
         - (cd java && make)
         - (cd sql && ./install-ddlog-jar.sh && mvn test)
+
+# Test Go bindings
+test-golang:
+    extends: .install-ddlog
+    script:
+        - (cd go && ./test.sh)
+        - (cd go && ./run-example.sh)

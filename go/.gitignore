@@ -1,0 +1,10 @@
+.golangci-bin
+
+bin
+
+# DDlog output for test program
+*_ddlog
+
+# Output text files when running example
+cmds.txt
+changes.txt
