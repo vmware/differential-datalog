@@ -45,5 +45,11 @@ RUN rm -rf differential-datalog
 # Python packages needed by souffle scripts
 RUN pip install parglare==0.10.0
 
+# Install Golang
+RUN curl -o go.tar.gz https://dl.google.com/go/go1.13.8.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go.tar.gz
+RUN rm go.tar.gz
+
 ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 ENV JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF8"
+ENV PATH=$PATH:/usr/local/go/bin
