@@ -508,7 +508,7 @@ pub unsafe extern "C" fn ddlog_get_set_elem(
 pub unsafe extern "C" fn ddlog_set_push(set: *mut Record, rec: *mut Record) {
     let rec = Box::from_raw(rec);
     let mut set = Box::from_raw(set);
-    if let Record::Array(CollectionKind::Map, recs) = set.as_mut() {
+    if let Record::Array(CollectionKind::Set, recs) = set.as_mut() {
         recs.push(*rec)
     };
     Box::into_raw(set);
