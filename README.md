@@ -54,7 +54,7 @@ resorting to external functions.
 5. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
 primary use case is to integrate with other applications that require deductive database
 functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust,
-C/C++ or Java program (bindings for other languages can be easily added).  This enables good performance,
+C/C++, Java, or Go program (bindings for other languages can be easily added).  This enables good performance,
 but somewhat limits the flexibility, as
 changes to the relational schema or rules require re-compilation.
 
@@ -64,6 +64,7 @@ changes to the relational schema or rules require re-compilation.
 - DDlog [language reference](doc/language_reference/language_reference.md).
 - [Instructions](doc/testing/testing.md) for writing and testing your own Datalog programs.
 - [How to](doc/java_api.md) use DDlog from Java.
+- [How to](go/README.md) use DDlog from Go and [Go API documentation](https://pkg.go.dev/github.com/vmware/differential-datalog/go/pkg/ddlog).
 - [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf), Datalog 2.0 workshop, 2019.
 
 ## Installation
