@@ -126,6 +126,8 @@ extern function string_to_bytes(s: string): Vec<u8>
  * including, `end`.*/
 extern function string_substr(s: string, start: bit<64>, end: bit<64>): string
 
+extern function string_starts_with(s: string, prefix: string): bool
+
 extern function str_to_lower(s: string): string
 
 /*
