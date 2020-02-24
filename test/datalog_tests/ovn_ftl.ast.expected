@@ -131,6 +131,7 @@ extern function std.string_contains (s1: string, s2: string): bool
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.string_len (s: string): bit<64>
 extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.string_starts_with (s: string, prefix: string): bool
 extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
 extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>

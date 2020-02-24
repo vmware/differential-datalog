@@ -871,6 +871,10 @@ pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
     s[from..to].to_string()
 }
 
+pub fn std_string_starts_with(s: &String, prefix: &String) -> bool {
+    s.starts_with(prefix)
+}
+
 pub fn std_string_len(s: &String) -> u64 {
     s.len() as u64
 }
