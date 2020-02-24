@@ -392,6 +392,7 @@ IntranetHost3(.addr=addr) :- KnownHost(.addr=addr), var t = addr_to_tuple(addr),
 TargetAudience[person] :- Person[person], is_target_audience(person).
 StudentInfo(.student=student, .school=school) :- Student[(student@ (&Student{.id=_, .name=_, .school=school_name, .sat_score=_}))], School[(school@ (&School{.name=school_name, .address=_}))].
 TopScore(.school=school, .top_score=top_score) :- StudentInfo(.student=(&Student{.id=_, .name=_, .school=_, .sat_score=sat}), .school=(&School{.name=school, .address=_})), var top_score = Aggregate((school), std.group_max(sat)).
+TopScore(.school=school, .top_score=top_score) :- StudentInfo(.student=student, .school=(&School{.name=school, .address=_})), var top_score = Aggregate((school), std.group_max(student.sat_score)).
 Flow(.lr=ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer(.lb=_, .ls=ls, .ip_addresses=addresses, .protocol=std.Some{.x=_}, .name=_).
 Flow(.lr=ls, .stage=LS_OUT_PRE_LB{}, .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }") :- Logical_Switch(.ls=ls), Load_Balancer(.lb=_, .ls=ls, .ip_addresses=_, .protocol=_, .name=_).
 Flow1(.lr=lb.ls, .stage=LS_IN_PRE_LB{}, .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }") :- Load_Balancer[(lb@ Load_Balancer{.lb=_, .ls=_, .ip_addresses=_, .protocol=_, .name=_})], var a = lb.ip_addresses, match (lb.protocol) {
