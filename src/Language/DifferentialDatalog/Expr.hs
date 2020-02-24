@@ -57,6 +57,7 @@ module Language.DifferentialDatalog.Expr (
 
 import Data.List
 import Data.Maybe
+import Data.Tuple.Select
 import Control.Monad.Identity
 import qualified Data.Set as S
 --import Debug.Trace
@@ -361,14 +362,17 @@ exprIsDeconstruct' _ _                = False
 -- | True if 'e' is a variable or field expression, and
 -- can be assigned to (i.e., the variable is writable)
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
-exprIsVarOrFieldLVal d ctx e = exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e
+exprIsVarOrFieldLVal d ctx e = snd $ exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e
 
-exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode Bool -> Bool
-exprIsVarOrFieldLVal' d ctx (EVar _ v) = isLVar d ctx v
-exprIsVarOrFieldLVal' _ _   (EField _ e _)   = e
-exprIsVarOrFieldLVal' _ _   (ETupField _ e _)= e
-exprIsVarOrFieldLVal' _ _   (ETyped _ e _)   = e
-exprIsVarOrFieldLVal' _ _   _                = False
+exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode (Expr, Bool) -> (Expr, Bool)
+exprIsVarOrFieldLVal' d ctx expr =
+    case expr of
+        (EVar _ v)            -> (E e', isLVar d ctx v)
+        (EField _ (e, b) _)   -> (E e', b && (isRef d $ exprType d (CtxField e' ctx) e))
+        (ETupField _ (e,b) _) -> (E e', b && (isRef d $ exprType d (CtxTupField e' ctx) e))
+        (ETyped _ (_,b) _)    -> (E e', b)
+        _                     -> (E e', False)
+    where e' = exprMap sel1 expr
 
 -- | True if 'e' is a variable or field expression
 exprIsVarOrField :: Expr -> Bool

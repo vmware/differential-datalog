@@ -680,6 +680,8 @@ Filtered:
 Filtered{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Filtered2:
 Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}}: +1
+Filtered3:
+Filtered3{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Referee:
 Referee{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
 Referee2:

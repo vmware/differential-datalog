@@ -43,6 +43,7 @@ typedef ExternalId = ExternalId{host: bit<64>, id: (string, string)}
 typedef ExternalIds = ExternalIds{host: bit<64>, ids: std.Map<string,string>}
 typedef Filtered = Filtered{r: std.Ref<Referenced>}
 typedef Filtered2 = Filtered2{r: std.Ref<Referee2>}
+typedef Filtered3 = Filtered3{r: std.Ref<Referenced>}
 typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
 typedef Gangster = Gangster{nickname: string, name: string}
 typedef HostAddress = HostAddress{host: bit<64>, addr: string}
@@ -731,6 +732,7 @@ output relation ExternalId [ExternalId]
 input relation ExternalIds [ExternalIds]
 output relation Filtered [Filtered]
 output relation Filtered2 [Filtered2]
+output relation Filtered3 [Filtered3]
 input relation Gangster [Gangster]
 output relation HostAddress [HostAddress]
 input relation HostAddresses [HostAddresses]
@@ -968,6 +970,7 @@ Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}}
 Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})].
 Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[r].
 Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))].
+Filtered3(.r=r.r) :- Referee[(r@ Referee{.r=_})], (r.r.x == true).
 NewAllocation(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
                                                                                                                                                               (for (a in allocated) {
                                                                                                                                                                    ((_, var num) = a;

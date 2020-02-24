@@ -1393,6 +1393,17 @@ TopScore(school, top_score) :-
 
 We again use `&` to pattern match values stored by reference.
 
+As another syntactic convenience, DDlog allows accessing fields of structs and
+tuples wrapped in references directly, without dereferencing them first.
+The following rule is equivalent to the one above, but instead of opening up the
+`student` record, we use `.`-notation to access the `sat_score` field:
+
+```
+TopScore(school, top_score) :-
+    StudentInfo(student, &School{.name = school}),
+    var top_score = Aggregate((school), group_max(student.sat_score)).
+```
+
 ## A more imperative syntax
 
 Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog

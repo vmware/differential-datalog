@@ -827,6 +827,10 @@ output relation Filtered2(r: Ref<Referee2>)
 
 Filtered2(r) :- r in &Referee2(.r = Referenced{.x = true}).
 
+output relation Filtered3(r: Ref<Referenced>)
+Filtered3(r.r) :- r in Referee(), r.r.x==true.
+
+
 /* More allocator tests */
 input relation Alloc(id: bigint,
                      allocated: Map<string, bit<32>>,

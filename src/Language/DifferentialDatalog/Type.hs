@@ -35,7 +35,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap,
+    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap, isRef,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -267,11 +267,11 @@ exprNodeType' d ctx (EApply p f mas)      = do
 
 exprNodeType' _ ctx (EField p Nothing _)  = eunknown p ctx
 exprNodeType' d _   (EField p (Just e) f) = do
-    case typ' d e of
+    case typDeref' d e of
          t@TStruct{} ->
              case find ((==f) . name) $ structFields t of
                   Nothing  -> err p  $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
-                  Just fld -> do check (not $ structFieldGuarded (typ' d e) f) p
+                  Just fld -> do check (not $ structFieldGuarded t f) p
                                        $ "Access to guarded field \"" ++ f ++ "\""
                                  return $ fieldType fld
          _           -> err (pos e) $ "Expression is not a struct"
@@ -279,7 +279,7 @@ exprNodeType' d _   (EField p (Just e) f) = do
 
 exprNodeType' _ ctx (ETupField p Nothing _)  = eunknown p ctx
 exprNodeType' d _   (ETupField p (Just e) i) = do
-    case typ' d e of
+    case typDeref' d e of
          t@TTuple{} -> do check (((length $ typeTupArgs t) > i) && (0 <= i)) p
                             $ "Tuple \"" ++ show t ++ "\" does not have " ++ show i ++ " fields"
                           return $ (typeTupArgs t) !! i
@@ -377,6 +377,24 @@ _typ' d (TUser _ n as) =
     where tdef = getType d n
 _typ' _ t = t
 
+-- | A variant of typ' to be used in contexts where 'Ref<>' should be
+-- transparent.
+--
+-- Expand typedef's down to actual type definition, substituting
+-- type arguments along the way. Additionally unwraps Ref types,
+-- replacing 'Ref<t>' with 't'.
+typDeref' :: (WithType a) => DatalogProgram -> a -> Type
+typDeref' d x = _typDeref' d (typ x)
+
+_typDeref' :: DatalogProgram -> Type -> Type
+_typDeref' d (TUser _ n as) =
+    case tdefType tdef of
+         Nothing -> _typDeref' d $ tOpaque n as
+         Just t  -> _typDeref' d $ typeSubstTypeArgs (M.fromList $ zip (tdefArgs tdef) as) t
+    where tdef = getType d n
+_typDeref' d (TOpaque _ tname [t]) | tname == rEF_TYPE = _typDeref' d t
+_typDeref' _ t = t
+
 -- | Similar to typ', but does not expand the last typedef if it is a struct
 typ'' :: (WithType a) => DatalogProgram -> a -> Type
 typ'' d x = _typ'' d (typ x)
@@ -447,6 +465,11 @@ isGroup d a = case typ' d a of
 isMap :: (WithType a) => DatalogProgram -> a -> Bool
 isMap d a = case typ' d a of
                  TOpaque _ t _ | t == mAP_TYPE -> True
+                 _                             -> False
+
+isRef :: (WithType a) => DatalogProgram -> a -> Bool
+isRef d a = case typ' d a of
+                 TOpaque _ t _ | t == rEF_TYPE -> True
                  _                             -> False
 
 -- | Check if 'a' and 'b' have idential types up to type aliasing;

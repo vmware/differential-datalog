@@ -465,6 +465,11 @@ TopScore(school, top_score) :-
     StudentInfo(&Student{.sat_score = sat}, &School{.name = school}),
     var top_score = Aggregate((school), group_max(sat)).
 
+// Alternative syntax.
+TopScore(school, top_score) :-
+    StudentInfo(student, &School{.name = school}),
+    var top_score = Aggregate((school), group_max(student.sat_score)).
+
 /*
  * Example: Advanced features
  */
