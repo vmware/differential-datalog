@@ -457,28 +457,20 @@ public class WeaveTest {
                 "typedef TRtmp3 = TRtmp3{name:string, cpu_remaining:signed<64>, memory_remaining:signed<64>, pods_remaining:signed<64>}\n" +
                 "typedef Tagg = Tagg{cpu_remaining:signed<64>, memory_remaining:signed<64>, pods_remaining:signed<64>}\n" +
                 "typedef TRtmp4 = TRtmp4{node_name:string}\n" +
-                "function agg(g: Group<(string,bigint,bigint,bigint), (Tnode_info,Tpod_info)>):Tagg =\n" +
+                "function agg(g: Group<(string, bigint, bigint, bigint), (Tnode_info, Tpod_info)>):Tagg =\n" +
                 "(var gb, var gb2, var gb3, var gb4) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var sum = 0);\n" +
-                "(var sum6 = 0);\n" +
-                "(var sum8 = 0);\n" +
+                "(var sum = 0: bigint);\n" +
+                "(var sum6 = 0: bigint);\n" +
+                "(var sum8 = 0: bigint);\n" +
                 "(for (i in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var incr = v0.cpu_request);\n" +
-                "(sum = if first {\n" +
-                "0} else {\n" +
-                "agg_sum_R(sum, incr)});\n" +
+                "(sum = agg_sum_int_R(sum, incr));\n" +
                 "(var incr5 = v0.memory_request);\n" +
-                "(sum6 = if first {\n" +
-                "0} else {\n" +
-                "agg_sum_R(sum6, incr5)});\n" +
+                "(sum6 = agg_sum_int_R(sum6, incr5));\n" +
                 "(var incr7 = v0.pods_request);\n" +
-                "(sum8 = if first {\n" +
-                "0} else {\n" +
-                "agg_sum_R(sum8, incr7)});\n" +
-                "(first = false)}\n" +
+                "(sum8 = agg_sum_int_R(sum8, incr7))}\n" +
                 ");\n" +
                 "(Tagg{.cpu_remaining = (gb2 - sum) as signed<64>,.memory_remaining = (gb3 - sum6) as signed<64>,.pods_remaining = (gb4 - sum8) as signed<64>})" +
                 "\n" +

@@ -45,4 +45,8 @@ public interface DDlogIRNode {
         }
         return result;
     }
+
+    default <T> boolean is(Class<T> clazz) {
+        return this.as(clazz) != null;
+    }
 }

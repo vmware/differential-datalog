@@ -30,13 +30,17 @@ public class DDlogEStruct extends DDlogExpression {
     }
 
     private final String constructor;
-    public final List<FieldValue> fields;
+    public final FieldValue[] fields;
 
-    public DDlogEStruct(String constructor, List<FieldValue> fields, DDlogType type) {
+    public DDlogEStruct(String constructor, DDlogType type, FieldValue... fields) {
         super(type);
         this.constructor = constructor;
         this.fields = fields;
         // We cannot check the type if it is just a typedef.
+    }
+
+    public DDlogEStruct(String constructor, DDlogType type, List<FieldValue> fields) {
+        this(constructor, type, fields.toArray(new FieldValue[0]));
     }
 
     @Override
@@ -44,6 +48,6 @@ public class DDlogEStruct extends DDlogExpression {
         return this.constructor + "{" + String.join(",",
                 Linq.map(this.fields, f ->
                         (f.name.isEmpty() ? "" : "." + f.name) + " = "
-                                + f.value.toString())) + "}";
+                                + f.value.toString(), String.class)) + "}";
     }
 }

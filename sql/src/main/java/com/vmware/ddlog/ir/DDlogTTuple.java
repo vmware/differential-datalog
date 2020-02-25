@@ -20,9 +20,13 @@ public class DDlogTTuple extends DDlogType {
 
     public static DDlogTTuple emptyTupleType = new DDlogTTuple();
 
-    public DDlogTTuple(DDlogType... tupArgs) {
-        super(false);
+    private DDlogTTuple(boolean mayBeNull, DDlogType... tupArgs) {
+        super(mayBeNull);
         this.tupArgs = tupArgs;
+    }
+
+    public DDlogTTuple(DDlogType... tupArgs) {
+        this(false, tupArgs);
     }
 
     public DDlogTTuple(List<DDlogType> tupArgs) {
@@ -37,15 +41,15 @@ public class DDlogTTuple extends DDlogType {
     public String toString() {
         if (this.tupArgs.length == 1)
             return this.tupArgs[0].toString();
-        return "(" + String.join(",",
-                Linq.map(this.tupArgs, DDlogType::toString, String.class)) + ")";
+        return this.wrapOption("(" + String.join(", ",
+                Linq.map(this.tupArgs, DDlogType::toString, String.class)) + ")");
     }
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
-        if (mayBeNull)
-            throw new RuntimeException("Nullable tuples not supported");
-        return this;
+        if (mayBeNull == this.mayBeNull)
+            return this;
+        return new DDlogTTuple(mayBeNull, this.tupArgs);
     }
 
     @Override
@@ -59,5 +63,9 @@ public class DDlogTTuple extends DDlogType {
     @Override
     public int hashCode() {
         return Arrays.hashCode(tupArgs);
+    }
+
+    public DDlogType component(int index) {
+        return this.tupArgs[index];
     }
 }

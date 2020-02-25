@@ -128,14 +128,10 @@ public class QueriesTest {
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<string, Tt1>):TRtmp =\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var count = 64'sd0);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(false) +
@@ -154,14 +150,10 @@ public class QueriesTest {
                 "typedef Tagg = Tagg{col:signed<64>}\n" +
                 "function agg(g: Group<string, Tt1>):Tagg =\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var count = 64'sd0);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(Tagg{.col = count})" +
                 this.relations(false) +
@@ -173,6 +165,28 @@ public class QueriesTest {
     }
 
     @Test
+    public void testGroupByNull1() {
+        String query = "create view v0 as SELECT column2, COUNT(*) FROM t1 GROUP BY column2";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{column2:Option<string>, col:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>}\n" +
+                "function agg(g: Group<Option<string>, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
+                ");\n" +
+                "(Tagg{.col = count})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v0 = TRtmp{.column2 = gb,.col = aggResult.col},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
     public void testMixAggregateGroupBy() {
         String query = "create view v0 as SELECT column2, SUM(column1) FROM t1 GROUP BY column2";
         String program = this.header(false) +
@@ -180,21 +194,46 @@ public class QueriesTest {
                 "typedef Tagg = Tagg{col:signed<64>}\n" +
                 "function agg(g: Group<string, Tt1>):Tagg =\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var sum = 64'sd0);\n" +
+                "(var sum = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(sum = if first {\n" +
-                "64'sd0} else {\n" +
-                "agg_sum_R(sum, incr)});\n" +
-                "(first = false)}\n" +
+                "(sum = agg_sum_signed_R(sum, incr))}\n" +
                 ");\n" +
                 "(Tagg{.col = sum})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.column2 = gb,.col = aggResult.col},var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testMixAggregateGroupByNull() {
+        String query = "create view v0 as SELECT column2, SUM(column1) FROM t1 GROUP BY column2";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{column2:Option<string>, col:Option<signed<64>>}\n" +
+                "typedef Tagg = Tagg{col:Option<signed<64>>}\n" +
+                "function agg(g: Group<Option<string>, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var sum = None{}: Option<signed<64>>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(sum = agg_sum_signed_N(sum, incr))}\n" +
+                ");\n" +
+                "(Tagg{.col = sum})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.column2 = gb,.col = aggResult.col},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    //@Test
+    public void testHaving() {
+        String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(Column2) > 2";
+        String program = "";
         this.testTranslation(query, program);
     }
 
@@ -206,14 +245,10 @@ public class QueriesTest {
                 "typedef Tagg = Tagg{col0:signed<64>}\n" +
                 "function agg(g: Group<string, Tt1>):Tagg =\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var count = 64'sd0);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(Tagg{.col0 = count})" +
                 this.relations(false) +
@@ -231,14 +266,10 @@ public class QueriesTest {
                 "typedef TRtmp = TRtmp{col:string, col0:signed<64>}\n" +
                 "function agg(g: Group<string, Tt1>):TRtmp =\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var first = true);\n" +
-                "(var count = 64'sd0);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.col = substr(gb, 64'sd0, 64'sd1),.col0 = count})" +
                 this.relations(false) +
@@ -255,22 +286,16 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var min = 64'sd0);\n" +
-                "(var max = 64'sd0);\n" +
+                "var min = (true, 64'sd0): (bool, signed<64>);\n" +
+                "(var max = (true, 64'sd0): (bool, signed<64>));\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(min = if first {\n" +
-                "incr} else {\n" +
-                "agg_min_R(min, incr)});\n" +
+                "(min = agg_min_R(min, incr));\n" +
                 "(var incr0 = v.column1);\n" +
-                "(max = if first {\n" +
-                "incr0} else {\n" +
-                "agg_max_R(max, incr0)});\n" +
-                "(first = false)}\n" +
+                "(max = agg_max_R(max, incr0))}\n" +
                 ");\n" +
-                "(TRtmp{.col = (min + max)})" +
+                "(TRtmp{.col = (min.1 + max.1)})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -284,17 +309,13 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:string}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var min = \"\");\n" +
+                "var min = (true, \"\"): (bool, string);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
-                "(min = if first {\n" +
-                "incr} else {\n" +
-                "agg_min_R(min, incr)});\n" +
-                "(first = false)}\n" +
+                "(min = agg_min_R(min, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = min})" +
+                "(TRtmp{.col = min.1})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -308,20 +329,14 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>, col0:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
-                "(var sum = 64'sd0);\n" +
+                "var count = 64'sd0: signed<64>;\n" +
+                "(var sum = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, incr)});\n" +
+                "(count = agg_count_R(count, incr));\n" +
                 "(var incr1 = v.column1);\n" +
-                "(sum = if first {\n" +
-                "64'sd0} else {\n" +
-                "agg_sum_R(sum, incr1)});\n" +
-                "(first = false)}\n" +
+                "(sum = agg_sum_signed_R(sum, incr1))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count,.col0 = sum})" +
                 this.relations(false) +
@@ -337,14 +352,10 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(false) +
@@ -360,17 +371,13 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<(), (Tt1,Tt2)>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
+                "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp =\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var incr = v.column2);\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, incr)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, incr))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(false) +
@@ -388,15 +395,11 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, incr)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, incr))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(false) +
@@ -410,17 +413,13 @@ public class QueriesTest {
     public void testCountColumnWNull() {
         String query = "create view v0 as SELECT COUNT(column1) FROM t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{col:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
+                "var count = None{}: Option<signed<64>>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(count = if first {\n" +
-                "isNullAsInt(incr)} else {\n" +
-                "agg_count_N(count, incr)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_N(count, incr))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(true) +
@@ -436,17 +435,13 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var avg = (64'sd0, 64'sd0));\n" +
+                "var avg = (64'sd0, 64'sd0): (signed<64>, signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(avg = if first {\n" +
-                "(64'sd1, incr)} else {\n" +
-                "agg_avg_R(avg, incr)});\n" +
-                "(first = false)}\n" +
+                "(avg = agg_avg_signed_R(avg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = avg(avg.1, avg.0)})" +
+                "(TRtmp{.col = avg_signed_R(avg)})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -458,19 +453,15 @@ public class QueriesTest {
     public void testAvgWNull() {
         String query = "create view v0 as SELECT AVG(column1) FROM t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{col:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var avg = (64'sd0, 64'sd0));\n" +
+                "var avg = None{}: Option<(signed<64>, signed<64>)>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(avg = if first {\n" +
-                "(isNullAsInt(incr), unwrapNull(incr))} else {\n" +
-                "agg_avg_N(avg, incr)});\n" +
-                "(first = false)}\n" +
+                "(avg = agg_avg_signed_N(avg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = avg(avg.1, avg.0)})" +
+                "(TRtmp{.col = avg_signed_N(avg)})" +
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -484,14 +475,10 @@ public class QueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var count = 64'sd0);\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(count = if first {\n" +
-                "64'sd1} else {\n" +
-                "agg_count_R(count, 64'sd1)});\n" +
-                "(first = false)}\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.col = count})" +
                 this.relations(true) +
@@ -717,19 +704,15 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var max = 64'sd0);\n" +
+                "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = if (v.column2 == \"foo\") {\n" +
                 "v.column1} else {\n" +
                 "64'sd0});\n" +
-                "(max = if first {\n" +
-                "incr} else {\n" +
-                "agg_max_R(max, incr)});\n" +
-                "(first = false)}\n" +
+                "(max = agg_max_R(max, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = max})" +
+                "(TRtmp{.col = max.1})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -767,17 +750,13 @@ public class QueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp =\n" +
-                "var first = true;\n" +
-                "(var max = 64'sd0);\n" +
+                "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
-                "(max = if first {\n" +
-                "incr} else {\n" +
-                "agg_max_R(max, incr)});\n" +
-                "(first = false)}\n" +
+                "(max = agg_max_R(max, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = max})" +
+                "(TRtmp{.col = max.1})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +

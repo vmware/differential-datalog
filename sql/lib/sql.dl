@@ -41,60 +41,94 @@ function abs_N(value: Option<signed<64>>): Option<signed<64>> =
        _                -> None
    }
 
-function agg_count_R(left: signed<64>, right: 'T): signed<64> =
-    left + 1
+function agg_count_R(aggregate: signed<64>, item: 'T): signed<64> =
+    aggregate + 1
+function agg_min_R(aggregate: (bool, 'T), item: 'T): (bool, 'T) =
+    match (aggregate) {
+        (true, _) -> (false, item),  // first item
+        (_,    x) -> (false, min(x, item))
+    }
+function agg_max_R(aggregate: (bool, 'T), item: 'T): (bool, 'T) =
+    match (aggregate) {
+        (true, _) -> (false, item),  // first item
+        (_,    x) -> (false, max(x, item))
+    }
+function agg_sum_signed_R(aggregate: signed<64>, item: signed<64>): signed<64> =
+    aggregate + item
+function agg_sum_int_R(aggregate: bigint, item: bigint): bigint =
+    aggregate + item
+function agg_avg_signed_R(aggregate: (signed<64>, signed<64>), item: signed<64>): (signed<64>, signed<64>) =
+    (aggregate.0 + 1, aggregate.0 + item)
+function agg_avg_int_R(aggregate: (bigint, bigint), item: bigint): (bigint, bigint) =
+    (aggregate.0 + 1, aggregate.0 + item)
 
-function agg_min_R(left: 'T, right: 'T): 'T = min(left, right)
-function agg_max_R(left: 'T, right: 'T): 'T = max(left, right)
-
-function agg_sum_R(left: signed<64>, right: signed<64>): signed<64> =
-    left + right
-
-function agg_avg_R(left: (signed<64>, signed<64>), right: signed<64>): (signed<64>, signed<64>) =
-    (left.0 + 1, left.0 + right)
-
-function agg_count_N(left: signed<64>, right: Option<'T>): signed<64> =
-   match (right) {
-      Some{x} -> left + 1,
-      None    -> left
+function agg_count_N(aggregate: Option<signed<64>>, item: Option<'T>): Option<signed<64>> =
+   match ((aggregate,item)) {
+      (None, None)       -> None,
+      (None, Some{x})    -> Some{1},
+      (Some{x}, None)    -> Some{x},
+      (Some{x}, Some{_}) -> Some{x + 1}
    }
-
-function agg_min_N(left: 'T, right: Option<'T>): 'T =
-   match (right) {
-      Some{x} -> min(left, x),
-      None    -> left
+function agg_min_N(aggregate: Option<'T>, item: Option<'T>): Option<'T> =
+   match ((aggregate, item)) {
+      (None, None)       -> None,
+      (None, Some{x})    -> Some{x},
+      (Some{x}, None)    -> Some{x},
+      (Some{x}, Some{y}) -> Some{min(x, y)}
    }
-
-function agg_max_N(left: 'T, right: Option<'T>): 'T =
-    match (right) {
-        Some{x} -> max(left, x),
-        None    -> left
+function agg_max_N(aggregate: Option<'T>, item: Option<'T>): Option<'T> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{x},
+        (Some{x}, None)    -> Some{x},
+        (Some{x}, Some{y}) -> Some{max(x, y)}
+    }
+function agg_sum_signed_N(aggregate: Option<signed<64>>, item: Option<signed<64>>): Option<signed<64>> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{x},
+        (Some{x}, None)    -> Some{x},
+        (Some{x}, Some{y}) -> Some{x + y}
+    }   
+function agg_sum_int_N(aggregate: Option<bigint>, item: Option<bigint>): Option<bigint> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{x},
+        (Some{x}, None)    -> Some{x},
+        (Some{x}, Some{y}) -> Some{x + y}
+    }
+function agg_avg_signed_N(aggregate: Option<(signed<64>, signed<64>)>, item: Option<signed<64>>):
+    Option<(signed<64>, signed<64>)> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{(x, 1)},
+        (Some{x}, None)    -> Some{x},
+        (Some{(sum,ct)}, Some{y}) -> Some{(sum + y, ct + 1)}
+    }
+function agg_avg_int_N(aggregate: Option<(bigint, bigint)>, item: Option<bigint>):
+    Option<(bigint, bigint)> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{(x, 1)},
+        (Some{x}, None)    -> Some{x},
+        (Some{(sum,ct)}, Some{y}) -> Some{(sum + y, ct + 1)}
     }
 
-function agg_sum_N(left: signed<64>, right: Option<signed<64>>): signed<64> =
-    match (right) {
-        Some{x} -> left + x,
-        None    -> left
-    }
-
-function agg_avg_N(left: (signed<64>, signed<64>), right: Option<signed<64>>): (signed<64>, signed<64>) =
-    match (right) {
-        Some{x} -> (left.0 + 1, left.1 + x),
-        None    -> left
-    }
-
-function isNullAsInt(value: Option<'T>): signed<64> =
-    match (value) {
-        Some{x} -> 1,
-        None    -> 0
-    }
-
-function unwrapNull(value: Option<signed<64>>): signed<64> =
-    match (value) {
-        Some{x} -> x,
-        None    -> 0
-    }
-
-function avg(sum: signed<64>, count: signed<64>): signed<64> =
+function avg_signed_N(sum_count: Option<(signed<64>, signed<64>)>): Option<signed<64>> =
     /* TODO: should return a double */
-    if (count == 0) 0 else (sum / count)
+    match (sum_count) {
+       None -> None,
+       Some{(sum, count)} -> if (count == 0) Some{0} else Some{sum / count}
+    }
+function avg_int_N(sum_count: Option<(bigint, bigint)>): Option<bigint> =
+    /* TODO: should return a double */
+    match (sum_count) {
+       None -> None,
+       Some{(sum, count)} -> if (count == 0) Some{0} else Some{sum / count}
+    }
+function avg_signed_R(sum_count: (signed<64>, signed<64>)): signed<64> =
+    /* TODO: should return a double */
+    if (sum_count.1 == 0) 0 else (sum_count.0 / sum_count.1)
+function avg_int_R(sum_count: (bigint, bigint)): bigint =
+    /* TODO: should return a double */
+    if (sum_count.1 == 0) 0 else (sum_count.0 / sum_count.1)

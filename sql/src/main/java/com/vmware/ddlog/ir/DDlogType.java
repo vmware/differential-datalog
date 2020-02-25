@@ -80,4 +80,11 @@ public abstract class DDlogType implements DDlogIRNode {
      * @param mayBeNull  Value for the mayBeNull bit.
      */
     public abstract DDlogType setMayBeNull(boolean mayBeNull);
+
+    /**
+     * Get the None{} value of the option type corresponding to this type.
+     */
+    public DDlogExpression getNone() {
+        return new DDlogEStruct("None", this.setMayBeNull(true));
+    }
 }
