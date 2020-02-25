@@ -15,7 +15,7 @@ DDLOGFLAGS="--output-input-relations=O --dynlib"
 
 echo "Running DDlog and generating .so for tests"
 
-(cd ${TEST_DIR} && ddlog -i ${TEST_NAME} -j ${DDLOGFLAGS} -L ${DDLOG_ROOT}/lib -o ${THIS_DIR})
+(cd ${TEST_DIR} && ddlog -i ${TEST_NAME} ${DDLOGFLAGS} -L ${DDLOG_ROOT}/lib -o ${THIS_DIR})
 
 (cd ${TEST_BASE}_ddlog && cargo build --release)
 

@@ -23,7 +23,7 @@ func TestRecordInteger(t *testing.T) {
 	defer r.Free()
 
 	assert.True(t, r.IsInt())
-	assert.Equal(t, uint(49), r.IntBits())
+	assert.Equal(t, 49, r.IntBits())
 	assert.Equal(t, v, r.ToU64())
 	v64, err := r.ToU64Safe()
 	assert.Nil(t, err)
@@ -41,7 +41,7 @@ func TestRecordVector(t *testing.T) {
 
 	rVec.Push(NewRecordBool(false))
 
-	assert.Equal(t, uint(3), rVec.Size())
+	assert.Equal(t, 3, rVec.Size())
 	rBool := rVec.At(1) // true
 	assert.Equal(t, true, rBool.ToBool())
 
@@ -52,10 +52,10 @@ func TestRecordVector(t *testing.T) {
 	r := rVec.(Record)
 	assert.True(t, r.IsVector())
 	rVec = r.AsVector()
-	assert.Equal(t, uint(3), rVec.Size())
+	assert.Equal(t, 3, rVec.Size())
 	rVec, err := r.AsVectorSafe()
 	assert.Nil(t, err)
-	assert.Equal(t, uint(3), rVec.Size())
+	assert.Equal(t, 3, rVec.Size())
 }
 
 func TestRecordTuple(t *testing.T) {
@@ -65,7 +65,7 @@ func TestRecordTuple(t *testing.T) {
 
 	rTuple.Push(NewRecordBool(false))
 
-	assert.Equal(t, uint(3), rTuple.Size())
+	assert.Equal(t, 3, rTuple.Size())
 	rBool := rTuple.At(1) // true
 	assert.Equal(t, true, rBool.ToBool())
 
@@ -76,10 +76,10 @@ func TestRecordTuple(t *testing.T) {
 	r := rTuple.(Record)
 	assert.True(t, r.IsTuple())
 	rTuple = r.AsTuple()
-	assert.Equal(t, uint(3), rTuple.Size())
+	assert.Equal(t, 3, rTuple.Size())
 	rTuple, err := r.AsTupleSafe()
 	assert.Nil(t, err)
-	assert.Equal(t, uint(3), rTuple.Size())
+	assert.Equal(t, 3, rTuple.Size())
 }
 
 func TestRecordSet(t *testing.T) {
@@ -91,7 +91,7 @@ func TestRecordSet(t *testing.T) {
 	rSet.Push(NewRecordBool(false))
 
 	// DDlog does not filter duplicates when building records.
-	assert.Equal(t, uint(3), rSet.Size())
+	assert.Equal(t, 3, rSet.Size())
 	rBool := rSet.At(1) // true
 	assert.Equal(t, true, rBool.ToBool())
 
@@ -102,10 +102,10 @@ func TestRecordSet(t *testing.T) {
 	r := rSet.(Record)
 	assert.True(t, r.IsSet())
 	rSet = r.AsSet()
-	assert.Equal(t, uint(3), rSet.Size())
+	assert.Equal(t, 3, rSet.Size())
 	rSet, err := r.AsSetSafe()
 	assert.Nil(t, err)
-	assert.Equal(t, uint(3), rSet.Size())
+	assert.Equal(t, 3, rSet.Size())
 }
 
 func TestRecordMap(t *testing.T) {
