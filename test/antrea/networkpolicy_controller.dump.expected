@@ -13,11 +13,21 @@ Adding policies
 LOG (0): createAppliedToGroup ns1.policy1
 LOG (0): createAppliedToGroup ns1.policy1
 AppliedToGroup:
-AppliedToGroup{.uid = k8spolicy_UID{.uid = "dbd5cd23-1488-56b6-925e-7354a2189c7d"}, .name = "dbd5cd23-1488-56b6-925e-7354a2189c7d", .selector = types_GroupSelector{.normalizedName = "namespace=ns1 And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorNS{.ns = "ns1"}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}: +1
+AppliedToGroup{.descr = AppliedToGroupDescr{.uid = k8spolicy_UID{.uid = "dbd5cd23-1488-56b6-925e-7354a2189c7d"}, .name = "dbd5cd23-1488-56b6-925e-7354a2189c7d", .selector = types_GroupSelector{.normalizedName = "namespace=ns1 And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorNS{.ns = "ns1"}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}, .podsByNode = [], .span = []}: +1
+AppliedToGroupDescr:
+AppliedToGroupDescr{.uid = k8spolicy_UID{.uid = "dbd5cd23-1488-56b6-925e-7354a2189c7d"}, .name = "dbd5cd23-1488-56b6-925e-7354a2189c7d", .selector = types_GroupSelector{.normalizedName = "namespace=ns1 And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorNS{.ns = "ns1"}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}: +1
+AppliedToGroupPodsByNode:
+AppliedToGroupPodsByNode{.appliedToGroup = k8spolicy_UID{.uid = "dbd5cd23-1488-56b6-925e-7354a2189c7d"}, .podsByNode = []}: +1
+AppliedToGroupSpan:
+AppliedToGroupSpan{.appliedToGroup = k8spolicy_UID{.uid = "dbd5cd23-1488-56b6-925e-7354a2189c7d"}, .span = []}: +1
 NetworkPolicy:
-NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: +1
+NetworkPolicy{.descr = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .span = []}: +1
+NetworkPolicyDescr:
+NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: +1
 NetworkPolicyExt:
-NetworkPolicyExt{.policy = NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = []}: +1
+NetworkPolicyExt{.policy = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = []}: +1
+NetworkPolicySpan:
+NetworkPolicySpan{.policy = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .span = []}: +1
 Ok8spolicy.NetworkPolicy:
 k8spolicy_NetworkPolicy{.name = "ns1.policy1", .namespace = "ns1", .uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .spec = k8spolicy_NetworkPolicySpec{.podSelector = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}, .ingress = [], .egress = [], .policyTypes = []}}: +1
 Making changes
@@ -26,15 +36,24 @@ LOG (0): createAppliedToGroup ns1.policy1
 LOG (0): createAppliedToGroup ns1.policy1
 LOG (0): createAppliedToGroup ns1.policy1
 AddressGroup:
-AddressGroup{.uid = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .name = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}: +1
+AddressGroup{.descr = AddressGroupDescr{.uid = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .name = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}, .addresses = [], .span = []}: +1
+AddressGroupAddresses:
+AddressGroupAddresses{.addressGroup = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .addresses = []}: +1
+AddressGroupDescr:
+AddressGroupDescr{.uid = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .name = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}: +1
+AddressGroupSpan:
+AddressGroupSpan{.addressGroup = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .span = []}: +1
 NetworkPolicy:
-NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: -1
-NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [types_NetworkPolicyRule{.direction = types_DirectionIn{}, .from = types_NetworkPolicyPeer{.addressGroups = ["df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"], .ipBlocks = []}, .to = types_NetworkPolicyPeer{.addressGroups = [], .ipBlocks = []}, .services = [types_Service{.protocol = "TCP", .port = std_None{}}]}], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: +1
+NetworkPolicy{.descr = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .span = []}: -1
+NetworkPolicy{.descr = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [types_NetworkPolicyRule{.direction = types_DirectionIn{}, .from = types_NetworkPolicyPeer{.addressGroups = ["df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"], .ipBlocks = []}, .to = types_NetworkPolicyPeer{.addressGroups = [], .ipBlocks = []}, .services = [types_Service{.protocol = "TCP", .port = std_None{}}]}], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .span = []}: +1
 NetworkPolicyAddressGroup:
 NetworkPolicyAddressGroup{.np = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .addressGroup = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}: +1
+NetworkPolicyDescr:
+NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: -1
+NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [types_NetworkPolicyRule{.direction = types_DirectionIn{}, .from = types_NetworkPolicyPeer{.addressGroups = ["df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"], .ipBlocks = []}, .to = types_NetworkPolicyPeer{.addressGroups = [], .ipBlocks = []}, .services = [types_Service{.protocol = "TCP", .port = std_None{}}]}], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}: +1
 NetworkPolicyExt:
-NetworkPolicyExt{.policy = NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = []}: -1
-NetworkPolicyExt{.policy = NetworkPolicy{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [types_NetworkPolicyRule{.direction = types_DirectionIn{}, .from = types_NetworkPolicyPeer{.addressGroups = ["df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"], .ipBlocks = []}, .to = types_NetworkPolicyPeer{.addressGroups = [], .ipBlocks = []}, .services = [types_Service{.protocol = "TCP", .port = std_None{}}]}], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = [AddressGroup{.uid = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .name = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}]}: +1
+NetworkPolicyExt{.policy = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = []}: -1
+NetworkPolicyExt{.policy = NetworkPolicyDescr{.uid = k8spolicy_UID{.uid = "156bc79a-ee16-47d9-82b6-8bc48849af74"}, .name = "ns1.policy1", .namespace = "ns1", .rules = [types_NetworkPolicyRule{.direction = types_DirectionIn{}, .from = types_NetworkPolicyPeer{.addressGroups = ["df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"], .ipBlocks = []}, .to = types_NetworkPolicyPeer{.addressGroups = [], .ipBlocks = []}, .services = [types_Service{.protocol = "TCP", .port = std_None{}}]}], .appliedToGroups = ["dbd5cd23-1488-56b6-925e-7354a2189c7d"]}, .addressGroups = [AddressGroupDescr{.uid = k8spolicy_UID{.uid = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8"}, .name = "df49fa6b-0346-5dc9-9bb2-3da4fdbe8dd8", .selector = types_GroupSelector{.normalizedName = "namespaceSelector= And podSelector=l1 In [l1v1]", .nsSelector = types_NSSelectorLS{.selector = k8spolicy_LabelSelector{.matchLabels = [], .matchExpressions = []}}, .podSelector = std_Some{.x = k8spolicy_LabelSelector{.matchLabels = [("l1", "l1v1")], .matchExpressions = []}}}}]}: +1
 Ok8spolicy.Namespace:
 k8spolicy_Namespace{.name = "ns1", .uid = k8spolicy_UID{.uid = "e340296d-84e2-48b2-9b7a-91641db60db5"}, .labels = []}: -1
 k8spolicy_Namespace{.name = "ns1", .uid = k8spolicy_UID{.uid = "e340296d-84e2-48b2-9b7a-91641db60db5"}, .labels = [("l1", "l1v1")]}: +1
