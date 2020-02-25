@@ -871,8 +871,16 @@ pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
     s[from..to].to_string()
 }
 
+pub fn std_string_replace(s: &String, from: &String, to: &String) -> String {
+    s.replace(from, to)
+}
+
 pub fn std_string_starts_with(s: &String, prefix: &String) -> bool {
     s.starts_with(prefix)
+}
+
+pub fn std_string_trim(s: &String) -> String {
+    s.trim().to_string()
 }
 
 pub fn std_string_len(s: &String) -> u64 {
@@ -884,6 +892,10 @@ pub fn std_string_to_bytes(s: &String) -> std_Vec<u8> {
 }
 
 pub fn std_str_to_lower(s: &String) -> String {
+    s.to_lowercase()
+}
+
+pub fn std_string_to_lowercase(s: &String) -> String {
     s.to_lowercase()
 }
 

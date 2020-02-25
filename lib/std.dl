@@ -116,18 +116,41 @@ extern function hex(x: 'X): string
 extern function parse_dec_u64(s: string): Option<bit<64>>
 extern function parse_dec_i64(s: string): Option<signed<64>>
 
-extern function string_join(strings: Vec<string>, sep: string): string
-extern function string_split(s: string, sep: string): Vec<string>
 extern function string_contains(s1: string, s2: string): bool
+extern function string_join(strings: Vec<string>, sep: string): string
 extern function string_len(s: string): bit<64>
-extern function string_to_bytes(s: string): Vec<u8>
+
+/* Replaces all matches of `from` with `to`.
+ *
+ * `replace` creates a new string, and copies the data from `s` into it. While
+ * doing so, it attempts to find matches of a pattern. If it finds any, it
+ * replaces them with `to`.
+ */
+extern function string_replace(s: string, from: string, to: string): string
+
+extern function string_split(s: string, sep: string): Vec<string>
+
+extern function string_starts_with(s: string, prefix: string): bool
 
 /* Substring of `s` that begins at `start` and continues up to, but not
  * including, `end`.*/
 extern function string_substr(s: string, start: bit<64>, end: bit<64>): string
 
-extern function string_starts_with(s: string, prefix: string): bool
+extern function string_to_bytes(s: string): Vec<u8>
 
+/* Returns a string slice with leading and trailing whitespace removed.
+ *
+ * 'Whitespace' is defined according to the terms of the Unicode Derived
+ * Core Property White_Space
+ */
+extern function string_trim(s: string): string
+
+/* Returns the lowercase equivalent of `s` as a new string.
+ *
+ * 'Lowercase' is defined according to the terms of the Unicode Derived
+ * Core Property Lowercase.
+ */
+extern function string_to_lowercase(s: string): string
 extern function str_to_lower(s: string): string
 
 /*
