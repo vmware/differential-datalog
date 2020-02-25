@@ -16,8 +16,14 @@ public class DDlogESet extends DDlogExpression {
     final DDlogExpression rval;
 
     public DDlogESet(DDlogExpression lval, DDlogExpression rval) {
+        this(lval, rval, false);
+    }
+
+    public DDlogESet(DDlogExpression lval, DDlogExpression rval, boolean typed) {
         super(DDlogTTuple.emptyTupleType);
         this.lval = lval;
+        if (typed)
+            rval = new DDlogETyped(rval, rval.getType());
         this.rval = rval;
     }
 

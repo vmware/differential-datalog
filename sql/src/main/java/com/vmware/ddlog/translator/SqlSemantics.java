@@ -104,9 +104,9 @@ public class SqlSemantics {
                     if ((i & 1) == 1) {
                         function += "N";
                         leftType = withNull;
-                        leftMatch = new DDlogEStruct("Some", Collections.singletonList(
+                        leftMatch = new DDlogEStruct("Some", leftType,
                                 new DDlogEStruct.FieldValue("x",
-                                        leftMatch)), leftType);
+                                        leftMatch));
                     } else {
                         function += "R";
                         leftType = raw;
@@ -114,8 +114,8 @@ public class SqlSemantics {
                     if ((i & 2) == 2) {
                         function += "N";
                         rightType = withNull;
-                        rightMatch = new DDlogEStruct("Some", Collections.singletonList(
-                                new DDlogEStruct.FieldValue("x", rightMatch)), rightType);
+                        rightMatch = new DDlogEStruct("Some", rightType,
+                                new DDlogEStruct.FieldValue("x", rightMatch));
                     } else {
                         function += "R";
                         rightType = raw;
@@ -144,16 +144,16 @@ public class SqlSemantics {
                                         new DDlogEVar("right", rightType)),
                                 Arrays.asList(new DDlogEMatch.Case(
                                                 new DDlogETuple(leftMatch, rightMatch),
-                                                new DDlogEStruct("Some", Collections.singletonList(
+                                                new DDlogEStruct("Some", type,
                                                         new DDlogEStruct.FieldValue("x",
                                                                 new DDlogEBinOp(op,
-                                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw)))
-                                                ), type)),
+                                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw))
+                                                ))),
                                         new DDlogEMatch.Case(
                                                 new DDlogETuple(
                                                         new DDlogEPHolder(),
                                                         new DDlogEPHolder()),
-                                                new DDlogEStruct("None", Collections.emptyList(), type)))
+                                                new DDlogEStruct("None", type)))
                         );
                     }
                     DDlogFunction func = new DDlogFunction(

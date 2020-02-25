@@ -29,7 +29,7 @@ public class DDlogAtom implements DDlogIRNode {
             return this.relation + "(" + String.join(",",
                 Linq.map(struct.fields, f ->
                         (f.getName().isEmpty() ? "" : "." + f.getName()) + " = "
-                                + f.getValue().toString())) + ")";
+                                + f.getValue().toString(), String.class)) + ")";
         }
         return this.relation + "[" + this.val.toString() + "]";
     }

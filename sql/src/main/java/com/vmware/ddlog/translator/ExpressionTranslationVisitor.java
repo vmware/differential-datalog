@@ -224,7 +224,6 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
          return result;
     }
 
-    @SuppressWarnings("unused")
     private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
             case "substr":
@@ -238,7 +237,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                     throw new RuntimeException("No arguments for aggregate?");
                 return args.get(0).getType();
             case "count":
-                return DDlogTSigned.signed64;
+                if (args.size() == 0)
+                    return DDlogTSigned.signed64;
+                return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
             default:
                 throw new UnsupportedOperationException(function);
         }
@@ -270,7 +271,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     private DDlogExpression makeNull() {
-        return new DDlogEStruct("None", new ArrayList<DDlogEStruct.FieldValue>(), new
+        return new DDlogEStruct("None", new
                 DDlogTUser("Option", false));
     }
 
