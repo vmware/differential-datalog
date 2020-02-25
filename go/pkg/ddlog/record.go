@@ -95,8 +95,8 @@ type Record interface {
 	IsStruct() bool
 
 	// IntBits returns the minimum number of bits required to represent the record if it is an
-	// integer record. It returns 0 is the record is not an integer record.
-	IntBits() uint
+	// integer record. It returns 0 if the record is not an integer record.
+	IntBits() int
 
 	// ToBool returns the value of a boolean record. Behavior is undefined if the record is not
 	// a boolean.
@@ -184,9 +184,9 @@ type RecordTuple interface {
 	Push(rValue Record)
 	// At returns the i-th element of the tuple. Returns a NULL record if the tuple has fewer
 	// than i elements.
-	At(idx uint) Record
+	At(idx int) Record
 	// Size returns the number of elements in the tuple.
-	Size() uint
+	Size() int
 }
 
 // RecordVector extends the Record interface for DDlog records of type vector.
@@ -196,9 +196,9 @@ type RecordVector interface {
 	Push(rValue Record)
 	// At returns the i-th element of the vector. Returns a NULL record if the vector has fewer
 	// than i elements.
-	At(idx uint) Record
+	At(idx int) Record
 	// Size returns the number of elements in the vector.
-	Size() uint
+	Size() int
 }
 
 // RecordMap extends the Record interface for DDlog records of type map.
@@ -208,15 +208,15 @@ type RecordMap interface {
 	Push(rKey, rValue Record)
 	// KeyAt returns the i-th key of the map. Returns a NULL record if the map has fewer than i
 	// key-value pairs.
-	KeyAt(idx uint) Record
+	KeyAt(idx int) Record
 	// ValueAt returns the i-th value of the map. Returns a NULL record if the map has fewer
 	// than i key-value pairs.
-	ValueAt(idx uint) Record
+	ValueAt(idx int) Record
 	// At returns the i-th key-value pair of the map. Returns a NULL record if the map has fewer
 	// than i key-value pairs.
-	At(idx uint) (Record, Record)
+	At(idx int) (Record, Record)
 	// Size returns the number of key-value pairs in the map.
-	Size() uint
+	Size() int
 }
 
 // RecordSet extends the Record interface for DDlog records of type set.
@@ -226,9 +226,9 @@ type RecordSet interface {
 	Push(rValue Record)
 	// At returns the i-th element of the set. Returns a NULL record if the set has fewer than i
 	// elements.
-	At(idx uint) Record
+	At(idx int) Record
 	// Size returns the number of elements in the set.
-	Size() uint
+	Size() int
 }
 
 // RecordStruct extends the Record interface for DDlog records of type struct.
@@ -238,7 +238,7 @@ type RecordStruct interface {
 	Name() string
 	// At returns the i-th field of the struct. Returns a NULL record if the struct has fewer
 	// than i fields.
-	At(idx uint) Record
+	At(idx int) Record
 }
 
 type record struct {
@@ -315,8 +315,8 @@ func (r *record) IsStruct() bool {
 	return bool(C.ddlog_is_struct(r.ptr()))
 }
 
-func (r *record) IntBits() uint {
-	return uint(C.ddlog_int_bits(r.ptr()))
+func (r *record) IntBits() int {
+	return int(C.ddlog_int_bits(r.ptr()))
 }
 
 func (r *record) ToBool() bool {
@@ -526,7 +526,7 @@ func (rStruct *recordStruct) Name() string {
 	return C.GoStringN(cs, C.int(len))
 }
 
-func (rStruct *recordStruct) At(idx uint) Record {
+func (rStruct *recordStruct) At(idx int) Record {
 	r := C.ddlog_get_struct_field(rStruct.ptr(), C.size_t(idx))
 	return &record{r}
 }
@@ -551,13 +551,13 @@ func (rTuple *recordTuple) Push(rValue Record) {
 	C.ddlog_tuple_push(rTuple.ptr(), rValue.ptr())
 }
 
-func (rTuple *recordTuple) At(idx uint) Record {
+func (rTuple *recordTuple) At(idx int) Record {
 	r := C.ddlog_get_tuple_field(rTuple.ptr(), C.size_t(idx))
 	return &record{r}
 }
 
-func (rTuple *recordTuple) Size() uint {
-	return uint(C.ddlog_get_tuple_size(rTuple.ptr()))
+func (rTuple *recordTuple) Size() int {
+	return int(C.ddlog_get_tuple_size(rTuple.ptr()))
 }
 
 // NewRecordPair is a convenience way to create a 2-tuple. Such tuples are useful when constructing
@@ -592,22 +592,22 @@ func (rMap *recordMap) Push(rKey, rValue Record) {
 	C.ddlog_map_push(rMap.ptr(), rKey.ptr(), rValue.ptr())
 }
 
-func (rMap *recordMap) KeyAt(idx uint) Record {
+func (rMap *recordMap) KeyAt(idx int) Record {
 	r := C.ddlog_get_map_key(rMap.ptr(), C.size_t(idx))
 	return &record{r}
 }
 
-func (rMap *recordMap) ValueAt(idx uint) Record {
+func (rMap *recordMap) ValueAt(idx int) Record {
 	r := C.ddlog_get_map_val(rMap.ptr(), C.size_t(idx))
 	return &record{r}
 }
 
-func (rMap *recordMap) At(idx uint) (Record, Record) {
+func (rMap *recordMap) At(idx int) (Record, Record) {
 	return rMap.KeyAt(idx), rMap.ValueAt(idx)
 }
 
-func (rMap *recordMap) Size() uint {
-	return uint(C.ddlog_get_map_size(rMap.ptr()))
+func (rMap *recordMap) Size() int {
+	return int(C.ddlog_get_map_size(rMap.ptr()))
 }
 
 // NewRecordVector creates a vector record with specified elements.
@@ -631,13 +631,13 @@ func (rVec *recordVector) Push(rValue Record) {
 	C.ddlog_vector_push(rVec.ptr(), rValue.ptr())
 }
 
-func (rVec *recordVector) At(idx uint) Record {
+func (rVec *recordVector) At(idx int) Record {
 	r := C.ddlog_get_vector_elem(rVec.ptr(), C.size_t(idx))
 	return &record{r}
 }
 
-func (rVec *recordVector) Size() uint {
-	return uint(C.ddlog_get_vector_size(rVec.ptr()))
+func (rVec *recordVector) Size() int {
+	return int(C.ddlog_get_vector_size(rVec.ptr()))
 }
 
 // NewRecordSet creates a set record with specified elements.
@@ -661,13 +661,13 @@ func (rSet *recordSet) Push(rValue Record) {
 	C.ddlog_set_push(rSet.ptr(), rValue.ptr())
 }
 
-func (rSet *recordSet) At(idx uint) Record {
+func (rSet *recordSet) At(idx int) Record {
 	r := C.ddlog_get_set_elem(rSet.ptr(), C.size_t(idx))
 	return &record{r}
 }
 
-func (rSet *recordSet) Size() uint {
-	return uint(C.ddlog_get_set_size(rSet.ptr()))
+func (rSet *recordSet) Size() int {
+	return int(C.ddlog_get_set_size(rSet.ptr()))
 }
 
 // NewRecordSome is a convenience wrapper around NewRecordStructStatic for the std.Some
