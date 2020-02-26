@@ -2,8 +2,10 @@
 
 use super::record::{FromRecord, IntoRecord, Mutator, Record};
 use super::uint;
+use ordered_float::OrderedFloat;
 use abomonation::Abomonation;
 use num::bigint::BigInt;
+use num::FromPrimitive;
 pub use num::bigint::Sign;
 #[cfg(test)]
 use num::bigint::ToBigInt;
@@ -66,6 +68,12 @@ impl Int {
     pub fn from_i128(v: i128) -> Int {
         Int { x: BigInt::from(v) }
     }
+    pub fn from_float(v: OrderedFloat<f32>) -> Int {
+        Int { x: BigInt::from_f32(*v).unwrap() }
+    }
+    pub fn from_double(v: OrderedFloat<f64>) -> Int {
+        Int { x: BigInt::from_f64(*v).unwrap() }
+    }
     pub fn from_Uint(v: uint::Uint) -> Int {
         v.to_Int().unwrap()
     }
@@ -91,6 +99,18 @@ impl Int {
     }
     pub fn to_i128(&self) -> Option<i128> {
         self.x.to_i128()
+    }
+    pub fn to_float(&self) -> Option<OrderedFloat<f32>> {
+        match self.x.to_f32() {
+            None    => None,
+            Some(x) => Some(OrderedFloat::<f32>(x)),
+        }
+    }
+    pub fn to_double(&self) -> Option<OrderedFloat<f64>> {
+        match self.x.to_f64() {
+            None    => None,
+            Some(x) => Some(OrderedFloat::<f64>(x)),
+        }
     }
     pub fn to_Uint(&self) -> Option<uint::Uint> {
         self.x.to_biguint().map(uint::Uint::from_biguint)

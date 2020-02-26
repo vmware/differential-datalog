@@ -546,7 +546,7 @@ compileLib d specname rs_code = (typesLib, valueLib, mainLib)
     typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d
-    funcs = vcat $ (map (mkFunc d) fextern ++ map (mkFunc d) fdef) 
+    funcs = vcat $ (map (mkFunc d) fextern ++ map (mkFunc d) fdef)
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -2323,7 +2323,11 @@ mkExpr' _ _ EPHolder{} = ("_", ELVal)
 -- * Use type ascriptions in LHS of assignment
 -- * Do type coercion for integer constants
 -- * Otherwise, introduce an intermediate variable with explicit type
-mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
+mkExpr' d ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
+                         | isint && toDouble
+                                         = (parens $ e' <> ".to_double().unwrap()", categ)
+                         | isint && toFloat
+                                         = (parens $ e' <+> ".to_float().unwrap()", categ)
                          | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
                          | otherwise     = (braces $ "let __typed:" <+> opt_ref <> mkType exprTSpec <+> "=" <+> e' <> "; __typed", categ)
     where
@@ -2334,6 +2338,8 @@ mkExpr' _ ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
     isint = case e of
                  EInt{} -> True
                  _      -> False
+    toDouble = isDouble d exprTSpec
+    toFloat = isFloat d exprTSpec
 
 mkExpr' d ctx EAs{..} | narrow_from && narrow_to && width_cmp /= GT
                       -- use Rust's type cast syntax to convert between
