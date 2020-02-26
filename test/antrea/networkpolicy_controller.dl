@@ -23,15 +23,15 @@ relation AppliedToGroupDescr (
 )
 
 // PodsByNode is a mapping from nodeName to a set of Pods on the Node.
-relation AppliedToGroupPodsByNode(appliedToGroup: k8s.UID, podsByNode: Map<string, Set<k8s.UID>>)
+relation AppliedToGroupPodsByNode(appliedToGroup: k8s.UID, podsByNode: Map<string, Set<k8s.PodReference>>)
 
 // AppliedToGroupSpan: set of node names that this AddressGroup should be sent to.
-relation AppliedToGroupSpan(appliedToGroup: k8s.UID, span: Set<k8s.UID>)
+relation AppliedToGroupSpan(appliedToGroup: k8s.UID, span: Set<string>)
 
 output relation AppliedToGroup (
     descr: AppliedToGroupDescr,
-    podsByNode: Map<string, Set<k8s.UID>>,
-    span: Set<k8s.UID>
+    podsByNode: Map<string, Set<k8s.PodReference>>,
+    span: Set<string>
 )
 
 AppliedToGroup(descr, podsByNode, span) :-
@@ -70,12 +70,12 @@ AddressGroupAddresses(gid, set_empty()) :-
     not AddressGroupAddress(.addressGroup = gid).
 
 // AddressGroupSpan: set of node names that this AddressGroup should be sent to.
-relation AddressGroupSpan(addressGroup: k8s.UID, span: Set<k8s.UID>)
+relation AddressGroupSpan(addressGroup: k8s.UID, span: Set<string>)
 
 output relation AddressGroup (
     descr: AddressGroupDescr,
     addresses: Set<string>,
-    span: Set<k8s.UID>
+    span: Set<string>
 )
 
 AddressGroup(descr, addresses, span) :-
@@ -98,11 +98,11 @@ relation NetworkPolicyDescr (
 )
 
 // NetworkPolicySpan: set of node names that this NetworkPolicyDescr should be sent to.
-relation NetworkPolicySpan(policy: k8s.UID, span: Set<k8s.UID>)
+relation NetworkPolicySpan(policy: k8s.UID, span: Set<string>)
 
 output relation NetworkPolicy(
     descr: NetworkPolicyDescr,
-    span: Set<k8s.UID>)
+    span: Set<string>)
 
 NetworkPolicy(descr, span) :-
     descr in NetworkPolicyDescr(),
@@ -370,9 +370,9 @@ AddressGroupSpan(k8s.UID{addressGroup}, set_empty()) :-
 // AppliedToGroupPod: pods that belong to a group along with nodes
 // where the pod is scheduled;
 // used to compute AppliedToGroupPodsByNode and AppliedToGroupSpan.
-relation AppliedToGroupPod(appliedToGroup: k8s.UID, pod: k8s.UID, nodeName: string)
+relation AppliedToGroupPod(appliedToGroup: k8s.UID, pod: k8s.PodReference, nodeName: string)
 
-AppliedToGroupPod(appliedToGroup, pod.uid, pod.spec.nodeName) :-
+AppliedToGroupPod(appliedToGroup, k8s.PodReference{pod.name, pod.namespace}, pod.spec.nodeName) :-
     // TODO(leonid): Is it correct that we only consider selectors with namespace name set?
     AppliedToGroupDescr(.uid = appliedToGroup,
                         .selector = GroupSelector{.nsSelector = NSSelectorNS{namespace}, .podSelector = podSelector}),
@@ -388,8 +388,8 @@ AppliedToGroupPodsByNode(appliedToGroup, podsByNode) :-
     var podsByNode = Aggregate((appliedToGroup), group2map((nodeName, podsOnNode))).
 
 AppliedToGroupSpan(appliedToGroup, span) :-
-    AppliedToGroupPod(appliedToGroup, pod, _),
-    var span = Aggregate((appliedToGroup), group2set(pod)).
+    AppliedToGroupPod(appliedToGroup, _, nodeName),
+    var span = Aggregate((appliedToGroup), group2set(nodeName)).
 
 // Handle the case when there are no pods in the group.
 AppliedToGroupSpan(uid, set_empty()),
