@@ -2,8 +2,8 @@
 
 use super::*;
 use differential_datalog::program::Response;
-use ordered_float::OrderedFloat;
 use flatbuffers as fbrt;
+use ordered_float::OrderedFloat;
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
 pub trait FromFlatBuffer<T>: Sized {
