@@ -1,6 +1,7 @@
 //! An untyped representation of DDlog values and database update commands.
 
 use num::{BigInt, BigUint, ToPrimitive};
+use ordered_float::OrderedFloat;
 use std::borrow::Cow;
 use std::collections::{btree_map, BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
@@ -12,7 +13,6 @@ use std::ptr::{null, null_mut};
 use std::slice;
 use std::string::ToString;
 use std::vec;
-use ordered_float::OrderedFloat;
 
 use serde::{Deserialize, Serialize};
 
@@ -947,7 +947,7 @@ impl IntoRecord for OrderedFloat<f32> {
 }
 
 impl Mutator<OrderedFloat<f32>> for Record {
-    fn mutate(&self, v: &mut OrderedFloat::<f32>) -> Result<(), String> {
+    fn mutate(&self, v: &mut OrderedFloat<f32>) -> Result<(), String> {
         *v = OrderedFloat::<f32>::from_record(self)?;
         Ok(())
     }
@@ -969,7 +969,7 @@ impl IntoRecord for OrderedFloat<f64> {
 }
 
 impl Mutator<OrderedFloat<f64>> for Record {
-    fn mutate(&self, v: &mut OrderedFloat::<f64>) -> Result<(), String> {
+    fn mutate(&self, v: &mut OrderedFloat<f64>) -> Result<(), String> {
         *v = OrderedFloat::<f64>::from_record(self)?;
         Ok(())
     }
