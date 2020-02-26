@@ -2,6 +2,7 @@
 
 use super::*;
 use differential_datalog::program::Response;
+use ordered_float::OrderedFloat;
 use flatbuffers as fbrt;
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
@@ -36,6 +37,50 @@ pub trait ToFlatBufferVectorElement<'b>: Sized {
 impl FromFlatBuffer<bool> for bool {
     fn from_flatbuf(v: bool) -> Response<bool> {
         Ok(v)
+    }
+}
+
+impl FromFlatBuffer<f32> for OrderedFloat<f32> {
+    fn from_flatbuf(v: f32) -> Response<OrderedFloat<f32>> {
+        Ok(OrderedFloat(v))
+    }
+}
+
+impl<'b> ToFlatBuffer<'b> for OrderedFloat<f32> {
+    type Target = f32;
+
+    fn to_flatbuf(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
+        **self
+    }
+}
+
+impl<'b> ToFlatBufferVectorElement<'b> for OrderedFloat<f32> {
+    type Target = f32;
+
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
+        **self
+    }
+}
+
+impl FromFlatBuffer<f64> for OrderedFloat<f64> {
+    fn from_flatbuf(v: f64) -> Response<OrderedFloat<f64>> {
+        Ok(OrderedFloat(v))
+    }
+}
+
+impl<'b> ToFlatBuffer<'b> for OrderedFloat<f64> {
+    type Target = f64;
+
+    fn to_flatbuf(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
+        **self
+    }
+}
+
+impl<'b> ToFlatBufferVectorElement<'b> for OrderedFloat<f64> {
+    type Target = f64;
+
+    fn to_flatbuf_vector_element(&self, _fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
+        **self
     }
 }
 

@@ -12,6 +12,7 @@ use std::ptr::{null, null_mut};
 use std::slice;
 use std::string::ToString;
 use std::vec;
+use ordered_float::OrderedFloat;
 
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +51,8 @@ pub fn format_ddlog_str(s: &str, f: &mut fmt::Formatter) -> fmt::Result {
 pub enum Record {
     Bool(bool),
     Int(BigInt),
+    Float(OrderedFloat<f32>),
+    Double(OrderedFloat<f64>),
     String(String),
     /// Value serialized in a string.  The first field stores the name of the
     /// serialization format, e.g., "json".
@@ -66,6 +69,8 @@ impl fmt::Display for Record {
             Record::Bool(true) => write!(f, "true"),
             Record::Bool(false) => write!(f, "false"),
             Record::Int(i) => i.fmt(f),
+            Record::Float(d) => write!(f, "{}", d),
+            Record::Double(d) => write!(f, "{}", d),
             Record::String(s) => format_ddlog_str(s.as_ref(), f),
             Record::Serialized(n, s) => {
                 write!(f, "#{}", n)?;
@@ -205,6 +210,48 @@ pub unsafe extern "C" fn ddlog_is_int(rec: *const Record) -> bool {
     match rec.as_ref() {
         Some(Record::Int(_)) => true,
         _ => false,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_is_float(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Float(_)) => true,
+        _ => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_float(v: f32) -> *mut Record {
+    Box::into_raw(Box::new(Record::Float(OrderedFloat(v))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_float(rec: *const Record) -> f32 {
+    match rec.as_ref() {
+        Some(Record::Float(f)) => **f,
+        _ => 0.0f32,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_is_double(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Double(_)) => true,
+        _ => false,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_double(v: f64) -> *mut Record {
+    Box::into_raw(Box::new(Record::Double(OrderedFloat(v))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_double(rec: *const Record) -> f64 {
+    match rec.as_ref() {
+        Some(Record::Double(f)) => **f,
+        _ => 0.0f64,
     }
 }
 
@@ -880,6 +927,50 @@ impl IntoRecord for u64 {
 impl Mutator<u64> for Record {
     fn mutate(&self, v: &mut u64) -> Result<(), String> {
         *v = u64::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for OrderedFloat<f32> {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Float(i) => Result::Ok(*i),
+            v => Result::Err(format!("not a float {:?}", *v)),
+        }
+    }
+}
+
+impl IntoRecord for OrderedFloat<f32> {
+    fn into_record(self) -> Record {
+        Record::Float(self)
+    }
+}
+
+impl Mutator<OrderedFloat<f32>> for Record {
+    fn mutate(&self, v: &mut OrderedFloat::<f32>) -> Result<(), String> {
+        *v = OrderedFloat::<f32>::from_record(self)?;
+        Ok(())
+    }
+}
+
+impl FromRecord for OrderedFloat<f64> {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Double(i) => Result::Ok(*i),
+            v => Result::Err(format!("not a double {:?}", *v)),
+        }
+    }
+}
+
+impl IntoRecord for OrderedFloat<f64> {
+    fn into_record(self) -> Record {
+        Record::Double(self)
+    }
+}
+
+impl Mutator<OrderedFloat<f64>> for Record {
+    fn mutate(&self, v: &mut OrderedFloat::<f64>) -> Result<(), String> {
+        *v = OrderedFloat::<f64>::from_record(self)?;
         Ok(())
     }
 }

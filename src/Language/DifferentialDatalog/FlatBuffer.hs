@@ -321,6 +321,8 @@ typeIsScalar x =
          TBool{}     -> True
          TBit{..}    -> typeWidth <= 64
          TSigned{..} -> typeWidth <= 64
+         TDouble{}   -> True
+         TFloat{}    -> True
          _           -> False
 
 -- 'true' iff manufacturing a Java convenience type for the DDlog type requires an

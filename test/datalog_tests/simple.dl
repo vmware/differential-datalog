@@ -1268,14 +1268,14 @@ function filter_C0(xs: Vec<Alt>): Vec<bigint> =
 
 // Test the use of continue, break, and return in function call arguments.
 
-function double(x: bigint): bigint = x << 1
+function mult2(x: bigint): bigint = x << 1
 
 function double_evens(xs: Vec<bigint>): Vec<bigint> =
 {
     var res: Vec<bigint> = vec_empty();
 
     for (x in xs) {
-        vec_push(res, double({
+        vec_push(res, mult2({
             if (x == 0) {
                 break
             } else if (x < 0) {

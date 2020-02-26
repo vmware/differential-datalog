@@ -587,6 +587,16 @@ extern bool ddlog_get_bool(const ddlog_record *rec);
 extern bool ddlog_is_int(const ddlog_record *rec);
 
 /*
+ * Returns `true` if `rec` is a float and `false` otherwise.
+ */
+extern bool ddlog_is_float(const ddlog_record *rec);
+
+/*
+ * Returns `true` if `rec` is a double and `false` otherwise.
+ */
+extern bool ddlog_is_double(const ddlog_record *rec);
+
+/*
  * Returns the fewest bits necessary to express the integer value,
  * not including the sign.
  *
@@ -646,6 +656,30 @@ extern ddlog_record* ddlog_i64(int64_t v);
  * fit into 64 bits.
  */
 extern int64_t ddlog_get_i64(const ddlog_record *rec);
+
+/*
+ * Create a float value.
+ */
+extern ddlog_record* ddlog_float(float f);
+
+/*
+ * Retrieves the value of a float.
+ *
+ * Returns `0` if `rec` is not a float.
+ */
+extern float ddlog_get_float(const ddlog_record* rec);
+
+/*
+ * Create a double value.
+ */
+extern ddlog_record* ddlog_double(float f);
+
+/*
+ * Retrieves the value of a double.
+ *
+ * Returns `0` if `rec` is not a double.
+ */
+extern double ddlog_get_double(const ddlog_record* rec);
 
 /*
  * Create an unsigned integer value.  Can be used to populate any ddlog field
