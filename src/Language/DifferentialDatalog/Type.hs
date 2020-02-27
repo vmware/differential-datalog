@@ -26,6 +26,7 @@ SOFTWARE.
 module Language.DifferentialDatalog.Type(
     WithType(..),
     typeUserTypes,
+    typeStaticMemberTypes,
     typeIsPolymorphic,
     unifyTypes,
     exprType,
@@ -77,6 +78,10 @@ import Language.DifferentialDatalog.ECtx
 
 sET_TYPES :: [String]
 sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
+
+-- Dynamically allocated types.
+dYNAMIC_TYPES :: [String]
+dYNAMIC_TYPES = rEF_TYPE : mAP_TYPE : sET_TYPES
 
 gROUP_TYPE :: String
 gROUP_TYPE = "std.Group"
@@ -513,8 +518,27 @@ typeUserTypes' TStruct{..} = concatMap (typeUserTypes . typ)
                              $ concatMap consArgs typeCons
 typeUserTypes' TTuple{..}  = concatMap (typeUserTypes . typ) typeTupArgs
 typeUserTypes' TUser{..}   = typeName : concatMap typeUserTypes typeArgs
-typeUserTypes' TOpaque{..} = typeName : concatMap typeUserTypes typeArgs
+typeUserTypes' TOpaque{..} = concatMap typeUserTypes typeArgs
 typeUserTypes' _           = []
+
+-- This function is used in validating recursive data types.
+-- It computes the set of user-defined types that type 'T' contains as statically
+-- allocated members.  The graph induced by this relation cannot be recursive, as
+-- 'T' cannot contain an instance of itself, unless it is wrapped in a dynamic
+-- allocation (via `Ref`, `Set`, or any other container type).
+typeStaticMemberTypes :: Type -> [String]
+typeStaticMemberTypes t = nub $ typeStaticMemberTypes' t
+
+typeStaticMemberTypes' :: Type -> [String]
+typeStaticMemberTypes' TStruct{..} = concatMap (typeStaticMemberTypes . typ)
+                                         $ concatMap consArgs typeCons
+typeStaticMemberTypes' TTuple{..}  = concatMap (typeStaticMemberTypes . typ) typeTupArgs
+typeStaticMemberTypes' TUser{..}   | elem typeName dYNAMIC_TYPES = []
+                                   | otherwise = typeName : concatMap typeStaticMemberTypes typeArgs
+typeStaticMemberTypes' TOpaque{..} | elem typeName dYNAMIC_TYPES = []
+                                   | otherwise = concatMap typeStaticMemberTypes typeArgs
+typeStaticMemberTypes' _           = []
+
 
 -- | Rudimentary type inference engine. Infers expected type from context.
 ctxExpectType :: DatalogProgram -> ECtx -> Maybe Type

@@ -248,7 +248,7 @@ checkAcyclicTypes DatalogProgram{..} = do
         typIdx t = M.findIndex t progTypedefs
         gfull = M.foldlWithKey (\g tn tdef ->
                                  foldl' (\g' t' -> G.insEdge (typIdx tn, typIdx t', ()) g') g
-                                        $ maybe [] typeUserTypes $ tdefType tdef)
+                                        $ maybe [] typeStaticMemberTypes $ tdefType tdef)
                                g0 progTypedefs
     maybe (return ())
           (\cyc -> throwError $ "Mutually recursive types: " ++

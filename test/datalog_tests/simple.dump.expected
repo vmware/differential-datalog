@@ -215,6 +215,9 @@ Signed{8}
 Signed{9}
 Signed{10}
 
+Trees:
+Trees{NonLeafNode{[LeafNode{300},NonLeafNode{[LeafNode{100},LeafNode{200}]}]}}
+
 UMinus_bigint:
 UMinus_bigint{"- -100",100}
 UMinus_bigint{"-100",-100}
@@ -457,6 +460,9 @@ Signed{7}
 Signed{8}
 Signed{9}
 Signed{10}
+
+Trees:
+Trees{NonLeafNode{[LeafNode{300},NonLeafNode{[LeafNode{100},LeafNode{200}]}]}}
 
 UMinus_bigint:
 UMinus_bigint{"- -100",100}
