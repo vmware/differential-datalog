@@ -101,10 +101,10 @@ function scalar3(): string = [|-100|]
 function scalar4(): string = [|"foo bar"|]
 
 JsonTest(scalar1(),
-         to_json_string_or_default(from_json_string(scalar1()): Result<JsonScalarValue, string>)).
+         to_json_string_or_default(from_json_string(scalar1()): Result<JsonValue, string>)).
 JsonTest(scalar2(),
-         to_json_string_or_default(from_json_string(scalar2()): Result<JsonScalarValue, string>)).
+         to_json_string_or_default(from_json_string(scalar2()): Result<JsonValue, string>)).
 JsonTest(scalar3(),
-         to_json_string_or_default(from_json_string(scalar3()): Result<JsonScalarValue, string>)).
+         to_json_string_or_default(from_json_string(scalar3()): Result<JsonValue, string>)).
 JsonTest(scalar4(),
-         to_json_string_or_default(from_json_string(scalar4()): Result<JsonScalarValue, string>)).
+         to_json_string_or_default(from_json_string(scalar4()): Result<JsonValue, string>)).

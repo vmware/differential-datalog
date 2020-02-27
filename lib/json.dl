@@ -18,9 +18,28 @@ extern function from_json_string(json: string): Result<'T, string>
  */
 extern function to_json_string(x: 'T): Result<string, string>
 
-/* Type that represents a scalar JSON value whose type is not known in advance.
+/* Represents any valid JSON value.
  */
-#[rust="serde(from = \"ScalarValueInner\", into = \"ScalarValueInner\")"]
-typedef JsonScalarValue = ValString{s: string}
-                        | ValBool{b: bool}
-                        | ValInt{i: s64}
+#[rust="serde(from = \"serde_json::value::Value\", into = \"serde_json::value::Value\")"]
+typedef JsonValue = // Represents a JSON null value.
+                    JsonNull
+                  | // Represents a JSON boolean.
+                    JsonBool{b: bool}
+                  | // Represents a JSON number, whether integer or floating point.
+                    JsonNumber{n: JsonNum}
+                  | // Represents a JSON string.
+                    JsonString{s: string}
+                  | // Represents a JSON array.
+                    JsonArray{a: Vec<JsonValue>}
+                  | // Represents a JSON object.
+                    JsonObject{o: Map<string, JsonValue>}
+
+#[rust="serde(from = \"serde_json::Number\", into = \"serde_json::Number\")"]
+typedef JsonNum = // Integer number.  The value must be in the range between the
+                  // smallest `s64` number and the largest `u64` number,
+                  // inclusive.  Values outside of this range will be truncated
+                  // during serialization.
+                  JsonInt{i: s128}
+                | // Always finite.
+                  // TODO.
+                  JsonFloat
