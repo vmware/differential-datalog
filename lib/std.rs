@@ -45,7 +45,6 @@ pub fn res2std<T, E: Display>(res: Result<T, E>) -> std_Result<T, String> {
     }
 }
 
-/* Convert Rust result type to DDlog's std.Result. */
 pub fn std_result_unwrap_or_default<T: Default + Clone, E>(res: &std_Result<T, E>) -> T {
     match res {
         std_Result::std_Ok { res } => res.clone(),
@@ -119,10 +118,37 @@ pub fn std_pow32<T: num::One + ops::Mul + Clone>(base: &T, exp: &u32) -> T {
 }
 
 // Option
-pub fn option2std<T: Clone>(x: Option<T>) -> std_Option<T> {
+pub fn option2std<T>(x: Option<T>) -> std_Option<T> {
     match x {
         None => std_Option::std_None,
         Some(v) => std_Option::std_Some { x: v },
+    }
+}
+
+pub fn std2option<T>(x: std_Option<T>) -> Option<T> {
+    match x {
+        std_Option::std_None => None,
+        std_Option::std_Some { x } => Some(x),
+    }
+}
+
+impl<T> From<Option<T>> for std_Option<T> {
+    fn from(x: Option<T>) -> Self {
+        option2std(x)
+    }
+}
+
+/* // this requires Rust 1.41+
+   impl<T> From<std_Option<T>> for Option<T> {
+    fn from(x: std_Option<T>) -> Self {
+        std2option(x)
+    }
+}*/
+
+pub fn std_option_unwrap_or_default<T: Default + Clone>(opt: &std_Option<T>) -> T {
+    match opt {
+        std_Option::std_Some { x } => x.clone(),
+        std_Option::std_None => T::default(),
     }
 }
 
@@ -211,8 +237,14 @@ impl<T> std_Vec<T> {
 }
 
 impl<T: Clone> From<&[T]> for std_Vec<T> {
-    fn from(s: &[T]) -> std_Vec<T> {
+    fn from(s: &[T]) -> Self {
         std_Vec { x: Vec::from(s) }
+    }
+}
+
+impl<T: Clone> From<Vec<T>> for std_Vec<T> {
+    fn from(x: Vec<T>) -> Self {
+        std_Vec { x }
     }
 }
 
