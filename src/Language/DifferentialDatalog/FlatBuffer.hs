@@ -414,7 +414,7 @@ progIORelations =
 -- logic must be generated.
 relTypesToSerialize :: (?d::DatalogProgram) => Relation -> [Type]
 relTypesToSerialize Relation{..} =
-    execState (typeSubtypes relType)
+    execState (typeSubtypes [] relType)
               [typeNormalize ?d relType] -- Relation type must appear in 'union Value'; therefore we
                                          -- generate a table for it even if it's a primitive
                                          -- type.
@@ -423,7 +423,7 @@ relTypesToSerialize Relation{..} =
 -- logic must be generated.
 idxTypesToSerialize :: (?d::DatalogProgram) => Index -> [Type]
 idxTypesToSerialize idx@Index{..} =
-    execState (typeSubtypes $ idxKeyType idx)
+    execState (typeSubtypes [] $ idxKeyType idx)
               [typeNormalize ?d $ idxKeyType idx]
 
 -- Types that occur in type expression `t`, for which serialization logic must be
@@ -436,14 +436,16 @@ idxTypesToSerialize idx@Index{..} =
 --   as containers are serialized directly into arrays, but since FlatBuffers do
 --   not support nested arrays, or using arrays inside unions, additional wrapper
 --   type is needed for nesting to work.
-typeSubtypes :: (?d::DatalogProgram) => Type -> State [Type] ()
-typeSubtypes t =
+--
+--   The 'stack' argument tracks already traversed parent types and is necessary
+--   to prevent infinite recursion when processing mutually recursive data types.
+typeSubtypes :: (?d::DatalogProgram) => [Type] -> Type -> State [Type] ()
+typeSubtypes stack t | elem t stack = -- prevent infinite recursion when processing mutuallly recursive types
+                                      return ()
+                     | otherwise =
     -- t'' may have already been added, but we add it again at the head of the list
     -- to ensure that dependencies are declared before types that depend on them
     -- (as required by the FlatBuffers schema language).
-    -- FIXME: this will go into an infinite loop with recursive types, but we
-    -- don't support them at the moment, and in any case some additonal tricks
-    -- will be needed to encode them in FlatBuffers.
     case t'' of
         TBool{}       -> return ()
         TInt{}        -> return ()
@@ -451,9 +453,9 @@ typeSubtypes t =
         TBit{}        -> return ()
         TSigned{}     -> return ()
         TTuple{..} -> do addtype t''
-                         mapM_ typeSubtypes typeTupArgs
+                         mapM_ (typeSubtypes (t:stack)) typeTupArgs
         TUser{}    -> do addtype t''
-                         mapM_ (mapM_ (typeSubtypes . typ) . consArgs)
+                         mapM_ (mapM_ (typeSubtypes (t:stack) . typ) . consArgs)
                                $ typeCons $ typ' ?d t''
         TOpaque{..}   -> do -- In case we need to nest this.
                             addtype t''
@@ -462,7 +464,7 @@ typeSubtypes t =
                             -- appropriate tuple type
                             when (typeName == mAP_TYPE)
                                  $ addtype $ tTuple [typeArgs !! 0, typeArgs !! 1]
-                            mapM_ typeSubtypes typeArgs
+                            mapM_ (typeSubtypes (t:stack)) typeArgs
         _             -> error $ "typeSubtypes: Unexpected type " ++ show t
     where
     -- Prepend 'x' to the list so that dependency declarations are generated before

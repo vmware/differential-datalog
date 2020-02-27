@@ -1295,3 +1295,18 @@ BigintVectors("double_evens(1,2,-1,4)",
     double_evens(vec_push_imm(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 1), 2), -1), 4))).
 BigintVectors("double_evens(1,2,0,4)",
     double_evens(vec_push_imm(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bigint>, 1), 2), 0), 4))).
+
+// Test recursive data types.
+
+typedef Tree<'L> = LeafNode{v: 'L}
+                 | NonLeafNode{branches: Vec<Tree<'L>>}
+
+output relation Trees(tree: Tree<u64>)
+
+Trees({
+    var leaf1 = LeafNode{64'd100};
+    var leaf2 = LeafNode{64'd200};
+    var leaf3 = LeafNode{64'd300};
+    var nonleaf = NonLeafNode{vec_push_imm(vec_push_imm(vec_empty(): Vec<Tree<u64>>, leaf1), leaf2)};
+    NonLeafNode{vec_push_imm(vec_push_imm(vec_empty(): Vec<Tree<u64>>, leaf3), nonleaf)}
+}).
