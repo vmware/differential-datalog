@@ -130,7 +130,11 @@ pub fn libfloat_is_finite_f(f: &OrderedFloat<f32>) -> bool {
     f.is_normal()
 }
 
-pub fn libfloat_mul_add_f(a: &OrderedFloat<f32>, b: &OrderedFloat<f32>, c: &OrderedFloat<f32>) -> OrderedFloat<f32> {
+pub fn libfloat_mul_add_f(
+    a: &OrderedFloat<f32>,
+    b: &OrderedFloat<f32>,
+    c: &OrderedFloat<f32>
+) -> OrderedFloat<f32> {
     OrderedFloat::<f32>(a.mul_add(**b, **c))
 }
 
@@ -284,7 +288,11 @@ pub fn libfloat_is_finite_d(f: &OrderedFloat<f64>) -> bool {
     f.is_normal()
 }
 
-pub fn libfloat_mul_add_d(a: &OrderedFloat<f64>, b: &OrderedFloat<f64>, c: &OrderedFloat<f64>) -> OrderedFloat<f64> {
+pub fn libfloat_mul_add_d(
+    a: &OrderedFloat<f64>,
+    b: &OrderedFloat<f64>,
+    c: &OrderedFloat<f64>
+) -> OrderedFloat<f64> {
     OrderedFloat::<f64>(a.mul_add(**b, **c))
 }
 
