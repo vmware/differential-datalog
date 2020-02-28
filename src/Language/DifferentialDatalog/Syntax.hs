@@ -88,6 +88,8 @@ module Language.DifferentialDatalog.Syntax (
         eTrue,
         eFalse,
         eInt,
+        eFloat,
+        eDouble,
         eString,
         eBit,
         eSigned,
@@ -633,6 +635,8 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Int}
                 | EBool         {exprPos :: Pos, exprBVal :: Bool}
                 | EInt          {exprPos :: Pos, exprIVal :: Integer}
+                | EFloat        {exprPos :: Pos, exprFVal :: Float}
+                | EDouble       {exprPos :: Pos, exprDVal :: Double}
                 | EString       {exprPos :: Pos, exprString :: String}
                 | EBit          {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
                 | ESigned       {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
@@ -663,6 +667,8 @@ instance Eq e => Eq (ExprNode e) where
     (==) (ETupField _ s1 f1)      (ETupField _ s2 f2)        = s1 == s2 && f1 == f2
     (==) (EBool _ b1)             (EBool _ b2)               = b1 == b2
     (==) (EInt _ i1)              (EInt _ i2)                = i1 == i2
+    (==) (EFloat _ i1)            (EFloat _ i2)              = i1 == i2
+    (==) (EDouble _ i1)           (EDouble _ i2)             = i1 == i2
     (==) (EString _ s1)           (EString _ s2)             = s1 == s2
     (==) (EBit _ w1 i1)           (EBit _ w2 i2)             = w1 == w2 && i1 == i2
     (==) (ESigned _ w1 i1)        (ESigned _ w2 i2)          = w1 == w2 && i1 == i2
@@ -699,6 +705,8 @@ instance PP e => PP (ExprNode e) where
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
+    pp (EFloat _ v)          = pp v
+    pp (EDouble _ v)         = pp v
     pp (EString _ s) | isInfixOf "${" s
                               = "[|" <> pp s <> "|]"
                      | otherwise
@@ -766,6 +774,8 @@ eBool b             = E $ EBool     nopos b
 eTrue               = eBool True
 eFalse              = eBool False
 eInt i              = E $ EInt      nopos i
+eFloat i            = E $ EFloat    nopos i
+eDouble i           = E $ EDouble   nopos i
 eString s           = E $ EString   nopos s
 eBit w v            = E $ EBit      nopos w v
 eSigned w v         = E $ ESigned   nopos w v

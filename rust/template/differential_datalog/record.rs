@@ -66,8 +66,8 @@ impl fmt::Display for Record {
             Record::Bool(true) => write!(f, "true"),
             Record::Bool(false) => write!(f, "false"),
             Record::Int(i) => i.fmt(f),
-            Record::Float(d) => write!(f, "{}", d),
-            Record::Double(d) => write!(f, "{}", d),
+            Record::Float(d) => d.fmt(f),
+            Record::Double(d) => d.fmt(f),
             Record::String(s) => format_ddlog_str(s.as_ref(), f),
             Record::Tuple(recs) => {
                 write!(f, "(")?;

@@ -1813,6 +1813,8 @@ normalizeArrangement d patctx pat = (renamed, vmap)
                 return $ E e{exprTupleFields = fs'}
              EBool{}                 -> return $ E e
              EInt{}                  -> return $ E e
+             EDouble{}               -> return $ E e
+             EFloat{}                -> return $ E e
              EString{}               -> return $ E e
              EBit{}                  -> return $ E e
              ESigned{}               -> return $ E e
@@ -1886,6 +1888,8 @@ arrangeInput d fstatom arrange_input_by = do
     subst' e@ETuple{}   _  _ = return $ E e
     subst' e@EBool{}    _  _ = return $ E e
     subst' e@EInt{}     _  _ = return $ E e
+    subst' e@EDouble{}  _  _ = return $ E e
+    subst' e@EFloat{}   _  _ = return $ E e
     subst' e@EString{}  _  _ = return $ E e
     subst' e@EBit{}     _  _ = return $ E e
     subst' e@ESigned{}  _  _ = return $ E e
@@ -2188,6 +2192,8 @@ mkExpr' _ _ ETupField{..} = ("(" <> sel1 exprTuple <> "." <> pp exprTupField <> 
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
+mkExpr' _ _ EDouble{..} = ("OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
+mkExpr' _ _ EFloat{..} = ("OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
                      | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
@@ -2310,6 +2316,8 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
              BNeg   -> mkTruncate (parens $ "!" <> arg) t
              UMinus | smallInt d t
                     -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
+             UMinus | isFP d t
+                    -> "OrderedFloat" <> (parens $ "-" <> arg <> ".into_inner()")
              UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
@@ -2334,42 +2342,86 @@ mkExpr' d ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, cat
     toDouble = isDouble d exprTSpec
     toFloat = isFloat d exprTSpec
 
-mkExpr' d ctx EAs{..} | narrow_from && narrow_to && width_cmp /= GT
+mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /= GT
                       -- use Rust's type cast syntax to convert between
                       -- primitive types; no need to truncate the result if
                       -- target width is greater than or equal to source
                       = (parens $ val exprExpr <+> "as" <+> mkType exprTSpec, EVal)
-                      | narrow_from && narrow_to
+                      | bothIntegers && narrow_from && narrow_to
                       -- apply lossy type conversion between primitive Rust types;
                       -- truncate the result if needed
                       = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType exprTSpec) to_type,
                          EVal)
-                      | width_cmp == GT && tfrom == tto
+                      | bothIntegers && width_cmp == GT && tfrom == tto
                       -- from_type is wider than to_type, but they both
                       -- correspond to the same Rust type: truncate from_type
                       -- (e & ((1 << w) - 1))
                       = ("(" <> val exprExpr <+>
                          "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))"
                         , EVal)
-                      | width_cmp == GT
+                      | bothIntegers && width_cmp == GT
                       -- from_type is wider than to_type: truncate from_type and
                       -- then convert:
                       -- (e & ((1 << w) - 1)).to_<to_type>().unwrap()
                       = ("(" <> val exprExpr <+>
                          "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))" <>
                          ".to_" <> tto <> "().unwrap()", EVal)
-                      | tto == tfrom
-                      -- from_type is same width or narrower than to_type and
+                      | bothIntegers && tto == tfrom
+                      -- from_type is same width or narrower than to_type (only case left) and
                       -- they both correspond to the same Rust type
                       = (val exprExpr, EVal)
-                      | otherwise
+                      | bothIntegers
                       = (parens $ tto <> "::from_" <> tfrom <> "(" <> val exprExpr <> ")", EVal)
+
+                      ----- Floating point from now on -----
+                      -- convert float to UInt
+                      | isFloat d from_type && isInt d to_type
+                      = (parens $ tto <> "::from_float(" <> val exprExpr  <> ")", EVal)
+                      | isDouble d from_type && isInt d to_type
+                      = (parens $ tto <> "::from_double(" <> val exprExpr  <> ")", EVal)
+                      -- convert float to a very long bit<W>: convert to Uint and mask out some bits
+                      | isFloat d from_type && isBit d to_type && tto == "Uint"
+                      = (parens $ tto <> "::from_float(" <> val exprExpr  <> ") & " <>
+                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one())"
+                         , EVal)
+                      | isDouble d from_type && isBit d to_type && tto == "Uint"
+                      = (parens $ tto <> "::from_double(" <> val exprExpr  <> ") & " <>
+                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one())"
+                         , EVal)
+                      -- convert float to bit<W>: mask out some bits using an Uint mask, then convert Uint to machine type
+                      | isFP d from_type && isBit d to_type
+                      = (parens $ "(((*(" <> val exprExpr <+> ")) as" <+> mkType exprTSpec <> ") & " <>
+                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one()).to_" <> mkType exprTSpec <> "().unwrap())"
+                         , EVal)
+                      -- convert float to signed: since only machine widths are supported,
+                      -- just convert and the machine will do the truncation
+                      | isFP d from_type && isSigned d to_type
+                      = (parens $ "(((*(" <> val exprExpr <+> ")) as" <+> mkType exprTSpec <> "))", EVal)
+                      -- convert long integers to FP
+                      | isFloat d to_type && (tfrom == "Int" || tfrom == "Uint")
+                      = (parens $ "(" <> val exprExpr <> ").to_float().unwrap()", EVal)
+                      | isDouble d to_type && (tfrom == "Int" || tfrom == "Uint")
+                      = (parens $ "(" <> val exprExpr <> ").to_double().unwrap()", EVal)
+                      -- convert integer to float
+                      | isFloat d to_type && isInteger d from_type
+                      = (parens $ "OrderedFloat(" <> val exprExpr <> " as f32)", EVal)
+                      | isDouble d to_type && isInteger d from_type
+                      = (parens $ "OrderedFloat(" <> val exprExpr <> " as f64)", EVal)
+                      -- convert some FP to double
+                      | isDouble d to_type && isFP d from_type
+                      = (parens $ "OrderedFloat::<f64>::from((*" <> val exprExpr <> ") as f64)", EVal)
+                      -- convert some FP to float
+                      | isFloat d to_type && isFP d from_type
+                      = (parens $ "OrderedFloat::<f32>::from((*" <> val exprExpr <> ") as f32)", EVal)
+                      | otherwise
+                      = error $ "Unexpected cast from " ++ (show from_type) ++ " to " ++ (show to_type)
     where
     e' = sel3 exprExpr
     from_type = exprType' d (CtxAs e' ctx) $ E e'
     to_type   = typ' d exprTSpec
-    tfrom = mkType from_type
-    tto   = mkType to_type
+    tfrom = mkType from_type  -- Rust type
+    tto   = mkType to_type    -- Rust type
+    bothIntegers = (isInteger d from_type) && (isInteger d to_type)
     narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
     narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128
     width_cmp = if ((isBit d from_type || isSigned d from_type) &&
@@ -2421,9 +2473,6 @@ mkType' t                          = error $ "Compile.mkType' " ++ show t
 
 smallInt :: DatalogProgram -> Type -> Bool
 smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
-
-isFP :: DatalogProgram -> Type -> Bool
-isFP d t = (isDouble d t) || (isFloat d t)
 
 mkBinOp :: DatalogProgram -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
 mkBinOp d op (e1, t1) (e2, t2) =
