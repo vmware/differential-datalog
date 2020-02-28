@@ -36,7 +36,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isSigned, isInt, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -309,6 +309,8 @@ exprNodeType' d ctx (EInt p _)            = do
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
 exprNodeType' _ _   (ESigned _ w _)       = return $ tSigned w
+exprNodeType' _ _   (EFloat _ _)          = return $ tFloat
+exprNodeType' _ _   (EDouble _ _)         = return $ tDouble
 
 exprNodeType' d ctx (EStruct p c mas)     = do
     let tdef = consType d c
@@ -451,6 +453,9 @@ isInt d a = case typ' d a of
                  TInt _ -> True
                  _      -> False
 
+isInteger :: (WithType a) => DatalogProgram -> a -> Bool
+isInteger d a = isBit d a || isSigned d a || isInt d a
+
 isDouble :: (WithType a) => DatalogProgram -> a -> Bool
 isDouble d a = case typ' d a of
                     TDouble _ -> True
@@ -460,6 +465,9 @@ isFloat :: (WithType a) => DatalogProgram -> a -> Bool
 isFloat d a = case typ' d a of
                    TFloat _ -> True
                    _         -> False
+
+isFP :: (WithType a) => DatalogProgram -> a -> Bool
+isFP d a = isDouble d a || isFloat d a
 
 isString :: (WithType a) => DatalogProgram -> a -> Bool
 isString d a = case typ' d a of
@@ -751,6 +759,8 @@ consTreeAbduct' d ct@(CT t nodes) (E e) =
     case e of
          EBool p b      -> (CT t $ filter (/= EBool p b) nodes, CT t $ filter (== EBool p b) nodes)
          EInt p v       -> (ct, CT t [EInt p v])
+         EFloat p v     -> (ct, CT t [EFloat p v])
+         EDouble p v    -> (ct, CT t [EDouble p v])
          EString p s    -> (ct, CT t [EString p s])
          EBit p w v     -> (ct, CT t [EBit p w v])
          ESigned p w v  -> (ct, CT t [ESigned p w v])

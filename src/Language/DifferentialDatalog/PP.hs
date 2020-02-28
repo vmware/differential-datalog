@@ -52,6 +52,12 @@ instance PP Bool where
     pp True  = text "true"
     pp False = text "false"
 
+instance PP Double where
+    pp = double
+
+instance PP Float where
+    pp = float
+
 instance PP Integer where
     pp = integer
 

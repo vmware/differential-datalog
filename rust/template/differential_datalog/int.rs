@@ -106,13 +106,13 @@ impl Int {
     }
     pub fn to_float(&self) -> Option<OrderedFloat<f32>> {
         match self.x.to_f32() {
-            None => None,
+            None => Some(OrderedFloat::<f32>(std::f32::NAN)),
             Some(x) => Some(OrderedFloat::<f32>(x)),
         }
     }
     pub fn to_double(&self) -> Option<OrderedFloat<f64>> {
         match self.x.to_f64() {
-            None => None,
+            None => Some(OrderedFloat::<f64>(std::f64::NAN)),
             Some(x) => Some(OrderedFloat::<f64>(x)),
         }
     }

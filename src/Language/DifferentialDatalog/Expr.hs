@@ -82,6 +82,8 @@ exprFoldCtxM' f ctx e@(ETupField p s fl)      = do s' <- exprFoldCtxM f (CtxTupF
                                                    f ctx $ ETupField p s' fl
 exprFoldCtxM' f ctx   (EBool p b)             = f ctx $ EBool p b
 exprFoldCtxM' f ctx   (EInt p i)              = f ctx $ EInt p i
+exprFoldCtxM' f ctx   (EDouble p i)           = f ctx $ EDouble p i
+exprFoldCtxM' f ctx   (EFloat p i)            = f ctx $ EFloat p i
 exprFoldCtxM' f ctx   (EString p s)           = f ctx $ EString p s
 exprFoldCtxM' f ctx   (EBit p w v)            = f ctx $ EBit p w v
 exprFoldCtxM' f ctx   (ESigned p w v)         = f ctx $ ESigned p w v
@@ -132,6 +134,8 @@ exprMapM g e = case e of
                    ETupField p s f     -> (\s' -> ETupField p s' f) <$> g s
                    EBool p b           -> return $ EBool p b
                    EInt p i            -> return $ EInt p i
+                   EFloat p i          -> return $ EFloat p i
+                   EDouble p i         -> return $ EDouble p i
                    EString p s         -> return $ EString p s
                    EBit p w v          -> return $ EBit p w v
                    ESigned p w v       -> return $ ESigned p w v
@@ -187,6 +191,8 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      ETupField _ s _       -> x' `op` s
                                      EBool _ _             -> x'
                                      EInt _ _              -> x'
+                                     EFloat _ _            -> x'
+                                     EDouble _ _           -> x'
                                      EString _ _           -> x'
                                      EBit _ _ _            -> x'
                                      ESigned _ _ _         -> x'
@@ -311,6 +317,8 @@ exprIsPattern' EBit{}           = True
 exprIsPattern' ESigned{}        = True
 exprIsPattern' EBool{}          = True
 exprIsPattern' EInt{}           = True
+exprIsPattern' EFloat{}         = True
+exprIsPattern' EDouble{}        = True
 exprIsPattern' EVarDecl{}       = True
 exprIsPattern' (ETuple _ as)    = and as
 exprIsPattern' (EStruct _ _ as) = all snd as
@@ -330,6 +338,8 @@ exprIsPatternImpl' EBit{}           = True
 exprIsPatternImpl' ESigned{}        = True
 exprIsPatternImpl' EBool{}          = True
 exprIsPatternImpl' EInt{}           = True
+exprIsPatternImpl' EFloat{}         = True
+exprIsPatternImpl' EDouble{}        = True
 exprIsPatternImpl' EVar{}           = True
 exprIsPatternImpl' (ETuple _ as)    = and as
 exprIsPatternImpl' (EStruct _ _ as) = all snd as
@@ -403,6 +413,8 @@ exprIsInjective' d EApply{..}    =
     where Function{..} = getFunc d exprFunc
 exprIsInjective' _ EBool{}       = True
 exprIsInjective' _ EInt{}        = True
+exprIsInjective' _ EFloat{}      = True
+exprIsInjective' _ EDouble{}     = True
 exprIsInjective' _ EString{}     = True
 exprIsInjective' _ EBit{}        = True
 exprIsInjective' _ ESigned{}     = True
