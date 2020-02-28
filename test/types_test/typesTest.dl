@@ -207,3 +207,6 @@ input relation ZI21(m: bit<32>) primary key (r) r.m
 index ZI21_by_m(m: bit<32>) on ZI21(m)
 
 input relation ExampleRelation(name: string, values: Vec<bit<32>>, labels: Map<string, string>) primary key (x) x.name
+
+input relation ZJ(d: double)
+input relation ZK(f: float)

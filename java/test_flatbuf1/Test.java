@@ -63,7 +63,7 @@ public class Test {
         }
         return "QI{{" + String.join(", ", vs_strs) + "}}";
     }
-    
+
     private String printTI(TIReader v) {
         std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)(v).m();
         if (m instanceof std_Option__bit_32_Reader.std_Some) {
@@ -521,6 +521,16 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " ZI21{" + m.m() + "}");
                 break;
             }
+            case typesTestRelation.OZJ: {
+                ZJReader m = (ZJReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZJ{" + m.d() + "}");
+                break;
+            }
+            case typesTestRelation.OZK: {
+                ZKReader m = (ZKReader)command.value();
+                fb_file.println("From " + relid + " " + command.kind() + " ZK{" + m.f() + "}");
+                break;
+            }
             default:
                 fb_file.println("Unknown output relation " + relid);
                 //throw new IllegalArgumentException("Unknown relation id " + relid);
@@ -740,6 +750,8 @@ public class Test {
             builder.insert_ZI20(b);
         }
         builder.insert_ZI21(13);
+        builder.insert_ZJ(5.0);
+        builder.insert_ZK(5.0f);
         builder.applyUpdates(this.api);
         try {
             builder.applyUpdates(this.api);
@@ -800,6 +812,8 @@ public class Test {
         this.api.clearRelation(typesTestRelation.module_ZI19);
         this.api.clearRelation(typesTestRelation.ZI20);
         this.api.clearRelation(typesTestRelation.ZI21);
+        this.api.clearRelation(typesTestRelation.ZJ);
+        this.api.clearRelation(typesTestRelation.ZK);
     }
 
     void run() throws IOException, DDlogException {
@@ -987,7 +1001,7 @@ public class Test {
         });
 
         query_file.println("Query NI_by_v[(true,-1,\"check\"), (false,1,\"fails\")]:");
-        typesTestQuery.queryNI_by_v(this.api, 
+        typesTestQuery.queryNI_by_v(this.api,
                 bldr -> {
                     ArrayList<Tuple3__bool__bit_8___stringWriter> vec = new ArrayList<Tuple3__bool__bit_8___stringWriter>(2);
                     vec.add(bldr.create_Tuple3__bool__bit_8___string(true, (byte)-1, "check"));
@@ -1502,7 +1516,7 @@ public class Test {
         });
 
         query_file.println("Dump NI_by_v:");
-        typesTestQuery.dumpNI_by_v(this.api, 
+        typesTestQuery.dumpNI_by_v(this.api,
                 v -> {
                     query_file.println(printNI(v));
                 });

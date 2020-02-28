@@ -46,6 +46,8 @@ public class DDlogAPI {
     static native long ddlog_bool(boolean b);
     static native long ddlog_i64(long v);
     static native long ddlog_int(byte[] v);
+    static native long ddlog_float(float f);
+    static native long ddlog_double(double d);
     static native long ddlog_string(String s) throws DDlogException;
     static native long ddlog_tuple(long[] handles) throws DDlogException;
     static native long ddlog_vector(long[] handles) throws DDlogException;
@@ -61,6 +63,10 @@ public class DDlogAPI {
     static native boolean ddlog_is_int(long handle);
     static native long ddlog_get_int(long handle, byte[] buf);
     static native long ddlog_get_i64(long handle);
+    static native boolean ddlog_is_float(long handle);
+    static native float ddlog_get_float(long handle);
+    static native boolean ddlog_is_double(long handle);
+    static native double ddlog_get_double(long handle);
     static native boolean ddlog_is_string(long handle);
     static native String ddlog_get_str(long handle);
     static native boolean ddlog_is_tuple(long handle);
