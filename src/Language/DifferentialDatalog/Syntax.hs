@@ -705,8 +705,8 @@ instance PP e => PP (ExprNode e) where
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
-    pp (EFloat _ v)          = pp v
-    pp (EDouble _ v)         = pp v
+    pp (EFloat _ v)          = "32'f" <> pp v
+    pp (EDouble _ v)         = "64'f" <> pp v
     pp (EString _ s) | isInfixOf "${" s
                               = "[|" <> pp s <> "|]"
                      | otherwise
