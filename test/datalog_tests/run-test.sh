@@ -70,7 +70,7 @@ if [ -f ${base}.dat ]; then
         diff -q ${base}.dump ${base}.dump.expected
     fi
 fi
-# Remote outputs
+# Remove outputs
 rm -rf ${base}.dump ${base}.dump.gz
 # Additional cleanup possible
 # rm -rf ${base}_ddlog
