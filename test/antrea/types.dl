@@ -163,7 +163,9 @@ function ipv4zero(): IPAddress = {
 
 function ipv4(a: u8, b: u8, c: u8, d: u8): IPAddress =
 {
-    var bytes: Vec<u8> = vec_with_length(12, 8'd0);
+    var bytes: Vec<u8> = vec_with_length(10, 8'd0);
+    vec_push(bytes, 8'hff);
+    vec_push(bytes, 8'hff);
     vec_push(bytes, a);
     vec_push(bytes, b);
     vec_push(bytes, c);
