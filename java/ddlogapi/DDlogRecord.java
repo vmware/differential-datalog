@@ -380,6 +380,16 @@ public class DDlogRecord {
             return Boolean.toString(b);
         }
 
+        if (DDlogAPI.ddlog_is_float(this.handle)) {
+            float f = DDlogAPI.ddlog_get_float(this.handle);
+            return Float.toString(f);
+        }
+
+        if (DDlogAPI.ddlog_is_double(this.handle)) {
+            double d = DDlogAPI.ddlog_get_double(this.handle);
+            return Double.toString(d);
+        }
+
         if (DDlogAPI.ddlog_is_int(this.handle)) {
             BigInteger i = this.getInt();
             return i.toString(10);

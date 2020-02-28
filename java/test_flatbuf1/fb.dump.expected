@@ -67,7 +67,9 @@ From 63 Insert "ZI7"
 From 63 Insert "♛"
 From 64 Insert 100
 From 65 Insert 100
-From 66 Insert module.ZI16{"zi16"}
-From 67 Insert "zi17"
-From 68 Insert module.ZI18{(4294967295, "ZZZ")}
-From 69 Insert (4294967293, "zi19")
+From 66 Insert ZJ{5.0}
+From 67 Insert ZK{5.0}
+From 68 Insert module_ZI16{"zi16"}
+From 69 Insert "zi17"
+From 70 Insert module_ZI18{(4294967295, "ZZZ")}
+From 71 Insert (4294967293, "zi19")
