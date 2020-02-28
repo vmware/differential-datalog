@@ -1,0 +1,86 @@
+// Library with operations on floating point values (float and double)
+// All float operations have suffix _f, and all double operations have suffix _d
+
+extern function floor_f(f: float): float
+extern function ceil_f(f: float): float
+extern function round_f(f: float): float
+extern function trunc_f(f: float): float
+extern function fract_f(f: float): float
+extern function abs_f(f: float): float
+extern function signum_f(f: float): float
+extern function sqrt_f(f: float): float
+extern function expt_f(f: float): float
+extern function exp2_f(f: float): float
+extern function ln_f(f: float): float
+extern function log2_f(f: float): float
+extern function log10_f(f: float): float
+extern function cbrt_f(f: float): float
+extern function sin_f(f: float): float
+extern function cos_f(f: float): float
+extern function tan_f(f: float): float
+extern function asin_f(f: float): float
+extern function acos_f(f: float): float
+extern function atan_f(f: float): float
+extern function sinh_f(f: float): float
+extern function cosh_f(f: float): float
+extern function tanh_f(f: float): float
+extern function asinh_f(f: float): float
+extern function acosh_f(f: float): float
+extern function atanh_f(f: float): float
+extern function recip_f(f: float): float
+extern function to_degrees_f(f: float): float
+extern function to_radians_f(f: float): float
+
+extern function atan2_f(f: float, other: float): float
+extern function is_nan_f(f: float): bool
+extern function is_infinite_f(f: float): bool
+extern function is_finite_f(f: float): bool
+
+extern function mul_add_f(a: float, b: float, c: float): float
+extern function powi_f(f: float, exp: bit<32>): float
+extern function powf_f(f: float, exp: float): float
+extern function log_f(f: float, base: float): float
+extern function nan_f(): float
+
+//-------------------------------
+
+extern function floor_d(f: double): double
+extern function ceil_d(f: double): double
+extern function round_d(f: double): double
+extern function trunc_d(f: double): double
+extern function fract_d(f: double): double
+extern function abs_d(f: double): double
+extern function signum_d(f: double): double
+extern function sqrt_d(f: double): double
+extern function expt_d(f: double): double
+extern function exp2_d(f: double): double
+extern function ln_d(f: double): double
+extern function log2_d(f: double): double
+extern function log10_d(f: double): double
+extern function cbrt_d(f: double): double
+extern function sin_d(f: double): double
+extern function cos_d(f: double): double
+extern function tan_d(f: double): double
+extern function asin_d(f: double): double
+extern function acos_d(f: double): double
+extern function atan_d(f: double): double
+extern function sinh_d(f: double): double
+extern function cosh_d(f: double): double
+extern function tanh_d(f: double): double
+extern function asinh_d(f: double): double
+extern function acosh_d(f: double): double
+extern function atanh_d(f: double): double
+extern function recip_d(f: double): double
+extern function to_degrees_d(f: double): double
+extern function to_radians_d(f: double): double
+
+extern function atan2_d(f: double, other: double): double
+extern function is_nan_d(f: double): bool
+extern function is_infinite_d(f: double): bool
+extern function is_finite_d(f: double): bool
+
+extern function mul_add_d(a: double, b: double, c: double): double
+extern function powi_d(f: double, exp: bit<32>): double
+extern function powf_d(f: double, exp: double): double
+extern function log_d(f: double, base: double): double
+extern function nan_d(): double

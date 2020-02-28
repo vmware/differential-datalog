@@ -1,4 +1,5 @@
 import allocate
+import libfloat
 
 /* Test types */
 
@@ -997,6 +998,8 @@ Cast_u32("16'd100  as bit<32>", 16'd100  as bit<32>, 100).
 Cast_u32("8'd100   as bit<32>", 8'd100   as bit<32>, 100).
 Cast_u32("128'd100 as bit<32>", 128'd100 as bit<32>, 100).
 Cast_u32("256'd100 as bit<32>", 256'd100 as bit<32>, 100).
+Cast_u32("64'f3.5 as bit<32>",  64'f3.5 as bit<32>,  3).
+Cast_u32("32'f3.5 as bit<32>",  32'f3.5 as bit<32>,  3).
 
 Cast_u32("64'hffffffffffff as bit<32>", 64'hffffffffffff as bit<32>, 32'hffffffff).
 Cast_u32("128'hffffffffffffffffffff as bit<32>", 128'hffffffffffffffffffff as bit<32>, 32'hffffffff).
@@ -1011,6 +1014,8 @@ Cast_s32("32'sd100  as signed<32>", 32'sd100  as signed<32>, 100).
 Cast_s32("16'sd100  as signed<32>", 16'sd100  as signed<32>, 100).
 Cast_s32("8'sd100   as signed<32>", 8'sd100   as signed<32>, 100).
 Cast_s32("128'sd100 as signed<32>", 128'sd100 as signed<32>, 100).
+Cast_s32("64'f3.5 as signed<32>",  64'f3.5 as signed<32>,  3).
+Cast_s32("32'f3.5 as signed<32>",  32'f3.5 as signed<32>,  3).
 
 Cast_s32("64'shffffffffffff as signed<32>", 64'shffffffffffff as signed<32>, 32'shffffffff).
 Cast_s32("128'shffffffffffffffffffff as signed<32>", 128'shffffffffffffffffffff as signed<32>, 32'shffffffff).
@@ -1025,6 +1030,9 @@ Cast_u24("16'd100  as bit<24>", 16'd100  as bit<24>, 100).
 Cast_u24("8'd100   as bit<24>", 8'd100   as bit<24>, 100).
 Cast_u24("128'd100 as bit<24>", 128'd100 as bit<24>, 100).
 Cast_u24("256'd100 as bit<24>", 256'd100 as bit<24>, 100).
+Cast_u24("64'f3.5 as bit<24>",  64'f3.5 as bit<24>,  3).
+Cast_u24("32'f3.5 as bit<24>",  32'f3.5 as bit<24>,  3).
+Cast_u24("32'f30000000.0 as bit<24>",  32'f30000000.0 as bit<24>,  24'hC9_C380).
 
 Cast_u24("64'hffffffffffff as bit<24>", 64'hffffffffffff as bit<24>, 24'hffffff).
 Cast_u24("128'hffffffffffffffffffff as bit<24>", 128'hffffffffffffffffffff as bit<24>, 24'hffffff).
@@ -1042,6 +1050,8 @@ Cast_u256("8'd100   as bit<256>", 8'd100   as bit<256>, 100).
 Cast_u256("128'd100 as bit<256>", 128'd100 as bit<256>, 100).
 Cast_u256("256'd100 as bit<256>", 256'd100 as bit<256>, 100).
 Cast_u256("512'd100 as bit<256>", 512'd100 as bit<256>, 100).
+Cast_u256("32'f3.5  as bit<256>", 32'f3.5  as bit<256>, 3).
+Cast_u256("64'f3.5  as bit<256>", 64'f3.5  as bit<256>, 3).
 
 Cast_u256("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",
            264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>,
@@ -1062,12 +1072,46 @@ Cast_bigint("8'd100   as bigint", 8'd100   as bigint, 100).
 Cast_bigint("128'd100 as bigint", 128'd100 as bigint, 100).
 Cast_bigint("256'd100 as bigint", 256'd100 as bigint, 100).
 Cast_bigint("512'd100 as bigint", 512'd100 as bigint, 100).
+Cast_bigint("32'f3.5  as bigint", 32'f3.5  as bigint, 3).
+Cast_bigint("64'f3.5  as bigint", 64'f3.5  as bigint, 3).
 
 Cast_bigint("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",
             264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint,
            'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa).
 
-Cast_bigint("(32'sd0 - 32'sd10) as bigint", (32'sd0 - 32'sd10) as bigint, 0-10).
+output relation Cast_float(description: string, expected: float, actual: float)
+
+Cast_float("24'd100  as float", 24'd100  as float, 32'f100.0).
+Cast_float("32'd100  as float", 32'd100  as float, 32'f100.0).
+Cast_float("16'sd100  as float", 16'sd100  as float, 32'f100.0).
+Cast_float("-32'sd100  as float", -32'sd100  as float, -32'f100.0).
+Cast_float("-16'sd100  as float", -16'sd100  as float, -32'f100.0).
+Cast_float("32'sd100  as float", 32'sd100  as float, 32'f100.0).
+Cast_float("16'd100  as float", 16'd100  as float, 32'f100.0).
+Cast_float("8'd100   as float", 8'd100   as float, 32'f100.0).
+Cast_float("128'd100 as float", 128'd100 as float, 32'f100.0).
+Cast_float("256'd100 as float", 256'd100 as float, 32'f100.0).
+Cast_float("512'd100 as float", 512'd100 as float, 32'f100.0).
+Cast_float("32'f3.5  as float", 32'f3.5  as float, 32'f3.5).
+Cast_float("64'f3.5  as float", 64'f3.5  as float, 32'f3.5).
+Cast_float("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float",
+            264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float,
+            nan_f()).
+
+output relation Cast_double(description: string, expected: double, actual: double)
+
+Cast_double("24'd100  as double", 24'd100  as double, 64'f100.0).
+Cast_double("32'd100  as double", 32'd100  as double, 64'f100.0).
+Cast_double("16'd100  as double", 16'd100  as double, 64'f100.0).
+Cast_double("8'd100   as double", 8'd100   as double, 64'f100.0).
+Cast_double("128'd100 as double", 128'd100 as double, 64'f100.0).
+Cast_double("256'd100 as double", 256'd100 as double, 64'f100.0).
+Cast_double("512'd100 as double", 512'd100 as double, 64'f100.0).
+Cast_double("32'f3.5  as double", 32'f3.5  as double, 64'f3.5).
+Cast_double("64'f3.5  as double", 64'f3.5  as double, 64'f3.5).
+Cast_double("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double",
+            264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double,
+            64'f29642774844752946000000000000000000000000000000000000000000000000000000000000000.0).
 
 output relation UMinus_s32(description: string, n:signed<32>)
 UMinus_s32("-32'sd100", -32'sd100).
@@ -1317,6 +1361,18 @@ Trees({
 }).
 
 output relation Doubles(s: string, d: double)
-Doubles("5", 5: double).
-Doubles("5 + 3", 5: double + 3: double).
-Doubles("5/3", 5: double / 3: double).
+Doubles("5", 64'f5.0).
+Doubles("-5", -64'f5.0).
+Doubles("5 + 3", 64'f5.0 + 64'f3.0).
+Doubles("5/3", 64'f5.0 / 64'f3.0).
+Doubles("5*3", 64'f5.0 * 64'f3.0).
+Doubles("0: double", 0: double).
+Doubles("floor_d(64'f0.1)", floor_d(64'f0.1)).
+
+output relation Floats(s: string, f: float)
+Floats("5", 32'f5.0).
+Floats("5 + 3", 32'f5.0 + 32'f3.0).
+Floats("5/3", 32'f5.0 / 32'f3.0).
+Floats("5*3", 32'f5.0 * 32'f3.0).
+Floats("0: float", 0: float).
+Floats("floor_f(32'f0.1)", floor_f(32'f0.1)).

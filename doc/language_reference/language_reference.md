@@ -333,6 +333,7 @@ The following table lists operators order by decreasing priority.
 term ::= "_"                 (* wildcard *)
        | int_literal         (* integer literal *)
        | bool_literal        (* Boolean literal *)
+       | fp_literal          (* floating point literal *)
        | string_literal      (* string literal *)
        | cons_term           (* type constructor invocation *)
        | apply_term          (* function application *)
@@ -359,6 +360,15 @@ int_literal  ::= decimal
                | [width] "'so" octal
                | [width] "'sb" binary
 width ::= decimal
+
+fp_literal ::= fp_value
+             | "32'f" fp_value
+             | "64'f" fp_value
+
+fp_value ::= decimal "." decimal exponent
+
+exponent ::= (* empty *)
+           | ("e"|"E") ["+"|"-"] decimal
 ```
 
 The "s" in a literal indicates a "signed" literal.

@@ -1,6 +1,8 @@
 #!/bin/bash
 # Run one datalog test
 
+PROFILE=0
+
 set -e
 
 function usage {
@@ -36,6 +38,13 @@ elif [ "x${build}" == "xdebug" ]; then
     CARGOFLAGS="${CARGOFLAGS}"
 else
     usage
+fi
+
+if [ x$PROFILE == "x1" ]; then
+    stack install --profile
+    export GHCRTS="-xc"
+else
+    stack install
 fi
 
 CLASSPATH=$(pwd)/${base}_ddlog/flatbuf/java:$(pwd)/../../java/ddlogapi.jar:$CLASSPATH

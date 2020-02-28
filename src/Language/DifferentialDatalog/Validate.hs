@@ -548,6 +548,8 @@ exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   ETupField{}         = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
 exprValidate1 _ _ _   EInt{}              = return ()
+exprValidate1 _ _ _   EFloat{}            = return ()
+exprValidate1 _ _ _   EDouble{}           = return ()
 exprValidate1 _ _ _   EString{}           = return ()
 exprValidate1 _ _ _   EBit{}              = return ()
 exprValidate1 _ _ _   ESigned{}           = return ()
@@ -687,11 +689,11 @@ exprValidate2 d _   (EUnOp _ UMinus e)    =
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d _   (EFor p _ i _)       = checkIterable "iterator" p d i
 exprValidate2 d _   (EAs p e t)          = do
-    check (isBit d e || isSigned d e || isDouble d e || isFloat d e) p
-        $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for bit<> and signed<> types."
-    check (isBit d t || isSigned d t || isInt d t || isDouble d t || isFloat d t) p
-        $ "Cannot type-cast expression to " ++ show t ++ ".  Only bit<>, signed<>, and bigint types can be cast to."
-    when (not $ isInt d t) $
+    check (isInteger d e || isFP d e) p
+        $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for numeric types."
+    check (isInteger d t || isFP d t) p
+        $ "Cannot type-cast expression to " ++ show t ++ ".  Only numeric types can be cast to."
+    when ((isBit d t || isSigned d t) && (isBit d e || isSigned d e)) $
         check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
             "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++
             "Try casting to " ++ show (t'{typeWidth = typeWidth e'}) ++ " first."

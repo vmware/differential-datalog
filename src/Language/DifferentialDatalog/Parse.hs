@@ -41,6 +41,7 @@ import Data.Maybe
 import Data.List
 import Data.Char
 import Numeric
+import GHC.Float
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
@@ -138,6 +139,7 @@ angles       = T.angles lexer
 brackets     = T.brackets lexer
 natural      = T.natural lexer
 decimal      = T.decimal lexer
+double       = T.float lexer
 --integer    = T.integer lexer
 whiteSpace   = T.whiteSpace lexer
 lexeme       = T.lexeme lexer
@@ -461,7 +463,7 @@ tupleType  = (\fs -> case fs of
                           _   -> TTuple nopos fs)
              <$> (parens $ commaSep typeSpecSimple)
 
-constructor = withPos $ Constructor nopos <$> (option [] attributes) 
+constructor = withPos $ Constructor nopos <$> (option [] attributes)
                                           <*> consIdent
                                           <*> (option [] $ braces $ commaSep arg)
 
@@ -478,7 +480,7 @@ term' = withPos $
      <|> ebinding
      <|> epholder
      <|> estruct
-     <|> eint
+     <|> enumber
      <|> ebool
      <|> estring
      <|> evar
@@ -522,7 +524,7 @@ pterm = (withPos $
        <|> epholder
        <|> ebool
        <|> epattern_string
-       <|> eint)
+       <|> enumber)
       <?> "match term"
 
 anonpat = ("",) <$> pattern
@@ -541,8 +543,7 @@ elhs = islhs *> lhs
 anonlhs = ("",) <$> lhs
 namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
 
-
-eint  = lexeme eint'
+enumber  = lexeme enumber'
 estring =   equoted_string
         <|> eraw_string
         <|> einterpolated_raw_string
@@ -600,9 +601,9 @@ interpolate' mprefix = do
 
 estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
 
-eint'   = (lookAhead $ char '\'' <|> digit) *> (do w <- width
-                                                   (s, v) <- sradval
-                                                   mkLit w s v)
+enumber' = (lookAhead $ char '\'' <|> digit) *> (do w <- width
+                                                    v <- sradval
+                                                    mkNumberLit w v)
 
 -- strip underscores
 stripUnder :: String -> String
@@ -622,33 +623,46 @@ efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (varIdent <* reserved "
 evardcl = eVarDecl <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 
+data NumberLiteral = UnsignedNumber Integer
+                   | SignedNumber Integer
+                   | FloatNumber Double
+
 width = optionMaybe (try $ ((fmap fromIntegral parseDec) <* (lookAhead $ char '\'')))
-sradval =  ((try $ string "'b") *> ((False, ) <$> parseBin))
-       <|> ((try $ string "'o") *> ((False, ) <$> parseOct))
-       <|> ((try $ string "'d") *> ((False, ) <$> parseDec))
-       <|> ((try $ string "'h") *> ((False, ) <$> parseHex))
-       <|> ((try $ string "'sb") *> ((True, ) <$> parseBin))
-       <|> ((try $ string "'so") *> ((True, ) <$> parseOct))
-       <|> ((try $ string "'sd") *> ((True, ) <$> parseDec))
-       <|> ((try $ string "'sh") *> ((True, ) <$> parseHex))
-       <|> ((True, ) <$> parseDec)
+sradval =  ((try $ string "'b") *> (UnsignedNumber <$> parseBin))
+       <|> ((try $ string "'o") *> (UnsignedNumber <$> parseOct))
+       <|> ((try $ string "'d") *> (UnsignedNumber <$> parseDec))
+       <|> ((try $ string "'h") *> (UnsignedNumber <$> parseHex))
+       <|> ((try $ string "'sb") *> (SignedNumber  <$> parseBin))
+       <|> ((try $ string "'so") *> (SignedNumber  <$> parseOct))
+       <|> ((try $ string "'sd") *> (SignedNumber  <$> parseDec))
+       <|> ((try $ string "'sh") *> (SignedNumber  <$> parseHex))
+       <|> ((try $ string "'f")  *> (FloatNumber   <$> double))
+       <|> (SignedNumber <$> parseDec)
 parseBin :: Stream s m Char => ParsecT s u m Integer
 parseBin = readBin . stripUnder <$> (digitPrefix $ (char '0') <|> (char '1'))
 parseOct :: Stream s m Char => ParsecT s u m Integer
 parseOct = (fst . head . readOct . stripUnder) <$> digitPrefix octDigit
 parseDec :: Stream s m Char => ParsecT s u m Integer
 parseDec = (fst . head . readDec . stripUnder) <$> digitPrefix digit
+
 --parseSDec = (\m v -> m * v)
 --            <$> (option 1 ((-1) <$ reservedOp "-"))
 --            <*> ((fst . head . readDec) <$> many1 digit)
 parseHex :: Stream s m Char => ParsecT s u m Integer
 parseHex = (fst . head . readHex . stripUnder) <$> digitPrefix hexDigit
 
-mkLit :: Maybe Int -> Bool -> Integer -> ParsecT s u m Expr
-mkLit Nothing _ v                        = return $ eInt v
-mkLit (Just w) s v | w == 0              = fail "Literals must have width >0"
-                   | msb v < w           = return $ if s then eSigned w v else eBit w v
-                   | otherwise           = fail "Value exceeds specified width"
+mkNumberLit :: Maybe Int -> NumberLiteral -> ParsecT s u m Expr
+mkNumberLit Nothing (SignedNumber v)          = return $ eInt v
+mkNumberLit Nothing (UnsignedNumber v)        = return $ eInt v
+mkNumberLit Nothing (FloatNumber v)           = return $ eDouble v
+mkNumberLit (Just w) _ | w == 0               = fail "Width must be >0"
+mkNumberLit (Just w) (SignedNumber v) | msb v < w = return $ eSigned w v
+                                      | otherwise = fail "Value exceeds specified width"
+mkNumberLit (Just w) (UnsignedNumber v) | msb v < w = return $ eBit w v
+                                        | otherwise = fail "Value exceeds specified width"
+mkNumberLit (Just w) (FloatNumber v) | w == 32 = return $ eFloat $ double2Float v
+                                     | w == 64 = return $ eDouble v
+                                     | otherwise = fail "Only 32- and 64-bit floating point values are supported"
 
 etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs, postTupField]]
          ,[pref  $ choice [preRef]]
