@@ -1,16 +1,16 @@
-json_test.JsonTest{"\"foo bar\"","{\"std_Ok\":{\"res\":\"foo bar\"}}"}
-json_test.JsonTest{"-100","{\"std_Ok\":{\"res\":-100}}"}
-json_test.JsonTest{"100","{\"std_Ok\":{\"res\":100}}"}
-json_test.JsonTest{"[{\"b\":true}, {\"b\":false}, {\"b\":true}, {\"b\":false}]","{\"std_Ok\":{\"res\":[{\"b\":true},{\"b\":false},{\"b\":true},{\"b\":false}]}}"}
-json_test.JsonTest{"true","{\"std_Ok\":{\"res\":true}}"}
-json_test.JsonTest{"{\"1\":{\"b\":true}, \"2\":{\"b\":false}, \"3\":{\"b\":true}, \"4\":{\"b\":false}}","{\"std_Ok\":{\"res\":{\"1\":{\"b\":true},\"2\":{\"b\":false},\"3\":{\"b\":true},\"4\":{\"b\":false}}}}"}
-json_test.JsonTest{"{\"@type\": \"t.V1\", \"b\": true}","{\"std_Ok\":{\"res\":{\"@type\":\"t.V1\",\"b\":true}}}"}
-json_test.JsonTest{"{\"@type\": \"t.V2\", \"b\": false}","{\"std_Err\":{\"err\":\"missing field `u`\"}}"}
-json_test.JsonTest{"{\"@type\": \"t.V2\", \"u\": 100}","{\"std_Ok\":{\"res\":{\"@type\":\"t.V2\",\"u\":100}}}"}
-json_test.JsonTest{"{\"Variant1\": {\"b\": true}}","{\"std_Ok\":{\"res\":{\"Variant1\":{\"b\":true}}}}"}
-json_test.JsonTest{"{\"Variant2\": {\"u\": 100}}","{\"std_Ok\":{\"res\":{\"Variant2\":{\"u\":100}}}}"}
-json_test.JsonTest{"{\"b\":true, \"foo\":\"bar\"}","{\"std_Ok\":{\"res\":{\"b\":true}}}"}
-json_test.JsonTest{"{\"b\":true}","{\"std_Ok\":{\"res\":{\"b\":true}}}"}
-json_test.JsonTest{"{\"foo\":\"bar\"}","{\"std_Err\":{\"err\":\"missing field `b` at line 1 column 13\"}}"}
-json_test.JsonTest{"{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}","{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
-json_test.JsonTest{"{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}","{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}
+json_test.JsonTest{.description = "\"foo bar\"", .value = "{\"std_Ok\":{\"res\":\"foo bar\"}}"}
+json_test.JsonTest{.description = "-100", .value = "{\"std_Ok\":{\"res\":-100}}"}
+json_test.JsonTest{.description = "100", .value = "{\"std_Ok\":{\"res\":100}}"}
+json_test.JsonTest{.description = "[{\"b\":true}, {\"b\":false}, {\"b\":true}, {\"b\":false}]", .value = "{\"std_Ok\":{\"res\":[{\"b\":true},{\"b\":false},{\"b\":true},{\"b\":false}]}}"}
+json_test.JsonTest{.description = "true", .value = "{\"std_Ok\":{\"res\":true}}"}
+json_test.JsonTest{.description = "{\"1\":{\"b\":true}, \"2\":{\"b\":false}, \"3\":{\"b\":true}, \"4\":{\"b\":false}}", .value = "{\"std_Ok\":{\"res\":{\"1\":{\"b\":true},\"2\":{\"b\":false},\"3\":{\"b\":true},\"4\":{\"b\":false}}}}"}
+json_test.JsonTest{.description = "{\"@type\": \"t.V1\", \"b\": true}", .value = "{\"std_Ok\":{\"res\":{\"@type\":\"t.V1\",\"b\":true}}}"}
+json_test.JsonTest{.description = "{\"@type\": \"t.V2\", \"b\": false}", .value = "{\"std_Err\":{\"err\":\"missing field `u`\"}}"}
+json_test.JsonTest{.description = "{\"@type\": \"t.V2\", \"u\": 100}", .value = "{\"std_Ok\":{\"res\":{\"@type\":\"t.V2\",\"u\":100}}}"}
+json_test.JsonTest{.description = "{\"Variant1\": {\"b\": true}}", .value = "{\"std_Ok\":{\"res\":{\"Variant1\":{\"b\":true}}}}"}
+json_test.JsonTest{.description = "{\"Variant2\": {\"u\": 100}}", .value = "{\"std_Ok\":{\"res\":{\"Variant2\":{\"u\":100}}}}"}
+json_test.JsonTest{.description = "{\"b\":true, \"foo\":\"bar\"}", .value = "{\"std_Ok\":{\"res\":{\"b\":true}}}"}
+json_test.JsonTest{.description = "{\"b\":true}", .value = "{\"std_Ok\":{\"res\":{\"b\":true}}}"}
+json_test.JsonTest{.description = "{\"foo\":\"bar\"}", .value = "{\"std_Err\":{\"err\":\"missing field `b` at line 1 column 13\"}}"}
+json_test.JsonTest{.description = "{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
+json_test.JsonTest{.description = "{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}

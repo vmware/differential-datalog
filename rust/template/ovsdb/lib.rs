@@ -372,7 +372,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             }
         }
         Record::NamedStruct(n, mut v) => {
-            if n.as_ref() == "std_Left" {
+            if n.as_ref() == "std.Left" {
                 match v.remove(0) {
                     (_, Record::Int(i)) => {
                         let uuid = uuid_from_int(&i)?;
@@ -383,7 +383,7 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
                     }
                     _ => Err(format!("Unexpected uuid value: {:?}", v)),
                 }
-            } else if n.as_ref() == "std_Right" {
+            } else if n.as_ref() == "std.Right" {
                 match v.remove(0) {
                     (_, Record::String(s)) => Ok(Value::Array(vec![
                         Value::String("named-uuid".to_owned()),

@@ -37,6 +37,7 @@ module Language.DifferentialDatalog.Compile (
     mkConstructorName,
     mkType,
     mkValue,
+    tupleStruct,
     rname
 ) where
 
@@ -742,7 +743,7 @@ mkFromRecord t@TypeDef{..} =
 
 mkStructIntoRecord :: TypeDef -> Doc
 mkStructIntoRecord t@TypeDef{..} =
-    "decl_struct_into_record!(" <> rname (name t) <> ", " <> targs <> "," <+> args <> ");"
+    "decl_struct_into_record!(" <> rname (name t) <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
@@ -759,7 +760,7 @@ mkEnumIntoRecord t@TypeDef{..} =
     "decl_enum_into_record!(" <> rname (name t) <> "," <+> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> (rname $ name c) <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
+    cons = commaSep $ map (\c -> (rname $ name c) <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
 mkEnumMutator :: TypeDef -> Doc
@@ -1114,9 +1115,7 @@ mkValType d types =
         "impl abomonation::Abomonation for" <+> tname <+> "{}"                                                      $$
         "impl fmt::Display for" <+> tname <+> "{"                                                                   $$
         "    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {"                                            $$
-        (nest' $ nest' $ if isString d t
-            then "record::format_ddlog_str(&self.0, f)"
-            else "fmt::Debug::fmt(&self.0, f)")                                                                     $$
+        "        self.clone().into_record().fmt(f)"                                                                 $$
         "    }"                                                                                                     $$
         "}"                                                                                                         $$
         "impl record::IntoRecord for" <+> tname <+> "{"                                                             $$

@@ -1616,7 +1616,7 @@ rustTypeFromFlatbuf t@TUser{..} =
 rustTypeFromFlatbuf t@TTuple{..} =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
-    "        Ok((" <> commaSep from_args <> "))"                                                    $$
+    "        Ok(" <> R.tupleStruct from_args <> ")"                                                 $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
     "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$

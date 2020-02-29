@@ -40,198 +40,198 @@ Reach{.s1 = "Tuileries", .s2 = "Concorde"}: +1
 Reach{.s1 = "Tuileries", .s2 = "Palais-Royal"}: +1
 Reach{.s1 = "Tuileries", .s2 = "Tuileries"}: +1
 Answer:
-Answer{"Chatelet"}
-Answer{"Louvres"}
-Answer{"Odeon"}
-Answer{"Palais Royal"}
-Answer{"St.Germain"}
-Answer{"St.Michel"}
+Answer{.x = "Chatelet"}
+Answer{.x = "Louvres"}
+Answer{.x = "Odeon"}
+Answer{.x = "Palais Royal"}
+Answer{.x = "St.Germain"}
+Answer{.x = "St.Michel"}
 
 Arithm:
-Arithm{0}
-Arithm{1}
-Arithm{2}
-Arithm{3}
-Arithm{4}
-Arithm{5}
-Arithm{6}
-Arithm{7}
-Arithm{8}
-Arithm{9}
-Arithm{10}
-Arithm{11}
-Arithm{12}
-Arithm{13}
-Arithm{14}
+Arithm{.n = 0}
+Arithm{.n = 1}
+Arithm{.n = 2}
+Arithm{.n = 3}
+Arithm{.n = 4}
+Arithm{.n = 5}
+Arithm{.n = 6}
+Arithm{.n = 7}
+Arithm{.n = 8}
+Arithm{.n = 9}
+Arithm{.n = 10}
+Arithm{.n = 11}
+Arithm{.n = 12}
+Arithm{.n = 13}
+Arithm{.n = 14}
 
 BigintVectors:
-BigintVectors{"double_evens(1,2,-1,4)",[4]}
-BigintVectors{"double_evens(1,2,0,4)",[4]}
-BigintVectors{"filter_C0(C0{1}, C1{2}, C1{0}, C1{3})",[2]}
-BigintVectors{"filter_gt((10, 20, 30), 15)",[20,30]}
+BigintVectors{.expr = "double_evens(1,2,-1,4)", .vec = [4]}
+BigintVectors{.expr = "double_evens(1,2,0,4)", .vec = [4]}
+BigintVectors{.expr = "filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec = [2]}
+BigintVectors{.expr = "filter_gt((10, 20, 30), 15)", .vec = [20, 30]}
 
 Cast_bigint:
-Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
-Cast_bigint{"128'd100 as bigint",100,100}
-Cast_bigint{"16'd100  as bigint",100,100}
-Cast_bigint{"24'd100  as bigint",100,100}
-Cast_bigint{"256'd100 as bigint",100,100}
-Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
-Cast_bigint{"32'd100  as bigint",100,100}
-Cast_bigint{"512'd100 as bigint",100,100}
-Cast_bigint{"8'd100   as bigint",100,100}
+Cast_bigint{.description = "(32'sd0 - 32'sd10) as bigint", .expected = -10, .actual = -10}
+Cast_bigint{.description = "128'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "16'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "24'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "256'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected = 29642774844752946028434172162224104410437116074403984394101141506025761187823610, .actual = 29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
 
 Cast_s32:
-Cast_s32{"(100: bit<32>) as signed<32>",100,100}
-Cast_s32{"128'sd100 as signed<32>",100,100}
-Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
-Cast_s32{"16'sd100  as signed<32>",100,100}
-Cast_s32{"32'sd100  as signed<32>",100,100}
-Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
-Cast_s32{"8'sd100   as signed<32>",100,100}
+Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
 
 Cast_u24:
-Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
-Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
-Cast_u24{"128'd100 as bit<24>",100,100}
-Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"16'd100  as bit<24>",100,100}
-Cast_u24{"24'd100  as bit<24>",100,100}
-Cast_u24{"256'd100 as bit<24>",100,100}
-Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"32'd100  as bit<24>",100,100}
-Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"8'd100   as bit<24>",100,100}
+Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected = 16777206, .actual = 16777206}
+Cast_u24{.description = "128'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "128'hffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "16'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "24'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "32'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "64'hffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "8'd100   as bit<24>", .expected = 100, .actual = 100}
 
 Cast_u256:
-Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
-Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
-Cast_u256{"128'd100 as bit<256>",100,100}
-Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
-Cast_u256{"16'd100  as bit<256>",100,100}
-Cast_u256{"24'd100  as bit<256>",100,100}
-Cast_u256{"256'd100 as bit<256>",100,100}
-Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
-Cast_u256{"32'd100  as bit<256>",100,100}
-Cast_u256{"512'd100 as bit<256>",100,100}
-Cast_u256{"8'd100   as bit<256>",100,100}
+Cast_u256{.description = "(100: signed<32>) as bit<32> as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected = 4294967286, .actual = 4294967286}
+Cast_u256{.description = "128'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "128'hffffffffffffffffffff as bit<256>", .expected = 1208925819614629174706175, .actual = 1208925819614629174706175}
+Cast_u256{.description = "16'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "24'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "256'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected = 115792089237316195423570985008687907853269984665640564039457584007913129639930, .actual = 115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{.description = "32'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "512'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "8'd100   as bit<256>", .expected = 100, .actual = 100}
 
 Cast_u32:
-Cast_u32{"(100: signed<32>) as bit<32>",100,100}
-Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
-Cast_u32{"128'd100 as bit<32>",100,100}
-Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"16'd100  as bit<32>",100,100}
-Cast_u32{"256'd100 as bit<32>",100,100}
-Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"32'd100  as bit<32>",100,100}
-Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"8'd100   as bit<32>",100,100}
+Cast_u32{.description = "(100: signed<32>) as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "(32'sd0 - 32'sd10) as bit<32>", .actual = 4294967286, .expected = 4294967286}
+Cast_u32{.description = "128'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "128'hffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "16'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}
 
 Compare:
-Compare{"\"\" >= \"a\"",false}
-Compare{"(1, 2) < (1, 4)",true}
-Compare{"(1, 2) < (3, 4)",true}
-Compare{"(1, 2) >= (3, 4)",false}
-Compare{"5 <= 3",false}
-Compare{"C0{32'd3} < C0{32'd4}",true}
-Compare{"C0{32'd3} < C1{32'd4}",true}
-Compare{"C0{32'd3} > C1{32'd4}",false}
-Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
-Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
-Compare{"None < Some{1}",true}
-Compare{"Some{0} < Some{1}",true}
-Compare{"true >= false",true}
+Compare{.label = "\"\" >= \"a\"", .value = false}
+Compare{.label = "(1, 2) < (1, 4)", .value = true}
+Compare{.label = "(1, 2) < (3, 4)", .value = true}
+Compare{.label = "(1, 2) >= (3, 4)", .value = false}
+Compare{.label = "5 <= 3", .value = false}
+Compare{.label = "C0{32'd3} < C0{32'd4}", .value = true}
+Compare{.label = "C0{32'd3} < C1{32'd4}", .value = true}
+Compare{.label = "C0{32'd3} > C1{32'd4}", .value = false}
+Compare{.label = "C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value = true}
+Compare{.label = "C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value = false}
+Compare{.label = "None < Some{1}", .value = true}
+Compare{.label = "Some{0} < Some{1}", .value = true}
+Compare{.label = "true >= false", .value = true}
 
 ControlFlow:
-ControlFlow{"all(true, true, false)","false"}
-ControlFlow{"all(true, true, true)","true"}
-ControlFlow{"any(false, false, false)","false"}
-ControlFlow{"any(false, true, false)","true"}
-ControlFlow{"weird_any(false, false, false)","false"}
-ControlFlow{"weird_any(false, true, false)","true"}
+ControlFlow{.expr = "all(true, true, false)", .value = "false"}
+ControlFlow{.expr = "all(true, true, true)", .value = "true"}
+ControlFlow{.expr = "any(false, false, false)", .value = "false"}
+ControlFlow{.expr = "any(false, true, false)", .value = "true"}
+ControlFlow{.expr = "weird_any(false, false, false)", .value = "false"}
+ControlFlow{.expr = "weird_any(false, true, false)", .value = "true"}
 
 J:
-J{true}
+J{.b = true}
 
 R7:
-R7{1,2}
-R7{1,3}
+R7{.f1 = 1, .f2 = 2}
+R7{.f1 = 1, .f2 = 3}
 R7Other{}
 
 Reach:
-Reach{"Chatelet","Chatelet"}
-Reach{"Chatelet","Louvres"}
-Reach{"Chatelet","Palais Royal"}
-Reach{"Chatelet","St.Michel"}
-Reach{"Concorde","Tuileries"}
-Reach{"Louvres","Chatelet"}
-Reach{"Louvres","Louvres"}
-Reach{"Louvres","Palais Royal"}
-Reach{"Odeon","Chatelet"}
-Reach{"Odeon","Louvres"}
-Reach{"Odeon","Odeon"}
-Reach{"Odeon","Palais Royal"}
-Reach{"Odeon","St.Germain"}
-Reach{"Odeon","St.Michel"}
-Reach{"Palais Royal","Louvres"}
-Reach{"Palais-Royal","Concorde"}
-Reach{"Palais-Royal","Palais-Royal"}
-Reach{"Palais-Royal","Tuileries"}
-Reach{"St.Germain","Chatelet"}
-Reach{"St.Germain","Louvres"}
-Reach{"St.Germain","Odeon"}
-Reach{"St.Germain","Palais Royal"}
-Reach{"St.Germain","St.Germain"}
-Reach{"St.Germain","St.Michel"}
-Reach{"St.Michel","Chatelet"}
-Reach{"St.Michel","Louvres"}
-Reach{"St.Michel","Odeon"}
-Reach{"St.Michel","Palais Royal"}
-Reach{"St.Michel","St.Michel"}
-Reach{"Tuileries","Concorde"}
-Reach{"Tuileries","Palais-Royal"}
-Reach{"Tuileries","Tuileries"}
+Reach{.s1 = "Chatelet", .s2 = "Chatelet"}
+Reach{.s1 = "Chatelet", .s2 = "Louvres"}
+Reach{.s1 = "Chatelet", .s2 = "Palais Royal"}
+Reach{.s1 = "Chatelet", .s2 = "St.Michel"}
+Reach{.s1 = "Concorde", .s2 = "Tuileries"}
+Reach{.s1 = "Louvres", .s2 = "Chatelet"}
+Reach{.s1 = "Louvres", .s2 = "Louvres"}
+Reach{.s1 = "Louvres", .s2 = "Palais Royal"}
+Reach{.s1 = "Odeon", .s2 = "Chatelet"}
+Reach{.s1 = "Odeon", .s2 = "Louvres"}
+Reach{.s1 = "Odeon", .s2 = "Odeon"}
+Reach{.s1 = "Odeon", .s2 = "Palais Royal"}
+Reach{.s1 = "Odeon", .s2 = "St.Germain"}
+Reach{.s1 = "Odeon", .s2 = "St.Michel"}
+Reach{.s1 = "Palais Royal", .s2 = "Louvres"}
+Reach{.s1 = "Palais-Royal", .s2 = "Concorde"}
+Reach{.s1 = "Palais-Royal", .s2 = "Palais-Royal"}
+Reach{.s1 = "Palais-Royal", .s2 = "Tuileries"}
+Reach{.s1 = "St.Germain", .s2 = "Chatelet"}
+Reach{.s1 = "St.Germain", .s2 = "Louvres"}
+Reach{.s1 = "St.Germain", .s2 = "Odeon"}
+Reach{.s1 = "St.Germain", .s2 = "Palais Royal"}
+Reach{.s1 = "St.Germain", .s2 = "St.Germain"}
+Reach{.s1 = "St.Germain", .s2 = "St.Michel"}
+Reach{.s1 = "St.Michel", .s2 = "Chatelet"}
+Reach{.s1 = "St.Michel", .s2 = "Louvres"}
+Reach{.s1 = "St.Michel", .s2 = "Odeon"}
+Reach{.s1 = "St.Michel", .s2 = "Palais Royal"}
+Reach{.s1 = "St.Michel", .s2 = "St.Michel"}
+Reach{.s1 = "Tuileries", .s2 = "Concorde"}
+Reach{.s1 = "Tuileries", .s2 = "Palais-Royal"}
+Reach{.s1 = "Tuileries", .s2 = "Tuileries"}
 
 Sib:
-Sib{"Alice","Ben"}
-Sib{"Alice","Bob"}
-Sib{"Ben","Alice"}
-Sib{"Ben","Bob"}
-Sib{"Bob","Alice"}
-Sib{"Bob","Ben"}
+Sib{.s1 = "Alice", .s2 = "Ben"}
+Sib{.s1 = "Alice", .s2 = "Bob"}
+Sib{.s1 = "Ben", .s2 = "Alice"}
+Sib{.s1 = "Ben", .s2 = "Bob"}
+Sib{.s1 = "Bob", .s2 = "Alice"}
+Sib{.s1 = "Bob", .s2 = "Ben"}
 
 Signed:
-Signed{-2147483648}
-Signed{0}
-Signed{1}
-Signed{2}
-Signed{3}
-Signed{4}
-Signed{5}
-Signed{6}
-Signed{7}
-Signed{8}
-Signed{9}
-Signed{10}
+Signed{.n = -2147483648}
+Signed{.n = 0}
+Signed{.n = 1}
+Signed{.n = 2}
+Signed{.n = 3}
+Signed{.n = 4}
+Signed{.n = 5}
+Signed{.n = 6}
+Signed{.n = 7}
+Signed{.n = 8}
+Signed{.n = 9}
+Signed{.n = 10}
 
 Trees:
-Trees{NonLeafNode{[LeafNode{300},NonLeafNode{[LeafNode{100},LeafNode{200}]}]}}
+Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}
 
 UMinus_bigint:
-UMinus_bigint{"- -100",100}
-UMinus_bigint{"-100",-100}
-UMinus_bigint{"-32768",-32768}
+UMinus_bigint{.description = "- -100", .n = 100}
+UMinus_bigint{.description = "-100", .n = -100}
+UMinus_bigint{.description = "-32768", .n = -32768}
 
 UMinus_s32:
-UMinus_s32{"-(-32'sd100)",100}
-UMinus_s32{"-32'sd100",-100}
-UMinus_s32{"-32768",-32768}
+UMinus_s32{.description = "-(-32'sd100)", .n = 100}
+UMinus_s32{.description = "-32'sd100", .n = -100}
+UMinus_s32{.description = "-32768", .n = -32768}
 
 VecTest:
-VecTest{[]}
-VecTest{["Hello,"]}
-VecTest{["Hello, ","world!"]}
+VecTest{.x = []}
+VecTest{.x = ["Hello,"]}
+VecTest{.x = ["Hello, ", "world!"]}
 
 Rules test
 R4:
@@ -259,128 +259,128 @@ R6{.f = 4}: +1
 R6{.f = 5}: +1
 R6{.f = 6}: +1
 Answer:
-Answer{"Chatelet"}
-Answer{"Louvres"}
-Answer{"Odeon"}
-Answer{"Palais Royal"}
-Answer{"St.Germain"}
-Answer{"St.Michel"}
+Answer{.x = "Chatelet"}
+Answer{.x = "Louvres"}
+Answer{.x = "Odeon"}
+Answer{.x = "Palais Royal"}
+Answer{.x = "St.Germain"}
+Answer{.x = "St.Michel"}
 
 Arithm:
-Arithm{0}
-Arithm{1}
-Arithm{2}
-Arithm{3}
-Arithm{4}
-Arithm{5}
-Arithm{6}
-Arithm{7}
-Arithm{8}
-Arithm{9}
-Arithm{10}
-Arithm{11}
-Arithm{12}
-Arithm{13}
-Arithm{14}
+Arithm{.n = 0}
+Arithm{.n = 1}
+Arithm{.n = 2}
+Arithm{.n = 3}
+Arithm{.n = 4}
+Arithm{.n = 5}
+Arithm{.n = 6}
+Arithm{.n = 7}
+Arithm{.n = 8}
+Arithm{.n = 9}
+Arithm{.n = 10}
+Arithm{.n = 11}
+Arithm{.n = 12}
+Arithm{.n = 13}
+Arithm{.n = 14}
 
 BigintVectors:
-BigintVectors{"double_evens(1,2,-1,4)",[4]}
-BigintVectors{"double_evens(1,2,0,4)",[4]}
-BigintVectors{"filter_C0(C0{1}, C1{2}, C1{0}, C1{3})",[2]}
-BigintVectors{"filter_gt((10, 20, 30), 15)",[20,30]}
+BigintVectors{.expr = "double_evens(1,2,-1,4)", .vec = [4]}
+BigintVectors{.expr = "double_evens(1,2,0,4)", .vec = [4]}
+BigintVectors{.expr = "filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec = [2]}
+BigintVectors{.expr = "filter_gt((10, 20, 30), 15)", .vec = [20, 30]}
 
 Cast_bigint:
-Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
-Cast_bigint{"128'd100 as bigint",100,100}
-Cast_bigint{"16'd100  as bigint",100,100}
-Cast_bigint{"24'd100  as bigint",100,100}
-Cast_bigint{"256'd100 as bigint",100,100}
-Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
-Cast_bigint{"32'd100  as bigint",100,100}
-Cast_bigint{"512'd100 as bigint",100,100}
-Cast_bigint{"8'd100   as bigint",100,100}
+Cast_bigint{.description = "(32'sd0 - 32'sd10) as bigint", .expected = -10, .actual = -10}
+Cast_bigint{.description = "128'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "16'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "24'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "256'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected = 29642774844752946028434172162224104410437116074403984394101141506025761187823610, .actual = 29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
 
 Cast_s32:
-Cast_s32{"(100: bit<32>) as signed<32>",100,100}
-Cast_s32{"128'sd100 as signed<32>",100,100}
-Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
-Cast_s32{"16'sd100  as signed<32>",100,100}
-Cast_s32{"32'sd100  as signed<32>",100,100}
-Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
-Cast_s32{"8'sd100   as signed<32>",100,100}
+Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
 
 Cast_u24:
-Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
-Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
-Cast_u24{"128'd100 as bit<24>",100,100}
-Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"16'd100  as bit<24>",100,100}
-Cast_u24{"24'd100  as bit<24>",100,100}
-Cast_u24{"256'd100 as bit<24>",100,100}
-Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"32'd100  as bit<24>",100,100}
-Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"8'd100   as bit<24>",100,100}
+Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected = 16777206, .actual = 16777206}
+Cast_u24{.description = "128'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "128'hffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "16'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "24'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "32'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "64'hffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "8'd100   as bit<24>", .expected = 100, .actual = 100}
 
 Cast_u256:
-Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
-Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
-Cast_u256{"128'd100 as bit<256>",100,100}
-Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
-Cast_u256{"16'd100  as bit<256>",100,100}
-Cast_u256{"24'd100  as bit<256>",100,100}
-Cast_u256{"256'd100 as bit<256>",100,100}
-Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
-Cast_u256{"32'd100  as bit<256>",100,100}
-Cast_u256{"512'd100 as bit<256>",100,100}
-Cast_u256{"8'd100   as bit<256>",100,100}
+Cast_u256{.description = "(100: signed<32>) as bit<32> as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected = 4294967286, .actual = 4294967286}
+Cast_u256{.description = "128'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "128'hffffffffffffffffffff as bit<256>", .expected = 1208925819614629174706175, .actual = 1208925819614629174706175}
+Cast_u256{.description = "16'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "24'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "256'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected = 115792089237316195423570985008687907853269984665640564039457584007913129639930, .actual = 115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{.description = "32'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "512'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "8'd100   as bit<256>", .expected = 100, .actual = 100}
 
 Cast_u32:
-Cast_u32{"(100: signed<32>) as bit<32>",100,100}
-Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
-Cast_u32{"128'd100 as bit<32>",100,100}
-Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"16'd100  as bit<32>",100,100}
-Cast_u32{"256'd100 as bit<32>",100,100}
-Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"32'd100  as bit<32>",100,100}
-Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"8'd100   as bit<32>",100,100}
+Cast_u32{.description = "(100: signed<32>) as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "(32'sd0 - 32'sd10) as bit<32>", .actual = 4294967286, .expected = 4294967286}
+Cast_u32{.description = "128'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "128'hffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "16'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}
 
 Compare:
-Compare{"\"\" >= \"a\"",false}
-Compare{"(1, 2) < (1, 4)",true}
-Compare{"(1, 2) < (3, 4)",true}
-Compare{"(1, 2) >= (3, 4)",false}
-Compare{"5 <= 3",false}
-Compare{"C0{32'd3} < C0{32'd4}",true}
-Compare{"C0{32'd3} < C1{32'd4}",true}
-Compare{"C0{32'd3} > C1{32'd4}",false}
-Compare{"C{\"a\", \"b\"} < C{\"a\", \"e\"}",true}
-Compare{"C{\"a\", \"b\"} > C{\"b\", \"e\"}",false}
-Compare{"None < Some{1}",true}
-Compare{"Some{0} < Some{1}",true}
-Compare{"true >= false",true}
+Compare{.label = "\"\" >= \"a\"", .value = false}
+Compare{.label = "(1, 2) < (1, 4)", .value = true}
+Compare{.label = "(1, 2) < (3, 4)", .value = true}
+Compare{.label = "(1, 2) >= (3, 4)", .value = false}
+Compare{.label = "5 <= 3", .value = false}
+Compare{.label = "C0{32'd3} < C0{32'd4}", .value = true}
+Compare{.label = "C0{32'd3} < C1{32'd4}", .value = true}
+Compare{.label = "C0{32'd3} > C1{32'd4}", .value = false}
+Compare{.label = "C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value = true}
+Compare{.label = "C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value = false}
+Compare{.label = "None < Some{1}", .value = true}
+Compare{.label = "Some{0} < Some{1}", .value = true}
+Compare{.label = "true >= false", .value = true}
 
 ControlFlow:
-ControlFlow{"all(true, true, false)","false"}
-ControlFlow{"all(true, true, true)","true"}
-ControlFlow{"any(false, false, false)","false"}
-ControlFlow{"any(false, true, false)","true"}
-ControlFlow{"weird_any(false, false, false)","false"}
-ControlFlow{"weird_any(false, true, false)","true"}
+ControlFlow{.expr = "all(true, true, false)", .value = "false"}
+ControlFlow{.expr = "all(true, true, true)", .value = "true"}
+ControlFlow{.expr = "any(false, false, false)", .value = "false"}
+ControlFlow{.expr = "any(false, true, false)", .value = "true"}
+ControlFlow{.expr = "weird_any(false, false, false)", .value = "false"}
+ControlFlow{.expr = "weird_any(false, true, false)", .value = "true"}
 
 J:
-J{true}
+J{.b = true}
 
 R4:
-R3{0,true}
-R3{1,true}
-R3{2,true}
-R3{3,true}
-R3{4,true}
-R3{5,true}
-R3{6,true}
+R3{.f1 = 0, .f2 = true}
+R3{.f1 = 1, .f2 = true}
+R3{.f1 = 2, .f2 = true}
+R3{.f1 = 3, .f2 = true}
+R3{.f1 = 4, .f2 = true}
+R3{.f1 = 5, .f2 = true}
+R3{.f1 = 6, .f2 = true}
 
 R5:
 0
@@ -392,92 +392,92 @@ R5:
 6
 
 R6:
-R6{0}
-R6{1}
-R6{2}
-R6{3}
-R6{4}
-R6{5}
-R6{6}
+R6{.f = 0}
+R6{.f = 1}
+R6{.f = 2}
+R6{.f = 3}
+R6{.f = 4}
+R6{.f = 5}
+R6{.f = 6}
 
 R7:
-R7{1,2}
-R7{1,3}
+R7{.f1 = 1, .f2 = 2}
+R7{.f1 = 1, .f2 = 3}
 R7Other{}
 
 Reach:
-Reach{"Chatelet","Chatelet"}
-Reach{"Chatelet","Louvres"}
-Reach{"Chatelet","Palais Royal"}
-Reach{"Chatelet","St.Michel"}
-Reach{"Concorde","Tuileries"}
-Reach{"Louvres","Chatelet"}
-Reach{"Louvres","Louvres"}
-Reach{"Louvres","Palais Royal"}
-Reach{"Odeon","Chatelet"}
-Reach{"Odeon","Louvres"}
-Reach{"Odeon","Odeon"}
-Reach{"Odeon","Palais Royal"}
-Reach{"Odeon","St.Germain"}
-Reach{"Odeon","St.Michel"}
-Reach{"Palais Royal","Louvres"}
-Reach{"Palais-Royal","Concorde"}
-Reach{"Palais-Royal","Palais-Royal"}
-Reach{"Palais-Royal","Tuileries"}
-Reach{"St.Germain","Chatelet"}
-Reach{"St.Germain","Louvres"}
-Reach{"St.Germain","Odeon"}
-Reach{"St.Germain","Palais Royal"}
-Reach{"St.Germain","St.Germain"}
-Reach{"St.Germain","St.Michel"}
-Reach{"St.Michel","Chatelet"}
-Reach{"St.Michel","Louvres"}
-Reach{"St.Michel","Odeon"}
-Reach{"St.Michel","Palais Royal"}
-Reach{"St.Michel","St.Michel"}
-Reach{"Tuileries","Concorde"}
-Reach{"Tuileries","Palais-Royal"}
-Reach{"Tuileries","Tuileries"}
+Reach{.s1 = "Chatelet", .s2 = "Chatelet"}
+Reach{.s1 = "Chatelet", .s2 = "Louvres"}
+Reach{.s1 = "Chatelet", .s2 = "Palais Royal"}
+Reach{.s1 = "Chatelet", .s2 = "St.Michel"}
+Reach{.s1 = "Concorde", .s2 = "Tuileries"}
+Reach{.s1 = "Louvres", .s2 = "Chatelet"}
+Reach{.s1 = "Louvres", .s2 = "Louvres"}
+Reach{.s1 = "Louvres", .s2 = "Palais Royal"}
+Reach{.s1 = "Odeon", .s2 = "Chatelet"}
+Reach{.s1 = "Odeon", .s2 = "Louvres"}
+Reach{.s1 = "Odeon", .s2 = "Odeon"}
+Reach{.s1 = "Odeon", .s2 = "Palais Royal"}
+Reach{.s1 = "Odeon", .s2 = "St.Germain"}
+Reach{.s1 = "Odeon", .s2 = "St.Michel"}
+Reach{.s1 = "Palais Royal", .s2 = "Louvres"}
+Reach{.s1 = "Palais-Royal", .s2 = "Concorde"}
+Reach{.s1 = "Palais-Royal", .s2 = "Palais-Royal"}
+Reach{.s1 = "Palais-Royal", .s2 = "Tuileries"}
+Reach{.s1 = "St.Germain", .s2 = "Chatelet"}
+Reach{.s1 = "St.Germain", .s2 = "Louvres"}
+Reach{.s1 = "St.Germain", .s2 = "Odeon"}
+Reach{.s1 = "St.Germain", .s2 = "Palais Royal"}
+Reach{.s1 = "St.Germain", .s2 = "St.Germain"}
+Reach{.s1 = "St.Germain", .s2 = "St.Michel"}
+Reach{.s1 = "St.Michel", .s2 = "Chatelet"}
+Reach{.s1 = "St.Michel", .s2 = "Louvres"}
+Reach{.s1 = "St.Michel", .s2 = "Odeon"}
+Reach{.s1 = "St.Michel", .s2 = "Palais Royal"}
+Reach{.s1 = "St.Michel", .s2 = "St.Michel"}
+Reach{.s1 = "Tuileries", .s2 = "Concorde"}
+Reach{.s1 = "Tuileries", .s2 = "Palais-Royal"}
+Reach{.s1 = "Tuileries", .s2 = "Tuileries"}
 
 Sib:
-Sib{"Alice","Ben"}
-Sib{"Alice","Bob"}
-Sib{"Ben","Alice"}
-Sib{"Ben","Bob"}
-Sib{"Bob","Alice"}
-Sib{"Bob","Ben"}
+Sib{.s1 = "Alice", .s2 = "Ben"}
+Sib{.s1 = "Alice", .s2 = "Bob"}
+Sib{.s1 = "Ben", .s2 = "Alice"}
+Sib{.s1 = "Ben", .s2 = "Bob"}
+Sib{.s1 = "Bob", .s2 = "Alice"}
+Sib{.s1 = "Bob", .s2 = "Ben"}
 
 Signed:
-Signed{-2147483648}
-Signed{0}
-Signed{1}
-Signed{2}
-Signed{3}
-Signed{4}
-Signed{5}
-Signed{6}
-Signed{7}
-Signed{8}
-Signed{9}
-Signed{10}
+Signed{.n = -2147483648}
+Signed{.n = 0}
+Signed{.n = 1}
+Signed{.n = 2}
+Signed{.n = 3}
+Signed{.n = 4}
+Signed{.n = 5}
+Signed{.n = 6}
+Signed{.n = 7}
+Signed{.n = 8}
+Signed{.n = 9}
+Signed{.n = 10}
 
 Trees:
-Trees{NonLeafNode{[LeafNode{300},NonLeafNode{[LeafNode{100},LeafNode{200}]}]}}
+Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}
 
 UMinus_bigint:
-UMinus_bigint{"- -100",100}
-UMinus_bigint{"-100",-100}
-UMinus_bigint{"-32768",-32768}
+UMinus_bigint{.description = "- -100", .n = 100}
+UMinus_bigint{.description = "-100", .n = -100}
+UMinus_bigint{.description = "-32768", .n = -32768}
 
 UMinus_s32:
-UMinus_s32{"-(-32'sd100)",100}
-UMinus_s32{"-32'sd100",-100}
-UMinus_s32{"-32768",-32768}
+UMinus_s32{.description = "-(-32'sd100)", .n = 100}
+UMinus_s32{.description = "-32'sd100", .n = -100}
+UMinus_s32{.description = "-32768", .n = -32768}
 
 VecTest:
-VecTest{[]}
-VecTest{["Hello,"]}
-VecTest{["Hello, ","world!"]}
+VecTest{.x = []}
+VecTest{.x = ["Hello,"]}
+VecTest{.x = ["Hello, ", "world!"]}
 
 Table12:
 Table12{.id = 20695836920908937261915266253713563738, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
@@ -490,20 +490,20 @@ Table12{.id = 218334107078988268330177571792522447425, .name = "foo", .f3 = S{.f
 Table12{.id = 258101594679877739861006822360175003366, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
 Table12{.id = 312560568469280405643575197132576203606, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
 Table12{.id = 324905179504175058909924909437678210347, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
-Table12{20695836920908937261915266253713563738,"foo",S{(true, true),5}}
-Table12{81692126345696542188923640651411714412,"foo",S{(false, true),10000}}
-Table12{137151609739491206170748566711757625861,"foo",S{(true, false),43981}}
-Table12{173592105249357153805573863620167017533,"foo",S{(false, true),10000}}
-Table12{173670172741911619502105830072953828992,"foo",S{(true, false),43981}}
-Table12{211727904196777888792921590151204575764,"foo",S{(true, true),5}}
-Table12{218334107078988268330177571792522447425,"foo",S{(true, true),5}}
-Table12{258101594679877739861006822360175003366,"buzzzzzzzz",S{(true, true),5}}
-Table12{312560568469280405643575197132576203606,"foo",S{(false, true),10000}}
-Table12{324905179504175058909924909437678210347,"foo",S{(true, false),43981}}
+Table12{.id = 20695836920908937261915266253713563738, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 81692126345696542188923640651411714412, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 137151609739491206170748566711757625861, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
+Table12{.id = 173592105249357153805573863620167017533, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 173670172741911619502105830072953828992, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
+Table12{.id = 211727904196777888792921590151204575764, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 218334107078988268330177571792522447425, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 258101594679877739861006822360175003366, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 312560568469280405643575197132576203606, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 324905179504175058909924909437678210347, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
 Rel3:
 Rel3{.x = 0, .y = IP4{.ip4 = 100}, .z = Option1{.f1 = 0, .f2 = IP4{.ip4 = 300}, .f3 = (true, "foo")}}: +1
 Rel3:
-Rel3{0,IP4{100},Option1{0,IP4{300},(true, "foo")}}
+Rel3{.x = 0, .y = IP4{.ip4 = 100}, .z = Option1{.f1 = 0, .f2 = IP4{.ip4 = 300}, .f3 = (true, "foo")}}
 Aggregate1:
 Aggregate1{.x = "a", .cnt = 4}: +1
 Aggregate1{.x = "b", .cnt = 3}: +1
@@ -543,64 +543,64 @@ Symmetric1:
 Symmetric1{.x = "a", .sym = true}: +1
 Symmetric1{.x = "b", .sym = false}: +1
 Aggregate1
-Aggregate1{"a",4}
-Aggregate1{"b",3}
+Aggregate1{.x = "a", .cnt = 4}
+Aggregate1{.x = "b", .cnt = 3}
 AggregateCnt
-AggregateCnt{7}
+AggregateCnt{.cnt = 7}
 AggregateCnt2
-AggregateCnt2{7}
+AggregateCnt2{.cnt = 7}
 AggregateCnt3
-AggregateCnt3{5}
+AggregateCnt3{.cnt = 5}
 Aggregate2
-Aggregate2{"a",["1","2","3","a"]}
-Aggregate2{"b",["1","2","3"]}
+Aggregate2{.x = "a", .set = ["1", "2", "3", "a"]}
+Aggregate2{.x = "b", .set = ["1", "2", "3"]}
 Aggregate3
-Aggregate3{"a",["1","2","3","a"]}
-Aggregate3{"b",["1","2","3"]}
+Aggregate3{.x = "a", .vec = ["1", "2", "3", "a"]}
+Aggregate3{.x = "b", .vec = ["1", "2", "3"]}
 Aggregate4
-Aggregate4{"a",[("a","a")]}
-Aggregate4{"b",[("b","3")]}
+Aggregate4{.x = "a", .map = [("a", "a")]}
+Aggregate4{.x = "b", .map = [("b", "3")]}
 AggregateByX
-AggregateByX{"a",3}
-AggregateByX{"b",3}
+AggregateByX{.x = "a", .cnt = 3}
+AggregateByX{.x = "b", .cnt = 3}
 Disaggregate
-Disaggregate{"a","1"}
-Disaggregate{"a","2"}
-Disaggregate{"a","3"}
-Disaggregate{"a","a"}
-Disaggregate{"b","1"}
-Disaggregate{"b","2"}
-Disaggregate{"b","3"}
+Disaggregate{.x = "a", .y = "1"}
+Disaggregate{.x = "a", .y = "2"}
+Disaggregate{.x = "a", .y = "3"}
+Disaggregate{.x = "a", .y = "a"}
+Disaggregate{.x = "b", .y = "1"}
+Disaggregate{.x = "b", .y = "2"}
+Disaggregate{.x = "b", .y = "3"}
 Sum:
 Sum{.x = "a", .sum = 111}: +1
 Sum{.x = "b", .sum = 60}: +1
 Sum
-Sum{"a",111}
-Sum{"b",60}
+Sum{.x = "a", .sum = 111}
+Sum{.x = "b", .sum = 60}
 WithKeyDbg:
 WithKeyDbg{.key = 0, .val = "foo"}: +1
 WithKeyDbg{.key = 1, .val = "bar"}: +1
 WithKeyDbg{.key = 2, .val = "buzz"}: +1
 WithKeyDbg
-WithKeyDbg{0,"foo"}
-WithKeyDbg{1,"bar"}
-WithKeyDbg{2,"buzz"}
+WithKeyDbg{.key = 0, .val = "foo"}
+WithKeyDbg{.key = 1, .val = "bar"}
+WithKeyDbg{.key = 2, .val = "buzz"}
 WithKeyDbg:
 WithKeyDbg{.key = 0, .val = "foo"}: -1
 WithKeyDbg after deletion by value
-WithKeyDbg{1,"bar"}
-WithKeyDbg{2,"buzz"}
+WithKeyDbg{.key = 1, .val = "bar"}
+WithKeyDbg{.key = 2, .val = "buzz"}
 WithKeyDbg:
 WithKeyDbg{.key = 1, .val = "bar"}: -1
 WithKeyDbg after deletion by key
-WithKeyDbg{2,"buzz"}
+WithKeyDbg{.key = 2, .val = "buzz"}
 WithKeyDbg:
 WithKeyDbg{.key = 1, .val = "bar2"}: +1
 WithKeyDbg{.key = 2, .val = "buzz"}: -1
 WithKeyDbg{.key = 4, .val = "hello"}: +1
 WithKeyDbg: +3, -2
-WithKeyDbg{1,"bar2"}
-WithKeyDbg{4,"hello"}
+WithKeyDbg{.key = 1, .val = "bar2"}
+WithKeyDbg{.key = 4, .val = "hello"}
 WithKeyDbg:
 WithKeyDbg{.key = 1, .val = "bar2"}: -1
 WithKeyDbg{.key = 1, .val = "bar3"}: +1
@@ -608,8 +608,8 @@ Innocent:
 Innocent{.name = "Bill Smith"}: +1
 Innocent{.name = "John Doe"}: +1
 Innocent
-Innocent{"Bill Smith"}
-Innocent{"John Doe"}
+Innocent{.name = "Bill Smith"}
+Innocent{.name = "John Doe"}
 ValidDestination:
 ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}: +1
 ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}: +1
@@ -617,11 +617,11 @@ ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}: +1
 ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}: +1
 ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}: +1
 ValidDestination
-ValidDestination{IPAddr{10,10,10,101}}
-ValidDestination{IPAddr{10,10,10,102}}
-ValidDestination{IPAddr{10,10,10,103}}
-ValidDestination{IPAddr{10,10,10,104}}
-ValidDestination{IPAddr{10,10,10,105}}
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}
+ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}
 HostAddress:
 HostAddress{.host = 0, .addr = "10.10.10.101"}: +1
 HostAddress{.host = 0, .addr = "10.10.10.102"}: +1
@@ -631,14 +631,14 @@ HostAddress{.host = 0, .addr = "10.10.10.105"}: +1
 HostAddress{.host = 1, .addr = "192.168.0.1"}: +1
 HostAddress{.host = 1, .addr = "192.168.0.2"}: +1
 HostAddress{.host = 1, .addr = "192.168.0.3"}: +1
-HostAddress{0,"10.10.10.101"}
-HostAddress{0,"10.10.10.102"}
-HostAddress{0,"10.10.10.103"}
-HostAddress{0,"10.10.10.104"}
-HostAddress{0,"10.10.10.105"}
-HostAddress{1,"192.168.0.1"}
-HostAddress{1,"192.168.0.2"}
-HostAddress{1,"192.168.0.3"}
+HostAddress{.host = 0, .addr = "10.10.10.101"}
+HostAddress{.host = 0, .addr = "10.10.10.102"}
+HostAddress{.host = 0, .addr = "10.10.10.103"}
+HostAddress{.host = 0, .addr = "10.10.10.104"}
+HostAddress{.host = 0, .addr = "10.10.10.105"}
+HostAddress{.host = 1, .addr = "192.168.0.1"}
+HostAddress{.host = 1, .addr = "192.168.0.2"}
+HostAddress{.host = 1, .addr = "192.168.0.3"}
 ExternalId:
 ExternalId{.host = 0, .id = ("a", "1")}: +1
 ExternalId{.host = 0, .id = ("b", "2")}: +1
@@ -646,12 +646,12 @@ ExternalId{.host = 0, .id = ("c", "3")}: +1
 ExternalId{.host = 0, .id = ("c", "4")}: +1
 ExternalId{.host = 0, .id = ("d", "5")}: +1
 ExternalId{.host = 0, .id = ("e", "6")}: +1
-ExternalId{0,("a", "1")}
-ExternalId{0,("b", "2")}
-ExternalId{0,("c", "3")}
-ExternalId{0,("c", "4")}
-ExternalId{0,("d", "5")}
-ExternalId{0,("e", "6")}
+ExternalId{.host = 0, .id = ("a", "1")}
+ExternalId{.host = 0, .id = ("b", "2")}
+ExternalId{.host = 0, .id = ("c", "3")}
+ExternalId{.host = 0, .id = ("c", "4")}
+ExternalId{.host = 0, .id = ("d", "5")}
+ExternalId{.host = 0, .id = ("e", "6")}
 Allocation:
 Allocation{.name = "a", .id = "1", .x = 30}: +1
 Allocation{.name = "a", .id = "2", .x = 31}: +1
@@ -662,15 +662,15 @@ Allocation{.name = "b", .id = "1", .x = 10000}: +1
 Allocation{.name = "b", .id = "3", .x = 16777215}: +1
 Allocation{.name = "b", .id = "4", .x = 1}: +1
 Allocation{.name = "b", .id = "5", .x = 2}: +1
-Allocation{"a","1",30}
-Allocation{"a","2",31}
-Allocation{"a","3",50}
-Allocation{"a","4",51}
-Allocation{"a","5",52}
-Allocation{"b","1",10000}
-Allocation{"b","3",16777215}
-Allocation{"b","4",1}
-Allocation{"b","5",2}
+Allocation{.name = "a", .id = "1", .x = 30}
+Allocation{.name = "a", .id = "2", .x = 31}
+Allocation{.name = "a", .id = "3", .x = 50}
+Allocation{.name = "a", .id = "4", .x = 51}
+Allocation{.name = "a", .id = "5", .x = 52}
+Allocation{.name = "b", .id = "1", .x = 10000}
+Allocation{.name = "b", .id = "3", .x = 16777215}
+Allocation{.name = "b", .id = "4", .x = 1}
+Allocation{.name = "b", .id = "5", .x = 2}
 Allocation:
 Allocation{.name = "a", .id = "1", .x = 30}: -1
 Allocation{.name = "a", .id = "2", .x = 31}: -1
@@ -683,23 +683,23 @@ Allocation{.name = "b", .id = "4", .x = 1}: -1
 Allocation{.name = "b", .id = "5", .x = 2}: -1
 Allocation after clear
 Filtered:
-Filtered{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
+Filtered{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}: +1
 Filtered2:
-Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}}: +1
+Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}}: +1
 Filtered3:
-Filtered3{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
+Filtered3{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}: +1
 Referee:
-Referee{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
+Referee{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}: +1
 Referee2:
-Referee2{.r = Referenced{.x = true, .y = std_Some{.x = "hello"}}}: +1
+Referee2{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}: +1
 Referee
-Referee{Referenced{true,std.Some{"hello"}}}
+Referee{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}
 Filtered
-Filtered{Referenced{true,std.Some{"hello"}}}
+Filtered{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}
 Referee2
-Referee2{Referenced{true,std.Some{"hello"}}}
+Referee2{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}
 Filtered2
-Filtered2{Referee2{Referenced{true,std.Some{"hello"}}}}
+Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std.Some{.x = "hello"}}}}
 Adjusted:
 Adjusted{.id = 1, .alloc = []}: +1
 Adjusted{.id = 2, .alloc = [("a", 0)]}: +1
@@ -748,106 +748,106 @@ NewAllocation{.id = 20, .alloc = []}: +1
 NewAllocation{.id = 21, .alloc = []}: +1
 NewAllocationOpt:
 NewAllocationOpt{.id = 1, .alloc = []}: +1
-NewAllocationOpt{.id = 2, .alloc = [("a", std_Some{.x = 0})]}: +1
-NewAllocationOpt{.id = 3, .alloc = [("a", std_Some{.x = 0}), ("b", std_None{})]}: +1
-NewAllocationOpt{.id = 4, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1})]}: +1
-NewAllocationOpt{.id = 5, .alloc = [("a", std_Some{.x = 1000}), ("b", std_Some{.x = 1001})]}: +1
-NewAllocationOpt{.id = 5, .alloc = [("a", std_Some{.x = 4294967294}), ("b", std_Some{.x = 4294967295})]}: +1
-NewAllocationOpt{.id = 6, .alloc = [("a", std_Some{.x = 4294967292}), ("b", std_Some{.x = 4294967293})]}: +1
-NewAllocationOpt{.id = 7, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1})]}: +1
-NewAllocationOpt{.id = 8, .alloc = [("a", std_Some{.x = 0}), ("b", std_Some{.x = 1}), ("c", std_Some{.x = 2}), ("d", std_Some{.x = 3}), ("e", std_Some{.x = 4}), ("f", std_Some{.x = 5})]}: +1
-NewAllocationOpt{.id = 9, .alloc = [("x", std_Some{.x = 10001}), ("b", std_Some{.x = 10002}), ("c", std_Some{.x = 10003}), ("d", std_Some{.x = 10004}), ("e", std_Some{.x = 10005}), ("z", std_Some{.x = 10006})]}: +1
-NewAllocationOpt{.id = 10, .alloc = [("x", std_Some{.x = 1}), ("b", std_Some{.x = 2}), ("c", std_Some{.x = 3}), ("d", std_Some{.x = 4}), ("e", std_Some{.x = 5}), ("z", std_Some{.x = 6})]}: +1
-NewAllocationOpt{.id = 11, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0})]}: +1
-NewAllocationOpt{.id = 12, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0}), ("p", std_Some{.x = 2}), ("q", std_Some{.x = 4})]}: +1
-NewAllocationOpt{.id = 13, .alloc = [("x", std_Some{.x = 6}), ("b", std_Some{.x = 7}), ("c", std_Some{.x = 8}), ("d", std_Some{.x = 9}), ("e", std_Some{.x = 10}), ("z", std_Some{.x = 0}), ("p", std_Some{.x = 2}), ("q", std_Some{.x = 4}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 14, .alloc = [("x", std_Some{.x = 4294967286}), ("b", std_Some{.x = 4294967288}), ("c", std_Some{.x = 4294967290}), ("d", std_Some{.x = 4294967291}), ("e", std_Some{.x = 4294967292}), ("z", std_Some{.x = 4294967293}), ("p", std_Some{.x = 4294967294}), ("q", std_None{}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 15, .alloc = [("x", std_Some{.x = 4294967286}), ("b", std_Some{.x = 4294967287}), ("c", std_Some{.x = 4294967288}), ("d", std_Some{.x = 4294967289}), ("e", std_Some{.x = 4294967290}), ("z", std_Some{.x = 4294967291}), ("p", std_Some{.x = 4294967292}), ("q", std_Some{.x = 4294967293}), ("r", std_Some{.x = 4294967294})]}: +1
-NewAllocationOpt{.id = 16, .alloc = [("x", std_Some{.x = 10}), ("b", std_Some{.x = 12}), ("c", std_Some{.x = 14}), ("d", std_Some{.x = 15}), ("e", std_Some{.x = 16}), ("z", std_Some{.x = 17}), ("p", std_Some{.x = 18}), ("q", std_Some{.x = 19}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 17, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 18, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 19, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 20, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
-NewAllocationOpt{.id = 21, .alloc = [("x", std_None{}), ("b", std_None{}), ("c", std_None{}), ("d", std_None{}), ("e", std_None{}), ("z", std_None{}), ("p", std_None{}), ("q", std_None{}), ("r", std_None{})]}: +1
+NewAllocationOpt{.id = 2, .alloc = [("a", std.Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 3, .alloc = [("a", std.Some{.x = 0}), ("b", std.None{})]}: +1
+NewAllocationOpt{.id = 4, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", std.Some{.x = 1000}), ("b", std.Some{.x = 1001})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", std.Some{.x = 4294967294}), ("b", std.Some{.x = 4294967295})]}: +1
+NewAllocationOpt{.id = 6, .alloc = [("a", std.Some{.x = 4294967292}), ("b", std.Some{.x = 4294967293})]}: +1
+NewAllocationOpt{.id = 7, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 8, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1}), ("c", std.Some{.x = 2}), ("d", std.Some{.x = 3}), ("e", std.Some{.x = 4}), ("f", std.Some{.x = 5})]}: +1
+NewAllocationOpt{.id = 9, .alloc = [("x", std.Some{.x = 10001}), ("b", std.Some{.x = 10002}), ("c", std.Some{.x = 10003}), ("d", std.Some{.x = 10004}), ("e", std.Some{.x = 10005}), ("z", std.Some{.x = 10006})]}: +1
+NewAllocationOpt{.id = 10, .alloc = [("x", std.Some{.x = 1}), ("b", std.Some{.x = 2}), ("c", std.Some{.x = 3}), ("d", std.Some{.x = 4}), ("e", std.Some{.x = 5}), ("z", std.Some{.x = 6})]}: +1
+NewAllocationOpt{.id = 11, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 12, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0}), ("p", std.Some{.x = 2}), ("q", std.Some{.x = 4})]}: +1
+NewAllocationOpt{.id = 13, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0}), ("p", std.Some{.x = 2}), ("q", std.Some{.x = 4}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 14, .alloc = [("x", std.Some{.x = 4294967286}), ("b", std.Some{.x = 4294967288}), ("c", std.Some{.x = 4294967290}), ("d", std.Some{.x = 4294967291}), ("e", std.Some{.x = 4294967292}), ("z", std.Some{.x = 4294967293}), ("p", std.Some{.x = 4294967294}), ("q", std.None{}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 15, .alloc = [("x", std.Some{.x = 4294967286}), ("b", std.Some{.x = 4294967287}), ("c", std.Some{.x = 4294967288}), ("d", std.Some{.x = 4294967289}), ("e", std.Some{.x = 4294967290}), ("z", std.Some{.x = 4294967291}), ("p", std.Some{.x = 4294967292}), ("q", std.Some{.x = 4294967293}), ("r", std.Some{.x = 4294967294})]}: +1
+NewAllocationOpt{.id = 16, .alloc = [("x", std.Some{.x = 10}), ("b", std.Some{.x = 12}), ("c", std.Some{.x = 14}), ("d", std.Some{.x = 15}), ("e", std.Some{.x = 16}), ("z", std.Some{.x = 17}), ("p", std.Some{.x = 18}), ("q", std.Some{.x = 19}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 17, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 18, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 19, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 20, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}: +1
+NewAllocationOpt{.id = 21, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}: +1
 NewAllocation
-NewAllocation{1,[]}
-NewAllocation{2,[("a", 0)]}
-NewAllocation{3,[("a", 0)]}
-NewAllocation{4,[("a", 0),("b", 1)]}
-NewAllocation{5,[("a", 1000),("b", 1001)]}
-NewAllocation{5,[("a", 4294967294),("b", 4294967295)]}
-NewAllocation{6,[("a", 4294967292),("b", 4294967293)]}
-NewAllocation{7,[("a", 0),("b", 1)]}
-NewAllocation{8,[("a", 0),("b", 1),("c", 2),("d", 3),("e", 4),("f", 5)]}
-NewAllocation{9,[("x", 10001),("b", 10002),("c", 10003),("d", 10004),("e", 10005),("z", 10006)]}
-NewAllocation{10,[("x", 1),("b", 2),("c", 3),("d", 4),("e", 5),("z", 6)]}
-NewAllocation{11,[("x", 6),("b", 7),("c", 8),("d", 9),("e", 10),("z", 0)]}
-NewAllocation{12,[("x", 6),("b", 7),("c", 8),("d", 9),("e", 10),("z", 0),("p", 2),("q", 4)]}
-NewAllocation{13,[("x", 6),("b", 7),("c", 8),("d", 9),("e", 10),("z", 0),("p", 2),("q", 4)]}
-NewAllocation{14,[("x", 4294967286),("b", 4294967288),("c", 4294967290),("d", 4294967291),("e", 4294967292),("z", 4294967293),("p", 4294967294)]}
-NewAllocation{15,[("x", 4294967286),("b", 4294967287),("c", 4294967288),("d", 4294967289),("e", 4294967290),("z", 4294967291),("p", 4294967292),("q", 4294967293),("r", 4294967294)]}
-NewAllocation{16,[("x", 10),("b", 12),("c", 14),("d", 15),("e", 16),("z", 17),("p", 18),("q", 19)]}
-NewAllocation{17,[]}
-NewAllocation{18,[]}
-NewAllocation{19,[]}
-NewAllocation{20,[]}
-NewAllocation{21,[]}
+NewAllocation{.id = 1, .alloc = []}
+NewAllocation{.id = 2, .alloc = [("a", 0)]}
+NewAllocation{.id = 3, .alloc = [("a", 0)]}
+NewAllocation{.id = 4, .alloc = [("a", 0), ("b", 1)]}
+NewAllocation{.id = 5, .alloc = [("a", 1000), ("b", 1001)]}
+NewAllocation{.id = 5, .alloc = [("a", 4294967294), ("b", 4294967295)]}
+NewAllocation{.id = 6, .alloc = [("a", 4294967292), ("b", 4294967293)]}
+NewAllocation{.id = 7, .alloc = [("a", 0), ("b", 1)]}
+NewAllocation{.id = 8, .alloc = [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)]}
+NewAllocation{.id = 9, .alloc = [("x", 10001), ("b", 10002), ("c", 10003), ("d", 10004), ("e", 10005), ("z", 10006)]}
+NewAllocation{.id = 10, .alloc = [("x", 1), ("b", 2), ("c", 3), ("d", 4), ("e", 5), ("z", 6)]}
+NewAllocation{.id = 11, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0)]}
+NewAllocation{.id = 12, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)]}
+NewAllocation{.id = 13, .alloc = [("x", 6), ("b", 7), ("c", 8), ("d", 9), ("e", 10), ("z", 0), ("p", 2), ("q", 4)]}
+NewAllocation{.id = 14, .alloc = [("x", 4294967286), ("b", 4294967288), ("c", 4294967290), ("d", 4294967291), ("e", 4294967292), ("z", 4294967293), ("p", 4294967294)]}
+NewAllocation{.id = 15, .alloc = [("x", 4294967286), ("b", 4294967287), ("c", 4294967288), ("d", 4294967289), ("e", 4294967290), ("z", 4294967291), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)]}
+NewAllocation{.id = 16, .alloc = [("x", 10), ("b", 12), ("c", 14), ("d", 15), ("e", 16), ("z", 17), ("p", 18), ("q", 19)]}
+NewAllocation{.id = 17, .alloc = []}
+NewAllocation{.id = 18, .alloc = []}
+NewAllocation{.id = 19, .alloc = []}
+NewAllocation{.id = 20, .alloc = []}
+NewAllocation{.id = 21, .alloc = []}
 NewAllocationOpt
-NewAllocationOpt{1,[]}
-NewAllocationOpt{2,[("a", std.Some{0})]}
-NewAllocationOpt{3,[("a", std.Some{0}),("b", std.None{})]}
-NewAllocationOpt{4,[("a", std.Some{0}),("b", std.Some{1})]}
-NewAllocationOpt{5,[("a", std.Some{1000}),("b", std.Some{1001})]}
-NewAllocationOpt{5,[("a", std.Some{4294967294}),("b", std.Some{4294967295})]}
-NewAllocationOpt{6,[("a", std.Some{4294967292}),("b", std.Some{4294967293})]}
-NewAllocationOpt{7,[("a", std.Some{0}),("b", std.Some{1})]}
-NewAllocationOpt{8,[("a", std.Some{0}),("b", std.Some{1}),("c", std.Some{2}),("d", std.Some{3}),("e", std.Some{4}),("f", std.Some{5})]}
-NewAllocationOpt{9,[("x", std.Some{10001}),("b", std.Some{10002}),("c", std.Some{10003}),("d", std.Some{10004}),("e", std.Some{10005}),("z", std.Some{10006})]}
-NewAllocationOpt{10,[("x", std.Some{1}),("b", std.Some{2}),("c", std.Some{3}),("d", std.Some{4}),("e", std.Some{5}),("z", std.Some{6})]}
-NewAllocationOpt{11,[("x", std.Some{6}),("b", std.Some{7}),("c", std.Some{8}),("d", std.Some{9}),("e", std.Some{10}),("z", std.Some{0})]}
-NewAllocationOpt{12,[("x", std.Some{6}),("b", std.Some{7}),("c", std.Some{8}),("d", std.Some{9}),("e", std.Some{10}),("z", std.Some{0}),("p", std.Some{2}),("q", std.Some{4})]}
-NewAllocationOpt{13,[("x", std.Some{6}),("b", std.Some{7}),("c", std.Some{8}),("d", std.Some{9}),("e", std.Some{10}),("z", std.Some{0}),("p", std.Some{2}),("q", std.Some{4}),("r", std.None{})]}
-NewAllocationOpt{14,[("x", std.Some{4294967286}),("b", std.Some{4294967288}),("c", std.Some{4294967290}),("d", std.Some{4294967291}),("e", std.Some{4294967292}),("z", std.Some{4294967293}),("p", std.Some{4294967294}),("q", std.None{}),("r", std.None{})]}
-NewAllocationOpt{15,[("x", std.Some{4294967286}),("b", std.Some{4294967287}),("c", std.Some{4294967288}),("d", std.Some{4294967289}),("e", std.Some{4294967290}),("z", std.Some{4294967291}),("p", std.Some{4294967292}),("q", std.Some{4294967293}),("r", std.Some{4294967294})]}
-NewAllocationOpt{16,[("x", std.Some{10}),("b", std.Some{12}),("c", std.Some{14}),("d", std.Some{15}),("e", std.Some{16}),("z", std.Some{17}),("p", std.Some{18}),("q", std.Some{19}),("r", std.None{})]}
-NewAllocationOpt{17,[("x", std.None{}),("b", std.None{}),("c", std.None{}),("d", std.None{}),("e", std.None{}),("z", std.None{}),("p", std.None{}),("q", std.None{}),("r", std.None{})]}
-NewAllocationOpt{18,[("x", std.None{}),("b", std.None{}),("c", std.None{}),("d", std.None{}),("e", std.None{}),("z", std.None{}),("p", std.None{}),("q", std.None{}),("r", std.None{})]}
-NewAllocationOpt{19,[("x", std.None{}),("b", std.None{}),("c", std.None{}),("d", std.None{}),("e", std.None{}),("z", std.None{}),("p", std.None{}),("q", std.None{}),("r", std.None{})]}
-NewAllocationOpt{20,[("x", std.None{}),("b", std.None{}),("c", std.None{}),("d", std.None{}),("e", std.None{}),("z", std.None{}),("p", std.None{}),("q", std.None{}),("r", std.None{})]}
-NewAllocationOpt{21,[("x", std.None{}),("b", std.None{}),("c", std.None{}),("d", std.None{}),("e", std.None{}),("z", std.None{}),("p", std.None{}),("q", std.None{}),("r", std.None{})]}
+NewAllocationOpt{.id = 1, .alloc = []}
+NewAllocationOpt{.id = 2, .alloc = [("a", std.Some{.x = 0})]}
+NewAllocationOpt{.id = 3, .alloc = [("a", std.Some{.x = 0}), ("b", std.None{})]}
+NewAllocationOpt{.id = 4, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1})]}
+NewAllocationOpt{.id = 5, .alloc = [("a", std.Some{.x = 1000}), ("b", std.Some{.x = 1001})]}
+NewAllocationOpt{.id = 5, .alloc = [("a", std.Some{.x = 4294967294}), ("b", std.Some{.x = 4294967295})]}
+NewAllocationOpt{.id = 6, .alloc = [("a", std.Some{.x = 4294967292}), ("b", std.Some{.x = 4294967293})]}
+NewAllocationOpt{.id = 7, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1})]}
+NewAllocationOpt{.id = 8, .alloc = [("a", std.Some{.x = 0}), ("b", std.Some{.x = 1}), ("c", std.Some{.x = 2}), ("d", std.Some{.x = 3}), ("e", std.Some{.x = 4}), ("f", std.Some{.x = 5})]}
+NewAllocationOpt{.id = 9, .alloc = [("x", std.Some{.x = 10001}), ("b", std.Some{.x = 10002}), ("c", std.Some{.x = 10003}), ("d", std.Some{.x = 10004}), ("e", std.Some{.x = 10005}), ("z", std.Some{.x = 10006})]}
+NewAllocationOpt{.id = 10, .alloc = [("x", std.Some{.x = 1}), ("b", std.Some{.x = 2}), ("c", std.Some{.x = 3}), ("d", std.Some{.x = 4}), ("e", std.Some{.x = 5}), ("z", std.Some{.x = 6})]}
+NewAllocationOpt{.id = 11, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0})]}
+NewAllocationOpt{.id = 12, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0}), ("p", std.Some{.x = 2}), ("q", std.Some{.x = 4})]}
+NewAllocationOpt{.id = 13, .alloc = [("x", std.Some{.x = 6}), ("b", std.Some{.x = 7}), ("c", std.Some{.x = 8}), ("d", std.Some{.x = 9}), ("e", std.Some{.x = 10}), ("z", std.Some{.x = 0}), ("p", std.Some{.x = 2}), ("q", std.Some{.x = 4}), ("r", std.None{})]}
+NewAllocationOpt{.id = 14, .alloc = [("x", std.Some{.x = 4294967286}), ("b", std.Some{.x = 4294967288}), ("c", std.Some{.x = 4294967290}), ("d", std.Some{.x = 4294967291}), ("e", std.Some{.x = 4294967292}), ("z", std.Some{.x = 4294967293}), ("p", std.Some{.x = 4294967294}), ("q", std.None{}), ("r", std.None{})]}
+NewAllocationOpt{.id = 15, .alloc = [("x", std.Some{.x = 4294967286}), ("b", std.Some{.x = 4294967287}), ("c", std.Some{.x = 4294967288}), ("d", std.Some{.x = 4294967289}), ("e", std.Some{.x = 4294967290}), ("z", std.Some{.x = 4294967291}), ("p", std.Some{.x = 4294967292}), ("q", std.Some{.x = 4294967293}), ("r", std.Some{.x = 4294967294})]}
+NewAllocationOpt{.id = 16, .alloc = [("x", std.Some{.x = 10}), ("b", std.Some{.x = 12}), ("c", std.Some{.x = 14}), ("d", std.Some{.x = 15}), ("e", std.Some{.x = 16}), ("z", std.Some{.x = 17}), ("p", std.Some{.x = 18}), ("q", std.Some{.x = 19}), ("r", std.None{})]}
+NewAllocationOpt{.id = 17, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}
+NewAllocationOpt{.id = 18, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}
+NewAllocationOpt{.id = 19, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}
+NewAllocationOpt{.id = 20, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}
+NewAllocationOpt{.id = 21, .alloc = [("x", std.None{}), ("b", std.None{}), ("c", std.None{}), ("d", std.None{}), ("e", std.None{}), ("z", std.None{}), ("p", std.None{}), ("q", std.None{}), ("r", std.None{})]}
 Adjusted
-Adjusted{1,[]}
-Adjusted{2,[("a", 0)]}
-Adjusted{3,[("a", 0)]}
-Adjusted{4,[("a", 0),("b", 1)]}
-Adjusted{5,[("a", 1000),("b", 1001)]}
-Adjusted{5,[("a", 4294967294),("b", 4294967295)]}
-Adjusted{6,[("a", 4294967292),("b", 4294967293)]}
-Adjusted{7,[("a", 0),("b", 1)]}
-Adjusted{8,[("a", 0),("b", 1),("c", 2),("d", 3),("e", 4),("f", 5)]}
-Adjusted{9,[("x", 0),("b", 10001),("c", 10002),("d", 10003),("e", 10004),("z", 10000)]}
-Adjusted{10,[("x", 0),("b", 1),("c", 2),("d", 3),("e", 4),("z", 10000)]}
-Adjusted{11,[("x", 1),("b", 6),("c", 7),("d", 8),("e", 9),("z", 5)]}
-Adjusted{12,[("x", 1),("b", 6),("c", 7),("d", 8),("e", 9),("z", 5),("p", 10),("q", 0)]}
-Adjusted{13,[("x", 1),("b", 6),("c", 7),("d", 8),("e", 9),("z", 5),("p", 10),("q", 0),("r", 2)]}
-Adjusted{14,[("x", 4294967287),("b", 4294967286),("c", 4294967288),("d", 4294967290),("e", 4294967291),("z", 4294967295),("p", 4294967292),("q", 4294967293),("r", 4294967294)]}
-Adjusted{15,[("x", 16777207),("b", 4294967286),("c", 4294967287),("d", 4294967288),("e", 4294967289),("z", 16777215),("p", 4294967290),("q", 4294967291),("r", 4294967292)]}
-Adjusted{16,[("x", 11),("b", 10),("c", 12),("d", 14),("e", 15),("z", 20),("p", 16),("q", 17),("r", 18)]}
-Adjusted{17,[("x", 10),("z", 12)]}
-Adjusted{18,[("x", 4294967293),("z", 4294967295)]}
-Adjusted{19,[("x", 0),("z", 2)]}
-Adjusted{20,[("x", 0),("z", 2)]}
-Adjusted{21,[("x", 0),("z", 2)]}
+Adjusted{.id = 1, .alloc = []}
+Adjusted{.id = 2, .alloc = [("a", 0)]}
+Adjusted{.id = 3, .alloc = [("a", 0)]}
+Adjusted{.id = 4, .alloc = [("a", 0), ("b", 1)]}
+Adjusted{.id = 5, .alloc = [("a", 1000), ("b", 1001)]}
+Adjusted{.id = 5, .alloc = [("a", 4294967294), ("b", 4294967295)]}
+Adjusted{.id = 6, .alloc = [("a", 4294967292), ("b", 4294967293)]}
+Adjusted{.id = 7, .alloc = [("a", 0), ("b", 1)]}
+Adjusted{.id = 8, .alloc = [("a", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("f", 5)]}
+Adjusted{.id = 9, .alloc = [("x", 0), ("b", 10001), ("c", 10002), ("d", 10003), ("e", 10004), ("z", 10000)]}
+Adjusted{.id = 10, .alloc = [("x", 0), ("b", 1), ("c", 2), ("d", 3), ("e", 4), ("z", 10000)]}
+Adjusted{.id = 11, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5)]}
+Adjusted{.id = 12, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0)]}
+Adjusted{.id = 13, .alloc = [("x", 1), ("b", 6), ("c", 7), ("d", 8), ("e", 9), ("z", 5), ("p", 10), ("q", 0), ("r", 2)]}
+Adjusted{.id = 14, .alloc = [("x", 4294967287), ("b", 4294967286), ("c", 4294967288), ("d", 4294967290), ("e", 4294967291), ("z", 4294967295), ("p", 4294967292), ("q", 4294967293), ("r", 4294967294)]}
+Adjusted{.id = 15, .alloc = [("x", 16777207), ("b", 4294967286), ("c", 4294967287), ("d", 4294967288), ("e", 4294967289), ("z", 16777215), ("p", 4294967290), ("q", 4294967291), ("r", 4294967292)]}
+Adjusted{.id = 16, .alloc = [("x", 11), ("b", 10), ("c", 12), ("d", 14), ("e", 15), ("z", 20), ("p", 16), ("q", 17), ("r", 18)]}
+Adjusted{.id = 17, .alloc = [("x", 10), ("z", 12)]}
+Adjusted{.id = 18, .alloc = [("x", 4294967293), ("z", 4294967295)]}
+Adjusted{.id = 19, .alloc = [("x", 0), ("z", 2)]}
+Adjusted{.id = 20, .alloc = [("x", 0), ("z", 2)]}
+Adjusted{.id = 21, .alloc = [("x", 0), ("z", 2)]}
 YX:
 YX{.y = 10, .x = 1}: +1
 YX{.y = 20, .x = 2}: +1
 YX{.y = 30, .x = 3}: +1
 YX{.y = 40, .x = 4}: +1
 YX
-YX{10,1}
-YX{20,2}
-YX{30,3}
-YX{40,4}
+YX{.y = 10, .x = 1}
+YX{.y = 20, .x = 2}
+YX{.y = 30, .x = 3}
+YX{.y = 40, .x = 4}
 SCCLabel:
 (2, 2): +1
 (3, 2): +1
@@ -875,17 +875,17 @@ StringOrd{.s = "Hello, ", .ord = 2}: +1
 StringOrd{.s = "Hello, bar", .ord = 4}: +1
 StringOrd{.s = "Hello, world", .ord = 5}: +1
 ConcatString
-ConcatString{"Foo bar"}
-ConcatString{"Foo world"}
-ConcatString{"Hello, bar"}
-ConcatString{"Hello, world"}
+ConcatString{.s = "Foo bar"}
+ConcatString{.s = "Foo world"}
+ConcatString{.s = "Hello, bar"}
+ConcatString{.s = "Hello, world"}
 StringOrd
-StringOrd{"Foo ",3}
-StringOrd{"Foo bar",6}
-StringOrd{"Foo world",7}
-StringOrd{"Hello, ",2}
-StringOrd{"Hello, bar",4}
-StringOrd{"Hello, world",5}
+StringOrd{.s = "Foo ", .ord = 3}
+StringOrd{.s = "Foo bar", .ord = 6}
+StringOrd{.s = "Foo world", .ord = 7}
+StringOrd{.s = "Hello, ", .ord = 2}
+StringOrd{.s = "Hello, bar", .ord = 4}
+StringOrd{.s = "Hello, world", .ord = 5}
 CMethod:
 CMethod{.c1 = "bar", .c2 = "foo"}: +1
 CMethod{.c1 = "buzz", .c2 = "foo"}: +1
@@ -895,13 +895,13 @@ DMethod{.c1 = "bar", .c2 = "foo"}: +1
 DMethod{.c1 = "buzz", .c2 = "foo"}: +1
 DMethod{.c1 = "hello", .c2 = "world"}: +1
 CMethod
-CMethod{"bar","foo"}
-CMethod{"buzz","foo"}
-CMethod{"hello","world"}
+CMethod{.c1 = "bar", .c2 = "foo"}
+CMethod{.c1 = "buzz", .c2 = "foo"}
+CMethod{.c1 = "hello", .c2 = "world"}
 DMethod
-DMethod{"bar","foo"}
-DMethod{"buzz","foo"}
-DMethod{"hello","world"}
+DMethod{.c1 = "bar", .c2 = "foo"}
+DMethod{.c1 = "buzz", .c2 = "foo"}
+DMethod{.c1 = "hello", .c2 = "world"}
 Power3:
 Power3{.y = 0}: +1
 Power3{.y = 1}: +1
@@ -909,11 +909,11 @@ Power3{.y = 8}: +1
 Power3{.y = 27}: +1
 Power3{.y = 64}: +1
 Power3
-Power3{0}
-Power3{1}
-Power3{8}
-Power3{27}
-Power3{64}
+Power3{.y = 0}
+Power3{.y = 1}
+Power3{.y = 8}
+Power3{.y = 27}
+Power3{.y = 64}
 RegexMatch:
 RegexMatch{.regex = "(?i)a+(?-i)b+", .text = "AaAaAbbBBBb", .m = true}: +1
 RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "111-222-333", .m = false}: +1
@@ -924,106 +924,106 @@ RegexMatch{.regex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", .text = "2014-0101", .m = fa
 RegexMatch{.regex = "a+b+", .text = "AaAaAbbBBBb", .m = false}: +1
 RegexMatch{.regex = "a+b+", .text = "aaaaabbbbbb", .m = true}: +1
 RegexMatch
-RegexMatch{"(?i)a+(?-i)b+","AaAaAbbBBBb",true}
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-333",false}
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","111-222-3333",true}
-RegexMatch{"[0-9]{3}-[0-9]{3}-[0-9]{4}","phone: 111-222-3333",true}
-RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-01-01",true}
-RegexMatch{"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","2014-0101",false}
-RegexMatch{"a+b+","AaAaAbbBBBb",false}
-RegexMatch{"a+b+","aaaaabbbbbb",true}
+RegexMatch{.regex = "(?i)a+(?-i)b+", .text = "AaAaAbbBBBb", .m = true}
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "111-222-333", .m = false}
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "111-222-3333", .m = true}
+RegexMatch{.regex = "[0-9]{3}-[0-9]{3}-[0-9]{4}", .text = "phone: 111-222-3333", .m = true}
+RegexMatch{.regex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", .text = "2014-01-01", .m = true}
+RegexMatch{.regex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", .text = "2014-0101", .m = false}
+RegexMatch{.regex = "a+b+", .text = "AaAaAbbBBBb", .m = false}
+RegexMatch{.regex = "a+b+", .text = "aaaaabbbbbb", .m = true}
 Arithm
-Arithm{0}
-Arithm{1}
-Arithm{2}
-Arithm{3}
-Arithm{4}
-Arithm{5}
-Arithm{6}
-Arithm{7}
-Arithm{8}
-Arithm{9}
-Arithm{10}
-Arithm{11}
-Arithm{12}
-Arithm{13}
-Arithm{14}
+Arithm{.n = 0}
+Arithm{.n = 1}
+Arithm{.n = 2}
+Arithm{.n = 3}
+Arithm{.n = 4}
+Arithm{.n = 5}
+Arithm{.n = 6}
+Arithm{.n = 7}
+Arithm{.n = 8}
+Arithm{.n = 9}
+Arithm{.n = 10}
+Arithm{.n = 11}
+Arithm{.n = 12}
+Arithm{.n = 13}
+Arithm{.n = 14}
 Signed
-Signed{-2147483648}
-Signed{0}
-Signed{1}
-Signed{2}
-Signed{3}
-Signed{4}
-Signed{5}
-Signed{6}
-Signed{7}
-Signed{8}
-Signed{9}
-Signed{10}
+Signed{.n = -2147483648}
+Signed{.n = 0}
+Signed{.n = 1}
+Signed{.n = 2}
+Signed{.n = 3}
+Signed{.n = 4}
+Signed{.n = 5}
+Signed{.n = 6}
+Signed{.n = 7}
+Signed{.n = 8}
+Signed{.n = 9}
+Signed{.n = 10}
 Cast_u32
-Cast_u32{"(100: signed<32>) as bit<32>",100,100}
-Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
-Cast_u32{"128'd100 as bit<32>",100,100}
-Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"16'd100  as bit<32>",100,100}
-Cast_u32{"256'd100 as bit<32>",100,100}
-Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"32'd100  as bit<32>",100,100}
-Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"8'd100   as bit<32>",100,100}
+Cast_u32{.description = "(100: signed<32>) as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "(32'sd0 - 32'sd10) as bit<32>", .actual = 4294967286, .expected = 4294967286}
+Cast_u32{.description = "128'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "128'hffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "16'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}
 Cast_s32
-Cast_s32{"(100: bit<32>) as signed<32>",100,100}
-Cast_s32{"128'sd100 as signed<32>",100,100}
-Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
-Cast_s32{"16'sd100  as signed<32>",100,100}
-Cast_s32{"32'sd100  as signed<32>",100,100}
-Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
-Cast_s32{"8'sd100   as signed<32>",100,100}
+Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
 Cast_u24
-Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
-Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
-Cast_u24{"128'd100 as bit<24>",100,100}
-Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"16'd100  as bit<24>",100,100}
-Cast_u24{"24'd100  as bit<24>",100,100}
-Cast_u24{"256'd100 as bit<24>",100,100}
-Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"32'd100  as bit<24>",100,100}
-Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"8'd100   as bit<24>",100,100}
+Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected = 16777206, .actual = 16777206}
+Cast_u24{.description = "128'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "128'hffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "16'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "24'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "32'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "64'hffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "8'd100   as bit<24>", .expected = 100, .actual = 100}
 Cast_u256
-Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
-Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
-Cast_u256{"128'd100 as bit<256>",100,100}
-Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
-Cast_u256{"16'd100  as bit<256>",100,100}
-Cast_u256{"24'd100  as bit<256>",100,100}
-Cast_u256{"256'd100 as bit<256>",100,100}
-Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
-Cast_u256{"32'd100  as bit<256>",100,100}
-Cast_u256{"512'd100 as bit<256>",100,100}
-Cast_u256{"8'd100   as bit<256>",100,100}
+Cast_u256{.description = "(100: signed<32>) as bit<32> as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected = 4294967286, .actual = 4294967286}
+Cast_u256{.description = "128'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "128'hffffffffffffffffffff as bit<256>", .expected = 1208925819614629174706175, .actual = 1208925819614629174706175}
+Cast_u256{.description = "16'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "24'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "256'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected = 115792089237316195423570985008687907853269984665640564039457584007913129639930, .actual = 115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{.description = "32'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "512'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "8'd100   as bit<256>", .expected = 100, .actual = 100}
 Cast_bigint
-Cast_bigint{"(32'sd0 - 32'sd10) as bigint",-10,-10}
-Cast_bigint{"128'd100 as bigint",100,100}
-Cast_bigint{"16'd100  as bigint",100,100}
-Cast_bigint{"24'd100  as bigint",100,100}
-Cast_bigint{"256'd100 as bigint",100,100}
-Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
-Cast_bigint{"32'd100  as bigint",100,100}
-Cast_bigint{"512'd100 as bigint",100,100}
-Cast_bigint{"8'd100   as bigint",100,100}
+Cast_bigint{.description = "(32'sd0 - 32'sd10) as bigint", .expected = -10, .actual = -10}
+Cast_bigint{.description = "128'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "16'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "24'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "256'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected = 29642774844752946028434172162224104410437116074403984394101141506025761187823610, .actual = 29642774844752946028434172162224104410437116074403984394101141506025761187823610}
+Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
 UMinus_s32
-UMinus_s32{"-(-32'sd100)",100}
-UMinus_s32{"-32'sd100",-100}
-UMinus_s32{"-32768",-32768}
+UMinus_s32{.description = "-(-32'sd100)", .n = 100}
+UMinus_s32{.description = "-32'sd100", .n = -100}
+UMinus_s32{.description = "-32768", .n = -32768}
 UMinus_bigint
-UMinus_bigint{"- -100",100}
-UMinus_bigint{"-100",-100}
-UMinus_bigint{"-32768",-32768}
+UMinus_bigint{.description = "- -100", .n = 100}
+UMinus_bigint{.description = "-100", .n = -100}
+UMinus_bigint{.description = "-32768", .n = -32768}
 J
-J{true}
+J{.b = true}
 Span:
 Span{.entity = 0, .tns = [0, 1, 2]}: +1
 Span{.entity = 1, .tns = [0, 1, 2]}: +1

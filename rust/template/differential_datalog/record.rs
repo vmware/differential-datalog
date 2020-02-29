@@ -1409,6 +1409,13 @@ pub fn arg_find<'a>(args: &'a [(Name, Record)], argname: &str) -> Option<&'a Rec
 
 #[macro_export]
 macro_rules! decl_struct_into_record {
+    ( $n:ident [ $nstr:expr ] <$( $targ:ident),*>, $( $arg:ident ),* ) => {
+        impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
+            fn into_record(self) -> $crate::record::Record {
+                $crate::record::Record::NamedStruct(borrow::Cow::from($nstr),vec![$((borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
+            }
+        }
+    };
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
@@ -1484,20 +1491,20 @@ macro_rules! decl_record_mutator_enum {
 
 #[macro_export]
 macro_rules! decl_enum_into_record {
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$($arg:ident),*} ),* ) => {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident [$consn:expr] {$($arg:ident),*} ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($cons)), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(borrow::Cow::from($consn), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }
     };
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($($arg:ident),*) ),* ) => {
+    ( $n:ident, <$( $targ:ident),*>, $($cons:ident [$consn:expr] ($($arg:ident),*) ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($cons)), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(borrow::Cow::from($consn), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }

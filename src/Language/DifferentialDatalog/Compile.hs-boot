@@ -19,3 +19,4 @@ mkType :: (WithType a) => a -> Doc
 rname :: String -> Doc
 
 mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
+tupleStruct :: [Doc] -> Doc

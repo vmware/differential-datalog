@@ -1,13 +1,13 @@
 Path:
-Path{"Palo Alto","Palo Alto"}
-Path{"Palo Alto","Redwood City"}
-Path{"Palo Alto","San Bruno"}
-Path{"Redwood City","San Bruno"}
+Path{.s1 = "Palo Alto", .s2 = "Palo Alto"}
+Path{.s1 = "Palo Alto", .s2 = "Redwood City"}
+Path{.s1 = "Palo Alto", .s2 = "San Bruno"}
+Path{.s1 = "Redwood City", .s2 = "San Bruno"}
 
 Printing Path relation only
 
-Path{"Palo Alto","Palo Alto"}
-Path{"Palo Alto","Redwood City"}
-Path{"Palo Alto","San Bruno"}
-Path{"Redwood City","San Bruno"}
+Path{.s1 = "Palo Alto", .s2 = "Palo Alto"}
+Path{.s1 = "Palo Alto", .s2 = "Redwood City"}
+Path{.s1 = "Palo Alto", .s2 = "San Bruno"}
+Path{.s1 = "Redwood City", .s2 = "San Bruno"}
 

@@ -225,6 +225,9 @@ class Parameter(object):
         """Get the parameter's type"""
         return Type.get(self.typeName)
 
+    def getName(self):
+        """Get the parameter's type"""
+        return self.name
 
 class Relation(object):
     """Represents information about a relation"""
@@ -502,13 +505,15 @@ class SouffleConverter(object):
     def getCurrentComponentLegalName(self):
         return self.current_component.replace(".", "_")
 
-    def process_file(self, rel, inFileName, inDelimiter, sort):
+    def process_file(self, rel, inFileName, inDelimiter, sort, is_output):
         """Process an INPUT or OUTPUT with name inFileName.
         rel: is the relation name that is being processed
         inFileName: is the file which contains the data
         inDelimiter: is the input record delimiter
         sort: is a Boolean indicating whether the records in the output
         should be lexicographically sorted.
+        is_output: is a Boolean indicating whether we are processing an input or an
+        output file.
         Returns the data in the file as a list of lists of strings.
 
         """
@@ -557,6 +562,10 @@ class SouffleConverter(object):
 
         if sort:
             output = sorted(output, cmp=lambda x, y: compare(x, y, isString))
+        if is_output:
+            for record in output:
+                for i in range(len(fields)):
+                    record[i] = "._" + params[i].getName() + " = " + record[i]
         return output
 
     @staticmethod
@@ -656,7 +665,7 @@ class SouffleConverter(object):
             if data is None:
                 print "** Cannot find input file for " + rel
                 return
-            output = self.process_file(rel, data, delimiter, False)
+            output = self.process_file(rel, data, delimiter, False, False)
             for row in output:
                 self.files.outputData(
                     "insert " + self.conversion_options.relationPrefix + \
@@ -693,10 +702,10 @@ class SouffleConverter(object):
                 print "*** Cannot find output file for " + rel + \
                       "; the reference output will be incomplete"
                 return
-            output = self.process_file(rel, data, "\t", True)
+            output = self.process_file(rel, data, "\t", True, True)
             for row in output:
                 self.files.dumpFile.write(
-                    self.conversion_options.relationPrefix + ri.name + "{" + ",".join(row) + "}\n")
+                    self.conversion_options.relationPrefix + ri.name + "{" + ", ".join(row) + "}\n")
 
     def get_type_parameters(self, typeParameters):
         """Returns the type parameters as a list or None if there are no type parameters
