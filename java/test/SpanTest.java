@@ -57,8 +57,8 @@ public class SpanTest {
 
         @Override
         public String toString() {
-            return this.getClass().getSimpleName() + "{" +
-                    this.entity.toString() + "," + this.tn.toString() + "}";
+            return this.getClass().getSimpleName() + "{.entity = " +
+                    this.entity.toString() + ", .tn = " + this.tn.toString() + "}";
         }
     }
     static class SpanComparator implements Comparator<SpanBase> {

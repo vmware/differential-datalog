@@ -2,6 +2,8 @@
 
 set -e
 
+(cd ovn-test-data && git checkout v2)
+
 # TODO: use OVS master once these changes are there.
 (cd ovs &&
  git checkout ovn-ddlog-patches &&

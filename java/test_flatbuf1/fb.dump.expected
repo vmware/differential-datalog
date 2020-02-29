@@ -28,18 +28,18 @@ From 37 Insert PI5{[2, 3, 72057594037927935]}
 From 38 Insert QI{{2=>"here", 3=>"there"}}
 From 39 Insert RI{2}
 From 40 Insert SI{C{"s"}}
-From 41 Insert TI{std_None{}}
-From 41 Insert TI{std_Some{10}}
+From 41 Insert TI{std.None{}}
+From 41 Insert TI{std.Some{10}}
 From 42 Insert A{"a"}
 From 42 Insert B{false}
 From 42 Insert D{(false, 2, "zz")}
 From 43 Insert VI{false,A{"aa"}}
 From 43 Insert VI{false,D{(false, 2, "string")}}
 From 43 Insert VI{true,B{false}}
-From 44 Insert WI{std_None{}}
-From 44 Insert WI{std_Some{B{true}}}
+From 44 Insert WI{std.None{}}
+From 44 Insert WI{std.Some{B{true}}}
 From 45 Insert XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
-From 46 Insert YI{[std_Some{(false, 255, "")}, std_Some{(true, 254, "!")}, std_None{}]}
+From 46 Insert YI{[std.Some{(false, 255, "")}, std.Some{(true, 254, "!")}, std.None{}]}
 From 47 Insert ZI{1234566788901239813761283}
 From 48 Insert "Hello, world!"
 From 48 Insert "Привіт!"
@@ -61,13 +61,13 @@ From 59 Insert A{"It's all Greek to me:  Α α, Β β, Γ γ, Δ δ, Ε ε, Ζ �
 From 60 Insert ["Foo
 ", "	bar"]
 From 61 Insert {"key1"=>B{false}, "key2"=>A{"val2"}}
-From 62 Insert std_None{}
-From 62 Insert std_Some{"ZI6"}
+From 62 Insert std.None{}
+From 62 Insert std.Some{"ZI6"}
 From 63 Insert "ZI7"
 From 63 Insert "♛"
 From 64 Insert 100
 From 65 Insert 100
-From 66 Insert module_ZI16{"zi16"}
+From 66 Insert module.ZI16{"zi16"}
 From 67 Insert "zi17"
-From 68 Insert module_ZI18{(4294967295, "ZZZ")}
+From 68 Insert module.ZI18{(4294967295, "ZZZ")}
 From 69 Insert (4294967293, "zi19")

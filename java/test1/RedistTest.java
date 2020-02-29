@@ -33,9 +33,9 @@ public class RedistTest {
         @Override
         public String toString() {
             StringBuilder result = new StringBuilder();
-            result.append("Span{");
+            result.append("Span{.entity = ");
             result.append(this.entity);
-            result.append(",[");
+            result.append(", .tns = [");
             List<Integer> list = new ArrayList<Integer>();
             for (int i : this.getTNs())
                 list.add(i);
@@ -43,7 +43,7 @@ public class RedistTest {
             boolean first = true;
             for (int i : list) {
                 if (!first)
-                    result.append(",");
+                    result.append(", ");
                 else
                     first = false;
                 result.append(i);
