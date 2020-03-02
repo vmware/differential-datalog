@@ -51,6 +51,9 @@ pub enum Record {
     Bool(bool),
     Int(BigInt),
     String(String),
+    /// Value serialized in a string.  The first field stores the name of the
+    /// serialization format, e.g., "json".
+    Serialized(Name, String),
     Tuple(Vec<Record>),
     Array(CollectionKind, Vec<Record>),
     PosStruct(Name, Vec<Record>),
@@ -64,6 +67,10 @@ impl fmt::Display for Record {
             Record::Bool(false) => write!(f, "false"),
             Record::Int(i) => i.fmt(f),
             Record::String(s) => format_ddlog_str(s.as_ref(), f),
+            Record::Serialized(n, s) => {
+                write!(f, "#{}", n)?;
+                format_ddlog_str(s.as_ref(), f)
+            }
             Record::Tuple(recs) => {
                 write!(f, "(")?;
                 let len = recs.len();
@@ -1454,7 +1461,7 @@ macro_rules! decl_record_mutator_struct {
 #[macro_export]
 macro_rules! decl_record_mutator_enum {
     ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
-        impl<$($targ: $crate::record::FromRecord+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
+        impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
             fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
@@ -1527,35 +1534,6 @@ macro_rules! decl_val_enum_into_record {
             fn into_record(self) -> $crate::record::Record {
                 match self {
                     $($n::$cons($arg) => $arg.into_record()),*
-                }
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! decl_record_mutator_val_enum {
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($type:ty)),* ) => {
-        impl<$($targ: $crate::record::FromRecord+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
-            where $($crate::record::Record: $crate::record::Mutator<$targ>),*
-        {
-            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
-                match self {
-                    $crate::record::Record::PosStruct(..) => {
-                        Err(format!("Cannot use positional struct as mutator"))
-                    },
-                    $crate::record::Record::NamedStruct(_, args) => {
-                        match x {
-                            $(
-                                $n::$cons(v) => {
-                                    <Mutator<$type>>::mutate(self, v)
-                                }
-                            ),*
-                        }
-                    },
-                    _ => {
-                        Result::Err(format!("not a struct {:?}", *self))
-                    }
                 }
             }
         }
