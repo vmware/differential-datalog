@@ -1,1 +1,7 @@
 dump json_test.JsonTest;
+
+start;
+insert json_test.Deserialized[@json"{\"@type\": \"t.V1\", \"b\": true}"],
+commit;
+
+dump json_test.ODeserialized;

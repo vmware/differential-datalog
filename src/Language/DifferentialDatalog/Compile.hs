@@ -713,15 +713,22 @@ mkFromRecord t@TypeDef{..} =
     "                    c => result::Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
+    "            record::Record::Serialized(format, s) => {"                                                                    $$
+    "                if format == \"json\" {"                                                                                   $$
+    "                    serde_json::from_str(&*s).map_err(|e|format!(\"{}\", e))"                                              $$
+    "                } else {"                                                                                                  $$
+    "                    result::Result::Err(format!(\"unsupported serialization format '{}'\", format))"                       $$
+    "                }"                                                                                                         $$
+    "            },"                                                                                                            $$
     "            v => {"                                                                                                        $$
-    "                result::Result::Err(format!(\"not a struct {:?}\", *v))"                                                           $$
+    "                result::Result::Err(format!(\"not a struct {:?}\", *v))"                                                   $$
     "            }"                                                                                                             $$
     "        }"                                                                                                                 $$
     "    }"                                                                                                                     $$
     "}"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord + Default") . pp) tdefArgs) <> ">"
+    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord + serde::de::DeserializeOwned + Default") . pp) tdefArgs) <> ">"
     pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
     mkposcons :: Constructor -> Doc
     mkposcons c@Constructor{..} =

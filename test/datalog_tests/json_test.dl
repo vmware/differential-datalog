@@ -108,3 +108,7 @@ JsonTest(scalar3(),
          to_json_string_or_default(from_json_string(scalar3()): Result<JsonValue, string>)).
 JsonTest(scalar4(),
          to_json_string_or_default(from_json_string(scalar4()): Result<JsonValue, string>)).
+
+input relation Deserialized[TaggedEnum]
+output relation ODeserialized[TaggedEnum]
+ODeserialized[x] :- Deserialized[x].

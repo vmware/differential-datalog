@@ -14,3 +14,4 @@ json_test.JsonTest{.description = "{\"b\":true}", .value = "{\"std_Ok\":{\"res\"
 json_test.JsonTest{.description = "{\"foo\":\"bar\"}", .value = "{\"std_Err\":{\"err\":\"missing field `b` at line 1 column 13\"}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}
+json_test.TVariant1{.b = true}

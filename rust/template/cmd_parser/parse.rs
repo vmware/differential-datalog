@@ -314,7 +314,7 @@ named!(rel_key<&[u8], (Name, Record)>,
 );
 
 named!(record<&[u8], Record>,
-    alt!(bool_val | string_val | string_val_from_file | tuple_val | array_val | struct_val | int_val )
+    alt!(bool_val | string_val | serialized_val | tuple_val | array_val | struct_val | int_val )
 );
 
 named!(named_record<&[u8], (Name, Record)>,
@@ -368,22 +368,30 @@ named!(string_literal<&[u8], String>,
     )
 );
 
-named!(string_val_from_file<&[u8], Record>,
+named!(string_from_file<&[u8], String>,
     do_parse!(
         tag!("%")
         >>
         fname: string_literal
         >>
-        (Record::String(std::fs::read_to_string(std::path::Path::new(&fname)).map_err(|e|format!("Failed to read string from file {}: {}", fname, e)).unwrap()))
+        (std::fs::read_to_string(std::path::Path::new(&fname)).map_err(|e|format!("Failed to read string from file {}: {}", fname, e)).unwrap())
     )
 );
 
-named!(string_val<&[u8], Record>,
+named!(string_inline<&[u8], String>,
     do_parse!(
         str: string_literal
         >>
-        (Record::String(str))
+        (str)
     )
+);
+
+named!(string_token<&[u8], String>,
+    alt!(string_inline | string_from_file)
+);
+
+named!(string_val<&[u8], Record>,
+       map!(string_token, Record::String)
 );
 
 #[test]
@@ -406,6 +414,28 @@ fn test_string() {
     );
 }
 
+named!(serialized_val<&[u8], Record>,
+    do_parse!(
+        tag!("@")
+        >>
+        format_name: identifier
+        >>
+        data: string_token
+        >>
+        (Record::Serialized(Cow::from(format_name), data))
+    )
+);
+
+#[test]
+fn test_serialized() {
+    assert_eq!(
+        serialized_val(br###"@json"foo""###),
+        Ok((
+            &br""[..],
+            Record::Serialized(Cow::from("json"), "foo".to_string())
+        ))
+    );
+}
 named!(tuple_val<&[u8], Record>,
     delimited!(apply!(sym,"("),
                map!(separated_list!(apply!(sym,","), record), Record::Tuple),
