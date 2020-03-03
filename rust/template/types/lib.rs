@@ -14,6 +14,8 @@
     clippy::missing_safety_doc
 )]
 
+use num::bigint::BigInt;
+use num::FromPrimitive;
 use ordered_float::OrderedFloat;
 use std::borrow;
 use std::fmt;
@@ -21,8 +23,6 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::os::raw; // TODO: this is  only used by ovn.rs and should be moved there.
 use std::result;
-use num::bigint::BigInt;
-use num::FromPrimitive;
 
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
