@@ -599,11 +599,15 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             GroupBy gb = spec.getGroupBy().get();
             this.processGroupBy(gb, context, groupBy);
         }
-        if (spec.getHaving().isPresent())
-            throw new TranslationException("Not yet handled", spec.getHaving().get());
-
         Select select = spec.getSelect();
-        return this.processSelect(relation, select, groupBy, context);
+        DDlogIRNode result = this.processSelect(relation, select, groupBy, context);
+
+        if (spec.getHaving().isPresent()) {
+            Expression having = spec.getHaving().get();
+            DDlogExpression ddexpr = context.translateExpression(having);
+        }
+
+        return result;
     }
 
     @Override

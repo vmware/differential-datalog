@@ -256,9 +256,9 @@ public class QueriesTest {
         this.testTranslation(query, program, true);
     }
 
-    //@Test
+    @Test
     public void testHaving() {
-        String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(Column2) > 2";
+        String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(column2) > 2";
         String program = "";
         this.testTranslation(query, program);
     }
