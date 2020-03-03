@@ -13,13 +13,13 @@
     clippy::missing_safety_doc
 )]
 
+use num::bigint::BigInt;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::os::unix::io::IntoRawFd;
 use std::ptr;
 use std::result;
 use std::sync;
-use num::bigint::BigInt;
 
 use ordered_float::*;
 
