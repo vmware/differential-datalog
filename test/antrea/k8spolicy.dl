@@ -94,8 +94,7 @@ function labelSelectorMatches(selector: Option<Ref<LabelSelector>>, labels: Map<
 {
     match (selector) {
         None -> false,
-        Some{s} -> {
-            var sel = deref(s);
+        Some{sel} -> {
             if (map_is_empty(sel.matchLabels) and vec_is_empty(sel.matchExpressions)) {
                 true
             } else {
