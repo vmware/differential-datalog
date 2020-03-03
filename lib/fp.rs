@@ -316,7 +316,7 @@ pub fn fp_int_from_f(v: &OrderedFloat<f32>) -> std_Option<Int> {
     match (BigInt::from_f32(**v)) {
         None => std_Option::std_None,
         Some(x) => std_Option::std_Some {
-            x: Int::from_bigint(x)
+            x: Int::from_bigint(x),
         },
     }
 }
@@ -325,7 +325,7 @@ pub fn fp_int_from_d(v: &OrderedFloat<f64>) -> std_Option<Int> {
     match (BigInt::from_f64(**v)) {
         None => std_Option::std_None,
         Some(x) => std_Option::std_Some {
-            x: Int::from_bigint(x)
+            x: Int::from_bigint(x),
         },
     }
 }
