@@ -36,7 +36,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
-    isBool, isBit, isSigned, isInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -448,13 +448,13 @@ isSigned d a = case typ' d a of
                  TSigned _ _ -> True
                  _           -> False
 
-isInt :: (WithType a) => DatalogProgram -> a -> Bool
-isInt d a = case typ' d a of
+isBigInt :: (WithType a) => DatalogProgram -> a -> Bool
+isBigInt d a = case typ' d a of
                  TInt _ -> True
                  _      -> False
 
 isInteger :: (WithType a) => DatalogProgram -> a -> Bool
-isInteger d a = isBit d a || isSigned d a || isInt d a
+isInteger d a = isBit d a || isSigned d a || isBigInt d a
 
 isDouble :: (WithType a) => DatalogProgram -> a -> Bool
 isDouble d a = case typ' d a of

@@ -5,7 +5,6 @@ use super::record::{FromRecord, IntoRecord, Mutator, Record};
 use abomonation::Abomonation;
 use num::bigint::ToBigInt;
 use num::bigint::{BigInt, BigUint};
-use num::FromPrimitive;
 use num::ToPrimitive;
 use ordered_float::OrderedFloat;
 use serde::de::Error;
@@ -69,16 +68,6 @@ impl Uint {
             x: BigUint::from(v),
         }
     }
-    pub fn from_float(v: OrderedFloat<f32>) -> Uint {
-        Uint {
-            x: BigUint::from_f32(*v).unwrap(),
-        }
-    }
-    pub fn from_double(v: OrderedFloat<f64>) -> Uint {
-        Uint {
-            x: BigUint::from_f64(*v).unwrap(),
-        }
-    }
     pub fn from_bytes_be(bytes: &[u8]) -> Uint {
         Uint {
             x: BigUint::from_bytes_be(bytes),
@@ -105,16 +94,16 @@ impl Uint {
     pub fn to_Int(&self) -> Option<int::Int> {
         self.x.to_bigint().map(int::Int::from_bigint)
     }
-    pub fn to_float(&self) -> Option<OrderedFloat<f32>> {
+    pub fn to_float(&self) -> OrderedFloat<f32> {
         match self.x.to_f32() {
-            None => Some(OrderedFloat::<f32>(std::f32::NAN)),
-            Some(x) => Some(OrderedFloat::<f32>(x)),
+            None => OrderedFloat::<f32>(std::f32::NAN),
+            Some(x) => OrderedFloat::<f32>(x),
         }
     }
-    pub fn to_double(&self) -> Option<OrderedFloat<f64>> {
+    pub fn to_double(&self) -> OrderedFloat<f64> {
         match self.x.to_f64() {
-            None => Some(OrderedFloat::<f64>(std::f64::NAN)),
-            Some(x) => Some(OrderedFloat::<f64>(x)),
+            None => OrderedFloat::<f64>(std::f64::NAN),
+            Some(x) => OrderedFloat::<f64>(x),
         }
     }
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {

@@ -2326,9 +2326,9 @@ mkExpr' _ _ EPHolder{} = ("_", ELVal)
 -- * Otherwise, introduce an intermediate variable with explicit type
 mkExpr' d ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
                          | isint && toDouble
-                                         = (parens $ e' <> ".to_double().unwrap()", categ)
+                                         = (parens $ e' <> ".to_double()", categ)
                          | isint && toFloat
-                                         = (parens $ e' <+> ".to_float().unwrap()", categ)
+                                         = (parens $ e' <+> ".to_float()", categ)
                          | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
                          | otherwise     = (braces $ "let __typed:" <+> opt_ref <> mkType exprTSpec <+> "=" <+> e' <> "; __typed", categ)
     where
@@ -2373,35 +2373,11 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       | bothIntegers
                       = (parens $ tto <> "::from_" <> tfrom <> "(" <> val exprExpr <> ")", EVal)
 
-                      ----- Floating point from now on -----
-                      -- convert float to UInt
-                      | isFloat d from_type && isInt d to_type
-                      = (parens $ tto <> "::from_float(" <> val exprExpr  <> ")", EVal)
-                      | isDouble d from_type && isInt d to_type
-                      = (parens $ tto <> "::from_double(" <> val exprExpr  <> ")", EVal)
-                      -- convert float to a very long bit<W>: convert to Uint and mask out some bits
-                      | isFloat d from_type && isBit d to_type && tto == "Uint"
-                      = (parens $ tto <> "::from_float(" <> val exprExpr  <> ") & " <>
-                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one())"
-                         , EVal)
-                      | isDouble d from_type && isBit d to_type && tto == "Uint"
-                      = (parens $ tto <> "::from_double(" <> val exprExpr  <> ") & " <>
-                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one())"
-                         , EVal)
-                      -- convert float to bit<W>: mask out some bits using an Uint mask, then convert Uint to machine type
-                      | isFP d from_type && isBit d to_type
-                      = (parens $ "(((*(" <> val exprExpr <+> ")) as" <+> mkType exprTSpec <> ") & " <>
-                         "((Uint::one() <<" <> pp (typeWidth to_type) <> ") - Uint::one()).to_" <> mkType exprTSpec <> "().unwrap())"
-                         , EVal)
-                      -- convert float to signed: since only machine widths are supported,
-                      -- just convert and the machine will do the truncation
-                      | isFP d from_type && isSigned d to_type
-                      = (parens $ "(((*(" <> val exprExpr <+> ")) as" <+> mkType exprTSpec <> "))", EVal)
                       -- convert long integers to FP
                       | isFloat d to_type && (tfrom == "Int" || tfrom == "Uint")
-                      = (parens $ "(" <> val exprExpr <> ").to_float().unwrap()", EVal)
+                      = (parens $ "(" <> val exprExpr <> ").to_float()", EVal)
                       | isDouble d to_type && (tfrom == "Int" || tfrom == "Uint")
-                      = (parens $ "(" <> val exprExpr <> ").to_double().unwrap()", EVal)
+                      = (parens $ "(" <> val exprExpr <> ").to_double()", EVal)
                       -- convert integer to float
                       | isFloat d to_type && isInteger d from_type
                       = (parens $ "OrderedFloat(" <> val exprExpr <> " as f32)", EVal)
@@ -2427,9 +2403,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
     width_cmp = if ((isBit d from_type || isSigned d from_type) &&
                     (isBit d to_type || isSigned d to_type))
                    then compare (typeWidth from_type) (typeWidth to_type)
-                   else if isInt d from_type && isInt d to_type
+                   else if isBigInt d from_type && isBigInt d to_type
                            then EQ
-                           else if isInt d to_type then LT else GT
+                           else if isBigInt d to_type then LT else GT
 
 mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (pos e)
 
@@ -2516,7 +2492,7 @@ mkBinOp d op (e1, t1) (e2, t2) =
         Minus  | smallInt d t1
                -> parens $ e1 <> ".wrapping_sub(" <> e2 <> ")"
                | isFP d t1
-               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "-" <+> e2 <> ".into_inner()")
+               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()"<+> "-" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "-" <+> e2
         Times  | smallInt d t1
