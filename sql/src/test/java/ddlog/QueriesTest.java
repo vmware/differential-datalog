@@ -165,6 +165,32 @@ public class QueriesTest {
     }
 
     @Test
+    public void testGroupBy2() {
+        String query = "create view v0 as SELECT column2, column3, COUNT(*), SUM(column1) FROM t1 GROUP BY column2, column3";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{column2:string, column3:bool, col:signed<64>, col1:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>, col1:signed<64>}\n" +
+                "function agg(g: Group<(string, bool), Tt1>):Tagg =\n" +
+                "(var gb, var gb0) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(var sum = 64'sd0: signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(count = agg_count_R(count, 64'sd1));\n" +
+                "(var incr = v.column1);\n" +
+                "(sum = agg_sum_signed_R(sum, incr))}\n" +
+                ");\n" +
+                "(Tagg{.col = count,.col1 = sum})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],var gb = v.column2,var gb0 = v.column3," +
+                "var aggResult = Aggregate((gb, gb0), agg((v)))," +
+                "var v2 = TRtmp{.column2 = gb,.column3 = gb0,.col = aggResult.col,.col1 = aggResult.col1},var v3 = v2.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testGroupByNull1() {
         String query = "create view v0 as SELECT column2, COUNT(*) FROM t1 GROUP BY column2";
         String program = this.header(true) +
