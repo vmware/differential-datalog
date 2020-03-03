@@ -80,34 +80,36 @@ Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffff
 Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "int_from_d(64'f3.5)", .expected = 3, .actual = 3}
+Cast_bigint{.description = "int_from_f(32'f3.5)", .expected = 3, .actual = 3}
 
 Cast_double:
-Cast_double{"128'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"16'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"24'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"256'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double",OrderedFloat(29642774844752946000000000000000000000000000000000000000000000000000000000000000.0),OrderedFloat(29642774844752946000000000000000000000000000000000000000000000000000000000000000.0)}
-Cast_double{"32'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"32'f3.5  as double",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_double{"512'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"64'f3.5  as double",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_double{"8'd100   as double",OrderedFloat(100.0),OrderedFloat(100.0)}
+Cast_double{.description = "128'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "16'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "24'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "256'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double", .expected = 29642774844752946000000000000000000000000000000000000000000000000000000000000000, .actual = 29642774844752946000000000000000000000000000000000000000000000000000000000000000}
+Cast_double{.description = "32'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "32'f3.5  as double", .expected = 3.5, .actual = 3.5}
+Cast_double{.description = "512'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "64'f3.5  as double", .expected = 3.5, .actual = 3.5}
+Cast_double{.description = "8'd100   as double", .expected = 100, .actual = 100}
 
 Cast_float:
-Cast_float{"-16'sd100  as float",OrderedFloat(-100.0),OrderedFloat(-100.0)}
-Cast_float{"-32'sd100  as float",OrderedFloat(-100.0),OrderedFloat(-100.0)}
-Cast_float{"128'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"16'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"16'sd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"24'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"256'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float",OrderedFloat(NaN),OrderedFloat(NaN)}
-Cast_float{"32'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"32'f3.5  as float",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_float{"32'sd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"512'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"64'f3.5  as float",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_float{"8'd100   as float",OrderedFloat(100.0),OrderedFloat(100.0)}
+Cast_float{.description = "-16'sd100  as float", .expected = -100, .actual = -100}
+Cast_float{.description = "-32'sd100  as float", .expected = -100, .actual = -100}
+Cast_float{.description = "128'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}
+Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}
+Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "512'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "64'f3.5  as float", .expected = 3.5, .actual = 3.5}
+Cast_float{.description = "8'd100   as float", .expected = 100, .actual = 100}
 
 Cast_s32:
 Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
@@ -180,21 +182,24 @@ ControlFlow{.expr = "weird_any(false, false, false)", .value = "false"}
 ControlFlow{.expr = "weird_any(false, true, false)", .value = "true"}
 
 Doubles:
-Doubles{"-5",OrderedFloat(-5.0)}
-Doubles{"0: double",OrderedFloat(0.0)}
-Doubles{"5",OrderedFloat(5.0)}
-Doubles{"5 + 3",OrderedFloat(8.0)}
-Doubles{"5*3",OrderedFloat(15.0)}
-Doubles{"5/3",OrderedFloat(1.6666666666666667)}
-Doubles{"floor_d(64'f0.1)",OrderedFloat(0.0)}
+Doubles{.s = "-5", .d = -5}
+Doubles{.s = "0: double", .d = 0}
+Doubles{.s = "10", .d = 8}
+Doubles{.s = "5 + 3", .d = 8}
+Doubles{.s = "5*3", .d = 15}
+Doubles{.s = "5/3", .d = 1.6666666666666667}
+Doubles{.s = "64'f5.0", .d = 5}
+Doubles{.s = "64'f5e2", .d = 500}
+Doubles{.s = "floor_d(64'f0.1)", .d = 0}
 
 Floats:
-Floats{"0: float",OrderedFloat(0.0)}
-Floats{"5",OrderedFloat(5.0)}
-Floats{"5 + 3",OrderedFloat(8.0)}
-Floats{"5*3",OrderedFloat(15.0)}
-Floats{"5/3",OrderedFloat(1.6666666)}
-Floats{"floor_f(32'f0.1)",OrderedFloat(0.0)}
+Floats{.s = "0: float", .f = 0}
+Floats{.s = "32'f5.0", .f = 5}
+Floats{.s = "32'f5e2", .f = 500}
+Floats{.s = "5 + 3", .f = 8}
+Floats{.s = "5*3", .f = 15}
+Floats{.s = "5/3", .f = 1.6666666}
+Floats{.s = "floor_f(32'f0.1)", .f = 0}
 
 J:
 J{.b = true}
@@ -344,102 +349,83 @@ Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffff
 Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
-=======
-Cast_bigint{"128'd100 as bigint",100,100}
-Cast_bigint{"16'd100  as bigint",100,100}
-Cast_bigint{"24'd100  as bigint",100,100}
-Cast_bigint{"256'd100 as bigint",100,100}
-Cast_bigint{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",29642774844752946028434172162224104410437116074403984394101141506025761187823610,29642774844752946028434172162224104410437116074403984394101141506025761187823610}
-Cast_bigint{"32'd100  as bigint",100,100}
-Cast_bigint{"32'f3.5  as bigint",3,3}
-Cast_bigint{"512'd100 as bigint",100,100}
-Cast_bigint{"64'f3.5  as bigint",3,3}
-Cast_bigint{"8'd100   as bigint",100,100}
->>>>>>> fix typo
+Cast_bigint{.description = "int_from_d(64'f3.5)", .expected = 3, .actual = 3}
+Cast_bigint{.description = "int_from_f(32'f3.5)", .expected = 3, .actual = 3}
 
 Cast_double:
-Cast_double{"128'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"16'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"24'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"256'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double",OrderedFloat(29642774844752946000000000000000000000000000000000000000000000000000000000000000.0),OrderedFloat(29642774844752946000000000000000000000000000000000000000000000000000000000000000.0)}
-Cast_double{"32'd100  as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"32'f3.5  as double",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_double{"512'd100 as double",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_double{"64'f3.5  as double",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_double{"8'd100   as double",OrderedFloat(100.0),OrderedFloat(100.0)}
+Cast_double{.description = "128'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "16'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "24'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "256'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double", .expected = 29642774844752946000000000000000000000000000000000000000000000000000000000000000, .actual = 29642774844752946000000000000000000000000000000000000000000000000000000000000000}
+Cast_double{.description = "32'd100  as double", .expected = 100, .actual = 100}
+Cast_double{.description = "32'f3.5  as double", .expected = 3.5, .actual = 3.5}
+Cast_double{.description = "512'd100 as double", .expected = 100, .actual = 100}
+Cast_double{.description = "64'f3.5  as double", .expected = 3.5, .actual = 3.5}
+Cast_double{.description = "8'd100   as double", .expected = 100, .actual = 100}
 
 Cast_float:
-Cast_float{"-16'sd100  as float",OrderedFloat(-100.0),OrderedFloat(-100.0)}
-Cast_float{"-32'sd100  as float",OrderedFloat(-100.0),OrderedFloat(-100.0)}
-Cast_float{"128'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"16'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"16'sd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"24'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"256'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float",OrderedFloat(NaN),OrderedFloat(NaN)}
-Cast_float{"32'd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"32'f3.5  as float",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_float{"32'sd100  as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"512'd100 as float",OrderedFloat(100.0),OrderedFloat(100.0)}
-Cast_float{"64'f3.5  as float",OrderedFloat(3.5),OrderedFloat(3.5)}
-Cast_float{"8'd100   as float",OrderedFloat(100.0),OrderedFloat(100.0)}
+Cast_float{.description = "-16'sd100  as float", .expected = -100, .actual = -100}
+Cast_float{.description = "-32'sd100  as float", .expected = -100, .actual = -100}
+Cast_float{.description = "128'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}
+Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}
+Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}
+Cast_float{.description = "512'd100 as float", .expected = 100, .actual = 100}
+Cast_float{.description = "64'f3.5  as float", .expected = 3.5, .actual = 3.5}
+Cast_float{.description = "8'd100   as float", .expected = 100, .actual = 100}
 
 Cast_s32:
-Cast_s32{"(100: bit<32>) as signed<32>",100,100}
-Cast_s32{"128'sd100 as signed<32>",100,100}
-Cast_s32{"128'shffffffffffffffffffff as signed<32>",-1,-1}
-Cast_s32{"16'sd100  as signed<32>",100,100}
-Cast_s32{"32'f3.5 as signed<32>",3,3}
-Cast_s32{"32'sd100  as signed<32>",100,100}
-Cast_s32{"64'f3.5 as signed<32>",3,3}
-Cast_s32{"64'shffffffffffff as signed<32>",-1,-1}
-Cast_s32{"8'sd100   as signed<32>",100,100}
+Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
+Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
+Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
 
 Cast_u24:
-Cast_u24{"(100: signed<32>) as bit<32> as bit<24>",100,100}
-Cast_u24{"(32'sd0 - 32'sd10) as bit<32> as bit<24>",16777206,16777206}
-Cast_u24{"128'd100 as bit<24>",100,100}
-Cast_u24{"128'hffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"16'd100  as bit<24>",100,100}
-Cast_u24{"24'd100  as bit<24>",100,100}
-Cast_u24{"256'd100 as bit<24>",100,100}
-Cast_u24{"256'hffffffffffffffffffffffffffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"32'd100  as bit<24>",100,100}
-Cast_u24{"32'f3.5 as bit<24>",3,3}
-Cast_u24{"32'f30000000.0 as bit<24>",13222784,13222784}
-Cast_u24{"64'f3.5 as bit<24>",3,3}
-Cast_u24{"64'hffffffffffff as bit<24>",16777215,16777215}
-Cast_u24{"8'd100   as bit<24>",100,100}
+Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected = 16777206, .actual = 16777206}
+Cast_u24{.description = "128'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "128'hffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "16'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "24'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'd100 as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "32'd100  as bit<24>", .expected = 100, .actual = 100}
+Cast_u24{.description = "64'hffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}
+Cast_u24{.description = "8'd100   as bit<24>", .expected = 100, .actual = 100}
 
 Cast_u256:
-Cast_u256{"(100: signed<32>) as bit<32> as bit<256>",100,100}
-Cast_u256{"(32'sd0 - 32'sd10) as bit<32> as bit<256>",4294967286,4294967286}
-Cast_u256{"128'd100 as bit<256>",100,100}
-Cast_u256{"128'hffffffffffffffffffff as bit<256>",1208925819614629174706175,1208925819614629174706175}
-Cast_u256{"16'd100  as bit<256>",100,100}
-Cast_u256{"24'd100  as bit<256>",100,100}
-Cast_u256{"256'd100 as bit<256>",100,100}
-Cast_u256{"264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",115792089237316195423570985008687907853269984665640564039457584007913129639930,115792089237316195423570985008687907853269984665640564039457584007913129639930}
-Cast_u256{"32'd100  as bit<256>",100,100}
-Cast_u256{"32'f3.5  as bit<256>",3,3}
-Cast_u256{"512'd100 as bit<256>",100,100}
-Cast_u256{"64'f3.5  as bit<256>",3,3}
-Cast_u256{"8'd100   as bit<256>",100,100}
+Cast_u256{.description = "(100: signed<32>) as bit<32> as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected = 4294967286, .actual = 4294967286}
+Cast_u256{.description = "128'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "128'hffffffffffffffffffff as bit<256>", .expected = 1208925819614629174706175, .actual = 1208925819614629174706175}
+Cast_u256{.description = "16'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "24'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "256'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected = 115792089237316195423570985008687907853269984665640564039457584007913129639930, .actual = 115792089237316195423570985008687907853269984665640564039457584007913129639930}
+Cast_u256{.description = "32'd100  as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "512'd100 as bit<256>", .expected = 100, .actual = 100}
+Cast_u256{.description = "8'd100   as bit<256>", .expected = 100, .actual = 100}
 
 Cast_u32:
-Cast_u32{"(100: signed<32>) as bit<32>",100,100}
-Cast_u32{"(32'sd0 - 32'sd10) as bit<32>",4294967286,4294967286}
-Cast_u32{"128'd100 as bit<32>",100,100}
-Cast_u32{"128'hffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"16'd100  as bit<32>",100,100}
-Cast_u32{"256'd100 as bit<32>",100,100}
-Cast_u32{"256'hffffffffffffffffffffffffffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"32'd100  as bit<32>",100,100}
-Cast_u32{"32'f3.5 as bit<32>",3,3}
-Cast_u32{"64'f3.5 as bit<32>",3,3}
-Cast_u32{"64'hffffffffffff as bit<32>",4294967295,4294967295}
-Cast_u32{"8'd100   as bit<32>",100,100}
+Cast_u32{.description = "(100: signed<32>) as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "(32'sd0 - 32'sd10) as bit<32>", .actual = 4294967286, .expected = 4294967286}
+Cast_u32{.description = "128'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "128'hffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "16'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'd100 as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}
+Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
+Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}
 
 Compare:
 Compare{.label = "\"\" >= \"a\"", .value = false}
@@ -465,21 +451,24 @@ ControlFlow{.expr = "weird_any(false, false, false)", .value = "false"}
 ControlFlow{.expr = "weird_any(false, true, false)", .value = "true"}
 
 Doubles:
-Doubles{"-5",OrderedFloat(-5.0)}
-Doubles{"0: double",OrderedFloat(0.0)}
-Doubles{"5",OrderedFloat(5.0)}
-Doubles{"5 + 3",OrderedFloat(8.0)}
-Doubles{"5*3",OrderedFloat(15.0)}
-Doubles{"5/3",OrderedFloat(1.6666666666666667)}
-Doubles{"floor_d(64'f0.1)",OrderedFloat(0.0)}
+Doubles{.s = "-5", .d = -5}
+Doubles{.s = "0: double", .d = 0}
+Doubles{.s = "10", .d = 8}
+Doubles{.s = "5 + 3", .d = 8}
+Doubles{.s = "5*3", .d = 15}
+Doubles{.s = "5/3", .d = 1.6666666666666667}
+Doubles{.s = "64'f5.0", .d = 5}
+Doubles{.s = "64'f5e2", .d = 500}
+Doubles{.s = "floor_d(64'f0.1)", .d = 0}
 
 Floats:
-Floats{"0: float",OrderedFloat(0.0)}
-Floats{"5",OrderedFloat(5.0)}
-Floats{"5 + 3",OrderedFloat(8.0)}
-Floats{"5*3",OrderedFloat(15.0)}
-Floats{"5/3",OrderedFloat(1.6666666)}
-Floats{"floor_f(32'f0.1)",OrderedFloat(0.0)}
+Floats{.s = "0: float", .f = 0}
+Floats{.s = "32'f5.0", .f = 5}
+Floats{.s = "32'f5e2", .f = 500}
+Floats{.s = "5 + 3", .f = 8}
+Floats{.s = "5*3", .f = 15}
+Floats{.s = "5/3", .f = 1.6666666}
+Floats{.s = "floor_f(32'f0.1)", .f = 0}
 
 J:
 J{.b = true}
@@ -1125,6 +1114,8 @@ Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffff
 Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}
 Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}
+Cast_bigint{.description = "int_from_d(64'f3.5)", .expected = 3, .actual = 3}
+Cast_bigint{.description = "int_from_f(32'f3.5)", .expected = 3, .actual = 3}
 UMinus_s32
 UMinus_s32{.description = "-(-32'sd100)", .n = 100}
 UMinus_s32{.description = "-32'sd100", .n = -100}
