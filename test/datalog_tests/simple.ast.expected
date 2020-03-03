@@ -433,87 +433,89 @@ function foo (): bool =
                  Option1{.f1=_, .f2=IP6{.ip6=_}, .f3=(_, "bar")} -> true,
                  _ -> false
              })))))))))
+extern function fp.abs_d (f: double): double
+extern function fp.abs_f (f: float): float
+extern function fp.acos_d (f: double): double
+extern function fp.acos_f (f: float): float
+extern function fp.acosh_d (f: double): double
+extern function fp.acosh_f (f: float): float
+extern function fp.asin_d (f: double): double
+extern function fp.asin_f (f: float): float
+extern function fp.asinh_d (f: double): double
+extern function fp.asinh_f (f: float): float
+extern function fp.atan2_d (f: double, other: double): double
+extern function fp.atan2_f (f: float, other: float): float
+extern function fp.atan_d (f: double): double
+extern function fp.atan_f (f: float): float
+extern function fp.atanh_d (f: double): double
+extern function fp.atanh_f (f: float): float
+extern function fp.cbrt_d (f: double): double
+extern function fp.cbrt_f (f: float): float
+extern function fp.ceil_d (f: double): double
+extern function fp.ceil_f (f: float): float
+extern function fp.cos_d (f: double): double
+extern function fp.cos_f (f: float): float
+extern function fp.cosh_d (f: double): double
+extern function fp.cosh_f (f: float): float
+extern function fp.exp2_d (f: double): double
+extern function fp.exp2_f (f: float): float
+extern function fp.exp_d (f: double): double
+extern function fp.exp_f (f: float): float
+extern function fp.floor_d (f: double): double
+extern function fp.floor_f (f: float): float
+extern function fp.fract_d (f: double): double
+extern function fp.fract_f (f: float): float
+extern function fp.int_from_d (d: double): std.Option<bigint>
+extern function fp.int_from_f (f: float): std.Option<bigint>
+extern function fp.is_finite_d (f: double): bool
+extern function fp.is_finite_f (f: float): bool
+extern function fp.is_infinite_d (f: double): bool
+extern function fp.is_infinite_f (f: float): bool
+extern function fp.is_nan_d (f: double): bool
+extern function fp.is_nan_f (f: float): bool
+extern function fp.ln_d (f: double): double
+extern function fp.ln_f (f: float): float
+extern function fp.log10_d (f: double): double
+extern function fp.log10_f (f: float): float
+extern function fp.log2_d (f: double): double
+extern function fp.log2_f (f: float): float
+extern function fp.log_d (f: double, base: double): double
+extern function fp.log_f (f: float, base: float): float
+extern function fp.mul_add_d (a: double, b: double, c: double): double
+extern function fp.mul_add_f (a: float, b: float, c: float): float
+extern function fp.nan_d (): double
+extern function fp.nan_f (): float
+extern function fp.powf_d (f: double, exp: double): double
+extern function fp.powf_f (f: float, exp: float): float
+extern function fp.powi_d (f: double, exp: signed<32>): double
+extern function fp.powi_f (f: float, exp: signed<32>): float
+extern function fp.recip_d (f: double): double
+extern function fp.recip_f (f: float): float
+extern function fp.round_d (f: double): double
+extern function fp.round_f (f: float): float
+extern function fp.signum_d (f: double): double
+extern function fp.signum_f (f: float): float
+extern function fp.sin_d (f: double): double
+extern function fp.sin_f (f: float): float
+extern function fp.sinh_d (f: double): double
+extern function fp.sinh_f (f: float): float
+extern function fp.sqrt_d (f: double): double
+extern function fp.sqrt_f (f: float): float
+extern function fp.tan_d (f: double): double
+extern function fp.tan_f (f: float): float
+extern function fp.tanh_d (f: double): double
+extern function fp.tanh_f (f: float): float
+extern function fp.to_degrees_d (f: double): double
+extern function fp.to_degrees_f (f: float): float
+extern function fp.to_radians_d (f: double): double
+extern function fp.to_radians_f (f: float): float
+extern function fp.trunc_d (f: double): double
+extern function fp.trunc_f (f: float): float
 extern function g (a: bigint): bigint
 extern function h (a: (bigint, bigint)): (bigint, bigint)
 extern function intern.istring_ord (s: intern.IString): bit<32>
 extern function intern.istring_str (s: intern.IString): string
 extern function intern.string_intern (s: string): intern.IString
-extern function libfloat.abs_d (f: double): double
-extern function libfloat.abs_f (f: float): float
-extern function libfloat.acos_d (f: double): double
-extern function libfloat.acos_f (f: float): float
-extern function libfloat.acosh_d (f: double): double
-extern function libfloat.acosh_f (f: float): float
-extern function libfloat.asin_d (f: double): double
-extern function libfloat.asin_f (f: float): float
-extern function libfloat.asinh_d (f: double): double
-extern function libfloat.asinh_f (f: float): float
-extern function libfloat.atan2_d (f: double, other: double): double
-extern function libfloat.atan2_f (f: float, other: float): float
-extern function libfloat.atan_d (f: double): double
-extern function libfloat.atan_f (f: float): float
-extern function libfloat.atanh_d (f: double): double
-extern function libfloat.atanh_f (f: float): float
-extern function libfloat.cbrt_d (f: double): double
-extern function libfloat.cbrt_f (f: float): float
-extern function libfloat.ceil_d (f: double): double
-extern function libfloat.ceil_f (f: float): float
-extern function libfloat.cos_d (f: double): double
-extern function libfloat.cos_f (f: float): float
-extern function libfloat.cosh_d (f: double): double
-extern function libfloat.cosh_f (f: float): float
-extern function libfloat.exp2_d (f: double): double
-extern function libfloat.exp2_f (f: float): float
-extern function libfloat.expt_d (f: double): double
-extern function libfloat.expt_f (f: float): float
-extern function libfloat.floor_d (f: double): double
-extern function libfloat.floor_f (f: float): float
-extern function libfloat.fract_d (f: double): double
-extern function libfloat.fract_f (f: float): float
-extern function libfloat.is_finite_d (f: double): bool
-extern function libfloat.is_finite_f (f: float): bool
-extern function libfloat.is_infinite_d (f: double): bool
-extern function libfloat.is_infinite_f (f: float): bool
-extern function libfloat.is_nan_d (f: double): bool
-extern function libfloat.is_nan_f (f: float): bool
-extern function libfloat.ln_d (f: double): double
-extern function libfloat.ln_f (f: float): float
-extern function libfloat.log10_d (f: double): double
-extern function libfloat.log10_f (f: float): float
-extern function libfloat.log2_d (f: double): double
-extern function libfloat.log2_f (f: float): float
-extern function libfloat.log_d (f: double, base: double): double
-extern function libfloat.log_f (f: float, base: float): float
-extern function libfloat.mul_add_d (a: double, b: double, c: double): double
-extern function libfloat.mul_add_f (a: float, b: float, c: float): float
-extern function libfloat.nan_d (): double
-extern function libfloat.nan_f (): float
-extern function libfloat.powf_d (f: double, exp: double): double
-extern function libfloat.powf_f (f: float, exp: float): float
-extern function libfloat.powi_d (f: double, exp: bit<32>): double
-extern function libfloat.powi_f (f: float, exp: bit<32>): float
-extern function libfloat.recip_d (f: double): double
-extern function libfloat.recip_f (f: float): float
-extern function libfloat.round_d (f: double): double
-extern function libfloat.round_f (f: float): float
-extern function libfloat.signum_d (f: double): double
-extern function libfloat.signum_f (f: float): float
-extern function libfloat.sin_d (f: double): double
-extern function libfloat.sin_f (f: float): float
-extern function libfloat.sinh_d (f: double): double
-extern function libfloat.sinh_f (f: float): float
-extern function libfloat.sqrt_d (f: double): double
-extern function libfloat.sqrt_f (f: float): float
-extern function libfloat.tan_d (f: double): double
-extern function libfloat.tan_f (f: float): float
-extern function libfloat.tanh_d (f: double): double
-extern function libfloat.tanh_f (f: float): float
-extern function libfloat.to_degrees_d (f: double): double
-extern function libfloat.to_degrees_f (f: float): float
-extern function libfloat.to_radians_d (f: double): double
-extern function libfloat.to_radians_f (f: float): float
-extern function libfloat.trunc_d (f: double): double
-extern function libfloat.trunc_f (f: float): float
 extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
 function mult2 (x: bigint): bigint =
     (x << 32'd1)
@@ -1124,8 +1126,6 @@ Cast_u32(.description="16'd100  as bit<32>", .actual=(16'd100 as bit<32>), .expe
 Cast_u32(.description="8'd100   as bit<32>", .actual=(8'd100 as bit<32>), .expected=32'd100).
 Cast_u32(.description="128'd100 as bit<32>", .actual=(128'd100 as bit<32>), .expected=32'd100).
 Cast_u32(.description="256'd100 as bit<32>", .actual=(256'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="64'f3.5 as bit<32>", .actual=(64'f3.5 as bit<32>), .expected=32'd3).
-Cast_u32(.description="32'f3.5 as bit<32>", .actual=(32'f3.5 as bit<32>), .expected=32'd3).
 Cast_u32(.description="64'hffffffffffff as bit<32>", .actual=(64'd281474976710655 as bit<32>), .expected=32'd4294967295).
 Cast_u32(.description="128'hffffffffffffffffffff as bit<32>", .actual=(128'd1208925819614629174706175 as bit<32>), .expected=32'd4294967295).
 Cast_u32(.description="256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual=(256'd22300745198530623141535718272648361505980415 as bit<32>), .expected=32'd4294967295).
@@ -1135,8 +1135,6 @@ Cast_s32(.description="32'sd100  as signed<32>", .expected=(32'sd100 as signed<3
 Cast_s32(.description="16'sd100  as signed<32>", .expected=(16'sd100 as signed<32>), .actual=32'sd100).
 Cast_s32(.description="8'sd100   as signed<32>", .expected=(8'sd100 as signed<32>), .actual=32'sd100).
 Cast_s32(.description="128'sd100 as signed<32>", .expected=(128'sd100 as signed<32>), .actual=32'sd100).
-Cast_s32(.description="64'f3.5 as signed<32>", .expected=(64'f3.5 as signed<32>), .actual=32'sd3).
-Cast_s32(.description="32'f3.5 as signed<32>", .expected=(32'f3.5 as signed<32>), .actual=32'sd3).
 Cast_s32(.description="64'shffffffffffff as signed<32>", .expected=(64'sd281474976710655 as signed<32>), .actual=32'sd4294967295).
 Cast_s32(.description="128'shffffffffffffffffffff as signed<32>", .expected=(128'sd1208925819614629174706175 as signed<32>), .actual=32'sd4294967295).
 Cast_s32(.description="(100: bit<32>) as signed<32>", .expected=((32'd100: bit<32>) as signed<32>), .actual=32'sd100).
@@ -1146,9 +1144,6 @@ Cast_u24(.description="16'd100  as bit<24>", .expected=(16'd100 as bit<24>), .ac
 Cast_u24(.description="8'd100   as bit<24>", .expected=(8'd100 as bit<24>), .actual=24'd100).
 Cast_u24(.description="128'd100 as bit<24>", .expected=(128'd100 as bit<24>), .actual=24'd100).
 Cast_u24(.description="256'd100 as bit<24>", .expected=(256'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="64'f3.5 as bit<24>", .expected=(64'f3.5 as bit<24>), .actual=24'd3).
-Cast_u24(.description="32'f3.5 as bit<24>", .expected=(32'f3.5 as bit<24>), .actual=24'd3).
-Cast_u24(.description="32'f30000000.0 as bit<24>", .expected=(32'f3.0e7 as bit<24>), .actual=24'd13222784).
 Cast_u24(.description="64'hffffffffffff as bit<24>", .expected=(64'd281474976710655 as bit<24>), .actual=24'd16777215).
 Cast_u24(.description="128'hffffffffffffffffffff as bit<24>", .expected=(128'd1208925819614629174706175 as bit<24>), .actual=24'd16777215).
 Cast_u24(.description="256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected=(256'd22300745198530623141535718272648361505980415 as bit<24>), .actual=24'd16777215).
@@ -1161,8 +1156,6 @@ Cast_u256(.description="8'd100   as bit<256>", .expected=(8'd100 as bit<256>), .
 Cast_u256(.description="128'd100 as bit<256>", .expected=(128'd100 as bit<256>), .actual=256'd100).
 Cast_u256(.description="256'd100 as bit<256>", .expected=(256'd100 as bit<256>), .actual=256'd100).
 Cast_u256(.description="512'd100 as bit<256>", .expected=(512'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="32'f3.5  as bit<256>", .expected=(32'f3.5 as bit<256>), .actual=256'd3).
-Cast_u256(.description="64'f3.5  as bit<256>", .expected=(64'f3.5 as bit<256>), .actual=256'd3).
 Cast_u256(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bit<256>), .actual=256'd115792089237316195423570985008687907853269984665640564039457584007913129639930).
 Cast_u256(.description="128'hffffffffffffffffffff as bit<256>", .expected=(128'd1208925819614629174706175 as bit<256>), .actual=256'd1208925819614629174706175).
 Cast_u256(.description="(100: signed<32>) as bit<32> as bit<256>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<256>), .actual=256'd100).
@@ -1174,9 +1167,16 @@ Cast_bigint(.description="8'd100   as bigint", .expected=(8'd100 as bigint), .ac
 Cast_bigint(.description="128'd100 as bigint", .expected=(128'd100 as bigint), .actual=100).
 Cast_bigint(.description="256'd100 as bigint", .expected=(256'd100 as bigint), .actual=100).
 Cast_bigint(.description="512'd100 as bigint", .expected=(512'd100 as bigint), .actual=100).
-Cast_bigint(.description="32'f3.5  as bigint", .expected=(32'f3.5 as bigint), .actual=3).
-Cast_bigint(.description="64'f3.5  as bigint", .expected=(64'f3.5 as bigint), .actual=3).
+Cast_bigint(.description="int_from_f(32'f3.5)", .expected=match (fp.int_from_f(32'f3.5)) {
+                                                              std.None{} -> 0,
+                                                              std.Some{.x=var x} -> x
+                                                          }, .actual=3).
+Cast_bigint(.description="int_from_d(64'f3.5)", .expected=match (fp.int_from_d(64'f3.5)) {
+                                                              std.None{} -> 0,
+                                                              std.Some{.x=var x} -> x
+                                                          }, .actual=3).
 Cast_bigint(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bigint), .actual=29642774844752946028434172162224104410437116074403984394101141506025761187823610).
+Cast_bigint(.description="(32'sd0 - 32'sd10) as bigint", .expected=((32'sd0 - 32'sd10) as bigint), .actual=(0 - 10)).
 Cast_float(.description="24'd100  as float", .expected=(24'd100 as float), .actual=32'f100.0).
 Cast_float(.description="32'd100  as float", .expected=(32'd100 as float), .actual=32'f100.0).
 Cast_float(.description="16'sd100  as float", .expected=(16'sd100 as float), .actual=32'f100.0).
@@ -1190,7 +1190,7 @@ Cast_float(.description="256'd100 as float", .expected=(256'd100 as float), .act
 Cast_float(.description="512'd100 as float", .expected=(512'd100 as float), .actual=32'f100.0).
 Cast_float(.description="32'f3.5  as float", .expected=(32'f3.5 as float), .actual=32'f3.5).
 Cast_float(.description="64'f3.5  as float", .expected=(64'f3.5 as float), .actual=32'f3.5).
-Cast_float(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as float), .actual=libfloat.nan_f()).
+Cast_float(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as float), .actual=fp.nan_f()).
 Cast_double(.description="24'd100  as double", .expected=(24'd100 as double), .actual=64'f100.0).
 Cast_double(.description="32'd100  as double", .expected=(32'd100 as double), .actual=64'f100.0).
 Cast_double(.description="16'd100  as double", .expected=(16'd100 as double), .actual=64'f100.0).
@@ -1236,12 +1236,13 @@ Doubles(.s="5 + 3", .d=(64'f5.0 + 64'f3.0)).
 Doubles(.s="5/3", .d=(64'f5.0 / 64'f3.0)).
 Doubles(.s="5*3", .d=(64'f5.0 * 64'f3.0)).
 Doubles(.s="0: double", .d=(0: double)).
-Doubles(.s="floor_d(64'f0.1)", .d=libfloat.floor_d(64'f0.1)).
+Doubles(.s="floor_d(64'f0.1)", .d=fp.floor_d(64'f0.1)).
+Doubles(.s=("" ++ std.__builtin_2string((64'f5.0 + 64'f5.0))), .d=(64'f5.0 + 64'f3.0)).
 Floats(.s="32'f5.0", .f=32'f5.0).
 Floats(.s="32'f5e2", .f=32'f500.0).
 Floats(.s="5 + 3", .f=(32'f5.0 + 32'f3.0)).
 Floats(.s="5/3", .f=(32'f5.0 / 32'f3.0)).
 Floats(.s="5*3", .f=(32'f5.0 * 32'f3.0)).
 Floats(.s="0: float", .f=(0: float)).
-Floats(.s="floor_f(32'f0.1)", .f=libfloat.floor_f(32'f0.1)).
+Floats(.s="floor_f(32'f0.1)", .f=fp.floor_f(32'f0.1)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)

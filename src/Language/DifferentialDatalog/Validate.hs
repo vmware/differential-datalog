@@ -670,10 +670,10 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
                -> return ()
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
-          isint1 = check (isInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
-          isint2 = check (isInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
-          isNumber1 = check (isInt d e1 || isBit d e1 || isSigned d e1 || isDouble d e1 || isFloat d e1) (pos e1) "Not a number"
-          isNumber2 = check (isInt d e2 || isBit d e1 || isSigned d e2 || isDouble d e2 || isFloat d e2) (pos e2) "Not a number"
+          isint1 = check (isBigInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
+          isint2 = check (isBigInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
+          isNumber1 = check (isInteger d e1 || isFP d e1) (pos e1) "Not a number"
+          isNumber2 = check (isInteger d e2 || isFP d e2) (pos e2) "Not a number"
           isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
           isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
           isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
@@ -682,17 +682,21 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
 exprValidate2 d _   (EUnOp _ BNeg e)    =
     check (isBit d e || isSigned d e) (pos e) "Not a bit vector"
 exprValidate2 d _   (EUnOp _ UMinus e)    =
-    check (isSigned d e || isInt d e || isDouble d e || isFloat d e) (pos e)
+    check (isSigned d e || isBigInt d e || isFP d e) (pos e)
         $ "Cannot negate expression of type " ++ show e ++ ". Negation applies to signed<> and bigint values only."
 --exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d _   (EFor p _ i _)       = checkIterable "iterator" p d i
 exprValidate2 d _   (EAs p e t)          = do
+    check (not (isBigInt d e && isBit d t)) p
+        $ "Direct casts from bigint to bit<> are not supported; consider going through signed<>" ++ (show $ pos e)
     check (isInteger d e || isFP d e) p
         $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for numeric types."
     check (isInteger d t || isFP d t) p
         $ "Cannot type-cast expression to " ++ show t ++ ".  Only numeric types can be cast to."
+    check (not (isInteger d t && isFP d e)) p
+        $ "There are no direct casts from floating point to integers; use the library functions int_from_*." ++ show e
     when ((isBit d t || isSigned d t) && (isBit d e || isSigned d e)) $
         check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
             "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++

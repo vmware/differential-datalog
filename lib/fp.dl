@@ -9,7 +9,7 @@ extern function fract_f(f: float): float
 extern function abs_f(f: float): float
 extern function signum_f(f: float): float
 extern function sqrt_f(f: float): float
-extern function expt_f(f: float): float
+extern function exp_f(f: float): float
 extern function exp2_f(f: float): float
 extern function ln_f(f: float): float
 extern function log2_f(f: float): float
@@ -37,7 +37,7 @@ extern function is_infinite_f(f: float): bool
 extern function is_finite_f(f: float): bool
 
 extern function mul_add_f(a: float, b: float, c: float): float
-extern function powi_f(f: float, exp: bit<32>): float
+extern function powi_f(f: float, exp: signed<32>): float
 extern function powf_f(f: float, exp: float): float
 extern function log_f(f: float, base: float): float
 extern function nan_f(): float
@@ -52,7 +52,7 @@ extern function fract_d(f: double): double
 extern function abs_d(f: double): double
 extern function signum_d(f: double): double
 extern function sqrt_d(f: double): double
-extern function expt_d(f: double): double
+extern function exp_d(f: double): double
 extern function exp2_d(f: double): double
 extern function ln_d(f: double): double
 extern function log2_d(f: double): double
@@ -80,7 +80,12 @@ extern function is_infinite_d(f: double): bool
 extern function is_finite_d(f: double): bool
 
 extern function mul_add_d(a: double, b: double, c: double): double
-extern function powi_d(f: double, exp: bit<32>): double
+extern function powi_d(f: double, exp: signed<32>): double
 extern function powf_d(f: double, exp: double): double
 extern function log_d(f: double, base: double): double
 extern function nan_d(): double
+
+//---------- Casts ------------
+
+extern function int_from_f(f: float): Option<bigint>
+extern function int_from_d(d: double): Option<bigint>

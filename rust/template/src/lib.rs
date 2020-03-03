@@ -19,6 +19,7 @@ use std::os::unix::io::IntoRawFd;
 use std::ptr;
 use std::result;
 use std::sync;
+use num::bigint::BigInt;
 
 use ordered_float::*;
 

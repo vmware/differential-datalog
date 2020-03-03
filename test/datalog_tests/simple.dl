@@ -1,5 +1,5 @@
 import allocate
-import libfloat
+import fp
 
 /* Test types */
 
@@ -998,8 +998,8 @@ Cast_u32("16'd100  as bit<32>", 16'd100  as bit<32>, 100).
 Cast_u32("8'd100   as bit<32>", 8'd100   as bit<32>, 100).
 Cast_u32("128'd100 as bit<32>", 128'd100 as bit<32>, 100).
 Cast_u32("256'd100 as bit<32>", 256'd100 as bit<32>, 100).
-Cast_u32("64'f3.5 as bit<32>",  64'f3.5 as bit<32>,  3).
-Cast_u32("32'f3.5 as bit<32>",  32'f3.5 as bit<32>,  3).
+//Cast_u32("64'f3.5 as bit<32>",  64'f3.5 as bit<32>,  3).  // illegal
+//Cast_u32("32'f3.5 as bit<32>",  32'f3.5 as bit<32>,  3).  // illegal
 
 Cast_u32("64'hffffffffffff as bit<32>", 64'hffffffffffff as bit<32>, 32'hffffffff).
 Cast_u32("128'hffffffffffffffffffff as bit<32>", 128'hffffffffffffffffffff as bit<32>, 32'hffffffff).
@@ -1014,8 +1014,8 @@ Cast_s32("32'sd100  as signed<32>", 32'sd100  as signed<32>, 100).
 Cast_s32("16'sd100  as signed<32>", 16'sd100  as signed<32>, 100).
 Cast_s32("8'sd100   as signed<32>", 8'sd100   as signed<32>, 100).
 Cast_s32("128'sd100 as signed<32>", 128'sd100 as signed<32>, 100).
-Cast_s32("64'f3.5 as signed<32>",  64'f3.5 as signed<32>,  3).
-Cast_s32("32'f3.5 as signed<32>",  32'f3.5 as signed<32>,  3).
+//Cast_s32("64'f3.5 as signed<32>",  64'f3.5 as signed<32>,  3).  // illegal
+//Cast_s32("32'f3.5 as signed<32>",  32'f3.5 as signed<32>,  3).  // illegal
 
 Cast_s32("64'shffffffffffff as signed<32>", 64'shffffffffffff as signed<32>, 32'shffffffff).
 Cast_s32("128'shffffffffffffffffffff as signed<32>", 128'shffffffffffffffffffff as signed<32>, 32'shffffffff).
@@ -1030,9 +1030,9 @@ Cast_u24("16'd100  as bit<24>", 16'd100  as bit<24>, 100).
 Cast_u24("8'd100   as bit<24>", 8'd100   as bit<24>, 100).
 Cast_u24("128'd100 as bit<24>", 128'd100 as bit<24>, 100).
 Cast_u24("256'd100 as bit<24>", 256'd100 as bit<24>, 100).
-Cast_u24("64'f3.5 as bit<24>",  64'f3.5 as bit<24>,  3).
-Cast_u24("32'f3.5 as bit<24>",  32'f3.5 as bit<24>,  3).
-Cast_u24("32'f30000000.0 as bit<24>",  32'f30000000.0 as bit<24>,  24'hC9_C380).
+//Cast_u24("64'f3.5 as bit<24>",  64'f3.5 as bit<24>,  3).  // illegal
+//Cast_u24("32'f3.5 as bit<24>",  32'f3.5 as bit<24>,  3).  // illegal
+//Cast_u24("32'f30000000.0 as bit<24>",  32'f30000000.0 as bit<24>,  24'hC9_C380).  // illegal
 
 Cast_u24("64'hffffffffffff as bit<24>", 64'hffffffffffff as bit<24>, 24'hffffff).
 Cast_u24("128'hffffffffffffffffffff as bit<24>", 128'hffffffffffffffffffff as bit<24>, 24'hffffff).
@@ -1050,8 +1050,8 @@ Cast_u256("8'd100   as bit<256>", 8'd100   as bit<256>, 100).
 Cast_u256("128'd100 as bit<256>", 128'd100 as bit<256>, 100).
 Cast_u256("256'd100 as bit<256>", 256'd100 as bit<256>, 100).
 Cast_u256("512'd100 as bit<256>", 512'd100 as bit<256>, 100).
-Cast_u256("32'f3.5  as bit<256>", 32'f3.5  as bit<256>, 3).
-Cast_u256("64'f3.5  as bit<256>", 64'f3.5  as bit<256>, 3).
+//Cast_u256("32'f3.5  as bit<256>", 32'f3.5  as bit<256>, 3).  // illegal
+//Cast_u256("64'f3.5  as bit<256>", 64'f3.5  as bit<256>, 3).  // illegal
 
 Cast_u256("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>",
            264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>,
@@ -1072,12 +1072,15 @@ Cast_bigint("8'd100   as bigint", 8'd100   as bigint, 100).
 Cast_bigint("128'd100 as bigint", 128'd100 as bigint, 100).
 Cast_bigint("256'd100 as bigint", 256'd100 as bigint, 100).
 Cast_bigint("512'd100 as bigint", 512'd100 as bigint, 100).
-Cast_bigint("32'f3.5  as bigint", 32'f3.5  as bigint, 3).
-Cast_bigint("64'f3.5  as bigint", 64'f3.5  as bigint, 3).
+//Cast_bigint("32'f3.5  as bigint", 32'f3.5  as bigint, 3).  // illegal
+//Cast_bigint("64'f3.5  as bigint", 64'f3.5  as bigint, 3).  // illegal
+Cast_bigint("int_from_f(32'f3.5)", match (int_from_f(32'f3.5)) { None -> 0, Some{x} -> x }, 3).
+Cast_bigint("int_from_d(64'f3.5)", match (int_from_d(64'f3.5)) { None -> 0, Some{x} -> x }, 3).
 
 Cast_bigint("264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint",
             264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint,
            'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa).
+Cast_bigint("(32'sd0 - 32'sd10) as bigint", (32'sd0 - 32'sd10) as bigint, 0-10).
 
 output relation Cast_float(description: string, expected: float, actual: float)
 
@@ -1369,6 +1372,7 @@ Doubles("5/3", 64'f5.0 / 64'f3.0).
 Doubles("5*3", 64'f5.0 * 64'f3.0).
 Doubles("0: double", 0: double).
 Doubles("floor_d(64'f0.1)", floor_d(64'f0.1)).
+Doubles("${64'f5.0 + 64'f5.0}", 64'f5.0 + 64'f3.0).
 
 output relation Floats(s: string, f: float)
 Floats("32'f5.0", 32'f5.0).

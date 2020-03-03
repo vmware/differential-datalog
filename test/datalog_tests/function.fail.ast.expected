@@ -31,11 +31,17 @@ error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed
 
 error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to bit<32> first.
 
-error: ./test/datalog_tests/function.fail.dl:3:37-5:1: Cannot type-cast expression of type bigint.  The type-cast operator is only supported for bit<> and signed<> types.
+error: ./test/datalog_tests/function.fail.dl:3:37-5:1: Direct casts from bigint to bit<> are not supported; consider going through signed<>("./test/datalog_tests/function.fail.dl" (line 3, column 37),"./test/datalog_tests/function.fail.dl" (line 3, column 39))
 
-error: ./test/datalog_tests/function.fail.dl:3:35-5:1: Cannot type-cast expression to bool.  Only bit<>, signed<>, and bigint types can be cast to.
+error: ./test/datalog_tests/function.fail.dl:3:35-5:1: Cannot type-cast expression to bool.  Only numeric types can be cast to.
 
-error: ./test/datalog_tests/function.fail.dl:3:34-5:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for bit<> and signed<> types.
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 3, column 30):
+unexpected "3"
+expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "(" or ">"
+
+error: ./test/datalog_tests/function.fail.dl:3:37-5:1: There are no direct casts from floating point to integers; use the library functions int_from_*.double
+
+error: ./test/datalog_tests/function.fail.dl:3:34-5:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for numeric types.
 
 error: ./test/datalog_tests/function.fail.dl:6:5-7:1: "continue" outside of a loop
 

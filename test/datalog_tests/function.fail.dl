@@ -11,7 +11,7 @@ typedef C = C{f1: string, f2: string}
 function vars(): () = {
     var y: C = C{"foo", "bar"};
 
-    // missing arguments allowed in the LHS of an assignment 
+    // missing arguments allowed in the LHS of an assignment
     C{.f1 = var a} = y;
 
     // error: missing argument in the RHS
@@ -100,12 +100,12 @@ function f(x: t<'A>): () = {
 
 function parameterized(x: 'A, y: 'A): 'A
 
-function use_parameterized(x: string, y: bigint): string = 
+function use_parameterized(x: string, y: bigint): string =
     parameterized(x,y) // error: x and y must have the same type
 
 //---
 
-function foo(x: bigint): string = 
+function foo(x: bigint): string =
     x.bar // x is not a struct
 
 //---
@@ -123,6 +123,14 @@ function cast(x: bigint): bit<64> = x as bit<64>
 //---
 
 function cast(x: bit<16>): bool = x as bool
+
+//---
+
+function cast(x: float): int<32> = x as int<32>
+
+//---
+
+function cast(x: double): bit<32> = x as bit<32>
 
 //---
 

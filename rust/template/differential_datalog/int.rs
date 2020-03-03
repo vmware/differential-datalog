@@ -7,7 +7,6 @@ use num::bigint::BigInt;
 pub use num::bigint::Sign;
 #[cfg(test)]
 use num::bigint::ToBigInt;
-use num::FromPrimitive;
 use num::ToPrimitive;
 use ordered_float::OrderedFloat;
 use serde::de::Error;
@@ -68,16 +67,6 @@ impl Int {
     pub fn from_i128(v: i128) -> Int {
         Int { x: BigInt::from(v) }
     }
-    pub fn from_float(v: OrderedFloat<f32>) -> Int {
-        Int {
-            x: BigInt::from_f32(*v).unwrap(),
-        }
-    }
-    pub fn from_double(v: OrderedFloat<f64>) -> Int {
-        Int {
-            x: BigInt::from_f64(*v).unwrap(),
-        }
-    }
     pub fn from_Uint(v: uint::Uint) -> Int {
         v.to_Int().unwrap()
     }
@@ -104,16 +93,16 @@ impl Int {
     pub fn to_i128(&self) -> Option<i128> {
         self.x.to_i128()
     }
-    pub fn to_float(&self) -> Option<OrderedFloat<f32>> {
+    pub fn to_float(&self) -> OrderedFloat<f32> {
         match self.x.to_f32() {
-            None => Some(OrderedFloat::<f32>(std::f32::NAN)),
-            Some(x) => Some(OrderedFloat::<f32>(x)),
+            None => OrderedFloat::<f32>(std::f32::NAN),
+            Some(x) => OrderedFloat::<f32>(x),
         }
     }
-    pub fn to_double(&self) -> Option<OrderedFloat<f64>> {
+    pub fn to_double(&self) -> OrderedFloat<f64> {
         match self.x.to_f64() {
-            None => Some(OrderedFloat::<f64>(std::f64::NAN)),
-            Some(x) => Some(OrderedFloat::<f64>(x)),
+            None => OrderedFloat::<f64>(std::f64::NAN),
+            Some(x) => OrderedFloat::<f64>(x),
         }
     }
     pub fn to_Uint(&self) -> Option<uint::Uint> {
