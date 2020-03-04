@@ -587,11 +587,6 @@ extern bool ddlog_get_bool(const ddlog_record *rec);
 extern bool ddlog_is_int(const ddlog_record *rec);
 
 /*
- * Returns `true` if `rec` is a float and `false` otherwise.
- */
-extern bool ddlog_is_float(const ddlog_record *rec);
-
-/*
  * Returns `true` if `rec` is a double and `false` otherwise.
  */
 extern bool ddlog_is_double(const ddlog_record *rec);
@@ -658,21 +653,9 @@ extern ddlog_record* ddlog_i64(int64_t v);
 extern int64_t ddlog_get_i64(const ddlog_record *rec);
 
 /*
- * Create a float value.
- */
-extern ddlog_record* ddlog_float(float f);
-
-/*
- * Retrieves the value of a float.
- *
- * Returns `0` if `rec` is not a float.
- */
-extern float ddlog_get_float(const ddlog_record* rec);
-
-/*
  * Create a double value.
  */
-extern ddlog_record* ddlog_double(float f);
+extern ddlog_record* ddlog_double(double f);
 
 /*
  * Retrieves the value of a double.

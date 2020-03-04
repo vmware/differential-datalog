@@ -6,6 +6,7 @@ use num::bigint::*;
 #[cfg(test)]
 use num::Num;
 use num::ToPrimitive;
+use ordered_float::OrderedFloat;
 use std::borrow::Cow;
 
 #[derive(Copy, Debug, PartialEq, Eq, Clone)]
@@ -314,7 +315,7 @@ named!(rel_key<&[u8], (Name, Record)>,
 );
 
 named!(record<&[u8], Record>,
-    alt!(bool_val | string_val | serialized_val | tuple_val | array_val | struct_val | int_val )
+    alt!(bool_val | string_val | serialized_val | tuple_val | array_val | struct_val | float_val | int_val )
 );
 
 named!(named_record<&[u8], (Name, Record)>,
@@ -561,6 +562,66 @@ fn test_struct() {
                                                                vec![(Cow::from("cfield"), Record::PosStruct(Cow::from("Constructor3"), vec![])),
                                                                     (Cow::from("ifield"), Record::Int(25_i32.to_bigint().unwrap())),
                                                                     (Cow::from("sfield"), Record::String("foo\nbar".to_string()))]))]))));
+}
+
+// nom's implementation mof `recognize_float` accepts integer literals
+// like `5`, making it impossible for the parser to distinguish between
+// floats and integers.  The following is a strict version of `recognize_float`
+// that only accepts literals containing `.`, e.g., `0.5` or `e|E`, e.g.,
+// `5e-1`.
+named!(recognize_float<&[u8], &[u8]>,
+  recognize!(
+    do_parse!(
+      opt!(alt!(char!('+') | char!('-'))) >>
+      alt!(
+          do_parse!(digit >>
+                    alt!( value!((),tuple!(char!('.'), opt!(digit), opt!(recognize_exponent)))
+                        | recognize_exponent) >>
+                    (()))
+        | do_parse!(char!('.') >>
+                   digit >>
+                   opt!(recognize_exponent) >>
+                   (()))) >>
+      (())
+    )
+  )
+);
+
+named!(recognize_exponent<&[u8], ()>,
+       do_parse!(alt!(char!('e') | char!('E')) >>
+                 opt!(alt!(char!('+') | char!('-'))) >>
+                 digit >>
+                 (()))
+);
+
+named!(float_val<&[u8], Record>,
+       do_parse!(val: flat_map!(recognize_float, parse_to!(f64)) >>
+                 spaces >>
+                 (Record::Double(OrderedFloat::from(val))))
+);
+
+#[test]
+fn test_float() {
+    assert_eq!(
+        float_val(br"1.0 "),
+        Ok((&br""[..], Record::Double(OrderedFloat::from(1.0))))
+    );
+    assert_eq!(
+        float_val(br"0.32 "),
+        Ok((&br""[..], Record::Double(OrderedFloat::from(0.32))))
+    );
+    assert_eq!(
+        float_val(br"32E-2 "),
+        Ok((&br""[..], Record::Double(OrderedFloat::from(32E-2))))
+    );
+    assert_eq!(
+        float_val(br"32.0E-2 "),
+        Ok((&br""[..], Record::Double(OrderedFloat::from(32.0E-2))))
+    );
+    assert_eq!(
+        float_val(br".567 "),
+        Ok((&br""[..], Record::Double(OrderedFloat::from(0.567))))
+    );
 }
 
 named!(int_val<&[u8], Record>, map!(bigint_val, Record::Int));
