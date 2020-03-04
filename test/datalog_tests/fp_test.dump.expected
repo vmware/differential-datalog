@@ -18,6 +18,7 @@ fp_test.F{.s = "ln_f(32'f0.5)", .d = -0.6931472}
 fp_test.F{.s = "log10_f(32'f0.5)", .d = -0.30103}
 fp_test.F{.s = "log2_f(32'f0.5)", .d = -1}
 fp_test.F{.s = "log_f(32'f0.5, 32f'2.0)", .d = -1}
+fp_test.F{.s = "log_f(5E-1, 2.0)", .d = -1}
 fp_test.F{.s = "mul_add_f(32'f0.5, 32'f2.2, 32'f2.3)", .d = 3.4}
 fp_test.F{.s = "nan_f()", .d = NaN}
 fp_test.F{.s = "powf_f(32'f0.5, 32f'5.0)", .d = 0.03125}
@@ -44,15 +45,18 @@ fp_test.D{.s = "atanh_d(64'f0.5)", .d = 0.5493061443340548}
 fp_test.D{.s = "cbrt_d(64'f0.5)", .d = 0.7937005259840998}
 fp_test.D{.s = "ceil_d(64'f0.5)", .d = 1}
 fp_test.D{.s = "cos_d(64'f0.5)", .d = 0.8775825618903728}
+fp_test.D{.s = "cosh_d(5e-1)", .d = 1.1276259652063807}
 fp_test.D{.s = "cosh_d(64'f0.5)", .d = 1.1276259652063807}
 fp_test.D{.s = "exp2_d(64'f0.5)", .d = 1.4142135623730951}
 fp_test.D{.s = "exp_d(64'f0.5)", .d = 1.6487212707001282}
+fp_test.D{.s = "floor_d(0.6)", .d = 0}
 fp_test.D{.s = "floor_d(64'f0.5)", .d = 0}
 fp_test.D{.s = "fract_d(64'f0.5)", .d = 0.5}
 fp_test.D{.s = "ln_d(64'f0.5)", .d = -0.6931471805599453}
 fp_test.D{.s = "log10_d(64'f0.5)", .d = -0.3010299956639812}
 fp_test.D{.s = "log2_d(64'f0.5)", .d = -1}
 fp_test.D{.s = "log_d(64'f0.5, 32f'2.0)", .d = -1}
+fp_test.D{.s = "log_d(f0.5, 2.0)", .d = -1}
 fp_test.D{.s = "mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)", .d = 3.4}
 fp_test.D{.s = "nan_d()", .d = NaN}
 fp_test.D{.s = "powf_d(64'f0.5, 32f'5.0)", .d = 0.03125}
