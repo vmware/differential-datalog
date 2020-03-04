@@ -1,3 +1,25 @@
 dump fp_test.F;
 dump fp_test.D;
 dump fp_test.BB;
+
+start;
+
+insert fp_test.FloatsFromRecord("0.5", 0.5),
+insert fp_test.DoublesFromRecord("0.5", 0.5),
+
+insert fp_test.FloatsFromRecord("1.6487212181091308", 1.6487212181091308),
+insert fp_test.DoublesFromRecord("1.6487212181091308", 1.6487212181091308),
+
+insert fp_test.FloatsFromRecord("-0.5", -0.5),
+insert fp_test.DoublesFromRecord("-0.5", -0.5),
+
+insert fp_test.FloatsFromRecord("-32.0e-2", -32.0e-2),
+insert fp_test.FloatsFromRecord("0.32", 0.32),
+insert fp_test.DoublesFromRecord("-32.0e-2", -32.0e-2),
+insert fp_test.DoublesFromRecord("-32e2", -32e2),
+insert fp_test.FloatsFromRecord("-32e2", -32e2),
+
+commit;
+
+dump fp_test.OutFloatsFromRecord;
+dump fp_test.OutDoublesFromRecord;
