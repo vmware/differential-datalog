@@ -55,8 +55,8 @@ fp_test.D{.s = "fract_d(64'f0.5)", .d = 0.5}
 fp_test.D{.s = "ln_d(64'f0.5)", .d = -0.6931471805599453}
 fp_test.D{.s = "log10_d(64'f0.5)", .d = -0.3010299956639812}
 fp_test.D{.s = "log2_d(64'f0.5)", .d = -1}
+fp_test.D{.s = "log_d(0.5, 2.0)", .d = -1}
 fp_test.D{.s = "log_d(64'f0.5, 32f'2.0)", .d = -1}
-fp_test.D{.s = "log_d(f0.5, 2.0)", .d = -1}
 fp_test.D{.s = "mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)", .d = 3.4}
 fp_test.D{.s = "nan_d()", .d = NaN}
 fp_test.D{.s = "powf_d(64'f0.5, 32f'5.0)", .d = 0.03125}
