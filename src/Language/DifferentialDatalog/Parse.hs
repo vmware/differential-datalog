@@ -637,6 +637,7 @@ sradval =  ((try $ string "'b") *> (UnsignedNumber <$> parseBin))
        <|> ((try $ string "'sd") *> (SignedNumber  <$> parseDec))
        <|> ((try $ string "'sh") *> (SignedNumber  <$> parseHex))
        <|> ((try $ string "'f")  *> (FloatNumber   <$> double))
+       <|> (FloatNumber <$> try double)
        <|> (SignedNumber <$> parseDec)
 parseBin :: Stream s m Char => ParsecT s u m Integer
 parseBin = readBin . stripUnder <$> (digitPrefix $ (char '0') <|> (char '1'))
