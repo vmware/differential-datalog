@@ -38,9 +38,7 @@ impl From<json_JsonValue> for serde_json::value::Value {
         match x {
             json_JsonValue::json_JsonNull => serde_json::value::Value::Null,
             json_JsonValue::json_JsonBool { b } => serde_json::value::Value::Bool(b),
-            json_JsonValue::json_JsonNumber { n } => {
-                serde_json::value::Value::Number(serde_json::Number::from(n))
-            }
+            json_JsonValue::json_JsonNumber { n } => json_val_from_num(n),
             json_JsonValue::json_JsonString { s } => serde_json::value::Value::String(s),
             json_JsonValue::json_JsonArray { a } => serde_json::value::Value::Array(
                 a.into_iter()
@@ -67,24 +65,26 @@ impl From<serde_json::Number> for json_JsonNum {
                 i: n.as_i64().unwrap() as i128,
             }
         } else if n.is_f64() {
-            json_JsonNum::json_JsonFloat
+            json_JsonNum::json_JsonFloat {
+                d: OrderedFloat::from(n.as_f64().unwrap()),
+            }
         } else {
             panic!("JsonNum::from::<Number>(): unknown number format: '{}'", n)
         }
     }
 }
 
-impl From<json_JsonNum> for serde_json::Number {
-    fn from(n: json_JsonNum) -> Self {
-        match n {
-            json_JsonNum::json_JsonInt { i } => {
-                if i >= 0 {
-                    serde_json::Number::from(i as u64)
-                } else {
-                    serde_json::Number::from(i as i64)
-                }
+fn json_val_from_num(n: json_JsonNum) -> serde_json::value::Value {
+    match n {
+        json_JsonNum::json_JsonInt { i } => {
+            if i >= 0 {
+                serde_json::value::Value::Number(serde_json::Number::from(i as u64))
+            } else {
+                serde_json::value::Value::Number(serde_json::Number::from(i as i64))
             }
-            json_JsonNum::json_JsonFloat => unimplemented!("JsonFloat"),
         }
+        json_JsonNum::json_JsonFloat { d } => serde_json::Number::from_f64(*d)
+            .map(serde_json::value::Value::Number)
+            .unwrap_or_else(|| serde_json::value::Value::Null),
     }
 }

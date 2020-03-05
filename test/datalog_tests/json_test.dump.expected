@@ -1,6 +1,7 @@
 json_test.JsonTest{.description = "\"foo bar\"", .value = "{\"std_Ok\":{\"res\":\"foo bar\"}}"}
 json_test.JsonTest{.description = "-100", .value = "{\"std_Ok\":{\"res\":-100}}"}
 json_test.JsonTest{.description = "100", .value = "{\"std_Ok\":{\"res\":100}}"}
+json_test.JsonTest{.description = "2.99792458e8", .value = "{\"std_Ok\":{\"res\":299792458.0}}"}
 json_test.JsonTest{.description = "[{\"b\":true}, {\"b\":false}, {\"b\":true}, {\"b\":false}]", .value = "{\"std_Ok\":{\"res\":[{\"b\":true},{\"b\":false},{\"b\":true},{\"b\":false}]}}"}
 json_test.JsonTest{.description = "true", .value = "{\"std_Ok\":{\"res\":true}}"}
 json_test.JsonTest{.description = "{\"1\":{\"b\":true}, \"2\":{\"b\":false}, \"3\":{\"b\":true}, \"4\":{\"b\":false}}", .value = "{\"std_Ok\":{\"res\":{\"1\":{\"b\":true},\"2\":{\"b\":false},\"3\":{\"b\":true},\"4\":{\"b\":false}}}}"}

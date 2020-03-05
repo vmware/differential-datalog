@@ -596,7 +596,7 @@ named!(recognize_exponent<&[u8], ()>,
 
 // We do not have enough type information to distinguish between floats
 // and doubles during parsing, so we parse all floating point numbers as
-// double's and postpone casting them to floats until when they get converted
+// doubles and postpone casting them to floats until when they get converted
 // into concrete types.
 named!(float_val<&[u8], Record>,
        do_parse!(val: flat_map!(recognize_float, parse_to!(f64)) >>

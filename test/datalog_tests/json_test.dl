@@ -99,6 +99,7 @@ function scalar1(): string = [|true|]
 function scalar2(): string = [|100|]
 function scalar3(): string = [|-100|]
 function scalar4(): string = [|"foo bar"|]
+function scalar5(): string = [|2.99792458e8|]
 
 JsonTest(scalar1(),
          to_json_string_or_default(from_json_string(scalar1()): Result<JsonValue, string>)).
@@ -108,6 +109,8 @@ JsonTest(scalar3(),
          to_json_string_or_default(from_json_string(scalar3()): Result<JsonValue, string>)).
 JsonTest(scalar4(),
          to_json_string_or_default(from_json_string(scalar4()): Result<JsonValue, string>)).
+JsonTest(scalar5(),
+         to_json_string_or_default(from_json_string(scalar5()): Result<JsonValue, string>)).
 
 input relation Deserialized[TaggedEnum]
 output relation ODeserialized[TaggedEnum]
