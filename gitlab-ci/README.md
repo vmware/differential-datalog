@@ -20,8 +20,10 @@
         - Switching to a different JDK
       - Upon success, the script prints a command line to upload the image
         to Docker Hub.
-    - To clean Docker cache when it starts to take too much space:
+    - To clean Docker cache when it starts to take too much space (happens after
+      running CI for a while):
         `docker system prune -a`
+        `docker system prune --volumes`
 - GitLab CI script:
     - `.gitlab-ci.yml`
 
