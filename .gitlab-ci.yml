@@ -68,6 +68,8 @@ test-server_api:
       done
 
 test-simple:
+    tags:
+        - ddlog-ci-1
     script:
     - stack --no-terminal test --ta "-p simple"
     - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
