@@ -34,12 +34,11 @@ typedef JsonValue = // Represents a JSON null value.
                   | // Represents a JSON object.
                     JsonObject{o: Map<string, JsonValue>}
 
-#[rust="serde(from = \"serde_json::Number\", into = \"serde_json::Number\")"]
 typedef JsonNum = // Integer number.  The value must be in the range between the
                   // smallest `s64` number and the largest `u64` number,
                   // inclusive.  Values outside of this range will be truncated
                   // during serialization.
                   JsonInt{i: s128}
-                | // Always finite.
-                  // TODO.
-                  JsonFloat
+                | // NaN and infinity are not valid JSON values.
+                  // When serializing to JSON, such values will be replaced with 0.
+                  JsonFloat{d: double}
