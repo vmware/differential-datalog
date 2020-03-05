@@ -7,6 +7,7 @@ source ../build_java.sh
 DDLFLAGS="--output-input-relations=O"
 compile ../../test/types_test/typesTest.dl Test.java release
 java -Djava.library.path=. Test
+diff rec_dynamic.dump rec_dynamic.dump.expected
 diff fb.dump rec.dump
 diff fb.dump fb.dump.expected
 diff query.dump query.dump.expected

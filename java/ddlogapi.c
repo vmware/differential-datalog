@@ -616,7 +616,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1float(
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1double(
     JNIEnv *env, jclass obj, jdouble d) {
-    return (jlong)ddlog_bool(d);
+    return (jlong)ddlog_double(d);
 }
 
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1i64(
