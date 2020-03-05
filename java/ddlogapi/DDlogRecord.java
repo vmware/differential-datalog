@@ -94,6 +94,11 @@ public class DDlogRecord {
         this.shared = false;
     }
 
+    public DDlogRecord(float f) throws DDlogException {
+        this.handle = DDlogAPI.ddlog_float(f);
+        this.shared = false;
+    }
+
     static BigInteger mask64 = new BigInteger("FFFFFFFFFFFFFFFF", 16);
 
     private static void getAllFields(Class clazz, List<Field> result) {
@@ -360,6 +365,13 @@ public class DDlogRecord {
         return DDlogAPI.ddlog_get_str(this.handle);
     }
 
+    public float getFloat() {
+        this.checkHandle();
+        if (!DDlogAPI.ddlog_is_float(this.handle))
+            throw new RuntimeException("Value is not a float");
+        return DDlogAPI.ddlog_get_float(this.handle);
+    }
+
     public double getDouble() {
         this.checkHandle();
         if (!DDlogAPI.ddlog_is_double(this.handle))
@@ -390,6 +402,11 @@ public class DDlogRecord {
         if (DDlogAPI.ddlog_is_bool(this.handle)) {
             boolean b = DDlogAPI.ddlog_get_bool(this.handle);
             return Boolean.toString(b);
+        }
+
+        if (DDlogAPI.ddlog_is_float(this.handle)) {
+            float f = DDlogAPI.ddlog_get_float(this.handle);
+            return Float.toString(f);
         }
 
         if (DDlogAPI.ddlog_is_double(this.handle)) {

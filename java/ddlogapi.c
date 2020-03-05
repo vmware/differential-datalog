@@ -609,6 +609,11 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1bool(
     return (jlong)ddlog_bool(b);
 }
 
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1float(
+    JNIEnv *env, jclass obj, jfloat f) {
+    return (jlong)ddlog_float(f);
+}
+
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1double(
     JNIEnv *env, jclass obj, jdouble d) {
     return (jlong)ddlog_bool(d);
@@ -710,6 +715,16 @@ JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1bool(
 JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1bool(
     JNIEnv *env, jclass obj, jlong handle) {
     return (jboolean)ddlog_get_bool((ddlog_record*)handle);
+}
+
+JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1float(
+    JNIEnv *env, jclass obj, jlong handle) {
+    return (jboolean)ddlog_is_float((ddlog_record*)handle);
+}
+
+JNIEXPORT jfloat JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1float(
+    JNIEnv *env, jclass obj, jlong handle) {
+    return (jfloat)ddlog_get_float((ddlog_record*)handle);
 }
 
 JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1double(
