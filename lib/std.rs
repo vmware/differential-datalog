@@ -379,6 +379,10 @@ pub fn std_vec_with_length<X: Ord + Clone>(len: &u64, x: &X) -> std_Vec<X> {
     res
 }
 
+pub fn std_vec_with_capacity<X: Ord + Clone>(len: &u64) -> std_Vec<X> {
+    std_Vec::with_capacity(*len as usize)
+}
+
 pub fn std_vec_singleton<X: Ord + Clone>(x: &X) -> std_Vec<X> {
     std_Vec { x: vec![x.clone()] }
 }
@@ -1108,6 +1112,23 @@ pub fn std_group2map<K1, K2: Ord + Clone, V: Clone>(g: &std_Group<K1, (K2, V)>) 
     let mut res = std_Map::new();
     for (k, v) in g.iter() {
         std_map_insert(&mut res, &k, &v);
+    }
+    res
+}
+
+pub fn std_group2setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
+    g: &std_Group<K1, (K2, V)>,
+) -> std_Map<K2, std_Set<V>> {
+    let mut res = std_Map::new();
+    for (k, v) in g.iter() {
+        match res.x.entry(k) {
+            btree_map::Entry::Vacant(ve) => {
+                ve.insert(std_set_singleton(&v));
+            }
+            btree_map::Entry::Occupied(mut oe) => {
+                oe.get_mut().insert(v);
+            }
+        }
     }
     res
 }

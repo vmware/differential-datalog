@@ -27,6 +27,7 @@ extern function std.__builtin_2string (x: 'X): string
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
 extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
 extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
 extern function std.group_count (g: std.Group<'K,'V>): bit<64>
 extern function std.group_first (g: std.Group<'K,'V>): 'V
@@ -143,6 +144,7 @@ extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function std.vec_with_capacity (len: bit<64>): std.Vec<'A>
 extern function std.vec_with_length (len: bit<64>, x: 'A): std.Vec<'A>
 input relation I [I]
 relation M [M]

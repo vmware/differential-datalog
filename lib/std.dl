@@ -194,6 +194,7 @@ extern function group_nth(g: Group<'K,'V>, n: bit<64>): Option<'V>
 extern function group2set(g: Group<'K, 'V>): Set<'V>
 extern function group2vec(g: Group<'K, 'V>): Vec<'V>
 extern function group2map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V>
+extern function group2setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>>
 extern function group_sum(g: Group<'K, 'V>): 'V
 
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
@@ -224,6 +225,7 @@ extern type Vec<'A>
 
 extern function vec_empty(): Vec<'A>
 extern function vec_with_length(len: bit<64>, x: 'A): Vec<'A>
+extern function vec_with_capacity(len: bit<64>): Vec<'A>
 extern function vec_len(v: Vec<'X>): bit<64>
 extern function vec_singleton(x: 'X): Vec<'X>
 extern function vec_push(v: mut Vec<'X>, x: 'X): ()
