@@ -1879,7 +1879,9 @@ arrangeInput d fstatom arrange_input_by = do
         if exprIsVarOrField $ fst arrange_by
            then let (e', found) = runState (exprFoldM (\x -> subst' x arrange_by i) e) False
                 -- 'found' can only be false here if 'fstatom' contains a binding 'x@expr',
-                -- where both x and some field in 'expr' occur in 'arrange_input_by'.
+                -- where both x and some field in 'expr' occur in 'arrange_input_by'
+                -- OR if more than one fields of the same structure are matched.
+                -- TODO: support the above cases.
                 in if found then Just e' else Nothing
            else Nothing
 
@@ -1915,14 +1917,28 @@ arrangeInput d fstatom arrange_input_by = do
     substVar ab i = substVar' ab (eVar $ "_" ++ show i)
 
     substVar' :: (Expr, ECtx) -> Expr -> Expr
-    substVar' (E EVar{}, _)          e' = e'
+    substVar' (E EVar{}, _) e' = e'
     substVar' (E par@(EField _ e f), ctx) e' = substVar' (e, ctx') e''
         where ctx' = CtxField par ctx
-              TStruct _ [cons] = exprType' d ctx' e
-              e'' = eStruct (name cons)
-                    $ map (\a -> (name a, if name a == f then e' else ePHolder))
-                    $ consArgs cons
+              etype = exprType' d ctx' e
+              TStruct _ [cons] = typDeref' d etype
+              estruct = eStruct (name cons)
+                        $ map (\a -> (name a, if name a == f then e' else ePHolder))
+                        $ consArgs cons
+              e'' = foldl' (\_e _ -> eRef _e) estruct [(1::Int)..nref etype]
+    substVar' (E par@(ETupField _ e idx), ctx) e' = substVar' (e, ctx') e''
+        where ctx' = CtxTupField par ctx
+              etype = exprType' d ctx' e
+              TTuple _ args = typDeref' d etype
+              etup = eTuple $ mapIdx (\_ i -> if i == idx then e' else ePHolder) args
+              e'' = foldl' (\_e _ -> eRef _e) etup [(1::Int)..nref etype]
     substVar' e                  _           = error $ "Unexpected expression " ++ show e ++ " in Compile.arrangeInput.substVar'"
+
+    -- Number of nested `Ref<>` in type `t`
+    nref (TOpaque _ tname [t]) | tname == rEF_TYPE = 1 + nref (typ' d t)
+    nref TStruct{} = 0
+    nref TTuple{} = 0
+    nref t = error $ "Unexpected type " ++ show t ++ " in Compile.arrangeInput.substVar'.nref"
 
     -- strip all variables but vs
     normalize :: [String] -> Expr -> Expr

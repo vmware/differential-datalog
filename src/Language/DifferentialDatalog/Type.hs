@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.Type(
     exprNodeType,
     relKeyType,
     typ', typ'',
+    typDeref',
     isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,

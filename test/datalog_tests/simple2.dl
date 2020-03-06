@@ -1,0 +1,44 @@
+/* Test `arrangeInput` logic in Compile.hs */
+
+typedef TArrng1 = TArrng1{
+    f1: bool,
+    f2: bigint
+}
+
+typedef TArrng2 = TArrng2{
+    f1: bool,
+    f2: Ref<Ref<TArrng1>>
+}
+
+input relation Arrng1(
+    f1: Ref<Ref<Ref<TArrng2>>>,
+    f2: bigint
+)
+
+input relation Arrng2(
+    f1: Ref<TArrng2>,
+    f2: bigint,
+    f3: bool
+)
+
+output relation Arrng1Arrng2(x: bigint)
+
+Arrng1Arrng2(x.f2.f2) :-
+    Arrng1(f1, f2),
+    Arrng2(x, f1.f2.f2, _).
+
+output relation Arrng1Arrng2_2(x: bigint)
+
+Arrng1Arrng2_2(x.f2.f2) :-
+    Arrng1(f1, f2),
+    Arrng2(x, f1.f2.f2, f1.f2.f1).
+
+input relation TArrng1[(Ref<Ref<Ref<TArrng2>>>, bigint)]
+
+input relation TArrng2[(Ref<TArrng2>, bigint)]
+
+output relation TArrng1Arrng2(x: bigint)
+
+TArrng1Arrng2(x.f2.f2) :-
+    TArrng1[t],
+    TArrng2[(x, t.0.f2.f2)].
