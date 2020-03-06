@@ -9,6 +9,10 @@ import intern
 
 typedef UID = UID{uid: string}
 
+// Namespace name.  Since there won't be a lot of namespaces, interned string is
+// an efficient representation.
+typedef NSName = IString
+
 // PodSpec is a description of a pod.
 typedef PodSpec = PodSpec {
     // NodeName is a request to schedule this pod onto a specific node. If it is non-empty,
@@ -29,11 +33,11 @@ typedef PodStatus = PodStatus {
 // Pod is a collection of containers that can run on a host. This resource is created
 // by clients and scheduled onto hosts. */
 // TODO(leonid): primary key
-input relation Pod (
+input relation &Pod (
     // Name must be unique within a namespace.
     name: string,
     // Namespace defines the space within each name must be unique.
-    namespace: string,
+    namespace: NSName,
     // UID is the unique in time and space value for this object.
     uid: UID,
     // Map of string keys and values that can be used to organize and categorize
@@ -53,7 +57,7 @@ primary key (x) (x.namespace, x.name)
 // Use of multiple namespaces is optional.
 input relation Namespace (
     // Name must be unique within a namespace.
-    name: string,
+    name: NSName,
     // UID is the unique in time and space value for this object.
     uid: UID,
     // Map of string keys and values that can be used to organize and categorize
@@ -76,7 +80,7 @@ typedef LabelSelector = LabelSelector {
     matchLabels: Map<string,string>,
     // matchExpressions is a list of label selector requirements. The requirements are ANDed.
     // +optional
-    matchExpressions: Vec<LabelSelectorRequirement>
+    matchExpressions: Vec<Ref<LabelSelectorRequirement>>
 }
 
 /* The native Antrea implementation converts LabelSelector to a generic selector
@@ -254,7 +258,7 @@ input relation NetworkPolicy (
     // Name must be unique within a namespace.
     name: string,
     // Namespace defines the space within each name must be unique.
-    namespace: string,
+    namespace: NSName,
     // UID is the unique in time and space value for this object.
     uid: UID,
     // Specification of the desired behavior for this NetworkPolicy.
@@ -344,5 +348,5 @@ typedef PodReference = PodReference {
     // The name of this pod.
     name: string,
     // The namespace of this pod.
-    namespace: string
+    namespace: NSName
 }
