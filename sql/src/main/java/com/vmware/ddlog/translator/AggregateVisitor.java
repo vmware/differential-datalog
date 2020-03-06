@@ -116,6 +116,13 @@ public class AggregateVisitor
     }
 
     @Override
+    protected Ternary visitNotExpression(NotExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return this.process(node.getValue(), context);
+    }
+
+    @Override
     protected Ternary visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
@@ -177,11 +184,23 @@ public class AggregateVisitor
         if (this.isGroupedBy(node))
             return Ternary.Yes;
         Ternary c = this.process(node.getOperand(), context);
+        if (c == null)
+            throw new TranslationException("Not supported: ", node.getOperand());
         for (WhenClause e: node.getWhenClauses()) {
             Ternary o = this.process(e.getOperand(), context);
+            if (o == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
             Ternary v = this.process(e.getResult(), context);
+            if (v == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
             Ternary s = this.combine(e, o, v);
             c = this.combine(node, c, s);
+        }
+        if (node.getDefaultValue().isPresent()) {
+            Ternary v = this.process(node.getDefaultValue().get(), context);
+            if (v == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
+            c = this.combine(node, v, c);
         }
         return c;
     }

@@ -24,6 +24,9 @@ public class SqlSemantics {
         this.aggregateFunctions.add("avg");
         this.aggregateFunctions.add("min");
         this.aggregateFunctions.add("max");
+        this.aggregateFunctions.add("some");
+        this.aggregateFunctions.add("any");
+        this.aggregateFunctions.add("every");
 
         this.arithmeticFunctions.put("a_eq", DDlogEBinOp.BOp.Eq);
         this.arithmeticFunctions.put("a_neq", DDlogEBinOp.BOp.Neq);

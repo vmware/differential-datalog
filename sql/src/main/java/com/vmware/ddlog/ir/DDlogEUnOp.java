@@ -37,10 +37,12 @@ public class DDlogEUnOp extends DDlogExpression {
             case Not:
                 if (!(expr.type instanceof DDlogTBool))
                     throw new RuntimeException("Not is not applied to Boolean type");
+                break;
             case BNeg:
             case UMinus:
                 if (!DDlogType.isNumeric(expr.getType()))
                     throw new RuntimeException(this.uop + " is not applied to numeric type");
+                break;
         }
     }
 

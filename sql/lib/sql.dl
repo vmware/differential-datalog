@@ -23,16 +23,35 @@ function substr_N(s: Option<string>, start: signed<64>, end: signed<64>): Option
       Some{.x = var a} -> Some{substr(a, start, end)},
       _                -> None
    }
-function isNull(value: Option<'T>): bool =
+function is_null(value: Option<'T>): bool =
    match (value) {
       Some{_} -> false,
       None    -> true
+   }
+function insert_non_null(s: mut Set<'T>, value: Option<'T>): () =
+   match (value) {
+      None    -> (),
+      Some{x} -> set_insert(s, x)
    }
 function unwrapBool(v: Option<bool>): bool =
    match (v) {
       Some{.x = var a} -> a,
       _                -> false
    }
+
+function set_signed_sum(s: Set<signed<64>>): signed<64> =
+   var result = 0: signed<64>;
+   for (v in s) {
+      result = result + v
+   };
+   result
+function set_int_sum(s: Set<bigint>): bigint =
+   var result = 0: bigint;
+   for (v in s) {
+      result = result + v
+   };
+   result
+
 function abs(value: signed<64>): signed<64> =
    if (value < 0) (0-value) else value
 function abs_N(value: Option<signed<64>>): Option<signed<64>> =
@@ -41,6 +60,12 @@ function abs_N(value: Option<signed<64>>): Option<signed<64>> =
        _                -> None
    }
 
+function agg_any_R(aggregate: bool, item: bool): bool =
+    aggregate or item
+function agg_some_R(aggregate: bool, item: bool): bool =
+    agg_any_R(aggregate, item)
+function agg_every_R(aggregate: bool, item: bool): bool =
+    aggregate and item
 function agg_count_R(aggregate: signed<64>, item: 'T): signed<64> =
     aggregate + 1
 function agg_min_R(aggregate: (bool, 'T), item: 'T): (bool, 'T) =
@@ -62,6 +87,22 @@ function agg_avg_signed_R(aggregate: (signed<64>, signed<64>), item: signed<64>)
 function agg_avg_int_R(aggregate: (bigint, bigint), item: bigint): (bigint, bigint) =
     (aggregate.0 + 1, aggregate.0 + item)
 
+function agg_any_N(aggregate: Option<bool>, item: Option<bool>): Option<bool> =
+   match ((aggregate, item)) {
+      (None, None)       -> None,
+      (None, Some{x})    -> Some{x},
+      (Some{x}, None)    -> Some{x},
+      (Some{x}, Some{y}) -> Some{x or y}
+   }
+function agg_some_N(aggregate: Option<bool>, item: Option<bool>): Option<bool> =
+   agg_any_N(aggregate, item)
+function agg_every_N(aggregate: Option<bool>, item: Option<bool>): Option<bool> =
+   match ((aggregate, item)) {
+      (None, None)       -> None,
+      (None, Some{x})    -> Some{x},
+      (Some{x}, None)    -> Some{x},
+      (Some{x}, Some{y}) -> Some{x and y}
+   }
 function agg_count_N(aggregate: Option<signed<64>>, item: Option<'T>): Option<signed<64>> =
    match ((aggregate,item)) {
       (None, None)       -> None,

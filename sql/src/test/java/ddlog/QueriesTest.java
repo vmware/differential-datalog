@@ -259,7 +259,216 @@ public class QueriesTest {
     @Test
     public void testHaving() {
         String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(column2) > 2";
-        String program = "";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>, col0:bool}\n" +
+                "function agg(g: Group<signed<64>, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.col = count,.col0 = (count > 64'sd2)})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v2] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v1 = TRtmp{.col = aggResult.col},aggResult.col0,var v2 = v1.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testHaving1() {
+        String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(column2) > 2 and column1 = 3";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>, col0:bool}\n" +
+                "function agg(g: Group<signed<64>, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.col = count,.col0 = ((count > 64'sd2) and (gb == 64'sd3))})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v2] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v1 = TRtmp{.col = aggResult.col},aggResult.col0,var v2 = v1.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testHaving2() {
+        String query = "create view v0 as SELECT SUM(column1) FROM t1 GROUP BY column2 HAVING COUNT(*) > 2";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef Tagg = Tagg{col:signed<64>, col0:bool}\n" +
+                "function agg(g: Group<string, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var sum = 64'sd0: signed<64>);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(sum = agg_sum_signed_R(sum, incr));\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
+                ");\n" +
+                "(Tagg{.col = sum,.col0 = (count > 64'sd2)})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v2] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v1 = TRtmp{.col = aggResult.col},aggResult.col0,var v2 = v1.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testHaving3() {
+        String query = "create view v0 as SELECT column2, SUM(column1) FROM t1 GROUP BY column2 HAVING COUNT(DISTINCT column3) > 1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{column2:string, col:signed<64>}\n" +
+                "function agg(g: Group<string, Tt1>):TRtmp =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var sum = 64'sd0: signed<64>);\n" +
+                "(var count_distinct = set_empty(): Set<bool>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(sum = agg_sum_signed_R(sum, incr));\n" +
+                "(var incr1 = v.column3);\n" +
+                "(set_insert(count_distinct, incr1))}\n" +
+                ");\n" +
+                "(TRtmp{.col = sum,.col0 = (set_size(count_distinct) as signed<64> > 64'sd1)})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v2 = TRtmp{.column2 = gb,.col = aggResult.col},aggResult.col0,var v3 = v2.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testAny() {
+        String query = "create view v0 as SELECT ANY(column3) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:bool}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var any = false: bool;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column3);\n" +
+                "(any = agg_any_R(any, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = any})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testEvery() {
+        String query = "create view v0 as SELECT EVERY(column3) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:bool}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var every = true: bool;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column3);\n" +
+                "(every = agg_every_R(every, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = every})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testCountDistinct() {
+        String query = "create view v0 as SELECT COUNT(DISTINCT column1) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var count_distinct = set_empty(): Set<signed<64>>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(set_insert(count_distinct, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = set_size(count_distinct) as signed<64>})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testCountDistinctWNulls() {
+        String query = "create view v0 as SELECT COUNT(DISTINCT column1) FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var count_distinct = set_empty(): Set<signed<64>>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(insert_non_null(count_distinct, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = set_size(count_distinct) as signed<64>})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testSumDistinct() {
+        String query = "create view v0 as SELECT SUM(DISTINCT column1) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var sum_distinct = set_empty(): Set<signed<64>>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(set_insert(sum_distinct, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = set_signed_sum(sum_distinct)})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testMinDistinct() {
+        String query = "create view v0 as SELECT MIN(DISTINCT column1) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var min = (true, 64'sd0): (bool, signed<64>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column1);\n" +
+                "(min = agg_min_R(min, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = min.1})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -388,6 +597,25 @@ public class QueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testRedundantCount() {
+        String query = "create view v0 as SELECT COUNT(*), COUNT(*) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:signed<64>, col0:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var count = 64'sd0: signed<64>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(count = agg_count_R(count, 64'sd1))}\n" +
+                ");\n" +
+                "(TRtmp{.col = count,.col0 = count})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v2] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v1 = aggResult,var v2 = v1.";
         this.testTranslation(query, program);
     }
 

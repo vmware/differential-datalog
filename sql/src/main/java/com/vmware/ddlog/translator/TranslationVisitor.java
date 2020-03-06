@@ -230,12 +230,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     private DDlogIRNode processSelect(RelationRHS relation, Select select,
                                       List<GroupByInfo> groupBy,
+                                      @Nullable Expression having,
                                       TranslationContext context) {
         boolean isAgg = this.isAggregate(select, groupBy, context);
         if (!select.isDistinct() && !isAgg)
             throw new TranslationException("Only SELECT DISTINCT currently supported", select);
         if (isAgg)
-            return this.processSelectAggregate(relation, select, groupBy, context);
+            return this.processSelectAggregate(relation, select, groupBy, having, context);
         if (groupBy.size() > 0)
             throw new TranslationException("Select without aggregation with GROUP BY", select);
         return this.processSimpleSelect(relation, select, context);
@@ -251,6 +252,12 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         switch (aggregate) {
             case "count":
                 return DDlogTSigned.signed64.setMayBeNull(aggregatedType.mayBeNull);
+            case "sum_distinct":
+            case "count_distinct":
+                return new DDlogTUser("Set", false, aggregatedType);
+            case "any":
+            case "some":
+            case "every":
             case "sum":
                 return aggregatedType;
             case "min":
@@ -260,6 +267,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         aggregatedType       // value
                 );
             case "avg":
+            case "avg_distinct":
                 return new DDlogTTuple(
                         aggregatedType,  // sum
                         aggregatedType   // count
@@ -279,28 +287,46 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     private DDlogExpression aggregateIncrement(String aggregate, DDlogType resultType, DDlogEVar variable,
                                                DDlogExpression increment) {
         DDlogType incType = increment.getType();
-        if (aggregate.equals("sum") || aggregate.equals("avg"))
-            aggregate += "_" + (incType.is(DDlogTSigned.class) ? "signed" : "int");
+        switch (aggregate) {
+            case "count_distinct":
+            case "sum_distinct":
+                String insertFunc = increment.getType().mayBeNull ? "insert_non_null" : "set_insert";
+                return new DDlogEApply(insertFunc, DDlogTTuple.emptyTupleType, variable, increment);
+            case "sum":
+            case "avg":
+                aggregate += "_" + (incType.is(DDlogTSigned.class) ? "signed" : "int");
+                break;
+            default:
+                break;
+        }
         String funcName = "agg_" + aggregate + "_" + (incType.mayBeNull ? "N" : "R");
-        return new DDlogEApply(funcName, resultType, variable, increment);
+        DDlogExpression add = new DDlogEApply(funcName, resultType, variable, increment);
+        return new DDlogESet(variable, add);
     }
 
     /**
      * An expression that initializes an aggregate.
+     * @param f          SQL IR function - for reporting error message.
      * @param aggregate  SQL aggregate function name
      * @param dataType   Type of the data that is being aggregated (not the type of the aggregate).
      */
-    private DDlogExpression aggregateInitializer(String aggregate, DDlogType dataType) {
+    private DDlogExpression aggregateInitializer(FunctionCall f, String aggregate, DDlogType dataType) {
         boolean isSigned = dataType instanceof DDlogTSigned;
         boolean isInt = dataType instanceof DDlogTInt;
         DDlogExpression zero = isSigned ? new DDlogESigned(0) : new DDlogEInt(0);
         DDlogExpression none = dataType.getNone();
 
         switch (aggregate) {
+            case "any":
+            case "some":
+                return new DDlogEBool(false);
+            case "every":
+                return new DDlogEBool(true);
             case "sum":
                 if (dataType.mayBeNull)
                     return none;
-                assert (isSigned || isInt);
+                if (!(isSigned || isInt))
+                    throw new TranslationException("sum not supported for type " + dataType.toString(), f);
                 return zero;
             case "count":
                 if (dataType.mayBeNull)
@@ -320,32 +346,179 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 if (dataType.mayBeNull)
                     return zt.getType().getNone();
                 return zt;
+            case "count_distinct":
+            case "sum_distinct":
+                DDlogType setType = new DDlogTUser("Set", false, dataType.setMayBeNull(false));
+                return new DDlogEApply("set_empty", setType);
             default:
                 throw new RuntimeException("Unexpected aggregate: " + aggregate);
         }
     }
 
     private DDlogExpression aggregateComplete(String aggregate, DDlogExpression value) {
-        if (aggregate.equals("avg")) {
-            String suffix;
-            DDlogType argType = value.getType();
-            DDlogTTuple tuple = argType.as(DDlogTTuple.class, "Expected a tuple");
-            DDlogType sumType = tuple.component(0);
-            if (argType.mayBeNull) {
-                suffix = "N";
-            } else {
-                suffix = "R";
+        switch (aggregate) {
+            case "avg": {
+                String suffix;
+                DDlogType argType = value.getType();
+                DDlogTTuple tuple = argType.as(DDlogTTuple.class, "Expected a tuple");
+                DDlogType sumType = tuple.component(0);
+                if (argType.mayBeNull) {
+                    suffix = "N";
+                } else {
+                    suffix = "R";
+                }
+                String type = sumType.is(DDlogTSigned.class) ? "signed" : "int";
+                return new DDlogEApply("avg_" + type + "_" + suffix, sumType, value);
             }
-            String type = sumType.is(DDlogTSigned.class) ? "signed" : "int";
-            return new DDlogEApply("avg_" + type + "_" + suffix, sumType, value);
-        } else if (aggregate.equals("min") || aggregate.equals("max")) {
-            return new DDlogETupField(value, 1);
+            case "min":
+            case "max":
+                return new DDlogETupField(value, 1);
+            case "count_distinct": {
+                DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
+                return new DDlogEAs(
+                        new DDlogEApply("set_size", set.getTypeArg(0), value),
+                        DDlogTSigned.signed64);
+            }
+            case "sum_distinct": {
+                DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
+                DDlogType elemType = set.getTypeArg(0);
+                String type = elemType.is(DDlogTSigned.class) ? "signed" : "int";
+                return new DDlogEApply("set_" + type + "_sum", elemType, value);
+            }
+            default:
+                return value;
         }
-        return value;
+    }
+
+    /**
+     * This class bundles state that is constructed while translating
+     * Selects.  This makes it easy to pass this state around to
+     * helper functions.
+     */
+    static class SelectTranslationState {
+        /**
+         * SQL Expressions that show up in the Select statement.
+         */
+        List<Expression> selectExpressions = new ArrayList<Expression>();
+        /**
+         * List of expressions that we are grouping by.
+         */
+        List<GroupByInfo> groupBy;
+        /**
+         * List of fields of the resulting struct produced by the
+         * aggregation function.
+         */
+        List<DDlogField> resultTypeFields = new ArrayList<DDlogField>();
+        /**
+         * Type of input to aggregation function.
+         */
+        List<DDlogField> functionTypeFields = new ArrayList<DDlogField>();
+        /**
+         * Fields returned by the aggregation function.
+         */
+        List<DDlogEStruct.FieldValue> functionResultFields = new ArrayList<DDlogEStruct.FieldValue>();
+        /**
+         * Loop in the aggregation function.
+         */
+        @Nullable
+        DDlogExpression loopBody;
+        /**
+         * Aggregation function body.
+         */
+        @Nullable
+        DDlogExpression functionBody;
+
+        public SelectTranslationState(List<GroupByInfo> groupBy) {
+            this.loopBody = null;
+            this.functionBody = null;
+            this.groupBy = groupBy;
+        }
+
+        public void addLoopStatement(DDlogExpression expr) {
+            this.loopBody = DDlogESeq.seq(this.loopBody, expr);
+        }
+
+        public void addFunctionStatement(DDlogExpression expr) {
+            this.functionBody = DDlogESeq.seq(this.functionBody, expr);
+        }
+    }
+
+    private void
+    processSelectExpression(Expression expression,
+                            boolean inHaving,
+                            @Nullable String name,
+                            SelectTranslationState state,
+                            TranslationContext context) {
+        if (name == null)
+            name = context.freshLocalName("col");
+        if (!inHaving)
+            state.selectExpressions.add(expression);
+        boolean found = false;
+        for (GroupByInfo a: state.groupBy) {
+            if (expression.equals(a.groupBy)) {
+                state.resultTypeFields.add(new DDlogField(name, a.translation.getType()));
+                a.fieldName = name;
+                found = true;
+                break;
+            }
+        }
+        if (found)
+            return;
+
+        AggregateVisitor aggv = new AggregateVisitor(state.groupBy);
+        aggv.process(expression, context);
+        AggregateVisitor.Decomposition decomposition = aggv.decomposition;
+
+        // For each aggregation function in the decomposition we generate a temporary
+        for (FunctionCall f: decomposition.aggregateNodes) {
+            if (context.getSubstitution(f) != null)
+                // We already have a translation for this expression
+                continue;
+
+            String aggregateFunction = ExpressionTranslationVisitor.functionName(f);
+            DDlogExpression increment;
+            if (f.getArguments().size() == 1) {
+                increment = context.translateExpression(f.getArguments().get(0));
+                String incrVar = context.freshLocalName("incr");
+                DDlogEVarDecl incrVarDecl = new DDlogEVarDecl(incrVar, increment.getType());
+                DDlogESet set = new DDlogESet(incrVarDecl, increment);
+                state.addLoopStatement(set);
+                increment = new DDlogEVar(incrVar, increment.getType());
+            } else if (f.getArguments().size() == 0) {
+                // This is the translation of COUNT(*)
+                increment = new DDlogESigned(1);
+            } else {
+                throw new TranslationException("Unexpected aggregate", f);
+            }
+            DDlogExpression unused = context.translateExpression(f);
+            DDlogType aggregatedType = unused.getType();
+            DDlogType intermediateType = this.intermediateType(aggregateFunction, aggregatedType);
+            String aggVarName = context.freshLocalName(aggregateFunction);
+            DDlogExpression aggVarDef = new DDlogEVarDecl(aggVarName, intermediateType);
+            // Replace all occurrences of f with varName when translating later.
+            context.addSubstitution(f, this.aggregateComplete(
+                    aggregateFunction, new DDlogEVar(aggVarName, intermediateType)));
+            state.addFunctionStatement(new DDlogESet(
+                    aggVarDef, this.aggregateInitializer(f, aggregateFunction, increment.getType()),
+                    true));
+            DDlogEVar aggVar = new DDlogEVar(aggVarName, aggregatedType);
+            DDlogExpression inc = this.aggregateIncrement(
+                    aggregateFunction, intermediateType, aggVar, increment);
+            state.addLoopStatement(inc);
+        }
+        DDlogExpression expr = context.translateExpression(expression);
+        DDlogField field = new DDlogField(name, expr.getType());
+        state.functionTypeFields.add(field);
+        if (!inHaving) {
+            state.resultTypeFields.add(field);
+        }
+        state.functionResultFields.add(new DDlogEStruct.FieldValue(name, expr));
     }
 
     private DDlogIRNode processSelectAggregate(RelationRHS relation, Select select,
                                                List<GroupByInfo> groupBy,
+                                               @Nullable
+                                               Expression having,
                                                TranslationContext context) {
         /*
             General structure of an aggregation in DDlog is:
@@ -363,9 +536,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
              }
              result = <complete aggregate>(gb1, gb2, v)
          */
+        SelectTranslationState state = new SelectTranslationState(groupBy);
         String outRelName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
-        DDlogExpression functionBody = null;
-        DDlogExpression loopBody = null;
         String paramName = context.freshLocalName("g");
 
         // We will generate a custom function to perform the aggregation.
@@ -378,7 +550,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     Linq.map(groupBy, g -> new DDlogEVarDecl(g.varName, g.translation.getType()));
             DDlogESet getKeys = new DDlogESet(new DDlogETuple(keyVars),
                     new DDlogEApply("group_key", keyType, new DDlogEVar("g", keyType)));
-            functionBody = DDlogESeq.seq(functionBody, getKeys);
+            state.addFunctionStatement(getKeys);
         }
 
         List<DDlogType> tupleFields = new ArrayList<DDlogType>();
@@ -404,105 +576,51 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 project = iterVar;  // tuples with 1 element are not really tuples
             }
             DDlogESet set = new DDlogESet(decl, project);
-            loopBody = DDlogESeq.seq(loopBody, set);
+            state.addLoopStatement(set);
         }
 
         String agg = context.freshGlobalName("agg");
         DDlogTUser paramType = new DDlogTUser("Group", false, keyType, tuple);
         DDlogFuncArg param = new DDlogFuncArg(paramName, false, paramType);
         DDlogETuple callArg = new DDlogETuple(tupleVars.toArray(new DDlogExpression[0]));
-        List<DDlogField> resultTypeFields = new ArrayList<DDlogField>();
-        List<DDlogField> functionTypeFields = new ArrayList<DDlogField>();
 
-        List<DDlogEStruct.FieldValue> exprList = new ArrayList<DDlogEStruct.FieldValue>();
         List<SelectItem> items = select.getSelectItems();
         for (SelectItem s : items) {
             if (!(s instanceof SingleColumn)) {
                 throw new TranslationException("Not yet implemented", s);
             }
 
-            SingleColumn sc = (SingleColumn)s;
+            SingleColumn sc = (SingleColumn) s;
             String name;
             if (sc.getAlias().isPresent())
                 name = sc.getAlias().get().getValue();
             else {
                 ExpressionColumnName ecn = new ExpressionColumnName();
                 name = ecn.process(sc.getExpression());
-                if (name == null)
-                    name = context.freshLocalName("col");
             }
 
             Expression expression = sc.getExpression();
-            boolean found = false;
-            for (GroupByInfo a: groupBy) {
-                if (expression.equals(a.groupBy)) {
-                    resultTypeFields.add(new DDlogField(name, a.translation.getType()));
-                    a.fieldName = name;
-                    found = true;
-                    break;
-                }
-            }
-            if (found)
-                continue;
-
-            AggregateVisitor aggv = new AggregateVisitor(groupBy);
-            aggv.process(expression, context);
-            AggregateVisitor.Decomposition decomposition = aggv.decomposition;
-
-            // For each aggregation function in the decomposition we generate a temporary
-            for (FunctionCall f: decomposition.aggregateNodes) {
-                String aggregateFunction = f.getName().toString();
-                DDlogExpression increment;
-                if (f.getArguments().size() == 1) {
-                    increment = context.translateExpression(f.getArguments().get(0));
-                    String incrVar = context.freshLocalName("incr");
-                    DDlogEVarDecl incrVarDecl = new DDlogEVarDecl(incrVar, increment.getType());
-                    DDlogESet set = new DDlogESet(incrVarDecl, increment);
-                    loopBody = DDlogESeq.seq(loopBody, set);
-                    increment = new DDlogEVar(incrVar, increment.getType());
-                } else if (f.getArguments().size() == 0) {
-                    // This is the translation of COUNT(*)
-                    increment = new DDlogESigned(1);
-                } else {
-                    throw new TranslationException("Unexpected aggregate", f);
-                }
-                DDlogExpression unused = context.translateExpression(f);
-                DDlogType aggregatedType = unused.getType();
-                DDlogType intermediateType = this.intermediateType(aggregateFunction, aggregatedType);
-                String aggVarName = context.freshLocalName(aggregateFunction);
-                DDlogExpression aggVarDef = new DDlogEVarDecl(aggVarName, intermediateType);
-                // Replace all occurrences of f with varName when translating later.
-                context.addSubstitution(f, this.aggregateComplete(
-                        aggregateFunction, new DDlogEVar(aggVarName, intermediateType)));
-                functionBody = DDlogESeq.seq(functionBody, new DDlogESet(
-                        aggVarDef, this.aggregateInitializer(aggregateFunction, increment.getType()),
-                        true));
-                DDlogEVar aggVar = new DDlogEVar(aggVarName, aggregatedType);
-                DDlogExpression inc = this.aggregateIncrement(
-                        aggregateFunction, intermediateType, aggVar, increment);
-                DDlogExpression newVal = new DDlogESet(aggVar, inc);
-                loopBody = DDlogESeq.seq(loopBody, newVal);
-            }
-            DDlogExpression expr = context.translateExpression(expression);
-            DDlogField field = new DDlogField(name, expr.getType());
-            functionTypeFields.add(field);
-            resultTypeFields.add(field);
-            exprList.add(new DDlogEStruct.FieldValue(name, expr));
+            this.processSelectExpression(expression, false, name, state, context);
         }
+
+        // The HAVING clause can also require new aggregates besides the ones present
+        // in the SELECT, so we treat it as an additional expression in SELECT
+        if (having != null && context.getSubstitution(having) == null)
+            this.processSelectExpression(having, true, null, state, context);
 
         context.clearSubstitutions();
         String newTypeName = context.freshGlobalName(DDlogType.typeName(outRelName));
-        DDlogTStruct resultType = new DDlogTStruct(newTypeName, resultTypeFields);
+        DDlogTStruct resultType = new DDlogTStruct(newTypeName, state.resultTypeFields);
         DDlogTUser tUserResult = context.createTypedef(resultType);
 
         DDlogTUser tUserFunction;
         String funcTypeName;
-        if (resultTypeFields.size() == functionTypeFields.size()) {
+        if (state.resultTypeFields.size() == state.functionTypeFields.size()) {
             funcTypeName = newTypeName;
             tUserFunction = tUserResult;
         } else {
             funcTypeName = context.freshGlobalName(DDlogType.typeName(agg));
-            DDlogTStruct functionType = new DDlogTStruct(funcTypeName, functionTypeFields);
+            DDlogTStruct functionType = new DDlogTStruct(funcTypeName, state.functionTypeFields);
             tUserFunction = context.createTypedef(functionType);
         }
         String var = context.freshLocalName("v");
@@ -517,18 +635,19 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     new DDlogEVarDecl(g.varName, g.translation.getType()), g.translation);
             result.addDefinition(groupByVarDef);
             groupByVars.add(g.varName);
+            context.addSubstitution(g.groupBy, g.getVariable());
         }
 
-        assert loopBody != null;
-        DDlogEFor forLoop = new DDlogEFor(iter, new DDlogEVar(paramName, paramType), loopBody);
-        functionBody = DDlogESeq.seq(functionBody, forLoop);
+        assert state.loopBody != null;
+        DDlogEFor forLoop = new DDlogEFor(iter, new DDlogEVar(paramName, paramType), state.loopBody);
+        state.addFunctionStatement(forLoop);
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");
         DDlogRHSAggregate aggregate = new DDlogRHSAggregate(aggregateVarName, agg, callArg, vars);
         result.addDefinition(aggregate);
-        DDlogEStruct project = new DDlogEStruct(funcTypeName, tUserResult, exprList);
-        functionBody = DDlogESeq.seq(functionBody, project);
-        DDlogFunction func = new DDlogFunction(agg, tUserFunction, functionBody, param);
+        DDlogEStruct project = new DDlogEStruct(funcTypeName, tUserResult, state.functionResultFields);
+        state.addFunctionStatement(project);
+        DDlogFunction func = new DDlogFunction(agg, tUserFunction, state.functionBody, param);
         context.getProgram().functions.add(func);
 
         DDlogRelation outRel = new DDlogRelation(DDlogRelation.RelationRole.RelInternal, outRelName, tUserResult);
@@ -543,12 +662,22 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     fields.add(new DDlogEStruct.FieldValue(gr.fieldName,
                             new DDlogEVar(gr.varName, gr.translation.getType())));
             }
-            for (DDlogEStruct.FieldValue field : project.fields) {
-                fields.add(new DDlogEStruct.FieldValue(field.getName(),
-                        new DDlogEField(
-                                new DDlogEVar(aggregateVarName, tUserFunction),
-                                field.getName(),
-                                field.getValue().getType())));
+
+            int selectIndex = 0;
+            for (DDlogEStruct.FieldValue field: project.fields) {
+                DDlogEVar aggVar = new DDlogEVar(aggregateVarName, tUserFunction);
+                DDlogEField projField = new DDlogEField(aggVar, field.getName(), field.getValue().getType());
+                if (selectIndex < state.selectExpressions.size()) {
+                    fields.add(new DDlogEStruct.FieldValue(field.getName(), projField));
+                    Expression selExpression = state.selectExpressions.get(selectIndex);
+                    context.addSubstitution(selExpression, projField);
+                } else {
+                    // This field must have been produced by the HAVING expression
+                    assert having != null;
+                    assert selectIndex == state.selectExpressions.size();
+                    context.addSubstitution(having, projField);
+                }
+                selectIndex++;
             }
             DDlogExpression resultFields = new DDlogEStruct(tUserResult.getName(), tUserResult, fields);
             copy = new DDlogESet(result.getRowVariable(true), resultFields);
@@ -557,6 +686,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
 
         result.addDefinition(copy);
+        if (having != null) {
+            DDlogExpression hav = context.translateExpression(having);
+            result.addDefinition(hav);
+        }
+        context.clearSubstitutions();
         return result;
     }
 
@@ -599,15 +733,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             GroupBy gb = spec.getGroupBy().get();
             this.processGroupBy(gb, context, groupBy);
         }
+
+        @Nullable Expression having = null;
+        if (spec.getHaving().isPresent())
+            having = spec.getHaving().get();
+
         Select select = spec.getSelect();
-        DDlogIRNode result = this.processSelect(relation, select, groupBy, context);
-
-        if (spec.getHaving().isPresent()) {
-            Expression having = spec.getHaving().get();
-            DDlogExpression ddexpr = context.translateExpression(having);
-        }
-
-        return result;
+        return this.processSelect(relation, select, groupBy, having, context);
     }
 
     @Override

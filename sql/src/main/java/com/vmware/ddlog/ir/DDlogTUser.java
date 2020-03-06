@@ -26,6 +26,10 @@ public class DDlogTUser extends DDlogType {
         this.typeArgs = typeArgs;
     }
 
+    public DDlogType getTypeArg(int index) {
+        return this.typeArgs[index];
+    }
+
     public String getName() {
         return this.name;
     }
