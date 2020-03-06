@@ -29,11 +29,8 @@ public abstract class DDlogType implements DDlogIRNode {
      * True if the given type is a numeric type.
      * @param type  Type to analyze.
      */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    static boolean isNumeric(DDlogType type) {
-        return type instanceof DDlogTBit ||
-                type instanceof DDlogTSigned ||
-                type instanceof DDlogTInt;
+    public static boolean isNumeric(DDlogType type) {
+        return type instanceof IsNumericType;
     }
 
     String wrapOption(String type) {
@@ -80,4 +77,11 @@ public abstract class DDlogType implements DDlogIRNode {
      * @param mayBeNull  Value for the mayBeNull bit.
      */
     public abstract DDlogType setMayBeNull(boolean mayBeNull);
+
+    /**
+     * Get the None{} value of the option type corresponding to this type.
+     */
+    public DDlogExpression getNone() {
+        return new DDlogEStruct("None", this.setMayBeNull(true));
+    }
 }

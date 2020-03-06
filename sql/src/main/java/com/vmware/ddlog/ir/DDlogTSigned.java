@@ -11,9 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import java.math.BigInteger;
 import java.util.Objects;
 
-public class DDlogTSigned extends DDlogType {
+public class DDlogTSigned extends DDlogType implements IsNumericType {
     private final int width;
     public static final DDlogTSigned signed32 = new DDlogTSigned(32, false);
     public static final DDlogTSigned signed64 = new DDlogTSigned(64, false);
@@ -42,5 +43,15 @@ public class DDlogTSigned extends DDlogType {
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
         return new DDlogTSigned(this.width, mayBeNull);
+    }
+
+    @Override
+    public DDlogExpression zero() {
+        return new DDlogESigned(this.width, BigInteger.valueOf(0));
+    }
+
+    @Override
+    public String simpleName() {
+        return "signed";
     }
 }

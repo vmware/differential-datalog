@@ -11,7 +11,7 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogTInt extends DDlogType {
+public class DDlogTInt extends DDlogType implements IsNumericType {
     private DDlogTInt(boolean mayBeNull) { super(mayBeNull); }
 
     public static DDlogTInt instance = new DDlogTInt(false);
@@ -30,5 +30,15 @@ public class DDlogTInt extends DDlogType {
     public boolean equals(Object o) {
         if (this == o) return true;
         return o != null && getClass() == o.getClass();
+    }
+
+    @Override
+    public DDlogExpression zero() {
+        return new DDlogEInt(0);
+    }
+
+    @Override
+    public String simpleName() {
+        return "int";
     }
 }

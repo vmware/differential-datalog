@@ -39,25 +39,36 @@ public class AggregateVisitor
         }
     }
 
-    Decomposition result;
+    Decomposition decomposition;
+    private final List<TranslationVisitor.GroupByInfo> aggregates;
 
-    public AggregateVisitor() {
-        result = new Decomposition();
+    /**
+     * Create a visitor that analyzes an expression to see whether it requires aggregation.
+     * @param aggregates   Columns that are already being aggregated.
+     */
+    public AggregateVisitor(List<TranslationVisitor.GroupByInfo> aggregates) {
+        this.decomposition = new Decomposition();
+        this.aggregates = aggregates;
     }
 
     @Override
     protected Ternary visitFunctionCall(FunctionCall node, TranslationContext context) {
+        if (this.isGroupedBy(node)) {
+            this.decomposition.addNode(node);
+            return Ternary.Yes;
+        }
         String name = TranslationVisitor.convertQualifiedName(node.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
+        if (isAggregate) {
+            this.decomposition.addNode(node);
+        }
         for (Expression e: node.getArguments()) {
             Ternary arg = this.process(e, context);
             if (isAggregate && arg == Ternary.Yes)
                 throw new TranslationException("Nested aggregation", node);
-            if (arg != Ternary.Maybe)
-                result = arg;
+            result = this.combine(node, result, arg);
         }
-        this.result.addNode(node);
         if (isAggregate)
             return Ternary.Yes;
         return result;
@@ -73,15 +84,48 @@ public class AggregateVisitor
         return left;
     }
 
+    public boolean isGroupedBy(Expression e) {
+        for (TranslationVisitor.GroupByInfo a: this.aggregates) {
+            if (e.equals(a.groupBy))
+                return true;
+        }
+        return false;
+    }
+
+    @Override
+    protected Ternary visitCast(Cast node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return this.process(node.getExpression(), context);
+    }
+
+    @Override
+    protected Ternary visitExpression(Expression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return super.visitExpression(node, context);
+    }
+
     @Override
     protected Ternary visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
     }
 
     @Override
+    protected Ternary visitNotExpression(NotExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return this.process(node.getValue(), context);
+    }
+
+    @Override
     protected Ternary visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary value = this.process(node.getValue(), context);
         Ternary min = this.process(node.getMin(), context);
         Ternary max = this.process(node.getMax(), context);
@@ -90,11 +134,15 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitIdentifier(Identifier node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         return Ternary.No;
     }
 
     @Override
     protected Ternary visitLiteral(Literal node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         return Ternary.Maybe;
     }
 
@@ -104,6 +152,8 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitIfExpression(IfExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary c = this.process(node.getCondition(), context);
         Ternary th = this.process(node.getTrueValue(), context);
         Ternary e = node.getFalseValue().isPresent() ? Ternary.Maybe :
@@ -113,6 +163,8 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
@@ -120,6 +172,8 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
@@ -127,18 +181,34 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitSimpleCaseExpression(SimpleCaseExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary c = this.process(node.getOperand(), context);
+        if (c == null)
+            throw new TranslationException("Not supported: ", node.getOperand());
         for (WhenClause e: node.getWhenClauses()) {
             Ternary o = this.process(e.getOperand(), context);
+            if (o == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
             Ternary v = this.process(e.getResult(), context);
+            if (v == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
             Ternary s = this.combine(e, o, v);
             c = this.combine(node, c, s);
+        }
+        if (node.getDefaultValue().isPresent()) {
+            Ternary v = this.process(node.getDefaultValue().get(), context);
+            if (v == null)
+                throw new TranslationException("Not supported: ", node.getOperand());
+            c = this.combine(node, v, c);
         }
         return c;
     }
 
     @Override
     protected Ternary visitSearchedCaseExpression(SearchedCaseExpression node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
         Ternary c = Ternary.Maybe;
         for (WhenClause e: node.getWhenClauses()) {
             Ternary o = this.process(e.getOperand(), context);

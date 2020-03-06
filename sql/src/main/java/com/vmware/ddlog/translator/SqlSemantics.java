@@ -4,7 +4,6 @@ import com.vmware.ddlog.ir.*;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -24,6 +23,9 @@ public class SqlSemantics {
         this.aggregateFunctions.add("avg");
         this.aggregateFunctions.add("min");
         this.aggregateFunctions.add("max");
+        this.aggregateFunctions.add("some");
+        this.aggregateFunctions.add("any");
+        this.aggregateFunctions.add("every");
 
         this.arithmeticFunctions.put("a_eq", DDlogEBinOp.BOp.Eq);
         this.arithmeticFunctions.put("a_neq", DDlogEBinOp.BOp.Neq);
@@ -55,6 +57,26 @@ public class SqlSemantics {
     }
 
     public static SqlSemantics semantics = new SqlSemantics();
+
+    public static DDlogType createType(String sqltype, boolean mayBeNull) {
+        DDlogType type = null;
+        if (sqltype.equals("boolean")) {
+            type = DDlogTBool.instance;
+        } else if (sqltype.equals("integer")) {
+            type = DDlogTSigned.signed64;
+        } else if (sqltype.startsWith("varchar")) {
+            type = DDlogTString.instance;
+        } else if (sqltype.equals("bigint")) {
+            type = DDlogTInt.instance;
+        } else if (sqltype.equals("real")) {
+            type = DDlogTDouble.instance;
+        } else if (sqltype.equals("float")) {
+            type = DDlogTFloat.instance;
+        }
+        if (type == null)
+            throw new RuntimeException("SQL type not yet implemented: " + sqltype);
+        return type.setMayBeNull(mayBeNull);
+    }
 
     public boolean isAggregateFunction(String functionName) {
         return this.aggregateFunctions.contains(functionName);
@@ -88,9 +110,9 @@ public class SqlSemantics {
                     if ((i & 1) == 1) {
                         function += "N";
                         leftType = withNull;
-                        leftMatch = new DDlogEStruct("Some", Collections.singletonList(
+                        leftMatch = new DDlogEStruct("Some", leftType,
                                 new DDlogEStruct.FieldValue("x",
-                                        leftMatch)), leftType);
+                                        leftMatch));
                     } else {
                         function += "R";
                         leftType = raw;
@@ -98,8 +120,8 @@ public class SqlSemantics {
                     if ((i & 2) == 2) {
                         function += "N";
                         rightType = withNull;
-                        rightMatch = new DDlogEStruct("Some", Collections.singletonList(
-                                new DDlogEStruct.FieldValue("x", rightMatch)), rightType);
+                        rightMatch = new DDlogEStruct("Some", rightType,
+                                new DDlogEStruct.FieldValue("x", rightMatch));
                     } else {
                         function += "R";
                         rightType = raw;
@@ -128,16 +150,16 @@ public class SqlSemantics {
                                         new DDlogEVar("right", rightType)),
                                 Arrays.asList(new DDlogEMatch.Case(
                                                 new DDlogETuple(leftMatch, rightMatch),
-                                                new DDlogEStruct("Some", Collections.singletonList(
+                                                new DDlogEStruct("Some", type,
                                                         new DDlogEStruct.FieldValue("x",
                                                                 new DDlogEBinOp(op,
-                                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw)))
-                                                ), type)),
+                                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw))
+                                                ))),
                                         new DDlogEMatch.Case(
                                                 new DDlogETuple(
                                                         new DDlogEPHolder(),
                                                         new DDlogEPHolder()),
-                                                new DDlogEStruct("None", Collections.emptyList(), type)))
+                                                new DDlogEStruct("None", type)))
                         );
                     }
                     DDlogFunction func = new DDlogFunction(

@@ -21,6 +21,14 @@ public class DDlogEInt extends DDlogExpression {
         this.ival = ival;
     }
 
+    public DDlogEInt(int v) {
+        this(BigInteger.valueOf(v));
+    }
+
+    public DDlogEInt(long v) {
+        this(BigInteger.valueOf(v));
+    }
+
     @Override
     public String toString() {
         return this.ival.toString();

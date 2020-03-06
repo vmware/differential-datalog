@@ -16,6 +16,7 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.util.Linq;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
@@ -32,6 +33,13 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             // optimize for the case of no nulls
             return new DDlogEBinOp(op, left, right);
         return new DDlogEApply(function, type, left, right);
+    }
+
+    @Override
+    protected DDlogExpression visitCast(Cast node, TranslationContext context) {
+        DDlogExpression e = this.process(node.getExpression(), context);
+        DDlogType type = SqlSemantics.createType(node.getType(), e.getType().mayBeNull);
+        return new DDlogEAs(e, type);
     }
 
     @Override
@@ -158,7 +166,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             context.warning("isNull can never be true", node);
             return new DDlogEBool(false);
         }
-        return new DDlogEApply("isNull", DDlogTBool.instance, arg);
+        return new DDlogEApply("is_null", DDlogTBool.instance, arg);
     }
 
     @Override
@@ -209,7 +217,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             DereferenceExpression node, TranslationContext context) {
          context.searchScope(true);
          DDlogExpression scope = this.process(node.getBase(), context);
-        context.searchScope(false);
+         context.searchScope(false);
          DDlogScope ddscope = scope.as(DDlogScope.class, null);
          context.enterScope(ddscope.getScope());  // we look up the next identifier in this scope.
          DDlogExpression result = this.process(node.getField(), context);
@@ -217,24 +225,42 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
          return result;
     }
 
-    @SuppressWarnings("unused")
     private DDlogType functionResultType(String function, List<DDlogExpression> args, TranslationContext context) {
         switch (function) {
+            case "any":
+            case "some":
+            case "every":
             case "substr":
-                return args.get(0).getType();
             case "min":
             case "max":
             case "avg":
+            case "avg_distinct":
             case "sum":
+            case "sum_distinct":
             case "abs":
                 if (args.size() == 0)
                     throw new RuntimeException("No arguments for aggregate?");
                 return args.get(0).getType();
             case "count":
-                return DDlogTSigned.signed64;
+            case "count_distinct":
+                if (args.size() == 0)
+                    return DDlogTSigned.signed64;
+                return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
             default:
                 throw new UnsupportedOperationException(function);
         }
+    }
+
+    /**
+     * The following aggregate functions compute the same result when using with
+     * DISTINCT and without.
+     */
+    private static Set<String> sameAsDistinct = Utilities.makeSet("min", "max", "some", "any", "every");
+    public static String functionName(FunctionCall fc) {
+        String name = TranslationVisitor.convertQualifiedName(fc.getName());
+        if (fc.isDistinct() && !sameAsDistinct.contains(name))
+            name += "_distinct";
+        return name;
     }
 
     @Override
@@ -245,9 +271,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             throw new TranslationException("Not yet supported", node);
         if (node.getFilter().isPresent())
             throw new TranslationException("Not yet supported", node);
-        if (node.isDistinct())
-            throw new TranslationException("Not yet supported", node);
-        String name = TranslationVisitor.convertQualifiedName(node.getName());
+        String name = functionName(node);
         List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
         DDlogType type = this.functionResultType(name, args, context);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
@@ -263,7 +287,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     private DDlogExpression makeNull() {
-        return new DDlogEStruct("None", new ArrayList<DDlogEStruct.FieldValue>(), new
+        return new DDlogEStruct("None", new
                 DDlogTUser("Option", false));
     }
 

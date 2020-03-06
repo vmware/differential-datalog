@@ -11,6 +11,9 @@
 
 package com.vmware.ddlog.ir;
 
+import com.vmware.ddlog.translator.TranslationException;
+import com.facebook.presto.sql.tree.Node;
+
 import javax.annotation.Nullable;
 
 public interface DDlogIRNode {
@@ -44,5 +47,19 @@ public interface DDlogIRNode {
             throw new RuntimeException(failureMessage);
         }
         return result;
+    }
+
+    default <T> T as(Class<T> clazz, @Nullable String failureMessage, Node errorPosition) {
+        T result = this.as(clazz);
+        if (result == null) {
+            if (failureMessage == null)
+                failureMessage = this.getClass().getName() + " is not an instance of " + clazz.toString();
+            throw new TranslationException(failureMessage, errorPosition);
+        }
+        return result;
+    }
+
+    default <T> boolean is(Class<T> clazz) {
+        return this.as(clazz) != null;
     }
 }

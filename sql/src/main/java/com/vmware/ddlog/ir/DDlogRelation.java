@@ -60,7 +60,7 @@ public class DDlogRelation implements DDlogIRNode {
         return this.type;
     }
 
-    static String relationName(String name) {
+    public static String relationName(String name) {
         return "R" + name;
     }
 
@@ -70,7 +70,7 @@ public class DDlogRelation implements DDlogIRNode {
         String result = this.role.toString();
         if (!result.isEmpty())
             result += " ";
-        result += "relation " + relationName(this.name)
+        result += "relation " + this.name
                 + "[" + this.type.toString() + "]";
         if (this.primaryKey != null)
             result += "primary key " + this.primaryKey;

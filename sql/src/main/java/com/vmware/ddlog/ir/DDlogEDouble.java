@@ -11,47 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
-import java.math.BigInteger;
-import java.util.Objects;
+public class DDlogEDouble extends DDlogExpression {
+    private final double val;
 
-public class DDlogTBit extends DDlogType implements IsNumericType {
-    private final int width;
-
-    DDlogTBit(int width, boolean mayBeNull) {
-        super(mayBeNull);
-        this.width = width;
+    public DDlogEDouble(double val) {
+        super(DDlogTDouble.instance);
+        this.val = val;
     }
 
     @Override
     public String toString() {
-        return this.wrapOption("bit<" + this.width + ">");
-    }
-
-    @Override
-    public DDlogType setMayBeNull(boolean mayBeNull) {
-        return new DDlogTBit(this.width, mayBeNull);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTBit dDlogTBit = (DDlogTBit) o;
-        return width == dDlogTBit.width;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(width);
-    }
-
-    @Override
-    public DDlogExpression zero() {
-        return new DDlogEBit(this.width, BigInteger.valueOf(0));
-    }
-
-    @Override
-    public String simpleName() {
-        return "bit";
+        return "64'f" + this.val;
     }
 }
