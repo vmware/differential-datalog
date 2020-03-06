@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# Test Antrea controller. 
+# Test Antrea controller.
 
 set -e
 
 #export DDLOGFLAGS="--output-input-relations=O --output-internal-relations"
-../datalog_tests/run-test.sh networkpolicy_controller.dl release
+#../datalog_tests/run-test.sh networkpolicy_controller.dl release
+ddlog -i networkpolicy_controller.dl -j -L../../lib
+(cd networkpolicy_controller_ddlog && cargo build --release)
 
 # $1 - number of workers
 # $2 - data file
@@ -20,10 +22,13 @@ run_test() {
     fi
     /usr/bin/time ./networkpolicy_controller_ddlog/target/release/networkpolicy_controller_cli -w $1 --no-print --no-store < $2 > antrea.dump
 
+    # Dump profile on the terminal.
+    #sed -n '/^Profile:$/,$p' antrea.dump
+
+    # Remove profiling data, which changes across runs.
     sed -n '/Profile:/q;p' antrea.dump > antrea.dump.truncated
     sed -n '/Profile:/q;p' $3 > $3.truncated
 
-    # The output should be $1 copies of redist_opt.dump.expected
     diff -q $3.truncated antrea.dump.truncated
 }
 
@@ -32,3 +37,6 @@ run_test 1 "antrea.dat" "antrea.dump.expected" 100000
 
 run_test 2 "antrea.dat" "antrea.dump.expected"
 run_test 2 "antrea.dat" "antrea.dump.expected" 100000
+
+#run_test 1 "cmds-large.dat" "cmd-large.dump.expected"
+#run_test 1 "cmds-large.dat" "cmd-large.dump.expected" 100000

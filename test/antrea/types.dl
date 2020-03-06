@@ -7,14 +7,15 @@ import uuid as uuid
 import k8spolicy as k8s
 import net.ipv4
 
-function uuidNamespace(): uuid.Uuid =
-    result_unwrap_or(uuid.parse_str("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"), uuid.nil())
+typedef UUID = u128
+
+function uuidNamespace(): uuid.Uuid = uuid.from_u128('h5a5e7dd9_e3fb_49bb_b263_9bab25c95841)
 
 // getNormalizedUID generates a unique UUID based on a given string.
 // For example, it can be used to generate keys using normalized selectors
 // unique within the Namespace by adding the constant UID.
-function getNormalizedUID(name: string): string = {
-    uuid.to_hyphenated_lower(uuid.new_v5(uuidNamespace(), string_to_bytes(name)))
+function getNormalizedUID(name: string): u128 = {
+    uuid.as_u128(uuid.new_v5(uuidNamespace(), string_to_bytes(name)))
 }
 
 // normalizeExpr converts an expression to the form "key1 OP [value1...]".
@@ -58,8 +59,14 @@ function selectorToString(selector: Ref<k8s.LabelSelector>): string =
 
 // A namespace selector is either a namespace name (or "")
 // or a namespace label selector.
-typedef NSSelector = NSSelectorNS{ns: string}
+typedef NSSelector = NSSelectorNS{ns: k8s.NSName}
                    | NSSelectorLS{selector: Ref<k8s.LabelSelector>}
+
+
+// Label selector requirements represented by two lists of requirements: positive
+// requirements of type `In` and `Exists` and negative requirements of type
+// `NotIn` and `DoesNotExist`.
+typedef Requirements = (Vec<Ref<k8s.LabelSelectorRequirement>>, Vec<Ref<k8s.LabelSelectorRequirement>>)
 
 // GroupSelector describes how to select pods.
 typedef GroupSelector = GroupSelector {
@@ -86,8 +93,8 @@ function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<
             set_insert(normalizedName, "namespaceSelector=${selectorToString(ls)}")
         },
         NSSelectorNS{ns} -> {
-            if (ns != "") {
-                set_insert(normalizedName, "namespace=${ns}")
+            if (istring_str(ns) != "") {
+                set_insert(normalizedName, "namespace=${istring_str(ns)}")
             }
         }
     };
@@ -100,7 +107,7 @@ function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<
 
 // toGroupSelector converts the podSelector and namespaceSelector
 // and NetworkPolicy Namespace to a networkpolicy.GroupSelector object.
-function toGroupSelector(namespace: string,
+function toGroupSelector(namespace: k8s.NSName,
                          podSelector: Option<Ref<k8s.LabelSelector>>,
                          nsLabelSelector: Option<Ref<k8s.LabelSelector>>): GroupSelector =
 {
@@ -117,6 +124,38 @@ function toGroupSelector(namespace: string,
     }
 }
 
+function labelSelectorToRequirements(sel: Ref<k8s.LabelSelector>): Requirements =
+{
+    var positive_requirements: Vec<Ref<k8s.LabelSelectorRequirement>> = vec_empty();
+    var negative_requirements: Vec<Ref<k8s.LabelSelectorRequirement>> = vec_empty();
+    for (e in sel.matchExpressions) {
+        match (e.operator) {
+            k8s.LabelSelectorOpIn           -> { vec_push(positive_requirements, e) },
+            k8s.LabelSelectorOpExists       -> { vec_push(positive_requirements, e) },
+            k8s.LabelSelectorOpNotIn        -> { vec_push(negative_requirements, e) },
+            k8s.LabelSelectorOpDoesNotExist -> { vec_push(negative_requirements, e) }
+        }
+    };
+    for (m in sel.matchLabels) {
+        vec_push(positive_requirements, ref_new(k8s.LabelSelectorRequirement{
+            .reqkey = m.0,
+            .operator = k8s.LabelSelectorOpIn,
+            .values = vec_singleton(m.1)
+        }))
+    };
+    (positive_requirements, negative_requirements)
+}
+
+// Matches returns true if the selector matches the input labels.
+// There is a match in the following cases:
+// (1) The operator is Exists and Labels has the Requirement's key.
+// (2) The operator is In, Labels has the Requirement's key and Labels'
+//     value for that key is in Requirement's value set.
+// (3) The operator is NotIn, Labels has the Requirement's key and
+//     Labels' value for that key is not in Requirement's value set.
+// (4) The operator is DoesNotExist or NotIn and Labels does not have the
+//     Requirement's key.
+
 // PodSet is a set of Pod references.
 typedef PodSet = Set<k8s.PodReference>
 
@@ -127,7 +166,7 @@ typedef Direction = DirectionIn
 // It could be a list of names of AddressGroups and/or a list of IPBlock.
 typedef NetworkPolicyPeer = NetworkPolicyPeer {
     // A list of names of AddressGroups.
-    addressGroups: Vec<string>,
+    addressGroups: Vec<UUID>,
     // A list of IPBlock.
     ipBlocks: Vec<IPBlock>
 }
