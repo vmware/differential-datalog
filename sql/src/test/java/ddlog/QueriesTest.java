@@ -20,10 +20,10 @@ public class QueriesTest {
     // These strings are part of almost all expected outputs
     private final String imports = "import sql\nimport sqlop\n";
     private final String t1t2 =
-            "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}\n" +
+            "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
             "typedef Tt2 = Tt2{column1:signed<64>}\n";
     private final String t1t2null =
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>}\n" +
+            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
             "typedef Tt2 = Tt2{column1:Option<signed<64>>}\n";
 
     /**
@@ -58,7 +58,8 @@ public class QueriesTest {
         String nulls = withNulls ? "" : " not null";
         String createStatement = "create table t1(column1 integer " + nulls + ",\n" +
                 " column2 varchar(36) " + nulls + ",\n" +
-                " column3 boolean " + nulls + ")";
+                " column3 boolean " + nulls + ",\n" +
+                " column4 real " + nulls + ")";
         Translator t = new Translator(null);
         DDlogIRNode create = t.translateSqlStatement(createStatement);
         Assert.assertNotNull(create);
@@ -332,7 +333,8 @@ public class QueriesTest {
         String query = "create view v0 as SELECT column2, SUM(column1) FROM t1 GROUP BY column2 HAVING COUNT(DISTINCT column3) > 1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{column2:string, col:signed<64>}\n" +
-                "function agg(g: Group<string, Tt1>):TRtmp =\n" +
+                "typedef Tagg = Tagg{col:signed<64>, col0:bool}\n" +
+                "function agg(g: Group<string, Tt1>):Tagg =\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(var count_distinct = set_empty(): Set<bool>);\n" +
@@ -343,7 +345,7 @@ public class QueriesTest {
                 "(var incr1 = v.column3);\n" +
                 "(set_insert(count_distinct, incr1))}\n" +
                 ");\n" +
-                "(TRtmp{.col = sum,.col0 = (set_size(count_distinct) as signed<64> > 64'sd1)})" +
+                "(Tagg{.col = sum,.col0 = (set_size(count_distinct) as signed<64> > 64'sd1)})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -623,7 +625,7 @@ public class QueriesTest {
     public void testCountJoin() {
         String query = "create view v0 as SELECT COUNT(t1.column2) FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
                 "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp =\n" +
                 "var count = 64'sd0: signed<64>;\n" +
@@ -638,7 +640,7 @@ public class QueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1}," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
                 "var aggResult = Aggregate((), agg((v, v0))),var v2 = aggResult,var v3 = v2.";
         this.testTranslation(query, program);
     }
@@ -696,6 +698,26 @@ public class QueriesTest {
                 "(avg = agg_avg_signed_R(avg, incr))}\n" +
                 ");\n" +
                 "(TRtmp{.col = avg_signed_R(avg)})" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testAvgDouble() {
+        String query = "create view v0 as SELECT AVG(column4) FROM t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col:double}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var avg = (64'f0.0, 64'f0.0): (double, double);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column4);\n" +
+                "(avg = agg_avg_double_R(avg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = avg_double_R(avg)})" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
@@ -828,10 +850,12 @@ public class QueriesTest {
     public void testImplicitJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1, t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],true," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -839,10 +863,11 @@ public class QueriesTest {
     public void testJoinStar() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -850,10 +875,11 @@ public class QueriesTest {
     public void testJoinStarWNull() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(true) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column10:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],unwrapBool(a_eq_NN(v.column1, v0.column1)),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],unwrapBool(a_eq_NN(v.column1, v0.column1)),true," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var v2 = v1.";
         this.testTranslation(query, program, true);
     }
 
@@ -861,10 +887,11 @@ public class QueriesTest {
     public void testNaturalJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],(true and (v.column1 == v0.column1)),var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],(true and (v.column1 == v0.column1))," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -872,11 +899,11 @@ public class QueriesTest {
     public void testNaturalJoinWhere() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2 WHERE column3";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],(true and (v.column1 == v0.column1))," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3},v.column3,var v2 = v1.";
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},v.column3,var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -884,13 +911,15 @@ public class QueriesTest {
     public void testJoin() {
         String query = "create view v0 as SELECT DISTINCT t0.column1, t1.column3 FROM t1 AS t0 JOIN t1 ON t0.column2 = t1.column2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>, column20:string, column30:bool}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, " +
+                "column10:signed<64>, column20:string, column30:bool, column40:double}\n" +
                 "typedef TRtmp = TRtmp{column1:signed<64>, column3:bool}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[v],Rt1[v0],(v.column2 == v0.column2),true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1,.column20 = v0.column2,.column30 = v0.column3}," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4," +
+                ".column10 = v0.column1,.column20 = v0.column2,.column30 = v0.column3,.column40 = v0.column4}," +
                 "var v2 = TRtmp{.column1 = v.column1,.column3 = v0.column3},var v3 = v2.";
         this.testTranslation(query, program);
     }
@@ -899,10 +928,11 @@ public class QueriesTest {
     public void testCrossJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -910,10 +940,11 @@ public class QueriesTest {
     public void testCrossJoinWNull() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
         String program = this.header(true) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column10:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[Ttmp]\n" +
-                "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column10 = v0.column1},var v2 = v1.";
+                "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var v2 = v1.";
         this.testTranslation(query, program, true);
     }
 
@@ -926,11 +957,11 @@ public class QueriesTest {
                 "         (SELECT DISTINCT column3 AS d FROM t1) d";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{a:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, a:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>}\n" +
                 "typedef TRtmp1 = TRtmp1{c:string}\n" +
-                "typedef Ttmp3 = Ttmp3{column1:signed<64>, column2:string, column3:bool, a:signed<64>, c:string}\n" +
+                "typedef Ttmp3 = Ttmp3{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>, c:string}\n" +
                 "typedef TRtmp4 = TRtmp4{d:bool}\n" +
-                "typedef Ttmp6 = Ttmp6{column1:signed<64>, column2:string, column3:bool, a:signed<64>, c:string, d:bool}\n" +
+                "typedef Ttmp6 = Ttmp6{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>, c:string, d:bool}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "relation Rtmp0[TRtmp]\n" +
@@ -943,11 +974,11 @@ public class QueriesTest {
                 "Rtmp2[v6] :- Rt1[v4],var v5 = TRtmp1{.c = v4.column2},var v6 = v5.\n" +
                 "Rtmp5[v10] :- Rt1[v8],var v9 = TRtmp4{.d = v8.column3},var v10 = v9.\n" +
                 "Rv0[v12] :- Rt1[v],Rtmp0[v2],true," +
-                "var v3 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.a = v2.a}," +
+                "var v3 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.a = v2.a}," +
                 "Rtmp2[v6],true," +
-                "var v7 = Ttmp3{.column1 = v3.column1,.column2 = v3.column2,.column3 = v3.column3,.a = v3.a,.c = v6.c}," +
+                "var v7 = Ttmp3{.column1 = v3.column1,.column2 = v3.column2,.column3 = v3.column3,.column4 = v3.column4,.a = v3.a,.c = v6.c}," +
                 "Rtmp5[v10],true," +
-                "var v11 = Ttmp6{.column1 = v7.column1,.column2 = v7.column2,.column3 = v7.column3,.a = v7.a,.c = v7.c,.d = v10.d}," +
+                "var v11 = Ttmp6{.column1 = v7.column1,.column2 = v7.column2,.column3 = v7.column3,.column4 = v7.column4,.a = v7.a,.c = v7.c,.d = v10.d}," +
                 "var v12 = v11.";
         this.testTranslation(query, program);
     }

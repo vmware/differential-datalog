@@ -12,12 +12,11 @@
 package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.Node;
-import com.facebook.presto.sql.tree.NodeLocation;
 
 import javax.annotation.Nullable;
 
 public class TranslationException extends RuntimeException {
-    TranslationException(String message, @Nullable Node node) {
+    public TranslationException(String message, @Nullable Node node) {
         super(message + "\n" + getPosition(node));
     }
 

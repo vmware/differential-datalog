@@ -11,47 +11,34 @@
 
 package com.vmware.ddlog.ir;
 
-import java.math.BigInteger;
-import java.util.Objects;
-
-public class DDlogTBit extends DDlogType implements IsNumericType {
-    private final int width;
-
-    DDlogTBit(int width, boolean mayBeNull) {
-        super(mayBeNull);
-        this.width = width;
-    }
+public class DDlogTFloat extends DDlogType implements IsNumericType {
+    private DDlogTFloat(boolean mayBeNull) { super(mayBeNull); }
 
     @Override
-    public String toString() {
-        return this.wrapOption("bit<" + this.width + ">");
-    }
+    public String toString() { return this.wrapOption("float"); }
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
-        return new DDlogTBit(this.width, mayBeNull);
+        if (this.mayBeNull == mayBeNull)
+            return this;
+        return new DDlogTFloat(mayBeNull);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTBit dDlogTBit = (DDlogTBit) o;
-        return width == dDlogTBit.width;
+        return o != null && getClass() == o.getClass();
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(width);
-    }
+    public static DDlogTFloat instance = new DDlogTFloat(false);
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogEBit(this.width, BigInteger.valueOf(0));
+        return new DDlogEFloat(0);
     }
 
     @Override
     public String simpleName() {
-        return "bit";
+        return "float";
     }
 }

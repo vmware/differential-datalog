@@ -294,7 +294,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 return new DDlogEApply(insertFunc, DDlogTTuple.emptyTupleType, variable, increment);
             case "sum":
             case "avg":
-                aggregate += "_" + (incType.is(DDlogTSigned.class) ? "signed" : "int");
+                IsNumericType num = incType.as(IsNumericType.class, "expected a numeric type");
+                aggregate += "_" + num.simpleName();
                 break;
             default:
                 break;
@@ -311,9 +312,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      * @param dataType   Type of the data that is being aggregated (not the type of the aggregate).
      */
     private DDlogExpression aggregateInitializer(FunctionCall f, String aggregate, DDlogType dataType) {
-        boolean isSigned = dataType instanceof DDlogTSigned;
-        boolean isInt = dataType instanceof DDlogTInt;
-        DDlogExpression zero = isSigned ? new DDlogESigned(0) : new DDlogEInt(0);
         DDlogExpression none = dataType.getNone();
 
         switch (aggregate) {
@@ -322,30 +320,33 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 return new DDlogEBool(false);
             case "every":
                 return new DDlogEBool(true);
-            case "sum":
+            case "sum": {
                 if (dataType.mayBeNull)
                     return none;
-                if (!(isSigned || isInt))
-                    throw new TranslationException("sum not supported for type " + dataType.toString(), f);
-                return zero;
+                IsNumericType num = dataType.as(IsNumericType.class, "expected a numeric type", f);
+                return num.zero();
+            }
             case "count":
                 if (dataType.mayBeNull)
                     return none;
                 return new DDlogESigned(0);
             case "min":
-            case "max":
+            case "max": {
                 if (dataType.mayBeNull)
                     return none;
                 DDlogExpression t = new DDlogEBool(true);
                 if (dataType instanceof DDlogTString)
                     return new DDlogETuple(t, new DDlogEString(""));
-                assert (isSigned || isInt);
-                return new DDlogETuple(t, zero);
-            case "avg":
-                DDlogETuple zt = new DDlogETuple(zero, zero);
+                IsNumericType num = dataType.as(IsNumericType.class, "expected a numeric type", f);
+                return new DDlogETuple(t, num.zero());
+            }
+            case "avg": {
+                IsNumericType num = dataType.as(IsNumericType.class, "expected a numeric type", f);
+                DDlogETuple zt = new DDlogETuple(num.zero(), num.zero());
                 if (dataType.mayBeNull)
                     return zt.getType().getNone();
                 return zt;
+            }
             case "count_distinct":
             case "sum_distinct":
                 DDlogType setType = new DDlogTUser("Set", false, dataType.setMayBeNull(false));
@@ -367,8 +368,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 } else {
                     suffix = "R";
                 }
-                String type = sumType.is(DDlogTSigned.class) ? "signed" : "int";
-                return new DDlogEApply("avg_" + type + "_" + suffix, sumType, value);
+                IsNumericType num = sumType.as(IsNumericType.class, "expected a numeric type");
+                return new DDlogEApply("avg_" + num.simpleName() + "_" + suffix, sumType, value);
             }
             case "min":
             case "max":
@@ -382,8 +383,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "sum_distinct": {
                 DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
                 DDlogType elemType = set.getTypeArg(0);
-                String type = elemType.is(DDlogTSigned.class) ? "signed" : "int";
-                return new DDlogEApply("set_" + type + "_sum", elemType, value);
+                IsNumericType num = elemType.as(IsNumericType.class, "expected a numeric type");
+                return new DDlogEApply("set_" + num.simpleName() + "_sum", elemType, value);
             }
             default:
                 return value;
@@ -405,8 +406,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
          */
         List<GroupByInfo> groupBy;
         /**
-         * List of fields of the resulting struct produced by the
-         * aggregation function.
+         * Fields of the struct produced by the output relation.
          */
         List<DDlogField> resultTypeFields = new ArrayList<DDlogField>();
         /**
@@ -414,7 +414,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
          */
         List<DDlogField> functionTypeFields = new ArrayList<DDlogField>();
         /**
-         * Fields returned by the aggregation function.
+         * Fields returned by the aggregation function.  This is the same as selectExpressions
+         * with the exception of elements that are in groupBy.
          */
         List<DDlogEStruct.FieldValue> functionResultFields = new ArrayList<DDlogEStruct.FieldValue>();
         /**
@@ -422,6 +423,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
          */
         @Nullable
         DDlogExpression loopBody;
+        /**
+         * For each field name in functionResultFields this holds the original expression
+         * that produced it.
+         */
+        Map<String, Expression> resultFieldOrigin = new HashMap<String, Expression>();
         /**
          * Aggregation function body.
          */
@@ -513,6 +519,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             state.resultTypeFields.add(field);
         }
         state.functionResultFields.add(new DDlogEStruct.FieldValue(name, expr));
+        state.resultFieldOrigin.put(name, expression);
     }
 
     private DDlogIRNode processSelectAggregate(RelationRHS relation, Select select,
@@ -615,7 +622,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         DDlogTUser tUserFunction;
         String funcTypeName;
-        if (state.resultTypeFields.size() == state.functionTypeFields.size()) {
+        // Optimization for the case when the function returns exactly
+        // the result we need; in this case we can avoid an extra copy.
+        if (state.resultTypeFields.equals(state.functionTypeFields)) {
             funcTypeName = newTypeName;
             tUserFunction = tUserResult;
         } else {
@@ -655,7 +664,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         DDlogExpression copy;
         if (groupBy.size() != 0) {
-            // The final result copies all the aggregated groupby fields and all fields computed by the function
+            // Copy into the final tuple the groupBy fields necessary...
             List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
             for (GroupByInfo gr : groupBy) {
                 if (gr.fieldName != null)
@@ -663,21 +672,15 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                             new DDlogEVar(gr.varName, gr.translation.getType())));
             }
 
-            int selectIndex = 0;
+            // ... and the other fields computed by the aggregation function
+            DDlogEVar aggVar = new DDlogEVar(aggregateVarName, tUserFunction);
             for (DDlogEStruct.FieldValue field: project.fields) {
-                DDlogEVar aggVar = new DDlogEVar(aggregateVarName, tUserFunction);
                 DDlogEField projField = new DDlogEField(aggVar, field.getName(), field.getValue().getType());
-                if (selectIndex < state.selectExpressions.size()) {
+                Expression original = state.resultFieldOrigin.get(field.getName());
+                assert original != null;
+                context.addSubstitution(original, projField);
+                if (!original.equals(having))
                     fields.add(new DDlogEStruct.FieldValue(field.getName(), projField));
-                    Expression selExpression = state.selectExpressions.get(selectIndex);
-                    context.addSubstitution(selExpression, projField);
-                } else {
-                    // This field must have been produced by the HAVING expression
-                    assert having != null;
-                    assert selectIndex == state.selectExpressions.size();
-                    context.addSubstitution(having, projField);
-                }
-                selectIndex++;
             }
             DDlogExpression resultFields = new DDlogEStruct(tUserResult.getName(), tUserResult, fields);
             copy = new DDlogESet(result.getRowVariable(true), resultFields);
