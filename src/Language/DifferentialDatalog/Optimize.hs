@@ -68,7 +68,7 @@ optExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
 -- Other rules are heuristically considered cheap to compute vs the cost of maintaining
 -- an extra arrangement.
 expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Maybe Relation, [Rule])
-expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
+expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     where
     -- variables used in the LHS of the rule
     lhsvars = ruleLHSVars d rl
@@ -91,12 +91,6 @@ expandMultiheadRule d rl ruleidx | ruleHasJoins rl = (Just rel, rule1 : rules)
                                , ruleRHS = [RHSLiteral True 
                                            $ Atom nopos relname 
                                            $ eTuple $ map (eVar . name) lhsvars]})
-                $ ruleLHS rl
-expandMultiheadRule _ rl _ = (Nothing, rules)
-    where
-    rules = map (\atom -> Rule { rulePos = pos rl
-                               , ruleLHS = [atom]
-                               , ruleRHS = ruleRHS rl})
                 $ ruleLHS rl
 
 -- | Common prefix elimination.
