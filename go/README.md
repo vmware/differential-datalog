@@ -12,7 +12,7 @@ following environment variables to be set at build time:
  * `CGO_LDFLAGS` must be set so that the linker searches the dynamic library
  generated for your program.
 
-For an example, refer to [cmd/example/](cmd/example], which is a Go program
+For an example, refer to [cmd/example/](cmd/example), which is a Go program
 using the DDlog Go bindings. This program assumes that the DDlog program
 [typesTest.dl](/test/types_test/typesTest.dl) is the one being used. The example
 can be built and run with `./run-example.sh`. Refer to this script to understand

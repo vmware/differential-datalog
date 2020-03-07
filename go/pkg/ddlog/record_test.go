@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/vmware/differential-datalog/go/pkg/uint128"
 )
 
 // In theory these tests do not depend on any specific DDlog program since DDlog does not perform
@@ -32,6 +34,23 @@ func TestRecordInteger(t *testing.T) {
 	v32, err := r.ToU32Safe()
 	assert.NotNil(t, err)
 	assert.Equal(t, uint32(0), v32)
+}
+
+func TestRecordUint128(t *testing.T) {
+	v := uint128.Uint128{Lo: 0xB65ABF568A99CCB5, Hi: 0x208F3AFD4FAF5761}
+	r := NewRecordU128(v)
+	defer r.Free()
+
+	assert.True(t, r.IsInt())
+	// 0x20 -> 0010 0000
+	assert.Equal(t, 126, r.IntBits())
+	assert.Equal(t, v, r.ToU128())
+	v128, err := r.ToU128Safe()
+	assert.Nil(t, err)
+	assert.Equal(t, v, v128)
+
+	_, err = r.ToU64Safe()
+	assert.NotNil(t, err)
 }
 
 func TestRecordVector(t *testing.T) {
