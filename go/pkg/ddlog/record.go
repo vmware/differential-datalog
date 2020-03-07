@@ -21,12 +21,26 @@ void freeRecordArray(ddlog_record **ra) {
 ddlog_record *ddlogString(_GoString_ s) {
     return ddlog_string_with_length(_GoStringPtr(s), _GoStringLen(s));
 }
+
+ddlog_record* ddlogU128(uint64_t lo, uint64_t hi) {
+    __uint128_t v = hi;
+    v = (v << 64) | lo;
+    return ddlog_u128(v);
+}
+
+void ddlogGetU128(const ddlog_record *rec, uint64_t *lo, uint64_t *hi) {
+    __uint128_t v = ddlog_get_u128(rec);
+    *lo = (uint64_t)v;
+    *hi = (uint64_t)(v >> 64);
+}
 */
 import "C"
 
 import (
 	"fmt"
 	"unsafe"
+
+	"github.com/vmware/differential-datalog/go/pkg/uint128"
 )
 
 var (
@@ -104,6 +118,12 @@ type Record interface {
 	// ToBoolSafe returns the value of a boolean record. Returns an error if the record is not a
 	// boolean.
 	ToBoolSafe() (bool, error)
+	// ToU128 returns the value of an integer record as a Uint128. Behavior is undefined if the
+	// record is not an integer or if its value does not fit into 128 bits.
+	ToU128() uint128.Uint128
+	// ToU128Safe returns the value of an integer record as a Uint128. Returns an error if the
+	// record is not an integer or if its value does not fit into 128 bits.
+	ToU128Safe() (uint128.Uint128, error)
 	// ToU64 returns the value of an integer record as a uint64. Behavior is undefined if the
 	// record is not an integer or if its value does not fit into 64 bits.
 	ToU64() uint64
@@ -330,6 +350,22 @@ func (r *record) ToBoolSafe() (bool, error) {
 	return bool(C.ddlog_get_bool(r.ptr())), nil
 }
 
+func (r *record) ToU128() uint128.Uint128 {
+	var lo, hi C.uint64_t
+	C.ddlogGetU128(r.ptr(), &lo, &hi)
+	return uint128.Uint128{Lo: uint64(lo), Hi: uint64(hi)}
+}
+
+func (r *record) ToU128Safe() (uint128.Uint128, error) {
+	if !r.IsInt() {
+		return uint128.Uint128{}, fmt.Errorf("record is not an integer")
+	}
+	if r.IntBits() > 128 {
+		return uint128.Uint128{}, fmt.Errorf("integer record cannot be represented with 128 bits")
+	}
+	return r.ToU128(), nil
+}
+
 func (r *record) ToU64() uint64 {
 	return uint64(C.ddlog_get_u64(r.ptr()))
 }
@@ -459,6 +495,13 @@ func (r *record) AsStructSafe() (RecordStruct, error) {
 // NewRecordBool creates a boolean record.
 func NewRecordBool(v bool) Record {
 	r := C.ddlog_bool(C.bool(v))
+	return &record{r}
+}
+
+// NewRecordU128 creates a record for an unsigned integer value. Can be used to populate any DDlog
+// field of type `bit<N>`, `N<=128`.
+func NewRecordU128(v uint128.Uint128) Record {
+	r := C.ddlogU128(C.uint64_t(v.Lo), C.uint64_t(v.Hi))
 	return &record{r}
 }
 
