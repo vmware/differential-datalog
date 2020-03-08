@@ -5,16 +5,29 @@
 
 # Differential Datalog (DDlog)
 
-DDlog is a *bottom-up*, *incremental*, *in-memory*, *typed* Datalog engine. It is well suited for
-writing programs that incrementally update their output in response to input changes. With DDlog,
+DDlog is a programming language for *incremental computation*. It is well suited for
+writing programs that continuously update their output in response to input changes. With DDlog,
 the programmer does not need to worry about writing incremental algorithms.
 Instead they specify the desired input-output mapping in a declarative manner, using a dialect of Datalog.
 The DDlog compiler then synthesizes an efficient incremental implementation.
 DDlog is based on [Frank McSherry's](https://github.com/frankmcsherry/)
 excellent [differential dataflow](https://github.com/frankmcsherry/differential-dataflow) library.
 
-1. **Bottom-up**: DDlog starts from a set of *ground facts* (i.e., facts provided by the user) and
-computes *all* possible derived facts by following Datalog rules, in a bottom-up fashion.  In
+DDlog has the following key properties:
+
+1. **Relational**: A DDlog program transforms a set of input relations (or tables) into a set of output relations.
+It is thus well suited for applications that operate on relational data, ranging from real-time analytics to
+cloud management systems and static program analysis tools.
+
+2. **Dataflow-oriented**: At runtime, a DDlog program accepts a *stream of updates* to input relations.
+Each update inserts, deletes, or modifies a subset of input records. DDlog responds to an input update
+by outputting an update to its output relations.
+
+3. **Incremental**: DDlog processes input updates by performing the minimum amount of work
+necessary to compute changes to output relations.  This has significant performance benefits for many queries.
+
+4. **Bottom-up**: DDlog starts from a set of input facts and
+computes *all* possible derived facts by following user-defined rules, in a bottom-up fashion.  In
 contrast, top-down engines are optimized to answer individual user queries without computing all
 possible facts ahead of time.  For example, given a Datalog program that computes pairs of connected
 vertices in a graph, a bottom-up engine maintains the set of all such pairs.  A top-down engine, on
@@ -23,40 +36,38 @@ and handles the query by searching for a derivation chain back to ground facts. 
 approach is preferable in applications where all derived facts must be computed ahead of time and in
 applications where the cost of initial computation is amortized across a large number of queries.
 
-2. **Incremental**: whenever the set of ground facts changes, DDlog only performs the minimum computation
-necessary to compute all changes in the derived facts.  This has significant performance benefits for many queries.
-
-3. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
+5. **In-memory**: DDlog stores and processes data in memory.  In a typical use case, a DDlog program
 is used in conjunction with a persistent database, with database records being fed to DDlog as
 ground facts and the derived facts computed by DDlog being written back to the database.
 
     At the moment, DDlog can only operate on databases that completely fit the memory of a single
-    machine. (This may change in the future, as DDlog builds on the differential dataflow library that
-    supports distributed computation over partitioned data).
+    machine. Se are working on a distributed version of DDlog that will be able to
+    parition its state and computation across multiple machines.
 
-4. **Typed**: Although Datalog is a programming language, in its classical textbook form it
-is more of a mathematical formalism than a practical tool for programmers.  In particular, pure
-Datalog does not have concepts like data types, arithmetics, strings or functions.  To facilitate
-writing of safe, clear, and concise code, DDlog extends pure Datalog with:
+6. **Typed**: In its classical textbook form Datalog is more of a mathematical formalism than a
+practical tool for programmers.  In particular, pure Datalog does not have concepts like types,
+arithmetics, strings or functions.  To facilitate writing of safe, clear, and concise code, DDlog
+extends pure Datalog with:
 
-    1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, strings,
-    tuples, tagged unions, vectors, sets, and maps.
+    1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, floating point numbers, strings,
+    tuples, tagged unions, vectors, sets, and maps. All of these types can be
+    stored in DDlog relations and manipuated by DDlog rules.  Thus, with DDlog
+    one can perform relational operations, such as joins, directly over structured data,
+    without having to flatten it first (as is often done in SQL databases).
 
-    2. Standard integer and bitvector arithmetic.
+    2. Standard integer, bitvector, and floating point arithmetic.
 
-    3. A simple procedural language that allows expressing many computations natively in DDlog without
-resorting to external functions.
+    3. A simple procedural language that allows expressing many computations natively in DDlog without resorting to external functions.
 
     4. String operations, including string concatenation and interpolation.
 
     5. Syntactic sugar for writing imperative-style code using for/let/assignments.
 
-5. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
+7. **Integrated**: while DDlog programs can be run interactively via a command line interface, its
 primary use case is to integrate with other applications that require deductive database
 functionality.  A DDlog program is compiled into a Rust library that can be linked against a Rust,
 C/C++, Java, or Go program (bindings for other languages can be easily added).  This enables good performance,
-but somewhat limits the flexibility, as
-changes to the relational schema or rules require re-compilation.
+but somewhat limits the flexibility, as changes to the relational schema or rules require re-compilation.
 
 ## Documentation
 
@@ -78,7 +89,7 @@ dependencies, as described below.)
 #### Prerequisites
 
 This section describes the manual installation of dependencies.
-We have tested our software on Ubuntu Linux and MacOS.
+We have tested our software on Ubuntu Linux, MacOS, and Windows running Ubuntu terminal.
 
 The compilers are written in Haskell.  One needs the Glasgow Haskell
 Compiler.  The Haskell compiler is managed by the
