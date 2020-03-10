@@ -129,6 +129,7 @@ main :: IO ()
 main = do
     args <- getArgs
     prog <- getProgName
+    home <- lookupEnv "DDLOG_HOME"
     config <- case getOpt Permute options args of
                    (flags, [], []) -> do conf <- foldM addOption defaultConfig flags
                                          validateConfig conf
@@ -137,13 +138,16 @@ main = do
                                       (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
                                                 throw (e::SomeException))
                    _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-    case confAction config of
+    config' <- case home of
+         Just(p) -> addOption config (LibDir $ p ++ "/lib")
+         _       -> return config
+    case confAction config' of
          ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
          ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                              putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
-         ActionValidate -> do _ <- parseValidate config
+         ActionValidate -> do _ <- parseValidate config'
                               return ()
-         ActionCompile -> compileProg config
+         ActionCompile -> compileProg config'
 
 parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
