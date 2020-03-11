@@ -1335,8 +1335,8 @@ extern function deref(x: Ref<'A>): 'A
 Objects wrapped in references are automatically reference counted and
 deallocated when the last reference is dropped.  The programmer must however
 **avoid creating cyclic references**, as those will form garbage that will stay
-in memory forever.  References can be compared using equality (`==`) and
-inequality (`!=`) operators.  The operators compare the objects wrapped in
+in memory forever.  References can be compared using all comparison operators
+(`==`, `!=`, `<`, `<=`, `>`, `>=`).  The operators compare the objects wrapped in
 references rather than their addresses.  Two references are equal if and only
 if the objects they point to are equal, whether they are the same object or not.
 
@@ -1373,7 +1373,7 @@ StudentInfo(student, school) :-
 ```
 
 Note the use of the `Ref` type in relation declaration.  Note also how `&` is
-used to "open up" the relation and patten match its fields without
+used to "open up" the relation and pattern match its fields without
 calling `deref` on it.  Here is an equivalent rule written without `&`:
 
 ```
