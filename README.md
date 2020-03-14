@@ -80,59 +80,21 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 ## Installation
 
-### From sources
-To install the required dependencies for buidling DDlog run
-`. ./install-dependencies.sh` (If you want to use other versions of
-the Rust or Haskell tools you can manually install the required
-dependencies, as described below.)
 
-#### Prerequisites
+1. Get Nix https://nixos.org/nix/
+2. Clone this repo and cd into
+3. Run `nix-shell`
+4. Inside dev shell run `initial-setup` to build `ddlog` executable. This should be done only once
 
-This section describes the manual installation of dependencies.
-We have tested our software on Ubuntu Linux, MacOS, and Windows running Ubuntu terminal.
+### Building
 
-The compilers are written in Haskell.  One needs the Glasgow Haskell
-Compiler.  The Haskell compiler is managed by the
-[stack](https://github.com/commercialhaskell/stack) tool.
-DDlog requires `stack` version 1.9.3 or later.
-To download `stack` (if you don't already have it) use:
+To rebuild the software:
 
 ```
-wget -qO- https://get.haskellstack.org/ | sh
-```
-
-You will also need to install the Rust toolchain v1.39 or later:
-
-```
-curl https://sh.rustup.rs -sSf | sh
-```
-
-**Note:** The `rustup` script adds path to Rust toolchain binaries (typically, `$HOME/.cargo/bin`)
-to `~/.profile`, so that it becomes effective at the next login attempt.  To configure your current
-shell run `source $HOME/.cargo/env`.
-
-If you intend to run the test suite or want to generate [Java bindings](doc/java_api.md), you will
-also need a Java installation containing `javac`.
-
-Finally, you will need static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`, `libdl.a`, `libgmp.a`, which can be installed from distro-specific packages.
-
-If you plan to use DDlog Java bindings, you will additionally need the Google
-FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
-[github](https://github.com/google/flatbuffers/releases/tag/v1.11.0).  Make sure
-that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
-Java classes are in your `$CLASSPATH`.
-
-#### Building
-
-To build the software:
-
-```
-git clone https://github.com/ryzhyk/differential-datalog.git
-cd differential-datalog
 stack build
 ```
 
-To install DDlog binaries in Haskell stack's default binary directory:
+To reinstall DDlog binaries in Haskell stack's default binary directory:
 
 ```
 stack install

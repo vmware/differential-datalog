@@ -277,16 +277,12 @@ Phrases{"I am your father"}
 > ## :heavy_exclamation_mark: Pro tip: automating your DDlog workflow
 >
 > At this point you may want to create a small shell script to automate compiling and
-> running DDlog. It will save you some typing and will make sure you don't forget to
-> recompile your program after making changes to it:
->
+> running DDlog. It is actually written, so when you are in a dev shell, you can run
+> 
 > ```
-> #!/bin/bash
->
-> ddlog -i playpen.dl -L <ddlog/lib>
-> (cd playpen_ddlog && cargo build --release)
-> ./playpen_ddlog/target/release/playpen_cli --no-print < playpen.dat
+> ddlog-run playpen.dl
 > ```
+> which will recompile program and feed `playpen.dat` as input, if that file is available.
 
 ## DDlog language basics
 

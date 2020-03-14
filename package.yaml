@@ -57,7 +57,8 @@ executables:
               - -threaded
               - -rtsopts
               - -with-rtsopts=-N
-              - -optl-static
+                #FIXME: this breaks Nix installation
+                #- -optl-static
               - -optl-pthread
               - -Wall
               - -Werror
@@ -103,3 +104,4 @@ tests:
     - filepath
     - deepseq
     - zlib
+
