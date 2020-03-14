@@ -70,8 +70,8 @@ let
             input_file="$dat_name"
           fi
         fi
-        ddlog -i "$program" -L '${builtins.toPath ./lib}'
-        (cd "''${program_noext}_ddlog" && cargo build --release)
+        ddlog -i "$program" -L '${builtins.toPath ./lib}' || return
+        (cd "''${program_noext}_ddlog" && cargo build)
         if [ -z "$input_file" ]; then
           "''${program_noext}_ddlog/target/release/$(basename "$program_noext")_cli"
         else
