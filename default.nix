@@ -73,9 +73,9 @@ let
         ddlog -i "$program" -L '${builtins.toPath ./lib}' || return
         (cd "''${program_noext}_ddlog" && cargo build)
         if [ -z "$input_file" ]; then
-          "''${program_noext}_ddlog/target/release/$(basename "$program_noext")_cli"
+          "''${program_noext}_ddlog/target/debug/$(basename "$program_noext")_cli"
         else
-          "''${program_noext}_ddlog/target/release/$(basename "$program_noext")_cli" --no-print < "$input_file"
+          "''${program_noext}_ddlog/target/debug/$(basename "$program_noext")_cli" --no-print < "$input_file"
         fi
       }
     '';
