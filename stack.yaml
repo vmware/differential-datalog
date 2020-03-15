@@ -40,6 +40,12 @@ packages:
 
 nix:
   shell-file: tools/stack-shell.nix
+# when running in dev shell, it will be actually Nix one
+# no need to download GHC twice then
+system-ghc: true
+install-ghc: false
+skip-ghc-check: true
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 # extra-deps: []
