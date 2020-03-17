@@ -47,6 +47,8 @@ let
 
       unset STACK_IN_NIX_SHELL
 
+      alias stack="stack --nix-shell-file ${builtins.toPath ./.}/tools/stack-shell.nix --nix-pure --no-install-ghc --skip-ghc-check"
+
       function initial-setup {
         rustup default ${rust-toolchain}
         stack build
