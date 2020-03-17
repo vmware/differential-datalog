@@ -80,21 +80,72 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 ## Installation
 
+### Installing DDlog from a binary release
+
+To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [below](#prerequisites))
+
+You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
+
+### Compiling DDlog from sources
+
+#### Installing dependencies manually
+
+- Haskell [stack](https://github.com/commercialhaskell/stack):
+  ```
+  wget -qO- https://get.haskellstack.org/ | sh
+  ```
+- Rust toolchain v1.39 or later:
+  ```
+  curl https://sh.rustup.rs -sSf | sh
+  . $HOME/.cargo/env
+  rustup component add rustfmt
+  rustup component add clippy
+  ```
+  **Note:** The `rustup` script adds path to Rust toolchain binaries (typically, `$HOME/.cargo/bin`)
+  to `~/.profile`, so that it becomes effective at the next login attempt.  To configure your current
+  shell run `source $HOME/.cargo/env`.
+- JDK, e.g.:
+  ```
+  apt install default-jdk
+  ```
+- Google FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
+  [github](https://github.com/google/flatbuffers/releases/tag/v1.11.0).  Make sure
+  that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
+  Java classes are in your `$CLASSPATH`:
+  ```
+  ./tools/install-flatbuf.sh
+  cd flatbuffers
+  export CLASSPATH=`pwd`"/java":$CLASSPATH
+  export PATH=`pwd`:$PATH
+  cd ..
+  ```
+- Static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`,
+  `libdl.a`, `libgmp.a` can be installed from distro-specific packages.  On Ubuntu:
+  ```
+  apt install libc6-dev libgmp-dev
+  ```
+
+#### Installing dependencis using Nix
+
+Alternativaly, [Nix](https://nixos.org/nix/) package manager provides an automated way to
+install and manage the above dependencies.  It works on many flavors of
+Linux and MacOS.
 
 1. Get Nix https://nixos.org/nix/
-2. Clone this repo and cd into
-3. Run `nix-shell`
+2. Clone this repo and cd into it
+3. Run Nix dev shell: `nix-shell`
 4. Inside dev shell run `initial-setup` to build `ddlog` executable. This should be done only once
 
-### Building
+#### Building
 
-To rebuild the software:
+To rebuild the software once you've installed the dependencies using one of the
+above methods:
 
 ```
 stack build
 ```
 
-To reinstall DDlog binaries in Haskell stack's default binary directory:
+To install DDlog binaries in Haskell stack's default binary directory:
 
 ```
 stack install
@@ -114,9 +165,7 @@ stack test --ta '-p path'
 
 **Note:** this takes a few minutes
 
-### Binary
-
-To install a precompiled version of DDlog, download the [latest binary release](https://github.com/ryzhyk/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions [above](#prerequisites))
+You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
 
 ### vim syntax highlighting
 
