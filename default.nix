@@ -50,9 +50,14 @@ let
   dev-shell = stack-shell.overrideAttrs (old: {
     buildInputs = old.buildInputs ++ [
       pkgs.stack
+      pkgs.go
     ];
 
     shellHook = (old.shellHook or "") + ''
+
+      export GOCACHE=$TMPDIR/go-cache
+      export GOPATH="$TMPDIR/go"
+      mkdir -p "''${GOPATH}/pkg/mod/cache/download"
 
       unset STACK_IN_NIX_SHELL
 
