@@ -1,5 +1,6 @@
 { ghc ? null
 , pkgs ? import <nixpkgs> { }
+, buildStatic ? true
 } @ args:
 
 let
@@ -7,9 +8,10 @@ let
   ghc = args.ghc or pkgs.haskell.compiler.ghc865;
   java = pkgs.adoptopenjdk-bin;
   rust-toolchain = "1.39.0";
+  lib = pkgs.lib;
 
   flatbuffers-java = pkgs.runCommand "flatbuffers-java" {
-    buildInputs = [ java pkgs.findutils ];
+    buildInputs = [ java ];
   } ''
     mkdir -p $out
     cp -r ${pkgs.flatbuffers.src}/java $out/
@@ -27,11 +29,18 @@ let
     shellHook = ''
       export PATH="$HOME/.local/bin:$PATH"
     '';
+    
+    nativeBuildInputs = lib.optional buildStatic [
+      pkgs.glibc
+      pkgs.glibc.static
+      pkgs.pkgsStatic.gmp
+      pkgs.pkgsStatic.libffi
+    ];
 
     buildInputs = [
       pkgs.flatbuffers
       pkgs.zlib
-      pkgs.adoptopenjdk-bin
+      java 
       pkgs.gitMinimal
       pkgs.rustup
       pkgs.cacert
