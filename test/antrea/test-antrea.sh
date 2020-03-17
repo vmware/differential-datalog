@@ -27,9 +27,16 @@ run_test() {
 
     # Remove profiling data, which changes across runs.
     sed -n '/Profile:/q;p' antrea.dump > antrea.dump.truncated
-    sed -n '/Profile:/q;p' $3 > $3.truncated
+    if [[ $3 == *.gz ]]
+    then
+        gunzip -kf $3
+        expected=${3%.gz}
+    else
+        expected=$3
+    fi
+    sed -n '/Profile:/q;p' $expected > $expected.truncated
 
-    diff -q $3.truncated antrea.dump.truncated
+    diff -q $expected.truncated antrea.dump.truncated
 }
 
 run_test 1 "antrea.dat" "antrea.dump.expected"
@@ -38,5 +45,5 @@ run_test 1 "antrea.dat" "antrea.dump.expected" 100000
 run_test 2 "antrea.dat" "antrea.dump.expected"
 run_test 2 "antrea.dat" "antrea.dump.expected" 100000
 
-#run_test 1 "cmds-large.dat" "cmd-large.dump.expected"
-#run_test 1 "cmds-large.dat" "cmd-large.dump.expected" 100000
+run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.gz"
+run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.gz" 10
