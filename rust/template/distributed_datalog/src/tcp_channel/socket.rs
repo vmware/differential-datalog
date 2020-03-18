@@ -274,9 +274,12 @@ impl Drop for Fd {
 
 /// Create a socket file descriptor.
 fn socket() -> Result<Fd, Error> {
-    let fd =
-        cvt(unsafe { libc::socket(libc::AF_INET, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0) })?;
-    Ok(Fd::new(fd as libc::c_uint))
+    unsafe {
+        let fd = cvt(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0))?;
+        let oldflags = cvt(libc::fcntl(fd, libc::F_GETFD, 0))?;
+        let _ = cvt(libc::fcntl(fd, libc::F_SETFD, oldflags | libc::O_CLOEXEC))?;
+        Ok(Fd::new(fd as libc::c_uint))
+    }
 }
 
 /// An object representing a socket.
