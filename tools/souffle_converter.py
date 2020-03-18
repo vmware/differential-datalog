@@ -200,6 +200,9 @@ class Type(object):
         if self.name == "Tnumber" or self.name == "signed<32>":
             self.isnumber = True
             return True
+        if self.name == "Tunsigned" or self.name == "bit<32>":
+            self.isnumber
+            return True
         if self.name == "IString":
             self.isnumber = False
             return False
@@ -380,7 +383,9 @@ class Files(object):
         self.output("import souffle_types")
         Type.create("IString", "IString")
         Type.create("signed<32>", "signed<32>")
+        Type.create("bit<32>", "bit<32>")
         # The following are in souffle_types
+        Type.create("unsigned", "bit<32>")
         Type.create("number", "signed<32>")
         Type.create("symbol", "IString")
         Type.create("empty", "()")
@@ -813,6 +818,11 @@ class SouffleConverter(object):
             if self.converting_tail and v != "_":
                 self.bound_variables[v] = self.currentType
             return v
+
+        fl = getOptField(arg, "FLOAT")
+        if fl is not None:
+            val = fl.value
+            return "(64'f" + val + ": double)"
 
         num = getOptField(arg, "NUMBER")
         if num is not None:
@@ -1258,7 +1268,18 @@ class SouffleConverter(object):
             union = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
             recordType = getOptField(typedecl, "RecordType")
+            predefinedType = getOptField(typedecl, "PredefinedType")
             sqbrace = getOptField(typedecl, "[")
+
+            if predefinedType is not None:
+                equiv = None
+                if getOptField(predefinedType, "TNUMBER") is not None or \
+                   getOptField(predefinedType, "TUNSIGNED") is not None:
+                    equiv = "number"
+                elif getOptField(predefinedType, "TFLOAT") is not None:
+                    equiv = "double"
+                Type.create(ident, equiv)
+                return
 
             if recordType is not None:
                 fields = getList(recordType, "TypeId", "RecordType")
