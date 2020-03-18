@@ -68,13 +68,19 @@ ComponentTypeList : ComponentType
 ComponentBody: "{" DeclarationList "}"
              ;
 
-TypeDecl: TYPE Identifier
+TypeDecl: TYPE Identifier "<:" PredefinedType
         | TYPE Identifier "=" UnionType
         | TYPE Identifier "=" "[" "]"
         | TYPE Identifier "=" "[" RecordType "]"
         | SYMBOL_TYPE Identifier
         | NUMBER_TYPE Identifier
         ;
+
+PredefinedType: TNUMBER
+              | TFLOAT
+              | TSYMBOL
+              | TUNSIGNED
+              ;
 
 UnionType : TypeId
           | TypeId "|" UnionType
@@ -179,6 +185,7 @@ Arg: String
    | "$"
    | "@" Identifier FunctorList
    | Identifier
+   | FLOAT
    | NUMBER
    | "(" Arg ")"
    | Arg "lor" Arg  {0, left}
@@ -267,6 +274,12 @@ FunctionCall: "min" "(" FunctionArgumentList ")"
             | "match" "(" FunctionArgumentList ")"
             | "contains" "(" FunctionArgumentList ")"
             | "to_string" "(" FunctionArgumentList ")"
+            | "ftoi" "(" FunctionArgumentList ")"
+            | "itof" "(" FunctionArgumentList ")"
+            | "itou" "(" FunctionArgumentList ")"
+            | "utoi" "(" FunctionArgumentList ")"
+            | "utof" "(" FunctionArgumentList ")"
+            | "ftou" "(" FunctionArgumentList ")"
             ;
 
 FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
@@ -347,9 +360,14 @@ AS: "as" ;
 NIL: "nil" ;
 TRUE: "true" ;
 FALSE: "false" ;
+FLOAT: /([0-9]+)[.]([0-9]+)/ ;
 NUMBER: /([1-9][0-9]*)|(0x[a-fA-F0-9]+)|(0b[0-1][0-1]*)|(0)/ ;
 Identifier: /[_a-zA-Z\?][_\d\w]*/;
 NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;
 PLAN: ".plan" ;
 KEYWORD: /\w+/ ;  // special Parglare rule: match keywords entirely
 OVERRIDE: ".override" ;
+TNUMBER: "number" ;
+TSYMBOL: "symbol" ;
+TUNSIGNED: "unsigned" ;
+TFLOAT: "float" ;

@@ -18,6 +18,10 @@ cabal.sandbox.config
 *.eventlog
 *.swp
 .stack-work/
+.vscode
+.project
+sql/.classpath
+sql/.settings
 stack.yaml.lock
 cabal.project.local
 .HTF/
@@ -26,6 +30,7 @@ test/datalog_tests/*.err
 test/datalog_tests/*.dump
 test/datalog_tests/*.c
 test/datalog_tests/*_ddlog
+java/*/*_ddlog/
 test/ovn
 *.dump
 # These files are generated
