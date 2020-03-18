@@ -481,11 +481,14 @@ AddressGroupSpan(addressGroup, span) :-
     NetworkPolicySpan(np, npSpan),
     var span = Aggregate((addressGroup), group_set_unions(npSpan)).
 
+// The following rule is unnecessary, as by construction each group is derived from at
+// least one network policy.
+
 // Handle the case when the address group is not refered to by any NetworkPolicy
 // objects.
-AddressGroupSpan(addressGroup, set_empty()) :-
-    &AddressGroupDescr(.uid = addressGroup),
-    not NetworkPolicyAddressGroup(.addressGroup = addressGroup).
+//AddressGroupSpan(addressGroup, set_empty()) :-
+//    &AddressGroupDescr(.uid = addressGroup),
+//    not NetworkPolicyAddressGroup(.addressGroup = addressGroup).
 
 // AppliedToGroupPod: pods that belong to a group along with nodes
 // where the pod is scheduled;
