@@ -68,7 +68,8 @@ ComponentTypeList : ComponentType
 ComponentBody: "{" DeclarationList "}"
              ;
 
-TypeDecl: TYPE Identifier "<:" PredefinedType
+TypeDecl: TYPE Identifier
+        | TYPE Identifier "<:" PredefinedType
         | TYPE Identifier "=" UnionType
         | TYPE Identifier "=" "[" "]"
         | TYPE Identifier "=" "[" RecordType "]"
