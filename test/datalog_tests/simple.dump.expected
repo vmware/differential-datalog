@@ -111,7 +111,15 @@ Cast_float{.description = "512'd100 as float", .expected = 100, .actual = 100}
 Cast_float{.description = "64'f3.5  as float", .expected = 3.5, .actual = 3.5}
 Cast_float{.description = "8'd100   as float", .expected = 100, .actual = 100}
 
+Cast_s128:
+Cast_s128{.description = "('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected = 255, .actual = 255}
+Cast_s128{.description = "('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected = -1, .actual = -1}
+Cast_s128{.description = "(-1: bigint as signed<128>)", .expected = -1, .actual = -1}
+
 Cast_s32:
+Cast_s32{.description = "('hff000000ff: bigint as signed<32>)", .expected = 255, .actual = 255}
+Cast_s32{.description = "('hffffffffff: bigint as signed<32>)", .expected = -1, .actual = -1}
+Cast_s32{.description = "(-1: bigint as signed<32>)", .expected = -1, .actual = -1}
 Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
@@ -119,6 +127,11 @@ Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 10
 Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
 Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
+
+Cast_s8:
+Cast_s8{.description = "('hff0000000f: bigint as signed<8>)", .expected = 15, .actual = 15}
+Cast_s8{.description = "('hffffffffff: bigint as signed<8>)", .expected = -1, .actual = -1}
+Cast_s8{.description = "(-1: bigint as signed<8>)", .expected = -1, .actual = -1}
 
 Cast_u24:
 Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
@@ -380,7 +393,15 @@ Cast_float{.description = "512'd100 as float", .expected = 100, .actual = 100}
 Cast_float{.description = "64'f3.5  as float", .expected = 3.5, .actual = 3.5}
 Cast_float{.description = "8'd100   as float", .expected = 100, .actual = 100}
 
+Cast_s128:
+Cast_s128{.description = "('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected = 255, .actual = 255}
+Cast_s128{.description = "('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected = -1, .actual = -1}
+Cast_s128{.description = "(-1: bigint as signed<128>)", .expected = -1, .actual = -1}
+
 Cast_s32:
+Cast_s32{.description = "('hff000000ff: bigint as signed<32>)", .expected = 255, .actual = 255}
+Cast_s32{.description = "('hffffffffff: bigint as signed<32>)", .expected = -1, .actual = -1}
+Cast_s32{.description = "(-1: bigint as signed<32>)", .expected = -1, .actual = -1}
 Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}
@@ -388,6 +409,11 @@ Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 10
 Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}
 Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}
+
+Cast_s8:
+Cast_s8{.description = "('hff0000000f: bigint as signed<8>)", .expected = 15, .actual = 15}
+Cast_s8{.description = "('hffffffffff: bigint as signed<8>)", .expected = -1, .actual = -1}
+Cast_s8{.description = "(-1: bigint as signed<8>)", .expected = -1, .actual = -1}
 
 Cast_u24:
 Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}
@@ -1073,6 +1099,9 @@ Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}
 Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}
 Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}
 Cast_s32
+Cast_s32{.description = "('hff000000ff: bigint as signed<32>)", .expected = 255, .actual = 255}
+Cast_s32{.description = "('hffffffffff: bigint as signed<32>)", .expected = -1, .actual = -1}
+Cast_s32{.description = "(-1: bigint as signed<32>)", .expected = -1, .actual = -1}
 Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}
 Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}

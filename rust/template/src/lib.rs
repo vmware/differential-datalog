@@ -37,9 +37,9 @@ use differential_datalog::record::UpdCmd;
 use differential_datalog::uint::*;
 use differential_datalog::DDlogConvert;
 use num_traits::cast::FromPrimitive;
+use num_traits::identities::One;
 
 use fnv::FnvHashMap;
-use num_traits::identities::One;
 
 use types::*;
 pub use value::*;

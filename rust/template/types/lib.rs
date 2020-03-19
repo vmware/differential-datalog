@@ -16,7 +16,7 @@
 
 use num::bigint::BigInt;
 use num::FromPrimitive;
-use num::One;
+use num_traits::identities::One;
 use ordered_float::OrderedFloat;
 use std::borrow;
 use std::fmt;

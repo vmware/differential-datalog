@@ -2382,6 +2382,12 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       = ("(" <> val exprExpr <+>
                          "& ((" <> tfrom <> "::one() <<" <> pp (typeWidth to_type) <> ") -" <+> tfrom <> "::one()))"
                         , EVal)
+                      | bothIntegers && width_cmp == GT && isBigInt d from_type
+                      -- from_type is bigint, to_type is s8/16/32/64/128: truncate from_type,
+                      -- and convert to unsigned bit vector using `truncate_to_uN` method and then
+                      -- coerce to signed bit vector:
+                      -- e.truncate_to_uN() as <to_type>
+                      = ("(" <> val exprExpr <+> ".truncate_to_u" <> pp (typeWidth to_type) <> "() as" <+> tto <> ")", EVal)
                       | bothIntegers && width_cmp == GT
                       -- from_type is wider than to_type: truncate from_type and
                       -- then convert:

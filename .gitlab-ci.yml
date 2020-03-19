@@ -71,7 +71,7 @@ test-simple:
     tags:
         - ddlog-ci-1
     script:
-    - stack --no-terminal test --ta "-p simple"
+    - stack --no-terminal test --ta '-p "$(NF) == \"generate simple\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"simple\")"'
     - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
 
 test-simple2:

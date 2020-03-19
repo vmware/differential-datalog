@@ -1,3 +1,5 @@
+dump RFloatToInt;
+
 start;
 
 insert Arrng1(TArrng2{true, TArrng1{true, 1000}}, 10),

@@ -1,3 +1,6 @@
+import fp
+import log
+
 /* Test `arrangeInput` logic in Compile.hs */
 
 typedef TArrng1 = TArrng1{
@@ -42,3 +45,18 @@ output relation TArrng1Arrng2(x: bigint)
 TArrng1Arrng2(x.f2.f2) :-
     TArrng1[t],
     TArrng2[(x, t.0.f2.f2)].
+
+
+function ftoi_(l: double): signed<32> = {
+    match (int_from_d(l)) {
+        None -> 0,
+        Some{x} -> {
+            x as signed<32>
+        }
+    }
+}
+
+relation RFtoIDummy(x: signed<32>)
+RFtoIDummy(0).
+output relation RFloatToInt(_x:signed<32>)
+RFloatToInt(_x) :- RFtoIDummy(0), var _x = ftoi_((- (64'f333.36: double))).
