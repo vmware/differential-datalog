@@ -81,17 +81,56 @@ impl Int {
     pub fn to_i8(&self) -> Option<i8> {
         self.x.to_i8()
     }
+    pub fn to_u8(&self) -> Option<u8> {
+        self.x.to_u8()
+    }
+    /* Extract 8 low-order bits and convert to u8 */
+    pub fn truncate_to_u8(&self) -> u8 {
+        (&self.x & &BigInt::from(0xffu8)).to_u8().unwrap()
+    }
     pub fn to_i16(&self) -> Option<i16> {
         self.x.to_i16()
+    }
+    pub fn to_u16(&self) -> Option<u16> {
+        self.x.to_u16()
+    }
+    /* Extract 16 low-order bits and convert to u16 */
+    pub fn truncate_to_u16(&self) -> u16 {
+        (&self.x & &BigInt::from(0xffffu16)).to_u16().unwrap()
     }
     pub fn to_i32(&self) -> Option<i32> {
         self.x.to_i32()
     }
+    pub fn to_u32(&self) -> Option<u32> {
+        self.x.to_u32()
+    }
+    /* Extract 32 low-order bits and convert to u32 */
+    pub fn truncate_to_u32(&self) -> u32 {
+        (&self.x & &BigInt::from(0xffff_ffffu32)).to_u32().unwrap()
+    }
     pub fn to_i64(&self) -> Option<i64> {
         self.x.to_i64()
     }
+    pub fn to_u64(&self) -> Option<u64> {
+        self.x.to_u64()
+    }
+    /* Extract 64 low-order bits and convert to u64 */
+    pub fn truncate_to_u64(&self) -> u64 {
+        (&self.x & &BigInt::from(0xffff_ffff_ffff_ffffu64))
+            .to_u64()
+            .unwrap()
+    }
     pub fn to_i128(&self) -> Option<i128> {
         self.x.to_i128()
+    }
+    pub fn to_u128(&self) -> Option<u128> {
+        self.x.to_u128()
+    }
+    /* Extract 128 low-order bits and convert to u128 */
+    pub fn truncate_to_u128(&self) -> u128 {
+        (&self.x & &BigInt::from(0xffff_ffff_ffff_ffff_ffff_ffff_ffff_ffffu128))
+            .to_u128()
+            .unwrap()
     }
     pub fn to_float(&self) -> OrderedFloat<f32> {
         match self.x.to_f32() {
@@ -260,6 +299,8 @@ forward_binop!(impl Sub for Int, sub);
 forward_binop!(impl Div for Int, div);
 forward_binop!(impl Rem for Int, rem);
 forward_binop!(impl Mul for Int, mul);
+forward_binop!(impl BitAnd for Int, bitand);
+forward_binop!(impl BitOr for Int, bitor);
 
 impl num::One for Int {
     fn one() -> Int {

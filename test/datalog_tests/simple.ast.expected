@@ -26,7 +26,9 @@ typedef CMethod = CMethod{c1: Symbol, c2: Symbol}
 typedef Cast_bigint = Cast_bigint{description: string, expected: bigint, actual: bigint}
 typedef Cast_double = Cast_double{description: string, expected: double, actual: double}
 typedef Cast_float = Cast_float{description: string, expected: float, actual: float}
+typedef Cast_s128 = Cast_s128{description: string, expected: signed<128>, actual: signed<128>}
 typedef Cast_s32 = Cast_s32{description: string, expected: signed<32>, actual: signed<32>}
+typedef Cast_s8 = Cast_s8{description: string, expected: signed<8>, actual: signed<8>}
 typedef Cast_u24 = Cast_u24{description: string, expected: bit<24>, actual: bit<24>}
 typedef Cast_u256 = Cast_u256{description: string, expected: bit<256>, actual: bit<256>}
 typedef Cast_u32 = Cast_u32{description: string, actual: bit<32>, expected: bit<32>}
@@ -561,6 +563,16 @@ function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString 
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
 function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
     std.string_contains(intern.istring_str(i), intern.istring_str(s))
+function souffle_lib.ftoi (l: double): signed<32> =
+    match (fp.int_from_d(l)) {
+        std.None{} -> 32'sd0,
+        std.Some{.x=var x} -> (x as signed<32>)
+    }
+function souffle_lib.ftou (l: double): bit<32> =
+    match (fp.int_from_d(l)) {
+        std.None{} -> 32'd0,
+        std.Some{.x=var x} -> ((x as signed<32>) as bit<32>)
+    }
 function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber =
     souffle_lib.castTo32(std.group_count(g))
 function souffle_lib.itof (l: signed<32>): double =
@@ -820,7 +832,9 @@ output relation CMethod [CMethod]
 output relation Cast_bigint [Cast_bigint]
 output relation Cast_double [Cast_double]
 output relation Cast_float [Cast_float]
+output relation Cast_s128 [Cast_s128]
 output relation Cast_s32 [Cast_s32]
+output relation Cast_s8 [Cast_s8]
 output relation Cast_u24 [Cast_u24]
 output relation Cast_u256 [Cast_u256]
 output relation Cast_u32 [Cast_u32]
@@ -1146,9 +1160,18 @@ Cast_s32(.description="32'sd100  as signed<32>", .expected=(32'sd100 as signed<3
 Cast_s32(.description="16'sd100  as signed<32>", .expected=(16'sd100 as signed<32>), .actual=32'sd100).
 Cast_s32(.description="8'sd100   as signed<32>", .expected=(8'sd100 as signed<32>), .actual=32'sd100).
 Cast_s32(.description="128'sd100 as signed<32>", .expected=(128'sd100 as signed<32>), .actual=32'sd100).
+Cast_s32(.description="(-1: bigint as signed<32>)", .expected=((- (1: bigint)) as signed<32>), .actual=(- 32'sd1)).
+Cast_s32(.description="('hffffffffff: bigint as signed<32>)", .expected=((1099511627775: bigint) as signed<32>), .actual=(- 32'sd1)).
+Cast_s32(.description="('hff000000ff: bigint as signed<32>)", .expected=((1095216660735: bigint) as signed<32>), .actual=32'sd255).
 Cast_s32(.description="64'shffffffffffff as signed<32>", .expected=(64'sd281474976710655 as signed<32>), .actual=32'sd4294967295).
 Cast_s32(.description="128'shffffffffffffffffffff as signed<32>", .expected=(128'sd1208925819614629174706175 as signed<32>), .actual=32'sd4294967295).
 Cast_s32(.description="(100: bit<32>) as signed<32>", .expected=((32'd100: bit<32>) as signed<32>), .actual=32'sd100).
+Cast_s8(.description="(-1: bigint as signed<8>)", .expected=((- (1: bigint)) as signed<8>), .actual=(- 8'sd1)).
+Cast_s8(.description="('hffffffffff: bigint as signed<8>)", .expected=((1099511627775: bigint) as signed<8>), .actual=(- 8'sd1)).
+Cast_s8(.description="('hff0000000f: bigint as signed<8>)", .expected=((1095216660495: bigint) as signed<8>), .actual=8'sd15).
+Cast_s128(.description="(-1: bigint as signed<128>)", .expected=((- (1: bigint)) as signed<128>), .actual=(- 128'sd1)).
+Cast_s128(.description="('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected=((87112285931760246646623899502532662132735: bigint) as signed<128>), .actual=(- 128'sd1)).
+Cast_s128(.description="('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected=((86772003564839308183160524895100893921535: bigint) as signed<128>), .actual=128'sd255).
 Cast_u24(.description="24'd100  as bit<24>", .expected=(24'd100 as bit<24>), .actual=24'd100).
 Cast_u24(.description="32'd100  as bit<24>", .expected=(32'd100 as bit<24>), .actual=24'd100).
 Cast_u24(.description="16'd100  as bit<24>", .expected=(16'd100 as bit<24>), .actual=24'd100).
