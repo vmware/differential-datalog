@@ -41,7 +41,7 @@ extern function pow32(base:'A, exp: bit<32>): 'A
  * Option
  */
 
-//#[rust="serde(from=\"Option<A>\", into=\"Option<A>\")"]
+#[rust="serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 typedef Option<'A> = None
                    | Some{x: 'A}
 

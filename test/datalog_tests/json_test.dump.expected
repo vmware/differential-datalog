@@ -13,6 +13,10 @@ json_test.JsonTest{.description = "{\"Variant2\": {\"u\": 100}}", .value = "{\"s
 json_test.JsonTest{.description = "{\"b\":true, \"foo\":\"bar\"}", .value = "{\"std_Ok\":{\"res\":{\"b\":true}}}"}
 json_test.JsonTest{.description = "{\"b\":true}", .value = "{\"std_Ok\":{\"res\":{\"b\":true}}}"}
 json_test.JsonTest{.description = "{\"foo\":\"bar\"}", .value = "{\"std_Err\":{\"err\":\"missing field `b` at line 1 column 13\"}}"}
+json_test.JsonTest{.description = "{\"s\": \"foo\", \"i\": 100000, \"v\": 2.5}", .value = "{\"std_Ok\":{\"res\":{\"s\":\"foo\",\"i\":100000,\"v\":2.5}}}"}
+json_test.JsonTest{.description = "{\"s\": \"foo\", \"i\": 100000}", .value = "{\"std_Ok\":{\"res\":{\"s\":\"foo\",\"i\":100000,\"v\":null}}}"}
+json_test.JsonTest{.description = "{\"s\": \"foo\"}", .value = "{\"std_Ok\":{\"res\":{\"s\":\"foo\",\"i\":null,\"v\":null}}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}
+json_test.JsonTest{.description = "{}", .value = "{\"std_Ok\":{\"res\":{\"s\":null,\"i\":null,\"v\":null}}}"}
 json_test.TVariant1{.b = true}

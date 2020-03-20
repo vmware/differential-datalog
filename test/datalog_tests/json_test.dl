@@ -115,3 +115,23 @@ JsonTest(scalar5(),
 input relation Deserialized[TaggedEnum]
 output relation ODeserialized[TaggedEnum]
 ODeserialized[x] :- Deserialized[x].
+
+typedef Optional = Optional {
+    s: Option<string>,
+    i: Option<u64>,
+    v: Option<JsonValue>
+}
+
+function optional1(): string = [|{}|]
+function optional2(): string = [|{"s": "foo"}|]
+function optional3(): string = [|{"s": "foo", "i": 100000}|]
+function optional4(): string = [|{"s": "foo", "i": 100000, "v": 2.5}|]
+
+JsonTest(optional1(),
+         to_json_string_or_default(from_json_string(optional1()): Result<Optional, string>)).
+JsonTest(optional2(),
+         to_json_string_or_default(from_json_string(optional2()): Result<Optional, string>)).
+JsonTest(optional3(),
+         to_json_string_or_default(from_json_string(optional3()): Result<Optional, string>)).
+JsonTest(optional4(),
+         to_json_string_or_default(from_json_string(optional4()): Result<Optional, string>)).

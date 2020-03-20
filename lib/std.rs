@@ -138,12 +138,12 @@ impl<T> From<Option<T>> for std_Option<T> {
     }
 }
 
-/* // this requires Rust 1.41+
-   impl<T> From<std_Option<T>> for Option<T> {
+// this requires Rust 1.41+
+impl<T> From<std_Option<T>> for Option<T> {
     fn from(x: std_Option<T>) -> Self {
         std2option(x)
     }
-}*/
+}
 
 pub fn std_option_unwrap_or_default<T: Default + Clone>(opt: &std_Option<T>) -> T {
     match opt {

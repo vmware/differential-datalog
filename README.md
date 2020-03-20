@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
-[![rustc](https://img.shields.io/badge/rustc-1.39+-blue.svg)](https://blog.rust-lang.org/2019/11/07/Rust-1.39.0.html)
+[![rustc](https://img.shields.io/badge/rustc-1.41+-blue.svg)](https://blog.rust-lang.org/2020/03/12/Rust-1.42.html)
 
 # Differential Datalog (DDlog)
 
@@ -94,7 +94,7 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   wget -qO- https://get.haskellstack.org/ | sh
   ```
-- Rust toolchain v1.39 or later:
+- Rust toolchain v1.41 or later:
   ```
   curl https://sh.rustup.rs -sSf | sh
   . $HOME/.cargo/env
