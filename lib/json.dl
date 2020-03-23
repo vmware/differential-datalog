@@ -34,6 +34,128 @@ typedef JsonValue = // Represents a JSON null value.
                   | // Represents a JSON object.
                     JsonObject{o: Map<string, JsonValue>}
 
+/* Get JsonValue value as `bool`.  Returns `None` if value is not `JsonBool`.
+ */
+function jval_as_bool(v: JsonValue): Option<bool> =
+{
+    match (v) {
+        JsonBool{b} -> Some{b},
+        _ -> None
+    }
+}
+
+/* Get JsonValue value as `bool`.  Returns `def` if value is not `JsonBool`.
+ */
+function jval_as_bool_or(v: JsonValue, def: bool): bool =
+{
+    match (v) {
+        JsonBool{b} -> b,
+        _ -> def
+    }
+}
+
+/* Get JsonValue value as `JsonNum`.  Returns `None` if value is not `JsonNumber`.
+ */
+function jval_as_number(v: JsonValue): Option<JsonNum> =
+{
+    match (v) {
+        JsonNumber{n} -> Some{n},
+        _ -> None
+    }
+}
+
+/* Get JsonValue value as `JsonNum`.  Returns `def` if value is not `JsonNumber`.
+ */
+function jval_as_number_or(v: JsonValue, def: JsonNum): JsonNum =
+{
+    match (v) {
+        JsonNumber{n} -> n,
+        _ -> def
+    }
+}
+
+/* Get JsonValue value as string.  Returns `None` if value is not `JsonString`.
+ */
+function jval_as_string(v: JsonValue): Option<string> =
+{
+    match (v) {
+        JsonString{s} -> Some{s},
+        _ -> None
+    }
+}
+
+/* Get JsonValue value as string.  Returns `def` if value is not `JsonString`.
+ */
+function jval_as_string_or(v: JsonValue, def: string): string =
+{
+    match (v) {
+        JsonString{s} -> s,
+        _ -> def
+    }
+}
+
+/* Get JsonValue value as array.  Returns `None` if value is not `JsonArray`.
+ */
+function jval_as_array(v: JsonValue): Option<Vec<JsonValue>> =
+{
+    match (v) {
+        JsonArray{a} -> Some{a},
+        _ -> None
+    }
+}
+
+/* Get JsonValue value as array.  Returns `def` if value is not `JsonArray`.
+ */
+function jval_as_array_or(v: JsonValue, def: Vec<JsonValue>): Vec<JsonValue> =
+{
+    match (v) {
+        JsonArray{a} -> a,
+        _ -> def
+    }
+}
+
+/* Get JsonValue value as object.  Returns `None` if value is not `JsonObject`.
+ */
+function jval_as_object(v: JsonValue): Option<Map<string, JsonValue>> =
+{
+    match (v) {
+        JsonObject{o} -> Some{o},
+        _ -> None
+    }
+}
+
+/* Get JsonValue value as object.  Returns `def` if value is not `JsonObject`.
+ */
+function jval_as_object_or(v: JsonValue, def: Map<string, JsonValue>): Map<string, JsonValue> =
+{
+    match (v) {
+        JsonObject{o} -> o,
+        _ -> def
+    }
+}
+
+/* Get attribute by name.  Returns `None` if value is not `JsonObject` or
+ * does not have the specified attribute.
+ */
+function jval_get(v: JsonValue, attr: string): Option<JsonValue> =
+{
+    match (v) {
+        JsonObject{o} -> map_get(o, attr),
+        _ -> None
+    }
+}
+
+/* Get attribute by name.  Returns `def` if value is not `JsonObject` or
+ * does not have the specified attribute.
+ */
+function jval_get_or(v: JsonValue, attr: string, def: JsonValue): JsonValue =
+{
+    match (v) {
+        JsonObject{o} -> option_unwrap_or(map_get(o, attr), def),
+        _ -> def
+    }
+}
+
 typedef JsonNum = // Integer number.  The value must be in the range between the
                   // smallest `s64` number and the largest `u64` number,
                   // inclusive.  Values outside of this range will be truncated
