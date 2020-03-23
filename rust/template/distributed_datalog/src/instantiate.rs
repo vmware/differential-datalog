@@ -18,6 +18,8 @@ use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::DDlog;
 
+use crate::accumulator::Accumulator;
+use crate::accumulator::DistributingAccumulator;
 use crate::observe::Observable;
 use crate::schema::Addr;
 use crate::schema::Node;
@@ -127,11 +129,13 @@ where
                         .map_err(|e| format!("failed to create TcpSender socket: {}", e))?;
 
                     // TODO: What should we really do if we can't subscribe?
+                    let mut accumulator = DistributingAccumulator::new();
+                    let _subscription = accumulator.subscribe(Box::new(sender))
+                        .map_err(|_| "failed to subscribe TCP sender".to_string())?;
                     server
                         .add_stream(rel_ids)
-                        .subscribe(Box::new(sender))
-                        .map_err(|_| "failed to subscribe TCP sender".to_string())?;
-                    Ok(())
+                        .subscribe(Box::new(accumulator))
+                        .map_err(|_| "failed to subscribe accumulator".to_string())
                 }
             }
         })
@@ -190,14 +194,16 @@ where
                 .map_err(|e| format!("failed to create file {}: {}", path.display(), e))?;
             let sink = FileSink::<P::Convert>::new(file);
 
-            let mut stream = server.add_stream(rel_ids.clone());
-            stream.subscribe(Box::new(sink)).map_err(|_| {
-                format!(
-                    "failed to subscribe file sink {} to DDlogServer",
-                    path.display()
-                )
-            })?;
-            Ok(())
+            let mut accumulator = DistributingAccumulator::new();
+            let _subscription = accumulator.subscribe(Box::new(sink))
+                .map_err(|_| { format!(
+                     "failed to subscribe file sink {} to accumulator",
+                     path.display()
+                 )
+             })?;
+            server.add_stream(rel_ids.clone())
+                .subscribe(Box::new(accumulator))
+                .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())
         })
 }
 
@@ -214,11 +220,16 @@ where
     deduce_sinks_or_sources(node_cfg, false)
         .iter()
         .try_for_each(|(path, _rel_ids)| {
-            let source = FileSource::<P::Convert>::new(path);
+            let mut source = FileSource::<P::Convert>::new(path);
+
+            let mut accumulator = DistributingAccumulator::new();
+            let observable = accumulator.create_observable();
+            source.subscribe(Box::new(accumulator))
+                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))?;
+
             txnmux
-                .add_observable(Box::new(source))
-                .map_err(|_| format!("failed to add file source {} to TxnMux", path.display()))?;
-            Ok(())
+                .add_observable(Box::new(observable))
+                .map_err(|_| "failed to add accumulator to TxnMux".to_string())
         })
 }
 
