@@ -136,6 +136,7 @@ extern function string_replace(s: string, from: string, to: string): string
 extern function string_split(s: string, sep: string): Vec<string>
 
 extern function string_starts_with(s: string, prefix: string): bool
+extern function string_ends_with(s: string, suffix: string): bool
 
 /* Substring of `s` that begins at `start` and continues up to, but not
  * including, `end`.*/

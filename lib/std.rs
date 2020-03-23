@@ -915,6 +915,10 @@ pub fn std_string_starts_with(s: &String, prefix: &String) -> bool {
     s.starts_with(prefix)
 }
 
+pub fn std_string_ends_with(s: &String, suffix: &String) -> bool {
+    s.ends_with(suffix)
+}
+
 pub fn std_string_trim(s: &String) -> String {
     s.trim().to_string()
 }
