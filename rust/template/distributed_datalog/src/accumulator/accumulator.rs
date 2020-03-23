@@ -23,7 +23,6 @@ use uid::Id;
 use crate::Observable;
 use crate::Observer;
 use crate::ObserverBox;
-use crate::ObservableBox;
 
 use crate::accumulator::AccumulatingObserver;
 use crate::accumulator::TxnDistributor;
@@ -154,7 +153,6 @@ mod tests {
     use std::sync::Mutex;
 
     use crate::MockObserver;
-    use crate::observe::ObservableAny;
 
     //TODO: test accumulation of data across multiple commits
 
@@ -227,16 +225,6 @@ mod tests {
         assert_eq!(accumulator.on_commit(), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_commit, 1);
         assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
-    }
-
-    /// Test subscribing and unsubscribing through an `ObservableAny`.
-    #[test]
-    fn subscribe_unsubscribe_any_observable() {
-        let mut accumulator = DistributingAccumulator::<(), ()>::new();
-        let mock = Box::new(MockObserver::new());
-
-        let subscription = accumulator.subscribe_any(mock).unwrap();
-        assert!(accumulator.unsubscribe_any(subscription.as_ref()).is_some());
     }
 
     /// Test pass-through filter behaviour for transactions via a `DistributingAccumulator`.

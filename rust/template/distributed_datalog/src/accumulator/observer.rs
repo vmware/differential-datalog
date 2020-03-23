@@ -139,7 +139,6 @@ mod tests {
     use std::sync::Mutex;
 
     use crate::MockObserver;
-    use crate::observe::ObservableAny;
 
     //TODO: test accumulation of data across multiple commits
 
