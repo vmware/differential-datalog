@@ -19,7 +19,7 @@ APIs of a `ddlog` project, with all the code residing below
 [`rust/template/`][rust-template]. The current design is based on a
 variation of the observer pattern as employed and described by
 [ReactiveX][reactivex.io], with a program running on one node (an
-"observer) subscribing to (i.e., observing) the changes produced by
+"observer") subscribing to (i.e., observing) the changes produced by
 another (an "observable").
 
 **D3log** is being built bottom up, starting with the individual

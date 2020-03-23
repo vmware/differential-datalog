@@ -190,7 +190,7 @@ insert 21 Phrases(Phrases{"Hello, world!"})
 The CLI has executed all the operations that we have requested.  It
 has inserted records in relations `Word1` and `Word2`, and the rule
 for `Phrases` has inferred that a new record should be added to
-this relation.  When commiting a transaction DDlog reports all
+this relation.  When committing a transaction DDlog reports all
 *changes* to all (input and derived) relations.
 
 We can now again inspect the contents of `Phrases`:
@@ -216,7 +216,7 @@ start;
 delete Word2("world!", CategoryOther);
 commit;
 
-dump Prases;
+dump Phrases;
 ```
 
 `Phrases` should be empty again.  DDlog only computes the change of `Phrases`

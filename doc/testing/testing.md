@@ -92,7 +92,7 @@ outputs.
 **Note**: Placing a semicolon after an `insert` or `delete` operation tells DDlog to apply the
 update instantly, without waiting for subsequent updates.  Comma-separated updates are only applied
 once the full list of updates has been read (end of list is indicated by a semicolon).  This is
-significanly more efficient and should always be the preferred option when the client wants to apply
+significantly more efficient and should always be the preferred option when the client wants to apply
 multiple updates that are known at the same time.
 
 ### Example workload `path.dat`
