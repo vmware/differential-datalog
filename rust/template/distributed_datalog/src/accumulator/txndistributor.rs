@@ -189,7 +189,6 @@ mod tests {
     use super::*;
 
     use crate::MockObserver;
-    use crate::observe::ObservableAny;
 
     /// Test subscribing and unsubscribing for an `InitializedObservable`.
     #[test]
@@ -214,16 +213,6 @@ mod tests {
         assert!(observable.subscribe(observer2).is_err());
     }
 
-    /// Test subscribing and unsubscribing through an `ObservableAny`.
-    #[test]
-    fn subscribe_unsubscribe_any_observable() {
-        let mut observable = InitializedObservable::<(), ()>::default();
-        let observer = Box::new(MockObserver::new());
-
-        let subscription = observable.subscribe_any(observer).unwrap();
-        assert!(observable.unsubscribe_any(subscription.as_ref()).is_some());
-        assert!(observable.observer.lock().unwrap().is_none());
-    }
 
     /// Test subscribing and unsubscribing for a `TxnDistributor`.
     /// A subscription can occur directly via `subscribe` or via `create_observable`.
