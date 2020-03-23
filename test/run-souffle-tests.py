@@ -27,6 +27,7 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
+    "aggregates4",
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
     "aggregates",  # issue 227 - count of empty group
     "magic_aggregates",  # 227
