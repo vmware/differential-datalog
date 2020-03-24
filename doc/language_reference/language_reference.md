@@ -421,7 +421,7 @@ return_term  ::= "return" [expr]
 vardecl_term ::= "var" var_name
 
 match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"
-match_clause ::= pattern "-" expr
+match_clause ::= pattern "->" expr
 ```
 
 ```EBNF
