@@ -42,7 +42,7 @@ ground facts and the derived facts computed by DDlog being written back to the d
 
     At the moment, DDlog can only operate on databases that completely fit the memory of a single
     machine. Se are working on a distributed version of DDlog that will be able to
-    parition its state and computation across multiple machines.
+    partition its state and computation across multiple machines.
 
 6. **Typed**: In its classical textbook form Datalog is more of a mathematical formalism than a
 practical tool for programmers.  In particular, pure Datalog does not have concepts like types,
@@ -51,7 +51,7 @@ extends pure Datalog with:
 
     1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, floating point numbers, strings,
     tuples, tagged unions, vectors, sets, and maps. All of these types can be
-    stored in DDlog relations and manipuated by DDlog rules.  Thus, with DDlog
+    stored in DDlog relations and manipulated by DDlog rules.  Thus, with DDlog
     one can perform relational operations, such as joins, directly over structured data,
     without having to flatten it first (as is often done in SQL databases).
 
@@ -125,9 +125,9 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   apt install libc6-dev libgmp-dev
   ```
 
-#### Installing dependencis using Nix
+#### Installing dependencies using Nix
 
-Alternativaly, [Nix](https://nixos.org/nix/) package manager provides an automated way to
+Alternatively, [Nix](https://nixos.org/nix/) package manager provides an automated way to
 install and manage the above dependencies.  It works on many flavors of
 Linux and MacOS.
 
