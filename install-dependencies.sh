@@ -15,7 +15,7 @@ echo "Installing Haskell"
 ./tools/install-stack.sh
 
 echo "Installing Rust"
-curl https://sh.rustup.rs -sSf | sh -s - -y
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.41.1 -y
 export PATH=$HOME/.cargo/bin:$PATH
 rustup component add rustfmt
 rustup component add clippy
