@@ -536,7 +536,9 @@ function patterns (): () =
                              C0{.x=(var v: bit<32>)} -> v,
                              C1{.x=var v} -> v
                          }))
-extern function regex.regex_match (regex: string, str: string): bool
+extern function regex.regex_all_matches (regex: string, text: string): std.Vec<string>
+extern function regex.regex_first_match (regex: string, text: string): std.Option<string>
+extern function regex.regex_match (regex: string, text: string): bool
 function s0 (): string =
     "Some string"
 function s1 (): string =
