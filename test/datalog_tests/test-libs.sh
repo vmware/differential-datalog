@@ -17,3 +17,4 @@ test_lib uuid_test
 test_lib net_test
 test_lib json_test
 test_lib fp_test
+test_lib regex_test

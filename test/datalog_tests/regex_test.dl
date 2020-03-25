@@ -1,0 +1,24 @@
+import regex
+
+relation RegexTestInput(
+    regex: string,
+    text: string)
+
+
+RegexTestInput([|\d+|], "a111b222c").
+RegexTestInput([|\b\w{13}\b|], "I categorically deny having triskaidekaphobia.").
+RegexTestInput([|'([^']+)'\s+\((\d{4})\)|], "Not my favorite movie: 'Citizen Kane' (1941).").
+
+output relation RegexTestOutput(
+    regex: string,
+    text: string,
+    match_found: bool,
+    first_match: Option<string>,
+    all_matches: Vec<string>)
+
+RegexTestOutput(regex,
+                text,
+                regex_match(regex, text),
+                regex_first_match(regex, text),
+                regex_all_matches(regex, text)) :-
+    RegexTestInput(regex, text).

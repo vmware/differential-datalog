@@ -11,4 +11,17 @@
  * Returns false if `regex` is not a valid regular expression or if no match was
  * found.
  */
-extern function regex_match(regex: string, str: string): bool
+extern function regex_match(regex: string, text: string): bool
+
+/*
+ * Returns the leftmost-first match in `text`. If `regex` is not a valid regular
+ * expression or no match exists, then `None` is returned.
+ */
+extern function regex_first_match(regex: string, text: string): Option<string>
+
+/*
+ * Returns all successive non-overlapping matches in `text`.
+ * If `regex` is not a valid regular expression or no match exists,
+ * an empty vector is returned.
+ */
+extern function regex_all_matches(regex: string, text: string): Vec<string>
