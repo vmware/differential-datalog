@@ -14,7 +14,7 @@ import uuid as uuid
  * AppliedToGroupSpan: group span (nodes where the group must be sent).
  */
 
-relation &AppliedToGroupDescr (
+output relation &AppliedToGroupDescr (
     // UID is generated from the hash value of GroupSelector.NormalizedName.
     uid: UUID,
     // Name of this group, currently it's same as UID.
@@ -26,11 +26,12 @@ relation &AppliedToGroupDescr (
 )
 
 // PodsByNode is a mapping from nodeName to a set of Pods on the Node.
-relation AppliedToGroupPodsByNode(appliedToGroup: UUID, podsByNode: Map<string, Set<k8s.PodReference>>)
+output relation AppliedToGroupPodsByNode(appliedToGroup: UUID, node: string, pods: Set<k8s.PodReference>)
 
 // AppliedToGroupSpan: set of node names that this AddressGroup should be sent to.
-relation AppliedToGroupSpan(appliedToGroup: UUID, span: Set<string>)
+output relation AppliedToGroupSpan(appliedToGroup: UUID, span: string)
 
+/*
 output relation AppliedToGroup (
     descr: Ref<AppliedToGroupDescr>,
     podsByNode: Map<string, Set<k8s.PodReference>>,
@@ -41,6 +42,7 @@ AppliedToGroup(descr, podsByNode, span) :-
     descr in &AppliedToGroupDescr(),
     AppliedToGroupPodsByNode(descr.uid, podsByNode),
     AppliedToGroupSpan(descr.uid, span).
+*/
 
 /* In DDlog, we split the AddressGroup struct into three relations:
  * AddressGroupDescr: stores group name, id, and GroupSelector
@@ -49,7 +51,7 @@ AppliedToGroup(descr, podsByNode, span) :-
  */
 
 // AddressGroupDescr describes a set of addresses used as source or destination of Network Policy rules.
-relation &AddressGroupDescr (
+output relation &AddressGroupDescr (
     // UID is generated from the hash value of GroupSelector.NormalizedName.
     uid: UUID,
     // Name of this group, currently it's same as UID.
@@ -61,8 +63,9 @@ relation &AddressGroupDescr (
 )
 
 // Addresses is a set of IP addresses selected by this group.
-relation AddressGroupAddress(addressGroup: UUID, address: string)
+output relation AddressGroupAddress(addressGroup: UUID, address: string)
 
+/*
 // Aggregate all addresses for an address group in one record.
 relation AddressGroupAddresses(addressGroup: UUID, addresses: Set<string>)
 AddressGroupAddresses(addressGroup, addresses) :-
@@ -73,10 +76,12 @@ AddressGroupAddresses(addressGroup, addresses) :-
 AddressGroupAddresses(gid, set_empty()) :-
     &AddressGroupDescr(.uid = gid),
     not AddressGroupAddress(.addressGroup = gid).
+*/
 
 // AddressGroupSpan: set of node names that this AddressGroup should be sent to.
-relation AddressGroupSpan(addressGroup: UUID, span: Set<string>)
+output relation AddressGroupSpan(addressGroup: UUID, node: string)
 
+/*
 output relation AddressGroup (
     descr: Ref<AddressGroupDescr>,
     addresses: Set<string>,
@@ -87,9 +92,10 @@ AddressGroup(descr, addresses, span) :-
     descr in &AddressGroupDescr(),
     AddressGroupAddresses(descr.uid, addresses),
     AddressGroupSpan(descr.uid, span).
+*/
 
 // NetworkPolicy describes what network traffic is allowed for a set of Pods.
-relation NetworkPolicyDescr (
+output relation NetworkPolicyDescr (
     // UID of the original K8s Network Policy.
     uid: k8s.UID,
     // Name of the original K8s Network Policy.
@@ -103,8 +109,9 @@ relation NetworkPolicyDescr (
 )
 
 // NetworkPolicySpan: set of node names that this NetworkPolicyDescr should be sent to.
-relation NetworkPolicySpan(policy: k8s.UID, span: Set<string>)
+output relation NetworkPolicySpan(policy: k8s.UID, node: string)
 
+/*
 output relation NetworkPolicy(
     descr: NetworkPolicyDescr,
     span: Set<string>)
@@ -112,6 +119,7 @@ output relation NetworkPolicy(
 NetworkPolicy(descr, span) :-
     descr in NetworkPolicyDescr(),
     NetworkPolicySpan(descr.uid, span).
+*/
 
 // createAppliedToGroup creates an AppliedToGroupDescr object.
 function createAppliedToGroup(np: k8s.NetworkPolicy): AppliedToGroupDescr =
@@ -474,12 +482,13 @@ NetworkPolicyAddressGroup(np, addressGroup) :-
     },
     var addressGroup = FlatMap(addressGroups).
 
-AddressGroupSpan(addressGroup, span) :-
+AddressGroupSpan(addressGroup, node) :-
     &AddressGroupDescr(.uid = addressGroup),
     // Get all internal NetworkPolicy objects that refers this AddressGroupDescr.
     NetworkPolicyAddressGroup(np, addressGroup),
-    NetworkPolicySpan(np, npSpan),
-    var span = Aggregate((addressGroup), group_set_unions(npSpan)).
+    NetworkPolicySpan(np, node).
+
+//, var span = Aggregate((addressGroup), group_set_unions(npSpan)).
 
 // The following rule is unnecessary, as by construction each group is derived from at
 // least one network policy.
@@ -505,27 +514,29 @@ AppliedToGroupPod(appliedToGroup, k8s.PodReference{pod.name, pod.namespace}, pod
     // No need to process Pod when it's not scheduled.
     pod.spec.nodeName != "".
 
-AppliedToGroupPodsByNode(appliedToGroup, podsByNode) :-
+AppliedToGroupPodsByNode(appliedToGroup, nodeName, pods) :-
     AppliedToGroupPod(appliedToGroup, pod, nodeName),
-    var podsByNode = Aggregate((appliedToGroup), group2setmap((nodeName, pod))).
+    var pods = Aggregate((appliedToGroup, nodeName), group2set(pod)).
     //var podsByNode = Aggregate((appliedToGroup), group2map((nodeName, podsOnNode))).
 
-AppliedToGroupSpan(appliedToGroup, span) :-
-    AppliedToGroupPod(appliedToGroup, _, nodeName),
-    var span = Aggregate((appliedToGroup), group2set(nodeName)).
+AppliedToGroupSpan(appliedToGroup, nodeName) :-
+    AppliedToGroupPod(appliedToGroup, _, nodeName).
+//    var span = Aggregate((appliedToGroup), group2set(nodeName)).
 
 // Handle the case when there are no pods in the group.
-AppliedToGroupSpan(uid, set_empty()),
-AppliedToGroupPodsByNode(uid, map_empty()) :-
-    &AppliedToGroupDescr(.uid = uid),
-    not AppliedToGroupPod(.appliedToGroup = uid).
+//AppliedToGroupSpan(uid, set_empty()),
+//AppliedToGroupPodsByNode(uid, map_empty()) :-
+//    &AppliedToGroupDescr(.uid = uid),
+//    not AppliedToGroupPod(.appliedToGroup = uid).
 
-NetworkPolicySpan(policy, span) :-
+NetworkPolicySpan(policy, node) :-
     NetworkPolicyDescr(.uid = policy, .appliedToGroups = appliedToGroups),
     var appliedToGroup = FlatMap(appliedToGroups),
-    AppliedToGroupSpan(appliedToGroup, groupSpan),
-    var span = Aggregate((policy), group_set_unions(groupSpan)).
+    AppliedToGroupSpan(appliedToGroup, node).
+
+//,
+//    var span = Aggregate((policy), group_set_unions(groupSpan)).
 
 // Handle the case when `apliedToGroups` is empty.
-NetworkPolicySpan(policy, set_empty()) :-
-    NetworkPolicyDescr(.uid = policy, .appliedToGroups = vec_empty()).
+/*NetworkPolicySpan(policy, set_empty()) :-
+    NetworkPolicyDescr(.uid = policy, .appliedToGroups = vec_empty()).*/

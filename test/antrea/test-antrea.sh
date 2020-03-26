@@ -45,5 +45,5 @@ run_test 1 "antrea.dat" "antrea.dump.expected" 100000
 run_test 2 "antrea.dat" "antrea.dump.expected"
 run_test 2 "antrea.dat" "antrea.dump.expected" 100000
 
-run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.gz"
-run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.gz" 10
+run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.2.gz"
+run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.2.gz" 10
