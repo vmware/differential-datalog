@@ -1,11 +1,15 @@
 use std::collections::HashMap;
-use std::collections::LinkedList;
+use std::collections::HashSet;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use log::trace;
 use uid::Id;
+
+use differential_datalog::program::RelId;
+use differential_datalog::program::Update;
 
 use crate::Observable;
 use crate::Observer;
@@ -16,18 +20,22 @@ use crate::SharedObserver;
 /// An observable that can be initialized with optional data which it sends to a new subscriber
 /// before emitting any other data.
 #[derive(Debug, Default)]
-pub struct InitializedObservable<T, E> {
+pub struct InitializedObservable<T, V, E>
+    where
+        V: Debug + Eq + Hash
+{
     /// A reference to the `Observer` subscribed to us, if any.
     pub observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
     /// The data newly subscribed observers are initialized with.
-    init_data: Option<LinkedList<Vec<T>>>,
+    init_data: HashMap<RelId, HashSet<V>>,
     /// The subscription the Observable has
     subscription: Option<usize>,
 }
 
-impl<T, E> Observable<T, E> for InitializedObservable<T, E>
+impl<T, V, E> Observable<T, E> for InitializedObservable<T, V, E>
     where
         T: Debug + Send + 'static,
+        V: Debug + Send + Eq + Hash,
         E: Debug + Send + 'static,
 {
     type Subscription = usize;
@@ -42,8 +50,8 @@ impl<T, E> Observable<T, E> for InitializedObservable<T, E>
             Err(observer)
         } else {
             let _ = guard.replace(observer);
-            // TODO: send the init_data to the observer
-            // TODO: improve handling of subscriptions
+// TODO: send the init_data to the observer
+// TODO: improve handling of subscriptions
             Ok(1)
         }
     }
@@ -63,9 +71,9 @@ pub struct TxnDistributor<T, E> {
 }
 
 
-impl<T, E> TxnDistributor<T, E>
+impl<V, E> TxnDistributor<Update<V>, E>
     where
-        T: Debug + Send + 'static,
+        V: Debug + Eq + Hash + Send + 'static,
         E: Debug + Send + 'static,
 {
     pub fn new() -> Self {
@@ -80,8 +88,8 @@ impl<T, E> TxnDistributor<T, E>
 
     pub fn create_observable(
         &mut self,
-        init_data: Option<LinkedList<Vec<T>>>,
-    ) -> InitializedObservable<T, E> {
+        init_data: HashMap<RelId, HashSet<V>>,
+    ) -> InitializedObservable<Update<V>, V, E> {
         let observer = SharedObserver::default();
         let subscription = Id::<()>::new().get();
         trace!("TxnDistributor({:?})::create_observable({:?})", self.id, subscription);
@@ -90,7 +98,7 @@ impl<T, E> TxnDistributor<T, E>
         InitializedObservable {
             init_data,
             observer,
-            subscription: Some(subscription)
+            subscription: Some(subscription),
         }
     }
 }

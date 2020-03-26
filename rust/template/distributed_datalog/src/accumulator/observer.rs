@@ -1,9 +1,16 @@
 use std::any::Any;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::LinkedList;
 use std::fmt::Debug;
+use std::hash::Hash;
+use std::iter::FromIterator;
 
 use log::trace;
 use uid::Id;
+
+use differential_datalog::program::Update;
+use differential_datalog::program::RelId;
 
 use crate::Observable;
 use crate::ObservableBox;
@@ -15,21 +22,25 @@ use crate::SharedObserver;
 /// Wrapper around a `SharedObserver` that inspects the updates to derive the current state.
 /// Apart from that it simply forwards all messages to the observer.
 #[derive(Debug)]
-pub struct AccumulatingObserver<T,E> {
+pub struct AccumulatingObserver<T, V, E>
+    where
+        V: Debug + Eq + Hash
+{
     id: usize,
     /// The observable we track and our subscription to it. TODO: use a better data structure
     subscription: Option<(ObservableBox<T, E>, Box<dyn Any + Send>)>,
     /// The observer we ultimately push our data to.
-    observer: SharedObserver<OptionalObserver<ObserverBox<T,E>>>,
-    /// The data we accumulated so far. TODO: use a better data structure
-    data: Option<LinkedList<Vec<T>>>
+    observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
+    /// The data we accumulated so far.
+    data: HashMap<RelId, HashSet<V>>,
+    /// Temporary buffer to cache the updates before committing.
+    buffer: Option<LinkedList<Vec<T>>>,
 }
 
 
-impl<T, E> AccumulatingObserver<T, E>
+impl<T, V, E> AccumulatingObserver<T, V, E>
     where
-        T: Debug + Send + 'static,
-        E: Debug + Send + 'static,
+        V: Clone + Debug + Eq + Hash + Send + 'static,
 {
     pub fn new() -> Self {
         let id = Id::<()>::new().get();
@@ -39,20 +50,22 @@ impl<T, E> AccumulatingObserver<T, E>
             id,
             subscription: None,
             observer: SharedObserver::default(),
-            data: None,
+            data: HashMap::new(),
+            buffer: None,
         }
     }
 
-    pub fn get_current_state(&self) -> Option<LinkedList<Vec<T>>> {
+    pub fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("AccumulatingObserver({})::get_current_state()", self.id);
         // TODO: derive current state and return it
-        None
+        self.data.clone()
     }
 }
 
-impl<T, E> Observable<T, E> for AccumulatingObserver<T, E>
+impl<T, V, E> Observable<T, E> for AccumulatingObserver<T, V, E>
     where
         T: Debug + Send + 'static,
+        V: Debug + Eq + Hash,
         E: Debug + Send + 'static,
 {
     type Subscription = ();
@@ -78,20 +91,20 @@ impl<T, E> Observable<T, E> for AccumulatingObserver<T, E>
 }
 
 
-/// Simply forwards the incoming data to the observer while keeping track of the current state
+/// Forwards the incoming data to the observer while keeping track of the current state
 /// TODO: implement accumulating functionality!
-impl<T, E> Observer<T, E> for AccumulatingObserver<T, E>
+impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
     where
-        T: Send + Debug + Clone,
-        E: Send + Debug
+        V: Debug + Send + Eq + Hash + Clone,
+        E: Debug + Send
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_start", self.id);
 
-        if self.data.is_some() {
+        if self.buffer.is_some() {
             panic!("received multiple on_start events")
         } else {
-            self.data = Some(LinkedList::new());
+            self.buffer = Some(LinkedList::new());
             let mut guard = self.observer.lock().unwrap();
             guard.on_start()
         }
@@ -100,22 +113,40 @@ impl<T, E> Observer<T, E> for AccumulatingObserver<T, E>
     fn on_commit(&mut self) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_commit", self.id);
 
-        if let Some(ref mut _data) = self.data.take() {
-            // let updates = replace(data, LinkedList::new());
-            let mut guard = self.observer.lock().unwrap();
-            guard.on_commit()
+        if let Some(buffer) = self.buffer.take() {
+            {
+                let mut guard = self.observer.lock().unwrap();
+                guard.on_commit()?;
+            }
+            // apply the buffered updates to the accumulated state
+            buffer.into_iter().flatten().for_each(|upd: Update<V>| match upd {
+                Update::Insert { relid, v } => {
+                    let _ = self.data.entry(relid)
+                        .and_modify(|set| { let _ = set.insert(v.clone()); })
+                        .or_insert(HashSet::from_iter(vec![v.clone()].into_iter()));
+                }
+                Update::DeleteValue { relid, v } => {
+                    let _ = self.data.entry(relid)
+                        .and_modify(|set| { let _ = set.remove(&v); });
+                }
+                update => panic!("Operation {:?} not allowed", update)
+            });
+
+            Ok(())
         } else {
             panic!("on_commit was not preceded by an on_start event")
         }
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=T> + 'a>) -> Result<(), E> {
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=Update<V>> + 'a>) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_updates", self.id);
 
-        if let Some(ref mut _data) = self.data {
-            // TODO: inspect incoming updates to update current state
+        if let Some(ref mut buffer) = self.buffer {
+            // TODO: copy incoming updates to buffer
+            let upds = updates.collect::<Vec<_>>();
+            buffer.push_back(upds.clone());
             let mut guard = self.observer.lock().unwrap();
-            guard.on_updates(updates)
+            guard.on_updates(Box::new(upds.into_iter()))
         } else {
             panic!("on_updates was not preceded by an on_start event")
         }
@@ -128,7 +159,6 @@ impl<T, E> Observer<T, E> for AccumulatingObserver<T, E>
         guard.on_completed()
     }
 }
-
 
 
 #[cfg(test)]

@@ -12,13 +12,18 @@
 //! The TxnDistributor is the inverse of the `TxnMux` class, it listens to a single observable and
 //! is able to send data to multiple observers.
 
-use std::collections::LinkedList;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use log::trace;
 use uid::Id;
+
+use differential_datalog::program::Update;
+use differential_datalog::program::RelId;
 
 use crate::Observable;
 use crate::Observer;
@@ -30,40 +35,41 @@ use crate::accumulator::txndistributor::InitializedObservable;
 
 /// A trait object that acts as a proxy between an observable and observer.
 /// It accumulates the updates to maintain the current state of the data.
-pub trait Accumulator<T, E>: Observer<T, E> + Observable<T, E>
+pub trait Accumulator<V, E>: Observer<Update<V>, E> + Observable<Update<V>, E>
     where
-        T: Send,
+        V: Send + Debug + Eq + Hash,
         E: Send,
 {
     /// Creates a new Accumulator without any subscriptions or subscribers.
     fn new() -> Self;
 
     /// Returns a new Observable that can be used to listen to the outputs of the Accumulator.
-    fn create_observable(&mut self) -> InitializedObservable<T, E>;
+    fn create_observable(&mut self) -> InitializedObservable<Update<V>, V, E>;
 
     /// Return the current state of the data.
-    fn get_current_state(&self) -> Option<LinkedList<Vec<T>>>;
+    fn get_current_state(&self) -> HashMap<RelId, HashSet<V>>;
 }
 
 /// An Accumulator implementation that can have multiple observers (can be subscribed to more
 /// than once). Spawns an `AccumulatingObserver` to which a `TxnDistributor` is subscribed to.
 #[derive(Debug)]
-pub struct DistributingAccumulator<T, E>
+pub struct DistributingAccumulator<T, V, E>
     where
         T: Debug + Send,
+        V: Debug + Eq + Hash + Send,
         E: Debug + Send,
 {
     /// The accumulator's unique ID.
     id: usize,
     /// Component responsible for accumulating the data.
-    observer: AccumulatingObserver<T, E>,
+    observer: AccumulatingObserver<T, V, E>,
     /// Component responsible for distributing the output to multiple observers.
     distributor: Arc<Mutex<TxnDistributor<T, E>>>,
 }
 
-impl<T, E> Accumulator<T, E> for DistributingAccumulator<T, E>
+impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
     where
-        T: Debug + Send + Clone + 'static,
+        V: Debug + Send + Clone + Eq + Hash + 'static,
         E: Debug + Send + 'static,
 {
     fn new() -> Self {
@@ -78,27 +84,28 @@ impl<T, E> Accumulator<T, E> for DistributingAccumulator<T, E>
         Self {
             id,
             observer,
-            distributor
+            distributor,
         }
     }
 
-    fn create_observable(&mut self) -> InitializedObservable<T, E> {
+    fn create_observable(&mut self) -> InitializedObservable<Update<V>, V, E> {
         trace!("DistributingAccumulator({})::create_observable()", self.id);
         let init_data = self.get_current_state();
         let mut guard = self.distributor.lock().unwrap();
         guard.create_observable(init_data)
     }
 
-    fn get_current_state(&self) -> Option<LinkedList<Vec<T>>> {
+    fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("DistributingAccumulator({})::get_current_state()", self.id);
         self.observer.get_current_state()
     }
 }
 
 /// The methods for the Observable trait are delegated to the TxnDistributor
-impl<T, E> Observable<T, E> for DistributingAccumulator<T, E>
+impl<T, V, E> Observable<T, E> for DistributingAccumulator<T, V, E>
     where
         T: Debug + Send + 'static,
+        V: Debug + Send + Eq + Hash,
         E: Debug + Send + 'static,
 {
     type Subscription = usize;
@@ -118,10 +125,10 @@ impl<T, E> Observable<T, E> for DistributingAccumulator<T, E>
 }
 
 /// The methods for the Observer trait are delegated to the AccumulatingObserver
-impl<T, E> Observer<T, E> for DistributingAccumulator<T, E>
+impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     where
-        T: Send + Debug + Clone,
-        E: Send + Debug
+        V: Debug + Send + Eq + Hash + Clone,
+        E: Debug + Send
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_start", self.id);
@@ -133,7 +140,7 @@ impl<T, E> Observer<T, E> for DistributingAccumulator<T, E>
         self.observer.on_commit()
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=T> + 'a>) -> Result<(), E> {
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=Update<V>> + 'a>) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_updates", self.id);
         self.observer.on_updates(updates)
     }
