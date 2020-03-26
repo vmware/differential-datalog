@@ -109,7 +109,11 @@ output relation NetworkPolicyDescr (
 )
 
 // NetworkPolicySpan: set of node names that this NetworkPolicyDescr should be sent to.
-output relation NetworkPolicySpan(policy: k8s.UID, node: string)
+output relation NetworkPolicySpan(
+    namespace: k8s.NSName,
+    policy_name: string,
+    policy: k8s.UID,
+    node: string)
 
 /*
 output relation NetworkPolicy(
@@ -486,7 +490,7 @@ AddressGroupSpan(addressGroup, node) :-
     &AddressGroupDescr(.uid = addressGroup),
     // Get all internal NetworkPolicy objects that refers this AddressGroupDescr.
     NetworkPolicyAddressGroup(np, addressGroup),
-    NetworkPolicySpan(np, node).
+    NetworkPolicySpan(.policy = np, .node = node).
 
 //, var span = Aggregate((addressGroup), group_set_unions(npSpan)).
 
@@ -529,8 +533,12 @@ AppliedToGroupSpan(appliedToGroup, nodeName) :-
 //    &AppliedToGroupDescr(.uid = uid),
 //    not AppliedToGroupPod(.appliedToGroup = uid).
 
-NetworkPolicySpan(policy, node) :-
-    NetworkPolicyDescr(.uid = policy, .appliedToGroups = appliedToGroups),
+NetworkPolicySpan(namespace, policy_name, policy, node) :-
+    NetworkPolicyDescr(
+        .uid = policy,
+        .name = policy_name,
+        .namespace = namespace,
+        .appliedToGroups = appliedToGroups),
     var appliedToGroup = FlatMap(appliedToGroups),
     AppliedToGroupSpan(appliedToGroup, node).
 
