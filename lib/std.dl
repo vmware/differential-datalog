@@ -159,6 +159,12 @@ extern function string_trim(s: string): string
 extern function string_to_lowercase(s: string): string
 extern function str_to_lower(s: string): string
 
+/* Returns the uppercase equivalent of `s` as a new string.
+ */
+extern function string_to_uppercase(s: string): string
+
+extern function string_reverse(s: string): string
+
 /*
  * hashing
  */
