@@ -939,6 +939,14 @@ pub fn std_string_to_lowercase(s: &String) -> String {
     s.to_lowercase()
 }
 
+pub fn std_string_to_uppercase(s: &String) -> String {
+    s.to_uppercase()
+}
+
+pub fn std_string_reverse(s: &String) -> String {
+    s.chars().rev().collect()
+}
+
 // Hashing
 
 pub fn std_hash64<T: Hash>(x: &T) -> u64 {
