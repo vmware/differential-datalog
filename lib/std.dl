@@ -70,6 +70,19 @@ function option_unwrap_or(x: Option<'A>, def: 'A): 'A = {
 // `None`.
 extern function option_unwrap_or_default(opt: Option<'A>): 'A
 
+function option2set(o: Option<'X>): Set<'X> = {
+    match (o) {
+        Some{x} -> set_singleton(x),
+        None -> set_empty()
+    }
+}
+function option2vec(o: Option<'X>): Vec<'X> = {
+    match (o) {
+        Some{x} -> vec_singleton(x),
+        None -> vec_empty()
+    }
+}
+
 /*
  * Either
  */
