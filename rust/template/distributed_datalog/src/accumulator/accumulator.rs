@@ -44,7 +44,7 @@ pub trait Accumulator<V, E>: Observer<Update<V>, E> + Observable<Update<V>, E>
     fn new() -> Self;
 
     /// Returns a new Observable that can be used to listen to the outputs of the Accumulator.
-    fn create_observable(&mut self) -> InitializedObservable<Update<V>, V, E>;
+    fn create_observable(&mut self) -> InitializedObservable<Update<V>, E>;
 
     /// Return the current state of the data.
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>>;
@@ -88,12 +88,18 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
         }
     }
 
-    fn create_observable(&mut self) -> InitializedObservable<Update<V>, V, E> {
+    fn create_observable(&mut self) -> InitializedObservable<Update<V>, E> {
         trace!("DistributingAccumulator({})::create_observable()", self.id);
-        let init_data = self.get_current_state();
+        let init_updates =
+            self.get_current_state().into_iter()
+                .flat_map(|(relid, vs)|
+                    vs.into_iter().map(|v| Update::Insert {relid, v}).collect::<Vec<_>>())
+                .collect::<Vec<_>>();
+
         let mut guard = self.distributor.lock().unwrap();
-        guard.create_observable(init_data)
+        guard.create_observable(init_updates)
     }
+
 
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("DistributingAccumulator({})::get_current_state()", self.id);
