@@ -1,15 +1,10 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use log::trace;
 use uid::Id;
-
-use differential_datalog::program::RelId;
-use differential_datalog::program::Update;
 
 use crate::Observable;
 use crate::Observer;
@@ -20,22 +15,19 @@ use crate::SharedObserver;
 /// An observable that can be initialized with optional data which it sends to a new subscriber
 /// before emitting any other data.
 #[derive(Debug, Default)]
-pub struct InitializedObservable<T, V, E>
-    where
-        V: Debug + Eq + Hash
+pub struct InitializedObservable<T, E>
 {
     /// A reference to the `Observer` subscribed to us, if any.
     pub observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
     /// The data newly subscribed observers are initialized with.
-    init_data: HashMap<RelId, HashSet<V>>,
+    init_updates: Vec<T>,
     /// The subscription the Observable has
     subscription: Option<usize>,
 }
 
-impl<T, V, E> Observable<T, E> for InitializedObservable<T, V, E>
+impl<T, E> Observable<T, E> for InitializedObservable<T, E>
     where
         T: Debug + Send + 'static,
-        V: Debug + Send + Eq + Hash,
         E: Debug + Send + 'static,
 {
     type Subscription = usize;
@@ -71,9 +63,9 @@ pub struct TxnDistributor<T, E> {
 }
 
 
-impl<V, E> TxnDistributor<Update<V>, E>
+impl<T, E> TxnDistributor<T, E>
     where
-        V: Debug + Eq + Hash + Send + 'static,
+        T: Debug + Send + 'static,
         E: Debug + Send + 'static,
 {
     pub fn new() -> Self {
@@ -88,15 +80,15 @@ impl<V, E> TxnDistributor<Update<V>, E>
 
     pub fn create_observable(
         &mut self,
-        init_data: HashMap<RelId, HashSet<V>>,
-    ) -> InitializedObservable<Update<V>, V, E> {
+        init_updates: Vec<T>,
+    ) -> InitializedObservable<T, E> {
         let observer = SharedObserver::default();
         let subscription = Id::<()>::new().get();
         trace!("TxnDistributor({:?})::create_observable({:?})", self.id, subscription);
 
         let _ = self.observers.insert(subscription, observer.clone());
         InitializedObservable {
-            init_data,
+            init_updates,
             observer,
             subscription: Some(subscription),
         }
