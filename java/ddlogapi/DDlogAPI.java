@@ -1,9 +1,10 @@
 package ddlogapi;
 
 import java.util.*;
-import java.lang.*;
 import java.util.function.*;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.*;
 
 /**
@@ -93,6 +94,7 @@ public class DDlogAPI {
     // This is a handle to the program; it wraps a void*.
     private long hprog;
     // This stores a C pointer which is deallocated when the program stops.
+    // This field is written directly from the native code using reflection.
     public long callbackHandle;
 
     // File descriptor used to record DDlog command log
@@ -312,7 +314,7 @@ public class DDlogAPI {
      */
     public void transactionCommitDumpChangesToFlatbuf(FlatBufDescr fb) throws DDlogException {
         checkHandle();
-        this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
+        DDlogAPI.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
     }
 
     /**
@@ -324,7 +326,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void flatbufFree(FlatBufDescr fb) {
-        this.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
+        DDlogAPI.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
     }
 
     /**
@@ -467,5 +469,135 @@ public class DDlogAPI {
         if (new_cbinfo != 0) {
             defaultLogCBInfo = new Long(new_cbinfo);
         }
+    }
+
+    /******************************************/
+
+    /**
+     * Get the path where DDlog is installed. This queries the DDLOG_HOME
+     * environment variable. This throws if the variable is not set.
+     */
+    public static String ddlogInstallationPath() throws DDlogException {
+        String ddlogHome = System.getenv("DDLOG_HOME");
+        if (ddlogHome == null)
+            throw new DDlogException("No DDLOG_HOME");
+        return ddlogHome;
+    }
+
+    /**
+     * Run an external process by executing the specified command.
+     * @param commands        Command and arguments.
+     * @param workdirectory   If not null the working directory.
+     * @return                The exit code of the process.  On error prints
+     *                        the process stderr on stderr.
+     */
+    private static int runProcess(List<String> commands, String workdirectory) {
+        try {
+            System.out.println("Running " + String.join(" ", commands) +
+                (workdirectory != null ? " in " + workdirectory : ""));
+            ProcessBuilder pb = new ProcessBuilder(commands);
+            pb.redirectErrorStream(true);
+            if (workdirectory != null) {
+                pb.directory(new File(workdirectory));
+            }
+            Process process = pb.start();
+
+            StringBuilder out = new StringBuilder();
+            BufferedReader br = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            String line;
+            while ((line = br.readLine()) != null) {
+                out.append(line).append('\n');
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                System.err.println("Error running " + String.join(" ", commands));
+                System.err.println(out.toString());
+            }
+            return exitCode;
+        } catch (Exception ex) {
+            System.err.println("Error running " + String.join(" ", commands));
+            System.err.println(ex.getMessage());
+            return 1;
+        }
+    }
+
+    public static String libName(String lib) {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.equals("darwin"))
+            return "lib" + lib + ".dynlib";
+        else if (os.equals("windows"))
+            return lib + ".dll";
+        else
+            return "lib" + lib + ".so";
+    }
+
+    /**
+     * Compile a ddlog program stored in a file and generate
+     * a shared library named *ddlogapi.*.
+     * @param ddlogFile  Pathname to the ddlog program.
+     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
+     * @return  true on success.
+     */
+    public static boolean compileDDlogProgram(
+        String ddlogFile,
+        String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
+        String os = System.getProperty("os.name").toLowerCase();
+        String ddlogInstallationPath = ddlogInstallationPath();
+        Path path = Paths.get(ddlogFile);
+        Path dir = path.getParent();
+        Path file = path.getFileName();
+
+        List<String> command = new ArrayList<String>();
+        // Run DDlog compiler
+        command.add("ddlog");
+        command.add("-i");
+        command.add(file.toString());
+        for (String s: ddlogLibraryPath) {
+            command.add("-L");
+            command.add(s);
+        }
+        int exitCode = runProcess(command, dir != null ? dir.toString() : null);
+        if (exitCode != 0)
+            return false;
+
+        // Run Rust compiler
+        command.clear();
+        command.add("cargo");
+        command.add("build");
+        command.add("--release");
+        int dot = ddlogFile.lastIndexOf('.');
+        String rustDir = ddlogFile;
+        if (dot >= 0)
+            rustDir = ddlogFile.substring(0, dot);
+        rustDir += "_ddlog";
+        exitCode = runProcess(command, rustDir);
+        if (exitCode != 0)
+            return false;
+
+        // Run C compiler
+        command.clear();
+        command.add("cc");
+        command.add("-shared");
+        command.add("-fPIC");
+        String javaHome = System.getenv("JAVA_HOME");
+       
+        command.add("-I" + javaHome + "/include");
+        command.add("-I" + javaHome + "/include/" + os);
+        command.add("-I" + rustDir);
+        command.add("-I" + ddlogInstallationPath + "/lib");
+        command.add(ddlogInstallationPath + "/java/ddlogapi.c");
+        command.add("-L" + rustDir + "/target/release/");
+        String libRoot = Paths.get(rustDir).getFileName().toString();
+        command.add("-l" + libRoot);
+        command.add("-z");
+        command.add("noexecstack");
+        command.add("-o");
+        command.add(libName("ddlogapi"));
+        exitCode = runProcess(command, null);
+        if (exitCode != 0)
+            return false;
+
+        return true;
     }
 }
