@@ -101,7 +101,7 @@ public class DDlogRecord {
 
     static BigInteger mask64 = new BigInteger("FFFFFFFFFFFFFFFF", 16);
 
-    private static void getAllFields(Class clazz, List<Field> result) {
+    private static void getAllFields(Class<?> clazz, List<Field> result) {
         while (clazz != null) {
             Field[] fields = clazz.getDeclaredFields();
             result.addAll(Arrays.asList(fields));
@@ -109,7 +109,7 @@ public class DDlogRecord {
         }
     }
 
-    private static List<Field> getAllFields(Class clazz) {
+    private static List<Field> getAllFields(Class<?> clazz) {
         ArrayList<Field> result = new ArrayList<Field>();
         getAllFields(clazz, result);
         return result;
@@ -244,8 +244,8 @@ public class DDlogRecord {
 
         long h = this.handle;
         String constructor = DDlogAPI.ddlog_get_constructor(h);
-        Class c = Class.forName(constructor);
-        return toTypedObject((Class<?>)c);
+        Class<?> c = Class.forName(constructor);
+        return toTypedObject(c);
     }
 
     public static DDlogRecord makeTuple(DDlogRecord[] fields) throws DDlogException {

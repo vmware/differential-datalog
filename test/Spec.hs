@@ -25,7 +25,6 @@ SOFTWARE.
 
 import Prelude hiding(readFile, writeFile)
 import Test.Tasty
-import Test.Tasty.Golden
 import Test.Tasty.Golden.Advanced
 import Test.Tasty.HUnit
 import System.IO hiding(readFile, writeFile)
@@ -83,16 +82,14 @@ allTests progress = do
                    else return (dlFile, Just $ replaceExtension dlFile "dump.expected")
            else return (dlFile, Nothing)) dlFiles
     let parser_tests = testGroup "parser tests" $
-          [ goldenVsFile (takeBaseName file) expect output (parserTest file)
-            | (file,_) <- inFiles
-            , let expect = file -<.> "ast.expected"
-            , let output = file -<.> "ast"]
+          [ testCase file $ parserTest file
+            | (file,_) <- inFiles]
     let generated_tests = testGroup "generated tests" $ concat $
           [ if shouldFail dlFile
                then []
                else generatedTests progress dlFile refFile
             | (dlFile, refFile) <- inFiles]
-    return $ testGroup "ddlog tests" [parser_tests, generated_tests, souffleTests progress]
+    return $ testGroup "ddlog tests" [parser_tests, generated_tests]
 
 generatedTests :: Bool -> FilePath -> Maybe FilePath -> [TestTree]
 generatedTests progress dlFile refFile = do
@@ -118,43 +115,6 @@ unitTests dir = do
     testGroup "unit tests" $
           [ testCase (takeBaseName dir) $ unitTest dir ]
 
-sOUFFLE_BASE :: String
-sOUFFLE_BASE = "./test"
-
--- These should be all directories, but currently some tests do not work with
--- the Souffle translator
-sOUFFLE_DIRS :: [String]
-sOUFFLE_DIRS = ["souffle0", -- large Doop example
-                "souffle1", "souffle2", "souffle3", "souffle4", "souffle5", "souffle6",
-                 -- "souffle7", -- uses a recursive type
-                 "souffle9", "souffle10", "souffle11", "souffle12", "souffle13",
-                 "souffle14", "souffle15", "souffle16", "souffle17", "souffle18", "souffle19", "souffle20", "souffle21"]
-
-souffleTests :: Bool -> TestTree
-souffleTests progress =
-  testGroup "souffle tests" $ map (\t -> souffleTest (sOUFFLE_BASE </> t) progress) sOUFFLE_DIRS
-
-souffleTest :: String -> Bool -> TestTree
-souffleTest testdir progress =
-  testGroup "souffle tests" $
-        [ goldenVsFiles testdir
-          [testdir </> "souffle.dump.expected.gz"]
-          [testdir </> "souffle.dump"]
-          $ do {convertSouffle testdir progress;
-                generateDDLogRust True (testdir </> "souffle.dl") ["cdylib"];
-                compilerTest progress (testdir </> "souffle.dl") ["--no-print", "-w", "1"]}]
-
-convertSouffle :: String -> Bool -> IO ()
-convertSouffle testdir progress = do
-    dir <- makeAbsolute testdir
-    let inputDl = dir </> "test.dl"  -- input file always called test.dl
-        convert_proc = (proc (dir </> "../../tools/souffle_converter.py") [inputDl, "souffle", "--convert-dnf"]) { cwd = Just dir }
-    (code, stdo, stde) <- withProgress progress $ readCreateProcessWithExitCode convert_proc ""
-    when (code /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "souffle_converter.py failed with exit code " ++ show code ++
-                                 "\nstderr:\n" ++ stde ++
-                                 "\n\nstdout:\n" ++ stdo
-
 parseValidate :: FilePath -> Bool -> String -> IO (DatalogProgram, Doc, Doc)
 parseValidate file java program = do
     (d, rs_code, toml_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
@@ -168,18 +128,19 @@ parseValidate file java program = do
     return (d', rs_code, toml_code)
 
 -- compile a program that is supposed to fail compilation
-compileFailingProgram :: String -> String -> IO String
-compileFailingProgram file program =
-    (show <$> parseValidate file False program) `catch`
-             (\e -> return $ show (e::SomeException))
+compileFailingProgram :: String -> String -> IO()
+compileFailingProgram file program = do
+   prog <- (show <$> parseValidate file False program) `catch`
+               (\e -> let _ = (e :: SomeException) in return "")
+   assertBool "Compilation should have failed" ("" == prog)
+   return ()
 
 shouldFail :: String -> Bool
 shouldFail fname = ".fail." `isInfixOf` fname
 
 -- Test Datalog parser on spec in 'fname'.
 --
--- * Parses the input spec; writes parsed AST to 'specname.ast', parses the generated AST file and
--- checks that both ASTs are identical.
+-- Parses the input spec
 parserTest :: FilePath -> IO ()
 parserTest fname = do
     -- if a file contains .fail. in its name it indicates a test
@@ -191,10 +152,8 @@ parserTest fname = do
         -- To allow multiple negative tests in a single dl file
         -- we treat the file as multiple files separated by this comment
         let parts = splitOn "//---" body
-        -- if the file should fail we expect an exception.
-        -- the exception message is the expected output
-        out <- mapM (compileFailingProgram fname) parts
-        writeFile astfile $ (intercalate "\n\n" out) ++ "\n"
+        _ <- mapM (compileFailingProgram fname) parts
+        return ()
       else do
         -- parse Datalog file and output its AST
         (prog, _, _) <- parseValidate fname False body
@@ -202,6 +161,7 @@ parserTest fname = do
         -- parse reference output
         fdata <- readFile astfile
         prog' <- parseDatalogString fdata astfile
+        removeFile astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" prog prog'
 
