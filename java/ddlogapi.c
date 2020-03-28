@@ -279,7 +279,9 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1input_1snapshot(
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1stop(
-    JNIEnv *env, jobject obj, jlong handle) {
+    JNIEnv *env, jobject obj, jlong handle, jlong callbackHandle) {
+    // Delete the callback pointer stored in the parent Java object
+    deleteCallback((void*)callbackHandle);
     if (ddlog_stop((ddlog_prog)handle) < 0) {
         throwDDlogException(env, NULL);
     }
