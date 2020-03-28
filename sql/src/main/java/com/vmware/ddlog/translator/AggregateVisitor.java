@@ -52,22 +52,24 @@ public class AggregateVisitor
     }
 
     @Override
-    protected Ternary visitFunctionCall(FunctionCall node, TranslationContext context) {
-        if (this.isGroupedBy(node)) {
-            this.decomposition.addNode(node);
+    protected Ternary visitFunctionCall(FunctionCall fc, TranslationContext context) {
+        if (fc.getWindow().isPresent())
+            throw new TranslationException("window functions not yet supported", fc);
+        if (this.isGroupedBy(fc)) {
+            this.decomposition.addNode(fc);
             return Ternary.Yes;
         }
-        String name = TranslationVisitor.convertQualifiedName(node.getName());
+        String name = TranslationVisitor.convertQualifiedName(fc.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {
-            this.decomposition.addNode(node);
+            this.decomposition.addNode(fc);
         }
-        for (Expression e: node.getArguments()) {
+        for (Expression e: fc.getArguments()) {
             Ternary arg = this.process(e, context);
             if (isAggregate && arg == Ternary.Yes)
-                throw new TranslationException("Nested aggregation", node);
-            result = this.combine(node, result, arg);
+                throw new TranslationException("Nested aggregation", fc);
+            result = this.combine(fc, result, arg);
         }
         if (isAggregate)
             return Ternary.Yes;

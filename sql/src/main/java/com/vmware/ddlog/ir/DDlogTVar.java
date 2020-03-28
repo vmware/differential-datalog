@@ -11,9 +11,6 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
-
-import java.util.Arrays;
 import java.util.Objects;
 
 public class DDlogTVar extends DDlogType {
