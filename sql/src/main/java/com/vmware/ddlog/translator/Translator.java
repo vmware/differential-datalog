@@ -79,7 +79,7 @@ public class Translator {
         return this.translationContext.translateExpression(expr);
     }
 
-    private Map<org.jooq.Table<?>, List<Field<?>>> getTablesAndFields(final DSLContext conn) {
+    public Map<org.jooq.Table<?>, List<Field<?>>> getTablesAndFields(final DSLContext conn) {
         final List<org.jooq.Table<?>> tables = conn.meta().getTables();
         final Map<org.jooq.Table<?>, List<Field<?>>> tablesToFields = new HashMap<>();
         tables.forEach(

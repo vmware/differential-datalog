@@ -1,19 +1,19 @@
 /* This library has functions for supporting the translation of SQL into DDlog */
 
-extern type DateTime
+extern type sqlDate
 
 // functions that manipulate dates
-extern function year(d: DateTime): bit<32>
-extern function quarter(d: DateTime): bit<32>
-extern function month(d: DateTime): bit<32>
-extern function week(d: DateTime): bit<32>
-extern function day(d: DateTime): bit<32>
-extern function day_of_month(d: DateTime): bit<32>
-extern function day_of_week(d: DateTime): bit<32>
-extern function day_of_year(d: DateTime): bit<32>
-extern function hour(d: DateTime): bit<32>
-extern function minute(d: DateTime): bit<32>
-extern function second(d: DateTime): bit<32>
+extern function year(d: sqlDate): bit<32>
+extern function quarter(d: sqlDate): bit<32>
+extern function month(d: sqlDate): bit<32>
+extern function week(d: sqlDate): bit<32>
+extern function day(d: sqlDate): bit<32>
+extern function day_of_month(d: sqlDate): bit<32>
+extern function day_of_week(d: sqlDate): bit<32>
+extern function day_of_year(d: sqlDate): bit<32>
+extern function hour(d: sqlDate): bit<32>
+extern function minute(d: sqlDate): bit<32>
+extern function second(d: sqlDate): bit<32>
 
 function substr(s: string, start: signed<64>, end: signed<64>): string =
    string_substr(s, start as bit<64>, (start + end) as bit<64>)

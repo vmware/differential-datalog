@@ -72,6 +72,10 @@ public class SqlSemantics {
             type = DDlogTDouble.instance;
         } else if (sqltype.equals("float")) {
             type = DDlogTFloat.instance;
+        } else if (sqltype.equals("date")) {
+            type = new DDlogTUser("sqlDate", false);
+        } else if (sqltype.equals("time")) {
+            type = new DDlogTUser("sqlTime", false);
         }
         if (type == null)
             throw new RuntimeException("SQL type not yet implemented: " + sqltype);
