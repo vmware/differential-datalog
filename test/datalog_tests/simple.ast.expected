@@ -104,7 +104,6 @@ typedef Signed64 = Signed64{x: signed<64>}
 typedef Signed8 = Signed8{x: signed<8>}
 typedef Span = Span{entity: entid_t, tns: std.Set<tnid_t>}
 typedef String2 = String2{s: string}
-typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
 typedef Sum = Sum{x: string, sum: bit<32>}
 typedef Suspect = Suspect{name: string}
@@ -925,7 +924,6 @@ input relation Signed64 [Signed64]
 input relation Signed8 [Signed8]
 output relation Span [Span]
 input relation String2 [String2]
-output relation StringOrd [StringOrd]
 input relation Strings [Strings]
 output relation Sum [Sum]
 input relation Suspect [Suspect]
@@ -1127,8 +1125,6 @@ Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocat
 YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).
 IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1(.s=s1), String2(.s=s2).
 ConcatString(.s=intern.istring_str(s)) :- IConcatString(.s=s).
-StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IString1(.s=s).
-StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IConcatString(.s=s).
 Ris_true(._s=intern.string_intern("true")).
 Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
 CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).

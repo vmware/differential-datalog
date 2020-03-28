@@ -919,10 +919,10 @@ output relation ConcatString(s: string)
 
 ConcatString(istring_str(s)) :- IConcatString(s).
 
-output relation StringOrd(s: string, ord: bit<32>)
+//output relation StringOrd(s: string, ord: bit<32>)
 
-StringOrd(istring_str(s), istring_ord(s)) :- IString1(s).
-StringOrd(istring_str(s), istring_ord(s)) :- IConcatString(s).
+//StringOrd(istring_str(s), istring_ord(s)) :- IString1(s).
+//StringOrd(istring_str(s), istring_ord(s)) :- IConcatString(s).
 
 import souffle_lib
 typedef Tnumber = bit<32>
