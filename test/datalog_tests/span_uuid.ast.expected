@@ -121,6 +121,16 @@ function std.min (x: 'A, y: 'A): 'A =
       }
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+function std.option2set (o: std.Option<'X>): std.Set<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.set_singleton(x),
+        std.None{} -> std.set_empty()
+    }
+function std.option2vec (o: std.Option<'X>): std.Vec<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.vec_singleton(x),
+        std.None{} -> std.vec_empty()
+    }
 function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A =
     match (x) {
         std.Some{.x=var v} -> v,
