@@ -2310,8 +2310,13 @@ mkExpr' _ _ EReturn{..} = ("return" <+> val exprRetVal, ENoReturn)
 -- operators take values or lvalues and return values
 mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     where
-    e1 = val exprLeft
-    e2 = val exprRight
+    -- Comparison operators can operate on either values or references.  Avoid
+    -- unnecessary cloning by passing values by reference to comparison operators,
+    -- casting both to immutable references to avoid Rust compiler errors due to
+    -- comparing mutable and immutable references.
+    (e1, e2) = if bopIsComparison exprBOp 
+                  then (parens ("&*" <> ref exprLeft), parens ("&*" <> ref exprRight))
+                  else (val exprLeft, val exprRight)
     e' = exprMap (E . sel3) e
     t  = exprType' d ctx (E e')
     t1 = exprType' d (CtxBinOpL e' ctx) (E $ sel3 exprLeft)

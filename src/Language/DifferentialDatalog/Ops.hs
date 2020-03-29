@@ -76,6 +76,9 @@ instance PP BOp where
 bopReturnsBool :: BOp -> Bool
 bopReturnsBool op = elem op [Eq, Neq, Lt, Gt, Lte, Gte, And, Or, Impl]
 
+bopIsComparison :: BOp -> Bool
+bopIsComparison op = elem op [Eq, Neq, Lt, Gt, Lte, Gte]
+
 instance Show BOp where
     show = render . pp
 
