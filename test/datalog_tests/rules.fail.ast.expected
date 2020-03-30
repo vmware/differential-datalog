@@ -1,0 +1,13 @@
+Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column 18):
+unexpected ":"
+expecting letter or digit, "_", ".", "(" or "["
+
+./test/datalog_tests/rules.fail.dl:5:1-7:1: Multiple definitions of type R1 at the following locations:
+  ./test/datalog_tests/rules.fail.dl:5:1-7:1
+  ./test/datalog_tests/rules.fail.dl:7:1-9:1
+
+error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule
+
+error: ./test/datalog_tests/rules.fail.dl:9:40-9:41: Cannot match expected type string and actual type (string, string) in call to function concat_ys (ys: std.Group<string,string>): string
+
+error: ./test/datalog_tests/rules.fail.dl:9:40-9:41: Cannot match expected type bigint and actual type string in call to function concat_ys (ys: std.Group<(string, bigint),string>): string

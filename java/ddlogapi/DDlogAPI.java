@@ -524,8 +524,8 @@ public class DDlogAPI {
 
     public static String libName(String lib) {
         String os = System.getProperty("os.name").toLowerCase();
-        if (os.equals("darwin"))
-            return "lib" + lib + ".dynlib";
+        if (os.equals("darwin") || os.equals("mac os x"))
+            return "lib" + lib + ".dylib";
         else if (os.equals("windows"))
             return lib + ".dll";
         else
@@ -581,7 +581,7 @@ public class DDlogAPI {
         command.add("-shared");
         command.add("-fPIC");
         String javaHome = System.getenv("JAVA_HOME");
-       
+
         command.add("-I" + javaHome + "/include");
         command.add("-I" + javaHome + "/include/" + os);
         command.add("-I" + rustDir);

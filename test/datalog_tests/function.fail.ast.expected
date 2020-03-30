@@ -1,0 +1,56 @@
+error: ./test/datalog_tests/function.fail.dl:3:5-3:10: Variable declaration is not allowed in this context
+
+error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field 'f2' in constructor C
+
+error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already defined in this scope
+
+error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Couldn't match expected type bit<32> with actual type bool (context: CtxTop
+CtxFunc            shadow
+CtxSeq2            ((var a: Alt) = C0{.x=1};  (var i: bit<32>) = match (a) {                         C0{.x=(var w: b...
+CtxSetR            (var i: bit<32>) = match (a) {                        C0{.x=(var w: bool)} -> w,                 ...
+CtxMatchPat        match (a) {     C0{.x=(var w: bool)} -> w,     C1{.x=var w} -> w } 0
+CtxStruct          C0{.x=(var w: bool)} x)
+
+error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already defined in this scope
+
+error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field "x"
+
+error: ./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1
+
+error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
+
+error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
+
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, column 1):
+unexpected "f"
+expecting "="
+
+error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
+
+error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to signed<32> first.
+
+error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to bit<32> first.
+
+error: ./test/datalog_tests/function.fail.dl:3:37-5:1: Direct casts from bigint to bit<> are not supported; consider going through signed<>("./test/datalog_tests/function.fail.dl" (line 3, column 37),"./test/datalog_tests/function.fail.dl" (line 3, column 39))
+
+error: ./test/datalog_tests/function.fail.dl:3:35-5:1: Cannot type-cast expression to bool.  Only numeric types can be cast to.
+
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 3, column 30):
+unexpected "3"
+expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "(" or ">"
+
+error: ./test/datalog_tests/function.fail.dl:3:37-5:1: There are no direct casts from floating point to integers; use the library functions int_from_*.double
+
+error: ./test/datalog_tests/function.fail.dl:3:34-5:1: Cannot type-cast expression of type string.  The type-cast operator is only supported for numeric types.
+
+error: ./test/datalog_tests/function.fail.dl:6:5-7:1: "continue" outside of a loop
+
+error: ./test/datalog_tests/function.fail.dl:8:9-8:18: Expression continue is not an l-value
+
+error: ./test/datalog_tests/function.fail.dl:6:12-7:1: Couldn't match expected type () with actual type bool (context: CtxTop
+CtxFunc            control_flow
+CtxReturn          return false)
+
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 8, column 1):
+unexpected end of input
+expecting "," or "."
