@@ -5,9 +5,9 @@ echo "Installing dependencies for DDlog"
 echo "This script should be invoked with '. ./install-dependencies.sh' to set up the environment properly"
 
 case "$OSTYPE" in
-    linux*) ;;
-    osx*) ;;
-    *) echo "Unhandled operating system $OSTYPE"; exit 1;;
+    "linux*") ;;
+    "osx*") ;;
+    "*") echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
 
 RUST_VERSION="1.41.1"
