@@ -128,19 +128,19 @@ parseValidate file java program = do
     return (d', rs_code, toml_code)
 
 -- compile a program that is supposed to fail compilation
-compileFailingProgram :: String -> String -> IO()
+compileFailingProgram :: String -> String -> IO String
 compileFailingProgram file program = do
-   prog <- (show <$> parseValidate file False program) `catch`
-               (\e -> let _ = (e :: SomeException) in return "")
-   assertBool "Compilation should have failed" ("" == prog)
-   return ()
+   (((show <$> parseValidate file False program)) >>
+               fail "Compilation should have failed") `catch`
+             (\e -> return $ show (e::SomeException))
 
 shouldFail :: String -> Bool
 shouldFail fname = ".fail." `isInfixOf` fname
 
 -- Test Datalog parser on spec in 'fname'.
 --
--- Parses the input spec
+-- * Parses the input spec; writes parsed AST to 'specname.ast', parses the generated AST file and
+-- checks that both ASTs are identical.
 parserTest :: FilePath -> IO ()
 parserTest fname = do
     -- if a file contains .fail. in its name it indicates a test
@@ -152,8 +152,17 @@ parserTest fname = do
         -- To allow multiple negative tests in a single dl file
         -- we treat the file as multiple files separated by this comment
         let parts = splitOn "//---" body
-        _ <- mapM (compileFailingProgram fname) parts
-        return ()
+        -- if the file should fail we expect an exception.
+        -- the exception message is the expected output
+        out <- mapM (compileFailingProgram fname) parts
+        let ast = (intercalate "\n\n" out) ++ "\n"
+        writeFile astfile ast
+        let expectedFile = astfile ++ ".expected"
+        exists <- doesFileExist expectedFile
+        when (not exists) $ writeFile expectedFile ast
+        expected <- if exists then readFile expectedFile
+                              else return ast
+        assertEqual "Expected output differs from compiler output" expected ast
       else do
         -- parse Datalog file and output its AST
         (prog, _, _) <- parseValidate fname False body
