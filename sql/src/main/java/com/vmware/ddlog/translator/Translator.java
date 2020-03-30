@@ -13,9 +13,12 @@ package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.tree.*;
-import com.vmware.ddlog.ir.*;
+import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.Statement;
+
 // If these are missing you have not run the sql/install-ddlog-jar.sh script
+import com.vmware.ddlog.ir.DDlogIRNode;
+import com.vmware.ddlog.ir.DDlogProgram;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
@@ -25,8 +28,11 @@ import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 /**
  * A translator consumes SQL, converts it to an IR using the Presto compiler, and then
@@ -172,8 +178,10 @@ public class Translator {
         String javaHome = System.getenv("JAVA_HOME");
         String os = System.getProperty("os.name").toLowerCase();
         String shlibext = "so";
-        if (os.equals("darwin"))
-            shlibext = "dynlib";
+        if (os.equals("mac os x")) {
+            shlibext = "dylib";
+            os = "darwin"; // the $JAVA_HOME/include/ path uses darwin, not MacOSX
+        }
         command.add("-I" + javaHome + "/include");
         command.add("-I" + javaHome + "/include/" + os);
         command.add("-I" + rustDir);
@@ -186,17 +194,8 @@ public class Translator {
         exitCode = runProcess(command, null);
         if (exitCode != 0)
             return null;
-
-        // Enable the loader to find the new library created
-        // http://fahdshariff.blogspot.com/2011/08/changing-java-library-path-at-runtime.html
-        java.lang.reflect.Field usrPathsField = ClassLoader.class.getDeclaredField("usr_paths");
-        usrPathsField.setAccessible(true);
-        String[] paths = (String[])usrPathsField.get(null);
-        String[] newPaths = Arrays.copyOf(paths, paths.length + 1);
-        newPaths[newPaths.length - 1] = ".";
-        usrPathsField.set(null, newPaths);
-
-        // This will load the dynamic library libddlogapi.
+        final Path libraryPath = Paths.get("libddlogapi." + shlibext).toAbsolutePath();
+        System.load(libraryPath.toString());
         return new DDlogAPI(1, null, false);
     }
 }
