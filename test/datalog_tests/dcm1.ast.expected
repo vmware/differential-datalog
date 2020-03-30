@@ -229,6 +229,7 @@ extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
 extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
 extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
