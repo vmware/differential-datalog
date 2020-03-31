@@ -73,6 +73,38 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
     s1
 }
 
+#[macro_export]
+macro_rules! deserialize_map_from_array {
+    ( $modname:ident, $ktype:ty, $vtype:ty, $kfunc:ident ) => {
+        mod $modname {
+            use super::*;
+            use serde::de::{Deserialize, Deserializer};
+            use serde::ser::Serializer;
+            use std::collections::BTreeMap;
+
+            pub fn serialize<S>(
+                map: &__std::std_Map<$ktype, $vtype>,
+                serializer: S,
+            ) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.collect_seq(map.x.values())
+            }
+
+            pub fn deserialize<'de, D>(
+                deserializer: D,
+            ) -> Result<__std::std_Map<$ktype, $vtype>, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let v = Vec::<$vtype>::deserialize(deserializer)?;
+                Ok(v.into_iter().map(|item| ($kfunc(&item), item)).collect())
+            }
+        }
+    };
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template

@@ -225,7 +225,16 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
                                      f' <- flattenFuncName mmap mod (pos rhsAggExpr) rhsAggFunc
                                      return $ rhs{rhsAggFunc = f'}
                                  rhs -> return rhs)
-    return prog5
+    prog6 <- progAttributeMapM prog5 (attrFlatten mod mmap)
+    return prog6
+
+attrFlatten :: (MonadError String me) => DatalogModule -> MMap -> Attribute -> me Attribute
+attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", attrVal=(E EApply{..})} = do
+    -- The value of deserialize_from_array attribute is the name of the key
+    -- function.
+    f' <- flattenFuncName mmap mod (pos a) exprFunc
+    return $ a{attrVal = eApply f' exprArgs}
+attrFlatten _   _    a = return a
 
 applyFlattenNames :: (MonadError String me) => DatalogModule -> MMap -> Apply -> me Apply
 applyFlattenNames mod mmap a@Apply{..} = do
