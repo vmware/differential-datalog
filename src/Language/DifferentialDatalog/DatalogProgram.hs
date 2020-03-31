@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.DatalogProgram (
     progRHSMap,
     progAtomMapM,
     progAtomMap,
+    progAttributeMapM,
     DepGraphNode(..),
     depNodeIsRel,
     depNodeIsApply,
@@ -186,6 +187,34 @@ progAtomMapM d fun = do
 
 progAtomMap :: DatalogProgram -> (Atom -> Atom) -> DatalogProgram
 progAtomMap d fun = runIdentity $ progAtomMapM d (return . fun)
+
+-- | Apply function to all attributes in the program.
+progAttributeMapM :: (Monad m) => DatalogProgram -> (Attribute -> m Attribute) -> m DatalogProgram
+progAttributeMapM d fun = do
+    tdefs' <- M.traverseWithKey (\_ tdef@TypeDef{..} -> do
+        atrs' <- mapM fun tdefAttrs
+        t' <- mapM (typeAttributeMapM fun) tdefType
+        return $ tdef{ tdefAttrs = atrs'
+                     , tdefType = t' }) $ progTypedefs d
+    return d{progTypedefs = tdefs'}
+
+typeAttributeMapM :: (Monad m) => (Attribute -> m Attribute) -> Type -> m Type
+typeAttributeMapM fun t@TStruct{..} = do
+    cs' <- mapM (consAttributeMapM fun) typeCons
+    return t{typeCons = cs'}
+typeAttributeMapM _ t = return t
+
+consAttributeMapM :: (Monad m) => (Attribute -> m Attribute) -> Constructor -> m Constructor
+consAttributeMapM fun c@Constructor{..} = do
+    attrs' <- mapM fun consAttrs
+    fields' <- mapM (fieldAttributeMapM fun) consArgs
+    return c{ consAttrs = attrs'
+            , consArgs = fields'}
+
+fieldAttributeMapM :: (Monad m) => (Attribute -> m Attribute) -> Field -> m Field
+fieldAttributeMapM fun f@Field{..} = do
+    attrs' <- mapM fun fieldAttrs
+    return f{fieldAttrs = attrs'}
 
 data DepGraphNode = DepNodeRel   String
                   | DepNodeApply Apply

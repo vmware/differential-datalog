@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,9 +24,7 @@ SOFTWARE.
 {-# LANGUAGE FlexibleContexts, RecordWildCards, OverloadedStrings, LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
--- This file is incorrectly named; it does not have anything to do with syntax.
--- In fact, this file contains the definition of the program intermediate representation:
--- the data structures used to represent the datalog program.
+-- This module defines types used to construct the abstract syntax tree of a DDlog program:
 -- Each data structure must implement several instances:
 -- PP: pretty-printing
 -- Eq: equality testing (in general it is recursive and it ignores the position)
@@ -55,10 +53,6 @@ module Language.DifferentialDatalog.Syntax (
         structFieldGuarded,
         Field(..),
         TypeDef(..),
-        tdefCheckSizeAttr,
-        tdefGetSizeAttr,
-        checkRustAttrs,
-        getRustAttrs,
         Constructor(..),
         consType,
         consIsUnique,
@@ -146,11 +140,9 @@ import Text.PrettyPrint
 import Data.Maybe
 import Data.List
 import Data.String.Utils
-import Control.Monad.Except
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.PP
@@ -381,35 +373,6 @@ instance Show TypeDef where
 
 instance Eq TypeDef where
     (==) t1 t2 = (name t1, tdefAttrs t1, tdefAttrs t1, tdefType t1) == (name t2, tdefAttrs t2, tdefAttrs t2, tdefType t2)
-
-tdefCheckSizeAttr :: (MonadError String me) => TypeDef -> me (Maybe Int)
-tdefCheckSizeAttr TypeDef{..} =
-    case filter ((== "size") . name) tdefAttrs of
-         []                   -> return Nothing
-         [Attribute{attrVal = E (EInt _ nbytes)}] | nbytes <= toInteger (maxBound::Int)
-                              -> return $ Just $ fromInteger nbytes
-         [Attribute{..}] -> err attrPos $ "Invalid 'size' attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
-         _                    -> err tdefPos $ "Multiple 'size' attributes are not allowed"
-
-tdefGetSizeAttr :: TypeDef -> Maybe Int
-tdefGetSizeAttr tdef =
-    case tdefCheckSizeAttr tdef of
-         Left e   -> error e
-         Right sz -> sz
-
-checkRustAttrs :: (MonadError String me) => [Attribute] -> me [String]
-checkRustAttrs attrs =
-    mapM (\Attribute{..} ->
-            case attrVal of
-                 E (EString _ str) -> return str
-                 _ -> err attrPos $ "Invalid 'rust' attribute: the value of the attribute must be a string literal, e.g., #[rust=\"serde(tag = \\\"type\\\"\")]")
-         $ filter ((== "rust") . name) attrs
-
-getRustAttrs :: [Attribute] -> [String]
-getRustAttrs attrs =
-    case checkRustAttrs attrs of
-         Left e   -> error e
-         Right as -> as
 
 data Constructor = Constructor { consPos   :: Pos
                                , consAttrs :: [Attribute]

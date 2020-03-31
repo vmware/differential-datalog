@@ -135,3 +135,23 @@ JsonTest(optional3(),
          to_json_string_or_default(from_json_string(optional3()): Result<Optional, string>)).
 JsonTest(optional4(),
          to_json_string_or_default(from_json_string(optional4()): Result<Optional, string>)).
+
+typedef StructWithKey = StructWithKey {
+    key: u64,
+    payload: string
+}
+
+function key_structWithKey(x: StructWithKey): u64 =
+{
+    x.key
+}
+
+typedef StructWithMap = StructWithMap {
+    #[deserialize_from_array=key_structWithKey()]
+    f: Map<u64, StructWithKey>
+}
+
+function struct_with_map1(): string = [|{"f": [{"key": 100, "payload": "foo"}]}|]
+
+JsonTest(struct_with_map1(),
+         to_json_string_or_default(from_json_string(struct_with_map1()): Result<StructWithMap, string>)).

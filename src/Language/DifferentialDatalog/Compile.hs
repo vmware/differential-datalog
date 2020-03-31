@@ -78,6 +78,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.FlatBuffer
+import Language.DifferentialDatalog.Attribute
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -568,26 +569,30 @@ mkTypedef d tdef@TypeDef{..} =
     vcat (map (\attr -> "#[" <> pp attr <> "]") rustAttrs) $$
     case tdefType of
          Just TStruct{..} | length typeCons == 1
-                          -> derive_struct                                                             $$
+                          -> let (fields, extras) = unzip $ map (mkField tdefName True) $ consArgs $ head typeCons in
+                             derive_struct                                                             $$
                              "pub struct" <+> rname tdefName <> targs <+> "{"                          $$
-                             (nest' $ vcat $ punctuate comma $ map (mkField True) $ consArgs $ head typeCons) $$
+                             (nest' $ vcat $ punctuate comma fields)                                   $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
                              mkStructIntoRecord tdef                                                   $$
                              mkStructMutator tdef                                                      $$
-                             display
+                             display                                                                   $$
+                             vcat extras
                           | otherwise
-                          -> derive_enum                                                               $$
+                          -> let (constructors, extras) = unzip $ map mkConstructor typeCons in
+                             derive_enum                                                               $$
                              "pub enum" <+> rname tdefName <> targs <+> "{"                            $$
-                             (nest' $ vcat $ punctuate comma $ map mkConstructor typeCons)             $$
+                             (nest' $ vcat $ punctuate comma constructors)                             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord tdef                                                         $$
                              mkEnumIntoRecord tdef                                                     $$
                              mkEnumMutator tdef                                                        $$
                              display                                                                   $$
-                             default_enum
+                             default_enum                                                              $$
+                             vcat extras
          Just t           -> "pub type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
@@ -607,22 +612,37 @@ mkTypedef d tdef@TypeDef{..} =
                    then empty
                    else "<" <> (hsep $ punctuate comma $ map ((<> ": Default") . pp) tdefArgs) <> ">"
 
-
-    mkField :: Bool -> Field -> Doc
-    mkField pub f = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
-                    (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
+    -- Generate struct field, including #-annotations.
+    -- If this field requires its own serde module (due to the deserialize_map_from_array attribute),
+    -- this code is returned in the second component of the tuple.
+    mkField :: String -> Bool -> Field -> (Doc, Doc)
+    mkField cons pub f = ( from_arr_attr $$
+                           vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
+                           (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
+                        , from_array_module)
         where rattrs = getRustAttrs $ fieldAttrs f
+              TOpaque _ _ [ktype, vtype] = typ' d f
+              from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
+                              $ fieldGetDeserializeArrayAttr d f
+              from_array_module = maybe empty (\kfunc -> "deserialize_map_from_array!(" <>
+                                                         from_array_module_name <> "," <> 
+                                                         mkType ktype <> "," <> mkType vtype <> "," <> 
+                                                         rname kfunc <> ");")
+                                  $ fieldGetDeserializeArrayAttr d f
+              from_array_module_name = "__serde_" <> rname cons <> "_" <> pp (name f)
 
-    mkConstructor :: Constructor -> Doc
-    mkConstructor c =
-        let args = vcat $ punctuate comma $ map (mkField False) $ consArgs c
-            rattrs = getRustAttrs $ consAttrs c in
-        vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
-        if null $ consArgs c
-           then rname (name c)
-           else rname (name c) <+> "{" $$
-                nest' args $$
-                "}"
+    mkConstructor :: Constructor -> (Doc, Doc)
+    mkConstructor c = (cons, vcat extras)
+        where
+        (fields, extras) = unzip $ map (mkField (name c) False) $ consArgs c
+        args = vcat $ punctuate comma fields
+        rattrs = getRustAttrs $ consAttrs c
+        cons = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
+               if null $ consArgs c
+                  then rname (name c)
+                  else rname (name c) <+> "{" $$
+                       nest' args $$
+                       "}"
 
     impl_abomonate = "impl" <+> targs_traits <+> "abomonation::Abomonation for" <+> rname tdefName <> targs <> "{}"
 
