@@ -584,16 +584,22 @@ public class DDlogAPI {
         command.add("-fPIC");
         String javaHome = System.getenv("JAVA_HOME");
 
+        String ospath = os;
+        if (os.equals("mac os x"))
+            ospath = "darwin";
         command.add("-I" + javaHome + "/include");
-        command.add("-I" + javaHome + "/include/" + os);
+        command.add("-I" + javaHome + "/include/" + ospath);
         command.add("-I" + rustDir);
         command.add("-I" + ddlogInstallationPath + "/lib");
         command.add(ddlogInstallationPath + "/java/ddlogapi.c");
         command.add("-L" + rustDir + "/target/release/");
         String libRoot = Paths.get(rustDir).getFileName().toString();
         command.add("-l" + libRoot);
-        command.add("-z");
-        command.add("noexecstack");
+        /*
+          Flags for the linker.
+          command.add("-z");
+          command.add("noexecstack");
+        */
         command.add("-o");
         command.add(libName(ddlogLibrary));
         exitCode = runProcess(command, null);
