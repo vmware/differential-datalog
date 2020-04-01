@@ -144,9 +144,9 @@ union_type       ::= (constructor "|")* constructor
 type_alias       ::= type_name           (* type name declared using typedef*)
                      ["<" type_spec [("," type_spec)*] ">"] (* type arguments *)
 
-constructor      ::= cons_name (* constructor without fields *)
-                   | cons_name "{" [field ("," field)*] "}"
-field            ::= field_name ":" simple_type_spec
+constructor      ::= [attributes] cons_name (* constructor without fields *)
+                   | [attributes] cons_name "{" [field ("," field)*] "}"
+field            ::= [attributes] field_name ":" simple_type_spec
 ```
 
 ### Constraints on types
@@ -590,8 +590,8 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | "not" atom                                (* 2.negated atom *)
              | expr                                      (* 3.condition *)
              | expr "=" expr                             (* 4.assignment *)
-             | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
-             | "var " var_name = "Aggregate" "("         (* 6.aggregation *)
+             | "var" var_name "=" "FlatMap" "(" expr ")" (* 5.flat map *)
+             | "var" var_name = "Aggregate" "("          (* 6.aggregation *)
                 "(" [var_name ("," var_name)*] ")" ","
                     func_name "(" expr ")" ")"
 ```
@@ -653,7 +653,7 @@ variable, e.g.:
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
     (mac, ips) = extract_mac(addrs),
-    FlatMap(ip = extract_ips(ips))
+    var ip = FlatMap(extract_ips(ips))
 ```
 
 Here, `extract_ips` must return a *set* of IP addresses:
@@ -780,16 +780,4 @@ insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 blockStatement ::= "{" statement ( ";" statement )* "}"
 
 emptyStatement ::= "skip"
-```
-
-# Supported meta-attributes
-
-Only one attribute is supported at the moment, namely the `size` attribute,
-applicable to `extern type` declarations.  It specifies the size of the
-corresponding Rust data type in bytes and serves as a hint to compiler
-to optimize data structures layout.
-
-```
-#[size=4]
-extern type IObj<'A>
 ```

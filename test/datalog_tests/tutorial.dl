@@ -165,6 +165,25 @@ SanitizedEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 
 /*
+ * Example: @-bindings.
+ */
+typedef Book = Book {
+    author: string,
+    title: string
+}
+
+input relation Library(book: Book)
+input relation Author(name: string, born: u32)
+
+output relation BookByAuthor(book: Book, author: Author)
+
+BookByAuthor(b, author) :-
+    // Variable `b` will be bound to the entire `Book` struct;
+    // `author_name` will be bound to `b.author`.
+    Library(.book = b@Book{.author = author_name}),
+    author in Author(.name = author_name).
+
+/*
  * Example: recursion
  * (see path.dl)
  */
