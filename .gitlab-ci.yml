@@ -238,7 +238,7 @@ test-sql:
     extends: .install-ddlog
     script:
         - (cd java && make)
-        - (cd sql && ./install-ddlog-jar.sh && mvn test)
+        - (DDLOG_HOME=`pwd` && cd sql && ./install-ddlog-jar.sh && mvn test)
 
 # Test Go bindings
 test-golang:
