@@ -783,6 +783,30 @@ SanitizedHTTPEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 ```
 
+#### `@`-bindings
+
+When performing pattern matching inside rules, it is often helpful to
+simultaneously refer to a struct and its individual fields by name.  This can be
+achieved using `@`-bindings:
+
+```
+typedef Book = Book {
+    author: string,
+    title: string
+}
+
+input relation Library(book: Book)
+input relation Author(name: string, born: u32)
+
+output relation BookByAuthor(book: Book, author: Author)
+
+BookByAuthor(b, author) :-
+    // Variable `b` will be bound to the entire `Book` struct;
+    // `author_name` will be bound to `b.author`.
+    Library(.book = b@Book{.author = author_name}),
+    author in Author(.name = author_name).
+```
+
 #### Container types, FlatMap, and for-loops
 
 DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
@@ -827,7 +851,7 @@ result that is the union of all the resulting sets:
 
 ```
 HostIP(host, addr) :- HostAddress(host, addrs),
-                      FlatMap(addr=split_ip_list(addrs)).
+                      var addr = FlatMap(split_ip_list(addrs)).
 ```
 
 You can read this rule as follows:
@@ -1642,6 +1666,90 @@ purpose.  They do not affect the performance of the DDlog program and cannot be
 used as an optimization technique (DDlog does use indexes for performance, but
 these indexes are constructed automatically and are not visible to the user).
 
+## Meta-attributes
+
+Meta-attributes are annotations that can be attached to various DDlog program
+declarations (types, constructors, fields, etc.).  They affect compilation
+process and program's external behavior in ways that are outside of the language
+semantics.  We describe currently supported meta-attributes in the following
+sections.
+
+### Size attribute: `#[size=N]`
+
+This attribute is applicable to `extern type` declarations.  It specifies the
+size of the corresponding Rust data type in bytes and serves as a hint to compiler
+to optimize data structures layout:
+
+```
+#[size=4]
+extern type IObj<'A>
+```
+
+### `#[deserialize_from_array=func()]`
+
+This attribute is used in conjunction with `json.dl` library (and potentially
+other serialization libraries).  When working with JSON, it is common to have
+to deserialize an array of entities that encodes a map, with each entity containing
+a unique key.  Deserializing directly to a map rather than a vector (which would
+be the default representation) can be beneficial for performance if
+frequent map lookups are required.
+
+The `deserialize_from_array` attribute can be associated with a field of a struct
+of type `Map<'K,'V>`. The annotation takes a function name as its value.  The function,
+whose signature must be: `function f(V): K` is used to project each
+value `V` to key `K`:
+
+```
+// We will be deserializing a JSON array of these structures.
+typedef StructWithKey = StructWithKey {
+    key: u64,
+    payload: string
+}
+
+// Key function.
+function key_structWithKey(x: StructWithKey): u64 = {
+    x.key
+}
+
+// This struct's serialized representaion is an array of
+// `StructWithKey`; however it is deserialized into a map rather than
+// vector.
+typedef StructWithMap = StructWithMap {
+    #[deserialize_from_array=key_structWithKey()]
+    f: Map<u64, StructWithKey>
+}
+
+Example JSON representation of `StructWithMap`
+{"f": [{"key": 100, "payload": "foo"}]}
+```
+
+### `#[rust="..."]`
+
+This attribute is applicable to type definitions, constructors, and individual
+fields of a constructor.  Its value is copied directly to the generated Rust
+type definition.  It is particularly useful in controling
+serialization/deserialization behavior of the type.  DDlog generates
+`serde::Serialize` and `serde::Deserialize` implementations for all types in
+the program.  Meta-attributes defined in the `serde` Rust crate can be used to
+control the behavior of these traits.  For example, the following declaration:
+
+```
+#[rust="serde(tag = \"@type\")"]
+typedef TaggedEnum = #[rust="serde(rename = \"t.V1\")"]
+                     TVariant1 { b: bool }
+                   | #[rust="serde(rename = \"t.V2\")"]
+                     TVariant2 { u: u32 }
+```
+
+creates a type whose JSON representation is:
+
+```
+{"@type": "t.V1", "b": true}
+```
+
+Other useful serde attributes are `default` and `flatten`.  See [serde
+documentation](https://serde.rs/attributes.html) for details.
+
 ## Input/output to DDlog
 
 DDlog offers several ways to feed data to a program:
@@ -1655,6 +1763,8 @@ DDlog offers several ways to feed data to a program:
 1. From a C or C++ program.
 
 1. From a Java program.
+
+1. From a Go program.
 
 In the following sections, we expand on each method.
 
@@ -1706,6 +1816,11 @@ If you plan to use the library from a Java program, make sure to use
 `--dynlib` and `--no-staticlib` flags to generate a dynamically linked library.
     See [Java API documentation](../java_api.md) for a detailed description of
     the Java API.
+
+1. **Go**
+
+See [Go API documentation](../../go/README.md) for a detailed description of the
+Go API.
 
 1. The text-based interface is implemented by an
 auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is

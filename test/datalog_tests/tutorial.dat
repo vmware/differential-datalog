@@ -143,6 +143,16 @@ echo HostIPVSep:;
 dump HostIPVSep;
 
 start;
+insert Library(Book{"Ernest Hemingway", "For Whom the Bell Tolls"}),
+insert Library(Book{"Dav Pilkey", "For Whom the Ball Rolls"}),
+insert Author("Ernest Hemingway", 1899),
+insert Author("Dav Pilkey", 1966),
+commit;
+
+echo BookByAuthor;
+dump BookByAuthor;
+
+start;
 insert EvensAndOdds([0,1,2,3,4,5]),
 insert EvensAndOdds([1,3,5,7]),
 commit;
