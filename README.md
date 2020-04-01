@@ -73,7 +73,7 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 - Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
 - DDlog [language reference](doc/language_reference/language_reference.md).
-- [Instructions](doc/testing/testing.md) for writing and testing your own Datalog programs.
+- DDlog [command reference](doc/command_reference/command_reference.md) for writing and testing your own Datalog programs.
 - [How to](doc/java_api.md) use DDlog from Java.
 - [How to](go/README.md) use DDlog from Go and [Go API documentation](https://pkg.go.dev/github.com/vmware/differential-datalog/go/pkg/ddlog).
 - [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf), Datalog 2.0 workshop, 2019.
