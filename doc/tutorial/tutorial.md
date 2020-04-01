@@ -222,7 +222,7 @@ dump Prases;
 `Phrases` should be empty again.  DDlog only computes the change of `Phrases`
 incrementally, without recomputing all records.
 
-See [this document](../testing/testing.md#command-reference) for a complete list of commands
+See [this document](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
 ### Running DDlog programs in batch mode
@@ -258,7 +258,7 @@ Feed the file to the compiled DDlog program:
 
 The `--no-print` flag tells DDlog to stop logging changes to program relations to `stderr`.
 In this mode, it will only produce output in response to commands such as `dump` or
-`commit dump_changes` (see [command reference](../testing/testing.md#command-reference)).
+`commit dump_changes` (see [command reference](../command_reference/command_reference.md)).
 
 In this example, it will produce the following output:
 
@@ -1612,7 +1612,7 @@ node_t`), and a pattern, which defines the set of values associated with each
 key (`Edge(from, _)`).
 
 Once an index has been created, it can be queried at runtime, e.g., using the
-`query_index` [CLI](../testing/testing.md#command-reference) command or an
+`query_index` [CLI](../command_reference/command_reference.md) command or an
 equivalent method in your favorite language API:
 
 ```
@@ -1826,7 +1826,7 @@ Go API.
 auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is
 primarily meant for testing and debugging purposes, as it does not offer the same performance and
 flexibility as the API-based interfaces.
-    See [CLI documentation](../testing/testing.md#command-reference) for a complete list of commands
+    See [CLI documentation](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
 ## Profiling
