@@ -1,12 +1,20 @@
 package ddlog;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Splitter;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
 
+import ddlogapi.DDlogAPI;
+import ddlogapi.DDlogException;
 import org.h2.store.fs.FileUtils;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -130,5 +138,41 @@ public class BaseQueriesTest {
 
     protected void testTranslation(String query, String program) {
         this.testTranslation(query, program, false);
+    }
+
+    /**
+     * Compile the specified file from the resources folder.
+     */
+    public void testFileCompilation(String file) {
+        final InputStream resourceAsStream = DynamicTest.class.getResourceAsStream(file);
+        try (final BufferedReader tables = new BufferedReader(new InputStreamReader(resourceAsStream,
+                StandardCharsets.UTF_8))) {
+            final Translator t = new Translator(null);
+            final String schemaAsString = tables.lines()
+                    .filter(line -> !line.startsWith("--")) // remove SQL comments
+                    .collect(Collectors.joining("\n"));
+            final List<String> semiColonSeparated = Splitter.on(";")
+                    .trimResults()
+                    .omitEmptyStrings()
+                    .splitToList(schemaAsString);
+            semiColonSeparated // remove SQL comments
+                    .forEach(s -> {
+                        System.out.println(s);
+                        t.translateSqlStatement(s);
+                    });
+            final DDlogProgram dDlogProgram = t.getDDlogProgram();
+            final String ddlogProgramAsString = dDlogProgram.toString();
+            final String filename = "program.dl";
+            final Path path = Files.write(Paths.get(filename), ddlogProgramAsString.getBytes());
+            path.toFile().deleteOnExit();
+            try {
+                final DDlogAPI dDlogAPI = Translator.compileAndLoad(filename, "..", "../sql/lib/");
+                Assert.assertNotNull(dDlogAPI);
+            } catch (DDlogException | NoSuchFieldException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

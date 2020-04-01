@@ -691,4 +691,21 @@ public class WeaveTest extends BaseQueriesTest {
         Assert.assertEquals(expected, p);
         this.compiledDDlog(p);
     }
+
+    // These tests are temporarily disabled
+
+    //@Test
+    public void testFullSchemaCompilation() {
+        testFileCompilation("/weave.sql");
+    }
+
+    //@Test
+    public void testTableOnlySchemaCompilation() {
+        testFileCompilation("/weave_tables.sql");
+    }
+
+    //@Test
+    public void testSingleTableCompilation() {
+        testFileCompilation("/weave_minimal.sql");
+    }
 }
