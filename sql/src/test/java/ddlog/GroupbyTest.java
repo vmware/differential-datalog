@@ -162,6 +162,32 @@ public class GroupbyTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testHavingNull() {
+        String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING ANY(column3)";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{col:Option<signed<64>>}\n" +
+                "typedef Tagg = Tagg{col:Option<signed<64>>, col0:Option<bool>}\n" +
+                "function agg(g: Group<Option<signed<64>>, Tt1>):Tagg =\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = None{}: Option<signed<64>>);\n" +
+                "(var any = Some{false}: Option<bool>);\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_N(count, incr));\n" +
+                "(var incr1 = v.column3);\n" +
+                "(any = agg_any_N(any, incr1))}\n" +
+                ");\n" +
+                "(Tagg{.col = count,.col0 = any})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "var v2 = TRtmp{.col = aggResult.col},unwrapBool(aggResult.col0),var v3 = v2.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
     public void testHaving1() {
         String query = "create view v0 as SELECT COUNT(column2) FROM t1 GROUP BY column1 HAVING COUNT(column2) > 2 and column1 = 3";
         String program = this.header(false) +

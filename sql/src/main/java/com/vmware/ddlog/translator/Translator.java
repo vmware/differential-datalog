@@ -131,7 +131,6 @@ public class Translator {
     /**
      * Compile and load a ddlog program stored in a file.
      * @param ddlogFile  Pathname to the ddlog program.
-     * @param ddlogInstallationPath  Path to DDLog installation.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
      * @return           A DDlogAPI which can be used to access the program.
      *                   On error returns null and prints an error on stderr.
@@ -139,63 +138,10 @@ public class Translator {
     @Nullable
     public static DDlogAPI compileAndLoad(
             String ddlogFile,
-            String ddlogInstallationPath,
             String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
-        List<String> command = new ArrayList<String>();
-        // Run DDlog compiler
-        command.add("ddlog");
-        command.add("-i");
-        command.add(ddlogFile);
-        for (String s: ddlogLibraryPath) {
-            command.add("-L");
-            command.add(s);
-        }
-        command.add("-L");
-        command.add(ddlogInstallationPath + "/lib");
-        int exitCode = runProcess(command, null);
-        if (exitCode != 0)
+        boolean success = DDlogAPI.compileDDlogProgram(ddlogFile, ddlogLibraryPath);
+        if (!success)
             return null;
-
-        // Run Rust compiler
-        command.clear();
-        command.add("cargo");
-        command.add("build");
-        command.add("--release");
-        int dot = ddlogFile.indexOf('.');
-        String rustDir = ddlogFile;
-        if (dot >= 0)
-            rustDir = ddlogFile.substring(0, dot);
-        rustDir += "_ddlog";
-        exitCode = runProcess(command, rustDir);
-        if (exitCode != 0)
-            return null;
-
-        // Run C compiler
-        command.clear();
-        command.add("cc");
-        command.add("-shared");
-        command.add("-fPIC");
-        String javaHome = System.getenv("JAVA_HOME");
-        String os = System.getProperty("os.name").toLowerCase();
-        String shlibext = "so";
-        if (os.equals("mac os x")) {
-            shlibext = "dylib";
-            os = "darwin"; // the $JAVA_HOME/include/ path uses darwin, not MacOSX
-        }
-        command.add("-I" + javaHome + "/include");
-        command.add("-I" + javaHome + "/include/" + os);
-        command.add("-I" + rustDir);
-        command.add("-I" + ddlogInstallationPath + "/lib");
-        command.add(ddlogInstallationPath + "/java/ddlogapi.c");
-        command.add("-L" + rustDir + "/target/release/");
-        command.add("-l" + rustDir);
-        command.add("-o");
-        command.add("libddlogapi." + shlibext);
-        exitCode = runProcess(command, null);
-        if (exitCode != 0)
-            return null;
-        final Path libraryPath = Paths.get("libddlogapi." + shlibext).toAbsolutePath();
-        System.load(libraryPath.toString());
-        return new DDlogAPI(1, null, false);
+        return DDlogAPI.loadDDlog();
     }
 }

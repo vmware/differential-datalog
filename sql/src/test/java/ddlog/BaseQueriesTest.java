@@ -97,7 +97,11 @@ public class BaseQueriesTest {
                 String result = new BufferedReader(new InputStreamReader(errorStream))
                         .lines().collect(Collectors.joining("\n"));
                 System.out.println(result);
-                System.out.println(program);
+                String[] lines = program.split("\n");
+                for (int i = 0; i < lines.length; i++) {
+                    System.out.print(String.format("%3s ", i+1));
+                    System.out.println(lines[i]);
+                }
             }
             Assert.assertEquals(0, exitCode);
             String basename = tmp.getName();

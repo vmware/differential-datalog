@@ -6,7 +6,7 @@ import com.vmware.ddlog.translator.Translator;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class WeaveTest {
+public class WeaveTest extends BaseQueriesTest {
     @Test
     public void testWeave() {
         Translator t = new Translator(null);
@@ -492,7 +492,7 @@ public class WeaveTest {
 
                 "typedef TRtmp4 = TRtmp4{pod_name:string, node_name:string}\n" +
 
-                "typedef Tagg = Tagg{col:bool}\n" +
+                "typedef Tagg = Tagg{col:Option<bool>}\n" +
 
                 "typedef Ttmp5 = Ttmp5{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, " +
                 "pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, label_selector:signed<64>, " +
@@ -525,7 +525,7 @@ public class WeaveTest {
 
                 "function agg(g: Group<(string, string, signed<64>, string, signed<64>), (TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg =\n" +
                 "(var gb, var gb4, var gb5, var gb6, var gb7) = group_key(g);\n" +
-                "(var any = false: bool);\n" +
+                "(var any = Some{false}: Option<bool>);\n" +
                 "(var any9 = false: bool);\n" +
                 "(var count_distinct = set_empty(): Set<signed<64>>);\n" +
                 "(for (i in g) {\n" +
@@ -540,10 +540,10 @@ public class WeaveTest {
                 "(set_insert(count_distinct, incr10))}\n" +
                 ");\n" +
                 "(Tagg{.col = if (gb6 == \"NotIn\") {\n" +
-                "(not any)} else {\n" +
+                "b_not_N(any)} else {\n" +
                 "if (gb6 == \"DoesNotExist\") {\n" +
-                "(not any9)} else {\n" +
-                "(set_size(count_distinct) as signed<64> == gb7)}}})\n" +
+                "Some{.x = (not any9)}} else {\n" +
+                "Some{.x = (set_size(count_distinct) as signed<64> == gb7)}}}})\n" +
 
                 "function agg9(g: Group<(string, string, signed<64>, string, string, signed<64>, Option<string>), (TRtmp, Tpod_affinity_match_expressions, Tpod_labels, Tpod_info)>):Tagg9 =\n" +
                 "(var gb, var gb6, var gb7, var gb8, var gb9, var gb10, var gb11) = group_key(g);\n" +
@@ -646,7 +646,7 @@ public class WeaveTest {
                 ".has_node_selector_labels = v1.has_node_selector_labels,.has_pod_affinity_requirements = v1.has_pod_affinity_requirements,.pod_name0 = v1.pod_name0,.term = v1.term,.match_expression = v1.match_expression," +
                 ".num_match_expressions = v1.num_match_expressions,.label_key = v1.label_key,.label_operator = v1.label_operator,.label_value = v1.label_value,.node_name = v2.node_name,.label_key0 = v2.label_key," +
                 ".label_value0 = v2.label_value},var gb = v.pod_name,var gb4 = v2.node_name,var gb5 = v0.term,var gb6 = v0.label_operator,var gb7 = v0.num_match_expressions," +
-                "var aggResult = Aggregate((gb, gb4, gb5, gb6, gb7), agg((v, v0, v2))),var v11 = TRtmp4{.pod_name = gb,.node_name = gb4},aggResult.col,var v12 = v11.\n" +
+                "var aggResult = Aggregate((gb, gb4, gb5, gb6, gb7), agg((v, v0, v2))),var v11 = TRtmp4{.pod_name = gb,.node_name = gb4},unwrapBool(aggResult.col),var v12 = v11.\n" +
 
                 "Rinter_pod_affinity_matches_inner[v16] :- Rpods_to_assign[v],Rpod_affinity_match_expressions[v0],(v.pod_name == v0.pod_name),true," +
                 "var v1 = Ttmp5{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.controllable__node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request," +
@@ -689,5 +689,6 @@ public class WeaveTest {
                 ".pods_remaining = aggResult.pods_remaining},var v10 = v9.\n" +
                 "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp13{.node_name = v.node_name},var v1 = v0.";
         Assert.assertEquals(expected, p);
+        this.compiledDDlog(p);
     }
 }

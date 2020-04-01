@@ -38,6 +38,11 @@ function unwrapBool(v: Option<bool>): bool =
       Some{.x = var a} -> a,
       _                -> false
    }
+function b_not_N(b: Option<bool>): Option<bool> =
+   match (b) {
+      Some{.x = var a} -> Some{not a},
+      _                -> None
+   }
 
 function set_signed_sum(s: Set<signed<64>>): signed<64> =
    var result = 0: signed<64>;
