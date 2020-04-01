@@ -239,10 +239,11 @@ fn main() -> Result<(), String> {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
-        opt store:bool=true, desc:"Do not store relation state (for benchmarking only)."; // --no-store
-        opt delta:bool=true, desc:"Do not record changes.";                               // --no-delta
-        opt print:bool=true, desc:"Do not print deltas.";                                 // --no-print
-        opt workers:usize=4, short:'w', desc:"The number of worker threads.";             // --workers or -w
+        opt store:bool=true, desc:"Do not store output relation state.";                            // --no-store
+        opt delta:bool=true, desc:"Do not record changes.";                                         // --no-delta
+        opt print:bool=true, desc:"Backwards compatibility. The value of this flag is ignored.";    // --no-print
+        opt trace:bool=false, desc:"Trace updates to output relations to stderr.";                  // --trace
+        opt workers:usize=4, short:'w', desc:"The number of worker threads.";                       // --workers or -w
     };
     let (args, rest) = parser.parse_or_exit();
 
@@ -260,7 +261,7 @@ fn main() -> Result<(), String> {
         );
     }
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
-    let cb = if args.print { record_upd } else { no_op };
+    let cb = if args.trace { record_upd } else { no_op };
 
     match HDDlog::run(args.workers, args.store, cb) {
         Ok(hddlog) => run(hddlog, args.delta),
