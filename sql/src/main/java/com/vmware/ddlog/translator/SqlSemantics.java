@@ -114,9 +114,7 @@ public class SqlSemantics {
                     if ((i & 1) == 1) {
                         function += "N";
                         leftType = withNull;
-                        leftMatch = new DDlogEStruct("Some", leftType,
-                                new DDlogEStruct.FieldValue("x",
-                                        leftMatch));
+                        leftMatch = ExpressionTranslationVisitor.wrapSome(leftMatch, leftType);
                     } else {
                         function += "R";
                         leftType = raw;
@@ -124,8 +122,7 @@ public class SqlSemantics {
                     if ((i & 2) == 2) {
                         function += "N";
                         rightType = withNull;
-                        rightMatch = new DDlogEStruct("Some", rightType,
-                                new DDlogEStruct.FieldValue("x", rightMatch));
+                        rightMatch = ExpressionTranslationVisitor.wrapSome(rightMatch, rightType);
                     } else {
                         function += "R";
                         rightType = raw;
@@ -152,18 +149,17 @@ public class SqlSemantics {
                                 new DDlogETuple(
                                         new DDlogEVar("left", leftType),
                                         new DDlogEVar("right", rightType)),
-                                Arrays.asList(new DDlogEMatch.Case(
+                                Arrays.asList(
+                                        new DDlogEMatch.Case(
                                                 new DDlogETuple(leftMatch, rightMatch),
-                                                new DDlogEStruct("Some", type,
-                                                        new DDlogEStruct.FieldValue("x",
-                                                                new DDlogEBinOp(op,
-                                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw))
-                                                ))),
+                                                ExpressionTranslationVisitor.wrapSome(
+                                                    new DDlogEBinOp(op,
+                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw)), type)),
                                         new DDlogEMatch.Case(
                                                 new DDlogETuple(
                                                         new DDlogEPHolder(),
                                                         new DDlogEPHolder()),
-                                                new DDlogEStruct("None", type)))
+                                                new DDlogENull(type)))
                         );
                     }
                     DDlogFunction func = new DDlogFunction(

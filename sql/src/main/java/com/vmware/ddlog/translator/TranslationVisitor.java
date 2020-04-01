@@ -19,6 +19,8 @@ import com.vmware.ddlog.util.Ternary;
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static com.vmware.ddlog.translator.ExpressionTranslationVisitor.unwrapBool;
+
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     static class GroupByInfo {
         /**
@@ -317,9 +319,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         switch (aggregate) {
             case "any":
             case "some":
-                return new DDlogEBool(false);
+                return new DDlogEBool(false, dataType.mayBeNull);
             case "every":
-                return new DDlogEBool(true);
+                return new DDlogEBool(true, dataType.mayBeNull);
             case "sum": {
                 if (dataType.mayBeNull)
                     return none;
@@ -328,7 +330,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             }
             case "count":
                 if (dataType.mayBeNull)
-                    return none;
+                    return new DDlogENull(DDlogTSigned.signed64.setMayBeNull(true));
                 return new DDlogESigned(0);
             case "min":
             case "max": {
@@ -691,7 +693,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         result.addDefinition(copy);
         if (having != null) {
             DDlogExpression hav = context.translateExpression(having);
-            result.addDefinition(hav);
+            result.addDefinition(unwrapBool(hav));
         }
         context.clearSubstitutions();
         return result;
@@ -728,7 +730,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         if (spec.getWhere().isPresent()) {
             Expression expr = spec.getWhere().get();
             DDlogExpression ddexpr = context.translateExpression(expr);
-            ddexpr = ExpressionTranslationVisitor.unwrapBool(ddexpr);
+            ddexpr = unwrapBool(ddexpr);
             relation = relation.addDefinition(ddexpr);
         }
         List<GroupByInfo> groupBy = new ArrayList<GroupByInfo>();
@@ -811,7 +813,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     if (c instanceof JoinOn) {
                         JoinOn on = (JoinOn)c;
                         DDlogExpression onE = context.translateExpression(on.getExpression());
-                        rules.add(new DDlogRHSCondition(ExpressionTranslationVisitor.unwrapBool(onE)));
+                        rules.add(new DDlogRHSCondition(unwrapBool(onE)));
                     } else if (c instanceof JoinUsing) {
                         JoinUsing using = (JoinUsing)c;
                         joinColumns = new HashSet<String>(Linq.map(using.getColumns(), Identifier::getValue));
@@ -844,7 +846,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     new DDlogEField(rrel.getRowVariable(false), col, rst.getFieldType(col)));
             condition = context.operationCall(DDlogEBinOp.BOp.And, condition, e);
         }
-        rules.add(new DDlogRHSCondition(ExpressionTranslationVisitor.unwrapBool(condition)));
+        rules.add(new DDlogRHSCondition(unwrapBool(condition)));
 
         // For the result we take all fields from the left and right but we skip
         // the joinColumn fields from the right.

@@ -105,19 +105,34 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     }
 
     @Test
-    public void testWhenWNull() {
-        String query = "create view v0 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
+    public void testNULL() {
+        String query = "create view v0 as SELECT DISTINCT CASE WHEN column1 = 1 THEN NULL ELSE 3 END FROM t1";
         String program =
             this.header(true) +
-                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{col:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if unwrapBool(a_eq_NR(v.column1, 64'sd1)) {\n" +
-                "64'sd1} else {\n" +
-                "if unwrapBool(a_lt_RN(64'sd1, v.column1)) {\n" +
-                "64'sd2} else {\n" +
-                "64'sd3}}},var v1 = v0.";
+                "None{}: Option<signed<64>>} else {\n" +
+                "Some{.x = 64'sd3}}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCaseWNull() {
+        String query = "create view v0 as SELECT DISTINCT CASE WHEN column1 = 1 THEN 1 WHEN 1 < column1 THEN 2 ELSE 3 END FROM t1";
+        String program =
+                this.header(true) +
+                        "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                        this.relations(true) +
+                        "relation Rtmp[TRtmp]\n" +
+                        "output relation Rv0[TRtmp]\n" +
+                        "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if unwrapBool(a_eq_NR(v.column1, 64'sd1)) {\n" +
+                        "64'sd1} else {\n" +
+                        "if unwrapBool(a_lt_RN(64'sd1, v.column1)) {\n" +
+                        "64'sd2} else {\n" +
+                        "64'sd3}}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 

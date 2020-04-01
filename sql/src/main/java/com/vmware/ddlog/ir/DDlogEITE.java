@@ -23,7 +23,7 @@ public class DDlogEITE extends DDlogExpression {
         super(eelse == null ? then.getType() :
                 (then.getType().mayBeNull ? eelse.getType() : then.getType()));
         if (eelse != null)
-            DDlogType.checkCompatible(then.getType(), eelse.getType());
+            DDlogType.checkCompatible(then.getType(), eelse.getType(), true);
         this.cond = this.checkNull(cond);
         this.then = this.checkNull(then);
         this.eelse = eelse;

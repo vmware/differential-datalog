@@ -27,6 +27,46 @@ public class AggregatesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testAnyWNull() {
+        String query = "create view v0 as SELECT ANY(column3) FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{col:Option<bool>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var any = Some{false}: Option<bool>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column3);\n" +
+                "(any = agg_any_N(any, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = any})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testAnyWNullNeg() {
+        String query = "create view v0 as SELECT NOT ANY(column3) FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{col:Option<bool>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp =\n" +
+                "var any = Some{false}: Option<bool>;\n" +
+                "(for (i in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column3);\n" +
+                "(any = agg_any_N(any, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col = b_not_N(any)})" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
     public void testEvery() {
         String query = "create view v0 as SELECT EVERY(column3) FROM t1";
         String program = this.header(false) +
@@ -348,8 +388,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "Rv0[v1] :- Rt1[v],var aggResult = Aggregate((), agg((v))),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
     }
-
-    
 
     @Test
     public void testMaxCase() {

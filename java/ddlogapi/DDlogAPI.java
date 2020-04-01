@@ -522,6 +522,8 @@ public class DDlogAPI {
         }
     }
 
+    public static final String ddlogLibrary = "ddlogapi";
+
     public static String libName(String lib) {
         String os = System.getProperty("os.name").toLowerCase();
         if (os.equals("darwin") || os.equals("mac os x"))
@@ -593,11 +595,17 @@ public class DDlogAPI {
         command.add("-z");
         command.add("noexecstack");
         command.add("-o");
-        command.add(libName("ddlogapi"));
+        command.add(libName(ddlogLibrary));
         exitCode = runProcess(command, null);
         if (exitCode != 0)
             return false;
 
         return true;
+    }
+
+    public static DDlogAPI loadDDlog() throws DDlogException {
+        final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
+        System.load(libraryPath.toString());
+        return new ddlogapi.DDlogAPI(1, null, false);
     }
 }

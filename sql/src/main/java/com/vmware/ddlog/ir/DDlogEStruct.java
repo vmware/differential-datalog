@@ -29,7 +29,7 @@ public class DDlogEStruct extends DDlogExpression {
         public DDlogExpression getValue() { return this.value; }
     }
 
-    private final String constructor;
+    public final String constructor;
     public final FieldValue[] fields;
 
     public DDlogEStruct(String constructor, DDlogType type, FieldValue... fields) {

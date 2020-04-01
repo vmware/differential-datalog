@@ -102,7 +102,7 @@ public class DDlogEBinOp extends DDlogExpression {
             case Eq:
             case Neq:
                 this.type = DDlogTBool.instance.setMayBeNull(mayBeNull);
-                DDlogType.checkCompatible(left.getType(), right.getType());
+                DDlogType.checkCompatible(left.getType(), right.getType(), false);
                 break;
             case Lt:
             case Gt:
@@ -115,7 +115,7 @@ public class DDlogEBinOp extends DDlogExpression {
                     throw new RuntimeException(
                             this.bop + " is not applied to numeric type: " + right.getType());
                 this.type = DDlogTBool.instance.setMayBeNull(mayBeNull);
-                DDlogType.checkCompatible(left.getType(), right.getType());
+                DDlogType.checkCompatible(left.getType(), right.getType(), false);
                 break;
             case And:
             case Or:
