@@ -62,7 +62,7 @@ make -C ../../java
 
 if [ -f ${base}.dat ]; then
     # Run script with input data
-    (set -x; /usr/bin/time ${base}_ddlog/target/${build}/${base}_cli --no-print <${base}.dat >${base}.dump)
+    (set -x; /usr/bin/time ${base}_ddlog/target/${build}/${base}_cli <${base}.dat >${base}.dump)
     # Compare outputs
     if [ -f ${base}.dump.expected.gz ]; then
         zdiff -q ${base}.dump ${base}.dump.expected.gz

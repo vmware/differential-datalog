@@ -253,10 +253,9 @@ dump Phrases;
 Feed the file to the compiled DDlog program:
 
 ```
-./playpen_ddlog/target/release/playpen_cli --no-print < playpen.dat
+./playpen_ddlog/target/release/playpen_cli < playpen.dat
 ```
 
-The `--no-print` flag tells DDlog to stop logging changes to program relations to `stderr`.
 In this mode, it will only produce output in response to commands such as `dump` or
 `commit dump_changes` (see [command reference](../command_reference/command_reference.md)).
 
@@ -285,7 +284,7 @@ Phrases{"I am your father"}
 >
 > ddlog -i playpen.dl -L <ddlog/lib>
 > (cd playpen_ddlog && cargo build --release)
-> ./playpen_ddlog/target/release/playpen_cli --no-print < playpen.dat
+> ./playpen_ddlog/target/release/playpen_cli < playpen.dat
 > ```
 >
 > If you are using [Nix shell](../../README.md#installing-dependencis-using-nix), the
@@ -1893,10 +1892,9 @@ in isolation from the host program.  For example, here we use the UNIX `time`
 program (note: this is not the same as the `time` command in `bash`)
 to measure time and memory footpint of a DDlog computation:
 ```
-/usr/bin/time playpen_ddlog/target/release/playpen_cli -w 2 --no-print --no-store < replay.dat
+/usr/bin/time playpen_ddlog/target/release/playpen_cli -w 2 --no-store < replay.dat
 ```
 where `-w 2` runs DDlog with two worker threads,
-`--no-print` stops DDlog from printing every update to output tables on `stdout`,
 `--no-store` tells DDlog not to cache the content of output relations (which takes
 time and memory), and
 `replay.dat` is the name of the file that contains recorded DDlog commands.
