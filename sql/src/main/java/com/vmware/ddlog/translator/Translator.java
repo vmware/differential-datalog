@@ -100,13 +100,6 @@ public class Translator {
             String ddlogFile,
             String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
         boolean success = DDlogAPI.compileDDlogProgram(ddlogFile, true, ddlogLibraryPath);
-        int dot = ddlogFile.lastIndexOf('.');
-        String rustDir = ddlogFile;
-        if (dot >= 0)
-            rustDir = ddlogFile.substring(0, dot);
-        rustDir += "_ddlog";
-        File file = new File(rustDir);
-        file.deleteOnExit();
         if (!success)
             return null;
         return DDlogAPI.loadDDlog();

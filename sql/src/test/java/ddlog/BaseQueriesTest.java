@@ -2,9 +2,6 @@ package ddlog;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -97,8 +94,8 @@ public class BaseQueriesTest {
      */
     protected void compiledDDlog(String programBody) {
         try {
-            File tmp = this.writeProgramToTempFile(programBody);
-            boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
+            File tmp = this.writeProgramToFile(programBody);
+            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), true,"../lib", "./lib");
             if (!success) {
                 String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {
@@ -112,7 +109,7 @@ public class BaseQueriesTest {
             String tempDir = System.getProperty("java.io.tmpdir");
             String dir = tempDir + "/" + basename + "_ddlog";
             FileUtils.deleteRecursive(dir, false);
-        } catch (IOException | DDlogException | NoSuchFieldException | IllegalAccessException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -134,9 +131,8 @@ public class BaseQueriesTest {
         this.testTranslation(query, program, false);
     }
 
-    public File writeProgramToTempFile(String programBody) throws IOException {
-        File tmp = File.createTempFile("program", ".dl");
-        tmp.deleteOnExit();
+    public File writeProgramToFile(String programBody) throws IOException {
+        File tmp = new File("program.dl");
         BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
         bw.write(programBody);
         bw.close();
@@ -159,13 +155,10 @@ public class BaseQueriesTest {
                     .omitEmptyStrings()
                     .splitToList(schemaAsString);
             semiColonSeparated // remove SQL comments
-                    .forEach(s -> {
-                        System.out.println(s);
-                        t.translateSqlStatement(s);
-                    });
+                    .forEach(t::translateSqlStatement);
             final DDlogProgram dDlogProgram = t.getDDlogProgram();
             final String ddlogProgramAsString = dDlogProgram.toString();
-            File tmp = this.writeProgramToTempFile(ddlogProgramAsString);
+            File tmp = this.writeProgramToFile(ddlogProgramAsString);
             final DDlogAPI dDlogAPI = Translator.compileAndLoad(tmp.toString(), "..", "lib");
             Assert.assertNotNull(dDlogAPI);
         } catch (IOException | IllegalAccessException | DDlogException | NoSuchFieldException e) {

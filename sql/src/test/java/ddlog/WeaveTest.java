@@ -699,12 +699,12 @@ public class WeaveTest extends BaseQueriesTest {
         testFileCompilation("/weave.sql");
     }
 
-    //@Test
+    @Test
     public void testTableOnlySchemaCompilation() {
         testFileCompilation("/weave_tables.sql");
     }
 
-    //@Test
+    @Test
     public void testSingleTableCompilation() {
         testFileCompilation("/weave_minimal.sql");
     }

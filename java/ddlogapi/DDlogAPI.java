@@ -526,19 +526,17 @@ public class DDlogAPI {
     }
 
     /**
-     * Compile a ddlog program stored in a file and generate
-     * a shared library named *ddlogapi.*.
+     * Compile a ddlog program stored in a file and generate Rust sources in a directory
+     * named program_ddlog
      * @param ddlogFile  Pathname to the ddlog program.
      * @param verbose    If true show stdout and stderr of processes invoked.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
      * @return  true on success.
      */
-    public static boolean compileDDlogProgram(
-        String ddlogFile,
-        boolean verbose,
-        String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
-        String os = System.getProperty("os.name").toLowerCase();
-        String ddlogInstallationPath = ddlogInstallationPath();
+    public static boolean compileDDlogProgramToRust(
+            String ddlogFile,
+            boolean verbose,
+            String... ddlogLibraryPath) {
         Path path = Paths.get(ddlogFile);
         Path dir = path.getParent();
         Path file = path.getFileName();
@@ -558,8 +556,29 @@ public class DDlogAPI {
         int exitCode = runProcess(command, dir != null ? dir.toString() : null, verbose);
         if (exitCode != 0)
             return false;
+        return true;
+    }
 
-        // Run Rust compiler
+    /**
+     * Compile a ddlog program stored in a file and generate
+     * a shared library named *ddlogapi.*.
+     * @param ddlogFile  Pathname to the ddlog program.
+     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
+     * @return  true on success.
+     */
+    public static boolean compileDDlogProgram(
+        String ddlogFile,
+        boolean verbose,
+        String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
+        boolean success = compileDDlogProgramToRust(ddlogFile, verbose, ddlogLibraryPath);
+        if (!success)
+            return false;
+
+        String os = System.getProperty("os.name").toLowerCase();
+        String ddlogInstallationPath = ddlogInstallationPath();
+
+        List<String> command = new ArrayList<String>();
         command.clear();
         command.add("cargo");
         command.add("build");
@@ -569,7 +588,7 @@ public class DDlogAPI {
         if (dot >= 0)
             rustDir = ddlogFile.substring(0, dot);
         rustDir += "_ddlog";
-        exitCode = runProcess(command, rustDir, verbose);
+        int exitCode = runProcess(command, rustDir, verbose);
         if (exitCode != 0)
             return false;
 
