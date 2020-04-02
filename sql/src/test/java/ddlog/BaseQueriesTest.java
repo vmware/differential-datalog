@@ -91,33 +91,28 @@ public class BaseQueriesTest {
         return t;
     }
 
-    protected void compiledDDlog(String program) {
+    /**
+     * Compile the DDlog program given as a string.
+     * @param programBody  Program to compile.
+     */
+    protected void compiledDDlog(String programBody) {
         try {
-            File tmp = File.createTempFile("program", ".dl");
-            tmp.deleteOnExit();
-            BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
-            bw.write(program);
-            bw.close();
-            Process process = Runtime.getRuntime().exec("ddlog -i " + tmp.toString() + " -L../lib -L./lib");
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                InputStream errorStream = process.getErrorStream();
-                String result = new BufferedReader(new InputStreamReader(errorStream))
-                        .lines().collect(Collectors.joining("\n"));
-                System.out.println(result);
-                String[] lines = program.split("\n");
+            File tmp = this.writeProgramToTempFile(programBody);
+            boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
+            if (!success) {
+                String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {
                     System.out.print(String.format("%3s ", i+1));
                     System.out.println(lines[i]);
                 }
             }
-            Assert.assertEquals(0, exitCode);
+
             String basename = tmp.getName();
             basename = basename.substring(0, basename.lastIndexOf('.'));
             String tempDir = System.getProperty("java.io.tmpdir");
             String dir = tempDir + "/" + basename + "_ddlog";
             FileUtils.deleteRecursive(dir, false);
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | DDlogException | NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
@@ -131,13 +126,21 @@ public class BaseQueriesTest {
         DDlogProgram ddprogram = t.getDDlogProgram();
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
-        //System.out.println(s);
         Assert.assertEquals(program, s);
         this.compiledDDlog(s);
     }
 
     protected void testTranslation(String query, String program) {
         this.testTranslation(query, program, false);
+    }
+
+    public File writeProgramToTempFile(String programBody) throws IOException {
+        File tmp = File.createTempFile("program", ".dl");
+        tmp.deleteOnExit();
+        BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
+        bw.write(programBody);
+        bw.close();
+        return tmp;
     }
 
     /**
@@ -162,16 +165,10 @@ public class BaseQueriesTest {
                     });
             final DDlogProgram dDlogProgram = t.getDDlogProgram();
             final String ddlogProgramAsString = dDlogProgram.toString();
-            final String filename = "program.dl";
-            final Path path = Files.write(Paths.get(filename), ddlogProgramAsString.getBytes());
-            path.toFile().deleteOnExit();
-            try {
-                final DDlogAPI dDlogAPI = Translator.compileAndLoad(filename, "..", "../sql/lib/");
-                Assert.assertNotNull(dDlogAPI);
-            } catch (DDlogException | NoSuchFieldException | IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (final IOException e) {
+            File tmp = this.writeProgramToTempFile(ddlogProgramAsString);
+            final DDlogAPI dDlogAPI = Translator.compileAndLoad(tmp.toString(), "..", "lib");
+            Assert.assertNotNull(dDlogAPI);
+        } catch (IOException | IllegalAccessException | DDlogException | NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
     }

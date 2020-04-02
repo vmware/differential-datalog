@@ -25,11 +25,7 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 
 import javax.annotation.Nullable;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -93,42 +89,6 @@ public class Translator {
     }
 
     /**
-     * Run an external process by executing the specified command.
-     * @param commands        Command and arguments.
-     * @param workdirectory   If not null the working directory.
-     * @return                The exit code of the process.  On error prints
-     *                        the process stderr on stderr.
-     */
-    static int runProcess(List<String> commands, @Nullable String workdirectory) {
-        try {
-            ProcessBuilder pb = new ProcessBuilder(commands);
-            pb.redirectErrorStream(true);
-            if (workdirectory != null) {
-                pb.directory(new File(workdirectory));
-            }
-            Process process = pb.start();
-
-            StringBuilder out = new StringBuilder();
-            BufferedReader br = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                out.append(line).append('\n');
-            }
-
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                System.err.println("Error running " + String.join(" ", commands));
-                System.err.println(out.toString());
-            }
-            return exitCode;
-        } catch (Exception ex) {
-            System.err.println("Error running " + String.join(" ", commands));
-            System.err.println(ex.getMessage());
-            return 1;
-        }
-    }
-
-    /**
      * Compile and load a ddlog program stored in a file.
      * @param ddlogFile  Pathname to the ddlog program.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
@@ -139,7 +99,14 @@ public class Translator {
     public static DDlogAPI compileAndLoad(
             String ddlogFile,
             String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
-        boolean success = DDlogAPI.compileDDlogProgram(ddlogFile, ddlogLibraryPath);
+        boolean success = DDlogAPI.compileDDlogProgram(ddlogFile, true, ddlogLibraryPath);
+        int dot = ddlogFile.lastIndexOf('.');
+        String rustDir = ddlogFile;
+        if (dot >= 0)
+            rustDir = ddlogFile.substring(0, dot);
+        rustDir += "_ddlog";
+        File file = new File(rustDir);
+        file.deleteOnExit();
         if (!success)
             return null;
         return DDlogAPI.loadDDlog();

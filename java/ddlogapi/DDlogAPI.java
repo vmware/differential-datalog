@@ -488,32 +488,23 @@ public class DDlogAPI {
      * Run an external process by executing the specified command.
      * @param commands        Command and arguments.
      * @param workdirectory   If not null the working directory.
-     * @return                The exit code of the process.  On error prints
-     *                        the process stderr on stderr.
+     * @param verbose         If true echo output and stderr of subprocess.
+     * @return                The exit code of the process.
      */
-    private static int runProcess(List<String> commands, String workdirectory) {
+    public static int runProcess(List<String> commands, String workdirectory, boolean verbose) {
         try {
             System.out.println("Running " + String.join(" ", commands) +
                 (workdirectory != null ? " in " + workdirectory : ""));
             ProcessBuilder pb = new ProcessBuilder(commands);
-            pb.redirectErrorStream(true);
+            if (verbose)
+                pb.inheritIO();
             if (workdirectory != null) {
                 pb.directory(new File(workdirectory));
             }
             Process process = pb.start();
-
-            StringBuilder out = new StringBuilder();
-            BufferedReader br = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                out.append(line).append('\n');
-            }
-
             int exitCode = process.waitFor();
-            if (exitCode != 0) {
+            if (exitCode != 0)
                 System.err.println("Error running " + String.join(" ", commands));
-                System.err.println(out.toString());
-            }
             return exitCode;
         } catch (Exception ex) {
             System.err.println("Error running " + String.join(" ", commands));
@@ -538,11 +529,13 @@ public class DDlogAPI {
      * Compile a ddlog program stored in a file and generate
      * a shared library named *ddlogapi.*.
      * @param ddlogFile  Pathname to the ddlog program.
+     * @param verbose    If true show stdout and stderr of processes invoked.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
      * @return  true on success.
      */
     public static boolean compileDDlogProgram(
         String ddlogFile,
+        boolean verbose,
         String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
         String os = System.getProperty("os.name").toLowerCase();
         String ddlogInstallationPath = ddlogInstallationPath();
@@ -554,12 +547,15 @@ public class DDlogAPI {
         // Run DDlog compiler
         command.add("ddlog");
         command.add("-i");
+        String currentDir = System.getProperty("user.dir");
         command.add(file.toString());
         for (String s: ddlogLibraryPath) {
             command.add("-L");
+            if (!s.startsWith("/"))
+                s = currentDir + "/" + s;
             command.add(s);
         }
-        int exitCode = runProcess(command, dir != null ? dir.toString() : null);
+        int exitCode = runProcess(command, dir != null ? dir.toString() : null, verbose);
         if (exitCode != 0)
             return false;
 
@@ -573,7 +569,7 @@ public class DDlogAPI {
         if (dot >= 0)
             rustDir = ddlogFile.substring(0, dot);
         rustDir += "_ddlog";
-        exitCode = runProcess(command, rustDir);
+        exitCode = runProcess(command, rustDir, verbose);
         if (exitCode != 0)
             return false;
 
@@ -602,7 +598,7 @@ public class DDlogAPI {
         */
         command.add("-o");
         command.add(libName(ddlogLibrary));
-        exitCode = runProcess(command, null);
+        exitCode = runProcess(command, null, verbose);
         if (exitCode != 0)
             return false;
 
