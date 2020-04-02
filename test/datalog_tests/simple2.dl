@@ -60,3 +60,11 @@ relation RFtoIDummy(x: signed<32>)
 RFtoIDummy(0).
 output relation RFloatToInt(_x:signed<32>)
 RFloatToInt(_x) :- RFtoIDummy(0), var _x = ftoi_((- (64'f333.36: double))).
+
+input relation Ints(x: bigint)
+output relation SomeInts(x: Option<bigint>)
+
+SomeInts(y) :-
+    Ints(x),
+    var y = Some{x},
+    SomeInts(y).

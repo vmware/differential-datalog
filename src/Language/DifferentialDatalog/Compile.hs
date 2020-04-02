@@ -2138,7 +2138,7 @@ allocPatVar = do
     put $ i+1
     return $ "_" <> pp i <> "_"
 
--- Computes lrefix to be attached to variables in pattern, given
+-- Computes prefix to be attached to variables in pattern, given
 -- the kind of relation being matched and the kind we want for the
 -- new variable.
 varprefix :: EKind -> EKind -> Doc
@@ -2247,9 +2247,9 @@ mkExpr' _ _ ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> 
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
                           = (tname <> fieldlvals, ELVal)
                           | isstruct
-                          = (tname <> fieldvals, EVal)
+                          = (parens $ tname <> fieldvals, EVal)
                           | otherwise
-                          = (tname <> "::" <> rname exprConstructor <> fieldvals, EVal)
+                          = (parens $ tname <> "::" <> rname exprConstructor <> fieldvals, EVal)
     where fieldvals  = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> val v) exprStructFields
           fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
           tdef = consType d exprConstructor
