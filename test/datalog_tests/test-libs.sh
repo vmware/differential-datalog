@@ -13,6 +13,7 @@ test_lib() {
     diff -q $1.dump.expected $1.dump
 }
 
+test_lib std_test
 test_lib uuid_test
 test_lib net_test
 test_lib json_test

@@ -185,7 +185,7 @@ extern function hash64(x: 'X): bit<64>
 extern function hash128(x: 'X): bit<128>
 
 /* The `Group` type is used exclusively in aggregation operations.  It
- * represents a non-empty list of objects sorted in ascending order.
+ * represents a non-empty list of objects.
  * `'K` is the type of group key, and `'V` is the type of value in the group.
  */
 extern type Group<'K,'V>
@@ -255,6 +255,8 @@ extern function vec_contains(v: Vec<'X>, x: 'X): bool
 extern function vec_is_empty(v: Vec<'X>): bool
 extern function vec_nth(v: Vec<'X>, n: bit<64>): Option<'X>
 extern function vec2set(s: Vec<'A>): Set<'A>
+extern function vec_sort(v: Vec<'X>): ()
+extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
 
 /*
  * Map
