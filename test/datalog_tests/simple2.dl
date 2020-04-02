@@ -61,6 +61,7 @@ RFtoIDummy(0).
 output relation RFloatToInt(_x:signed<32>)
 RFloatToInt(_x) :- RFtoIDummy(0), var _x = ftoi_((- (64'f333.36: double))).
 
+/* See #596 */
 input relation Ints(x: bigint)
 output relation SomeInts(x: Option<bigint>)
 
@@ -68,3 +69,13 @@ SomeInts(y) :-
     Ints(x),
     var y = Some{x},
     SomeInts(y).
+
+/* See #592 */
+function agg_avg_double_N(aggregate: Option<(double, double)>, item: Option<double>):
+    Option<(double, double)> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{(x, 1)},
+        (Some{x}, None)    -> Some{x},
+        (Some{(sum,ct)}, Some{y}) -> Some{(sum + y, ct + 1)}
+    }
