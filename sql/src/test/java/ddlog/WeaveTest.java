@@ -694,7 +694,7 @@ public class WeaveTest extends BaseQueriesTest {
 
     // These tests are temporarily disabled
 
-    //@Test
+    @Test
     public void testFullSchemaCompilation() {
         testFileCompilation("/weave.sql");
     }
