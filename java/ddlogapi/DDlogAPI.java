@@ -527,7 +527,7 @@ public class DDlogAPI {
 
     /**
      * Compile a ddlog program stored in a file and generate Rust sources in a directory
-     * named program_ddlog
+     * named <program>_ddlog
      * @param ddlogFile  Pathname to the ddlog program.
      * @param verbose    If true show stdout and stderr of processes invoked.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
