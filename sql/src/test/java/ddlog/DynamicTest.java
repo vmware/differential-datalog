@@ -49,7 +49,7 @@ public class DynamicTest extends BaseQueriesTest {
                 "input relation R(v: bit<16>)\n" +
                 "output relation O(v: bit<16>)\n" +
                 "O(v) :- R(v).";
-        File file = this.writeProgramToTempFile(ddlogProgram);
+        File file = this.writeProgramToFile(ddlogProgram);
         DDlogAPI api = Translator.compileAndLoad(file.toString(), "../lib", "./lib");
         if (api == null)
             throw new RuntimeException("Could not load program");
