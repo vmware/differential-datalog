@@ -419,6 +419,16 @@ pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
     }
 }
 
+pub fn std_vec_sort<X: Ord>(v: &mut std_Vec<X>) {
+    v.x.as_mut_slice().sort();
+}
+
+pub fn std_vec_sort_imm<X: Ord + Clone>(v: &std_Vec<X>) -> std_Vec<X> {
+    let mut res = (*v).clone();
+    res.x.sort();
+    res
+}
+
 // Set
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]

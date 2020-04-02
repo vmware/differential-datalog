@@ -1,0 +1,15 @@
+input relation Vector(v: Vec<bigint>)
+output relation SortedVector(v: Vec<bigint>)
+output relation SortedVectorInPlace(v: Vec<bigint>)
+
+SortedVector(sorted) :-
+    Vector(v),
+    var sorted = vec_sort_imm(v).
+
+SortedVectorInPlace(sorted) :-
+    Vector(v),
+    var sorted = {
+        var v2 = v;
+        vec_sort(v2);
+        v2
+    }.

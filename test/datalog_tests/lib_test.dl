@@ -1,3 +1,4 @@
+import std_test
 import uuid_test
 import net_test
 import json_test

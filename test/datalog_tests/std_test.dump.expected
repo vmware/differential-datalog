@@ -1,0 +1,10 @@
+std_test.SortedVector:
+std_test.SortedVector{.v = []}: +1
+std_test.SortedVector{.v = [-100, 0, 100]}: +1
+std_test.SortedVector{.v = [1, 2, 3, 4, 5]}: +1
+std_test.SortedVector{.v = [5]}: +1
+std_test.SortedVectorInPlace:
+std_test.SortedVectorInPlace{.v = []}: +1
+std_test.SortedVectorInPlace{.v = [-100, 0, 100]}: +1
+std_test.SortedVectorInPlace{.v = [1, 2, 3, 4, 5]}: +1
+std_test.SortedVectorInPlace{.v = [5]}: +1

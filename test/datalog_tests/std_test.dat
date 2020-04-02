@@ -1,0 +1,8 @@
+start;
+
+insert std_test.Vector([5,4,3,2,1]),
+insert std_test.Vector([]),
+insert std_test.Vector([5]),
+insert std_test.Vector([0,100,-100]),
+
+commit dump_changes;
