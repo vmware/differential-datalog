@@ -86,7 +86,7 @@ validate d = do
     -- Insert string conversion functions
     d'' <- progInjectStringConversions d'
     -- Convert 'int' constants to 'bit<>'.
-    let d''' = progConvertIntsToBVs d''
+    let d''' = progConvertIntsToNums d''
     -- This check must be done after 'depGraphValidate', which may
     -- introduce recursion
     checkNoRecursion d'''
@@ -735,13 +735,15 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
 
 exprInjectStringConversions _ _   e = return $ E e
 
-progConvertIntsToBVs :: DatalogProgram -> DatalogProgram
-progConvertIntsToBVs d = progExprMapCtx d (exprConvertIntToBV d)
+progConvertIntsToNums :: DatalogProgram -> DatalogProgram
+progConvertIntsToNums d = progExprMapCtx d (exprConvertIntToNum d)
 
-exprConvertIntToBV :: DatalogProgram -> ECtx -> ENode -> Expr
-exprConvertIntToBV d ctx e@(EInt p v) =
+exprConvertIntToNum :: DatalogProgram -> ECtx -> ENode -> Expr
+exprConvertIntToNum d ctx e@(EInt p v) =
     case exprType' d ctx (E e) of
          TBit _ w    -> E $ EBit p w v
          TSigned _ w -> E $ ESigned p w v
+         TFloat _    -> E $ EFloat p (fromInteger v)
+         TDouble _   -> E $ EDouble p (fromInteger v)
          _           -> E e
-exprConvertIntToBV _ _ e = E e
+exprConvertIntToNum _ _ e = E e
