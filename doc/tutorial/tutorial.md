@@ -61,7 +61,9 @@ output relation Phrases(phrase: string)
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 ```
 
-DDlog comments are like C++ and Java comments (`//` and `/* */`).
+DDlog comments are like C++ and Java comments (`//` and `/* */`),
+except that `/* ... */` comments nest to make it easy to comment out
+blocks of code that themselves contain comments.
 
 This program contains several declarations:
 - a data type declaration, `Category`
