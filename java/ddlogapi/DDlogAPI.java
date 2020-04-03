@@ -167,7 +167,10 @@ public class DDlogAPI {
     }
 
     /**
-     * Get DDlog relation ID by name.
+     * Get DDlog relation ID from its name.
+     * @param table  relation name whose id is sought.
+     * @returns -1 when the relation is not found, or the relation id,
+     *          a positive number otherwise.
      *
      * See <code>ddlog.h: ddlog_get_table_id()</code>
      */

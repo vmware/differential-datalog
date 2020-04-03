@@ -21,6 +21,12 @@ public class DDlogRecord {
         this.shared = false;
     }
 
+    private static <T> T checkNull(T value) {
+        if (value == null)
+            throw new NullPointerException();
+        return value;
+    }
+
     /**
      * Invalidates this container and returns the contained handle.
      */
@@ -45,9 +51,10 @@ public class DDlogRecord {
         this.shared = false;
     }
 
-    private void checkHandle() {
+    private long checkHandle() {
         if (this.handle == 0)
             throw new RuntimeException("Accessing invalid handle.");
+        return this.handle;
     }
 
     private static DDlogRecord fromHandle(long handle) {
@@ -85,7 +92,7 @@ public class DDlogRecord {
     }
 
     public DDlogRecord(String s) throws DDlogException {
-        this.handle = DDlogAPI.ddlog_string(s);
+        this.handle = DDlogAPI.ddlog_string(checkNull(s));
         this.shared = false;
     }
 
@@ -181,7 +188,7 @@ public class DDlogRecord {
     public <T> T toTypedObject(Class<T> classOfT)
             throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
         Object instance = classOfT.getDeclaredConstructor().newInstance();
-        long h = this.handle;
+        long h = this.checkHandle();
 
         // Get the first field and check to see whether it is a struct with the same constructor
         long f0 = DDlogAPI.ddlog_get_struct_field(h, 0);
@@ -248,44 +255,42 @@ public class DDlogRecord {
         return toTypedObject(c);
     }
 
-    public static DDlogRecord makeTuple(DDlogRecord[] fields) throws DDlogException {
+    public static DDlogRecord makeTuple(DDlogRecord... fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_tuple(handles));
     }
 
-    public static DDlogRecord makeVector(DDlogRecord[] fields) throws DDlogException {
+    public static DDlogRecord makeVector(DDlogRecord... fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_vector(handles));
     }
 
-    public static DDlogRecord makeSet(DDlogRecord[] fields) throws DDlogException{
+    public static DDlogRecord makeSet(DDlogRecord... fields) throws DDlogException{
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_set(handles));
     }
 
-    public static DDlogRecord makeStruct(String name, DDlogRecord[] fields) throws DDlogException {
+    public static DDlogRecord makeStruct(String name, DDlogRecord... fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
-        return fromHandle(DDlogAPI.ddlog_struct(name, handles));
+        return fromHandle(DDlogAPI.ddlog_struct(checkNull(name), handles));
     }
 
     /**
      * Creates a map from a vector of pairs.
      */
-    public static DDlogRecord makeMap(DDlogRecord[] fields) throws DDlogException {
+    public static DDlogRecord makeMap(DDlogRecord... fields) throws DDlogException {
         long[] handles = getHandlesAndInvalidate(fields);
         return fromHandle(DDlogAPI.ddlog_map(handles));
     }
 
     public boolean getBoolean() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_bool(this.handle))
+        if (!DDlogAPI.ddlog_is_bool(this.checkHandle()))
             throw new RuntimeException("Value is not boolean");
         return DDlogAPI.ddlog_get_bool(this.handle);
     }
 
     public BigInteger getInt() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_int(this.handle))
+        if (!DDlogAPI.ddlog_is_int(this.checkHandle()))
             throw new RuntimeException("Value is not an integer type (bigint, bit<>, or signed<>)");
         long sz = DDlogAPI.ddlog_get_int(this.handle, null);
         byte [] buf = new byte[(int)sz];
@@ -296,92 +301,79 @@ public class DDlogRecord {
     }
 
     public int getTupleSize() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_tuple(this.handle))
+        if (!DDlogAPI.ddlog_is_tuple(this.checkHandle()))
             throw new RuntimeException("Value is not a tuple");
         return DDlogAPI.ddlog_get_tuple_size(this.handle);
     }
 
     public DDlogRecord getTupleField(int index) {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_tuple(this.handle))
+        if (!DDlogAPI.ddlog_is_tuple(this.checkHandle()))
             throw new RuntimeException("Value is not a tuple");
         return fromSharedHandle(DDlogAPI.ddlog_get_tuple_field(this.handle, index));
     }
 
     public int getVectorSize() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_vector(this.handle))
+        if (!DDlogAPI.ddlog_is_vector(this.checkHandle()))
             throw new RuntimeException("Value is not a vector");
         return DDlogAPI.ddlog_get_vector_size(this.handle);
     }
 
     public DDlogRecord getVectorField(int index) {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_vector(this.handle))
+        if (!DDlogAPI.ddlog_is_vector(this.checkHandle()))
             throw new RuntimeException("Value is not a vector");
         return fromSharedHandle(DDlogAPI.ddlog_get_vector_elem(this.handle, index));
     }
 
     public int getSetSize() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_set(this.handle))
+        if (!DDlogAPI.ddlog_is_set(this.checkHandle()))
             throw new RuntimeException("Value is not a set");
         return DDlogAPI.ddlog_get_set_size(this.handle);
     }
 
     public DDlogRecord getSetField(int index) {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_set(this.handle))
+        if (!DDlogAPI.ddlog_is_set(this.checkHandle()))
             throw new RuntimeException("Value is not a set");
         return fromSharedHandle(DDlogAPI.ddlog_get_set_elem(this.handle, index));
     }
 
     public int getMapSize() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_map(this.handle))
+        if (!DDlogAPI.ddlog_is_map(this.checkHandle()))
             throw new RuntimeException("Value is not a map");
         return DDlogAPI.ddlog_get_map_size(this.handle);
     }
 
     public DDlogRecord getMapKey(int index) {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_map(this.handle))
+        if (!DDlogAPI.ddlog_is_map(this.checkHandle()))
             throw new RuntimeException("Value is not a map");
         return fromSharedHandle(DDlogAPI.ddlog_get_map_key(this.handle, index));
     }
 
     public DDlogRecord getMapValue(int index) {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_map(this.handle))
+        if (!DDlogAPI.ddlog_is_map(this.checkHandle()))
             throw new RuntimeException("Value is not a map");
         return fromSharedHandle(DDlogAPI.ddlog_get_map_val(this.handle, index));
     }
 
     public String getString() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_string(this.handle))
+        if (!DDlogAPI.ddlog_is_string(this.checkHandle()))
             throw new RuntimeException("Value is not a string");
         return DDlogAPI.ddlog_get_str(this.handle);
     }
 
     public float getFloat() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_float(this.handle))
+        if (!DDlogAPI.ddlog_is_float(this.checkHandle()))
             throw new RuntimeException("Value is not a float");
         return DDlogAPI.ddlog_get_float(this.handle);
     }
 
     public double getDouble() {
-        this.checkHandle();
-        if (!DDlogAPI.ddlog_is_double(this.handle))
+        if (!DDlogAPI.ddlog_is_double(this.checkHandle()))
             throw new RuntimeException("Value is not a double");
         return DDlogAPI.ddlog_get_double(this.handle);
     }
 
     public boolean isStruct() {
-        this.checkHandle();
-        return DDlogAPI.ddlog_is_struct(this.handle);
+        return DDlogAPI.ddlog_is_struct(this.checkHandle());
     }
 
     public String getStructName() {
@@ -394,6 +386,14 @@ public class DDlogRecord {
         if (!this.isStruct())
             throw new RuntimeException("Value is not a struct");
         return fromSharedHandle(DDlogAPI.ddlog_get_struct_field(this.handle, index));
+    }
+
+    /**
+     * A DDlogRecord representing the value None{}, can be used as a value of the
+     * standard library type Option.
+     */
+    public static DDlogRecord none() throws DDlogException {
+        return DDlogRecord.makeStruct("std.None");
     }
 
     @Override
