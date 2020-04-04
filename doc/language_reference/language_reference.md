@@ -170,7 +170,7 @@ identical names, their types must be identical, e.g., the following is invalid:
 arguments matching its declaration:
     ```
     typedef type1<'A,'B>
-    function f(): bool = {
+    function f(): bool {
         var x: type1<bigint> // error: not enough type arguments
     }
     ```
@@ -192,14 +192,14 @@ arguments matching its declaration:
    by referring to them in function arguments.  They are used in the
    return type of the function and in its body:
    ```
-   function f(arg1: 'A, arg2: type2<'A,'B>): 'A = {
+   function f(arg1: 'A, arg2: type2<'A,'B>): 'A {
        var x: 'A = arg1;
        x
    }
    ```
    Examples of invalid use of type variables in functions:
    ```
-   function f(arg: 'A): 'B = /*error: type variable 'B is not defined here*/
+   function f(arg: 'A): 'B /*error: type variable 'B is not defined here*/
    {
        var x: 'C; /* error: type variable 'C is not defined here */
    }
@@ -217,7 +217,7 @@ body.
 ```EBNF
 function ::= "function" func_name "(" [arg(,arg)*]")"
               ":" simple_type_spec (* return type *)
-              ["=" expr]
+              "{" expr "}          (* body of the function *)
            | "extern function" func_name "(" [arg(,arg)*]")"
               ":" simple_type_spec
 ```
@@ -459,7 +459,7 @@ Compilation fails if a function with this name and signature is not found.
 For example, the last statement in
 ```
 typedef udf_t = Cons1 | Cons2{f: bigint}
-function udf_t2string(x: udf_t): string = ...
+function udf_t2string(x: udf_t): string { ... }
 x: udf_t;
 
 y = "x:{x}";
@@ -539,7 +539,7 @@ y = "x:{udf_t2string(x)}";
        C1{v} -> v       // variable v bound inside match pattern
    };
 
-   function shadow(a: string): () = {
+   function shadow(a: string): () {
        var v: string;
        var v = "foo"; // error: variable re-definition
        var a = "bar"  // error: variable shadows argument name

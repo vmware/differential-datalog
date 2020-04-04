@@ -813,10 +813,9 @@ instance PP Function where
     pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
                       ("function" <+> pp funcName
                        <+> (parens $ commaSep $ map pp funcArgs)
-                       <> colon <+> pp funcType
-                       <+> (maybe empty (\_ -> "=") funcDef))
+                       <> colon <+> pp funcType)
                       $$
-                       (maybe empty (nest' . pp) funcDef)
+                       (maybe empty (braces' . pp) funcDef)
 
 instance Show Function where
     show = render . pp
