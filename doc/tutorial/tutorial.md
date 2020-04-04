@@ -442,7 +442,7 @@ Think of this declaration as a C struct with
 a single field of type `bit<32>`.  We can write a user-defined formatting method:
 
 ```
-function ip_addr_t2string(ip: ip_addr_t): string = {
+function ip_addr_t2string(ip: ip_addr_t): string {
     "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 ```
@@ -461,7 +461,7 @@ representation:
 ```
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
-function mac_addr_t2string(mac: mac_addr_t): string = {
+function mac_addr_t2string(mac: mac_addr_t): string {
     "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
      \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
@@ -476,7 +476,7 @@ typedef nethost_t = NHost {
     mac: mac_addr_t
 }
 
-function nethost_t2string(h: nethost_t): string = {
+function nethost_t2string(h: nethost_t): string {
     "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 ```
@@ -536,13 +536,13 @@ concatenation).
 ```
 // Form IP address from bytes using bit vector concatenation
 function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-    : ip_addr_t =
+    : ip_addr_t
 {
     IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
 }
 
 // Check for multicast IP address using bit slicing
-function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+function is_multicast_addr(ip: ip_addr_t): bool { ip.addr[31:28] == 14 }
 
 input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
 
@@ -633,7 +633,7 @@ Evaluation order can be controlled using several constructs:
 The following example illustrates the first four of these constructs.  Loops are explained [below](#container-types-flatmap-and-for-loops).
 
 ```
-function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
+function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string
 {
     var port: bit<16> = match (proto) {  // match protocol string
         "FTP"   -> 20,  // default FTP port
@@ -695,6 +695,23 @@ may not modify its arguments.  The body of a function is an expression
 whose type must match the function's return type.  A function call can
 be inserted anywhere an expression of the function's return type can
 be used.  DDlog currently does not allow recursive functions.
+
+> #### Legacy function syntax
+>
+> DDlog supports an alternative syntax for functions with equality sign between
+> function declaration and its body, which does not require curly braces:  
+>
+> ```
+> function myfunc(x: string): string = x
+> ```
+> 
+> However, this syntax can cause parsing ambiguities in some circumstances;
+> therefore the newer syntax is preferred: 
+>
+> ```
+> function myfunc(x: string): string { x }
+> ```
+
 
 ### Extern functions
 
@@ -833,8 +850,9 @@ pub fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
 We define a DDlog function which splits IP addresses at spaces:
 
 ```
-function split_ip_list(x: string): Vec<string> =
+function split_ip_list(x: string): Vec<string> {
    split(x, " ")
+}
 ```
 
 Consider an input relation `HostAddress` associating each host with a
@@ -869,7 +887,7 @@ For-loops allow manipulating container types in a more procedural fashion, witho
 The following function concatenates a vector of strings, each starting at a new line.
 
 ```
-function vsep(strs: Vec<string>): string = {
+function vsep(strs: Vec<string>): string {
     var res = "";
     for (s in strs) {
         res = res ++ s ++ "\n"
@@ -887,7 +905,7 @@ current loop iteration:
 
 ```
 // Returns only even elements of the vector.
-function evens(vec: Vec<bigint>): Vec<bigint> = {
+function evens(vec: Vec<bigint>): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
     for (x in vec) {
         if (x % 2 != 0) { continue };
@@ -901,7 +919,7 @@ A `break` statement used anywhere inside the body of a loop terminates the loop:
 
 ```
 // Returns prefix of `vec` before the first occurrence of value `v`.
-function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> = {
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
     var res: Vec<'A> = vec_empty();
     for (x in vec) {
         if (x == v) { break };
@@ -1005,7 +1023,7 @@ aggregation functions:
 
 ```
 /* User-defined aggregate that picks a tuple with the smallest price */
-function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>) =
+function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>)
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -1034,7 +1052,7 @@ vendor for each item and returns a string containing item name, vendor,
 and price:
 
 ```
-function best_vendor_string(g: Group<string, (string, bit<64>)>): string =
+function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -1117,7 +1135,7 @@ The following function creates a packet with Ethernet, IPv6 and TCP headers:
 ```
 function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
                      ipsrc: ip6_addr_t, ipdst: ip6_addr_t,
-                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t
 {
     EthPacket {
         // Explicitly name constructor arguments for clarity
@@ -1156,7 +1174,7 @@ if the packet is not of type IPv4 (we will see a nicer way to deal with non-exis
 [below](#generic-types)):
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> ip4,
         _                                 -> IP4Pkt{0,0,0,IPOther}
@@ -1172,7 +1190,7 @@ matches both level-3 and level-4 protocol headers to extract destination UDP por
 packet.
 
 ```
-function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> {
     match (pkt) {
         EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
         EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
@@ -1217,7 +1235,7 @@ group of related values of possibly different types.  A tuple type lists the typ
 For example, our IP address splitting function could return a tuple with four 8-bit fields:
 
 ```
-function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>) =
+function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>)
 {
     // construct an instance of a tuple
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
@@ -1263,7 +1281,7 @@ packet.  If the packet does not have an IPv4 header, it returns a default value 
 to 0:
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> ip4,
         _                                 -> IP4Pkt{0,0,0,IPOther}
@@ -1294,7 +1312,7 @@ Here `'A` is a *type argument* that must be replaced with a concrete type to cre
 instantiation of `Option`.  We can now rewrite the `pkt_ip4()` function using `Option`:
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> = {
+function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
         _                                 -> None
@@ -1320,7 +1338,7 @@ arguments; however a better software engineering practice is to pass the entire 
 the function:
 
 ```
-function is_target_audience(person: Person): bool = {
+function is_target_audience(person: Person): bool {
     (person.nationality == "USA") and
     (person.occupation == "student")
 }
@@ -1708,7 +1726,7 @@ typedef StructWithKey = StructWithKey {
 }
 
 // Key function.
-function key_structWithKey(x: StructWithKey): u64 = {
+function key_structWithKey(x: StructWithKey): u64 {
     x.key
 }
 

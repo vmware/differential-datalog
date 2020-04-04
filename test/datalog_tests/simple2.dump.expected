@@ -5,3 +5,4 @@ Arrng1Arrng2_2:
 Arrng1Arrng2_2{.x = 5}: +1
 TArrng1Arrng2:
 TArrng1Arrng2{.x = 5}: +1
+FuncTest{.x = "foo"}

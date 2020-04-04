@@ -79,3 +79,9 @@ function agg_avg_double_N(aggregate: Option<(double, double)>, item: Option<doub
         (Some{x}, None)    -> Some{x},
         (Some{(sum,ct)}, Some{y}) -> Some{(sum + y, ct + 1)}
     }
+
+
+/* See #603. New function syntax avoids ambiguity. */
+output relation &FuncTest(x: string)
+function myfunc(x: string): string { x }
+&FuncTest("foo").

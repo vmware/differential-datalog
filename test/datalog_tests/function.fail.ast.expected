@@ -23,7 +23,7 @@ error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the 
 
 Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, column 1):
 unexpected "f"
-expecting "="
+expecting "=" or "{"
 
 error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
 

@@ -297,7 +297,7 @@ func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
                        <*> funcIdent
                        <*> (parens $ commaSep farg)
                        <*> (colon *> typeSpecSimple)
-                       <*> (Just <$ reservedOp "=" <*> expr))
+                       <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
 
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 

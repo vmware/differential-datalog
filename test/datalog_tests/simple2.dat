@@ -9,3 +9,5 @@ insert TArrng1[(TArrng2{true, TArrng1{true, 1000}}, 10)],
 insert TArrng2[(TArrng2{true, TArrng1{true, 5}}, 1000)],
 
 commit dump_changes;
+
+dump FuncTest;
