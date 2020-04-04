@@ -95,7 +95,7 @@ AddressGroup(descr, addresses, span) :-
 */
 
 // NetworkPolicy describes what network traffic is allowed for a set of Pods.
-output relation NetworkPolicyDescr (
+output relation &NetworkPolicyDescr (
     // UID of the original K8s Network Policy.
     uid: k8s.UID,
     // Name of the original K8s Network Policy.
@@ -108,12 +108,23 @@ output relation NetworkPolicyDescr (
     appliedToGroups: Vec<UUID>
 )
 
-// NetworkPolicySpan: set of node names that this NetworkPolicyDescr should be sent to.
+// NetworkPolicySpanInternal: set of node names that this NetworkPolicyDescr should be sent to.
+relation NetworkPolicySpanInternal(
+    policy: Ref<NetworkPolicyDescr>,
+    //namespace: k8s.NSName,
+    //policy_name: string,
+    //policy: k8s.UID,
+    node: string)
+
 output relation NetworkPolicySpan(
     namespace: k8s.NSName,
     policy_name: string,
     policy: k8s.UID,
     node: string)
+
+NetworkPolicySpan(policy.namespace, policy.name, policy.uid, node) :-
+    NetworkPolicySpanInternal(policy, node).
+
 
 /*
 output relation NetworkPolicy(
@@ -122,7 +133,7 @@ output relation NetworkPolicy(
 
 NetworkPolicy(descr, span) :-
     descr in NetworkPolicyDescr(),
-    NetworkPolicySpan(descr.uid, span).
+    NetworkPolicySpanInternal(descr.uid, span).
 */
 
 // createAppliedToGroup creates an AppliedToGroupDescr object.
@@ -258,7 +269,7 @@ function createAddressGroup(peer: k8s.NetworkPolicyPeer, np: k8s.NetworkPolicy):
 // internal NetworkPolicy in store, instead returns an instance to the caller
 // wherein, it will be either stored as a new Object in case of ADD event or
 // modified and store the updated instance, in case of an UPDATE event.
-function processNetworkPolicy(np: k8s.NetworkPolicy): (NetworkPolicyDescr, Ref<AppliedToGroupDescr>, Vec<Ref<AddressGroupDescr>>) =
+function processNetworkPolicy(np: k8s.NetworkPolicy): (Ref<NetworkPolicyDescr>, Ref<AppliedToGroupDescr>, Vec<Ref<AddressGroupDescr>>) =
 {
     var appliedToGroup = ref_new(createAppliedToGroup(np));
     var rules: Vec<NetworkPolicyRule> = vec_with_capacity(vec_len(np.spec.ingress) + vec_len(np.spec.egress));
@@ -312,13 +323,13 @@ function processNetworkPolicy(np: k8s.NetworkPolicy): (NetworkPolicyDescr, Ref<A
         vec_push(rules, denyAllEgressRule())
     };
 
-    var policy = NetworkPolicyDescr {
+    var policy = ref_new(NetworkPolicyDescr {
         .name               = np.name,
         .namespace          = np.namespace,
         .uid                = np.uid,
         .appliedToGroups    = vec_singleton(appliedToGroup.uid),
         .rules              = rules
-    };
+    });
 
     (policy, appliedToGroup, addressGroups)
 }
@@ -326,7 +337,7 @@ function processNetworkPolicy(np: k8s.NetworkPolicy): (NetworkPolicyDescr, Ref<A
 // Intermediate relation that stores policy and all associated address groups.
 // This relation does not get indexed and therefore should not take any memory.
 relation NetworkPolicyExt(
-    policy: NetworkPolicyDescr,
+    policy: Ref<NetworkPolicyDescr>,
     addressGroups: Vec<Ref<AddressGroupDescr>>
 )
 
@@ -406,39 +417,39 @@ PodViolatesRequirement(pod, requirement) :-
 
 // `PodMatchesPositiveRequirements`: For each selector in `PodSelector`,
 // tracks pods that satisfy the subset of positive requirements.
-relation PodMatchesPositiveRequirements(selector: UUID, pod: k8s.UID)
+relation PodMatchesPositiveRequirements(selector: UUID, pod: Ref<k8s.Pod>)
 
-PodMatchesPositiveRequirements(sel_uid, pod_uid) :-
+PodMatchesPositiveRequirements(sel_uid, pod) :-
     PodSelector(sel_uid, namespace, (positive_requirements, _)),
     var expected_matches = vec_len(positive_requirements),
     var req = FlatMap(positive_requirements),
-    PodSatisfiesRequirement(&k8s.Pod{.uid = pod_uid, .namespace = namespace}, req),
-    var num_matches = Aggregate((sel_uid, pod_uid, expected_matches), group_count(())),
+    PodSatisfiesRequirement(pod@&k8s.Pod{.namespace = namespace}, req),
+    var num_matches = Aggregate((sel_uid, pod, expected_matches), group_count(())),
     num_matches == expected_matches.
 
 // `PodViolatesNegativeRequirements`: For each selector in `PodSelector`,
 // tracks pods that violate at least one of its of negative requirements.
-relation PodViolatesNegativeRequirements(selector: UUID, pod: k8s.UID)
+relation PodViolatesNegativeRequirements(selector: UUID, pod: Ref<k8s.Pod>)
 
-PodViolatesNegativeRequirements(sel_uid, pod_uid) :-
+PodViolatesNegativeRequirements(sel_uid, pod) :-
     PodSelector(sel_uid, namespace , (_, negative_requirements)),
     var req = FlatMap(negative_requirements),
-    PodViolatesRequirement(&k8s.Pod{.uid = pod_uid, .namespace = namespace}, req).
+    PodViolatesRequirement(pod@&k8s.Pod{.namespace = namespace}, req).
 
 // `PodMatchesSelector`: For each selector in the `PodSelector` table,
 // tracks pods that satisfy the selector.
-relation PodMatchesSelector(uid: UUID, pod: k8s.UID)
+relation PodMatchesSelector(uid: UUID, pod: Ref<k8s.Pod>)
 
 // Case 1: non-empty positive requirements lists.
-PodMatchesSelector(sel_uid, pod_uid) :-
-    PodMatchesPositiveRequirements(sel_uid, pod_uid),
-    not PodViolatesNegativeRequirements(sel_uid, pod_uid).
+PodMatchesSelector(sel_uid, pod) :-
+    PodMatchesPositiveRequirements(sel_uid, pod),
+    not PodViolatesNegativeRequirements(sel_uid, pod).
 
 // Case 2: empty positive requirements list.
-PodMatchesSelector(sel_uid, pod_uid) :-
+PodMatchesSelector(sel_uid, pod) :-
     PodSelector(sel_uid, namespace, (vec_empty(), _)),
-    &k8s.Pod(.uid = pod_uid, .namespace = namespace),
-    not PodViolatesNegativeRequirements(sel_uid, pod_uid).
+    pod in &k8s.Pod(.namespace = namespace),
+    not PodViolatesNegativeRequirements(sel_uid, pod).
 
 /************************************/
 
@@ -449,8 +460,7 @@ AddressGroupDescr[group] :-
 AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
     // Namespace presence indicates Pods must be selected from the same Namespace.
     addressGroup in &AddressGroupDescr(.selector = GroupSelector{.nsSelector = NSSelectorNS{ns}}),
-    PodMatchesSelector(addressGroup.uid, pod_uid),
-    pod in &k8s.Pod(.uid = pod_uid, .namespace = ns),
+    PodMatchesSelector(addressGroup.uid, pod@ &k8s.Pod{.namespace = ns}),
     pod.status.podIP != "".
 
 AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
@@ -458,8 +468,7 @@ AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
     addressGroup in &AddressGroupDescr(.selector = GroupSelector{.nsSelector = NSSelectorLS{namespaceSelector}}),
     namespace in k8s.Namespace(),
     k8s.labelSelectorMatches(Some{namespaceSelector}, namespace.labels),
-    PodMatchesSelector(addressGroup.uid, pod_uid),
-    pod in &k8s.Pod(.uid = pod_uid, .namespace = namespace.name),
+    PodMatchesSelector(addressGroup.uid, pod@ &k8s.Pod{.namespace = namespace.name}),
     pod.status.podIP != "".
 
 AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
@@ -472,10 +481,10 @@ AddressGroupAddress(addressGroup.uid, pod.status.podIP) :-
 
 // NetworkPolicyAddressGroup: stores all address groups that a network policy references;
 // used to compute AddressGroupSpan.
-relation NetworkPolicyAddressGroup(np: k8s.UID, addressGroup: UUID)
+//relation NetworkPolicyAddressGroup(np: k8s.UID, addressGroup: UUID)
 
-NetworkPolicyAddressGroup(np, addressGroup) :-
-    NetworkPolicyDescr(.uid = np, .rules = rules),
+/*NetworkPolicyAddressGroup(np, addressGroup) :-
+    &NetworkPolicyDescr(.uid = np, .rules = rules),
     var addressGroups = {
         var addressGroups: Vec<UUID> = vec_empty();
         for (rule in rules) {
@@ -485,12 +494,24 @@ NetworkPolicyAddressGroup(np, addressGroup) :-
         addressGroups
     },
     var addressGroup = FlatMap(addressGroups).
+*/
 
 AddressGroupSpan(addressGroup, node) :-
-    &AddressGroupDescr(.uid = addressGroup),
+    //&AddressGroupDescr(.uid = addressGroup),
     // Get all internal NetworkPolicy objects that refers this AddressGroupDescr.
-    NetworkPolicyAddressGroup(np, addressGroup),
-    NetworkPolicySpan(.policy = np, .node = node).
+    //NetworkPolicyAddressGroup(np, addressGroup),
+    NetworkPolicySpanInternal(.policy = np, .node = node),
+    var rule = FlatMap(np.rules),
+    var addressGroup = FlatMap(rule.from.addressGroups).
+
+AddressGroupSpan(addressGroup, node) :-
+    //&AddressGroupDescr(.uid = addressGroup),
+    // Get all internal NetworkPolicy objects that refers this AddressGroupDescr.
+    //NetworkPolicyAddressGroup(np, addressGroup),
+    NetworkPolicySpanInternal(.policy = np, .node = node),
+    var rule = FlatMap(np.rules),
+    var addressGroup = FlatMap(rule.to.addressGroups).
+
 
 //, var span = Aggregate((addressGroup), group_set_unions(npSpan)).
 
@@ -512,9 +533,9 @@ AppliedToGroupPod(appliedToGroup, k8s.PodReference{pod.name, pod.namespace}, pod
     // TODO(leonid): Is it correct that we only consider selectors with namespace name set?
     &AppliedToGroupDescr(.uid = appliedToGroup,
                          .selector = GroupSelector{.nsSelector = NSSelectorNS{namespace}, .podSelector = Some{}}),
-    PodMatchesSelector(appliedToGroup, pod_uid),
     // Retrieve all Pods matching the podSelector.
-    pod in &k8s.Pod(.uid = pod_uid, .namespace = namespace),
+    PodMatchesSelector(appliedToGroup, pod @ &k8s.Pod{.namespace = namespace}),
+    //pod in &k8s.Pod(.uid = pod_uid, .namespace = namespace),
     // No need to process Pod when it's not scheduled.
     pod.spec.nodeName != "".
 
@@ -533,18 +554,14 @@ AppliedToGroupSpan(appliedToGroup, nodeName) :-
 //    &AppliedToGroupDescr(.uid = uid),
 //    not AppliedToGroupPod(.appliedToGroup = uid).
 
-NetworkPolicySpan(namespace, policy_name, policy, node) :-
-    NetworkPolicyDescr(
-        .uid = policy,
-        .name = policy_name,
-        .namespace = namespace,
-        .appliedToGroups = appliedToGroups),
-    var appliedToGroup = FlatMap(appliedToGroups),
+NetworkPolicySpanInternal(descr, node) :-
+    descr in &NetworkPolicyDescr(),
+    var appliedToGroup = FlatMap(descr.appliedToGroups),
     AppliedToGroupSpan(appliedToGroup, node).
 
 //,
 //    var span = Aggregate((policy), group_set_unions(groupSpan)).
 
 // Handle the case when `apliedToGroups` is empty.
-/*NetworkPolicySpan(policy, set_empty()) :-
+/*NetworkPolicySpanInternal(policy, set_empty()) :-
     NetworkPolicyDescr(.uid = policy, .appliedToGroups = vec_empty()).*/
