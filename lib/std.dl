@@ -292,6 +292,7 @@ extern function set2vec(s: Set<'A>): Vec<'A>
 extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
 extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
+extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>
 
 /*
  * Endianness

@@ -668,6 +668,12 @@ pub fn std_set_intersection<X: Ord + Clone>(s1: &std_Set<X>, s2: &std_Set<X>) ->
     }
 }
 
+pub fn std_set_difference<X: Ord + Clone>(s1: &std_Set<X>, s2: &std_Set<X>) -> std_Set<X> {
+    std_Set {
+        x: s1.x.difference(&s2.x).cloned().collect(),
+    }
+}
+
 // Map
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]

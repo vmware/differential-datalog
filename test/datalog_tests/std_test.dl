@@ -13,3 +13,9 @@ SortedVectorInPlace(sorted) :-
         vec_sort(v2);
         v2
     }.
+
+input relation SetPairs(s1: Set<u64>, s2: Set<u64>)
+output relation SetDifference(s1: Set<u64>, s2: Set<u64>, diff: Set<u64>)
+
+SetDifference(s1, s2, set_difference(s1, s2)) :- SetPairs(s1, s2).
+SetDifference(s2, s1, set_difference(s2, s1)) :- SetPairs(s1, s2).
