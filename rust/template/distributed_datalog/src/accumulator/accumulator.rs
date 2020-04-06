@@ -93,7 +93,7 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
         let init_updates =
             self.get_current_state().into_iter()
                 .flat_map(|(relid, vs)|
-                    vs.into_iter().map(|v| Update::Insert {relid, v}).collect::<Vec<_>>())
+                    vs.into_iter().map(|v| Update::Insert { relid, v }).collect::<Vec<_>>())
                 .collect::<Vec<_>>();
 
         let mut guard = self.distributor.lock().unwrap();
@@ -159,13 +159,39 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
 
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
     use std::sync::Arc;
     use std::sync::Mutex;
+    use std::vec::IntoIter;
 
     use crate::MockObserver;
+
+    fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 1, v: 1 },
+            Update::Insert { relid: 2, v: 2 },
+            Update::Insert { relid: 3, v: 3 },
+        ).into_iter())
+    }
+
+    fn get_usize_updates_2() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 1, v: 2 },
+            Update::Insert { relid: 1, v: 3 },
+            Update::Insert { relid: 2, v: 3 },
+        ).into_iter())
+    }
+
+    fn get_usize_updates_3() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 4, v: 1 },
+            Update::Insert { relid: 4, v: 2 },
+            Update::Insert { relid: 4, v: 3 },
+            Update::Insert { relid: 4, v: 4 },
+        ).into_iter())
+    }
 
     //TODO: test accumulation of data across multiple commits
 
@@ -173,7 +199,7 @@ mod tests {
     /// A subscription can occur directly via `subscribe` or via `create_observable`.
     #[test]
     fn subscribe_unsubscribe() {
-        let mut accumulator = DistributingAccumulator::<(), ()>::new();
+        let mut accumulator = DistributingAccumulator::<Update<()>, (), ()>::new();
         let observer = Box::new(MockObserver::new());
 
         let subscription = accumulator.subscribe(observer);
@@ -191,7 +217,7 @@ mod tests {
     /// Test multiple direct subscriptions via `subscribe` to a `AccumulatingObserver`.
     #[test]
     fn multiple_subscribe_direct_distributor() {
-        let mut accumulator = DistributingAccumulator::<_, ()>::new();
+        let mut accumulator = DistributingAccumulator::<Update<usize>, usize, ()>::new();
         let mock1 = Arc::new(Mutex::new(MockObserver::new()));
         let mock2 = Arc::new(Mutex::new(MockObserver::new()));
 
@@ -202,7 +228,7 @@ mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_start, 1);
         assert_eq!(mock2.lock().unwrap().called_on_start, 1);
 
-        assert_eq!(accumulator.on_updates(Box::new([1, 3, 2].iter())), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_1()), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_updates, 3);
         assert_eq!(mock2.lock().unwrap().called_on_updates, 3);
 
@@ -218,7 +244,7 @@ mod tests {
     /// Test multiple indirect subscriptions via `create_observable` to a `DistributingAccumulator`.
     #[test]
     fn multiple_subscribe_indirect_distributor() {
-        let mut accumulator = DistributingAccumulator::<_, ()>::new();
+        let mut accumulator = DistributingAccumulator::<Update<usize>, usize, ()>::new();
         let mock1 = Arc::new(Mutex::new(MockObserver::new()));
         let mock2 = Arc::new(Mutex::new(MockObserver::new()));
         let mut observable1 = accumulator.create_observable();
@@ -231,7 +257,7 @@ mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_start, 1);
         assert_eq!(mock2.lock().unwrap().called_on_start, 1);
 
-        assert_eq!(accumulator.on_updates(Box::new([1, 3, 2].iter())), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_1()), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_updates, 3);
         assert_eq!(mock2.lock().unwrap().called_on_updates, 3);
 
@@ -243,7 +269,7 @@ mod tests {
     /// Test pass-through filter behaviour for transactions via a `DistributingAccumulator`.
     #[test]
     fn transparent_transactions_proxy() {
-        let mut accumulator = DistributingAccumulator::<_, ()>::new();
+        let mut accumulator = DistributingAccumulator::<Update<usize>, usize, ()>::new();
         let mock1 = Arc::new(Mutex::new(MockObserver::new()));
         let mock2 = Arc::new(Mutex::new(MockObserver::new()));
         let mut observable = accumulator.create_observable();
@@ -255,11 +281,11 @@ mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_start, 1);
         assert_eq!(mock2.lock().unwrap().called_on_start, 1);
 
-        assert_eq!(accumulator.on_updates(Box::new([1, 3, 2].iter())), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_1()), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_updates, 3);
         assert_eq!(mock2.lock().unwrap().called_on_updates, 3);
 
-        assert_eq!(accumulator.on_updates(Box::new([6, 4, 5].iter())), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_2()), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_updates, 6);
         assert_eq!(mock2.lock().unwrap().called_on_updates, 6);
 
@@ -271,7 +297,7 @@ mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_start, 2);
         assert_eq!(mock2.lock().unwrap().called_on_start, 2);
 
-        assert_eq!(accumulator.on_updates(Box::new([7, 9, 8, 10].iter())), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_3()), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_updates, 10);
         assert_eq!(mock2.lock().unwrap().called_on_updates, 10);
 

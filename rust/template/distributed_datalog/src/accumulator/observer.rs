@@ -57,7 +57,6 @@ impl<T, V, E> AccumulatingObserver<T, V, E>
 
     pub fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("AccumulatingObserver({})::get_current_state()", self.id);
-        // TODO: derive current state and return it
         self.data.clone()
     }
 }
@@ -92,7 +91,6 @@ impl<T, V, E> Observable<T, E> for AccumulatingObserver<T, V, E>
 
 
 /// Forwards the incoming data to the observer while keeping track of the current state
-/// TODO: implement accumulating functionality!
 impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
     where
         V: Debug + Send + Eq + Hash + Clone,
@@ -114,11 +112,12 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
         trace!("AccumulatingObserver({})::on_commit", self.id);
 
         if let Some(buffer) = self.buffer.take() {
+            // forward commit signal to observer
             {
                 let mut guard = self.observer.lock().unwrap();
                 guard.on_commit()?;
             }
-            // apply the buffered updates to the accumulated state
+            // apply the buffered updates to the accumulated state if successful
             buffer.into_iter().flatten().for_each(|upd: Update<V>| match upd {
                 Update::Insert { relid, v } => {
                     let _ = self.data.entry(relid)
@@ -142,9 +141,12 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
         trace!("AccumulatingObserver({})::on_updates", self.id);
 
         if let Some(ref mut buffer) = self.buffer {
-            // TODO: copy incoming updates to buffer
+
+            // push incoming updates into buffer
             let upds = updates.collect::<Vec<_>>();
             buffer.push_back(upds.clone());
+
+            // send updates to observer
             let mut guard = self.observer.lock().unwrap();
             guard.on_updates(Box::new(upds.into_iter()))
         } else {
@@ -167,47 +169,39 @@ mod tests {
 
     use std::sync::Arc;
     use std::sync::Mutex;
+    use std::vec::IntoIter;
 
     use crate::MockObserver;
 
-    //TODO: test accumulation of data across multiple commits
+    fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 1, v: 1 },
+            Update::Insert { relid: 2, v: 2 },
+            Update::Insert { relid: 3, v: 3 },
+        ).into_iter())
+    }
 
-    /// Test pass-through filter behaviour for transactions via a `AccumulatingObserver`.
-    #[test]
-    fn transparent_transactions_proxy() {
-        let mut observer = AccumulatingObserver::<_, ()>::new();
-        let mock = Arc::new(Mutex::new(Some(MockObserver::default())));
-        let _subscription = observer.subscribe(Box::new(mock.clone()));
+    fn get_usize_updates_2() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 1, v: 2 },
+            Update::Insert { relid: 1, v: 3 },
+            Update::Insert { relid: 2, v: 3 },
+        ).into_iter())
+    }
 
-        assert_eq!(observer.on_start(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 1);
-
-        assert_eq!(observer.on_updates(Box::new([1, 3, 2].iter())), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 3);
-
-        assert_eq!(observer.on_updates(Box::new([6, 4, 5].iter())), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 6);
-
-        assert_eq!(observer.on_commit(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 1);
-
-        assert_eq!(observer.on_start(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 2);
-
-        assert_eq!(observer.on_updates(Box::new([7, 9, 8, 10].iter())), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 10);
-
-        assert_eq!(observer.on_commit(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 2);
-
-        assert_eq!(observer.on_completed(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 1);
+    fn get_usize_updates_3() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::Insert { relid: 4, v: 1 },
+            Update::Insert { relid: 4, v: 2 },
+            Update::Insert { relid: 4, v: 3 },
+            Update::Insert { relid: 4, v: 4 },
+        ).into_iter())
     }
 
     /// Test subscribing and unsubscribing for an `AccumulatingObserver`.
     #[test]
     fn subscribe_unsubscribe_observable() {
-        let mut observer = AccumulatingObserver::<(), ()>::new();
+        let mut observer = AccumulatingObserver::<Update<()>, (), ()>::new();
         let mock = Box::new(MockObserver::new());
 
         let subscription = observer.subscribe(mock);
@@ -219,11 +213,43 @@ mod tests {
     /// Test multiple subscriptions to an `AccumulatingObserver`.
     #[test]
     fn multiple_subscribe_observable() {
-        let mut observer = AccumulatingObserver::<(), ()>::new();
+        let mut observer = AccumulatingObserver::<Update<usize>, usize, ()>::new();
         let mock1 = Box::new(MockObserver::new());
         let mock2 = Box::new(MockObserver::new());
 
         assert!(observer.subscribe(mock1).is_ok());
         assert!(observer.subscribe(mock2).is_err());
+    }
+
+    /// Test pass-through filter behaviour for transactions via a `AccumulatingObserver`.
+    #[test]
+    fn transparent_transactions_proxy() {
+        let mut observer = AccumulatingObserver::<Update<usize>, usize, ()>::new();
+        let mock = Arc::new(Mutex::new(Some(MockObserver::default())));
+        let _subscription = observer.subscribe(Box::new(mock.clone()));
+
+        assert_eq!(observer.on_start(), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 1);
+
+        assert_eq!(observer.on_updates(get_usize_updates_1()), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 3);
+
+        assert_eq!(observer.on_updates(get_usize_updates_2()), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 6);
+
+        assert_eq!(observer.on_commit(), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 1);
+
+        assert_eq!(observer.on_start(), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 2);
+
+        assert_eq!(observer.on_updates(get_usize_updates_3()), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 10);
+
+        assert_eq!(observer.on_commit(), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 2);
+
+        assert_eq!(observer.on_completed(), Ok(()));
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 1);
     }
 }
