@@ -396,6 +396,14 @@ public class DDlogRecord {
         return DDlogRecord.makeStruct("std.None");
     }
 
+    /**
+     * A DDlogRecord representing the value Some{V}, can be used as a value of the
+     * standard library type Option.
+     */
+    public static DDlogRecord some(DDlogRecord value) throws DDlogException {
+        return DDlogRecord.makeStruct("std.Some", value);
+    }
+
     @Override
     public String toString() {
         this.checkHandle();
