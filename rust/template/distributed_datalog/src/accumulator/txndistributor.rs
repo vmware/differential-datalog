@@ -18,7 +18,7 @@ use crate::SharedObserver;
 pub struct InitializedObservable<T, E>
 {
     /// A reference to the `Observer` subscribed to us, if any.
-    pub observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
+    observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
     /// The data newly subscribed observers are initialized with.
     init_updates: Vec<T>,
     /// The subscription the Observable has
@@ -27,7 +27,7 @@ pub struct InitializedObservable<T, E>
 
 impl<T, E> Observable<T, E> for InitializedObservable<T, E>
     where
-        T: Debug + Send + 'static,
+        T: Clone + Debug + Send + 'static,
         E: Debug + Send + 'static,
 {
     type Subscription = usize;
@@ -41,9 +41,19 @@ impl<T, E> Observable<T, E> for InitializedObservable<T, E>
         if guard.is_some() {
             Err(observer)
         } else {
+            // TODO: improve handling of subscriptions and errors
             let _ = guard.replace(observer);
-// TODO: send the init_data to the observer
-// TODO: improve handling of subscriptions
+
+            // send the initial_updates to the observer by draining the vector
+            if !self.init_updates.is_empty() {
+                let updates = self.init_updates.drain(..);
+                let observer = guard.as_mut().unwrap();
+                let _ = observer.on_start();
+                trace!("InitializedObservable({:?}) sending init_updates to observer: {:?}", self.subscription, updates);
+                let _ = observer.on_updates(Box::new(updates));
+                let _ = observer.on_commit();
+            }
+
             Ok(1)
         }
     }
@@ -226,7 +236,7 @@ mod tests {
         assert!(distributor.unsubscribe(&subscription.unwrap()).is_some());
         assert!(distributor.observers.values().collect::<Vec<_>>().is_empty());
 
-        let mut observable = distributor.create_observable(None);
+        let mut observable = distributor.create_observable(vec!());
         let observer = Box::new(MockObserver::new());
 
         let subscription = observable.subscribe(observer);
@@ -268,8 +278,8 @@ mod tests {
         let mut distributor = TxnDistributor::<_, ()>::new();
         let mock1 = Arc::new(Mutex::new(MockObserver::new()));
         let mock2 = Arc::new(Mutex::new(MockObserver::new()));
-        let mut observable1 = distributor.create_observable(None);
-        let mut observable2 = distributor.create_observable(None);
+        let mut observable1 = distributor.create_observable(vec!());
+        let mut observable2 = distributor.create_observable(vec!());
 
         assert!(observable1.subscribe(Box::new(mock1.clone())).is_ok());
         assert!(observable2.subscribe(Box::new(mock2.clone())).is_ok());
