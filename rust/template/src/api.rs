@@ -733,6 +733,78 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
     res
 }
 
+#[repr(C)]
+pub struct ddlog_record_update {
+    table: libc::size_t,
+    rec: *mut record::Record,
+    polarity: bool,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_as_array(
+    prog: *const HDDlog,
+    changes: *mut *const ddlog_record_update,
+    num_changes: *mut libc::size_t,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+    let res = do_transaction_commit_dump_changes_as_array(&*prog, changes, num_changes)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!(
+                "ddlog_transaction_commit_dump_changes_as_array: error: {}",
+                e
+            ));
+            -1
+        });
+
+    Arc::into_raw(prog);
+    res
+}
+
+unsafe fn do_transaction_commit_dump_changes_as_array(
+    prog: &HDDlog,
+    changes: *mut *const ddlog_record_update,
+    num_changes: *mut libc::size_t,
+) -> Result<(), String> {
+    let updates = prog.transaction_commit_dump_changes()?;
+    let mut size = 0;
+    for (_, delta) in updates.as_ref().iter() {
+        size += delta.len();
+    }
+
+    *num_changes = size;
+    // Make sure that vector's capacity will be equal to its length.
+    let mut change_vec = Vec::with_capacity(size);
+    for (rel, delta) in updates.into_iter() {
+        for (val, w) in delta.into_iter() {
+            change_vec.push(ddlog_record_update {
+                table: rel,
+                rec: Box::into_raw(Box::new(val.into_record())),
+                polarity: w > 0,
+            });
+        }
+    }
+    *changes = change_vec.as_ptr();
+    std::mem::forget(change_vec);
+    Ok(())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_free_record_updates(
+    changes: *mut ddlog_record_update,
+    num_changes: libc::size_t,
+) {
+    // Assume that vector's capacity is equal to its length.
+    let changes_vec: Vec<ddlog_record_update> =
+        Vec::from_raw_parts(changes, num_changes as usize, num_changes as usize);
+    for upd in changes_vec.into_iter() {
+        let upd: Box<record::Record> = Box::from_raw(upd.rec);
+    }
+}
+
 #[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(

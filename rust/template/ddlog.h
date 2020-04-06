@@ -51,6 +51,11 @@ typedef size_t table_id;
  */
 typedef void ddlog_record;
 
+typedef struct {
+    table_id table;
+    ddlog_record *rec;
+    bool polarity;
+} ddlog_record_update;
 
 /*
  * Get DDlog table id by name.  The table name is a null-terminated UTF8
@@ -253,6 +258,42 @@ ddlog_transaction_commit_dump_changes(
                    const ddlog_record *rec,
                    bool polarity),
         uintptr_t cb_arg);
+
+/*
+ * Commit a transaction; propagate all buffered changes through all
+ * rules in the program and update all output relations.  Once all
+ * updates are finished, returns an array of changes to output relations.
+ * Each record occurs in the array at most once with either positive or negative
+ * polarity.
+ *
+ * NOTE: The array returned by this function is owned by DDlog and must be
+ * deallocated (along with all it contents) using the
+ * `ddlog_free_record_updates()` function.
+ *
+ * On success, returns `0`; on error, returns `-1` and prints error message
+ * (see `print_err_msg` parameter to `ddlog_run()`).
+ *
+ * This function will fail if there is no transaction in progress.
+ */
+extern int
+ddlog_transaction_commit_dump_changes_as_array(
+        ddlog_prog hprog,
+        ddlog_record_update **changes,
+        size_t *num_changes);
+
+/*
+ * Deallocate array of updates returned by
+ * `ddlog_transaction_commit_dump_changes_as_array()`.  Both `changes` and
+ * `num_changes` arguments must be equal to the values returned by a successful
+ * call `ddlog_transaction_commit_dump_changes_as_array`.
+ *
+ * This function invalidates record handles stored in the `changes` array;
+ * they must not be accessed after the call.
+ */
+extern void
+ddlog_free_record_updates(
+        ddlog_record_update *changes,
+        size_t num_changes);
 
 /*
  * Same as `ddlog_transaction_commit_dump_changes`, but serializes changes to a
