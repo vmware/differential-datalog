@@ -1,3 +1,5 @@
 *.class
 *.so
 ddlogapi_DDlogAPI.h
+ddlogapi_DDlogAPI_DDlogCommandVector.h
+
