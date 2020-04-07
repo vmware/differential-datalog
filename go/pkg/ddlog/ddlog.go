@@ -32,6 +32,18 @@ static int ddlogTransactionCommitDumpChanges(ddlog_prog hprog, uintptr_t arg) {
     return ddlog_transaction_commit_dump_changes(hprog, dumpChangesCb, arg);
 }
 
+extern void handleOutRecordArray(uintptr_t progIdx, ddlog_record_update *changes, size_t num_changes);
+
+static int ddlogTransactionCommitDumpChangesAsArray(ddlog_prog hprog, uintptr_t progIdx) {
+    ddlog_record_update *changes;
+    size_t num_changes;
+    int rc = ddlog_transaction_commit_dump_changes_as_array(hprog, &changes, &num_changes);
+    if (rc != 0 || num_changes == 0) return rc;
+    handleOutRecordArray(progIdx, changes, num_changes);
+    ddlog_free_record_updates(changes, num_changes);
+    return 0;
+}
+
 typedef void (*print_err_msg_fn)(const char *msg);
 
 typedef const char *cstring;
@@ -302,6 +314,19 @@ func (p *Program) CommitTransaction() error {
 	return nil
 }
 
+// CommitTransactionChangesAsArray commits a transaction. It uses a different implementation from
+// CommitTransaction, which may yield better performance when many output records are
+// generated. Unlike with CommitTransaction, DDlog will not generate one callback for each output
+// record, but will return an array of output records (with polarity). Note that we still generate
+// one OutRecordHandler callback for each output record.
+func (p *Program) CommitTransactionChangesAsArray() error {
+	rc := C.ddlogTransactionCommitDumpChangesAsArray(p.ptr, C.uint64_t(p.progIdx))
+	if rc != 0 {
+		return fmt.Errorf("ddlog_transaction_commit_as_array returned error code %d", rc)
+	}
+	return nil
+}
+
 // RollbackTransaction rollbacks an ongoing transaction.
 func (p *Program) RollbackTransaction() error {
 	rc := C.ddlog_transaction_rollback(p.ptr)
@@ -365,6 +390,26 @@ func handleOutRecord(progIdx C.uintptr_t, tableID C.size_t, recordPtr *C.ddlog_r
 	}
 	if p.outRecordHandler != nil {
 		p.outRecordHandler.Handle(TableID(tableID), &record{unsafe.Pointer(recordPtr)}, outPolarity)
+	}
+}
+
+//export handleOutRecordArray
+func handleOutRecordArray(progIdx C.uintptr_t, changesArray *C.ddlog_record_update, numChanges C.size_t) {
+	pIntf, ok := _progStore.Load(uintptr(progIdx))
+	if !ok {
+		panic("Cannot find program in store")
+	}
+	p := pIntf.(*Program)
+	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
+	changes := (*[1 << 30]C.ddlog_record_update)(unsafe.Pointer(changesArray))[:numChanges:numChanges]
+	for _, change := range changes {
+		var outPolarity OutPolarity
+		if change.polarity {
+			outPolarity = OutPolarityInsert
+		} else {
+			outPolarity = OutPolarityDelete
+		}
+		p.outRecordHandler.Handle(TableID(change.table), &record{unsafe.Pointer(change.rec)}, outPolarity)
 	}
 }
 
