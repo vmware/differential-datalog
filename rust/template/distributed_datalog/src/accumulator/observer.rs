@@ -173,7 +173,7 @@ mod tests {
 
     use crate::MockObserver;
 
-    fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
+    fn get_usize_insert_updates_1() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
             Update::Insert { relid: 1, v: 1 },
             Update::Insert { relid: 2, v: 2 },
@@ -181,7 +181,7 @@ mod tests {
         ).into_iter())
     }
 
-    fn get_usize_updates_2() -> Box<IntoIter<Update<usize>>> {
+    fn get_usize_insert_updates_2() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
             Update::Insert { relid: 1, v: 2 },
             Update::Insert { relid: 1, v: 3 },
@@ -189,12 +189,20 @@ mod tests {
         ).into_iter())
     }
 
-    fn get_usize_updates_3() -> Box<IntoIter<Update<usize>>> {
+    fn get_usize_insert_updates_3() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
             Update::Insert { relid: 4, v: 1 },
             Update::Insert { relid: 4, v: 2 },
             Update::Insert { relid: 4, v: 3 },
             Update::Insert { relid: 4, v: 4 },
+        ).into_iter())
+    }
+
+    fn get_usize_delete_updates_1() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::DeleteValue { relid: 1, v: 1 },
+            Update::DeleteValue { relid: 2, v: 2 },
+            Update::DeleteValue { relid: 3, v: 3 },
         ).into_iter())
     }
 
@@ -231,10 +239,10 @@ mod tests {
         assert_eq!(observer.on_start(), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 1);
 
-        assert_eq!(observer.on_updates(get_usize_updates_1()), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_1()), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 3);
 
-        assert_eq!(observer.on_updates(get_usize_updates_2()), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_2()), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 6);
 
         assert_eq!(observer.on_commit(), Ok(()));
@@ -243,7 +251,7 @@ mod tests {
         assert_eq!(observer.on_start(), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_start, 2);
 
-        assert_eq!(observer.on_updates(get_usize_updates_3()), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_3()), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_updates, 10);
 
         assert_eq!(observer.on_commit(), Ok(()));
@@ -251,5 +259,75 @@ mod tests {
 
         assert_eq!(observer.on_completed(), Ok(()));
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 1);
+    }
+
+    /// test accumulation of data across multiple commits
+    #[test]
+    fn updates_accumulation() {
+        let mut observer = AccumulatingObserver::<Update<usize>, usize, ()>::new();
+        let mock = Arc::new(Mutex::new(Some(MockObserver::default())));
+        let _subscription = observer.subscribe(Box::new(mock.clone()));
+
+        assert_eq!(observer.on_start(), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_1()), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_2()), Ok(()));
+
+        assert!(observer.data.is_empty());
+        assert_eq!(observer.on_commit(), Ok(()));
+
+        observer.data.iter().for_each(|(relid, values)| {
+            match relid {
+                &1 => {
+                    assert_eq!(values, &vec!(1, 2, 3).into_iter().collect::<HashSet<_>>());
+                }
+                &2 => {
+                    assert_eq!(values, &vec!(2, 3).into_iter().collect::<HashSet<_>>());
+                }
+                &3 => {
+                    assert_eq!(values, &vec!(3).into_iter().collect::<HashSet<_>>());
+                }
+                _ => { panic!("Unexpected relid!") }
+            }
+        });
+
+        assert_eq!(observer.on_start(), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_delete_updates_1()), Ok(()));
+        assert_eq!(observer.on_updates(get_usize_insert_updates_3()), Ok(()));
+
+        // data must not be updated before commit
+        observer.data.iter().for_each(|(relid, values)| {
+            match relid {
+                &1 => {
+                    assert_eq!(values, &vec!(1, 2, 3).into_iter().collect::<HashSet<_>>());
+                }
+                &2 => {
+                    assert_eq!(values, &vec!(2, 3).into_iter().collect::<HashSet<_>>());
+                }
+                &3 => {
+                    assert_eq!(values, &vec!(3).into_iter().collect::<HashSet<_>>());
+                }
+                _ => { panic!("Unexpected relid!") }
+            }
+        });
+
+        assert_eq!(observer.on_commit(), Ok(()));
+
+        observer.data.iter().for_each(|(relid, values)| {
+            match relid {
+                &1 => {
+                    assert_eq!(values, &vec!(2, 3).into_iter().collect::<HashSet<_>>());
+                }
+                &2 => {
+                    assert_eq!(values, &vec!(3).into_iter().collect::<HashSet<_>>());
+                }
+                &3 => {
+                    assert!(values.is_empty());
+                }
+                &4 => {
+                    assert_eq!(values, &vec!(1, 2, 3, 4).into_iter().collect::<HashSet<_>>());
+                }
+                _ => { panic!("Unexpected relid!") }
+            }
+        });
     }
 }
