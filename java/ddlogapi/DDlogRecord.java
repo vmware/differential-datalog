@@ -96,17 +96,15 @@ public class DDlogRecord {
         this.shared = false;
     }
 
-    public DDlogRecord(double d) throws DDlogException {
+    public DDlogRecord(double d) {
         this.handle = DDlogAPI.ddlog_double(d);
         this.shared = false;
     }
 
-    public DDlogRecord(float f) throws DDlogException {
+    public DDlogRecord(float f) {
         this.handle = DDlogAPI.ddlog_float(f);
         this.shared = false;
     }
-
-    static BigInteger mask64 = new BigInteger("FFFFFFFFFFFFFFFF", 16);
 
     private static void getAllFields(Class<?> clazz, List<Field> result) {
         while (clazz != null) {
@@ -497,7 +495,7 @@ public class DDlogRecord {
         if (DDlogAPI.ddlog_is_struct(this.handle)) {
             long h = this.handle;
             String type = DDlogAPI.ddlog_get_constructor(h);
-            builder.append(type + "{");
+            builder.append(type).append("{");
 
             // Get the first field and check to see whether it is a struct with the same constructor
             long f0 = DDlogAPI.ddlog_get_struct_field(h, 0);
