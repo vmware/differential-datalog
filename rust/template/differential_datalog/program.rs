@@ -1016,6 +1016,33 @@ where
     }
 }
 
+impl<V> PartialEq for Update<V>
+where
+    V: Eq
+{
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Update::Insert { relid: relid_self, v: v_self } => {
+                if let Update::Insert { relid: relid_other, v: v_other } = other {
+                    relid_self == relid_other && v_self == v_other
+                } else { false }
+            }
+            Update::DeleteValue { relid: relid_self, v: v_self } => {
+                if let Update::DeleteValue { relid: relid_other, v: v_other } = other {
+                    relid_self == relid_other && v_self == v_other
+                } else { false }
+            }
+            // TODO: implement for other enum types
+            _ => unimplemented!()
+        }
+    }
+}
+
+impl<V> Eq for Update<V>
+where
+    V: Eq
+{}
+
 impl<V> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
