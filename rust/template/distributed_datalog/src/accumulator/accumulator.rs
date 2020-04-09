@@ -167,6 +167,7 @@ pub mod tests {
     use std::vec::IntoIter;
 
     use crate::MockObserver;
+    use crate::accumulator::UpdatesMockObserver;
 
     fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
@@ -190,6 +191,14 @@ pub mod tests {
             Update::Insert { relid: 4, v: 2 },
             Update::Insert { relid: 4, v: 3 },
             Update::Insert { relid: 4, v: 4 },
+        ).into_iter())
+    }
+
+    fn get_usize_delete_updates_1() -> Box<IntoIter<Update<usize>>> {
+        Box::new(vec!(
+            Update::DeleteValue { relid: 1, v: 1 },
+            Update::DeleteValue { relid: 2, v: 2 },
+            Update::DeleteValue { relid: 3, v: 3 },
         ).into_iter())
     }
 
@@ -308,6 +317,60 @@ pub mod tests {
         assert_eq!(accumulator.on_completed(), Ok(()));
         assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
         assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
+    }
+
+    /// when a new downstream consumer subscribes, it should be updated with the current values
+    #[test]
+    fn test_fix_up_updates() {
+        let mut accumulator = DistributingAccumulator::<Update<usize>, usize, ()>::new();
+        let mock1 = Arc::new(Mutex::new(UpdatesMockObserver::new()));
+        let mock2 = Arc::new(Mutex::new(UpdatesMockObserver::new()));
+        let mock3 = Arc::new(Mutex::new(UpdatesMockObserver::new()));
+
+        // start with one observer and give it updates
+        assert!(accumulator.subscribe(Box::new(mock1.clone())).is_ok());
+        assert_eq!(accumulator.on_start(), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_1()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+        let received_updates = mock1.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 3);
+        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 1 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 2 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 3, v: 3 }));
+
+        // start an observable that receives the first bunch of updates
+        let mut observable = accumulator.create_observable();
+
+        // provide second batch of updates to the accumulator
+        assert_eq!(accumulator.on_start(), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_2()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+
+        // the observable does not see the second update
+        assert!(observable.subscribe(Box::new(mock2.clone())).is_ok());
+        let received_updates = mock2.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 3);
+        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 1 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 2 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 3, v: 3 }));
+
+        assert_eq!(accumulator.on_start(), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_3()), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_delete_updates_1()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+
+        // a new observer via create_observable should receive all updates
+        let mut observable = accumulator.create_observable();
+        assert!(observable.subscribe(Box::new(mock3.clone())).is_ok());
+        let received_updates = mock3.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 7);
+        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 2 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 3 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 3 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 1 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 2 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 3 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 4 }));
     }
 }
 
