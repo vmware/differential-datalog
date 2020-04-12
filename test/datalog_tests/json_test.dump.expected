@@ -19,5 +19,9 @@ json_test.JsonTest{.description = "{\"s\": \"foo\", \"i\": 100000}", .value = "{
 json_test.JsonTest{.description = "{\"s\": \"foo\"}", .value = "{\"std_Ok\":{\"res\":{\"s\":\"foo\",\"i\":null,\"v\":null}}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"@id\":\"1001001001\",\"x\":\"x\",\"z\":100000}}}"}
 json_test.JsonTest{.description = "{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}", .value = "{\"std_Ok\":{\"res\":{\"t\":\"foo\",\"id\":\"1001001001\",\"nested\":{\"x\":\"x\",\"z\":100000}}}}"}
+json_test.JsonTest{.description = "{\"x\": \"-100000\"}", .value = "{\"std_Ok\":{\"res\":{\"x\":\"-100000\"}}}"}
+json_test.JsonTest{.description = "{\"x\": \"100000000000\"}", .value = "{\"std_Err\":{\"err\":\"number too large to fit in target type at line 1 column 21\"}}"}
+json_test.JsonTest{.description = "{\"x\": \"x\", \"y\": \"-100000\"}", .value = "{\"std_Err\":{\"err\":\"invalid digit found in string at line 1 column 26\"}}"}
+json_test.JsonTest{.description = "{\"x\": \"x\", \"y\": \"100000\"}", .value = "{\"std_Ok\":{\"res\":{\"x\":\"x\",\"y\":\"100000\"}}}"}
 json_test.JsonTest{.description = "{}", .value = "{\"std_Ok\":{\"res\":{\"s\":null,\"i\":null,\"v\":null}}}"}
 json_test.TVariant1{.b = true}

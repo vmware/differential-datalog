@@ -88,3 +88,41 @@ fn json_val_from_num(n: json_JsonNum) -> serde_json::value::Value {
             .unwrap_or_else(|| serde_json::value::Value::Null),
     }
 }
+
+/* Some JSON schemas represent integers as strings.  This module serializes/deserializes
+ * integers or any other types that implement `FromStr` and `ToString` traits to/from strings.
+ * To use this module, add the following annotation to the DDlog field that needs to be
+ * deserialized from a string:
+ *
+ * ```
+ * typedef U64FromString = U64FromString {
+ *   x: string,
+ *   #[rust="serde(with=\"serde_string\")"]
+ *   y: u64
+ * }
+ * ```
+ */
+pub mod serde_string {
+    use serde::de;
+    use serde::Deserialize;
+    use serde::Deserializer;
+    use serde::Serialize;
+    use serde::Serializer;
+
+    pub fn serialize<S, T>(x: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: std::string::ToString,
+    {
+        x.to_string().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+        T: std::str::FromStr,
+        <T as std::str::FromStr>::Err: std::fmt::Display,
+    {
+        T::from_str(&String::deserialize(deserializer)?).map_err(|e| de::Error::custom(e))
+    }
+}
