@@ -21,7 +21,6 @@ use differential_datalog::record::*;
 use differential_datalog::DDlog;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
-use time::precise_time_ns;
 use types::log_set_default_callback;
 
 #[cfg(feature = "profile")]
@@ -95,7 +94,7 @@ fn handle_cmd(
         Command::Comment => Ok(()),
         Command::Rollback => hddlog.transaction_rollback(),
         Command::Timestamp => {
-            println!("Timestamp: {}", precise_time_ns());
+            println!("Timestamp: {:#?}", std::time::Instant::now());
             Ok(())
         }
         Command::Profile(None) => {

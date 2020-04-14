@@ -1,0 +1,15 @@
+extern type time
+
+extern function try_from_hms(hours: bit<8>, minutes: bit<8>, seconds: bit<8>): Result<time, string>
+extern function try_from_hms_milli(hours: bit<8>, minutes: bit<8>, seconds: bit<8>, milliseconds: bit<16>): Result<time, string>
+extern function try_from_hms_micro(hours: bit<8>, minutes: bit<8>, seconds: bit<8>, microseconds: bit<32>): Result<time, string>
+extern function try_from_hms_nano(hours: bit<8>, minutes: bit<8>, seconds: bit<8>, microseconds: bit<32>): Result<time, string>
+extern function midnight(): time
+extern function hour(t: time): bit<8>
+extern function minute(t: time): bit<8>
+extern function second(t: time): bit<8>
+extern function millisecond(t: time): bit<16>
+extern function microsecond(t: time): bit<32>
+extern function nanosecond(t: time): bit<32>
+extern function time2string(t: time): string
+extern function parse(s: string, format: string): Result<time, string>

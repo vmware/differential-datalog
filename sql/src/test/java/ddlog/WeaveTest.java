@@ -523,7 +523,7 @@ public class WeaveTest extends BaseQueriesTest {
 
                 "typedef TRtmp13 = TRtmp13{node_name:string}\n" +
 
-                "function agg(g: Group<(string, string, signed<64>, string, signed<64>), (TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg =\n" +
+                "function agg(g: Group<(string, string, signed<64>, string, signed<64>), (TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg {\n" +
                 "(var gb, var gb4, var gb5, var gb6, var gb7) = group_key(g);\n" +
                 "(var any = Some{false}: Option<bool>);\n" +
                 "(var any9 = false: bool);\n" +
@@ -543,9 +543,9 @@ public class WeaveTest extends BaseQueriesTest {
                 "b_not_N(any)} else {\n" +
                 "if (gb6 == \"DoesNotExist\") {\n" +
                 "Some{.x = (not any9)}} else {\n" +
-                "Some{.x = (set_size(count_distinct) as signed<64> == gb7)}}}})\n" +
+                "Some{.x = (set_size(count_distinct) as signed<64> == gb7)}}}})\n}\n\n" +
 
-                "function agg9(g: Group<(string, string, signed<64>, string, string, signed<64>, Option<string>), (TRtmp, Tpod_affinity_match_expressions, Tpod_labels, Tpod_info)>):Tagg9 =\n" +
+                "function agg9(g: Group<(string, string, signed<64>, string, string, signed<64>, Option<string>), (TRtmp, Tpod_affinity_match_expressions, Tpod_labels, Tpod_info)>):Tagg9 {\n" +
                 "(var gb, var gb6, var gb7, var gb8, var gb9, var gb10, var gb11) = group_key(g);\n" +
                 "(var any = false: bool);\n" +
                 "(var any13 = false: bool);\n" +
@@ -566,9 +566,9 @@ public class WeaveTest extends BaseQueriesTest {
                 "(not any)} else {\n" +
                 "if (gb9 == \"DoesNotExist\") {\n" +
                 "(not any13)} else {\n" +
-                "(set_size(count_distinct) as signed<64> == gb10)}}})\n" +
+                "(set_size(count_distinct) as signed<64> == gb10)}}})\n}\n\n" +
 
-                "function agg12(g: Group<(string, bigint, bigint, bigint), (Tnode_info, Tpod_info)>):Tagg12 =\n" +
+                "function agg12(g: Group<(string, bigint, bigint, bigint), (Tnode_info, Tpod_info)>):Tagg12 {\n" +
                 "(var gb, var gb2, var gb3, var gb4) = group_key(g);\n" +
                 "(var sum = 0: bigint);\n" +
                 "(var sum6 = 0: bigint);\n" +
@@ -584,7 +584,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(sum8 = agg_sum_int_R(sum8, incr7))}\n" +
                 ");\n" +
                 "(Tagg12{.cpu_remaining = (gb2 - sum) as signed<64>,.memory_remaining = (gb3 - sum6) as signed<64>,.pods_remaining = (gb4 - sum8) as signed<64>})" +
-                "\n" +
+                "\n}\n\n" +
 
                 "input relation Rnode_info[Tnode_info]\n" +
                 "input relation Rpod_info[Tpod_info]\n" +
