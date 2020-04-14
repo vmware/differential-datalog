@@ -1,0 +1,24 @@
+import time
+
+output relation TTest(s: string, t: Result<time, string>)
+TTest("try_from_hms(8'd10, 8'd10, 8'd10)", try_from_hms(8'd10, 8'd10, 8'd10)).
+TTest("try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)).
+TTest("try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)).
+TTest("try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)).
+TTest("try_from_hms(8'd23, 8'd0, 8'd0)", try_from_hms(8'd23, 8'd0, 8'd0)).
+TTest("try_from_hms(8'd24, 8'd0, 8'd0)", try_from_hms(8'd24, 8'd0, 8'd0)).
+TTest("try_from_hms(8'd0, 8'd60, 8'd0)", try_from_hms(8'd0, 8'd60, 8'd0)).
+TTest("parse(\"10:10\", \"%T\")", parse("10:10:10", "%T")).
+TTest("Ok(midnight())", Ok{midnight()}: Result<time, string>).
+
+function someTime(): time {
+   result_unwrap_or_default( try_from_hms_nano(10, 11, 12, 103104105) )
+}
+
+output relation Extract(s: string, v: bit<32>)
+Extract("hour(${someTime()})", hour(someTime()) as bit<32>).
+Extract("minute(${someTime()})", minute(someTime()) as bit<32>).
+Extract("second(${someTime()})", second(someTime()) as bit<32>).
+Extract("millisecond(${someTime()})", millisecond(someTime()) as bit<32>).
+Extract("microsecond(${someTime()})", microsecond(someTime()) as bit<32>).
+Extract("nanosecond(${someTime()})", nanosecond(someTime()) as bit<32>).

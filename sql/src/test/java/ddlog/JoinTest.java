@@ -9,7 +9,7 @@ public class JoinTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{col:signed<64>}\n" +
-                "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp =\n" +
+                "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
                 "var v = i.0;\n" +
@@ -17,7 +17,7 @@ public class JoinTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(count = agg_count_R(count, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = count})" +
+                "(TRtmp{.col = count})\n}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +

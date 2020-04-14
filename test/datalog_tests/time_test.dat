@@ -1,0 +1,4 @@
+start;
+dump TTest;
+dump Extract;
+exit
