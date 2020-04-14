@@ -2,20 +2,22 @@ use std::fmt::Display;
 use time::*;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub struct TimeWrapper { val: time::Time }
+pub struct TimeWrapper {
+    val: time::Time,
+}
 pub type time_time = TimeWrapper;
 
 impl Default for TimeWrapper {
     fn default() -> Self {
         let mid = Time::midnight();
-        TimeWrapper{ val: mid }
+        TimeWrapper { val: mid }
     }
 }
 
 pub fn res2std_wrap<E: Display>(r: result::Result<time::Time, E>) -> std_Result<time_time, String> {
     match (r) {
         Ok(res) => {
-            let t = TimeWrapper{ val: res };
+            let t = TimeWrapper { val: res };
             std_Result::std_Ok { res: t }
         }
         Err(e) => std_Result::std_Err {
@@ -69,7 +71,9 @@ pub fn time_time2string(t: &time_time) -> String {
 }
 
 pub fn time_midnight() -> time_time {
-    TimeWrapper{ val: Time::midnight() }
+    TimeWrapper{
+        val: Time::midnight(),
+    }
 }
 
 pub fn time_parse(s: &String, format: &String) -> std_Result<time_time, String> {
@@ -79,13 +83,11 @@ pub fn time_parse(s: &String, format: &String) -> std_Result<time_time, String> 
 impl FromRecord for time_time {
     fn from_record(val: &record::Record) -> result::Result<Self, String> {
         match (val) {
-            record::Record::String(s) => {
-                match (Time::parse(s, "%T")) {
+            record::Record::String(s) => match (Time::parse(s, "%T")) {
                     Ok(s) => Ok(TimeWrapper{val: s}),
                     Err(e) => Err(format!("{}", e)),
-                }
             },
-            _                         => Err(String::from("Unexpected type")),
+            _ => Err(String::from("Unexpected type")),
         }
     }
 }
