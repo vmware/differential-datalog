@@ -365,21 +365,21 @@ where
     }
 }
 
-pub fn std_vec_len<X: Ord + Clone>(v: &std_Vec<X>) -> u64 {
-    v.x.len() as u64
+pub fn std_vec_len<X: Ord + Clone>(v: &std_Vec<X>) -> std_usize {
+    v.x.len() as std_usize
 }
 
 pub fn std_vec_empty<X: Ord + Clone>() -> std_Vec<X> {
     std_Vec::new()
 }
 
-pub fn std_vec_with_length<X: Ord + Clone>(len: &u64, x: &X) -> std_Vec<X> {
+pub fn std_vec_with_length<X: Ord + Clone>(len: &std_usize, x: &X) -> std_Vec<X> {
     let mut res = std_Vec::with_capacity(*len as usize);
     res.resize(*len as usize, x.clone());
     res
 }
 
-pub fn std_vec_with_capacity<X: Ord + Clone>(len: &u64) -> std_Vec<X> {
+pub fn std_vec_with_capacity<X: Ord + Clone>(len: &std_usize) -> std_Vec<X> {
     std_Vec::with_capacity(*len as usize)
 }
 
@@ -409,7 +409,7 @@ pub fn std_vec_is_empty<X: Ord>(v: &std_Vec<X>) -> bool {
     v.x.is_empty()
 }
 
-pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &u64) -> std_Option<X> {
+pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &std_usize) -> std_Option<X> {
     option2std(v.x.get(*n as usize).cloned())
 }
 
@@ -606,8 +606,8 @@ where
     }
 }
 
-pub fn std_set_size<X: Ord + Clone>(s: &std_Set<X>) -> u64 {
-    s.x.len() as u64
+pub fn std_set_size<X: Ord + Clone>(s: &std_Set<X>) -> std_usize {
+    s.x.len() as std_usize
 }
 
 pub fn std_set_empty<X: Ord + Clone>() -> std_Set<X> {
@@ -638,7 +638,7 @@ pub fn std_set_is_empty<X: Ord>(s: &std_Set<X>) -> bool {
     s.x.is_empty()
 }
 
-pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &u64) -> std_Option<X> {
+pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &std_usize) -> std_Option<X> {
     option2std(s.x.iter().nth(*n as usize).cloned())
 }
 
@@ -841,6 +841,10 @@ where
     }
 }
 
+pub fn std_map_size<K: Ord, V>(m: &std_Map<K, V>) -> std_usize {
+    m.x.len() as std_usize
+}
+
 pub fn std_map_empty<K: Ord + Clone, V: Clone>() -> std_Map<K, V> {
     std_Map::new()
 }
@@ -922,7 +926,7 @@ pub fn std_string_contains(s1: &String, s2: &String) -> bool {
     s1.contains(s2.as_str())
 }
 
-pub fn std_string_substr(s: &String, start: &u64, end: &u64) -> String {
+pub fn std_string_substr(s: &String, start: &std_usize, end: &std_usize) -> String {
     let len = s.len();
     let from = cmp::min(*start as usize, len);
     let to = cmp::max(from, cmp::min(*end as usize, len));
@@ -945,8 +949,8 @@ pub fn std_string_trim(s: &String) -> String {
     s.trim().to_string()
 }
 
-pub fn std_string_len(s: &String) -> u64 {
-    s.len() as u64
+pub fn std_string_len(s: &String) -> std_usize {
+    s.len() as std_usize
 }
 
 pub fn std_string_to_bytes(s: &String) -> std_Vec<u8> {
@@ -1049,15 +1053,15 @@ impl<'a, K, V> std_Group<'a, K, V> {
         }
     }
 
-    fn size(&self) -> u64 {
-        self.group.len() as u64
+    fn size(&self) -> std_usize {
+        self.group.len() as std_usize
     }
 
     fn first(&'a self) -> V {
         (self.project)(self.group[0].0)
     }
 
-    fn nth_unchecked(&'a self, n: u64) -> V {
+    fn nth_unchecked(&'a self, n: std_usize) -> V {
         (self.project)(self.group[n as usize].0)
     }
 
@@ -1067,7 +1071,7 @@ impl<'a, K, V> std_Group<'a, K, V> {
 }
 
 impl<'a, K, V> std_Group<'a, K, V> {
-    fn nth(&'a self, n: u64) -> std_Option<V> {
+    fn nth(&'a self, n: std_usize) -> std_Option<V> {
         if self.size() > n {
             std_Option::std_Some {
                 x: (self.project)(self.group[n as usize].0),
@@ -1085,7 +1089,7 @@ pub fn std_group_key<K: Clone, V>(g: &std_Group<K, V>) -> K {
 /*
  * Standard aggregation functions
  */
-pub fn std_group_count<K, V>(g: &std_Group<K, V>) -> u64 {
+pub fn std_group_count<K, V>(g: &std_Group<K, V>) -> std_usize {
     g.size()
 }
 
@@ -1093,7 +1097,7 @@ pub fn std_group_first<K, V>(g: &std_Group<K, V>) -> V {
     g.first()
 }
 
-pub fn std_group_nth<K, V>(g: &std_Group<K, V>, n: &u64) -> std_Option<V> {
+pub fn std_group_nth<K, V>(g: &std_Group<K, V>, n: &std_usize) -> std_Option<V> {
     g.nth(*n)
 }
 
