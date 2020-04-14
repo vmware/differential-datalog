@@ -149,8 +149,14 @@ impl Profile {
             match event {
                 TimelyEvent::Operates(OperatesEvent { id, addr, name }) => {
                     self.addresses.insert(addr, *id);
-                    self.names
-                        .insert(*id, name.clone() + ": " + &ctx.replace('\n', " "));
+                    self.names.insert(*id, {
+                        /* Remove redundant spaces. */
+                        let frags: Vec<String> = (name.clone() + ": " + &ctx.replace('\n', " "))
+                            .split_whitespace()
+                            .map(|x| x.to_string())
+                            .collect();
+                        frags.join(" ")
+                    });
                 }
                 TimelyEvent::Schedule(ScheduleEvent { id, start_stop }) => {
                     match start_stop {
