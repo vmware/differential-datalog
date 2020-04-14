@@ -71,7 +71,7 @@ pub fn time_time2string(t: &time_time) -> String {
 }
 
 pub fn time_midnight() -> time_time {
-    TimeWrapper{
+    TimeWrapper {
         val: Time::midnight(),
     }
 }
@@ -84,8 +84,8 @@ impl FromRecord for time_time {
     fn from_record(val: &record::Record) -> result::Result<Self, String> {
         match (val) {
             record::Record::String(s) => match (Time::parse(s, "%T")) {
-                    Ok(s) => Ok(TimeWrapper{val: s}),
-                    Err(e) => Err(format!("{}", e)),
+                Ok(s) => Ok(TimeWrapper{val: s}),
+                Err(e) => Err(format!("{}", e)),
             },
             _ => Err(String::from("Unexpected type")),
         }
