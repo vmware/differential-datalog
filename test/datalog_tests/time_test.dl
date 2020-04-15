@@ -23,9 +23,14 @@ TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10
        string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))).
 TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))",
        string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))).
+TTest("time_parse(time_format(${someTime()}, ${someTimeFormat()}), ${someTimeFormat()})",
+       time_parse(time_format(someTime(), someTimeFormat()), someTimeFormat())).
 
 function someTime(): Time {
    result_unwrap_or_default( try_from_hms_nano(10, 11, 12, 103104105) )
+}
+function someTimeFormat(): string {
+   "%H::%M::%S"
 }
 
 output relation Extract(s: string, v: bit<32>)
@@ -40,6 +45,9 @@ Extract("nanosecond(${someTime()})", nanosecond(someTime()) as bit<32>).
 
 function someDate(): Date {
    result_unwrap_or_default( try_from_ymd(32'sd2020, 8'd04, 8'd14) )
+}
+function someDateFormat(): string {
+   "%Y-%m-%dT"
 }
 
 input relation DITest(d: Date)
@@ -58,6 +66,8 @@ DTest("string2date(date2string(someDate()))",
 DTest("Ok{next_day(${someDate()})}", Ok{next_day(someDate())}).
 DTest("Ok{previous_day(${someDate()})}", Ok{previous_day(someDate())}).
 DTest("Ok{from_julian_day(2000000)}", Ok{from_julian_day(2000000)}).
+DTest("date_parse(date_format(${someDate()}, ${someDateFormat()}), ${someDateFormat()})",
+       date_parse(date_format(someDate(), someDateFormat()), someDateFormat())).
 
 Extract("year(${someDate()})", year(someDate()) as bit<32>).
 Extract("month(${someDate()})", month(someDate()) as bit<32>).
@@ -72,7 +82,7 @@ Extract("monday_based_week(${someDate()})", monday_based_week(someDate()) as bit
 function someDateTime(): DateTime {
    DateTime{.date = someDate(), .time = someTime()}
 }
-function someFormat(): string {
+function someDateTimeFormat(): string {
    "%Y-%m-%dT%H::%M"
 }
 
@@ -87,5 +97,5 @@ DTTest("datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
         datetime_parse("2020-10-10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
 DTTest("datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
         datetime_parse("2020/10/10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
-DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someFormat()}))",
-        datetime_parse(datetime_format(someDateTime(), someFormat()), someFormat())).
+DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someDateTimeFormat()}), ${someDateTimeFormat()})",
+        datetime_parse(datetime_format(someDateTime(), someDateTimeFormat()), someDateTimeFormat())).
