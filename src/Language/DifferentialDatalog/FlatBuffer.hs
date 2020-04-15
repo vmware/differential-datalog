@@ -790,6 +790,8 @@ jConvObjType in_array_context rw x =
                             -> "Integer"
          TSigned{..} | typeWidth <= 64
                             -> "Long"
+         TFloat{}           -> "Float"
+         TDouble{}          -> "Double"
          _                  -> jConvType rw x
 
 

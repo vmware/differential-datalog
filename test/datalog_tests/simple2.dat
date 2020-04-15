@@ -11,3 +11,9 @@ insert TArrng2[(TArrng2{true, TArrng1{true, 5}}, 1000)],
 commit dump_changes;
 
 dump FuncTest;
+
+start;
+
+insert Doubles([1.0, 2.0, 3.5]),
+
+commit dump_changes;
