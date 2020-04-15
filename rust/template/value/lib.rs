@@ -36,6 +36,7 @@ use differential_datalog::uint::*;
 
 use fnv::FnvHashMap;
 use lazy_static::lazy_static;
+use ordered_float::OrderedFloat;
 
 use types::*;
 

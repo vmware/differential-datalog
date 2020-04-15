@@ -85,3 +85,13 @@ function agg_avg_double_N(aggregate: Option<(double, double)>, item: Option<doub
 output relation &FuncTest(x: string)
 function myfunc(x: string): string { x }
 &FuncTest("foo").
+
+output relation SumsOfDoubles(x: double, y: double, sum: double)
+input relation Doubles(xs: Vec<double>)
+
+SumsOfDoubles(x, y, z) :-
+    Doubles(xs),
+    var x = FlatMap(xs),
+    Doubles(ys),
+    var y = FlatMap(ys),
+    var z = x + y.
