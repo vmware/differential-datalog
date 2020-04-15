@@ -89,6 +89,10 @@ pub fn time_time_parse(s: &String, format: &String) -> std_Result<time_Time, Str
     res2std_time_wrap(Time::parse(s, format))
 }
 
+pub fn time_time_format(t: &time_Time, format: &String) -> String {
+    t.val.format(format)
+}
+
 impl FromRecord for time_Time {
     fn from_record(val: &record::Record) -> result::Result<Self, String> {
         match (val) {
@@ -256,6 +260,11 @@ impl FromRecord for time_Date {
 
 pub fn time_date2string(t: &time_Date) -> String {
     t.val.format(default_date_format)
+}
+
+
+pub fn time_date_format(d: &time_Date, format: &String) -> String {
+    d.val.format(format)
 }
 
 pub fn time_string2date(s: &String) -> std_Result<time_Date, String> {

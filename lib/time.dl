@@ -93,7 +93,7 @@ extern function time2string(t: Time): string
 extern function string2time(s: string): Result<Time, string>
 
 /// Format the Time using the provided string.
-extern function format(t: Time, format: string): string
+extern function time_format(t: Time, format: string): string
 
 /// Attempt to parse a Time using the provided format string.
 extern function time_parse(s: string, format: string): Result<Time, string>
@@ -152,6 +152,9 @@ extern function from_julian_day(julian_day: signed<64>): Date
 
 /// Attempt to parse a Date using the provided format string.
 extern function date_parse(s: string, format: string): Result<Date, string>
+
+/// format the Date using the specified format string
+extern function date_format(date: Date, format: string): string
 
 /// Convert the date to a string using a default format.
 extern function date2string(t: Date): string
