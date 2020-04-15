@@ -2,8 +2,8 @@
 # Run one datalog test
 
 PROFILE=0
-# If 1 use flatbuf
-FLATBUF=0
+# If flatbuf is not set, set it to 1.  If 1 we test flatbuf too
+FLATBUF=${FLATBUF:-1}
 
 set -ex
 
@@ -79,6 +79,6 @@ if [ -f ${base}.dat ]; then
     fi
 fi
 # Remove outputs
-#rm -rf ${base}.dump ${base}.dump.gz
+rm -rf ${base}.dump ${base}.dump.gz
 # Additional cleanup possible
 # rm -rf ${base}_ddlog
