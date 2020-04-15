@@ -262,7 +262,6 @@ pub fn time_date2string(t: &time_Date) -> String {
     t.val.format(default_date_format)
 }
 
-
 pub fn time_date_format(d: &time_Date, format: &String) -> String {
     d.val.format(format)
 }
