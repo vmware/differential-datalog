@@ -231,7 +231,7 @@ pub fn time_previous_day(date: &time_Date) -> time_Date {
 }
 
 pub fn time_julian_day(date: &time_Date) -> i64 {
-    Date::julian_day((*date).val),
+    Date::julian_day((*date).val)
 }
 
 pub fn time_from_julian_day(julian_day: &i64) -> time_Date {
@@ -240,7 +240,7 @@ pub fn time_from_julian_day(julian_day: &i64) -> time_Date {
     }
 }
 
-const default_date_format: &str = "%Y/%m/%d";
+const default_date_format: &str = "%Y-%m-%d";
 
 impl FromRecord for time_Date {
     fn from_record(val: &record::Record) -> result::Result<Self, String> {

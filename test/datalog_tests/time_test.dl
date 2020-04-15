@@ -1,6 +1,9 @@
 import time
 
+input relation TITest(t: Time)
 output relation TTest(s: string, t: Result<Time, string>)
+
+TTest(time2string(t), Ok{t}) :- TITest(t).
 TTest("try_from_hms(8'd10, 8'd10, 8'd10)", try_from_hms(8'd10, 8'd10, 8'd10)).
 TTest("try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)).
 TTest("try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)).
@@ -39,7 +42,10 @@ function someDate(): Date {
    result_unwrap_or_default( try_from_ymd(32'sd2020, 8'd04, 8'd14) )
 }
 
+input relation DITest(d: Date)
 output relation DTest(s: string, t: Result<Date, string>)
+
+DTest(date2string(d), Ok{d}) :- DITest(d).
 DTest("try_from_ymd(32'sd2020, 8'd04, 8'd14)", try_from_ymd(32'sd2020, 8'd04, 8'd14)).
 DTest("try_from_ymd(32'sd2020, 8'd13, 8'd14)", try_from_ymd(32'sd2020, 8'd13, 8'd14)).
 DTest("try_from_ymd(32'sd2020, 8'd0, 8'd14)", try_from_ymd(32'sd2020, 8'd0, 8'd14)).
@@ -70,7 +76,10 @@ function someFormat(): string {
    "%Y-%m-%dT%H::%M"
 }
 
+input relation DTITest(d: DateTime)
 output relation DTTest(s: string, t: Result<DateTime, string>)
+
+DTTest(dateTime2string(d), Ok{d}) :- DTITest(d).
 DTTest("string2datetime(\"2020-10-10T10:20:30\")", string2datetime("2020-10-10T10:20:30")).
 DTTest("string2datetime(dateTime2string(${someDateTime()}))",
         string2datetime(dateTime2string(someDateTime()))).
