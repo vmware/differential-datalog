@@ -1,4 +1,6 @@
 start;
 dump TTest;
 dump Extract;
+dump DTest;
+dump DTTest;
 exit

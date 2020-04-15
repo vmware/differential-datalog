@@ -1,6 +1,6 @@
 import time
 
-output relation TTest(s: string, t: Result<time, string>)
+output relation TTest(s: string, t: Result<Time, string>)
 TTest("try_from_hms(8'd10, 8'd10, 8'd10)", try_from_hms(8'd10, 8'd10, 8'd10)).
 TTest("try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)).
 TTest("try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)).
@@ -8,10 +8,20 @@ TTest("try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_nano(8'd10,
 TTest("try_from_hms(8'd23, 8'd0, 8'd0)", try_from_hms(8'd23, 8'd0, 8'd0)).
 TTest("try_from_hms(8'd24, 8'd0, 8'd0)", try_from_hms(8'd24, 8'd0, 8'd0)).
 TTest("try_from_hms(8'd0, 8'd60, 8'd0)", try_from_hms(8'd0, 8'd60, 8'd0)).
-TTest("parse(\"10:10\", \"%T\")", parse("10:10:10", "%T")).
-TTest("Ok(midnight())", Ok{midnight()}: Result<time, string>).
+TTest("Ok(midnight())", Ok{midnight()}: Result<Time, string>).
+TTest("time_parse(\"10:10\", \"%T\")", time_parse("10:10", "%T")).
+TTest("time_parse(\"10:10:10\", \"%T\")", time_parse("10:10:10", "%T")).
+TTest("time_parse(\"10:10:10.102030405\", \"%T.%N\")", time_parse("10:10:10.102030405", "%T.%N")).
+TTest("string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))",
+       string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))).
+TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))",
+       string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))).
+TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))",
+       string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))).
+TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))",
+       string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))).
 
-function someTime(): time {
+function someTime(): Time {
    result_unwrap_or_default( try_from_hms_nano(10, 11, 12, 103104105) )
 }
 
@@ -22,3 +32,51 @@ Extract("second(${someTime()})", second(someTime()) as bit<32>).
 Extract("millisecond(${someTime()})", millisecond(someTime()) as bit<32>).
 Extract("microsecond(${someTime()})", microsecond(someTime()) as bit<32>).
 Extract("nanosecond(${someTime()})", nanosecond(someTime()) as bit<32>).
+
+///////////////////////////////////////
+
+function someDate(): Date {
+   result_unwrap_or_default( try_from_ymd(32'sd2020, 8'd04, 8'd14) )
+}
+
+output relation DTest(s: string, t: Result<Date, string>)
+DTest("try_from_ymd(32'sd2020, 8'd04, 8'd14)", try_from_ymd(32'sd2020, 8'd04, 8'd14)).
+DTest("try_from_ymd(32'sd2020, 8'd13, 8'd14)", try_from_ymd(32'sd2020, 8'd13, 8'd14)).
+DTest("try_from_ymd(32'sd2020, 8'd0, 8'd14)", try_from_ymd(32'sd2020, 8'd0, 8'd14)).
+DTest("try_from_yo(32'sd2020, 16'd100)", try_from_yo(32'sd2020, 16'd100)).
+DTest("try_from_yo(32'sd2020, 16'd367)", try_from_yo(32'sd2020, 16'd367)).
+DTest("try_from_iso_ywd(32'sd2020, 8'd4, Monday)", try_from_iso_ywd(32'sd2020, 8'd4, Monday)).
+DTest("date_parse(\"2020/04/14\", \"%Y/%m/%d\")", date_parse("2020/04/14", "%Y/%m/%d")).
+DTest("string2date(date2string(someDate()))",
+       string2date(date2string(someDate()))).
+DTest("Ok{next_day(${someDate()})}", Ok{next_day(someDate())}).
+DTest("Ok{previous_day(${someDate()})}", Ok{previous_day(someDate())}).
+DTest("Ok{from_julian_day(2000000)}", Ok{from_julian_day(2000000)}).
+
+Extract("year(${someDate()})", year(someDate()) as bit<32>).
+Extract("month(${someDate()})", month(someDate()) as bit<32>).
+Extract("day(${someDate()})", day(someDate()) as bit<32>).
+Extract("ordinal(${someDate()})", ordinal(someDate()) as bit<32>).
+Extract("week(${someDate()})", week(someDate()) as bit<32>).
+Extract("sunday_based_week(${someDate()})", sunday_based_week(someDate()) as bit<32>).
+Extract("monday_based_week(${someDate()})", monday_based_week(someDate()) as bit<32>).
+
+//////////////////////////////////////////////
+
+function someDateTime(): DateTime {
+   DateTime{.date = someDate(), .time = someTime()}
+}
+function someFormat(): string {
+   "%Y-%m-%dT%H::%M"
+}
+
+output relation DTTest(s: string, t: Result<DateTime, string>)
+DTTest("string2datetime(\"2020-10-10T10:20:30\")", string2datetime("2020-10-10T10:20:30")).
+DTTest("string2datetime(dateTime2string(${someDateTime()}))",
+        string2datetime(dateTime2string(someDateTime()))).
+DTTest("datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
+        datetime_parse("2020-10-10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
+DTTest("datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
+        datetime_parse("2020/10/10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
+DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someFormat()}))",
+        datetime_parse(datetime_format(someDateTime(), someFormat()), someFormat())).
