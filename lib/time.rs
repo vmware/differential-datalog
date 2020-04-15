@@ -15,7 +15,9 @@ impl Default for TimeWrapper {
     }
 }
 
-pub fn res2std_time_wrap<E: Display>(r: result::Result<time::Time, E>) -> std_Result<time_Time, String> {
+pub fn res2std_time_wrap<E: Display>(
+    r: result::Result<time::Time, E>
+) -> std_Result<time_Time, String> {
     match (r) {
         Ok(res) => {
             let t = TimeWrapper { val: res };
@@ -126,7 +128,9 @@ impl Default for DateWrapper {
     }
 }
 
-pub fn res2std_date_wrap<E: Display>(r: result::Result<time::Date, E>) -> std_Result<time_Date, String> {
+pub fn res2std_date_wrap<E: Display>(
+    r: result::Result<time::Date, E>
+) -> std_Result<time_Date, String> {
     match (r) {
         Ok(res) => {
             let t = DateWrapper { val: res };
@@ -170,8 +174,16 @@ fn convert_weekday_to_ddlog(weekday: time::Weekday) -> time_Weekday {
     }
 }
 
-pub fn time_try_from_iso_ywd(year: &i32, week: &u8, weekday: &time_Weekday) -> std_Result<time_Date, String> {
-    res2std_date_wrap(Date::try_from_iso_ywd(*year, *week, convert_weekday_from_ddlog(weekday)))
+pub fn time_try_from_iso_ywd(
+    year: &i32,
+    week: &u8,
+    weekday: &time_Weekday
+) -> std_Result<time_Date, String> {
+    res2std_date_wrap(Date::try_from_iso_ywd(
+        *year,
+        *week,
+        convert_weekday_from_ddlog(weekday),
+    ))
 }
 
 pub fn time_year(date: &time_Date) -> i32 {
@@ -207,11 +219,15 @@ pub fn time_weekday(date: &time_Date) -> time_Weekday {
 }
 
 pub fn time_next_day(date: &time_Date) -> time_Date {
-    DateWrapper { val: Date::next_day((*date).val) }
+    DateWrapper {
+        val: Date::next_day((*date).val)
+    }
 }
 
 pub fn time_previous_day(date: &time_Date) -> time_Date {
-    DateWrapper { val: Date::previous_day((*date).val) }
+    DateWrapper {
+        val: Date::previous_day((*date).val)
+    }
 }
 
 pub fn time_julian_day(date: &time_Date) -> i64 {
@@ -219,7 +235,9 @@ pub fn time_julian_day(date: &time_Date) -> i64 {
 }
 
 pub fn time_from_julian_day(julian_day: &i64) -> time_Date {
-    DateWrapper { val: Date::from_julian_day(*julian_day) }
+    DateWrapper {
+        val: Date::from_julian_day(*julian_day)
+    }
 }
 
 const default_date_format: &str = "%Y/%m/%d";
@@ -274,13 +292,15 @@ pub fn time_datetime_parse(s: &String, format: &String) -> std_Result<time_DateT
             };
             std_Result::std_Ok { res: dt }
         },
-        Err(m) => std_Result::std_Err { err: format!("{}", m), }
+        Err(m) => std_Result::std_Err {
+            err: format!("{}", m),
+        },
     }
 }
 
 pub fn time_dateTime2string(d: &time_DateTime) -> String {
     let prim = PrimitiveDateTime::new((*d).date.val, (*d).time.val);
-    return prim.format(defaultDateTimeFormat)
+    prim.format(defaultDateTimeFormat)
 }
 
 pub fn time_string2datetime(s: &String) -> std_Result<time_DateTime, String> {
