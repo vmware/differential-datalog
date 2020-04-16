@@ -319,3 +319,11 @@ pub fn time_datetime_format(d: &time_DateTime, format: &String) -> String {
     let dt = PrimitiveDateTime::new((*d).date.val, (*d).time.val);
     dt.format(format)
 }
+
+pub fn time_datetime_from_unix_timestamp(timestamp: &i64) -> time_DateTime {
+    let odt = OffsetDateTime::from_unix_timestamp(*timestamp);
+    time_DateTime {
+        date: DateWrapper { val: odt.date() },
+        time: TimeWrapper { val: odt.time() },
+    }
+}
