@@ -183,3 +183,6 @@ extern function string2datetime(s: string): Result<DateTime, string>
 
 /// format the DateTime using the specified format string
 extern function datetime_format(d: DateTime, format: string): string
+
+/// Create a DateTime from a given unix timestamp
+extern function datetime_from_unix_timestamp(timestamp: signed<64>): DateTime
