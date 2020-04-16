@@ -19,6 +19,7 @@ test_lib net_test
 test_lib json_test
 test_lib fp_test
 test_lib regex_test
+test_lib internment_test
 
 # No flatbuf support for Time, Date, etc yet
 FLATBUF=0 ./run-test.sh time_test.dl release
