@@ -141,7 +141,7 @@ flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
             t@TOpaque{..} ->
-                check (elem typeName $ [rEF_TYPE, mAP_TYPE, iNTERNED_TYPE] ++ sET_TYPES) (pos t) $
+                check (elem typeName $ [rEF_TYPE, mAP_TYPE] ++ sET_TYPES ++ iNTERNED_TYPES) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
           progTypesToSerialize
@@ -629,7 +629,7 @@ typeNormalizeForFlatBuf x = typeMap _typeNormalizeForFlatBuf $ typ x
 _typeNormalizeForFlatBuf :: (?d::DatalogProgram) => Type -> Type
 _typeNormalizeForFlatBuf t =
     case t' of
-         TOpaque{typeArgs = [innerType],..} | elem typeName [rEF_TYPE,  iNTERNED_TYPE]
+         TOpaque{typeArgs = [innerType],..} | elem typeName (rEF_TYPE : iNTERNED_TYPES)
                                             -> innerType
          _                  -> t'
     where t' = typ'' ?d t
@@ -1681,7 +1681,7 @@ rustTypeFromFlatbuf t@TTuple{..} =
 -- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
 -- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
 -- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
-rustTypeFromFlatbuf t@TOpaque{..} | elem typeName [rEF_TYPE, iNTERNED_TYPE] = empty
+rustTypeFromFlatbuf t@TOpaque{..} | elem typeName (rEF_TYPE : iNTERNED_TYPES) = empty
                                   | otherwise =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$

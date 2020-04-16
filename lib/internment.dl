@@ -1,0 +1,39 @@
+/* Object interning library based on the `internment` crate.
+ */
+
+/* Interned object of type `'A`.
+ * While this type is defined for any `'A`, interning is only supported for strings.
+ * There is simply no way to obtain an interned object of a different type.
+ */
+#[size=8]
+extern type Intern<'A>
+
+/* Interned string
+ */
+typedef IString = Intern<string>
+
+/* Intern a value.
+ */
+extern function intern(s: 'A): Intern<'A>
+
+/* Extract an interned value.
+ */
+extern function ival(s: Intern<'A>): 'A
+
+/* Returns unique integer identifier of an interned object.
+ */
+//extern function iord(s: Intern<'A>): u64
+
+extern function istring_contains(s1: IString, s2: string): bool
+extern function istring_join(strings: Vec<IString>, sep: string): string
+extern function istring_len(s: IString): usize
+extern function istring_replace(s: IString, from: string, to: string): string
+extern function istring_split(s: IString, sep: string): Vec<string>
+extern function istring_starts_with(s: IString, prefix: string): bool
+extern function istring_ends_with(s: IString, suffix: string): bool
+extern function istring_substr(s: IString, start: usize, end: usize): string
+extern function istring_to_bytes(s: IString): Vec<u8>
+extern function istring_trim(s: IString): string
+extern function istring_to_lowercase(s: IString): string
+extern function istring_to_uppercase(s: IString): string
+extern function istring_reverse(s: IString): string

@@ -1,0 +1,12 @@
+import internment
+
+input relation IInternedString(ix: IString)
+
+output relation OInternedString(x: string, ix: IString)
+
+OInternedString(ival(s), s) :-
+    IInternedString(s).
+
+OInternedString(ival(s1) ++ " " ++ ival(s2), intern(ival(s1) ++ " " ++ ival(s2))) :-
+    IInternedString(s1), 
+    IInternedString(s2).

@@ -53,7 +53,7 @@ module Language.DifferentialDatalog.Type(
     funcGroupArgTypes,
     sET_TYPES,
     mAP_TYPE,
-    iNTERNED_TYPE,
+    iNTERNED_TYPES,
     gROUP_TYPE,
     rEF_TYPE,
     checkIterable,
@@ -93,8 +93,8 @@ rEF_TYPE = "std.Ref"
 mAP_TYPE :: String
 mAP_TYPE = "std.Map"
 
-iNTERNED_TYPE :: String
-iNTERNED_TYPE = "intern.IObj"
+iNTERNED_TYPES :: [String]
+iNTERNED_TYPES = ["intern.IObj", "internment.Intern"]
 
 -- | An object with type
 class WithType a where
