@@ -13,7 +13,7 @@ compiling and running DDlog programs.
 | `commit;`                      |                                                  | commit current transaction                                             |
 | `commit dump_changes;`         |                                                  | commit current transaction and dump all changes to output relations    |
 | `rollback;`                    |                                                  | rollback current transaction; reverting all changes                    |
-| `timestamp;`                   |                                                  | print current time in ns since some unspecified epoch                  |
+| `timestamp;`                   |                                                  | print current time in ns since the start of the program's execution    |
 | `dump;`                        |                                                  | dump the content of all output relations                               |
 | `dump <relation>;`             | `dump Rel1;`                                     | dump the content of an individual output relation                      |
 | `query_index <index>(<args>);` | `query_index Edge_by_from(100);`                 | dump all values in an indexed relation with the given key              |

@@ -10,7 +10,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::sleep;
-use std::time::Duration;
+use time::Instant;
 
 use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
@@ -28,6 +28,7 @@ use cpuprofiler::PROFILER;
 
 #[allow(clippy::let_and_return)]
 fn handle_cmd(
+    start_time: &Instant,
     hddlog: &HDDlog,
     print_deltas: bool,
     interactive: bool,
@@ -94,7 +95,7 @@ fn handle_cmd(
         Command::Comment => Ok(()),
         Command::Rollback => hddlog.transaction_rollback(),
         Command::Timestamp => {
-            println!("Timestamp: {:#?}", std::time::Instant::now());
+            println!("Timestamp: {}", start_time.elapsed().whole_nanoseconds());
             Ok(())
         }
         Command::Profile(None) => {
@@ -152,7 +153,7 @@ fn handle_cmd(
             Ok(())
         }
         Command::Sleep(ms) => {
-            sleep(Duration::from_millis(ms.to_u64().unwrap()));
+            sleep(std::time::Duration::from_millis(ms.to_u64().unwrap()));
             Ok(())
         }
         Command::Update(upd, last) => {
@@ -220,8 +221,10 @@ fn is_upd_cmd(c: &Command) -> bool {
 
 fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
+    let start_time = Instant::now();
     interact(|cmd, interactive| {
         handle_cmd(
+            &start_time,
             &hddlog,
             print_deltas,
             interactive,
