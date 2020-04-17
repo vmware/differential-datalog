@@ -125,6 +125,8 @@ the `Word1` and `Word2` relations on the `cat` field.
 
 1. Type names have no restrictions.
 
+1. Type constructors have to be uppercase.
+
 ### Declaration order
 
 The order of declarations in a DDlog program is unimportant; you
@@ -699,14 +701,14 @@ be used.  DDlog currently does not allow recursive functions.
 > #### Legacy function syntax
 >
 > DDlog supports an alternative syntax for functions with equality sign between
-> function declaration and its body, which does not require curly braces:  
+> function declaration and its body, which does not require curly braces:
 >
 > ```
 > function myfunc(x: string): string = x
 > ```
-> 
+>
 > However, this syntax can cause parsing ambiguities in some circumstances;
-> therefore the newer syntax is preferred: 
+> therefore the newer syntax is preferred:
 >
 > ```
 > function myfunc(x: string): string { x }

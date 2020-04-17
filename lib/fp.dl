@@ -89,3 +89,5 @@ extern function nan_d(): double
 
 extern function int_from_f(f: float): Option<bigint>
 extern function int_from_d(d: double): Option<bigint>
+extern function parse_f(s: string): Result<float, string>
+extern function parse_d(s: string): Result<double, string>
