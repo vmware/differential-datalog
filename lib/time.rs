@@ -113,7 +113,8 @@ impl IntoRecord for time_Time {
 
 impl record::Mutator<time_Time> for record::Record {
     fn mutate(&self, t: &mut time_Time) -> result::Result<(), String> {
-        unimplemented!("time_Time::mutator")
+        *t = time_Time::from_record(self)?;
+        Ok(())
     }
 }
 
@@ -282,7 +283,8 @@ impl IntoRecord for time_Date {
 
 impl record::Mutator<time_Date> for record::Record {
     fn mutate(&self, t: &mut time_Date) -> result::Result<(), String> {
-        unimplemented!("time_Date::mutator")
+        *t = time_Date::from_record(self)?;
+        Ok(())
     }
 }
 
