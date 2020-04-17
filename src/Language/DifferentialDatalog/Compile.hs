@@ -1138,7 +1138,7 @@ mkValType d types =
     mkVal :: Type -> Doc
     mkVal t =
         "#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]"            $$
-        "pub struct" <+> tname <+> parens ("pub" <+> mkType t) <> ";"                                               $$
+        "pub struct" <+> tname <+> parens ("pub" <+> mkTypeScoped "super::" t) <> ";"                               $$
         "impl abomonation::Abomonation for" <+> tname <+> "{}"                                                      $$
         "impl fmt::Display for" <+> tname <+> "{"                                                                   $$
         "    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {"                                            $$
@@ -1634,8 +1634,8 @@ mkValConstructorName d t' =
          TSigned{..} -> "__Signedval" <> pp typeWidth
          TDouble{}   -> "__Doubleval"
          TFloat{}    -> "__Floatval"
-         TUser{}     -> "__" <> consuser
-         TOpaque{}   -> "__" <> consuser
+         TUser{}     -> consuser
+         TOpaque{}   -> consuser
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
     where
     t = typeNormalize d t'
@@ -2464,42 +2464,46 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
 mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (pos e)
 
 mkType :: (WithType a) => a -> Doc
-mkType x = mkType' $ typ x
+mkType x = mkType' empty $ typ x
 
-mkType' :: Type -> Doc
-mkType' TBool{}                    = "bool"
-mkType' TInt{}                     = "Int"
-mkType' TString{}                  = "String"
-mkType' TBit{..} | typeWidth <= 8  = "u8"
-                 | typeWidth <= 16 = "u16"
-                 | typeWidth <= 32 = "u32"
-                 | typeWidth <= 64 = "u64"
-                 | typeWidth <= 128= "u128"
-                 | otherwise       = "Uint"
-mkType' t@TSigned{..} | typeWidth == 8  = "i8"
-                      | typeWidth == 16 = "i16"
-                      | typeWidth == 32 = "i32"
-                      | typeWidth == 64 = "i64"
-                      | typeWidth == 128= "i128"
-                      | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
-mkType' TDouble{}                  = "OrderedFloat<f64>"
-mkType' TFloat{}                   = "OrderedFloat<f32>"
-mkType' TTuple{..} | length typeTupArgs <= 12
-                                   = parens $ commaSep $ map mkType' typeTupArgs
-mkType' TTuple{..}                 = tupleTypeName typeTupArgs <>
+-- DDlog user-defined types are declared in `scope`.
+mkTypeScoped :: (WithType a) => Doc -> a -> Doc
+mkTypeScoped scope x = mkType' scope $ typ x
+
+mkType' :: Doc -> Type -> Doc
+mkType' _       TBool{}                    = "bool"
+mkType' _       TInt{}                     = "Int"
+mkType' _       TString{}                  = "String"
+mkType' _       TBit{..} | typeWidth <= 8  = "u8"
+                         | typeWidth <= 16 = "u16"
+                         | typeWidth <= 32 = "u32"
+                         | typeWidth <= 64 = "u64"
+                         | typeWidth <= 128= "u128"
+                         | otherwise       = "Uint"
+mkType' _       t@TSigned{..} | typeWidth == 8  = "i8"
+                              | typeWidth == 16 = "i16"
+                              | typeWidth == 32 = "i32"
+                              | typeWidth == 64 = "i64"
+                              | typeWidth == 128= "i128"
+                              | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
+mkType' _       TDouble{}                  = "OrderedFloat<f64>"
+mkType' _       TFloat{}                   = "OrderedFloat<f32>"
+mkType' scope   TTuple{..} | length typeTupArgs <= 12
+                                  = parens $ commaSep $ map (mkType' scope) typeTupArgs
+mkType' scope   TTuple{..}        = tupleTypeName typeTupArgs <>
                                      if null typeTupArgs
                                         then empty
-                                        else "<" <> (commaSep $ map mkType' typeTupArgs) <> ">"
-mkType' TUser{..}                  = rname typeName <>
+                                        else "<" <> (commaSep $ map (mkType' scope) typeTupArgs) <> ">"
+mkType' scope   TUser{..}         = scope <> rname typeName <>
                                      if null typeArgs
                                         then empty
-                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
-mkType' TOpaque{..}                = rname typeName <>
+                                        else "<" <> (commaSep $ map (mkType' scope) typeArgs) <> ">"
+mkType' scope   TOpaque{..}       = scope <> rname typeName <>
                                      if null typeArgs
                                         then empty
-                                        else "<" <> (commaSep $ map mkType' typeArgs) <> ">"
-mkType' TVar{..}                   = pp tvarName
-mkType' t                          = error $ "Compile.mkType' " ++ show t
+                                        else "<" <> (commaSep $ map (mkType' scope) typeArgs) <> ">"
+mkType' _       TVar{..}          = pp tvarName
+mkType' _       t                 = error $ "Compile.mkType' " ++ show t
 
 smallInt :: DatalogProgram -> Type -> Bool
 smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
