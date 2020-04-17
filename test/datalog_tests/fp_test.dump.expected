@@ -24,6 +24,8 @@ fp_test.F{.s = "nan_f()", .d = NaN}
 fp_test.F{.s = "powf_f(32'f0.5, 32f'5.0)", .d = 0.03125}
 fp_test.F{.s = "powi_f(32'f0.5, 32'sd5)", .d = 0.03125}
 fp_test.F{.s = "recip_f(32'f0.5)", .d = 2}
+fp_test.F{.s = "result_unwrap_or_default(parse_f(\"0.02\"))", .d = 0.02}
+fp_test.F{.s = "result_unwrap_or_default(parse_f(\"blah\"))", .d = 0}
 fp_test.F{.s = "round_f(32'f0.5)", .d = 1}
 fp_test.F{.s = "signum_f(32'f0.5)", .d = 1}
 fp_test.F{.s = "sin_f(32'f0.5)", .d = 0.47942555}
@@ -62,6 +64,8 @@ fp_test.D{.s = "nan_d()", .d = NaN}
 fp_test.D{.s = "powf_d(64'f0.5, 32f'5.0)", .d = 0.03125}
 fp_test.D{.s = "powi_d(64'f0.5, 32'sd5)", .d = 0.03125}
 fp_test.D{.s = "recip_d(64'f0.5)", .d = 2}
+fp_test.D{.s = "result_unwrap_or_default(parse_d(\"0.02\"))", .d = 0.02}
+fp_test.D{.s = "result_unwrap_or_default(parse_d(\"blah\"))", .d = 0}
 fp_test.D{.s = "round_d(64'f0.5)", .d = 1}
 fp_test.D{.s = "signum_d(64'f0.5)", .d = 1}
 fp_test.D{.s = "sin_d(64'f0.5)", .d = 0.479425538604203}
