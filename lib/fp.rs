@@ -329,3 +329,25 @@ pub fn fp_int_from_d(v: &OrderedFloat<f64>) -> std_Option<Int> {
         },
     }
 }
+
+pub fn fp_parse_f(s: &String) -> std_Result<OrderedFloat<f32>, String> {
+    match (s.parse::<f32>()) {
+        Ok(res) => {
+            std_Result::std_Ok { res: OrderedFloat::<f32>(res) }
+        },
+        Err(err) => {
+            std_Result::std_Err { err: format!("{}", err) }
+        },
+    }
+}
+
+pub fn fp_parse_d(s: &String) -> std_Result<OrderedFloat<f64>, String> {
+    match (s.parse::<f64>()) {
+        Ok(res) => {
+            std_Result::std_Ok { res: OrderedFloat::<f64>(res) }
+        },
+        Err(err) => {
+            std_Result::std_Err { err: format!("{}", err) }
+        },
+    }
+}

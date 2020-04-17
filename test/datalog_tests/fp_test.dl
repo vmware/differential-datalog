@@ -46,6 +46,8 @@ F("powi_f(32'f0.5, 32'sd5)", powi_f(32'f0.5, 32'sd5)).
 F("powf_f(32'f0.5, 32f'5.0)", powf_f(32'f0.5, 32'f5.0)).
 F("log_f(32'f0.5, 32f'2.0)", log_f(32'f0.5, 32'f2.0)).
 F("log_f(5E-1, 2.0)", log_f(32'f5E-1, 32'f2.0)).
+F("result_unwrap_or_default(parse_f(\"0.02\"))", result_unwrap_or_default(parse_f("0.02"))).
+F("result_unwrap_or_default(parse_f(\"blah\"))", result_unwrap_or_default(parse_f("blah"))).
 
 ////////////////////////////////
 
@@ -93,7 +95,8 @@ D("powi_d(64'f0.5, 32'sd5)", powi_d(64'f0.5, 32'sd5)).
 D("powf_d(64'f0.5, 32f'5.0)", powf_d(64'f0.5, 64'f5.0)).
 D("log_d(64'f0.5, 32f'2.0)", log_d(64'f0.5, 64'f2.0)).
 D("log_d(0.5, 2.0)", log_d(0.5, 2.0)).
-
+D("result_unwrap_or_default(parse_d(\"0.02\"))", result_unwrap_or_default(parse_d("0.02"))).
+D("result_unwrap_or_default(parse_d(\"blah\"))", result_unwrap_or_default(parse_d("blah"))).
 
 input relation FloatsFromRecord(s: string, f: float)
 output relation OutFloatsFromRecord[FloatsFromRecord]
