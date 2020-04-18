@@ -29,6 +29,8 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 
+use lazy_static::lazy_static;
+
 use differential_datalog::ddval::*;
 use differential_datalog::decl_enum_into_record;
 use differential_datalog::decl_record_mutator_enum;

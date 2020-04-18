@@ -95,3 +95,14 @@ SumsOfDoubles(x, y, z) :-
     Doubles(ys),
     var y = FlatMap(ys),
     var z = x + y.
+
+/* Attempt to confuse statics */
+
+function weird_zero(x: 'A): usize {
+    var empty_vec: Vec<'A> = vec_empty();
+    vec_len(empty_vec)
+}
+
+function zero_test(): usize {
+    weird_zero(32'd0)
+}

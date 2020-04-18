@@ -87,4 +87,5 @@ typedef log_level_t = signed<32>
  * This function returns a `bool` so that it can be used as a filter inside
  * DDlog rules.  It always returns `true`.
  */
+#[has_side_effects]
 extern function log(module: module_t, level: log_level_t, msg: string): bool

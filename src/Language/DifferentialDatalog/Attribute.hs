@@ -28,19 +28,22 @@ SOFTWARE.
 module Language.DifferentialDatalog.Attribute where
 
 import Data.Maybe
+import Data.List
 import Control.Monad.Except
 
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Util
+import {-# SOURCE #-} Language.DifferentialDatalog.Function
 
 progValidateAttributes :: (MonadError String me) => DatalogProgram -> me ()
 progValidateAttributes d = do
     mapM_ (typedefValidateAttrs d) $ progTypedefs d
     mapM_ (indexValidateAttrs d) $ progIndexes d
+    mapM_ (funcValidateAttrs d) $ progFunctions d
 
 typedefValidateAttrs :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidateAttrs d tdef@TypeDef{..} = do
@@ -98,7 +101,20 @@ fieldValidateAttr _ attr = do
          "deserialize_from_array" -> return ()
          n -> err (pos attr) $ "Unknown attribute " ++ n
 
-{- `size` attribute: Gives DDlog a hint about the size of an extern data type in bytes. -}
+funcValidateAttrs :: (MonadError String me) => DatalogProgram -> Function -> me ()
+funcValidateAttrs d Function{..} = do
+    uniqNames ("Multiple definitions of attribute " ++) funcAttrs
+    mapM_ (funcValidateAttr d) funcAttrs
+    _ <- checkSideEffectAttr funcAttrs
+    return ()
+
+funcValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
+funcValidateAttr _ attr = do
+    case name attr of
+         "has_side_effects" -> return ()
+         n -> err (pos attr) $ "Unknown attribute " ++ n
+
+{- 'size' attribute: Gives DDlog a hint about the size of an extern data type in bytes. -}
 
 tdefCheckSizeAttr :: (MonadError String me) => TypeDef -> me (Maybe Int)
 tdefCheckSizeAttr TypeDef{..} =
@@ -115,7 +131,7 @@ tdefGetSizeAttr tdef =
          Left e   -> error e
          Right sz -> sz
 
-{- `rust` attribute is transferred directly to the generated Rust code. -}
+{- 'rust' attribute is transferred directly to the generated Rust code. -}
 
 checkRustAttrs :: (MonadError String me) => [Attribute] -> me [String]
 checkRustAttrs attrs =
@@ -131,7 +147,7 @@ getRustAttrs attrs =
          Left e   -> error e
          Right as -> as
 
-{- `deserialize_from_array` attribute: specifies key function to be used to
+{- 'deserialize_from_array' attribute: specifies key function to be used to
    deserialize array into a map. -}
 
 fieldCheckDeserializeArrayAttr :: (MonadError String me) => DatalogProgram -> Field -> me (Maybe String)
@@ -156,3 +172,20 @@ fieldGetDeserializeArrayAttr d field =
     case fieldCheckDeserializeArrayAttr d field of
          Left e      -> error e
          Right fname -> fname
+
+{- 'has_side_effects' attribute: labels functions with side effects, e.g.,
+   logging functions. -}
+
+checkSideEffectAttr :: (MonadError String me) => [Attribute] -> me Bool
+checkSideEffectAttr attrs =
+    case find ((== "has_side_effects") . name) attrs of
+         Nothing -> return False
+         Just attr -> do check (attrVal attr == eTrue) (pos attr)
+                            "The value of 'has_side_effects' attribute must be 'true' or empty"
+                         return True
+
+funcGetSideEffectAttr :: Function -> Bool
+funcGetSideEffectAttr f =
+    case checkSideEffectAttr (funcAttrs f) of
+         Left e -> error e
+         Right has_side_effects -> has_side_effects 

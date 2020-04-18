@@ -224,6 +224,7 @@ funcValidateProto d f@Function{..} = do
     let tvars = funcTypeVars f
     mapM_ (typeValidate d tvars . argType) funcArgs
     typeValidate d tvars funcType
+    
 
 funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateDefinition d f@Function{..} = do
@@ -428,7 +429,7 @@ applyValidate d a@Apply{..} = do
 hotypeValidate :: (MonadError String me) => DatalogProgram -> HOType -> me ()
 hotypeValidate d HOTypeFunction{..} = do
     -- FIXME: hacky way to validate function type by converting it into a function.
-    let f = Function hotPos "" hotArgs hotType Nothing
+    let f = Function hotPos [] "" hotArgs hotType Nothing
     funcValidateProto d f
 
 hotypeValidate d HOTypeRelation{..} = typeValidate d (typeTypeVars hotType) hotType

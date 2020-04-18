@@ -74,6 +74,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Function
 import Language.DifferentialDatalog.ECtx
 --import {-# SOURCE #-} Relation
 
@@ -131,7 +132,6 @@ typeIsPolymorphic TTuple{..}  = any typeIsPolymorphic typeTupArgs
 typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
 typeIsPolymorphic TVar{}      = True
 typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
-
 
 -- | Matches function parameter types against concrete argument types, e.g.,
 -- given
@@ -215,17 +215,6 @@ relKeyType d rel =
 -- is a conflict.
 exprNodeType :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me Type
 exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMap Just e)
-
-funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
-funcTypeArgSubsts d p f@Function{..} argtypes =
-    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
-
--- | Functions that take an argument of type `Group<>` are treated in a special
--- way in Compile.hs. This function returns the list of `Group` types passed as
--- arguments to the function.
-funcGroupArgTypes :: DatalogProgram -> Function -> [Type]
-funcGroupArgTypes d Function{..} =
-    nub $ filter (isGroup d) $ map typ funcArgs
 
 structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
 structTypeArgs d p ctx cname argtypes = do
