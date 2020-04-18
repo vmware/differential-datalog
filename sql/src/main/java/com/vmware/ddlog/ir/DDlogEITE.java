@@ -33,7 +33,7 @@ public class DDlogEITE extends DDlogExpression {
 
     @Override
     public String toString() {
-        String result =  "if " + this.cond.toString() + " {\n" +
+        String result =  "if (" + this.cond.toString() + ") {\n" +
                 this.then.toString() + "}";
         if (this.eelse != null)
             result += " else {\n" +

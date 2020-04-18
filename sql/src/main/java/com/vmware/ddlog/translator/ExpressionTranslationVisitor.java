@@ -72,8 +72,96 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     @Override
     protected DDlogExpression visitCast(Cast node, TranslationContext context) {
         DDlogExpression e = this.process(node.getExpression(), context);
-        DDlogType type = SqlSemantics.createType(node.getType(), e.getType().mayBeNull);
-        return new DDlogEAs(e, type);
+        DDlogType eType = e.getType();
+        DDlogType destType = SqlSemantics.createType(node.getType(), e.getType().mayBeNull);
+        if (destType.is(DDlogTString.class)) {
+            // convert to string
+            if (eType.is(DDlogTString.class)) {
+                return e;
+            } else if (eType.is(DDlogTSigned.class) ||
+                    eType.is(DDlogTBool.class) ||
+                    eType.is(DDlogTFloat.class) ||
+                    eType.is(DDlogTDouble.class) ||
+                    eType.is(DDlogTUser.class)) {
+                return new DDlogEString("${" + e.toString() + "}");
+            } else {
+                throw new TranslationException("Unsupported cast to string", node);
+            }
+        } else if (destType.is(DDlogTFloat.class) || destType.is(DDlogTDouble.class)) {
+            IsNumericType num = destType.as(IsNumericType.class, "Expected a numeric type");
+            if (eType.is(DDlogTString.class)) {
+                String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
+                // I am lying here, the result is actually Result<>,
+                // but the unwrap below will remove it.
+                DDlogExpression parse = new DDlogEApply(
+                        "parse_" + suffix, destType.setMayBeNull(true), e);
+                return new DDlogEApply(
+                        "result_unwrap_or_default", destType, parse);
+            } else if (eType.is(DDlogTBool.class)) {
+                return new DDlogEITE(e, num.one(), num.zero());
+            } else {
+                return new DDlogEAs(e, destType);
+            }
+        } else if (destType.is(DDlogTSigned.class) || destType.is(DDlogTBit.class) || destType.is(DDlogTInt.class)) {
+            IsNumericType num = destType.as(IsNumericType.class, "Expected a numeric type");
+            if (eType.is(DDlogTFloat.class) || eType.is(DDlogTDouble.class)) {
+                String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
+                DDlogExpression convertToInt = new DDlogEApply(
+                        "int_from_" + suffix, DDlogTInt.instance.setMayBeNull(true), e);
+                DDlogExpression unwrap = new DDlogEApply(
+                        "option_unwrap_or_default", DDlogTInt.instance, convertToInt);
+                return new DDlogEAs(unwrap, destType);
+            } else if (eType.is(DDlogTString.class)) {
+                DDlogExpression parse = new DDlogEApply(
+                        "parse_dec_i64", DDlogTSigned.signed64.setMayBeNull(true), e);
+                return new DDlogEApply(
+                        "option_unwrap_or_default", destType, parse);
+            } else if (eType.is(DDlogTBool.class)) {
+                return new DDlogEITE(e, num.one(), num.zero());
+            } else if (eType.is(IsNumericType.class)) {
+                IBoundedNumericType eb = eType.as(IBoundedNumericType.class);
+                IBoundedNumericType db = destType.as(IBoundedNumericType.class);
+                if (eb != null && db != null) {
+                    // Need to do two different casts
+                    IBoundedNumericType intermediate = db.getWithWidth(eb.getWidth());
+                    return new DDlogEAs(new DDlogEAs(
+                            e, intermediate.as(DDlogType.class, "Must be type")), destType);
+                }
+                return new DDlogEAs(e, destType);
+            }
+        } else if (destType.is(DDlogTUser.class)) {
+            DDlogTUser tu = destType.as(DDlogTUser.class, "Expected TUser");
+            // At least in MySQL integers are converted to dates as if they were strings...
+            if (eType.is(DDlogTInt.class) || eType.is(DDlogTSigned.class) || eType.is(DDlogTBit.class)) {
+                e = new DDlogEString("${" + e.toString() + "}");
+                eType = e.getType();
+            }
+            if (eType.is(DDlogTString.class)) {
+                String parseFunc;
+                switch (tu.getName()) {
+                    case "Date":
+                        parseFunc = "string2date";
+                        break;
+                    case "Time":
+                        parseFunc = "string2time";
+                        break;
+                    case "DateTime":
+                        parseFunc = "string2datetime";
+                        break;
+                    default:
+                        throw new TranslationException("Unexpected destination type", node);
+                }
+                DDlogExpression parse = new DDlogEApply(parseFunc, destType.setMayBeNull(true), e);
+                return new DDlogEApply(
+                        "result_unwrap_or_default", destType, parse);
+            }
+        } else if (destType.is(DDlogTBool.class)) {
+            if (eType.is(IsNumericType.class)) {
+                return operationCall(DDlogEBinOp.BOp.Neq, e,
+                        eType.as(IsNumericType.class, "Expected numeric type").zero());
+            }
+        }
+        throw new TranslationException("Illegal cast", node);
     }
 
     @Override
@@ -144,8 +232,10 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitExtract(Extract node, TranslationContext context) {
-        // TODO: define a datatype for dates
-        throw new UnsupportedOperationException();
+        DDlogExpression from = this.process(node.getExpression(), context);
+        Extract.Field field = node.getField();
+        return new DDlogEApply("sql_extract_" + field.toString().toLowerCase(),
+                DDlogTSigned.signed64, from);
     }
 
     @Override
@@ -298,7 +388,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
      * The following aggregate functions compute the same result when using with
      * DISTINCT and without.
      */
-    private static Set<String> sameAsDistinct = Utilities.makeSet("min", "max", "some", "any", "every");
+    private static final Set<String> sameAsDistinct = Utilities.makeSet("min", "max", "some", "any", "every");
     public static String functionName(FunctionCall fc) {
         String name = TranslationVisitor.convertQualifiedName(fc.getName());
         if (fc.isDistinct() && !sameAsDistinct.contains(name))

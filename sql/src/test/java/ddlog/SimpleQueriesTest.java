@@ -96,9 +96,9 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                         this.relations(false) +
                         "relation Rtmp[TRtmp]\n" +
                         "output relation Rv0[TRtmp]\n" +
-                        "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if (v.column1 == 64'sd1) {\n" +
+                        "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if ((v.column1 == 64'sd1)) {\n" +
                         "64'sd1} else {\n" +
-                        "if (64'sd1 < v.column1) {\n" +
+                        "if ((64'sd1 < v.column1)) {\n" +
                         "64'sd2} else {\n" +
                         "64'sd3}}},var v1 = v0.";
         this.testTranslation(query, program);
@@ -113,7 +113,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if unwrapBool(a_eq_NR(v.column1, 64'sd1)) {\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if (unwrapBool(a_eq_NR(v.column1, 64'sd1))) {\n" +
                 "None{}: Option<signed<64>>} else {\n" +
                 "Some{.x = 64'sd3}}},var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -128,9 +128,9 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                         this.relations(true) +
                         "relation Rtmp[TRtmp]\n" +
                         "output relation Rv0[TRtmp]\n" +
-                        "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if unwrapBool(a_eq_NR(v.column1, 64'sd1)) {\n" +
+                        "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.col = if (unwrapBool(a_eq_NR(v.column1, 64'sd1))) {\n" +
                         "64'sd1} else {\n" +
-                        "if unwrapBool(a_lt_RN(64'sd1, v.column1)) {\n" +
+                        "if (unwrapBool(a_lt_RN(64'sd1, v.column1))) {\n" +
                         "64'sd2} else {\n" +
                         "64'sd3}}},var v1 = v0.";
         this.testTranslation(query, program, true);

@@ -38,6 +38,11 @@ public class DDlogTInt extends DDlogType implements IsNumericType {
     }
 
     @Override
+    public DDlogExpression one() {
+        return new DDlogEInt(1);
+    }
+
+    @Override
     public String simpleName() {
         return "int";
     }

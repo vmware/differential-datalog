@@ -14,7 +14,7 @@ package com.vmware.ddlog.ir;
 import java.math.BigInteger;
 import java.util.Objects;
 
-public class DDlogTBit extends DDlogType implements IsNumericType {
+public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumericType {
     private final int width;
 
     DDlogTBit(int width, boolean mayBeNull) {
@@ -51,7 +51,22 @@ public class DDlogTBit extends DDlogType implements IsNumericType {
     }
 
     @Override
+    public DDlogExpression one() {
+        return new DDlogEBit(this.width, BigInteger.valueOf(1));
+    }
+
+    @Override
     public String simpleName() {
         return "bit";
+    }
+
+    @Override
+    public int getWidth() {
+        return this.width;
+    }
+
+    @Override
+    public IBoundedNumericType getWithWidth(int width) {
+        return new DDlogTBit(width, this.mayBeNull);
     }
 }
