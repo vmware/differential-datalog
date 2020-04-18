@@ -27,15 +27,18 @@ public class BaseQueriesTest {
     }
     
     // These strings are part of almost all expected outputs
-    protected final String imports = "import sql\nimport sqlop\n";
+    protected final String imports = "import fp\n" +
+            "import time\n" +
+            "import sql\n" +
+            "import sqlop\n";
     protected final String tables =
             "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
             "typedef Tt2 = Tt2{column1:signed<64>}\n" +
-            "typedef Tt3 = Tt3{d:sqlDate}\n";
+            "typedef Tt3 = Tt3{d:Date, t:Time, dt:DateTime}\n";
     protected final String tablesWNull =
             "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
             "typedef Tt2 = Tt2{column1:Option<signed<64>>}\n" +
-            "typedef Tt3 = Tt3{d:Option<sqlDate>}\n";
+            "typedef Tt3 = Tt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n";
 
     /**
      * The expected string the generated program starts with.
@@ -78,7 +81,9 @@ public class BaseQueriesTest {
         Assert.assertNotNull(s);
         Assert.assertEquals("input relation Rt2[Tt2]", s);
 
-        createStatement = "create table t3(d date " + nulls + ")";
+        createStatement = "create table t3(d date " + nulls + ",\n" +
+                " t time " + nulls + ",\n" +
+                " dt datetime " + nulls + ")";
         create = t.translateSqlStatement(createStatement);
         Assert.assertNotNull(create);
         s = create.toString();

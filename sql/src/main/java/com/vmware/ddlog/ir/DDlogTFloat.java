@@ -38,6 +38,11 @@ public class DDlogTFloat extends DDlogType implements IsNumericType {
     }
 
     @Override
+    public DDlogExpression one() {
+        return new DDlogEFloat(0);
+    }
+
+    @Override
     public String simpleName() {
         return "float";
     }

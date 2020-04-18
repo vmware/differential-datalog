@@ -433,7 +433,7 @@ public class WeaveTest extends BaseQueriesTest {
         DDlogProgram program = t.getDDlogProgram();
         String p = program.toString();
         Assert.assertNotNull(p);
-        String expected = "import sql\nimport sqlop\n" + "\n" +
+        String expected = "import fp\nimport time\nimport sql\nimport sqlop\n" + "\n" +
                 "typedef Tnode_info = Tnode_info{name:string, unschedulable:bool, out_of_disk:bool, memory_pressure:bool, disk_pressure:bool, pid_pressure:bool, ready:bool, network_unavailable:bool, cpu_capacity:bigint, " +
                 "memory_capacity:bigint, ephemeral_storage_capacity:bigint, pods_capacity:bigint, cpu_allocatable:bigint, memory_allocatable:bigint, ephemeral_storage_allocatable:bigint, pods_allocatable:bigint}\n" +
 
@@ -539,9 +539,9 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var incr10 = v0.match_expression);\n" +
                 "(set_insert(count_distinct, incr10))}\n" +
                 ");\n" +
-                "(Tagg{.col = if (gb6 == \"NotIn\") {\n" +
+                "(Tagg{.col = if ((gb6 == \"NotIn\")) {\n" +
                 "b_not_N(any)} else {\n" +
-                "if (gb6 == \"DoesNotExist\") {\n" +
+                "if ((gb6 == \"DoesNotExist\")) {\n" +
                 "Some{.x = (not any9)}} else {\n" +
                 "Some{.x = (set_size(count_distinct) as signed<64> == gb7)}}}})\n}\n\n" +
 
@@ -562,9 +562,9 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var incr14 = v0.match_expression);\n" +
                 "(set_insert(count_distinct, incr14))}\n" +
                 ");\n" +
-                "(Tagg9{.col = if (gb9 == \"NotIn\") {\n" +
+                "(Tagg9{.col = if ((gb9 == \"NotIn\")) {\n" +
                 "(not any)} else {\n" +
-                "if (gb9 == \"DoesNotExist\") {\n" +
+                "if ((gb9 == \"DoesNotExist\")) {\n" +
                 "(not any13)} else {\n" +
                 "(set_size(count_distinct) as signed<64> == gb10)}}})\n}\n\n" +
 

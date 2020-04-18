@@ -58,6 +58,7 @@ public class DynamicTest extends BaseQueriesTest {
         DDlogRecord[] fields = { field };
         DDlogRecord record = DDlogRecord.makeStruct("R", fields);
         int id = api.getTableId("R");
+        Assert.assertTrue(id < 10);
         DDlogRecCommand command = new DDlogRecCommand(
                 DDlogCommand.Kind.Insert, id, record);
         DDlogRecCommand[] ca = new DDlogRecCommand[1];

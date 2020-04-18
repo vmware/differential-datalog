@@ -62,7 +62,7 @@ public class SqlSemantics {
         DDlogType type = null;
         if (sqltype.equals("boolean")) {
             type = DDlogTBool.instance;
-        } else if (sqltype.equals("integer")) {
+        } else if (sqltype.equals("integer") || sqltype.equals("int")) {
             type = DDlogTSigned.signed64;
         } else if (sqltype.startsWith("varchar")) {
             type = DDlogTString.instance;
@@ -73,9 +73,11 @@ public class SqlSemantics {
         } else if (sqltype.equals("float")) {
             type = DDlogTFloat.instance;
         } else if (sqltype.equals("date")) {
-            type = new DDlogTUser("sqlDate", false);
+            type = new DDlogTUser("Date", false);
         } else if (sqltype.equals("time")) {
-            type = new DDlogTUser("sqlTime", false);
+            type = new DDlogTUser("Time", false);
+        } else if (sqltype.equals("datetime") || sqltype.equals("timestamp")) {
+            type = new DDlogTUser("DateTime", false);
         }
         if (type == null)
             throw new RuntimeException("SQL type not yet implemented: " + sqltype);

@@ -1,19 +1,67 @@
+import time
+
 /* This library has functions for supporting the translation of SQL into DDlog */
 
-extern type sqlDate
+function sql_extract_year(d: Date): signed<64> {
+    year(d) as signed<64>
+}
 
-// functions that manipulate dates
-extern function year(d: sqlDate): bit<32>
-extern function quarter(d: sqlDate): bit<32>
-extern function month(d: sqlDate): bit<32>
-extern function week(d: sqlDate): bit<32>
-extern function day(d: sqlDate): bit<32>
-extern function day_of_month(d: sqlDate): bit<32>
-extern function day_of_week(d: sqlDate): bit<32>
-extern function day_of_year(d: sqlDate): bit<32>
-extern function hour(d: sqlDate): bit<32>
-extern function minute(d: sqlDate): bit<32>
-extern function second(d: sqlDate): bit<32>
+function sql_extract_month(d: Date): signed<64> {
+    month(d) as signed<8> as signed<64>
+}
+
+function sql_extract_week(d: Date): signed<64> {
+    week(d) as signed<8> as signed<64>
+}
+
+function sql_extract_day(d: Date): signed<64> {
+    day(d) as signed<8> as signed<64>
+}
+
+function sql_extract_day_of_month(d: Date): signed<64> {
+    sql_extract_day(d)
+}
+
+function sql_extract_doy(d: Date): signed<64> {
+    ordinal(d) as signed<16> as signed<64>
+}
+
+function sql_extract_day_of_week(d: Date): signed<64> {
+    match (weekday(d)) {
+        Sunday -> 64'sd1,
+        Monday -> 64'sd2,
+        Tuesday -> 64'sd3,
+        Wednesday -> 64'sd4,
+        Thursday -> 64'sd5,
+        Friday -> 64'sd6,
+        Saturday -> 64'sd7
+    }
+}
+
+function sql_extract_dow(d: Date): signed<64> {
+    sql_extract_day_of_week(d)
+}
+
+function sql_extract_hour(t: Time): signed<64> {
+    hour(t) as signed<8> as signed<64>
+}
+
+function sql_extract_minute(t: Time): signed<64> {
+    minute(t) as signed<8> as signed<64>
+}
+
+function sql_extract_second(t: Time): signed<64> {
+    second(t) as signed<8> as signed<64>
+}
+
+/*
+unhandled time cases
+case QUARTER:
+case YEAR_OF_WEEK:
+case YOW:
+case TIMEZONE_MINUTE:
+case TIMEZONE_HOUR:
+*/
 
 function substr(s: string, start: signed<64>, end: signed<64>): string {
    string_substr(s, start as bit<64>, (start + end) as bit<64>)

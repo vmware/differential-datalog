@@ -398,7 +398,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v = i;\n" +
-                "(var incr = if (v.column2 == \"foo\") {\n" +
+                "(var incr = if ((v.column2 == \"foo\")) {\n" +
                 "v.column1} else {\n" +
                 "64'sd0});\n" +
                 "(max = agg_max_R(max, incr))}\n" +

@@ -50,6 +50,8 @@ class TranslationContext {
     TranslationContext() {
         this.substitutions = new HashMap<Node, DDlogExpression>();
         this.program = new DDlogProgram();
+        this.program.imports.add(new DDlogImport("fp", ""));
+        this.program.imports.add(new DDlogImport("time", ""));
         this.program.imports.add(new DDlogImport("sql", ""));
         this.program.imports.add(new DDlogImport("sqlop", ""));
         this.relations = new HashMap<String, DDlogRelation>();
@@ -61,7 +63,7 @@ class TranslationContext {
     }
 
     public DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
-        return this.etv.operationCall(op, left, right);
+        return ExpressionTranslationVisitor.operationCall(op, left, right);
     }
 
     static String location(Node node) {

@@ -8,5 +8,9 @@ public interface IsNumericType {
      * The zero of the numeric type.
      */
     DDlogExpression zero();
+    /**
+     * The one of the numeric type.
+     */
+    DDlogExpression one();
     String simpleName();
 }
