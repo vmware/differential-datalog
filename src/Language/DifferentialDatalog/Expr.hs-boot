@@ -25,3 +25,4 @@ exprIsPattern :: Expr -> Bool
 exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
+exprIsPure :: DatalogProgram -> Expr -> Bool

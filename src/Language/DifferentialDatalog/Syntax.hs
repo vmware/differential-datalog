@@ -656,6 +656,72 @@ instance Eq e => Eq (ExprNode e) where
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) _                        _                          = False
 
+-- Assign rank to constructors; used in the implementation of Ord.
+erank :: ExprNode e -> Int
+erank EVar      {} = 0
+erank EApply    {} = 1
+erank EField    {} = 2
+erank ETupField {} = 3
+erank EBool     {} = 4
+erank EInt      {} = 5
+erank EFloat    {} = 6
+erank EDouble   {} = 7
+erank EString   {} = 8
+erank EBit      {} = 9
+erank ESigned   {} = 10
+erank EStruct   {} = 11
+erank ETuple    {} = 12
+erank ESlice    {} = 13
+erank EMatch    {} = 14
+erank EVarDecl  {} = 15
+erank ESeq      {} = 16
+erank EITE      {} = 17
+erank EFor      {} = 18
+erank ESet      {} = 19
+erank EBreak    {} = 20
+erank EContinue {} = 21
+erank EReturn   {} = 22
+erank EBinOp    {} = 23
+erank EUnOp     {} = 24
+erank EPHolder  {} = 25
+erank EBinding  {} = 26
+erank ETyped    {} = 27
+erank EAs       {} = 28
+erank ERef      {} = 29
+
+instance Ord e => Ord (ExprNode e) where
+    compare (EVar _ v1)              (EVar _ v2)                = compare v1 v2
+    compare (EApply _ f1 as1)        (EApply _ f2 as2)          = compare (f1, as1) (f2, as2)
+    compare (EField _ s1 f1)         (EField _ s2 f2)           = compare (s1, f1)  (s2, f2)
+    compare (ETupField _ s1 f1)      (ETupField _ s2 f2)        = compare (s1, f1)  (s2, f2)
+    compare (EBool _ b1)             (EBool _ b2)               = compare b1 b2
+    compare (EInt _ i1)              (EInt _ i2)                = compare i1 i2
+    compare (EFloat _ i1)            (EFloat _ i2)              = compare i1 i2
+    compare (EDouble _ i1)           (EDouble _ i2)             = compare i1 i2
+    compare (EString _ s1)           (EString _ s2)             = compare s1 s2
+    compare (EBit _ w1 i1)           (EBit _ w2 i2)             = compare (w1, i1) (w2, i2)
+    compare (ESigned _ w1 i1)        (ESigned _ w2 i2)          = compare (w1, i1) (w2, i2)
+    compare (EStruct _ c1 fs1)       (EStruct _ c2 fs2)         = compare (c1, fs1) (c2, fs2)
+    compare (ETuple _ fs1)           (ETuple _ fs2)             = compare fs1 fs2
+    compare (ESlice _ e1 h1 l1)      (ESlice _ e2 h2 l2)        = compare (e1, h1, l1) (e2, h2, l2)
+    compare (EMatch _ e1 cs1)        (EMatch _ e2 cs2)          = compare (e1, cs1) (e2, cs2)
+    compare (EVarDecl _ v1)          (EVarDecl _ v2)            = compare v1 v2
+    compare (ESeq _ l1 r1)           (ESeq _ l2 r2)             = compare (l1, r1) (l2, r2)
+    compare (EITE _ i1 t1 e1)        (EITE _ i2 t2 e2)          = compare (i1, t1, e1) (i2, t2, e2)
+    compare (EFor _ v1 e1 b1)        (EFor _ v2 e2 b2)          = compare (v1, e1, b1) (v2, e2, b2)
+    compare (ESet _ l1 r1)           (ESet _ l2 r2)             = compare (l1, r1) (l2, r2)
+    compare (EBreak _)               (EBreak _)                 = EQ
+    compare (EContinue _)            (EContinue _)              = EQ
+    compare (EReturn _ e1)           (EReturn _ e2)             = compare e1 e2
+    compare (EBinOp _ o1 l1 r1)      (EBinOp _ o2 l2 r2)        = compare (o1, l1, r1) (o2, l2, r2)
+    compare (EUnOp _ o1 e1)          (EUnOp _ o2 e2)            = compare (o1, e1) (o2, e2)
+    compare (EPHolder _)             (EPHolder _)               = EQ
+    compare (EBinding _ v1 e1)       (EBinding _ v2 e2)         = compare (v1, e1) (v2, e2)
+    compare (ETyped _ e1 t1)         (ETyped _ e2 t2)           = compare (e1, t1) (e2, t2)
+    compare (EAs _ e1 t1)            (EAs _ e2 t2)              = compare (e1, t1) (e2, t2)
+    compare (ERef _ p1)              (ERef _ p2)                = compare p1 p2
+    compare e1                       e2                         = compare (erank e1) (erank e2)
+
 instance WithPos (ExprNode e) where
     pos = exprPos
     atPos e p = e{exprPos = p}
@@ -712,7 +778,7 @@ instance PP e => Show (ExprNode e) where
 
 type ENode = ExprNode Expr
 
-newtype Expr = E ENode
+newtype Expr = E ENode deriving Ord
 enode :: Expr -> ExprNode Expr
 enode (E n) = n
 
@@ -785,6 +851,7 @@ instance PP FuncArg where
     pp FuncArg{..} = pp argName <> ":" <+> (if argMut then "mut" else empty) <+> pp argType
 
 data Function = Function { funcPos   :: Pos
+                         , funcAttrs :: [Attribute]
                          , funcName  :: String
                          , funcArgs  :: [FuncArg]
                          , funcType  :: Type
@@ -798,8 +865,8 @@ funcImmutArgs :: Function -> [FuncArg]
 funcImmutArgs f = filter (not . argMut) $ funcArgs f
 
 instance Eq Function where
-    (==) (Function _ n1 as1 t1 d1) (Function _ n2 as2 t2 d2) =
-        n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
+    (==) (Function _ at1 n1 as1 t1 d1) (Function _ at2 n2 as2 t2 d2) =
+        at1 == at2 && n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
 
 instance WithPos Function where
     pos = funcPos
@@ -810,7 +877,8 @@ instance WithName Function where
     setName f n = f{funcName = n}
 
 instance PP Function where
-    pp Function{..} = (maybe "extern" (\_ -> empty) funcDef) <+>
+    pp Function{..} = (ppAttributes funcAttrs) $$
+                      (maybe "extern" (\_ -> empty) funcDef) <+>
                       ("function" <+> pp funcName
                        <+> (parens $ commaSep $ map pp funcArgs)
                        <> colon <+> pp funcType)

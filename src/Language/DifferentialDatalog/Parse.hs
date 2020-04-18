@@ -256,7 +256,7 @@ spec = do
          Right prog -> return prog
 
 attributes = reservedOp "#" *> (brackets $ many attribute)
-attribute = withPos $ Attribute nopos <$> attrIdent <*> (reservedOp "=" *>  expr)
+attribute = withPos $ Attribute nopos <$> attrIdent <*> (option eTrue $ reservedOp "=" *>  expr)
 
 decl =  do attrs <- optionMaybe attributes
            items <- (withPosMany $
@@ -271,8 +271,9 @@ decl =  do attrs <- optionMaybe attributes
                    <|> (map SpRule . convertStatement) <$> parseForStatement
            case items of
                 [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attrs}]
+                [SpFunc f] -> return [SpFunc f{funcAttrs = maybe [] id attrs}]
                 _          -> do
-                    when (isJust attrs) $ fail "#-attributes are currently only supported for type declarations"
+                    when (isJust attrs) $ fail "#-attributes are currently only supported for type and function declarations"
                     return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -287,17 +288,17 @@ typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
                                 (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                                 (return Nothing)
 
-func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
-                       <*> funcIdent
-                       <*> (parens $ commaSep farg)
-                       <*> (colon *> typeSpecSimple)
-                       <*> (return Nothing))
+func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
+                         <*> funcIdent
+                         <*> (parens $ commaSep farg)
+                         <*> (colon *> typeSpecSimple)
+                         <*> (return Nothing))
        <|>
-       (Function nopos <$  reserved "function"
-                       <*> funcIdent
-                       <*> (parens $ commaSep farg)
-                       <*> (colon *> typeSpecSimple)
-                       <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
+       (Function nopos [] <$  reserved "function"
+                         <*> funcIdent
+                         <*> (parens $ commaSep farg)
+                         <*> (colon *> typeSpecSimple)
+                         <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
 
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 
