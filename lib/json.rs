@@ -16,7 +16,9 @@ impl From<serde_json::value::Value> for json_JsonValue {
             serde_json::value::Value::Number(n) => json_JsonValue::json_JsonNumber {
                 n: json_JsonNum::from(n),
             },
-            serde_json::value::Value::String(s) => json_JsonValue::json_JsonString { s },
+            serde_json::value::Value::String(s) => json_JsonValue::json_JsonString {
+                s: internment_intern(&s),
+            },
             serde_json::value::Value::Array(a) => {
                 let v: Vec<json_JsonValue> =
                     a.into_iter().map(|v| json_JsonValue::from(v)).collect();
@@ -26,7 +28,7 @@ impl From<serde_json::value::Value> for json_JsonValue {
             }
             serde_json::value::Value::Object(o) => json_JsonValue::json_JsonObject {
                 o: o.into_iter()
-                    .map(|(k, v)| (k, json_JsonValue::from(v)))
+                    .map(|(k, v)| (internment_intern(&k), json_JsonValue::from(v)))
                     .collect(),
             },
         }
@@ -39,7 +41,9 @@ impl From<json_JsonValue> for serde_json::value::Value {
             json_JsonValue::json_JsonNull => serde_json::value::Value::Null,
             json_JsonValue::json_JsonBool { b } => serde_json::value::Value::Bool(b),
             json_JsonValue::json_JsonNumber { n } => json_val_from_num(n),
-            json_JsonValue::json_JsonString { s } => serde_json::value::Value::String(s),
+            json_JsonValue::json_JsonString { s } => {
+                serde_json::value::Value::String(internment_ival(&s).clone())
+            }
             json_JsonValue::json_JsonArray { a } => serde_json::value::Value::Array(
                 a.into_iter()
                     .map(|v| serde_json::value::Value::from(v))
@@ -47,7 +51,12 @@ impl From<json_JsonValue> for serde_json::value::Value {
             ),
             json_JsonValue::json_JsonObject { o } => serde_json::value::Value::Object(
                 o.into_iter()
-                    .map(|(k, v)| (k, serde_json::value::Value::from(v)))
+                    .map(|(k, v)| {
+                        (
+                            internment_ival(&k).clone(),
+                            serde_json::value::Value::from(v),
+                        )
+                    })
                     .collect(),
             ),
         }
