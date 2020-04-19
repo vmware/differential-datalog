@@ -10,7 +10,7 @@ extern type Intern<'A>
 
 /* Interned string
  */
-typedef IString = Intern<string>
+typedef istring = Intern<string>
 
 /* Intern a value.
  */
@@ -18,22 +18,23 @@ extern function intern(s: 'A): Intern<'A>
 
 /* Extract an interned value.
  */
+#[return_by_ref]
 extern function ival(s: Intern<'A>): 'A
 
 /* Returns unique integer identifier of an interned object.
  */
 //extern function iord(s: Intern<'A>): u64
 
-extern function istring_contains(s1: IString, s2: string): bool
-extern function istring_join(strings: Vec<IString>, sep: string): string
-extern function istring_len(s: IString): usize
-extern function istring_replace(s: IString, from: string, to: string): string
-extern function istring_split(s: IString, sep: string): Vec<string>
-extern function istring_starts_with(s: IString, prefix: string): bool
-extern function istring_ends_with(s: IString, suffix: string): bool
-extern function istring_substr(s: IString, start: usize, end: usize): string
-extern function istring_to_bytes(s: IString): Vec<u8>
-extern function istring_trim(s: IString): string
-extern function istring_to_lowercase(s: IString): string
-extern function istring_to_uppercase(s: IString): string
-extern function istring_reverse(s: IString): string
+extern function istring_contains(s1: istring, s2: string): bool
+extern function istring_join(strings: Vec<istring>, sep: string): string
+extern function istring_len(s: istring): usize
+extern function istring_replace(s: istring, from: string, to: string): string
+extern function istring_split(s: istring, sep: string): Vec<string>
+extern function istring_starts_with(s: istring, prefix: string): bool
+extern function istring_ends_with(s: istring, suffix: string): bool
+extern function istring_substr(s: istring, start: usize, end: usize): string
+extern function istring_to_bytes(s: istring): Vec<u8>
+extern function istring_trim(s: istring): string
+extern function istring_to_lowercase(s: istring): string
+extern function istring_to_uppercase(s: istring): string
+extern function istring_reverse(s: istring): string

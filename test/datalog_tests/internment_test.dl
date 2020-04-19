@@ -1,10 +1,18 @@
-input relation IInternedString(ix: IString)
+input relation IInternedString(ix: istring)
+relation StaticInternedString(ix: istring)
 
-output relation OInternedString(x: string, ix: IString)
+StaticInternedString(intern("static foo")).
+StaticInternedString(intern("static bar")).
+
+relation AllInternedString(ix: istring)
+AllInternedString(ix) :- IInternedString(ix).
+AllInternedString(ix) :- StaticInternedString(ix).
+
+output relation OInternedString(x: string, ix: istring)
 
 OInternedString(ival(s), s) :-
-    IInternedString(s).
+    AllInternedString(s).
 
 OInternedString(ival(s1) ++ " " ++ ival(s2), intern(ival(s1) ++ " " ++ ival(s2))) :-
-    IInternedString(s1), 
-    IInternedString(s2).
+    AllInternedString(s1),
+    AllInternedString(s2).

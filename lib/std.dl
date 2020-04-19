@@ -26,6 +26,8 @@ typedef usize = u64
 extern type Ref<'A>
 
 extern function ref_new(x: 'A): Ref<'A>
+
+#[return_by_ref]
 extern function deref(x: Ref<'A>): 'A
 
 /*
