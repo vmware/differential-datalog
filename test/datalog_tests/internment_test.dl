@@ -2,7 +2,11 @@ input relation IInternedString(ix: istring)
 relation StaticInternedString(ix: istring)
 
 StaticInternedString(intern("static foo")).
-StaticInternedString(intern("static bar")).
+StaticInternedString(i"ifoo").
+StaticInternedString(i[|ibar|]).
+StaticInternedString(i"ifoo${25}").
+StaticInternedString(i"ifoo${25}" "!").
+StaticInternedString(i$[|ibar${2+2}|]).
 
 relation AllInternedString(ix: istring)
 AllInternedString(ix) :- IInternedString(ix).
