@@ -102,16 +102,18 @@ fieldValidateAttr _ attr = do
          n -> err (pos attr) $ "Unknown attribute " ++ n
 
 funcValidateAttrs :: (MonadError String me) => DatalogProgram -> Function -> me ()
-funcValidateAttrs d Function{..} = do
+funcValidateAttrs d f@Function{..} = do
     uniqNames ("Multiple definitions of attribute " ++) funcAttrs
     mapM_ (funcValidateAttr d) funcAttrs
-    _ <- checkSideEffectAttr funcAttrs
+    _ <- checkSideEffectAttr f
+    _ <- checkReturnByRefAttr f
     return ()
 
 funcValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
 funcValidateAttr _ attr = do
     case name attr of
          "has_side_effects" -> return ()
+         "return_by_ref" -> return ()
          n -> err (pos attr) $ "Unknown attribute " ++ n
 
 {- 'size' attribute: Gives DDlog a hint about the size of an extern data type in bytes. -}
@@ -176,16 +178,32 @@ fieldGetDeserializeArrayAttr d field =
 {- 'has_side_effects' attribute: labels functions with side effects, e.g.,
    logging functions. -}
 
-checkSideEffectAttr :: (MonadError String me) => [Attribute] -> me Bool
-checkSideEffectAttr attrs =
-    case find ((== "has_side_effects") . name) attrs of
+checkSideEffectAttr :: (MonadError String me) => Function -> me Bool
+checkSideEffectAttr Function{..} =
+    case find ((== "has_side_effects") . name) funcAttrs of
          Nothing -> return False
-         Just attr -> do check (attrVal attr == eTrue) (pos attr)
+         Just attr -> do check (isNothing funcDef) (pos attr) "'has_side_effects' attribute is supported for extern functions only"
+                         check (attrVal attr == eTrue) (pos attr)
                             "The value of 'has_side_effects' attribute must be 'true' or empty"
                          return True
 
 funcGetSideEffectAttr :: Function -> Bool
 funcGetSideEffectAttr f =
-    case checkSideEffectAttr (funcAttrs f) of
+    case checkSideEffectAttr f of
          Left e -> error e
          Right has_side_effects -> has_side_effects 
+
+checkReturnByRefAttr :: (MonadError String me) => Function -> me Bool
+checkReturnByRefAttr Function{..} =
+    case find ((== "return_by_ref") . name) funcAttrs of
+         Nothing -> return False
+         Just attr -> do check (isNothing funcDef) (pos attr) "'return_by_ref' attribute is supported for extern functions only"
+                         check (attrVal attr == eTrue) (pos attr)
+                            "The value of 'return_by_ref' attribute must be 'true' or empty"
+                         return True
+
+funcGetReturnByRefAttr :: Function -> Bool
+funcGetReturnByRefAttr f =
+    case checkReturnByRefAttr f of
+         Left e -> error e
+         Right return_by_ref -> return_by_ref

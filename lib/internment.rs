@@ -39,11 +39,11 @@ pub fn internment_intern<A: Eq + Hash + Send + Clone + 'static>(x: &A) -> intern
     internment_Intern::new(x.clone())
 }
 
-pub fn internment_ival<A: Eq + Hash + Send + Clone>(x: &internment_Intern<A>) -> A {
-    x.intern.as_ref().clone()
+pub fn internment_ival<A: Eq + Hash + Send + Clone>(x: &internment_Intern<A>) -> &A {
+    x.intern.as_ref()
 }
 
-/*pub fn intern_istring_ord(s: &intern_IString) -> u32 {
+/*pub fn intern_istring_ord(s: &intern_istring) -> u32 {
     s.x
 }*/
 
@@ -89,7 +89,7 @@ impl<A: FromRecord + Eq + Hash + Send + 'static> FromRecord for internment_Inter
 
 impl<A: IntoRecord + Eq + Hash + Send + Clone> IntoRecord for internment_Intern<A> {
     fn into_record(self) -> Record {
-        internment_ival(&self).into_record()
+        internment_ival(&self).clone().into_record()
     }
 }
 
@@ -99,7 +99,7 @@ where
     Record: Mutator<A>,
 {
     fn mutate(&self, x: &mut internment_Intern<A>) -> Result<(), String> {
-        let mut v = internment_ival(x);
+        let mut v = internment_ival(x).clone();
         self.mutate(&mut v)?;
         *x = internment_intern(&v);
         Ok(())
@@ -131,7 +131,7 @@ where
 }
 
 /*#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_IString {
+impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_istring {
     fn from_flatbuf(v: fb::__String<'a>) -> Response<Self> {
         Ok(intern_string_intern(&String::from_flatbuf(v)?))
     }
@@ -165,7 +165,7 @@ where
     }
 }
 
-pub fn internment_istring_join(strings: &std_Vec<internment_IString>, sep: &String) -> String {
+pub fn internment_istring_join(strings: &std_Vec<internment_istring>, sep: &String) -> String {
     strings
         .x
         .iter()
@@ -175,18 +175,18 @@ pub fn internment_istring_join(strings: &std_Vec<internment_IString>, sep: &Stri
         .join(sep.as_str())
 }
 
-pub fn internment_istring_split(s: &internment_IString, sep: &String) -> std_Vec<String> {
+pub fn internment_istring_split(s: &internment_istring, sep: &String) -> std_Vec<String> {
     std_Vec {
         x: s.as_ref().split(sep).map(|x| x.to_owned()).collect(),
     }
 }
 
-pub fn internment_istring_contains(s1: &internment_IString, s2: &String) -> bool {
+pub fn internment_istring_contains(s1: &internment_istring, s2: &String) -> bool {
     s1.as_ref().contains(s2.as_str())
 }
 
 pub fn internment_istring_substr(
-    s: &internment_IString,
+    s: &internment_istring,
     start: &std_usize,
     end: &std_usize,
 ) -> String {
@@ -196,38 +196,38 @@ pub fn internment_istring_substr(
     s.as_ref()[from..to].to_string()
 }
 
-pub fn internment_istring_replace(s: &internment_IString, from: &String, to: &String) -> String {
+pub fn internment_istring_replace(s: &internment_istring, from: &String, to: &String) -> String {
     s.as_ref().replace(from, to)
 }
 
-pub fn internment_istring_starts_with(s: &internment_IString, prefix: &String) -> bool {
+pub fn internment_istring_starts_with(s: &internment_istring, prefix: &String) -> bool {
     s.as_ref().starts_with(prefix)
 }
 
-pub fn internment_istring_ends_with(s: &internment_IString, suffix: &String) -> bool {
+pub fn internment_istring_ends_with(s: &internment_istring, suffix: &String) -> bool {
     s.as_ref().ends_with(suffix)
 }
 
-pub fn internment_istring_trim(s: &internment_IString) -> String {
+pub fn internment_istring_trim(s: &internment_istring) -> String {
     s.as_ref().trim().to_string()
 }
 
-pub fn internment_istring_len(s: &internment_IString) -> std_usize {
+pub fn internment_istring_len(s: &internment_istring) -> std_usize {
     s.as_ref().len() as std_usize
 }
 
-pub fn internment_istring_to_bytes(s: &internment_IString) -> std_Vec<u8> {
+pub fn internment_istring_to_bytes(s: &internment_istring) -> std_Vec<u8> {
     std_Vec::from(s.as_ref().as_bytes())
 }
 
-pub fn internment_istring_to_lowercase(s: &internment_IString) -> String {
+pub fn internment_istring_to_lowercase(s: &internment_istring) -> String {
     s.as_ref().to_lowercase()
 }
 
-pub fn internment_istring_to_uppercase(s: &internment_IString) -> String {
+pub fn internment_istring_to_uppercase(s: &internment_istring) -> String {
     s.as_ref().to_uppercase()
 }
 
-pub fn internment_istring_reverse(s: &internment_IString) -> String {
+pub fn internment_istring_reverse(s: &internment_istring) -> String {
     s.as_ref().chars().rev().collect()
 }

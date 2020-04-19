@@ -1706,6 +1706,33 @@ to optimize data structures layout:
 extern type IObj<'A>
 ```
 
+### `#[has_side_effects]`
+
+Labels functions that have side effects, e.g., perform I/O.  The compiler will
+not perform certain optimizations such as static evaluation for such functions.
+This annotation is only required for extern functions with side effects. The
+compiler automatically derives this annotation for functions that invoke
+functions labeled with `#[has_side_effects]`.
+
+```
+#[has_side_effects]
+extern function log(module: module_t, level: log_level_t, msg: string): bool
+```
+
+### `#[return_by_ref]`
+
+Labels functions that return values by reference.  DDlog functions are compiled
+into Rust functions that take arguments by reference and return results by value.
+DDlog assumes the same calling convention for extern functions.  However it
+also supports extern functions that return references, which is often more efficient.
+The `#[return_by_ref]` annotation tells the compiler that the annotated extern
+function returns a reference in Rust:
+
+```
+#[return_by_ref]
+extern function deref(x: Ref<'A>): 'A
+```
+
 ### `#[deserialize_from_array=func()]`
 
 This attribute is used in conjunction with `json.dl` library (and potentially

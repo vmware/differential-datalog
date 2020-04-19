@@ -2,6 +2,14 @@ internment_test.OInternedString:
 internment_test.OInternedString{.x = "bar", .ix = "bar"}: +1
 internment_test.OInternedString{.x = "bar bar", .ix = "bar bar"}: +1
 internment_test.OInternedString{.x = "bar foo", .ix = "bar foo"}: +1
+internment_test.OInternedString{.x = "bar static bar", .ix = "bar static bar"}: +1
+internment_test.OInternedString{.x = "bar static foo", .ix = "bar static foo"}: +1
 internment_test.OInternedString{.x = "foo", .ix = "foo"}: +1
 internment_test.OInternedString{.x = "foo bar", .ix = "foo bar"}: +1
 internment_test.OInternedString{.x = "foo foo", .ix = "foo foo"}: +1
+internment_test.OInternedString{.x = "foo static bar", .ix = "foo static bar"}: +1
+internment_test.OInternedString{.x = "foo static foo", .ix = "foo static foo"}: +1
+internment_test.OInternedString{.x = "static bar bar", .ix = "static bar bar"}: +1
+internment_test.OInternedString{.x = "static bar foo", .ix = "static bar foo"}: +1
+internment_test.OInternedString{.x = "static foo bar", .ix = "static foo bar"}: +1
+internment_test.OInternedString{.x = "static foo foo", .ix = "static foo foo"}: +1

@@ -99,12 +99,6 @@ vALUE_VAR2 = "__v2"
 gROUP_VAR :: Doc
 gROUP_VAR = "__group__"
 
--- Functions that return a Rust reference rather than a value.
--- FIXME: there should be a way to annotate function definitions
--- with this, but for now we only have one such function.
-fUNCS_RETURN_REF :: [String]
-fUNCS_RETURN_REF = ["std.deref"]
-
 -- Extract static template header before the "/*- !!!!!!!!!!!!!!!!!!!! -*/"
 -- separator from file; substitute "datalog_example" with 'specname' in
 -- the header.
@@ -2284,7 +2278,7 @@ mkExpr' d _ EApply{..}  =
                         $ zip exprArgs (map argMut $ funcArgs f)), kind)
     where
     f = getFunc d exprFunc
-    kind = if elem exprFunc fUNCS_RETURN_REF then EReference else EVal
+    kind = if funcGetReturnByRefAttr f then EReference else EVal
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
