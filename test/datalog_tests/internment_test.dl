@@ -1,5 +1,3 @@
-import internment
-
 input relation IInternedString(ix: IString)
 
 output relation OInternedString(x: string, ix: IString)

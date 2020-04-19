@@ -64,13 +64,16 @@ data DatalogModule = DatalogModule {
     moduleDefs :: DatalogProgram
 }
 
--- standard library module name
-stdname :: ModuleName
-stdname = ModuleName ["std"]
+-- Standard library module name.
+stdLibs :: [ModuleName]
+stdLibs = [ModuleName ["std"], ModuleName ["internment"]]
 
--- import standard library
-stdimp :: Import
-stdimp = Import nopos stdname (ModuleName [])
+stdImport :: ModuleName -> Import
+stdImport lib = Import nopos lib (ModuleName [])
+
+-- Import library imports.
+stdImports :: [Import]
+stdImports = map stdImport stdLibs
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
 -- program without imports and the list of Rust files associated with each
@@ -78,14 +81,14 @@ stdimp = Import nopos stdname (ModuleName [])
 --
 -- 'roots' is the list of directories to search for imports
 --
--- if 'import_std' is true, imports the standard library ('std')
+-- if 'import_std' is true, imports the standard libraries
 -- to each module.
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc, Doc)
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
     let prog' = if import_std
-                   then prog { progImports = stdimp : progImports prog }
+                   then prog { progImports = stdImports ++ progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
     imports <- evalStateT (parseImports roots' main_mod) []
@@ -161,15 +164,18 @@ parseImports roots mod = concat <$>
          (progImports $ moduleDefs mod)
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
-parseImport roots mod Import{..} = do
-    when (importModule == moduleName mod)
-         $ errorWithoutStackTrace $ "Module " ++ show (moduleName mod) ++ " is trying to import self"
-    modify (importModule:)
-    fname <- lift $ findModule roots mod importModule
+parseImport roots mod imp = do
+    when (importModule imp == moduleName mod)
+         $ errorWithoutStackTrace $ "Module '" ++ show (moduleName mod) ++ "' is trying to import self"
+    modify (importModule imp:)
+    fname <- lift $ findModule roots mod $ importModule imp
     prog <- lift $ do fdata <- readFile fname
                       parseDatalogString fdata fname
-    let std = if importModule == stdname then [] else [stdimp]
-    let mod' = DatalogModule importModule fname $ prog { progImports = std ++ progImports prog }
+    mapM_ (\imp' -> when (elem (importModule imp') stdLibs)
+                    $ errorWithoutStackTrace $ "Module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
+          $ progImports prog
+    let prog_imports = filter (stdImport (importModule imp) /=) $ stdImports ++ progImports prog
+    let mod' = DatalogModule (importModule imp) fname $ prog { progImports = prog_imports }
     imports <- parseImports roots mod'
     return $ mod' : imports
 
