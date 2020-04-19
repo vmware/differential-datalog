@@ -484,6 +484,7 @@ term' = withPos $
      <|> enumber
      <|> ebool
      <|> estring
+     <|> einterned_string
      <|> evar
      <|> ematch
      <|> eite
@@ -548,6 +549,10 @@ enumber  = lexeme enumber'
 estring =   equoted_string
         <|> eraw_string
         <|> einterpolated_raw_string
+
+einterned_string = do
+    e <- try $ string "i" *> estring
+    return $ E $ EApply (pos e) "intern" [e]
 
 eraw_string = eString <$> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace))
 
