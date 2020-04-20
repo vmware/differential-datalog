@@ -1,6 +1,6 @@
 # A Differential Datalog (DDlog) tutorial
 
-**Note:**: All examples from this tutorial can be found in
+**Note:** All examples from this tutorial can be found in
 [`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl).
 The examples can be executed using test inputs from
 [`test/datalog_tests/tutorial.dat`](../../test/datalog_tests/tutorial.dat)
@@ -37,6 +37,8 @@ program -> | compiler |-> code -> | compiler |--> executable
 ## Installing DDlog
 
 Installation instructions are found in the [README](../../README.md#Installation).
+Don't forget to set the `$DDLOG_HOME` environment variable to point to the root of the repository
+or the DDlog installation directory (when using a binary release of DDlog).
 
 ## "Hello, World!" in DDlog
 
@@ -137,10 +139,12 @@ should use the order that makes programs easiest to read.
 Compiling a DDlog program consists of two steps.
 First, run the DDlog compiler to generate the Rust program:
 ```
-ddlog -i playpen.dl -L <ddlog/lib>
+ddlog -i playpen.dl
 ```
-where `<ddlog/lib>` is the path to the `lib` directory inside the
-DDlog installation directory (when using a binary release) or
+DDlog will search for its standard libraries inside the directory specified
+in the `$DDLOG_HOME` variable.  If this variable is not set, add the `-L <ddlog/lib>`
+switch, where `<ddlog/lib>` is the path to the `lib`
+directory inside the DDlog installation directory (when using a binary release) or
 inside the DDlog repository (when building DDlog from source).
 
 Second, run the Rust compiler to generate a binary executable:
@@ -286,7 +290,7 @@ Phrases{"I am your father"}
 > ```
 > #!/bin/bash
 >
-> ddlog -i playpen.dl -L <ddlog/lib>
+> ddlog -i playpen.dl
 > (cd playpen_ddlog && cargo build --release)
 > ./playpen_ddlog/target/release/playpen_cli < playpen.dat
 > ```
@@ -423,6 +427,22 @@ user-defined type (such as `Category` above) the user can implement a
 function named `category2string` that returns a `string` given a category
 (functions are described [below](#functions)).
 
+### String library functions
+
+Other string operations are implemented as library
+[functions](#functions) in DDlog.  Many of these functions are part of the
+[standard library](#the-standard-library), e.g.,
+
+```
+extern function string_len(s: string): usize
+extern function string_contains(s1: string, s2: string): bool
+extern function string_join(strings: Vec<string>, sep: string): string
+...
+```
+
+In addition, the [regex](../../lib/regex.dl) library contains functions for
+matching strings against regular expressions.
+
 ### Creating new types
 
 Let's say we want to display IP and Ethernet
@@ -523,7 +543,7 @@ The type `bigint` describes arbitrary-precision (unbounded) integers.
 initial value 125.
 
 Signed integers are written as `signed<N>`, where `N` is the width of
-the integer in bits.  Currently DDlog only supports integer with
+the integer in bits.  Currently DDlog only supports signed integers with
 widths that are supported by the native machine type (e.g., 8, 16, 32,
 or 64 bits).  DDlog supports all standard arithmetic operators over
 integers.
@@ -556,6 +576,11 @@ Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
 output relation MCastAddress(addr: ip_addr_t)
 MCastAddress(a) :- Address(a), is_multicast_addr(a).
 ```
+
+The DDlog [standard library](#the-standard-library) declares shortcuts for
+common signed and unsigned integer types: `u8`, `u16`, `u32`, `u64`, `u128`,
+`s8`, `s16`, `s32`, `s64`, and `s128`.  It also declares the `usize` that
+represents lengths and sizes and is currently an alias to `bit<64>`.
 
 Bit vector constants can be written as decimal numbers.  If the width is not specified
 DDlog computes the width using *type inference*.
@@ -1459,6 +1484,116 @@ TopScore(school, top_score) :-
     var top_score = Aggregate((school), group_max(student.sat_score)).
 ```
 
+## Interned values (`Intern<>`, `istring`)
+
+Interned values offer another way to save memory when working with large data
+objects by storing exactly one copy of each distinct object.  Consider the
+following program that takes a table of online orders as input and outputs
+a re-arranged representation of the table where every record lists all orders
+that contain one specific item.
+
+```
+input relation OnlineOrder(order_id: u64, item: string)
+output relation ItemInOrders(item: string, orders: Vec<u64>)
+
+ItemInOrders(item, orders) :-
+    OnlineOrder(order, item),
+    var orders = Aggregate((item), group2vec(order)).
+```
+
+Popular items like milk will occur in many orders, causing the string `"milk"`
+to be allocated and stored many times.  Interning avoids wasting memory by
+making sure that all identical strings point to the same memory location.
+Internally, interned objects are kept in a hash table.  When a new interned object is
+created, DDlog looks it up in the hash table.  If an identical object exists, it
+simply returns a new reference to it; otherwise a new object with reference
+count of 1 is created.  An interned object is deallocated when the last reference
+to it is dropped.  All this happens behind the scenes; the programmer simply has
+to replace `string` with `istring` in relation declarations to take advantage
+of interning:
+
+```
+input relation OnlineOrder(order_id: u64, item: istring)
+output relation ItemInOrders(item: istring, orders: Vec<u64>)
+```
+
+Interned strings are input and output by DDlog just like normal strings.  Inputs:
+
+```
+start;
+insert OnlineOrder(1, "milk"),
+insert OnlineOrder(1, "eggs"),
+insert OnlineOrder(1, "jackfruit"),
+insert OnlineOrder(2, "sursild"),
+insert OnlineOrder(2, "milk"),
+insert OnlineOrder(2, "eggs"),
+commit dump_changes;
+```
+
+Outputs:
+```
+ItemInOrders{.item = "eggs", .orders = [1, 2]}: +1
+ItemInOrders{.item = "jackfruit", .orders = [1]}: +1
+ItemInOrders{.item = "milk", .orders = [1, 2]}: +1
+ItemInOrders{.item = "sursild", .orders = [2]}: +1
+```
+
+DDlog implements two functions to manipulate interned objects. `ival()`
+takes an interned object (e.g., an `istring`) and returns the
+value it points to (e.g., `string`).  `intern()` is the inverse of
+`ival()` -- it interns its argument and returns a reference to the interned
+object.  Both functions are declated in [`internment.dl`](../../lib/internment.dl),
+a standard library automatically imported by all DDlog programs.
+
+In the following example, we pretty-print `OnlineOrder` records by first using `ival()`
+to extract the value of an item and then using `intern()` to intern the
+formatted string:
+
+```
+output relation OrderFormatted(order: istring)
+
+OrderFormatted(formatted) :-
+    OnlineOrder(order, item),
+    var formatted: istring = intern("order: ${order}, item: ${ival(item)}").
+```
+
+Just like with normal strings, it is often necessary to compare interned
+strings, e.g., we may want to filter out all orders containing milk:
+
+```
+output relation MilkOrders(order: u64)
+MilkOrders(order) :- OnlineOrder(order, i"milk").
+```
+
+Here we construct an interned string by prepending `i` to string literal `"milk"`.
+This works for any form of [string literals](#string-constants-literals).  The
+compiler expands `i"milk"` to `intern("milk")`, which gets evaluated statically.
+
+Interned strings are just one important special case of interned objects.  The
+general interned object type is declared in [`internment.dl`](../../lib/internment.dl)
+as `extern type Intern<'A>`.  In the following example, we intern the user-defined
+type `StoreItem`:
+
+```
+typedef StoreItem = StoreItem {
+    name: string,
+    description: istring
+}
+typedef IStoreItem = Intern<StoreItem>
+
+input relation StoreInventory(item: IStoreItem)
+output relation InventoryItemName(name: istring)
+
+/* `ival()` and `intern()` functions work for all interned
+ * objects, not just strings. */
+InventoryItemName(name) :-
+    StoreInventory(item),
+    var name = intern(ival(item).name).
+```
+
+The `internment.dl` library contains other useful declarations, which you may
+want to check out if you are working with interned values.
+
 ## A more imperative syntax
 
 Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog
@@ -1581,7 +1716,7 @@ Note that we refer to relations and constructors via their fully qualified names
 Compile and run the test:
 
 ```
-ddlog -i test.dl -L../../lib
+ddlog -i test.dl
 cd test
 cargo build --release
 target/release/test_cli < ../test.dat
@@ -1591,7 +1726,7 @@ Modules do not have to be in the same directory with the main program.  Assuming
 hierarchy is located, e.g., in `../modules`,  the first command above must be changed as follows:
 
 ```
-ddlog -i test.dl -L../modules -L../../lib
+ddlog -i test.dl -L../modules
 ```
 
 Multiple `-L` options are allowed to access modules scattered across multiple directories.
@@ -1601,8 +1736,7 @@ Multiple `-L` options are allowed to access modules scattered across multiple di
 The module system enables the creation of reusable DDlog libraries.  Some of these libraries
 are distributed with DDlog in the `lib` directory.  A particularly important one is the standard
 library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Map`, `Option`, `Ref`, and others.
-This library is imported automatically into every DDlog program; therefore the path to the
-`lib` directory must always be specified using the `-L` switch.
+This library is imported automatically into every DDlog program.
 
 ## Indexes
 

@@ -1,4 +1,6 @@
 /* Object interning library based on the `internment` crate.
+ *
+ * This library is automatically imported by all DDlog programs.
  */
 
 /* Interned object of type `'A`.

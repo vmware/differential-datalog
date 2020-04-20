@@ -83,7 +83,7 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 ### Installing DDlog from a binary release
 
-To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions below).
+To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive, add `ddlog/bin` to your `$PATH`, and set `$DDLOG_HOME` to point to the `ddlog` directory. You will also need to install the Rust toolchain (see instructions below).
 
 You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
 
@@ -139,13 +139,15 @@ Linux and MacOS.
 
 #### Building
 
-To rebuild the software once you've installed the dependencies using one of the
-above methods:
+To build the software once you've installed the dependencies using one of the
+above methods, clone this repository and set `$DDLOG_HOME` variable to point
+to the root of the repository.  Run
 
 ```
 stack build
 ```
 
+anywhere inside the repository to build the DDlog compiler.
 To install DDlog binaries in Haskell stack's default binary directory:
 
 ```
@@ -158,7 +160,7 @@ To install to a different location:
 stack install --local-bin-path <custom_path>
 ```
 
-To test basic DDlog functionality (complete test suite takes a long time):
+To test basic DDlog functionality:
 
 ```
 stack test --ta '-p path'
