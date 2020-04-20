@@ -491,6 +491,41 @@ TopScore(school, top_score) :-
     var top_score = Aggregate((school), group_max(student.sat_score)).
 
 /*
+ * Example: interned values
+ */
+
+input relation OnlineOrder(order_id: u64, item: istring)
+output relation ItemInOrders(item: istring, orders: Vec<u64>)
+
+ItemInOrders(item, orders) :-
+    OnlineOrder(order, item),
+    var orders = Aggregate((item), group2vec(order)).
+
+output relation OrderFormatted(order: istring)
+
+OrderFormatted(formatted) :-
+    OnlineOrder(order, item),
+    var formatted: istring = intern("order: ${order}, item: ${ival(item)}").
+
+output relation MilkOrders(order: u64)
+MilkOrders(order) :- OnlineOrder(order, i"milk").
+
+typedef StoreItem = StoreItem {
+    name: string,
+    description: istring
+}
+
+typedef IStoreItem = Intern<StoreItem>
+
+input relation StoreInventory(item: IStoreItem)
+
+output relation InventoryItemName(name: istring)
+
+InventoryItemName(name) :-
+    StoreInventory(item),
+    var name = intern(ival(item).name).
+
+/*
  * Example: Advanced features
  */
 

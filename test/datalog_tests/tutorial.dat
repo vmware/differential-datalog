@@ -45,6 +45,26 @@ dump TopScore;
 
 start;
 
+insert OnlineOrder(1, "milk"),
+insert OnlineOrder(1, "eggs"),
+insert OnlineOrder(1, "jackfruit"),
+
+insert OnlineOrder(2, "sursild"),
+insert OnlineOrder(2, "milk"),
+insert OnlineOrder(2, "eggs"),
+
+commit dump_changes;
+
+start;
+
+insert StoreInventory(StoreItem{"milk", "Just your regular cow milk"}),
+insert StoreInventory(StoreItem{"kumis", "Horse milk"}),
+insert StoreInventory(StoreItem{"goat milk", "Another milk variety"}),
+
+commit dump_changes;
+
+start;
+
 insert Logical_Switch(0),
 insert Logical_Switch(1),
 insert Load_Balancer(0, 0, "10.10.10.101", std.Some{"TCP"}, "lb1"),

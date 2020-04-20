@@ -16,6 +16,25 @@ HostInSubnet{.host = 2, .subnet = 1}
 TopScore
 TopScore{.school = "school1", .top_score = 1400}
 TopScore{.school = "school2", .top_score = 1600}
+ItemInOrders:
+ItemInOrders{.item = "eggs", .orders = [1, 2]}: +1
+ItemInOrders{.item = "jackfruit", .orders = [1]}: +1
+ItemInOrders{.item = "milk", .orders = [1, 2]}: +1
+ItemInOrders{.item = "sursild", .orders = [2]}: +1
+MilkOrders:
+MilkOrders{.order = 1}: +1
+MilkOrders{.order = 2}: +1
+OrderFormatted:
+OrderFormatted{.order = "order: 1, item: eggs"}: +1
+OrderFormatted{.order = "order: 1, item: jackfruit"}: +1
+OrderFormatted{.order = "order: 1, item: milk"}: +1
+OrderFormatted{.order = "order: 2, item: eggs"}: +1
+OrderFormatted{.order = "order: 2, item: milk"}: +1
+OrderFormatted{.order = "order: 2, item: sursild"}: +1
+InventoryItemName:
+InventoryItemName{.name = "goat milk"}: +1
+InventoryItemName{.name = "kumis"}: +1
+InventoryItemName{.name = "milk"}: +1
 Flows:
 Flow{.lr = 0, .stage = LS_IN_PRE_LB{}, .prio = 100, .matchStr = "ip4.dst == 10.10.10.101", .actionStr = "{ reg0[0] = 1; next; }"}
 Flow{.lr = 0, .stage = LS_OUT_PRE_LB{}, .prio = 100, .matchStr = "ip4", .actionStr = "{ reg0[0] = 1; next; }"}
