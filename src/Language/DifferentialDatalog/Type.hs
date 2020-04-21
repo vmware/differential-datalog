@@ -67,7 +67,6 @@ import Control.Monad.Identity
 import qualified Data.Map as M
 --import Debug.Trace
 
-import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Ops
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Syntax
@@ -76,6 +75,7 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Function
 import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Error
 --import {-# SOURCE #-} Relation
 
 sET_TYPES :: [String]
@@ -155,7 +155,7 @@ unifyTypes d p ctx ts = do
 checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
 checkConflicts d p ctx v (t:ts) = do
     mapM_ (\t' -> when (not $ typesMatch d t t')
-                       $ err p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
+                       $ err p d $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
     return t
 checkConflicts _ _ _ _ [] = error $ "Type.checkConflicts: invalid input"
 
@@ -178,7 +178,7 @@ unifyTypes' d p ctx (a, c) =
         (TOpaque _ n1 as1, TOpaque _ n2 as2) | n1 == n2
                                              -> unifyTypes d p ctx $ zip as1 as2
         (TVar _ n1       , t)                -> return $ M.singleton n1 t
-        _                                    -> err p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx
+        _                                    -> err p d $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx
     where a' = typ'' d a
           c' = typ'' d c
 
@@ -228,16 +228,16 @@ structTypeArgs d p ctx cname argtypes = do
     subst <- unifyTypes d p ("in type constructor " ++ cname)
                         $ expect ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
     mapM (\a -> case M.lookup a subst of
-                     Nothing -> err p $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++
+                     Nothing -> err p d $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++
                                         " to a concrete type in a call to type constructor " ++ cname
                      Just t  -> return t)
          tdefArgs
 
 eunknown :: (MonadError String me) => Pos -> ECtx -> me Type
-eunknown p ctx = err p $ "Expression has unknown type in " ++ show ctx
+eunknown p ctx = errBrief p $ "Expression has unknown type in " ++ show ctx
 
 mtype2me :: (MonadError String me) => Pos -> ECtx -> Maybe Type -> me Type
-mtype2me p ctx Nothing  = err p $ "Expression has unknown type in " ++ show ctx
+mtype2me p ctx Nothing  = errBrief p $ "Expression has unknown type in " ++ show ctx
 mtype2me _ _   (Just t) = return t
 
 exprNodeType' :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> me Type
@@ -269,11 +269,11 @@ exprNodeType' d _   (EField p (Just e) f) = do
     case typDeref' d e of
          t@TStruct{} ->
              case find ((==f) . name) $ structFields t of
-                  Nothing  -> err p  $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
+                  Nothing  -> err p d $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
                   Just fld -> do check (not $ structFieldGuarded t f) p
                                        $ "Access to guarded field \"" ++ f ++ "\""
                                  return $ fieldType fld
-         _           -> err (pos e) $ "Expression is not a struct"
+         _           -> err (pos e) d $ "Expression is not a struct"
 
 
 exprNodeType' _ ctx (ETupField p Nothing _)  = eunknown p ctx
@@ -282,7 +282,7 @@ exprNodeType' d _   (ETupField p (Just e) i) = do
          t@TTuple{} -> do check (((length $ typeTupArgs t) > i) && (0 <= i)) p
                             $ "Tuple \"" ++ show t ++ "\" does not have " ++ show i ++ " fields"
                           return $ (typeTupArgs t) !! i
-         _           -> err (pos e) $ "Expression is not a tuple"
+         _           -> err (pos e) d $ "Expression is not a tuple"
 
 exprNodeType' _ _   (EBool _ _)           = return tBool
 

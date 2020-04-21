@@ -36,8 +36,8 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
-import Language.DifferentialDatalog.Util
 import {-# SOURCE #-} Language.DifferentialDatalog.Function
+import Language.DifferentialDatalog.Error
 
 progValidateAttributes :: (MonadError String me) => DatalogProgram -> me ()
 progValidateAttributes d = do
@@ -55,7 +55,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     return ()
 
 typedefValidateAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> Attribute -> me ()
-typedefValidateAttr _ TypeDef{..} attr = do
+typedefValidateAttr d TypeDef{..} attr = do
     case name attr of
          "size" -> do
             check (isNothing tdefType) (pos attr)
@@ -63,7 +63,7 @@ typedefValidateAttr _ TypeDef{..} attr = do
          "rust" -> do
             check (isJust tdefType) (pos attr)
                 $ "Extern types cannot have a \"rust\" attribute"
-         n -> err (pos attr) $ "Unknown attribute " ++ n
+         n -> err (pos attr) d $ "Unknown attribute " ++ n
 
 typeValidateAttrs :: (MonadError String me) => DatalogProgram -> Type -> me ()
 typeValidateAttrs d struct@TStruct{..} =
@@ -78,11 +78,11 @@ consValidateAttrs d struct cons@Constructor{..} = do
     return ()
 
 consValidateAttr :: (MonadError String me) => DatalogProgram -> Type -> Constructor -> Attribute -> me ()
-consValidateAttr _ struct Constructor{..} attr = do
+consValidateAttr d struct Constructor{..} attr = do
     let TStruct{..} = struct
     case name attr of
          "rust" -> check (length typeCons > 1) (pos attr) $ "Per-constructor 'rust' attributes are only supported for types with multiple constructors"
-         n -> err (pos attr) $ "Unknown attribute " ++ n
+         n -> err (pos attr) d $ "Unknown attribute " ++ n
 
 indexValidateAttrs :: (MonadError String me) => DatalogProgram -> Index -> me ()
 indexValidateAttrs d Index{..} = mapM_ (fieldValidateAttrs d) idxVars
@@ -95,11 +95,11 @@ fieldValidateAttrs d field@Field{..} = do
     return ()
 
 fieldValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
-fieldValidateAttr _ attr = do
+fieldValidateAttr d attr = do
     case name attr of
          "rust" -> return ()
          "deserialize_from_array" -> return ()
-         n -> err (pos attr) $ "Unknown attribute " ++ n
+         n -> err (pos attr) d $ "Unknown attribute " ++ n
 
 funcValidateAttrs :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateAttrs d f@Function{..} = do
@@ -110,11 +110,11 @@ funcValidateAttrs d f@Function{..} = do
     return ()
 
 funcValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
-funcValidateAttr _ attr = do
+funcValidateAttr d attr = do
     case name attr of
          "has_side_effects" -> return ()
          "return_by_ref" -> return ()
-         n -> err (pos attr) $ "Unknown attribute " ++ n
+         n -> err (pos attr) d $ "Unknown attribute " ++ n
 
 {- 'size' attribute: Gives DDlog a hint about the size of an extern data type in bytes. -}
 
@@ -124,8 +124,8 @@ tdefCheckSizeAttr TypeDef{..} =
          []                   -> return Nothing
          [Attribute{attrVal = E (EInt _ nbytes)}] | nbytes <= toInteger (maxBound::Int)
                               -> return $ Just $ fromInteger nbytes
-         [Attribute{..}] -> err attrPos $ "Invalid 'size' attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
-         _                    -> err tdefPos $ "Multiple 'size' attributes are not allowed"
+         [Attribute{..}] -> errBrief attrPos $ "Invalid 'size' attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
+         _                    -> errBrief tdefPos $ "Multiple 'size' attributes are not allowed"
 
 tdefGetSizeAttr :: TypeDef -> Maybe Int
 tdefGetSizeAttr tdef =
@@ -140,7 +140,7 @@ checkRustAttrs attrs =
     mapM (\Attribute{..} ->
             case attrVal of
                  E (EString _ str) -> return str
-                 _ -> err attrPos $ "Invalid 'rust' attribute: the value of the attribute must be a string literal, e.g., #[rust=\"serde(tag = \\\"type\\\"\")]")
+                 _ -> errBrief attrPos $ "Invalid 'rust' attribute: the value of the attribute must be a string literal, e.g., #[rust=\"serde(tag = \\\"type\\\"\")]")
          $ filter ((== "rust") . name) attrs
 
 getRustAttrs :: [Attribute] -> [String]
@@ -165,9 +165,9 @@ fieldCheckDeserializeArrayAttr d field@Field{..} =
                  $ "Key function '" ++ fname ++ "' must take one argument of type '" ++ show (fieldType) ++ "', but it takes " ++ show nargs ++ "arguments."
              _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype, ktype]
              return $ Just fname
-         [Attribute{..}] -> err attrPos
+         [Attribute{..}] -> err attrPos d
              $ "Invalid 'deserialize_from_array' attribute value '" ++ show attrVal ++ "': the value of the attribute must be the name of the key function, e.g.: \"deserialize_from_array=key_func()\"."
-         _               -> err (pos field) $ "Multiple 'deserialize_from_array' attributes are not allowed."
+         _               -> err (pos field) d $ "Multiple 'deserialize_from_array' attributes are not allowed."
 
 fieldGetDeserializeArrayAttr :: DatalogProgram -> Field -> Maybe String
 fieldGetDeserializeArrayAttr d field =
@@ -191,7 +191,7 @@ funcGetSideEffectAttr :: Function -> Bool
 funcGetSideEffectAttr f =
     case checkSideEffectAttr f of
          Left e -> error e
-         Right has_side_effects -> has_side_effects 
+         Right has_side_effects -> has_side_effects
 
 checkReturnByRefAttr :: (MonadError String me) => Function -> me Bool
 checkReturnByRefAttr Function{..} =

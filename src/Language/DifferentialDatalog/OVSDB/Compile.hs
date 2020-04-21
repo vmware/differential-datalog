@@ -45,6 +45,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
+import Language.DifferentialDatalog.Error
 import Control.Monad.Except
 
 {-
@@ -470,7 +471,7 @@ mkSwizzleRules t@Table{..} = do
                      "(var __one_key, var __one_ref) = __one,"                                                                                      $$
                      mkTableName reftable TableUUIDMap <> "(__one_ref, __one_swizzled),"                                                            $$
                      "var" <+> swColName col <+> "= Aggregate((" <> commaSep group_by <> ")," <+> "group2map_remove_sentinel((__one_key, __one_swizzled)))"
-        colSwizzle col = err (pos col) $ "mkSwizzleRules: reference swizzling not implemented for map keys"
+        colSwizzle col = errBrief (pos col) $ "mkSwizzleRules: reference swizzling not implemented for map keys"
     swizzles <- mapM colSwizzle $ filter colIsRef ovscols
     return $
         mkTableName t TableOutputSwizzled <> "(" <> commaSep swizcols <> ") :-"     $$
@@ -539,7 +540,7 @@ mkColName' c =
 
 mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
 mkAtomicType IntegerType{}          = return "integer"
-mkAtomicType (RealType p)           = err p "\"real\" types are not supported"
+mkAtomicType RealType{}             = return "double"
 mkAtomicType BooleanType{}          = return "bool"
 mkAtomicType StringType{}           = return "string"
 mkAtomicType UUIDType{}             = return "uuid"
@@ -612,7 +613,7 @@ tableGetNonROCols t =
 getTable :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => Pos -> String -> me Table
 getTable p tname =
     case find ((== tname) . name) $ schemaTables ?schema of
-         Nothing -> err p $ "Unknown table " ++ tname
+         Nothing -> errBrief p $ "Unknown table " ++ tname
          Just t  -> return t
 
 -- Is table referenced by at least one other table in the schema?

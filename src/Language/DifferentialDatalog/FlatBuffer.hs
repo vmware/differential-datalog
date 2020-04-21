@@ -94,6 +94,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Index
+import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
