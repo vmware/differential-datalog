@@ -56,6 +56,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Error
 --import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
@@ -140,7 +141,8 @@ mergeModules mods = do
         progRelations    = M.unions $ map progRelations mods,
         progIndexes      = M.unions $ map progIndexes mods,
         progRules        = concatMap progRules mods,
-        progApplys       = concatMap progApplys mods
+        progApplys       = concatMap progApplys mods,
+        progSources      = M.unions $ map progSources mods
     }
     uniq (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
          $ M.elems $ progFunctions prog
@@ -270,7 +272,7 @@ candidates DatalogModule{..} p n = do
     let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++
                (if mod == ModuleName [] then [moduleName] else [])
     when (null mods) $
-        err p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
+        errBrief p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
     return mods
 
 flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me String
@@ -280,8 +282,8 @@ flattenName lookup_fun entity mmap mod p c = do
     let cands = filter ((\m -> isJust $ lookup_fun (moduleDefs m) lname)) $ map (mmap M.!) cand_mods
     case cands of
          [m] -> return $ scoped (moduleName m) lname
-         []  -> err p $ "Unknown " ++ entity ++ " " ++ c
-         _   -> err p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
+         []  -> errBrief p $ "Unknown " ++ entity ++ " '" ++ c ++ "'"
+         _   -> errBrief p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
                         " found in the following modules: " ++
                         (intercalate ", " $ map moduleFile cands)
 

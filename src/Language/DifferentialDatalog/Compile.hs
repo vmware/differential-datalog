@@ -666,8 +666,8 @@ mkTypedef d tdef@TypeDef{..} =
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
               from_array_module = maybe empty (\kfunc -> "deserialize_map_from_array!(" <>
-                                                         from_array_module_name <> "," <> 
-                                                         mkType ktype <> "," <> mkType vtype <> "," <> 
+                                                         from_array_module_name <> "," <>
+                                                         mkType ktype <> "," <> mkType vtype <> "," <>
                                                          rname kfunc <> ");")
                                   $ fieldGetDeserializeArrayAttr d f
               from_array_module_name = "__serde_" <> rname cons <> "_" <> pp (name f)

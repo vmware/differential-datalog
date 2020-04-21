@@ -1047,6 +1047,7 @@ data DatalogProgram = DatalogProgram { progImports      :: [Import]
                                      , progIndexes      :: M.Map String Index
                                      , progRules        :: [Rule]
                                      , progApplys       :: [Apply]
+                                     , progSources      :: M.Map String String -- maps module to source
                                      }
                       deriving (Eq)
 
@@ -1090,6 +1091,7 @@ emptyDatalogProgram = DatalogProgram { progImports       = []
                                      , progIndexes       = M.empty
                                      , progRules         = []
                                      , progApplys        = []
+                                     , progSources       = M.empty
                                      }
 
 progAddTypedef :: TypeDef -> DatalogProgram -> DatalogProgram

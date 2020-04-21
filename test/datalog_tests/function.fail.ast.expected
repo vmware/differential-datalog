@@ -15,7 +15,9 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already define
 
 error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field "x"
 
-error: ./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1
+error: ./test/datalog_tests/function.fail.dl:5:1-9:1:Recursive function definition: f1->f2->f1
+function f1(arg: bigint): bigint = {
+^
 
 error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
 
@@ -25,7 +27,9 @@ Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, col
 unexpected "f"
 expecting "=" or "{"
 
-error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
+error: ./test/datalog_tests/function.fail.dl:4:5-4:6:Expression is not a struct
+    x.bar // x is not a struct
+    ^
 
 error: ./test/datalog_tests/function.fail.dl:3:41-5:1: Conversion between signed and unsigned bit vectors only supported across types of the same bit width. Try casting to signed<32> first.
 

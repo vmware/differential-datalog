@@ -172,7 +172,7 @@ parserTest fname = do
         prog' <- parseDatalogString fdata astfile
         removeFile astfile
         -- expect the same result
-        assertEqual "Pretty-printed Datalog differs from original input" prog prog'
+        assertEqual "Pretty-printed Datalog differs from original input" (show prog) (show prog')
 
 -- Run Datalog compiler on spec in 'fname'.
 --

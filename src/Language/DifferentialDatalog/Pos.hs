@@ -24,9 +24,10 @@ SOFTWARE.
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Language.DifferentialDatalog.Pos(
-        Pos, 
+        Pos,
         WithPos(..),
         spos,
+        sposFragment,
         nopos,
         posInside,
         withPos,
@@ -34,6 +35,7 @@ module Language.DifferentialDatalog.Pos(
 
 import Text.Parsec
 import Text.Parsec.Pos
+import qualified Data.Map as M
 
 type Pos = (SourcePos,SourcePos)
 
@@ -50,7 +52,24 @@ spos x = let (s,e) = pos x
          in sourceName s ++ ":" ++ (show $ sourceLine s) ++ ":" ++ (show $ sourceColumn s) ++ "-"
                                 ++ (show $ sourceLine e) ++ ":" ++ (show $ sourceColumn e)
 
-nopos::Pos 
+sposFragment :: (WithPos a) => a -> M.Map String String -> String -> String
+sposFragment element sources message =
+   let (s,e)      = pos element
+       sourceFile = sourceName s
+       lineStart  = sourceLine s
+       colStart   = sourceColumn s
+       lineEnd    = sourceLine e
+       colEnd     = sourceColumn e
+       sameLine   = lineStart == lineEnd
+       width      = if sameLine then colEnd - colStart else 1
+       line       = (lines $ (sources M.! sourceFile)) !! (lineStart - 1)
+    in sourceFile ++ ":" ++ (show $ lineStart) ++ ":" ++ (show $ colStart) ++ "-"
+                  ++ (show $ lineEnd) ++ ":" ++ (show $ colEnd) ++ ":" ++ message ++ "\n"
+                  ++ line ++ "\n"
+                  ++ take (colStart - 1) (repeat ' ')
+                  ++ take width (repeat '^')
+
+nopos::Pos
 nopos = (initialPos "",initialPos "")
 
 posInside :: SourcePos -> Pos -> Bool

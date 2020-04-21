@@ -49,6 +49,7 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Attribute
+import Language.DifferentialDatalog.Error
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
@@ -100,7 +101,7 @@ checkNoRecursion :: (MonadError String me) => DatalogProgram -> me ()
 checkNoRecursion d = do
     case grCycle (funcGraph d) of
          Nothing -> return ()
-         Just t  -> err (pos $ getFunc d $ snd $ head t)
+         Just t  -> err (pos $ getFunc d $ snd $ head t) d
                         $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
 
 funcGraph :: DatalogProgram -> G.Gr String ()
@@ -142,7 +143,7 @@ exprDesugar d _ e =
                         _  | all (null . fst) as
                            -> desugarPos
                         _  | any (null . fst) as
-                           -> err (pos e) $ "Expression mixes named and positional arguments to type constructor " ++ c
+                           -> err (pos e) d $ "Expression mixes named and positional arguments to type constructor " ++ c
                         _  -> desugarNamed
             return $ E e{exprStructFields = as'}
          _              -> return $ E e
@@ -224,7 +225,7 @@ funcValidateProto d f@Function{..} = do
     let tvars = funcTypeVars f
     mapM_ (typeValidate d tvars . argType) funcArgs
     typeValidate d tvars funcType
-    
+
 
 funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateDefinition d f@Function{..} = do
@@ -286,7 +287,7 @@ ruleValidate d rl@Rule{..} = do
     when (not $ null ruleRHS) $ do
         case head ruleRHS of
              RHSLiteral True _ -> return ()
-             _                 -> err (pos rl) "Rule must start with positive literal"
+             _                 -> err (pos rl) d "Rule must start with positive literal"
     mapIdxM_ (ruleRHSValidate d rl) ruleRHS
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
@@ -403,7 +404,7 @@ applyValidate d a@Apply{..} = do
                   ) $ zip (transInputs ++ transOutputs) (applyInputs ++ applyOutputs)
     bindings <- unifyTypes d (pos a) ("in transformer application " ++ show a) $ concat types
     mapM_ (\ta -> case M.lookup ta bindings of
-                       Nothing -> err (pos a) $ "Unable to bind type argument '" ++ ta ++
+                       Nothing -> err (pos a) d $ "Unable to bind type argument '" ++ ta ++
                                                 " to a concrete type in transformer application " ++ show a
                        Just _  -> return ())
           $ transformerTypeVars trans
@@ -471,7 +472,7 @@ depGraphValidate d@DatalogProgram{..} = do
     mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->
                     do let lscc = sccmap M.! (atomRelation a)
-                       mapM_ (\rhs -> err (pos rl)
+                       mapM_ (\rhs -> err (pos rl) d
                                           $ "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
                                             " and therefore cannot appear negated in this rule")
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
@@ -481,7 +482,7 @@ depGraphValidate d@DatalogProgram{..} = do
           progRules
     mapM_ (\scc -> let anode = find depNodeIsApply scc in
                    case anode of
-                        Just (DepNodeApply a) -> err (pos a)
+                        Just (DepNodeApply a) -> err (pos a) d
                                                  $ "Transformer application appears in a recursive fragment consisting of the following relations: " ++
                                                  (show scc)
                         _ -> return ())
@@ -601,7 +602,7 @@ exprValidate2 d _   (ESlice p e h l)    =
                            $ "Upper bound of the slice must be greater than lower bound"
                        check (h < w) p
                            $ "Upper bound of the slice cannot exceed argument width"
-        _        -> err (pos e) $ "Expression is not a bit vector"
+        _        -> err (pos e) d $ "Expression is not a bit vector"
 
 exprValidate2 d _   (EMatch _ _ cs)     = do
     let t = snd $ head cs
@@ -708,13 +709,13 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
                   TFloat{}    -> return $ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
-                  TTuple{}    -> err (pos r) "Automatic string conversion for tuples is not supported"
-                  TVar{..}    -> err (pos r) $
+                  TTuple{}    -> err (pos r) d "Automatic string conversion for tuples is not supported"
+                  TVar{..}    -> err (pos r) d $
                                      "Cannot automatically convert " ++ show r ++
                                      " of variable type " ++ tvarName ++ " to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
     f <- case lookupFunc d fname of
-              Nothing  -> err (pos r) $ "Cannot find declaration of function " ++ fname ++
+              Nothing  -> err (pos r) d $ "Cannot find declaration of function " ++ fname ++
                                         " needed to convert expression " ++ show r ++ " to string"
               Just fun -> return fun
     let arg0 = funcArgs f !! 0

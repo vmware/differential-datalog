@@ -50,13 +50,14 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
+import Language.DifferentialDatalog.Error
 
 -- parse a string containing a datalog program and produce the intermediate representation
 parseDatalogString :: String -> String -> IO DatalogProgram
 parseDatalogString program file = do
   case parse datalogGrammar file program of
        Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-       Right prog -> return prog
+       Right prog -> return prog { progSources = M.singleton file program }
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
@@ -250,7 +251,8 @@ spec = do
                                          , progRelations    = M.fromList relations
                                          , progIndexes      = M.fromList indexes
                                          , progRules        = rules
-                                         , progApplys       = applys}
+                                         , progApplys       = applys
+                                         , progSources      = M.empty }
     case res of
          Left e     -> errorWithoutStackTrace e
          Right prog -> return prog
