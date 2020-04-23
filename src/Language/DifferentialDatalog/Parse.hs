@@ -130,7 +130,7 @@ semiSep      = T.semiSep lexer
 colon        = T.colon lexer
 commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
-symbol       = T.symbol lexer
+symbol       = try . T.symbol lexer
 --semi         = T.semi lexer
 comma        = T.comma lexer
 braces       = T.braces lexer
@@ -391,7 +391,7 @@ rule = Rule nopos <$>
        (commaSep1 $ atom True) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
               RHSAggregate <$> (reserved "var" *> varIdent) <*>
@@ -405,7 +405,7 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
 
 atom is_head = withPos $ do
        p1 <- getPosition
-       binding <- optionMaybe $ try $ varIdent <* reservedOp "in"
+       binding <- optionMaybe $ try $ varIdent <* reserved "in"
        p2 <- getPosition
        isref <- option False $ (\_ -> True) <$> reservedOp "&"
        rname <- relIdent
