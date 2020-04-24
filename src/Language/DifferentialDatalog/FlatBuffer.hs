@@ -142,7 +142,7 @@ flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
             t@TOpaque{..} ->
-                check (elem typeName $ [rEF_TYPE, mAP_TYPE] ++ sET_TYPES ++ iNTERNED_TYPES) (pos t) $
+                check d (elem typeName $ [rEF_TYPE, mAP_TYPE] ++ sET_TYPES ++ iNTERNED_TYPES) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
           progTypesToSerialize

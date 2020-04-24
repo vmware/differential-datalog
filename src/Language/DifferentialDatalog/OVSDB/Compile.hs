@@ -248,7 +248,7 @@ compileSchema schema outputs with_oproxies keys = do
     let tables = schemaTables schema
     mapM_ (\(o, _) -> do let t = find ((==o) . name) tables
                          when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") outputs
-    uniqNames ("Multiple declarations of table " ++ ) tables
+    uniqNames Nothing ("Multiple declarations of table " ++ ) tables
     let ?schema = schema
     let ?outputs = outputs
     let ?with_oproxies = with_oproxies
@@ -266,7 +266,7 @@ mkTable isinput t@Table{..} key_cols = do
           (\rocols -> mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t))
                                         $ throwError $ "Column " ++ c ++ " not found in table " ++ name t) rocols)
           $ lookup (name t) ?outputs
-    uniqNames (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
+    uniqNames Nothing (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     when (isJust key_cols && tableMaxRows t == Just 1)
           $ throwError $ "Key columns specified for table " ++ name t ++ ", which has maxRows value of 1"
     let keys = if tableMaxRows t == Just 1
@@ -515,9 +515,9 @@ mkUUIDMapRules t@Table{..} mkeys =
 
 mkCol :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> String -> TableColumn -> me Doc
 mkCol tkind tname c@TableColumn{..} = do
-    check (columnName /= "_uuid") (pos c) $ "Reserved column name _uuid in table " ++ tname
-    check (notElem columnName ["uuid-name", "uuid_name"]) (pos c) $ "Reserved column name " ++ columnName ++ " in table " ++ tname
-    check (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
+    checkNoProg (columnName /= "_uuid") (pos c) $ "Reserved column name _uuid in table " ++ tname
+    checkNoProg (notElem columnName ["uuid-name", "uuid_name"]) (pos c) $ "Reserved column name " ++ columnName ++ " in table " ++ tname
+    checkNoProg (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     t <- case columnType of
               ColumnTypeAtomic at  -> mkAtomicType at
               ColumnTypeComplex ct -> mkComplexType tkind ct
@@ -559,10 +559,10 @@ complexTypeBounds ComplexType{..} = (min_bound, max_bound)
 mkComplexType :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> ComplexType -> me Doc
 mkComplexType tkind t@ComplexType{..} = do
     let (min_bound, max_bound) = complexTypeBounds t
-    check (max_bound >= min_bound) (pos t) $ "min bound exceeds max bound"
-    check (min_bound == 0 || min_bound == 1) (pos t) $ "min bound must be 0 or 1"
-    check (max_bound > 0) (pos t) $ "max bound must be greater than 0"
-    check (max_bound /= 1 || isNothing valueComplexType) (pos t)
+    checkNoProg (max_bound >= min_bound) (pos t) $ "min bound exceeds max bound"
+    checkNoProg (min_bound == 0 || min_bound == 1) (pos t) $ "min bound must be 0 or 1"
+    checkNoProg (max_bound > 0) (pos t) $ "max bound must be greater than 0"
+    checkNoProg (max_bound /= 1 || isNothing valueComplexType) (pos t)
           $ "Cannot handle key-value pairs when max bound is 1"
     key <- mkBaseType tkind keyComplexType
     case (min_bound, max_bound) of
@@ -590,8 +590,8 @@ tableCheckCols t@Table{..} = do
     let tprops = filter (\case
                           ColumnsProperty{} -> True
                           _                 -> False) tableProperties
-    check (not $ null tprops) (pos t) $ "Table " ++ tableName ++ " does not have a \"columns\" property"
-    check (length tprops == 1) (pos t) $ "Table " ++ tableName ++ " has multiple \"columns\" properties"
+    checkNoProg (not $ null tprops) (pos t) $ "Table " ++ tableName ++ " does not have a \"columns\" property"
+    checkNoProg (length tprops == 1) (pos t) $ "Table " ++ tableName ++ " has multiple \"columns\" properties"
     let (ColumnsProperty ovscols) : _ = tprops
     return ovscols
 

@@ -144,15 +144,16 @@ mergeModules mods = do
         progApplys       = concatMap progApplys mods,
         progSources      = M.unions $ map progSources mods
     }
-    uniq (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
+        jp = Just prog
+    uniq jp (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
          $ M.elems $ progFunctions prog
-    uniq (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
          $ M.elems $ progTransformers prog
-    uniq (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
          $ M.elems $ progRelations prog
-    uniq (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
          $ M.elems $ progIndexes prog
-    uniq (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
          $ M.elems $ progTypedefs prog
     return prog
 

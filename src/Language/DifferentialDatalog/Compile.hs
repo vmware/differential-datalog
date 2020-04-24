@@ -637,7 +637,7 @@ mkTypedef d tdef@TypeDef{..} =
          Just t           -> "pub type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
-    rustAttrs = getRustAttrs tdefAttrs
+    rustAttrs = getRustAttrs d tdefAttrs
     derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]"
     derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
     targs = if null tdefArgs
@@ -661,7 +661,7 @@ mkTypedef d tdef@TypeDef{..} =
                            vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
                            (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
                         , from_array_module)
-        where rattrs = getRustAttrs $ fieldAttrs f
+        where rattrs = getRustAttrs d $ fieldAttrs f
               TOpaque _ _ [ktype, vtype] = typ' d f
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
@@ -677,7 +677,7 @@ mkTypedef d tdef@TypeDef{..} =
         where
         (fields, extras) = unzip $ map (mkField (name c) False) $ consArgs c
         args = vcat $ punctuate comma fields
-        rattrs = getRustAttrs $ consAttrs c
+        rattrs = getRustAttrs d $ consAttrs c
         cons = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
                if null $ consArgs c
                   then rname (name c)
@@ -2278,7 +2278,7 @@ mkExpr' d _ EApply{..}  =
                         $ zip exprArgs (map argMut $ funcArgs f)), kind)
     where
     f = getFunc d exprFunc
-    kind = if funcGetReturnByRefAttr f then EReference else EVal
+    kind = if funcGetReturnByRefAttr d f then EReference else EVal
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
