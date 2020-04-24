@@ -1,6 +1,6 @@
+use arc_interner;
 use differential_datalog::record;
 use differential_datalog::record::*;
-use internment::ArcIntern;
 use serde;
 use std::cmp;
 use std::fmt;
@@ -19,15 +19,15 @@ use flatbuffers as fbrt;
 #[derive(Default, Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct internment_Intern<A>
 where
-    A: Eq + Send + Hash + 'static,
+    A: Eq + Send + Sync + Hash + 'static,
 {
-    intern: ArcIntern<A>,
+    intern: arc_interner::ArcIntern<A>,
 }
 
-impl<A: Eq + Hash + Send + 'static> internment_Intern<A> {
+impl<A: Eq + Hash + Send + Sync + 'static> internment_Intern<A> {
     pub fn new(x: A) -> internment_Intern<A> {
         internment_Intern {
-            intern: ArcIntern::new(x),
+            intern: arc_interner::ArcIntern::new(x),
         }
     }
     pub fn as_ref(&self) -> &A {
@@ -35,11 +35,13 @@ impl<A: Eq + Hash + Send + 'static> internment_Intern<A> {
     }
 }
 
-pub fn internment_intern<A: Eq + Hash + Send + Clone + 'static>(x: &A) -> internment_Intern<A> {
+pub fn internment_intern<A: Eq + Hash + Send + Sync + Clone + 'static>(
+    x: &A,
+) -> internment_Intern<A> {
     internment_Intern::new(x.clone())
 }
 
-pub fn internment_ival<A: Eq + Hash + Send + Clone>(x: &internment_Intern<A>) -> &A {
+pub fn internment_ival<A: Eq + Hash + Send + Sync + Clone>(x: &internment_Intern<A>) -> &A {
     x.intern.as_ref()
 }
 
@@ -47,21 +49,21 @@ pub fn internment_ival<A: Eq + Hash + Send + Clone>(x: &internment_Intern<A>) ->
     s.x
 }*/
 
-impl<A: fmt::Display + Eq + Hash + Send + Clone> fmt::Display for internment_Intern<A> {
+impl<A: fmt::Display + Eq + Hash + Send + Sync + Clone> fmt::Display for internment_Intern<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.as_ref(), f)
         //record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
-impl<A: fmt::Debug + Eq + Hash + Send + Clone> fmt::Debug for internment_Intern<A> {
+impl<A: fmt::Debug + Eq + Hash + Send + Sync + Clone> fmt::Debug for internment_Intern<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.as_ref(), f)
         //record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
-impl<A: Serialize + Eq + Hash + Send + Clone> serde::Serialize for internment_Intern<A> {
+impl<A: Serialize + Eq + Hash + Send + Sync + Clone> serde::Serialize for internment_Intern<A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -70,7 +72,7 @@ impl<A: Serialize + Eq + Hash + Send + Clone> serde::Serialize for internment_In
     }
 }
 
-impl<'de, A: Deserialize<'de> + Eq + Hash + Send + 'static> serde::Deserialize<'de>
+impl<'de, A: Deserialize<'de> + Eq + Hash + Send + Sync + 'static> serde::Deserialize<'de>
     for internment_Intern<A>
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -81,13 +83,13 @@ impl<'de, A: Deserialize<'de> + Eq + Hash + Send + 'static> serde::Deserialize<'
     }
 }
 
-impl<A: FromRecord + Eq + Hash + Send + 'static> FromRecord for internment_Intern<A> {
+impl<A: FromRecord + Eq + Hash + Send + Sync + 'static> FromRecord for internment_Intern<A> {
     fn from_record(val: &Record) -> Result<Self, String> {
         A::from_record(val).map(|x| internment_Intern::new(x))
     }
 }
 
-impl<A: IntoRecord + Eq + Hash + Send + Clone> IntoRecord for internment_Intern<A> {
+impl<A: IntoRecord + Eq + Hash + Send + Sync + Clone> IntoRecord for internment_Intern<A> {
     fn into_record(self) -> Record {
         internment_ival(&self).clone().into_record()
     }
@@ -95,7 +97,7 @@ impl<A: IntoRecord + Eq + Hash + Send + Clone> IntoRecord for internment_Intern<
 
 impl<A> Mutator<internment_Intern<A>> for Record
 where
-    A: Clone + Eq + Send + Hash,
+    A: Clone + Eq + Send + Sync + Hash,
     Record: Mutator<A>,
 {
     fn mutate(&self, x: &mut internment_Intern<A>) -> Result<(), String> {
@@ -109,7 +111,7 @@ where
 #[cfg(feature = "flatbuf")]
 impl<A, FB> FromFlatBuffer<FB> for internment_Intern<A>
 where
-    A: Eq + Hash + Send + 'static,
+    A: Eq + Hash + Send + Sync + 'static,
     A: FromFlatBuffer<FB>,
 {
     fn from_flatbuf(fb: FB) -> Response<Self> {
@@ -121,7 +123,7 @@ where
 impl<'b, A, T> ToFlatBuffer<'b> for internment_Intern<A>
 where
     T: 'b,
-    A: Eq + Send + Hash + ToFlatBuffer<'b, Target = T>,
+    A: Eq + Send + Sync + Hash + ToFlatBuffer<'b, Target = T>,
 {
     type Target = T;
 
@@ -141,7 +143,7 @@ impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_istring {
 impl<'b, A, T> ToFlatBufferTable<'b> for internment_Intern<A>
 where
     T: 'b,
-    A: Eq + Send + Hash + ToFlatBufferTable<'b, Target = T>,
+    A: Eq + Send + Sync + Hash + ToFlatBufferTable<'b, Target = T>,
 {
     type Target = T;
     fn to_flatbuf_table(
@@ -156,7 +158,7 @@ where
 impl<'b, A, T> ToFlatBufferVectorElement<'b> for internment_Intern<A>
 where
     T: 'b + fbrt::Push + Copy,
-    A: Eq + Send + Hash + ToFlatBufferVectorElement<'b, Target = T>,
+    A: Eq + Send + Sync + Hash + ToFlatBufferVectorElement<'b, Target = T>,
 {
     type Target = T;
 
