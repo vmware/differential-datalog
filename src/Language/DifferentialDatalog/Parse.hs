@@ -237,22 +237,23 @@ spec = do
     let applys = mapMaybe (\case
                            SpApply a -> Just a
                            _         -> Nothing) items
-    let res = do uniqNames ("Multiple definitions of type " ++) $ map snd types
-                 uniqNames ("Multiple definitions of function " ++) $ map snd funcs
-                 uniqNames ("Multiple definitions of relation " ++) $ map snd relations
-                 uniqNames ("Multiple definitions of index " ++) $ map snd indexes
-                 uniqNames ("Multiple definitions of transformer " ++) $ map snd transformers
+    let program = DatalogProgram { progImports      = imports
+                                 , progTypedefs     = M.fromList types
+                                 , progFunctions    = M.fromList funcs
+                                 , progTransformers = M.fromList transformers
+                                 , progRelations    = M.fromList relations
+                                 , progIndexes      = M.fromList indexes
+                                 , progRules        = rules
+                                 , progApplys       = applys
+                                 , progSources      = M.empty }
+    let res = do uniqNames (Just program) ("Multiple definitions of type " ++) $ map snd types
+                 uniqNames (Just program) ("Multiple definitions of function " ++) $ map snd funcs
+                 uniqNames (Just program) ("Multiple definitions of relation " ++) $ map snd relations
+                 uniqNames (Just program) ("Multiple definitions of index " ++) $ map snd indexes
+                 uniqNames (Just program) ("Multiple definitions of transformer " ++) $ map snd transformers
                  --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
-                 uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
-                 return $ DatalogProgram { progImports      = imports
-                                         , progTypedefs     = M.fromList types
-                                         , progFunctions    = M.fromList funcs
-                                         , progTransformers = M.fromList transformers
-                                         , progRelations    = M.fromList relations
-                                         , progIndexes      = M.fromList indexes
-                                         , progRules        = rules
-                                         , progApplys       = applys
-                                         , progSources      = M.empty }
+                 uniq (Just program) importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
+                 return program
     case res of
          Left e     -> errorWithoutStackTrace e
          Right prog -> return prog

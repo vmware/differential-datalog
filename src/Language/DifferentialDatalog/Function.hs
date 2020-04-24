@@ -52,5 +52,5 @@ funcGroupArgTypes d Function{..} =
 
 funcIsPure :: DatalogProgram -> Function -> Bool
 funcIsPure d f =
-    (funcGetSideEffectAttr f == False) &&
+    (funcGetSideEffectAttr d f == False) &&
     (maybe True (exprIsPure d) $ funcDef f)

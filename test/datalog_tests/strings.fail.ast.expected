@@ -10,12 +10,16 @@ CtxFunc            strings
 CtxSeq1            (var b = ("" > 2);  ())
 CtxSetR            var b = ("" > 2)
 CtxBinOpL          ("" > 2))
+    var b = "" > 2;
+            ^^^
 
 error: ./test/datalog_tests/strings.fail.dl:4:13-4:16: Couldn't match expected type bigint with actual type string (context: CtxTop
 CtxFunc            strings
 CtxSeq1            (var c = ("" != 2);  ())
 CtxSetR            var c = ("" != 2)
 CtxBinOpL          ("" != 2))
+    var c = "" != 2;
+            ^^^
 
 error: ./test/datalog_tests/strings.fail.dl:5:13-5:15: Couldn't match expected type bool with actual type string (context: CtxTop
 CtxFunc            strings
@@ -23,15 +27,17 @@ CtxSeq2            (var s = "string";  (var d = (s < true);   ()))
 CtxSeq1            (var d = (s < true);  ())
 CtxSetR            var d = (s < true)
 CtxBinOpL          (s < true))
+    var d = s < true;
+            ^^
 
-error: ./test/datalog_tests/strings.fail.dl:7:18-7:19:Cannot find declaration of function type12string needed to convert expression x to string
+error: ./test/datalog_tests/strings.fail.dl:7:18-7:19: Cannot find declaration of function type12string needed to convert expression x to string
     var err = "${x}"; // don't know how to convert x to string
                  ^
 
-error: ./test/datalog_tests/strings.fail.dl:6:24-6:28:Unknown variable: str1
+error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1
     var err = "${str2++str1}"; // str1 is not declared in this scope
                        ^^^^
 
-error: ./test/datalog_tests/strings.fail.dl:19:15-19:55:Cannot match expected type bigint and actual type serializable_t in the call to string conversion function "serializable_t2string"
+error: ./test/datalog_tests/strings.fail.dl:19:15-19:55: Cannot match expected type bigint and actual type serializable_t in the call to string conversion function "serializable_t2string"
     var err = "a=${a}, b=${b}, c=${c}, d=${d}, e:${e}";
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

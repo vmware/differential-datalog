@@ -144,7 +144,7 @@ main = do
     case confAction config' of
          ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
          ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
-                             putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
+                             putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
          ActionValidate -> do _ <- parseValidate config'
                               return ()
          ActionCompile -> compileProg config'

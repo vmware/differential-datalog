@@ -60,7 +60,7 @@ tOSTRING_FUNC_SUFFIX = "2string"
 -- | Validate Datalog program
 validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
 validate d = do
-    uniqNames ("Multiple definitions of constructor " ++)
+    uniqNames (Just d) ("Multiple definitions of constructor " ++)
               $ progConstructors d
     -- Validate typedef's
     mapM_ (typedefValidate d) $ M.elems $ progTypedefs d
@@ -101,7 +101,7 @@ checkNoRecursion :: (MonadError String me) => DatalogProgram -> me ()
 checkNoRecursion d = do
     case grCycle (funcGraph d) of
          Nothing -> return ()
-         Just t  -> err (pos $ getFunc d $ snd $ head t) d
+         Just t  -> err d (pos $ getFunc d $ snd $ head t)
                         $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
 
 funcGraph :: DatalogProgram -> G.Gr String ()
@@ -128,12 +128,12 @@ exprDesugar d _ e =
          EStruct p c as -> do
             cons@Constructor{..} <- checkConstructor p d c
             let desugarPos = do
-                    check (length as == length consArgs) p
+                    check d (length as == length consArgs) p
                            $ "Number of arguments does not match constructor declaration: " ++ show cons
                     return $ zip (map name consArgs) (map snd as)
             let desugarNamed = do
-                    uniq' (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
-                    mapM_ (\(n,e') -> check (isJust $ find ((==n) . name) consArgs) (pos e')
+                    uniq' (Just d) (\_ -> p) id ("Multiple occurrences of a field " ++) $ map fst as
+                    mapM_ (\(n,e') -> check d (isJust $ find ((==n) . name) consArgs) (pos e')
                                            $ "Unknown field " ++ n) as
                     return $ map (\f -> (name f, maybe (E $ EPHolder p) id $ lookup (name f) as)) consArgs
             as' <- case as of
@@ -143,15 +143,15 @@ exprDesugar d _ e =
                         _  | all (null . fst) as
                            -> desugarPos
                         _  | any (null . fst) as
-                           -> err (pos e) d $ "Expression mixes named and positional arguments to type constructor " ++ c
+                           -> err d (pos e) $ "Expression mixes named and positional arguments to type constructor " ++ c
                         _  -> desugarNamed
             return $ E e{exprStructFields = as'}
          _              -> return $ E e
 
 typedefValidate :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidate d@DatalogProgram{..} TypeDef{..} = do
-    uniq' (\_ -> tdefPos) id ("Multiple definitions of type argument " ++) tdefArgs
-    mapM_ (\a -> check (M.notMember a progTypedefs) tdefPos
+    uniq' (Just d) (\_ -> tdefPos) id ("Multiple definitions of type argument " ++) tdefArgs
+    mapM_ (\a -> check d (M.notMember a progTypedefs) tdefPos
                         $ "Type argument " ++ a ++ " conflicts with user-defined type name")
           tdefArgs
     case tdefType of
@@ -159,7 +159,7 @@ typedefValidate d@DatalogProgram{..} TypeDef{..} = do
          Just t  -> do
              typeValidate d tdefArgs t
              let dif = tdefArgs \\ typeTypeVars t
-             check (null dif) tdefPos
+             check d (null dif) tdefPos
                     $ "The following type variables are not used in type definition: " ++ intercalate "," dif
     return ()
 
@@ -169,14 +169,14 @@ typeValidate _ _     TInt{}           = return ()
 typeValidate _ _     TBool{}          = return ()
 typeValidate _ _     TDouble{}        = return ()
 typeValidate _ _     TFloat{}         = return ()
-typeValidate _ _     (TBit p w)       =
-    check (w>0) p "Integer width must be greater than 0"
-typeValidate _ _     (TSigned p w)       =
-    check (w>0) p "Integer width must be greater than 0"
+typeValidate d _     (TBit p w)       =
+    check d (w>0) p "Integer width must be greater than 0"
+typeValidate d _     (TSigned p w)       =
+    check d (w>0) p "Integer width must be greater than 0"
 typeValidate d tvars (TStruct p cs)   = do
-    uniqNames ("Multiple definitions of constructor " ++) cs
+    uniqNames (Just d) ("Multiple definitions of constructor " ++) cs
     mapM_ (consValidate d tvars) cs
-    mapM_ (\grp -> check (length (nub $ map typ grp) == 1) p $
+    mapM_ (\grp -> check d (length (nub $ map typ grp) == 1) p $
                           "Field " ++ (name $ head grp) ++ " is declared with different types")
           $ sortAndGroup name $ concatMap consArgs cs
 typeValidate d tvars (TTuple _ ts)    =
@@ -185,12 +185,12 @@ typeValidate d tvars (TUser p n args) = do
     t <- checkType p d n
     let expect = length (tdefArgs t)
     let actual = length args
-    check (expect == actual) p $
+    check d (expect == actual) p $
            "Expected " ++ show expect ++ " type arguments to " ++ n ++ ", found " ++ show actual
     mapM_ (typeValidate d tvars) args
     return ()
-typeValidate _ tvars (TVar p v)       =
-    check (elem v tvars) p $ "Unknown type variable " ++ v
+typeValidate d tvars (TVar p v)       =
+    check d (elem v tvars) p $ "Unknown type variable " ++ v
 typeValidate _ _     t                = error $ "typeValidate " ++ show t
 
 consValidate :: (MonadError String me) => DatalogProgram -> [String] -> Constructor -> me ()
@@ -199,7 +199,7 @@ consValidate d tvars Constructor{..} = do
 
 fieldsValidate :: (MonadError String me) => DatalogProgram -> [String] -> [Field] -> me ()
 fieldsValidate d targs fields = do
-    uniqNames ("Multiple definitions of argument " ++) fields
+    uniqNames (Just d) ("Multiple definitions of argument " ++) fields
     mapM_ (fieldValidate d targs) fields
 
 fieldValidate :: (MonadError String me) => DatalogProgram -> [String] -> Field -> me ()
@@ -221,7 +221,7 @@ checkAcyclicTypes DatalogProgram{..} = do
 
 funcValidateProto :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateProto d f@Function{..} = do
-    uniqNames ("Multiple definitions of argument " ++) funcArgs
+    uniqNames (Just d) ("Multiple definitions of argument " ++) funcArgs
     let tvars = funcTypeVars f
     mapM_ (typeValidate d tvars . argType) funcArgs
     typeValidate d tvars funcType
@@ -236,7 +236,7 @@ funcValidateDefinition d f@Function{..} = do
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
 relValidate d rel@Relation{..} = do
     typeValidate d [] relType
-    check (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
+    check d (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
         $ "Only input relations can be declared with a primary key"
     maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
 
@@ -271,14 +271,14 @@ indexValidate :: (MonadError String me) => DatalogProgram -> Index -> me ()
 indexValidate d idx@Index{..} = do
     fieldsValidate d [] idxVars
     atomValidate d (CtxIndex idx) idxAtom
-    check (exprIsPatternImpl $ atomVal idxAtom) (pos idxAtom)
+    check d (exprIsPatternImpl $ atomVal idxAtom) (pos idxAtom)
           $ "Index expression is not a pattern"
     -- Atom is defined over exactly the variables in the index.
     -- (variables in 'atom_vars \\ idx_vars' should be caught by 'atomValidate'
     -- above, so we only need to check for 'idx_vars \\ atom_vars' here).
     let idx_vars = map name idxVars
     let atom_vars = exprFreeVars d (CtxIndex idx) (atomVal idxAtom)
-    check (null $ idx_vars \\ atom_vars) (pos idx)
+    check d (null $ idx_vars \\ atom_vars) (pos idx)
           $ "The following index variables are not constrained by the index pattern: " ++
             (show $ idx_vars \\ atom_vars)
 
@@ -287,7 +287,7 @@ ruleValidate d rl@Rule{..} = do
     when (not $ null ruleRHS) $ do
         case head ruleRHS of
              RHSLiteral True _ -> return ()
-             _                 -> err (pos rl) d "Rule must start with positive literal"
+             _                 -> err d (pos rl) "Rule must start with positive literal"
     mapIdxM_ (ruleRHSValidate d rl) ruleRHS
     mapIdxM_ (ruleLHSValidate d rl) ruleLHS
 
@@ -297,7 +297,7 @@ atomValidate d ctx atom = do
     exprValidate d [] ctx $ atomVal atom
     let vars = ctxAllVars d ctx
     -- variable cannot be declared and used in the same atom
-    uniq' (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
+    uniq' (Just d) (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
         $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars)
         $ atomVarOccurrences ctx $ atomVal atom
 
@@ -320,7 +320,7 @@ ruleRHSValidate d rl RHSAggregate{} idx = do
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> Int -> me ()
 ruleLHSValidate d rl a@Atom{..} idx = do
     rel <- checkRelation atomPos d atomRelation
-    when (relRole rel == RelInput) $ check (null $ ruleRHS rl) (pos a)
+    when (relRole rel == RelInput) $ check d (null $ ruleRHS rl) (pos a)
          $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
     exprValidate d [] (CtxRuleL rl idx) atomVal
 
@@ -340,10 +340,10 @@ ruleCheckAggregate d rl idx = do
     -- Group-by variables are visible in this scope.
     mapM_ (checkVar (pos e) d ctx) vs
     let group_by_types = map (typ . getVar d ctx) vs
-    check (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
+    check d (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
     -- Aggregation function exists and takes a group as its sole argument.
     f <- checkFunc (pos e) d fname
-    check (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
+    check d (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
                                                fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
     funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [tTuple group_by_types, exprType d ctx e]]
 
@@ -354,12 +354,12 @@ ruleCheckAggregate d rl idx = do
 -- * validate higher-order types
 transformerValidate :: (MonadError String me) => DatalogProgram -> Transformer -> me ()
 transformerValidate d Transformer{..} = do
-    uniqNames ("Multiple definitions of transformer argument " ++)  $ transInputs ++ transOutputs
-    mapM_ (\o -> check (hotypeIsRelation $ hofType o) (pos o)
+    uniqNames (Just d) ("Multiple definitions of transformer argument " ++)  $ transInputs ++ transOutputs
+    mapM_ (\o -> check d (hotypeIsRelation $ hofType o) (pos o)
                        "A transformer can only output relations") transOutputs
     mapM_ (\o -> case hofType o of
-                      HOTypeRelation{} -> check (isUpper $ head $ name o)       (pos o) "Relation name must start with an upper-case letter"
-                      HOTypeFunction{} -> check (not $ isUpper $ head $ name o) (pos o) "Function name may not start with an upper-case letter"
+                      HOTypeRelation{} -> check d (isUpper $ head $ name o)       (pos o) "Relation name must start with an upper-case letter"
+                      HOTypeFunction{} -> check d (not $ isUpper $ head $ name o) (pos o) "Function name may not start with an upper-case letter"
           ) $ transInputs ++ transOutputs
     mapM_ (hotypeValidate d . hofType) $ transInputs ++ transOutputs
 
@@ -373,10 +373,10 @@ transformerValidate d Transformer{..} = do
 applyValidate :: (MonadError String me) => DatalogProgram -> Apply -> me ()
 applyValidate d a@Apply{..} = do
     trans@Transformer{..} <- checkTransformer (pos a) d applyTransformer
-    check (length applyInputs == length transInputs) (pos a)
+    check d (length applyInputs == length transInputs) (pos a)
           $ "Transformer " ++ name trans ++ " expects " ++ show (length transInputs) ++ " input arguments, but" ++
             show (length applyInputs) ++ " arguments are specified"
-    check (length applyOutputs == length transOutputs) (pos a)
+    check d (length applyOutputs == length transOutputs) (pos a)
           $ "Transformer " ++ name trans ++ " returns " ++ show (length transOutputs) ++ " outputs, but" ++
             show (length applyOutputs) ++ " outputs are provided"
     types <- mapM (\(decl, conc) ->
@@ -388,12 +388,12 @@ applyValidate d a@Apply{..} = do
                      -- A proper unification checker should handle constraints of the form
                      -- '(exists T1 . forall T2 . E(T1,T2))', where 'T1' and 'T2' are lists of type arguments, and 'E' is
                      -- a conjunction of type congruence expressions.
-                     check (null $ funcTypeVars f) (pos a)
+                     check d (null $ funcTypeVars f) (pos a)
                            $ "Generic function " ++ conc ++ " cannot be passed as an argument to relation transformer"
-                     check (length hotArgs == length funcArgs) (pos a)
+                     check d (length hotArgs == length funcArgs) (pos a)
                            $ "Transformer " ++ name trans ++ " expects a function that takes " ++ show (length hotArgs) ++ " arguments " ++
                              " but function " ++ name f ++ " takes " ++ show (length funcArgs) ++ " arguments"
-                     mapM_ (\(farg, carg) -> check (argMut farg == argMut carg) (pos a) $
+                     mapM_ (\(farg, carg) -> check d (argMut farg == argMut carg) (pos a) $
                                              "Argument " ++ name farg ++ " of formal argument " ++ name decl ++ " of transformer " ++ name trans ++
                                              " differs in mutability from argument " ++ name carg ++ " of function " ++ name f)
                            $ zip hotArgs funcArgs
@@ -404,11 +404,11 @@ applyValidate d a@Apply{..} = do
                   ) $ zip (transInputs ++ transOutputs) (applyInputs ++ applyOutputs)
     bindings <- unifyTypes d (pos a) ("in transformer application " ++ show a) $ concat types
     mapM_ (\ta -> case M.lookup ta bindings of
-                       Nothing -> err (pos a) d $ "Unable to bind type argument '" ++ ta ++
+                       Nothing -> err d (pos a) $ "Unable to bind type argument '" ++ ta ++
                                                 " to a concrete type in transformer application " ++ show a
                        Just _  -> return ())
           $ transformerTypeVars trans
-    mapM_ (\o -> check (relRole (getRelation d o) /= RelInput) (pos a)
+    mapM_ (\o -> check d (relRole (getRelation d o) /= RelInput) (pos a)
                  $ "Transformer output cannot be bound to input relation " ++ o
           ) applyOutputs
     -- Things will break if a relation is assigned by an 'Apply' in the top scope and then occurs inside a
@@ -417,13 +417,13 @@ applyValidate d a@Apply{..} = do
     -- transformation that introduces a new relation for each 'Apply' output and a rule that
     -- concatenates it to the original output relation.  But for now it seems like a useful
     -- restriction
-    mapM_ (\o -> check (null $ relRules d o) (pos a)
+    mapM_ (\o -> check d (null $ relRules d o) (pos a)
                        $ "Output of a transformer application may not occur in the head of a rule, but relation " ++ o ++
                           " occurs in the following rules\n" ++ (intercalate "\n" $ map show $ relRules d o))
           applyOutputs
     -- Likewise, to relax this, modify 'compileApplyNode' to concatenate transformer output to
     -- existing relation if it exists.
-    mapM_ (\o -> check (length (relApplys d o) == 1) (pos a)
+    mapM_ (\o -> check d (length (relApplys d o) == 1) (pos a)
                        $ "Relation " ++ o ++ " occurs as output of multiple transformer applications")
           applyOutputs
 
@@ -472,7 +472,7 @@ depGraphValidate d@DatalogProgram{..} = do
     mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->
                     do let lscc = sccmap M.! (atomRelation a)
-                       mapM_ (\rhs -> err (pos rl) d
+                       mapM_ (\rhs -> err d (pos rl)
                                           $ "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
                                             " and therefore cannot appear negated in this rule")
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
@@ -482,7 +482,7 @@ depGraphValidate d@DatalogProgram{..} = do
           progRules
     mapM_ (\scc -> let anode = find depNodeIsApply scc in
                    case anode of
-                        Just (DepNodeApply a) -> err (pos a) d
+                        Just (DepNodeApply a) -> err d (pos a)
                                                  $ "Transformer application appears in a recursive fragment consisting of the following relations: " ++
                                                  (show scc)
                         _ -> return ())
@@ -503,7 +503,7 @@ exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
 exprValidate1 d _ ctx (EApply p f as)     = do
     fun <- checkFunc p d f
-    check (length as == length (funcArgs fun)) p
+    check d (length as == length (funcArgs fun)) p
           "Number of arguments does not match function declaration"
     mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
           $ zip as (map argMut $ funcArgs fun)
@@ -521,14 +521,14 @@ exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was perform
     case find ctxIsSetL $ ctxAncestors ctx of
          Nothing -> return ()
          Just ctx' -> when (not $ ctxIsRuleRCond $ ctxParent ctx') $ do
-            check ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
+            check d ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
                    $ "Type constructor in the left-hand side of an assignment is only allowed for types with one constructor, \
                      \ but \"" ++ name tdef ++ "\" has multiple constructors"
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 _ _ _   ESlice{}            = return ()
 exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v)      = do
-    check (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
+    check d (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
     checkNoVar p d ctx v
 {-                                     | otherwise
                                           = do checkNoVar p d ctx v
@@ -539,25 +539,25 @@ exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx EFor{..}            = checkNoVar exprPos d ctx exprLoopVar
 exprValidate1 d _ ctx (ESet _ l _)        = checkLExpr d ctx l
-exprValidate1 _ _ ctx (EContinue p)       = check (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
-exprValidate1 _ _ ctx (EBreak p)          = check (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
-exprValidate1 _ _ ctx (EReturn p _)       = check (isJust $ ctxInFunc ctx) p "\"return\" outside of a function body"
+exprValidate1 d _ ctx (EContinue p)       = check d (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
+exprValidate1 d _ ctx (EBreak p)          = check d (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
+exprValidate1 d _ ctx (EReturn p _)       = check d (isJust $ ctxInFunc ctx) p "\"return\" outside of a function body"
 exprValidate1 _ _ _   EBinOp{}            = return ()
 exprValidate1 _ _ _   EUnOp{}             = return ()
 
-exprValidate1 _ _ ctx (EPHolder p)        = do
+exprValidate1 d _ ctx (EPHolder p)        = do
     let msg = case ctx of
                    CtxStruct EStruct{..} _ f -> "Missing field '" ++ f ++ "' in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
-    check (ctxPHolderAllowed ctx) p msg
+    check d (ctxPHolderAllowed ctx) p msg
 exprValidate1 d _ ctx (EBinding p v _)    = do
     checkNoVar p d ctx v
 
 exprValidate1 d tvs _ (ETyped _ _ t)      = typeValidate d tvs t
 exprValidate1 d tvs _ (EAs _ _ t)         = typeValidate d tvs t
-exprValidate1 _ _ ctx (ERef p _)          =
+exprValidate1 d _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
-    check (ctxInRuleRHSPattern ctx || ctxInIndex ctx) p "Dereference pattern not allowed in this context"
+    check d (ctxInRuleRHSPattern ctx || ctxInIndex ctx) p "Dereference pattern not allowed in this context"
 
 -- True if a placeholder ("_") can appear in this context
 ctxPHolderAllowed :: ECtx -> Bool
@@ -578,7 +578,7 @@ ctxPHolderAllowed ctx =
     pres = ctxPHolderAllowed par
 
 checkNoVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me ()
-checkNoVar p d ctx v = check (isNothing $ lookupVar d ctx v) p
+checkNoVar p d ctx v = check d (isNothing $ lookupVar d ctx v) p
                               $ "Variable " ++ v ++ " already defined in this scope"
 
 -- Traverse again with types.  This pass ensures that all sub-expressions
@@ -589,7 +589,7 @@ exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do
     t <- exprNodeType d ctx e
     case ctxExpectType d ctx of
          Nothing -> return ()
-         Just t' -> check (typesMatch d t t') (pos e)
+         Just t' -> check d (typesMatch d t t') (pos e)
                           $ "Couldn't match expected type " ++ show t' ++ " with actual type " ++ show t ++ " (context: " ++ show ctx ++ ")"
     return t)
 
@@ -598,11 +598,11 @@ exprTraverseTypeME d = exprTraverseCtxWithM (\ctx e -> do
 exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me ()
 exprValidate2 d _   (ESlice p e h l)    =
     case typ' d e of
-        TBit _ w -> do check (h >= l) p
+        TBit _ w -> do check d (h >= l) p
                            $ "Upper bound of the slice must be greater than lower bound"
-                       check (h < w) p
+                       check d (h < w) p
                            $ "Upper bound of the slice cannot exceed argument width"
-        _        -> err (pos e) d $ "Expression is not a bit vector"
+        _        -> err d (pos e) $ "Expression is not a bit vector"
 
 exprValidate2 d _   (EMatch _ _ cs)     = do
     let t = snd $ head cs
@@ -633,35 +633,35 @@ exprValidate2 d _   (EBinOp p op e1 e2) = do
                -> return ()
         Concat -> do {isbit1; isbit2}
     where m = checkTypesMatch p d e1 e2
-          isint1 = check (isBigInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
-          isint2 = check (isBigInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
-          isNumber1 = check (isInteger d e1 || isFP d e1) (pos e1) "Not a number"
-          isNumber2 = check (isInteger d e2 || isFP d e2) (pos e2) "Not a number"
-          isbit1 = check (isBit d e1) (pos e1) "Not a bit vector"
-          isbitOrSigned1 = check (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
-          isbit2 = check (isBit d e2) (pos e2) "Not a bit vector"
-          isbool = check (isBool d e1) (pos e1) "Not a Boolean"
+          isint1 = check d (isBigInt d e1 || isBit d e1 || isSigned d e1) (pos e1) "Not an integer"
+          isint2 = check d (isBigInt d e2 || isBit d e2 || isSigned d e2) (pos e2) "Not an integer"
+          isNumber1 = check d (isInteger d e1 || isFP d e1) (pos e1) "Not a number"
+          isNumber2 = check d (isInteger d e2 || isFP d e2) (pos e2) "Not a number"
+          isbit1 = check d (isBit d e1) (pos e1) "Not a bit vector"
+          isbitOrSigned1 = check d (isBit d e1 || isSigned d e1) (pos e1) "Not a bit<> or signed<> value"
+          isbit2 = check d (isBit d e2) (pos e2) "Not a bit vector"
+          isbool = check d (isBool d e1) (pos e1) "Not a Boolean"
 
 exprValidate2 d _   (EUnOp _ BNeg e)    =
-    check (isBit d e || isSigned d e) (pos e) "Not a bit vector"
+    check d (isBit d e || isSigned d e) (pos e) "Not a bit vector"
 exprValidate2 d _   (EUnOp _ UMinus e)    =
-    check (isSigned d e || isBigInt d e || isFP d e) (pos e)
+    check d (isSigned d e || isBigInt d e || isFP d e) (pos e)
         $ "Cannot negate expression of type " ++ show e ++ ". Negation applies to signed<> and bigint values only."
---exprValidate2 d ctx (EVarDecl p x)      = check (isJust $ ctxExpectType d ctx) p
+--exprValidate2 d ctx (EVarDecl p x)      = check d (isJust $ ctxExpectType d ctx) p
 --                                                 $ "Cannot determine type of variable " ++ x -- Context: " ++ show ctx
 exprValidate2 d _   (EITE p _ t e)       = checkTypesMatch p d t e
 exprValidate2 d _   (EFor p _ i _)       = checkIterable "iterator" p d i
 exprValidate2 d _   (EAs p e t)          = do
-    check (not (isBigInt d e && isBit d t)) p
+    check d (not (isBigInt d e && isBit d t)) p
         $ "Direct casts from bigint to bit<> are not supported; consider going through signed<>" ++ (show $ pos e)
-    check (isInteger d e || isFP d e) p
+    check d (isInteger d e || isFP d e) p
         $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for numeric types."
-    check (isInteger d t || isFP d t) p
+    check d (isInteger d t || isFP d t) p
         $ "Cannot type-cast expression to " ++ show t ++ ".  Only numeric types can be cast to."
-    check (not (isInteger d t && isFP d e)) p
+    check d (not (isInteger d t && isFP d e)) p
         $ "There are no direct casts from floating point to integers; use the library functions int_from_*." ++ show e
     when ((isBit d t || isSigned d t) && (isBit d e || isSigned d e)) $
-        check (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
+        check d (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
             "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++
             "Try casting to " ++ show (t'{typeWidth = typeWidth e'}) ++ " first."
     where
@@ -671,10 +671,10 @@ exprValidate2 _ _   _                    = return ()
 
 checkLExpr :: (MonadError String me) => DatalogProgram -> ECtx -> Expr -> me ()
 checkLExpr d ctx e | ctxIsRuleRCond ctx =
-    check (exprIsPattern e) (pos e)
+    check d (exprIsPattern e) (pos e)
         $ "Left-hand side of an assignment term can only contain variable declarations, type constructors, and tuples"
                    | otherwise =
-    check (exprIsVarOrFieldLVal d ctx e || exprIsDeconstruct d e) (pos e)
+    check d (exprIsVarOrFieldLVal d ctx e || exprIsDeconstruct d e) (pos e)
         $ "Expression " ++ show e ++ " is not an l-value" -- in context " ++ show ctx
 
 exprCheckMatchPatterns :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Expr -> me ()
@@ -682,11 +682,11 @@ exprCheckMatchPatterns d ctx e@(EMatch _ x cs) = do
     let t = exprType d (CtxMatchExpr e ctx) x
         ct0 = typeConsTree t
     ct <- foldM (\ct pat -> do let (leftover, abducted) = consTreeAbduct d ct pat
-                               check (not $ consTreeEmpty abducted) (pos pat)
+                               check d (not $ consTreeEmpty abducted) (pos pat)
                                       "Unsatisfiable match pattern"
                                return leftover)
                 ct0 (map fst cs)
-    check (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
+    check d (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
 
 exprCheckMatchPatterns _ _   _               = return ()
 
@@ -709,20 +709,20 @@ exprInjectStringConversions d ctx e@(EBinOp p Concat l r) | (te == tString) && (
                   TFloat{}    -> return $ bUILTIN_2STRING_FUNC
                   TUser{..}   -> return $ mk2string_func typeName
                   TOpaque{..} -> return $ mk2string_func typeName
-                  TTuple{}    -> err (pos r) d "Automatic string conversion for tuples is not supported"
-                  TVar{..}    -> err (pos r) d $
+                  TTuple{}    -> err d (pos r) "Automatic string conversion for tuples is not supported"
+                  TVar{..}    -> err d (pos r) $
                                      "Cannot automatically convert " ++ show r ++
                                      " of variable type " ++ tvarName ++ " to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
     f <- case lookupFunc d fname of
-              Nothing  -> err (pos r) d $ "Cannot find declaration of function " ++ fname ++
+              Nothing  -> err d (pos r) $ "Cannot find declaration of function " ++ fname ++
                                         " needed to convert expression " ++ show r ++ " to string"
               Just fun -> return fun
     let arg0 = funcArgs f !! 0
     -- validate its signature
-    check (isString d $ funcType f) (pos f)
+    check d (isString d $ funcType f) (pos f)
            "string conversion function must return \"string\""
-    check ((length $ funcArgs f) == 1) (pos f)
+    check d ((length $ funcArgs f) == 1) (pos f)
            "string conversion function must take exactly one argument"
     _ <- unifyTypes d p
            ("in the call to string conversion function \"" ++ name f ++ "\"")
