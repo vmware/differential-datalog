@@ -4,8 +4,6 @@ use std::io;
 use std::iter;
 use std::mem;
 use std::os::raw;
-use std::os::unix;
-use std::os::unix::io::FromRawFd;
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
@@ -578,67 +576,12 @@ pub extern "C" fn ddlog_run(
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_record_commands(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
-    if prog.is_null() {
-        return -1;
-    };
-    let mut prog = Arc::from_raw(prog);
-
-    let file = if fd == -1 {
-        None
-    } else {
-        Some(fs::File::from_raw_fd(fd))
-    };
-
-    let res = match Arc::get_mut(&mut prog) {
-        Some(prog) => {
-            let mut old_file = file.map(Mutex::new);
-            prog.record_commands(&mut old_file);
-            /* Convert the old file into FD to prevent it from closing.
-             * It is the caller's responsibility to close the file when
-             * they are done with it. */
-            old_file.map(|m| m.into_inner().unwrap().into_raw_fd());
-            0
-        }
-        None => -1,
-    };
-    Arc::into_raw(prog);
-    res
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_input_snapshot(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
-    if prog.is_null() || fd < 0 {
-        return -1;
-    };
-    let prog = Arc::from_raw(prog);
-    let mut file = fs::File::from_raw_fd(fd);
-    let res = prog
-        .dump_input_snapshot(&mut file)
-        .map(|_| 0)
-        .unwrap_or_else(|e| {
-            prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
-            -1
-        });
-    file.into_raw_fd();
-    Arc::into_raw(prog);
-    res
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int {
     if prog.is_null() {
         return -1;
     };
-    /* Prevents closing of the old descriptor. */
-    ddlog_record_commands(prog, -1);
 
     let prog = Arc::from_raw(prog);
     match Arc::try_unwrap(prog) {

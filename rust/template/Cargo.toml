@@ -7,25 +7,14 @@ build = "src/build.rs"
 
 [workspace]
 members = [
-  "cmd_parser",
   "differential_datalog",
   "distributed_datalog",
-  "ovsdb",
   "types",
   "value"
 ]
 
-[build-dependencies]
-libtool = "0.1"
-
 [dependencies.differential_datalog]
 path = "./differential_datalog"
-
-[dependencies.cmd_parser]
-path = "./cmd_parser"
-
-[dependencies.ddlog_ovsdb_adapter]
-path = "./ovsdb"
 
 [dependencies.types]
 path = "./types"

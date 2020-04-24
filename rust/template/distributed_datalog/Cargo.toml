@@ -3,9 +3,6 @@ name = "distributed_datalog"
 version = "0.1.0"
 edition = "2018"
 
-[dependencies.cmd_parser]
-path = "../cmd_parser"
-
 [dependencies.differential_datalog]
 path = "../differential_datalog"
 

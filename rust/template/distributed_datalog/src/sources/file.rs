@@ -19,9 +19,6 @@ use log::trace;
 use nom::Err;
 use uid::Id;
 
-use cmd_parser::err_str;
-use cmd_parser::parse_command;
-use cmd_parser::Command;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::DDlogConvert;

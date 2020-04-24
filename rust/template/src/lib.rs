@@ -16,7 +16,6 @@
 use num::bigint::BigInt;
 use std::convert::TryFrom;
 use std::ops::Deref;
-use std::os::unix::io::IntoRawFd;
 use std::ptr;
 use std::result;
 use std::sync;
@@ -45,7 +44,6 @@ use types::*;
 pub use value::*;
 
 pub mod api;
-pub mod ovsdb;
 pub mod update_handler;
 
 use crate::api::updcmd2upd;

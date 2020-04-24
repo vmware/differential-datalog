@@ -7,9 +7,6 @@ autobins = false
 [dependencies.differential_datalog]
 path = "../differential_datalog"
 
-[dependencies.ddlog_ovsdb_adapter]
-path = "../ovsdb"
-
 [dependencies]
 abomonation = "0.7"
 ordered-float = {version = "1.0.2", features = ["serde"]}

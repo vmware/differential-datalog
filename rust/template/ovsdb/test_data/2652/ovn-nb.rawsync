@@ -1,5 +1,0 @@
-{}
-{"OVN_Northbound.NB_Global":{"0e6df372-871b-4255-9abb-948579c6e63a":{"new":{"connections":["set",[]],"external_ids":["map",[]],"hv_cfg":0,"nb_cfg":0,"sb_cfg":0,"ssl":["set",[]]}}}}
-{"OVN_Northbound.Address_Set":{"ca667aec-2227-4a5f-96f0-5cc239b0db49":{"new":{"addresses":"1.1.1.1","external_ids":["map",[]],"name":"set1"}}}}
-{"OVN_Northbound.Address_Set":{"ca667aec-2227-4a5f-96f0-5cc239b0db49":{"new":{"addresses":"1.1.1.1,1.1.1.2","external_ids":["map",[]],"name":"set1"},"old":{"addresses":"1.1.1.1"}}}}
-{"OVN_Northbound.Address_Set":{"ca667aec-2227-4a5f-96f0-5cc239b0db49":{"old":{"addresses":"1.1.1.1,1.1.1.2","external_ids":["map",[]],"name":"set1"}}}}

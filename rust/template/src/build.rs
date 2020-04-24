@@ -34,6 +34,4 @@ fn main() {
     let new_lib_path = PathBuf::from(format!("{}/{}.a", libs_dir, lib));
     let _ = fs::remove_file(&new_lib_path);
     /* End: fixup */
-
-    libtool::generate_convenience_lib(lib).unwrap();
 }
