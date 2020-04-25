@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,7 +32,7 @@ import GitHash
 
 -- Keep this in sync with the binary release version on github
 dDLOG_VERSION :: String
-dDLOG_VERSION = "v0.17.0"
+dDLOG_VERSION = "v0.17.1"
 
 gitHash :: String
 gitHash = giHash $$tGitInfoCwd
