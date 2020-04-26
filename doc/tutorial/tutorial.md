@@ -813,7 +813,7 @@ The following binds the `ep` variable to a row of the `Endpoint` relation.
 
 ```
 SanitizedEndpoint(endpoint) :-
-    ep in Endpoint,
+    ep in Endpoint(),
     var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
     not Blacklisted(endpoint).
 ```
