@@ -1,8 +1,14 @@
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-
 fn main() {
+    #[cfg(not(windows))]
+    libtool();
+}
+
+#[cfg(not(windows))]
+fn libtool() {
+    use std::env;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
     let topdir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let fbufpath = format!("{}/src/flatbuf.rs", topdir);
 

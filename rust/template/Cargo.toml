@@ -15,7 +15,7 @@ members = [
   "value"
 ]
 
-[build-dependencies]
+[target.'cfg(not(windows))'.build-dependencies]
 libtool = "0.1"
 
 [dependencies.differential_datalog]
