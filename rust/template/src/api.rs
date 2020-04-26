@@ -4,8 +4,12 @@ use std::io;
 use std::iter;
 use std::mem;
 use std::os::raw;
-use std::os::unix;
-use std::os::unix::io::FromRawFd;
+
+#[cfg(unix)]
+use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
+#[cfg(windows)]
+use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
+
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
@@ -579,10 +583,8 @@ pub extern "C" fn ddlog_run(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_record_commands(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
+#[cfg(unix)]
+pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -> raw::c_int {
     if prog.is_null() {
         return -1;
     };
@@ -611,10 +613,40 @@ pub unsafe extern "C" fn ddlog_record_commands(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_input_snapshot(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
+#[cfg(windows)]
+pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_int) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let mut prog = Arc::from_raw(prog);
+
+    let file = if fd == -1 {
+        None
+    } else {
+        // Convert file descriptor to file handle on Windows.
+        let handle = libc::get_osfhandle(fd);
+        Some(fs::File::from_raw_handle(handle as RawHandle))
+    };
+
+    let res = match Arc::get_mut(&mut prog) {
+        Some(prog) => {
+            let mut old_file = file.map(Mutex::new);
+            prog.record_commands(&mut old_file);
+            /* Convert the old file into FD to prevent it from closing.
+             * It is the caller's responsibility to close the file when
+             * they are done with it. */
+            old_file.map(|m| m.into_inner().unwrap().into_raw_handle());
+            0
+        }
+        None => -1,
+    };
+    Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+#[cfg(unix)]
+pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawFd) -> raw::c_int {
     if prog.is_null() || fd < 0 {
         return -1;
     };
@@ -628,6 +660,31 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
             -1
         });
     file.into_raw_fd();
+    Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+#[cfg(windows)]
+pub unsafe extern "C" fn ddlog_dump_input_snapshot(
+    prog: *const HDDlog,
+    fd: raw::c_int,
+) -> raw::c_int {
+    if prog.is_null() || fd < 0 {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+    // Convert file descriptor to file handle on Windows.
+    let handle = libc::get_osfhandle(fd);
+    let mut file = fs::File::from_raw_handle(handle as RawHandle);
+    let res = prog
+        .dump_input_snapshot(&mut file)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
+            -1
+        });
+    file.into_raw_handle();
     Arc::into_raw(prog);
     res
 }
