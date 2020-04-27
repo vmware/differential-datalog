@@ -249,6 +249,18 @@ pub fn record_into_insert_str(rec: Record, table: &str) -> Result<String, String
             ))
         }
     };
+    let opt_uuid = match rec {
+        Record::NamedStruct(_, ref fields) => fields
+            .iter()
+            .find(|(f, _)| f == "_uuid")
+            .map(|(_, val)| val.clone()),
+        _ => {
+            return Err(format!(
+                "Cannot convert record to insert command: {:?}",
+                rec
+            ))
+        }
+    };
     let mut m = Map::new();
     m.insert("op".to_owned(), Value::String("insert".to_owned()));
     m.insert("table".to_owned(), Value::String(table.to_owned()));
@@ -258,6 +270,13 @@ pub fn record_into_insert_str(rec: Record, table: &str) -> Result<String, String
             m.insert("uuid-name".to_owned(), Value::String(n));
         }
         Some(x) => return Err(format!("uuid-name is not a string {:?}", x)),
+    };
+    match opt_uuid {
+        None => {}
+        Some(Record::Int(n)) => {
+            m.insert("uuid".to_owned(), Value::String(uuid_from_int(&n)?));
+        }
+        Some(x) => return Err(format!("_uuid is not a number {:?}", x)),
     };
     m.insert("row".to_owned(), record_into_row(rec)?);
     Ok(Value::Object(m).to_string())
