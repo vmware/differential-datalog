@@ -6,7 +6,7 @@ set -e
 
 # TODO: use OVS master once these changes are there.
 (cd ovs &&
- git checkout ovn-ddlog-patches &&
+ git checkout ovs-for-ddlog &&
  ./boot.sh &&
  ./configure  &&
  make -j6)
@@ -15,7 +15,7 @@ set -e
 # TODO: use -j6 once build script is fixed
 # TODO: use primary OVN repo
 (cd ovn &&
- git checkout ddlog-dev-v2 &&
+ git checkout ddlog_ci &&
  ./boot.sh &&
  ./configure --with-ddlog=../../lib --with-ovs-source=../ovs --enable-ddlog-northd-cli &&
  (make check -j1 TESTSUITEFLAGS="117-135 138-141 143-145 147-149 151-152 154-161 167-169 172 174-181 183-185 187-189 191 193-196 198-199 201-202" ||
