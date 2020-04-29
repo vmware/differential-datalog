@@ -218,7 +218,7 @@ test-ovn-northd:
         - ddlog-ci-2
     script:
         - cd test
-        - git clone https://github.com/openvswitch/ovs.git
+        - git clone https://github.com/ryzhyk/ovs.git
         - git clone https://github.com/ryzhyk/ovn.git
         - git clone https://github.com/ddlog-dev/ovn-test-data.git
         - ./test-ovn.sh
