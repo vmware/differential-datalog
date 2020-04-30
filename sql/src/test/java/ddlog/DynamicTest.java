@@ -1,6 +1,5 @@
 package ddlog;
 
-import com.vmware.ddlog.translator.Translator;
 import ddlogapi.*;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -50,7 +49,11 @@ public class DynamicTest extends BaseQueriesTest {
                 "output relation O(v: bit<16>)\n" +
                 "O(v) :- R(v).";
         File file = this.writeProgramToFile(ddlogProgram);
-        DDlogAPI api = Translator.compileAndLoad(file.toString(), "../lib", "./lib");
+        DDlogAPI api = null;
+        boolean success = DDlogAPI.compileDDlogProgram(file.toString(), true, "../lib", "./lib");
+        if (success) {
+            api = DDlogAPI.loadDDlog();
+        }
         if (api == null)
             throw new RuntimeException("Could not load program");
 

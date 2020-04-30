@@ -19,13 +19,10 @@ import com.facebook.presto.sql.tree.Statement;
 // If these are missing you have not run the sql/install-ddlog-jar.sh script
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
-import ddlogapi.DDlogAPI;
-import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
 import javax.annotation.Nullable;
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -84,24 +81,7 @@ public class Translator {
         return tablesToFields;
     }
 
-    public DDlogProgram generateLibrary() {
+    public DDlogProgram generateSqlLibrary() {
         return SqlSemantics.semantics.generateLibrary();
-    }
-
-    /**
-     * Compile and load a ddlog program stored in a file.
-     * @param ddlogFile  Pathname to the ddlog program.
-     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
-     * @return           A DDlogAPI which can be used to access the program.
-     *                   On error returns null and prints an error on stderr.
-     */
-    @Nullable
-    public static DDlogAPI compileAndLoad(
-            String ddlogFile,
-            String... ddlogLibraryPath) throws DDlogException, NoSuchFieldException, IllegalAccessException {
-        boolean success = DDlogAPI.compileDDlogProgram(ddlogFile, true, ddlogLibraryPath);
-        if (!success)
-            return null;
-        return DDlogAPI.loadDDlog();
     }
 }

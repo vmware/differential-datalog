@@ -117,7 +117,7 @@ public class DDlogAPI {
     // Stores pointer to `struct CallbackInfo` for each registered logging
     // callback.  This is needed so that we can deallocate the `CallbackInfo*`
     // when removing on changing the callback.
-    private static Map<Integer, Long> logCBInfo = new HashMap<>();
+    private static final Map<Integer, Long> logCBInfo = new HashMap<>();
     private static Long defaultLogCBInfo;
 
     private void checkHandle() throws DDlogException {
@@ -554,7 +554,7 @@ public class DDlogAPI {
         }
     }
 
-    /******************************************/
+    /*--------------------------------------------*/
 
     /**
      * Get the path where DDlog is installed. This queries the DDLOG_HOME
@@ -701,7 +701,17 @@ public class DDlogAPI {
         return exitCode == 0;
     }
 
+    static boolean loaded = false;
+
+    /**
+     * Load the the ddlogLibrary in the current process.
+     * @return The API that can be used to interact with this library.
+     */
     public static DDlogAPI loadDDlog() throws DDlogException {
+        if (loaded)
+            throw new RuntimeException("Attempt to load a secon dddlog library. "
+                    + " Only one library can be loaded safely.");
+        loaded = true;
         final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
         System.load(libraryPath.toString());
         return new ddlogapi.DDlogAPI(1, null, false);

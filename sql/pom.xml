@@ -21,7 +21,7 @@
     <dependency>
       <groupId>org.jooq</groupId>
       <artifactId>jooq-meta-extensions</artifactId>
-      <version>3.12.1</version>
+      <version>3.13.1</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.derby/derby -->
     <dependency>
@@ -68,8 +68,6 @@
         <configuration>
           <argLine>-Djava.library.path=.</argLine>
           <runOrder>reversealphabetical</runOrder>
-          <reuseForks>false</reuseForks>
-          <forkCount>1</forkCount>
         </configuration>
       </plugin>
     </plugins>
