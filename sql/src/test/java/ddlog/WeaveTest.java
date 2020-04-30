@@ -692,8 +692,6 @@ public class WeaveTest extends BaseQueriesTest {
         this.compiledDDlog(p);
     }
 
-    // These tests are temporarily disabled
-
     @Test
     public void testFullSchemaCompilation() {
         testFileCompilation("/weave.sql");

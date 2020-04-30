@@ -21,7 +21,7 @@ public class BaseQueriesTest {
     @BeforeClass
     public static void createLibrary() throws FileNotFoundException {
         Translator t = new Translator(null);
-        DDlogProgram lib = t.generateLibrary();
+        DDlogProgram lib = t.generateSqlLibrary();
         System.out.println("Current directory " + System.getProperty("user.dir"));
         lib.toFile("lib/sqlop.dl");
     }
@@ -164,9 +164,9 @@ public class BaseQueriesTest {
             final DDlogProgram dDlogProgram = t.getDDlogProgram();
             final String ddlogProgramAsString = dDlogProgram.toString();
             File tmp = this.writeProgramToFile(ddlogProgramAsString);
-            final DDlogAPI dDlogAPI = Translator.compileAndLoad(tmp.toString(), "..", "lib");
-            Assert.assertNotNull(dDlogAPI);
-        } catch (IOException | IllegalAccessException | DDlogException | NoSuchFieldException e) {
+            boolean success = DDlogAPI.compileDDlogProgram(tmp.toString(), false,"..", "lib");
+            Assert.assertTrue(success);
+        } catch (IOException | DDlogException e) {
             throw new RuntimeException(e);
         }
     }
