@@ -30,8 +30,7 @@ def var_name(ident):
     """Convert a Souffle identifier to one suitable for use as a variable name in DDlog"""
     if ident == "_":
         return ident
-    if ident.startswith("?"):
-        ident = ident[1:]
+    ident = ident.replace("?", "_")  # TODO: this could generate name clashes...
     return "_" + ident
 
 
@@ -378,6 +377,7 @@ class Files(object):
         outputDumpName = outputPrefix + ".dump.expected"
         if not options.skip_logic:
             self.outFile = open(outputName, 'w')
+        self.output("import fp")
         self.output("import intern")
         self.output("import souffle_lib")
         self.output("import souffle_types")
@@ -687,10 +687,11 @@ class SouffleConverter(object):
             rel = self.get_relid(r)
             origrel = self.get_orig_relid(r)
             ri = Relation.get(rel, self.getCurrentComponentLegalName())
+            print "Output relation ", ri.name
             ri.isoutput = True
             if self.conversion_options.skip_files or self.preprocessing:
                 Relation.dumpOrder.append(ri.name)
-                return
+                continue
 
             filenames = self.generateFilenames(origrel)
             global verbose
@@ -822,6 +823,7 @@ class SouffleConverter(object):
         fl = getOptField(arg, "FLOAT")
         if fl is not None:
             val = fl.value
+            self.currentType = "double"
             return "(64'f" + val + ": double)"
 
         num = getOptField(arg, "NUMBER")
@@ -835,11 +837,13 @@ class SouffleConverter(object):
 
         if len(args) == 2:
             # Binary operator
-            self.currentType = "Tnumber"
             binop = arg.children[1]
             op = self.convert_op(binop)
             left = self.convert_arg(args[0])
             right = self.convert_arg(args[1])
+            if self.currentType == "double" and op == "^":
+                return "powf_d(" + left + ", " + right + ")"
+            self.currentType = "Tnumber"
             if op == "^":
                 return "pow32(" + left + ", (" + right + " as bit<32>))"
             elif (op == "land") or (op == "lor"):
@@ -947,6 +951,16 @@ class SouffleConverter(object):
         if func == "match":
             # Match is reserved keyword in DDlog
             func = "re_match"
+        # Some functions like min, max, cat can be called with any number of arguments
+        if func == "min" or func == "max" or func == "cat":
+            if len(argStrings) == 0:
+                raise Exception("Too few arguments for " + func)
+            else:
+                result = argStrings[0]
+                del argStrings[0]
+                for e in argStrings:
+                    result = func + "(" + result + ", " + e + ")"
+                return result
         return func + "(" + ", ".join(argStrings) + ")"
 
     def convert_literal(self, lit):
@@ -1283,8 +1297,14 @@ class SouffleConverter(object):
 
             if recordType is not None:
                 fields = getList(recordType, "TypeId", "RecordType")
-                fields = [Type.get(self.convert_typeid(f)) for f in fields]
-                Type.create_tuple(ident, fields)
+                fieldNames = [self.convert_typeid(f) for f in fields]
+                # Create a tuple with no components first
+                fields = []
+                record = Type.create_tuple(ident, fields)
+                # now set the fields; these may have references to the type itself
+                # if the type is recursive.  TODO: wrap recursive references in Ref<>
+                fields = [Type.get(f) for f in fieldNames]
+                record.components = fields
                 return
             if sqbrace is not None:
                 Type.create(ident, "TEmpty")
