@@ -5,41 +5,120 @@ import regex
 import souffle_types
 import fp
 
-function castTo32(i: bit<64>): Tnumber = i[31:0] as Tnumber
-function castTo64(i: Tnumber): bit<64> = 32'd0 ++ (i as bit<32>)
-function cat(s: IString, t: IString): IString = (string_intern(istring_str(s) ++ istring_str(t)))
-function strlen(s: IString): Tnumber = castTo32(string_len(istring_str(s)))
-function ord(s: IString): Tnumber = istring_ord(s) as Tnumber
-function substr(s: IString, i: Tnumber, l: Tnumber): IString = string_intern(string_substr(istring_str(s), castTo64(i), castTo64(i + l)))
+function castTo32(i: bit<64>): Tnumber {
+    i[31:0] as Tnumber
+}
+function castTo64(i: Tnumber): bit<64> {
+    32'd0 ++ (i as bit<32>)
+}
+function cat(s: IString, t: IString): IString {
+    (string_intern(istring_str(s) ++ istring_str(t)))
+}
+function strlen(s: IString): Tnumber {
+    castTo32(string_len(istring_str(s)))
+}
+function ord(s: IString): Tnumber {
+    istring_ord(s) as Tnumber
+}
+function substr(s: IString, i: Tnumber, l: Tnumber): IString {
+    string_intern(string_substr(istring_str(s), castTo64(i), castTo64(i + l)))
+}
 // The order of arguments in Souffle is reverted
-function contains(s: IString, i: IString): bool = string_contains(istring_str(i), istring_str(s))
+function contains(s: IString, i: IString): bool {
+    string_contains(istring_str(i), istring_str(s))
+}
 // Souffle match must match the whole string
-function re_match(pattern: IString, s: IString): bool = regex_match("^" ++ istring_str(pattern) ++ "$", istring_str(s))
-function to_number(s: IString): Tnumber = {
+function re_match(pattern: IString, s: IString): bool {
+    regex_match("^" ++ istring_str(pattern) ++ "$", istring_str(s))
+}
+function to_number(s: IString): Tnumber {
     match (parse_dec_i64(istring_str(s))) {
         None -> 0,
         Some{x} -> x as Tnumber
     }
 }
-function to_string(n: Tnumber): IString = string_intern(__builtin_2string(n))
-function random(): Tnumber = 0
-function land(l: Tnumber, r: Tnumber): Tnumber = if (l != 0 and r != 0) 1 else 0
-function lor(l: Tnumber, r: Tnumber): Tnumber = if (l == 0 and r == 0) 0 else 1
-function lnot(l: Tnumber): Tnumber = if (l != 0) 0 else 1
-function group_count32(g: Group<'K, 'V>): Tnumber = castTo32(group_count(g))
-function ftoi(l: double): signed<32> = {
+function to_string(n: Tnumber): IString {
+    string_intern(__builtin_2string(n))
+}
+function random(): Tnumber {
+    0
+}
+function land(l: Tnumber, r: Tnumber): Tnumber {
+    if (l != 0 and r != 0) 1 else 0
+}
+function lor(l: Tnumber, r: Tnumber): Tnumber {
+    if (l == 0 and r == 0) 0 else 1
+}
+function lnot(l: Tnumber): Tnumber {
+    if (l != 0) 0 else 1
+}
+function group_count32(g: Group<'K, 'V>): Tnumber {
+    castTo32(group_count(g))
+}
+function ftoi(l: double): signed<32> {
     match (int_from_d(l)) {
         None -> 0,
         Some{x} -> x as signed<32>
     }
 }
-function itof(l: signed<32>): double = l as double
-function itou(l: signed<32>): bit<32> = l as bit<32>
-function utoi(l: bit<32>): signed<32> = l as signed<32>
-function utof(l: bit<32>): double = l as double
-function ftou(l: double): bit<32>  = {
+function itof(l: signed<32>): double {
+    l as double
+}
+function itou(l: signed<32>): bit<32> {
+    l as bit<32>
+}
+function utoi(l: bit<32>): signed<32> {
+    l as signed<32>
+}
+function utof(l: bit<32>): double {
+    l as double
+}
+function ftou(l: double): bit<32> {
     match (int_from_d(l)) {
         None -> 0,
         Some{x} -> x as signed<32> as bit<32>
     }
+}
+// Not clear from the spec whether sin takes a signed or double...
+function sin(l: signed<32>): signed<32> {
+    ftoi(sin_d(l as double))
+}
+function cos(l: signed<32>): signed<32> {
+    ftoi(cos_d(l as double))
+}
+function tan(l: signed<32>): signed<32> {
+    ftoi(tan_d(l as double))
+}
+function asin(l: signed<32>): signed<32> {
+    ftoi(asin_d(l as double))
+}
+function acos(l: signed<32>): signed<32> {
+    ftoi(acos_d(l as double))
+}
+function atan(l: signed<32>): signed<32> {
+    ftoi(atan_d(l as double))
+}
+function sinh(l: signed<32>): signed<32> {
+    ftoi(sinh_d(l as double))
+}
+function cosh(l: signed<32>): signed<32> {
+    ftoi(cosh_d(l as double))
+}
+function tanh(l: signed<32>): signed<32> {
+    ftoi(tanh_d(l as double))
+}
+function asinh(l: signed<32>): signed<32> {
+    ftoi(asinh_d(l as double))
+}
+function acosh(l: signed<32>): signed<32> {
+    ftoi(acosh_d(l as double))
+}
+function atanh(l: signed<32>): signed<32> {
+    ftoi(atanh_d(l as double))
+}
+function log(l: signed<32>): signed<32> {
+    ftoi(ln_d(l as double))
+}
+function exp(l: signed<32>): signed<32> {
+    ftoi(exp_d(l as double))
 }

@@ -47,8 +47,6 @@ xfail = [
     "cellular_automata", # issue 198 - order of clauses
     "comp-override2", # nested component declaration
     "components1",    # improper component nesting
-    "float_operations", # FP types and functions
-    "functor_arity",  # min, max, cat with more than 2 arguments
     "grammar",        # funny unicode char in a comment
     "independent_body2", # issue #231 - not in DNF form, #197
     "lucas",          # inputs and outputs are in the wrong directories
@@ -56,13 +54,12 @@ xfail = [
     "magic_nqueens",    # 202
     "inline_nqueens",   # 202
     "magic_turing1",    # 198
-    "math",             # Trigonometric functions and FP types
+    "math",             # Missing reference outputs in Souffle
     "minesweeper",      # 198
     "neg1",             # 198
     "neg2",             # 198
     "neg3",             # 198
     "numeric_binary_constraint_op",
-    "numeric_conversions", # FP types
     "range",            # 198
     "rec_lists",        # 202
     "rec_lists2",       # 202

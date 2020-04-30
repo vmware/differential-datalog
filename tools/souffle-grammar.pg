@@ -281,6 +281,20 @@ FunctionCall: "min" "(" FunctionArgumentList ")"
             | "utoi" "(" FunctionArgumentList ")"
             | "utof" "(" FunctionArgumentList ")"
             | "ftou" "(" FunctionArgumentList ")"
+            | "sin" "(" FunctionArgumentList ")"
+            | "cos" "(" FunctionArgumentList ")"
+            | "tan" "(" FunctionArgumentList ")"
+            | "asin" "(" FunctionArgumentList ")"
+            | "acos" "(" FunctionArgumentList ")"
+            | "atan" "(" FunctionArgumentList ")"
+            | "sinh" "(" FunctionArgumentList ")"
+            | "cosh" "(" FunctionArgumentList ")"
+            | "tanh" "(" FunctionArgumentList ")"
+            | "asinh" "(" FunctionArgumentList ")"
+            | "acosh" "(" FunctionArgumentList ")"
+            | "atanh" "(" FunctionArgumentList ")"
+            | "log" "(" FunctionArgumentList ")"
+            | "exp" "(" FunctionArgumentList ")"
             ;
 
 FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
@@ -363,7 +377,7 @@ TRUE: "true" ;
 FALSE: "false" ;
 FLOAT: /([0-9]+)[.]([0-9]+)/ ;
 NUMBER: /([1-9][0-9]*)|(0x[a-fA-F0-9]+)|(0b[0-1][0-1]*)|(0)/ ;
-Identifier: /[_a-zA-Z\?][_\d\w]*/;
+Identifier: /[_a-zA-Z\?][_\d\w\?]*/;
 NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;
 PLAN: ".plan" ;
 KEYWORD: /\w+/ ;  // special Parglare rule: match keywords entirely
