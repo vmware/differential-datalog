@@ -16,3 +16,5 @@ SumsOfDoubles{.x = 2, .y = 3.5, .sum = 5.5}: +1
 SumsOfDoubles{.x = 3.5, .y = 1, .sum = 4.5}: +1
 SumsOfDoubles{.x = 3.5, .y = 2, .sum = 5.5}: +1
 SumsOfDoubles{.x = 3.5, .y = 3.5, .sum = 7}: +1
+InspectSimpleSum:
+InspectSimpleSum{.x = 1, .total = 3}: +1

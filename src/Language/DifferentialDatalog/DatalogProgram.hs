@@ -112,6 +112,9 @@ rhsExprMapCtxM fun r rhsidx a@RHSAggregate{} = do
 rhsExprMapCtxM fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
+rhsExprMapCtxM fun r rhsidx i@RHSInspect{}   = do
+    e <- exprFoldCtxM fun (CtxRuleRInspect r rhsidx) (rhsInspectExpr i)
+    return i{rhsInspectExpr = e}
 
 progExprMapCtx :: DatalogProgram -> (ECtx -> ENode -> Expr) -> DatalogProgram
 progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun ctx e)

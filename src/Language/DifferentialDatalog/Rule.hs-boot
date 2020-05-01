@@ -11,4 +11,5 @@ ruleHasJoins :: Rule -> Bool
 atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
 atomVars :: Expr -> [String]
 ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
-ruleIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
+ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
+ruleIsRecursive :: DatalogProgram -> Rule -> Bool

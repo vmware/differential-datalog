@@ -62,3 +62,13 @@ function concat_ys(ys: Group<(string, bigint), string>): string = {
     };
     res
 }
+
+//---
+
+// Inspect operator expression has wrong return type
+
+input relation InspectInput(x: string)
+output relation InspectFail(x: string)
+InspectFail(x) :-
+    InspectInput(x),
+    Inspect 1 + 2.

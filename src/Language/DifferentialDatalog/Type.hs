@@ -57,6 +57,9 @@ module Language.DifferentialDatalog.Type(
     iNTERNED_TYPES,
     gROUP_TYPE,
     rEF_TYPE,
+    ePOCH_TYPE,
+    iTERATION_TYPE,
+    wEIGHT_TYPE,
     checkIterable,
     typeIterType
 ) where
@@ -100,6 +103,16 @@ mAP_TYPE = "std.Map"
 
 iNTERNED_TYPES :: [String]
 iNTERNED_TYPES = ["intern.IObj", "internment.Intern"]
+
+-- Special types used by Inspect operator.
+ePOCH_TYPE :: String
+ePOCH_TYPE = "std.DDEpoch"
+
+iTERATION_TYPE :: String
+iTERATION_TYPE = "std.DDIteration"
+
+wEIGHT_TYPE :: String
+wEIGHT_TYPE = "std.DDWeight"
 
 -- | An object with type
 class WithType a where
@@ -578,6 +591,7 @@ ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
          E ESet{} -> Just $ tTuple []
          _        -> Just tBool
 ctxExpectType _ CtxRuleRFlatMap{}                    = Nothing
+ctxExpectType _ CtxRuleRInspect{}                    = Nothing
 ctxExpectType _ CtxRuleRAggregate{}                  = Nothing
 ctxExpectType _ CtxKey{}                             = Nothing
 ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
