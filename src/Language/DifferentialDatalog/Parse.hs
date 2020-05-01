@@ -70,6 +70,7 @@ reservedNames = ["as",
                  "_",
                  "Aggregate",
                  "FlatMap",
+                 "Inspect",
                  "and",
                  "bit",
                  "bool",
@@ -404,6 +405,7 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
               RHSFlatMap <$> (reserved "var" *> varIdent) <*>
                              (reservedOp "=" *> reserved "FlatMap" *> parens expr)
+       <|> (RHSInspect <$ reserved "Inspect" <*> expr)
        <|> (RHSCondition <$> expr)
 
 atom is_head = withPos $ do

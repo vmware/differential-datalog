@@ -65,6 +65,7 @@ module Language.DifferentialDatalog.Syntax (
         rhsIsPositiveLiteral,
         rhsIsNegativeLiteral,
         rhsIsCondition,
+        rhsIsConditionOrInspect,
         rhsIsFilterCondition,
         rhsIsAssignment,
         rhsIsAggregate,
@@ -521,13 +522,13 @@ instance Show Atom where
     show = render . pp
 
 -- The RHS of a rule consists of relational atoms with
--- positive/negative polarity, Boolean conditions, aggregation and
--- disaggregation (flatmap) operations.  The last two must occur after
--- all atoms.
+-- positive/negative polarity, Boolean conditions, aggregation,
+-- disaggregation (flatmap), inspect operations.
 data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
              | RHSAggregate {rhsVar :: String, rhsGroupBy :: [String], rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
+             | RHSInspect   {rhsInspectExpr :: Expr}
              deriving (Eq)
 
 instance PP RuleRHS where
@@ -538,6 +539,7 @@ instance PP RuleRHS where
                                 (parens $ vcommaSep $ map pp g) <> comma <+>
                                 pp f <> (parens $ pp e) <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
+    pp (RHSInspect e)         = "Inspect" <+> pp e
 
 instance Show RuleRHS where
     show = render . pp
@@ -561,6 +563,11 @@ rhsIsAggregate _              = False
 rhsIsCondition :: RuleRHS -> Bool
 rhsIsCondition RHSCondition{} = True
 rhsIsCondition _              = False
+
+rhsIsConditionOrInspect :: RuleRHS -> Bool
+rhsIsConditionOrInspect RHSCondition{} = True
+rhsIsConditionOrInspect RHSInspect{}   = True
+rhsIsConditionOrInspect _              = False
 
 rhsIsFilterCondition :: RuleRHS -> Bool
 rhsIsFilterCondition (RHSCondition (E ESet{..})) = False
@@ -1105,7 +1112,7 @@ progAddRel rel prog = prog{progRelations = M.insert (name rel) rel (progRelation
 
 -- | Expression's syntactic context determines the kinds of
 -- expressions that can appear at this location in the Datalog program,
--- expected type of the expression, and variables visible withing the
+-- expected type of the expression, and variables visible within the
 -- given scope.
 --
 -- Below, 'X' indicates the position of the expression addressed by
@@ -1135,6 +1142,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRCond      {ctxRule::Rule, ctxIdx::Int}
             -- | FlatMap clause in the RHS of a rule
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
+            -- | Inspect clause in the RHS of a rule
+          | CtxRuleRInspect   {ctxRule::Rule, ctxIdx::Int}
             -- | Aggregate clause in the RHS of a rule
           | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
             -- | Key expression
@@ -1209,6 +1218,7 @@ instance PP ECtx where
                     CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
+                    CtxRuleRInspect{..}   -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
                     CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
@@ -1249,6 +1259,7 @@ ctxParent CtxRuleL{}          = CtxTop
 ctxParent CtxRuleRAtom{}      = CtxTop
 ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
+ctxParent CtxRuleRInspect{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
 ctxParent CtxKey{}            = CtxTop
 ctxParent CtxIndex{}          = CtxTop
@@ -1263,3 +1274,4 @@ ctxRuleR rl i =
          RHSCondition{} -> CtxRuleRCond rl i
          RHSAggregate{} -> CtxRuleRAggregate rl i
          RHSFlatMap{}   -> CtxRuleRFlatMap rl i
+         RHSInspect{}   -> CtxRuleRInspect rl i

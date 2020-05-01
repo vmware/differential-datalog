@@ -106,3 +106,17 @@ function weird_zero(x: 'A): usize {
 function zero_test(): usize {
     weird_zero(32'd0)
 }
+
+/* See #618. New Inspect operator syntax. */
+output relation InspectSimpleSum(x: bit<32>, total: bit<32>)
+
+input relation InputTuples(x: bit<32>, y: bit<32>)
+
+InspectSimpleSum(x, total) :-
+    InputTuples(x, y),
+    var total = Aggregate((x), group_sum(y)),
+    Inspect {
+        var z = 1 + 2;
+        var w = ddlog_weight;
+        var t = ddlog_timestamp
+    }.

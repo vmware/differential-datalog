@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.Rule (
     atomVarOccurrences,
     atomVars,
     ruleIsDistinctByConstruction,
+    ruleHeadIsRecursive,
     ruleIsRecursive
 ) where
 
@@ -93,6 +94,8 @@ ruleRHSVarSet' d rl i =
                                                                                    -> tTuple [kt,vt]
                                                        t' -> error $ "Rule.ruleRHSVarSet': unexpected FlatMap type " ++ show t'
                                           in S.insert (Field nopos [] v t) vs
+         -- Inspect does not introduce new variables
+         RHSInspect _                  -> vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
          RHSAggregate avar gvars fname _ -> let ctx = CtxRuleRAggregate rl i
@@ -149,6 +152,7 @@ ruleRHSTermVars rl i =
          RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
          RHSCondition{..} -> exprVars rhsExpr
          RHSFlatMap{..}   -> exprVars rhsMapExpr
+         RHSInspect{..}   -> exprVars rhsInspectExpr
          RHSAggregate{..} -> nub $ rhsGroupBy ++ exprVars rhsAggExpr
 
 -- | All variables visible after the last RHS clause of the rule
@@ -173,7 +177,8 @@ ruleTypeMapM fun rule@Rule{..} = do
                   RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
                   RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
                   RHSAggregate v g f e        -> RHSAggregate v g f <$> exprTypeMapM fun e
-                  RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e)
+                  RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e
+                  RHSInspect e                -> RHSInspect <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }
 
@@ -230,9 +235,15 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
 
 -- | Checks if a rule (more precisely, the given head of the rule) is part of a
 -- recursive fragment of the program.
-ruleIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
-ruleIsRecursive d Rule{..} head_idx =
+ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
+ruleHeadIsRecursive d Rule{..} head_idx =
     let head_atom = ruleLHS !! head_idx in
     any (relsAreMutuallyRecursive d (atomRelation head_atom))
         $ map (atomRelation . rhsAtom)
         $ filter rhsIsLiteral ruleRHS
+
+-- | Checks if any head of the rule is part of a
+-- recursive fragment of the program.
+ruleIsRecursive :: DatalogProgram -> Rule -> Bool
+ruleIsRecursive d rl@Rule{..} =
+    any (ruleHeadIsRecursive d rl) [0 .. length ruleLHS - 1]

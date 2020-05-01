@@ -245,7 +245,7 @@ relValidate d rel@Relation{..} = do
 --    assertR r ((length $ filter isPrimaryKey relConstraints) <= 1) relPos $ "Multiple primary keys are not allowed"
 --    mapM_ (constraintValidate r rel) relConstraints
 --    maybe (return ()) (mapM_ (ruleValidate r rel)) relDef
---    maybe (return ()) (\rules -> assertR r (any (not . ruleIsRecursive rel) rules) relPos
+--    maybe (return ()) (\rules -> assertR r (any (not . ruleHeadIsRecursive rel) rules) relPos
 --                                         "View must have at least one non-recursive rule") relDef
 
 --relTypeValidate :: (MonadError String me) => Refine -> Relation -> Pos -> Type -> me ()
@@ -312,6 +312,13 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap _ e) idx = do
     let ctx = CtxRuleRFlatMap rl idx
     exprValidate d [] ctx e
     checkIterable "FlatMap expression" (pos e) d $ exprType d ctx e
+
+ruleRHSValidate d rl@Rule{..} (RHSInspect e) idx = do
+    let ctx = CtxRuleRInspect rl idx
+    exprValidate d [] ctx e
+    let returnType = exprType' d ctx e
+    check d (returnType == tTuple[]) (pos e)
+        $ "Inspect expression must return an empty tuple type, but its type is " ++ (show returnType)
 
 ruleRHSValidate d rl RHSAggregate{} idx = do
     _ <- ruleCheckAggregate d rl idx

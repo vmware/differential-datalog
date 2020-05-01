@@ -1463,10 +1463,14 @@ compileRule :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Ru
 compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- First relation in the body of the rule
     let fstatom = rhsAtom $ head ruleRHS
+    -- RHSConditions and RHSInspects between last_rhs_idx and the next operator that is not an RHSCondition or RHSInspect.
+    -- Since code generation for RHSInspect is not implemented yet, this skips over RHSInspect in the actual compile logic.
+    -- TODO: Remove this logic once mkInspect has been implemented.
+    let conds_and_inspects = takeWhile (rhsIsConditionOrInspect . (ruleRHS !!)) [last_rhs_idx + 1 .. length ruleRHS - 1]
     -- RHSConditions between last_rhs_idx and the next operator that is not an RHSCondition.
-    let conds = takeWhile (rhsIsCondition . (ruleRHS !!)) [last_rhs_idx + 1 .. length ruleRHS - 1]
+    let conds = filter (rhsIsCondition . (ruleRHS !!)) conds_and_inspects
     -- Index of the next operator
-    let rhs_idx = last_rhs_idx + length conds + 1
+    let rhs_idx = last_rhs_idx + length conds_and_inspects + 1
     -- Next RHS operator to process
     let rhs = ruleRHS !! rhs_idx
     -- Input arrangement expected by the next operator (if any)
@@ -1499,6 +1503,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                              | otherwise =
             case rhs of
                  RHSFlatMap v e -> mkFlatMap d prefix rl rhs_idx v e
+                 RHSInspect e -> mkInspect d prefix rl rhs_idx e
                  _ -> error "compileRule: operator requires arranged input"
 
     -- If: input to the operator is an arranged collection
@@ -1586,6 +1591,11 @@ mkFlatMap d prefix rl idx v e = do
         (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
+
+-- TODO: Add actual implementation.
+mkInspect :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> CompilerMonad Doc
+mkInspect _ _ _ _ _  = do
+    return ""
 
 mkAggregate :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
 mkAggregate d filters input_val rl@Rule{..} idx = do

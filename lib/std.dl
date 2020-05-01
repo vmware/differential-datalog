@@ -19,6 +19,10 @@ typedef s128 = signed<128>
 
 typedef usize = u64
 
+typedef DDWeight = s64
+typedef DDEpoch = u64
+typedef DDIteration = u64
+
 /*
  * Ref
  */
