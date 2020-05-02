@@ -2,7 +2,7 @@
 
 set -e
 
-(cd ovn-test-data && git checkout v2)
+(cd ovn-test-data && git checkout v3)
 
 # TODO: use OVS master once these changes are there.
 (cd ovs &&
@@ -22,7 +22,7 @@ set -e
  (find tests/testsuite.dir/ \( -name testsuite.log -o -name ovn-northd.log \) -exec echo '{}' \; -exec cat '{}' \; && false))
 )
 
-LD_LIBRARY_PATH=ovn/lib/.libs/:$LD_LIBRARY_PATH /usr/bin/time ovn/northd/ovn_northd_ddlog/target/release/ovn_northd_cli -w 2 --no-store --no-print < ovn-test-data/ovn_scale_test_short.dat > ovn_scale_test_short.dump
+LD_LIBRARY_PATH=ovn/lib/.libs/:$LD_LIBRARY_PATH /usr/bin/time ovn/northd/ovn_northd_ddlog/target/release/ovn_northd_cli -w 2 --no-store < ovn-test-data/ovn_scale_test_short.dat > ovn_scale_test_short.dump
 sed -n '/^Profile:$/,$p' ovn_scale_test_short.dump
 sed -n '/Profile:/q;p' ovn_scale_test_short.dump > ovn_scale_test_short.dump.truncated
 sed -n '/Profile:/q;p' ovn-test-data/ovn_scale_test_short.dump.expected > ovn_scale_test_short.dump.expected.truncated
