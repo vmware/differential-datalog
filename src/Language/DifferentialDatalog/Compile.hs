@@ -233,7 +233,7 @@ rustLibFiles specname =
 -- in an antijoin and therefore must contain distinct entries.
 data Arrangement = ArrangementMap { arngPattern :: Expr, arngIndexes :: [Index] }
                  | ArrangementSet { arngPattern :: Expr, arngDistinct :: Bool}
-                 deriving Eq
+                 deriving (Eq, Show)
 
 arngUsedInIndexes :: Arrangement -> [Index]
 arngUsedInIndexes ArrangementMap{arngIndexes} = arngIndexes
@@ -387,7 +387,7 @@ addSemijoinArrangement relname pattern = do
 -- Create a new arrangement for use in a antijoin operator:
 -- * If the arrangement exists, do nothing
 -- * If a semijoin arrangement with the same pattern exists, promote it to
---   an antijoin by setting 'distinct' to false
+--   an antijoin by setting 'distinct' to true
 -- * Otherwise, add the new arrangement
 addAntijoinArrangement :: String -> Expr -> CompilerMonad ()
 addAntijoinArrangement relname pattern = do
@@ -2078,10 +2078,10 @@ mkArrangement d rel ArrangementMap{..} = do
                "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
     return $
-        "Arrangement::Map{"                                                                                 $$
-        "   name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                         $$
+        "Arrangement::Map{"                                                                                       $$
+        "   name: r###\"" <> pp arngPattern <> " /*join*/\"###.to_string(),"                                      $$
         (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
-        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                 $$
+        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
         "}"
 
 mkArrangement d rel ArrangementSet{..} = do
@@ -2093,10 +2093,10 @@ mkArrangement d rel ArrangementSet{..} = do
     -- the pattern expression does not contain placeholders).
     let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     return $
-        "Arrangement::Set{"                                                                            $$
-        "    name: r###\"" <> pp arngPattern <> "\"###.to_string(),"                                   $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")   $$
-        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false") $$
+        "Arrangement::Set{"                                                                                                         $$
+        "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijon" else "semijoin") <> "*/\"###.to_string()," $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                            $$
+        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                              $$
         "}"
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
