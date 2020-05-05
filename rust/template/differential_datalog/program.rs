@@ -188,7 +188,7 @@ trait ToTupleTS {
  */
 impl ToTupleTS for TS {
     fn to_tuple_ts(&self) -> TupleTS {
-        (*self, TS16{x: 0})
+        (*self, TS16 { x: 0 })
     }
 }
 
@@ -547,7 +547,7 @@ impl XFormCollection {
             XFormCollection::FlatMap { description, .. } => &description,
             XFormCollection::Filter { description, .. } => &description,
             XFormCollection::FilterMap { description, .. } => &description,
-            XFormCollection::Inspect {description, .. } => &description,
+            XFormCollection::Inspect { description, .. } => &description,
         }
     }
 
@@ -1874,7 +1874,9 @@ impl Program {
                 ifun: &ifun,
                 ref next,
             } => {
-                let inspect = with_prof_context(&description, || col.inspect(move|(v, ts, w)|ifun(v, ts.to_tuple_ts(), *w)));
+                let inspect = with_prof_context(&description, || {
+                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
+                });
                 Self::xform_collection(inspect, &*next, arrangements)
             }
         }
