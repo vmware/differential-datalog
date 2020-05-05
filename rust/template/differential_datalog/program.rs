@@ -304,6 +304,10 @@ pub type FilterFunc = fn(&DDValue) -> bool;
 /// (see `XFormCollection::FilterMap`).
 pub type FilterMapFunc = fn(DDValue) -> Option<DDValue>;
 
+/// Function type used to inspect a relation
+/// (see `XFormCollection::InspectFunc`)
+pub type InspectFunc = fn(&(DDValue, (TSNested, TS), i32)) -> ();
+
 /// Function type used to arrange a relation into key-value pairs
 /// (see `XFormArrangement::Join`, `XFormArrangement::Antijoin`).
 pub type ArrangeFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
@@ -505,6 +509,12 @@ pub enum XFormCollection {
         fmfun: &'static FilterMapFunc,
         next: Box<Option<XFormCollection>>,
     },
+    /// Inspector
+    Inspect {
+        description: String,
+        ifun: &'static InspectFunc,
+        next: Box<Option<XFormCollection>>,
+    },
 }
 
 impl XFormCollection {
@@ -515,6 +525,7 @@ impl XFormCollection {
             XFormCollection::FlatMap { description, .. } => &description,
             XFormCollection::Filter { description, .. } => &description,
             XFormCollection::FilterMap { description, .. } => &description,
+            XFormCollection::Inspect {description, .. } => &description,
         }
     }
 
@@ -534,6 +545,10 @@ impl XFormCollection {
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::FilterMap { next, .. } => match **next {
+                None => FnvHashSet::default(),
+                Some(ref n) => n.dependencies(),
+            },
+            XFormCollection::Inspect { next, .. } => match **next {
                 None => FnvHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
@@ -1389,11 +1404,12 @@ impl Program {
                                             }
                                         }
                                     };
+                                    epoch += 1;
+                                    //print!("epoch: {}\n", epoch);
+                                    Self::advance(&mut sessions, &mut traces, epoch);
                                 },
                                 Ok(Msg::Flush) => {
                                     //println!("flushing");
-                                    epoch += 1;
-                                    Self::advance(&mut sessions, &mut traces, epoch);
                                     Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
                                     //println!("flushed");
                                     reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
@@ -1828,6 +1844,14 @@ impl Program {
             } => {
                 let flattened = with_prof_context(&description, || col.flat_map(fmfun));
                 Self::xform_collection(flattened, &*next, arrangements)
+            }
+            XFormCollection::Inspect {
+                description,
+                ifun: &ifun,
+                ref next,
+            } => {
+                let inspect = with_prof_context(&description, || col.inspect(ifun));
+                Self::xform_collection(inspect, &*next, arrangements)
             }
         }
     }
