@@ -261,7 +261,6 @@ fn test_one_relation_multi() {
 /* Two tables + 1 rule that keeps the two synchronized
  */
 fn test_two_relations(nthreads: usize) {
-
     fn ifun(_v: &DDValue, _ts: TupleTS, _w: Weight) -> () {}
 
     let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
