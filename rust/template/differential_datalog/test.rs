@@ -262,7 +262,7 @@ fn test_one_relation_multi() {
  */
 fn test_two_relations(nthreads: usize) {
 
-    fn ifun(v: DDValue) -> () {}
+    fn ifun(_v: &DDValue, _ts: TupleTS, _w: Weight) -> () {}
 
     let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
