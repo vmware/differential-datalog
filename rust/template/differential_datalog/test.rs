@@ -261,6 +261,9 @@ fn test_one_relation_multi() {
 /* Two tables + 1 rule that keeps the two synchronized
  */
 fn test_two_relations(nthreads: usize) {
+
+    fn ifun(v: DDValue) -> () {}
+
     let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         let relset1 = relset1.clone();
@@ -289,7 +292,11 @@ fn test_two_relations(nthreads: usize) {
             rules: vec![Rule::CollectionRule {
                 description: "T2.R1".to_string(),
                 rel: 1,
-                xform: None,
+                xform: Some(XFormCollection::Inspect {
+                    description: "Inspect".to_string(),
+                    ifun: &(ifun as InspectFunc),
+                    next: Box::new(None),
+                }),
             }],
             arrangements: Vec::new(),
             change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
