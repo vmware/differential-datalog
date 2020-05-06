@@ -204,9 +204,9 @@ test-redist_opt:
     tags:
         - ddlog-ci-2
     script:
-        - (cd test/datalog_tests &&
-          git clone https://github.com/ddlog-dev/redist_opt-test-data.git &&
-          ./test-redist_opt.sh)
+        - cd test/datalog_tests
+        - git clone -b v2 https://github.com/ddlog-dev/redist_opt-test-data.git
+        - ./test-redist_opt.sh
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
