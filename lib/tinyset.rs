@@ -323,6 +323,28 @@ pub fn tinyset_unions<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: s }
 }
 
+pub fn tinyset_intersection<X: u64set::Fits64 + Clone>(
+    s1: &tinyset_Set64<X>,
+    s2: &tinyset_Set64<X>,
+) -> tinyset_Set64<X> {
+    let mut s = u64set::Set64::new();
+    for v in s1.unsorted_iter() {
+        if s2.x.contains(v) {
+            s.insert(v);
+        }
+    }
+    tinyset_Set64 { x: s }
+}
+
+pub fn tinyset_difference<X: u64set::Fits64 + Clone>(
+    s1: &tinyset_Set64<X>,
+    s2: &tinyset_Set64<X>,
+) -> tinyset_Set64<X> {
+    tinyset_Set64 {
+        x: std::ops::Sub::sub(&s1.x, &s2.x),
+    }
+}
+
 pub fn tinyset_group2set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
     let mut res = tinyset_Set64::new();
     for ref v in g.iter() {

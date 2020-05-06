@@ -5,3 +5,4 @@ import json_test
 import fp_test
 import regex_test
 import internment_test
+import tinyset_test
