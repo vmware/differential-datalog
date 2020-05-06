@@ -12,7 +12,7 @@ HEADERS = ddlogapi_DDlogAPI.h ddlogapi_DDlogAPI_DDlogCommandVector.h
 
 all: ${JAR}
 
-${JAR}: ${CLASS}
+${JAR}: ${CLASS} ${HEADERS}
 	jar cvf ${JAR} ddlogapi/*.class
 
 %.class: %.java ${HEADERS}
