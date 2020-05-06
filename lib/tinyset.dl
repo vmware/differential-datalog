@@ -16,6 +16,8 @@ extern function is_empty(s: Set64<'X>): bool
 extern function nth(s: Set64<'X>, n: bit<64>): Option<bit<64>>
 extern function union(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 extern function unions(sets: Vec<Set64<'X>>): Set64<'X>
+extern function intersection(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
+extern function difference(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 
 /* Aggregates */
 extern function group2set(g: Group<'K, 'V>): Set64<'V>

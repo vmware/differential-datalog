@@ -1,0 +1,35 @@
+import tinyset as TS
+
+input relation SetElement(setid: string, element: u32)
+
+output relation Sets(setid: string, set: TS.Set64<u32>)
+Sets(setid, set) :-
+    SetElement(setid, v),
+    var set = Aggregate((setid), TS.group2set(v)).
+
+output relation Intersects(setid1: string, setid2: string, set: TS.Set64<u32>)
+
+Intersects(setid1, setid2, set) :-
+    Sets(setid1, set1),
+    Sets(setid2, set2),
+    var set = {
+        var set: TS.Set64<u32> = TS.empty();
+        for (x in set1) {
+            if (TS.contains(set2, x)) {
+                TS.insert(set, x)
+            }
+        };
+        set
+    }.
+
+output relation Intersects2(setid1: string, setid2: string, set: TS.Set64<u32>)
+
+Intersects2(setid1, setid2, TS.intersection(set1, set2)) :-
+    Sets(setid1, set1),
+    Sets(setid2, set2).
+
+output relation Diffs(setid1: string, setid2: string, set: TS.Set64<u32>)
+
+Diffs(setid1, setid2, TS.difference(set1, set2)) :-
+    Sets(setid1, set1),
+    Sets(setid2, set2).
