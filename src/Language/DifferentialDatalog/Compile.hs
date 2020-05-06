@@ -2356,10 +2356,10 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
 mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
-    -- Iterators over groups and maps produces owned values, not references
-    opt_ref = if (\t -> isGroup d t || isMap d t) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
-                 then "ref"
-                 else empty
+    -- If collection iterates by value, convert value into reference.
+    opt_ref = if (snd . fromJust . typeIterType d) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
+                 then empty
+                 else "ref"
     doc = ("for" <+> opt_ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
           (nest' $ val exprBody)                                                   $$
           "}"

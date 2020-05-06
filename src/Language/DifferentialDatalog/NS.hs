@@ -169,7 +169,7 @@ ctxMVars d ctx =
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
          CtxForIter _ _           -> (plvars, prvars)
-         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter)
+         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, fst <$> (typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter))
                                            -- variables that occur in the iterator expression cannot
                                            -- be modified inside the loop
                                            plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars
