@@ -10,7 +10,7 @@ typedef tnid_t = bit<16>
 typedef EntityType =
     EntityLS |
     EntityLSP{connected_to_dr: bool} |
-    EntityLRP |
+    EntityLRP{mcast: bool} |
     EntityRDS{routingDomainId: entid_t}|
     EntityOther
 
@@ -33,7 +33,7 @@ ExtDdlogDependency(parent, child) :-
 
 ExtDdlogDependency(ls, lsp) :-
     ValidDependency(lsp, lrp),
-    DdlogNode(lrp, EntityLRP),
+    DdlogNode(lrp, EntityLRP{}),
     DdlogNode(lsp, EntityLSP{.connected_to_dr = true}),
     ValidDependency(lsp, ls),
     DdlogNode(ls, EntityLS).
@@ -101,11 +101,41 @@ SCCSpan(parent, tns) :-
 /* Flatten the span relation: for each node in an SCC, the node's span is the
  * same as the SCC span.
  */
+relation SpanUnfiltered(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+SpanUnfiltered(node, span) :- SCCSpan(scc, span), LabeledNode(node, scc).
+
 output relation Span(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
 index Span_by_entity(entity: entid_t) on Span(.entity = entity, .tns = _)
 
-Span(node, span) :- SCCSpan(scc, span), LabeledNode(node, scc).
+Span(node, ref_new(TS.intersection(deref(edge_tns), deref(tns_unfiltered)))) :-
+    SpanUnfiltered(node, tns_unfiltered),
+    McastObject(node),
+    EdgeTNs(edge_tns).
 
+Span(node, tns) :-
+    SpanUnfiltered(node, tns),
+    not McastObject(node).
+
+/* Subset of TN ids that correspond to edge TNs. */
+input relation EdgeTN(tn: tnid_t)
+
+/* Aggregate all edge TN ids.  This assumes that TNs are a smal fraction of all
+ * TNs, so aggregating them is not too expensive. */
+relation EdgeTNs(tns: Ref<TS.Set64<tnid_t>>)
+EdgeTNs(ref_new(tns)) :-
+    EdgeTN(tn),
+    var tns = Aggregate((), TS.group2set(tn)).
+
+/* Objects that are part of a LRP{mcast=true} -> LSP -> LS chain. */
+relation McastObject(mcast: entid_t)
+McastObject(lrp),
+McastObject(lsp),
+McastObject(ls) :-
+    ValidDependency(lrp, lsp),
+    DdlogNode(lrp, EntityLRP{.mcast = true}),
+    DdlogNode(lsp, EntityLSP{}),
+    ValidDependency(lsp, ls),
+    DdlogNode(ls, EntityLS).
 
 /* used for query all From nodes for a given To node, or query all To nodes for
  * a given From node
