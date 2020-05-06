@@ -37,7 +37,7 @@ module Language.DifferentialDatalog.Type(
     relKeyType,
     typ', typ'',
     typDeref',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -52,6 +52,7 @@ module Language.DifferentialDatalog.Type(
     funcTypeArgSubsts,
     funcGroupArgTypes,
     sET_TYPES,
+    tINYSET_TYPE,
     mAP_TYPE,
     iNTERNED_TYPES,
     gROUP_TYPE,
@@ -79,7 +80,10 @@ import Language.DifferentialDatalog.Error
 --import {-# SOURCE #-} Relation
 
 sET_TYPES :: [String]
-sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
+sET_TYPES = ["std.Set", "std.Vec", tINYSET_TYPE]
+
+tINYSET_TYPE :: String
+tINYSET_TYPE = "tinyset.Set64"
 
 -- Dynamically allocated types.
 dYNAMIC_TYPES :: [String]
@@ -484,6 +488,11 @@ isMap d a = case typ' d a of
                  TOpaque _ t _ | t == mAP_TYPE -> True
                  _                             -> False
 
+isTinySet :: (WithType a) => DatalogProgram -> a -> Bool
+isTinySet d a = case typ' d a of
+                 TOpaque _ t _ | t == tINYSET_TYPE -> True
+                 _                                 -> False
+
 isRef :: (WithType a) => DatalogProgram -> a -> Bool
 isRef d a = case typ' d a of
                  TOpaque _ t _ | t == rEF_TYPE -> True
@@ -820,13 +829,18 @@ typeMapM fun t@TOpaque{..} = do
 typeMap :: (Type -> Type) -> Type -> Type
 typeMap f t = runIdentity $ typeMapM (return . f) t
 
-typeIterType :: DatalogProgram -> Type -> Maybe Type
+-- Returns iterator type when iterating over a collection (element type for
+-- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in 
+-- the returned tuple indicates whether the collection iterates by reference
+-- (True) or by value (False) in Rust.
+typeIterType :: DatalogProgram -> Type -> Maybe (Type, Bool)
 typeIterType d t =
     case typ' d t of
-         TOpaque _ tname [t']  | elem tname sET_TYPES -> Just t'
-         TOpaque _ tname [k,v] | tname == mAP_TYPE    -> Just $ tTuple [k,v]
-         TOpaque _ tname [_,v] | tname == gROUP_TYPE  -> Just v
-         _                                            -> Nothing
+         TOpaque _ tname [t']  | tname == tINYSET_TYPE -> Just (t', False)            -- Tinysets iterate by value.
+         TOpaque _ tname [t']  | elem tname sET_TYPES  -> Just (t', True)             -- Other sets iterate by reference.
+         TOpaque _ tname [k,v] | tname == mAP_TYPE     -> Just (tTuple [k,v], False)  -- Maps iterate by value.
+         TOpaque _ tname [_,v] | tname == gROUP_TYPE   -> Just (v, False)             -- Groups iterate by value.
+         _                                             -> Nothing
 
 typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
 typeIsIterable d x =

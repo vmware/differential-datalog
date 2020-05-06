@@ -21,7 +21,7 @@ exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 sET_TYPES :: [String]
 gROUP_TYPE :: String
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
-typeIterType :: DatalogProgram -> Type -> Maybe Type
+typeIterType :: DatalogProgram -> Type -> Maybe (Type, Bool)
 exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type
 unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
 isMap :: (WithType a) => DatalogProgram -> a -> Bool
