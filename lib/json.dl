@@ -20,7 +20,7 @@ extern function to_json_string(x: 'T): Result<string, string>
 
 /* Represents any valid JSON value.
  */
-#[rust="serde(from = \"serde_json::value::Value\", into = \"serde_json::value::Value\")"]
+#[rust="serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
 typedef JsonValue = // Represents a JSON null value.
                     JsonNull
                   | // Represents a JSON boolean.
