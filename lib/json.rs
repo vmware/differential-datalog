@@ -8,6 +8,61 @@ pub fn json_to_json_string<T: serde::Serialize>(x: &T) -> std_Result<String, Str
     res2std(serde_json::to_string(x))
 }
 
+pub struct ValueWrapper(serde_json::value::Value);
+
+impl serde::Serialize for ValueWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer
+    {
+        if serializer.is_human_readable() {
+            self.0.serialize(serializer)
+        } else {
+            serde_json::to_string(&self.0).map_err(|e|serde::ser::Error::custom(e))?.serialize(serializer)
+        }
+    }
+}
+
+impl <'de> Deserialize<'de> for ValueWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>
+    {
+        if deserializer.is_human_readable() {
+            Ok(ValueWrapper(serde_json::Value::deserialize(deserializer)?))
+        } else {
+            Ok(ValueWrapper(serde_json::from_str::<serde_json::Value>(String::deserialize(deserializer)?.as_ref())
+                            .map_err(|e| serde::de::Error::custom(e))?))
+        }
+    }
+}
+
+/*
+impl <T: DeserializeOwned> std::convert::TryFrom<ValueWrapper> for T {
+    fn try_from(x: ValueWrapper) -> Self {
+        serde_json::from_value::<Self>(x.0)
+    }
+}
+
+impl <T: Serialize> From<T> for ValueWrapper {
+    fn from(x: T) -> Self {
+        ValueWrapper(serde_json::to_value(x).unwrap())
+    }
+}
+*/
+
+impl From<ValueWrapper> for json_JsonValue {
+    fn from(x: ValueWrapper) -> Self {
+        json_JsonValue::from(x.0)
+    }
+}
+
+impl From<json_JsonValue> for ValueWrapper {
+    fn from(x: json_JsonValue) -> Self {
+        ValueWrapper(serde_json::Value::from(x))
+    }
+}
+
 impl From<serde_json::value::Value> for json_JsonValue {
     fn from(x: serde_json::value::Value) -> Self {
         match x {
