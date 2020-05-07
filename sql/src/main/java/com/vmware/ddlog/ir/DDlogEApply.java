@@ -11,8 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,8 +22,8 @@ public class DDlogEApply extends DDlogExpression {
     private final String func;
     private final List<DDlogExpression> args;
 
-    public DDlogEApply(String func, DDlogType type, DDlogExpression... args) {
-        super(type);
+    public DDlogEApply(@Nullable Node node, String func, DDlogType type, DDlogExpression... args) {
+        super(node, type);
         this.func = func;
         this.args = Arrays.asList(args);
     }

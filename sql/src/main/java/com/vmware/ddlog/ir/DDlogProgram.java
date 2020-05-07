@@ -11,14 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DDlogProgram implements DDlogIRNode {
+public class DDlogProgram extends DDlogNode {
     // We are missing some of the fields that can never be generated from SQL
     public final List<DDlogTypeDef> typedefs;
     public final List<DDlogFunction> functions;
@@ -27,6 +29,7 @@ public class DDlogProgram implements DDlogIRNode {
     public final List<DDlogImport> imports;
 
     DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelation> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
+        super(null);
         this.typedefs = typedefs;
         this.functions = functions;
         this.relations = relations;

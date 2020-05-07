@@ -11,18 +11,20 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 
-public class DDlogFunction implements DDlogIRNode {
+public class DDlogFunction extends DDlogNode {
     final String name;
     final DDlogFuncArg[] args;
     final DDlogType type;
     @Nullable
     final DDlogExpression def;
 
-    public DDlogFunction(String name, DDlogType type, @Nullable DDlogExpression def, DDlogFuncArg... args) {
+    public DDlogFunction(@Nullable Node node, String name, DDlogType type, @Nullable DDlogExpression def, DDlogFuncArg... args) {
+        super(node);
         this.name = name;
         this.args = args;
         this.type = type;

@@ -11,10 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogRHSCondition extends DDlogRuleRHS {
     private final DDlogExpression expr;
 
-    public DDlogRHSCondition(DDlogExpression expr) {
+    public DDlogRHSCondition(@Nullable Node node, DDlogExpression expr) {
+        super(node);
         this.expr = this.checkNull(expr);
     }
 

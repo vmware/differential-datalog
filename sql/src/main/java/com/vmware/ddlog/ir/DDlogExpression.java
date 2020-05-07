@@ -11,9 +11,11 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
 import javax.annotation.Nullable;
 
-public abstract class DDlogExpression implements DDlogIRNode {
+public abstract class DDlogExpression extends DDlogNode {
     /**
      * Inferred type of the expression.  We can't make it final
      * since sometimes it's not set in the constructor.  But it should be really final.
@@ -22,11 +24,13 @@ public abstract class DDlogExpression implements DDlogIRNode {
     protected /*final*/ DDlogType type;
     public abstract String toString();
 
-    protected DDlogExpression(DDlogType type) {
+    protected DDlogExpression(@Nullable Node node, DDlogType type) {
+        super(node);
         this.type = this.checkNull(type);
     }
 
-    protected DDlogExpression() {
+    protected DDlogExpression(@Nullable Node node) {
+        super(node);
         this.type = null;
     }
 

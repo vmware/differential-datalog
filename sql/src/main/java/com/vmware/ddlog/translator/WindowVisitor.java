@@ -1,82 +1,81 @@
 package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
+import com.vmware.ddlog.ir.DDlogExpression;
 import com.vmware.ddlog.util.Ternary;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This visitor computes the AggregateDecomposition of an expression.
- * It returns 'true' if the expression is the result of an aggregation.
+ * This visitor computes the AggregateDecomposition of an expression that
+ * may contain aggregation functions over windows.
+ * See for example https://www.postgresql.org/docs/9.1/tutorial-window.html
+ * for a documentation of SQL Window functions.
+ * It returns 'true' if the expression does contain window function aggregations.
  */
-public class AggregateVisitor
+public class WindowVisitor
         extends AstVisitor<Ternary, TranslationContext> {
-    /**
-     * This class represents the decomposition of an expression that contains
-     * aggregates into multiple expressions.  Consider this example:
-     *
-     * select max(salaries) + min(abs(salaries)) from employees
-     *
-     * Consider the expression tree
-     * + ( functionCall(max, salaries), functionCall(min, functionCall(min, salaries)))
-     * The Aggregate decomposition will have aggregates pointing to
-     * the functionCall(max, ...) and functionCall(min, ...) tree nodes.
-     */
-    public static class Decomposition {
-        public final List<FunctionCall> aggregateNodes;
 
-        Decomposition() {
-            this.aggregateNodes = new ArrayList<FunctionCall>();
-        }
-
-        void addNode(FunctionCall node) {
-            this.aggregateNodes.add(node);
-        }
-
-        public boolean isAggregate() {
-            return !this.aggregateNodes.isEmpty();
-        }
+    public WindowVisitor() {
+        this.groupOn = new ArrayList<TranslationVisitor.GroupByInfo>();
+        aggregatedItems = new ArrayList<SelectItem>();
+        inputItems = new ArrayList<SelectItem>();
     }
 
-    Decomposition decomposition;
-    private final List<TranslationVisitor.GroupByInfo> aggregates;
-
     /**
-     * Create a visitor that analyzes an expression to see whether it requires aggregation.
-     * @param aggregates   Columns that are already being aggregated.
+     * Let us consider the following query:
+     * select 3 + count(column1) over (partition by column2) from t1
+     *
+     * This is decomposed as follows:
+     * - groupByInfo: column2
+     * - aggregatedItems: 3 + count(tmp) <<< cut at aggregation functions in over
+     * - inputItems: column1 as tmp <<< argument to any aggregation function in over
      */
-    public AggregateVisitor(List<TranslationVisitor.GroupByInfo> aggregates) {
-        this.decomposition = new Decomposition();
-        this.aggregates = aggregates;
-    }
+    public final List<TranslationVisitor.GroupByInfo> groupOn;
+    public final List<SelectItem> aggregatedItems;
+    public final List<SelectItem> inputItems;
 
     @Override
     protected Ternary visitFunctionCall(FunctionCall fc, TranslationContext context) {
-        if (fc.getWindow().isPresent())
-            throw new TranslationException("Window functions not allowed in aggregates", fc);
-        if (this.isGroupedBy(fc)) {
-            this.decomposition.addNode(fc);
-            return Ternary.Yes;
+        if (!fc.getWindow().isPresent())
+            return Ternary.No;
+        Window win = fc.getWindow().get();
+        if (win.getOrderBy().isPresent())
+            throw new TranslationException("group-by not supported", fc);
+        if (win.getFrame().isPresent())
+            throw new TranslationException("frames not yet supported", fc);
+        List<Expression> partitions = win.getPartitionBy();
+        for (Expression e: partitions) {
+            DDlogExpression g = context.translateExpression(e);
+            String gb = context.freshLocalName("gb");
+            TranslationVisitor.GroupByInfo gr = new TranslationVisitor.GroupByInfo(e, g, gb);
+            this.groupOn.add(gr);
         }
         String name = TranslationVisitor.convertQualifiedName(fc.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {
-            this.decomposition.addNode(fc);
-        }
-        for (Expression e: fc.getArguments()) {
-            Ternary arg = this.process(e, context);
-            if (isAggregate && arg == Ternary.Yes)
-                throw new TranslationException("Nested aggregation", fc);
-            result = this.combine(fc, result, arg);
-        }
-        if (isAggregate)
+            // All arguments become inputItems
+            List<Expression> args = new ArrayList<Expression>();
+            for (Expression e: fc.getArguments()) {
+                String var = context.freshLocalName("tmp");
+                Identifier arg = new Identifier(var);
+                args.add(arg);
+                SelectItem si = new SingleColumn(e, arg);
+                inputItems.add(si);
+            }
+            FunctionCall replacement = new FunctionCall(fc.getName(), args);
+            aggregatedItems.add(new SingleColumn(replacement));
             return Ternary.Yes;
+        }
         return result;
     }
 
-    public Ternary combine(Node node, Ternary left, Ternary right) {
+    public Ternary combine(Node node, @Nullable Ternary left, @Nullable Ternary right) {
+        if (left == null || right == null)
+            throw new TranslationException("Not yet implemented", node);
         if (left == Ternary.Maybe)
             return right;
         if (right == Ternary.Maybe)
@@ -86,48 +85,30 @@ public class AggregateVisitor
         return left;
     }
 
-    public boolean isGroupedBy(Expression e) {
-        for (TranslationVisitor.GroupByInfo a: this.aggregates) {
-            if (e.equals(a.groupBy))
-                return true;
-        }
-        return false;
-    }
-
     @Override
     protected Ternary visitCast(Cast node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         return this.process(node.getExpression(), context);
     }
 
     @Override
-    protected Ternary visitExpression(Expression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
-        return super.visitExpression(node, context);
-    }
-
-    @Override
     protected Ternary visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
     }
 
     @Override
+    protected Ternary visitDereferenceExpression(DereferenceExpression node, TranslationContext context) {
+        return Ternary.Maybe;
+    }
+
+    @Override
     protected Ternary visitNotExpression(NotExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         return this.process(node.getValue(), context);
     }
 
     @Override
     protected Ternary visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary value = this.process(node.getValue(), context);
         Ternary min = this.process(node.getMin(), context);
         Ternary max = this.process(node.getMax(), context);
@@ -136,15 +117,11 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitIdentifier(Identifier node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         return Ternary.No;
     }
 
     @Override
     protected Ternary visitLiteral(Literal node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         return Ternary.Maybe;
     }
 
@@ -154,8 +131,6 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitIfExpression(IfExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary c = this.process(node.getCondition(), context);
         Ternary th = this.process(node.getTrueValue(), context);
         Ternary e = node.getFalseValue().isPresent() ? Ternary.Maybe :
@@ -165,8 +140,6 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
@@ -174,24 +147,13 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary lb = this.process(node.getLeft(), context);
         Ternary rb = this.process(node.getRight(), context);
         return this.combine(node, lb, rb);
     }
 
     @Override
-    protected Ternary visitDereferenceExpression(DereferenceExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
-        return Ternary.Maybe;
-    }
-
-    @Override
     protected Ternary visitSimpleCaseExpression(SimpleCaseExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary c = this.process(node.getOperand(), context);
         if (c == null)
             throw new TranslationException("Not supported: ", node.getOperand());
@@ -216,8 +178,6 @@ public class AggregateVisitor
 
     @Override
     protected Ternary visitSearchedCaseExpression(SearchedCaseExpression node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
         Ternary c = Ternary.Maybe;
         for (WhenClause e: node.getWhenClauses()) {
             Ternary o = this.process(e.getOperand(), context);

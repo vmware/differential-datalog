@@ -11,11 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogKeyExpr implements DDlogIRNode {
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
+public class DDlogKeyExpr extends DDlogNode {
     final String var;
     final DDlogExpression expr;
 
-    public DDlogKeyExpr(String var, DDlogExpression expr) {
+    public DDlogKeyExpr(@Nullable Node node, String var, DDlogExpression expr) {
+        super(node);
         this.var = var;
         this.expr = expr;
     }

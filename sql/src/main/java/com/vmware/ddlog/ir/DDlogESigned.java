@@ -11,20 +11,23 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.math.BigInteger;
 
 public class DDlogESigned extends DDlogExpression {
     private final int width;
     private final BigInteger ival;
 
-    public DDlogESigned(int width, BigInteger ival) {
-        super(new DDlogTSigned(width, false));
+    public DDlogESigned(@Nullable Node node, int width, BigInteger ival) {
+        super(node, new DDlogTSigned(node, width, false));
         this.width = width;
         this.ival = ival;
     }
 
-    public DDlogESigned(long value) {
-        this(64, BigInteger.valueOf(value));
+    public DDlogESigned(@Nullable Node node, long value) {
+        this(node,64, BigInteger.valueOf(value));
     }
 
     @Override

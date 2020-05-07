@@ -98,8 +98,12 @@ public class BaseQueriesTest {
      * @param programBody  Program to compile.
      */
     protected void compiledDDlog(String programBody) {
+        String basename = null;
         try {
             File tmp = this.writeProgramToFile(programBody);
+            basename = tmp.getName();
+            //Compiling all the way takes too long
+            //boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
             boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), true,"../lib", "./lib");
             if (!success) {
                 String[] lines = programBody.split("\n");
@@ -108,14 +112,15 @@ public class BaseQueriesTest {
                     System.out.println(lines[i]);
                 }
             }
-
-            String basename = tmp.getName();
-            basename = basename.substring(0, basename.lastIndexOf('.'));
-            String tempDir = System.getProperty("java.io.tmpdir");
-            String dir = tempDir + "/" + basename + "_ddlog";
-            FileUtils.deleteRecursive(dir, false);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if (basename != null) {
+                basename = basename.substring(0, basename.lastIndexOf('.'));
+                String tempDir = System.getProperty("java.io.tmpdir");
+                String dir = tempDir + "/" + basename + "_ddlog";
+                FileUtils.deleteRecursive(dir, false);
+            }
         }
     }
 

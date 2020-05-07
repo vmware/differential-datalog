@@ -11,11 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEString extends DDlogExpression {
     private final String string;
 
-    public DDlogEString(String string) {
-        super(DDlogTString.instance);
+    public DDlogEString(@Nullable Node node, String string) {
+        super(node, DDlogTString.instance);
         if (string.startsWith("'") && string.endsWith("'"))
             string = string.substring(1, string.length() - 1);
         this.string = string;

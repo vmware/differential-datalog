@@ -11,11 +11,12 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogImport implements DDlogIRNode {
+public class DDlogImport extends DDlogNode {
     private final String module;
     private final String alias;
 
     public DDlogImport(String module, String alias) {
+        super(null);
         this.module = module;
         this.alias = alias;
     }

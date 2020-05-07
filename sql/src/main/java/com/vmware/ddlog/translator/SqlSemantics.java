@@ -1,5 +1,6 @@
 package com.vmware.ddlog.translator;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.ir.*;
 
 import javax.annotation.Nullable;
@@ -58,7 +59,7 @@ public class SqlSemantics {
 
     public static SqlSemantics semantics = new SqlSemantics();
 
-    public static DDlogType createType(String sqltype, boolean mayBeNull) {
+    public static DDlogType createType(Node node, String sqltype, boolean mayBeNull) {
         DDlogType type = null;
         if (sqltype.equals("boolean")) {
             type = DDlogTBool.instance;
@@ -73,14 +74,14 @@ public class SqlSemantics {
         } else if (sqltype.equals("float")) {
             type = DDlogTFloat.instance;
         } else if (sqltype.equals("date")) {
-            type = new DDlogTUser("Date", false);
+            type = new DDlogTUser(node, "Date", false);
         } else if (sqltype.equals("time")) {
-            type = new DDlogTUser("Time", false);
+            type = new DDlogTUser(null, "Time", false);
         } else if (sqltype.equals("datetime") || sqltype.equals("timestamp")) {
-            type = new DDlogTUser("DateTime", false);
+            type = new DDlogTUser(node, "DateTime", false);
         }
         if (type == null)
-            throw new RuntimeException("SQL type not yet implemented: " + sqltype);
+            throw new TranslationException("SQL type not yet implemented: " + sqltype, node);
         return type.setMayBeNull(mayBeNull);
     }
 
@@ -108,11 +109,11 @@ public class SqlSemantics {
                     } else if (op.isBoolean()) {
                         raw = DDlogTBool.instance;
                     } else {
-                        raw = new DDlogTSigned(64, false);
+                        raw = new DDlogTSigned(null,64, false);
                     }
                     withNull = raw.setMayBeNull(true);
-                    DDlogExpression leftMatch = new DDlogEVarDecl("l", raw);
-                    DDlogExpression rightMatch = new DDlogEVarDecl("r", raw);
+                    DDlogExpression leftMatch = new DDlogEVarDecl(null,"l", raw);
+                    DDlogExpression rightMatch = new DDlogEVarDecl(null,"r", raw);
                     if ((i & 1) == 1) {
                         function += "N";
                         leftType = withNull;
@@ -136,36 +137,35 @@ public class SqlSemantics {
                         (_, _)             -> None
                     }
                     */
-                    DDlogFuncArg left = new DDlogFuncArg("left", false, leftType);
-                    DDlogFuncArg right = new DDlogFuncArg("right", false, rightType);
+                    DDlogFuncArg left = new DDlogFuncArg(null,"left", false, leftType);
+                    DDlogFuncArg right = new DDlogFuncArg(null,"right", false, rightType);
                     DDlogType type = DDlogType.reduceType(leftType, rightType);
                     if (op.isComparison()) {
                         type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
                     }
                     DDlogExpression def;
                     if (i == 0) {
-                        def = new DDlogEBinOp(op,
-                                new DDlogEVar("left", raw), new DDlogEVar("right", raw));
+                        def = new DDlogEBinOp(null, op,
+                                new DDlogEVar(null,"left", raw), new DDlogEVar(null,"right", raw));
                     } else {
-                        def = new DDlogEMatch(
-                                new DDlogETuple(
-                                        new DDlogEVar("left", leftType),
-                                        new DDlogEVar("right", rightType)),
+                        def = new DDlogEMatch(null,
+                                new DDlogETuple(null,
+                                        new DDlogEVar(null,"left", leftType),
+                                        new DDlogEVar(null,"right", rightType)),
                                 Arrays.asList(
-                                        new DDlogEMatch.Case(
-                                                new DDlogETuple(leftMatch, rightMatch),
+                                        new DDlogEMatch.Case(null,
+                                                new DDlogETuple(null, leftMatch, rightMatch),
                                                 ExpressionTranslationVisitor.wrapSome(
-                                                    new DDlogEBinOp(op,
-                                                        new DDlogEVar("l", raw), new DDlogEVar("r", raw)), type)),
-                                        new DDlogEMatch.Case(
-                                                new DDlogETuple(
-                                                        new DDlogEPHolder(),
-                                                        new DDlogEPHolder()),
-                                                new DDlogENull(type)))
+                                                    new DDlogEBinOp(null, op,
+                                                        new DDlogEVar(null, "l", raw), new DDlogEVar(null, "r", raw)), type)),
+                                        new DDlogEMatch.Case(null,
+                                                new DDlogETuple(null,
+                                                        new DDlogEPHolder(null),
+                                                        new DDlogEPHolder(null)),
+                                                new DDlogENull(null, type)))
                         );
                     }
-                    DDlogFunction func = new DDlogFunction(
-                            function, type, def, left, right);
+                    DDlogFunction func = new DDlogFunction(null, function, type, def, left, right);
                     result.functions.add(func);
                 }
             }
@@ -173,7 +173,7 @@ public class SqlSemantics {
         return result;
     }
 
-    String getFunction(DDlogEBinOp.BOp op, DDlogType ltype, @Nullable DDlogType rtype) {
+    String getFunction(Node node, DDlogEBinOp.BOp op, DDlogType ltype, @Nullable DDlogType rtype) {
         HashMap<String, DDlogEBinOp.BOp> map;
         if (ltype.as(DDlogTBool.class) != null) {
             map = this.booleanFunctions;
@@ -192,7 +192,7 @@ public class SqlSemantics {
                 return k + "_" + suffixl + suffixr;
             }
         }
-        throw new RuntimeException("Could not find `" + op + "` for type " + ltype.toString());
+        throw new TranslationException("Could not find `" + op + "` for type " + ltype.toString(), node);
     }
 
 

@@ -11,6 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEUnOp extends DDlogExpression {
     public enum UOp {
         Not, BNeg, UMinus;
@@ -29,19 +33,20 @@ public class DDlogEUnOp extends DDlogExpression {
         }
     }
 
-    public DDlogEUnOp(UOp uop, DDlogExpression expr) {
+    public DDlogEUnOp(@Nullable Node node, UOp uop, DDlogExpression expr) {
+        super(node);
         this.uop = uop;
         this.expr = this.checkNull(expr);
         this.type = expr.getType();
         switch (this.uop) {
             case Not:
                 if (!(expr.type instanceof DDlogTBool))
-                    throw new RuntimeException("Not is not applied to Boolean type");
+                    this.error("Not is not applied to Boolean type");
                 break;
             case BNeg:
             case UMinus:
                 if (!DDlogType.isNumeric(expr.getType()))
-                    throw new RuntimeException(this.uop + " is not applied to numeric type");
+                    this.error(this.uop + " is not applied to numeric type");
                 break;
         }
     }

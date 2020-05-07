@@ -22,4 +22,16 @@ public class NegativeTest extends BaseQueriesTest {
         String query = "create view v0 as select min(min(column1)) from t1";
         this.testTranslation(query, "");
     }
+
+    @Test(expected = TranslationException.class)
+    public void testMixAggregate3() {
+        String query = "create view v0 as select *, min(column1) from t1";
+        this.testTranslation(query, "");
+    }
+
+    @Test(expected = TranslationException.class)
+    public void testSelectStartGroupBy() {
+        String query = "create view v0 as select *, min(column1) from t1 group by column2";
+        this.testTranslation(query, "");
+    }
 }

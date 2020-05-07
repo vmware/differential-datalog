@@ -11,11 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogRHSFlatMap extends DDlogRuleRHS {
     final String var;
     final DDlogExpression mapExpr;
 
-    public DDlogRHSFlatMap(String var, DDlogExpression mapExpr) {
+    public DDlogRHSFlatMap(@Nullable Node node, String var, DDlogExpression mapExpr) {
+        super(node);
         this.var = var;
         this.mapExpr = mapExpr;
     }

@@ -11,10 +11,14 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogTString extends DDlogType {
-    public static DDlogTString instance = new DDlogTString(false);
+import com.facebook.presto.sql.tree.Node;
 
-    private DDlogTString(boolean mayBeNull) { super(mayBeNull); }
+import javax.annotation.Nullable;
+
+public class DDlogTString extends DDlogType {
+    public static DDlogTString instance = new DDlogTString(null,false);
+
+    private DDlogTString(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override
     public String toString() { return this.wrapOption("string"); }
@@ -23,7 +27,7 @@ public class DDlogTString extends DDlogType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTString(mayBeNull);
+        return new DDlogTString(this.getNode(), mayBeNull);
     }
 
     @Override

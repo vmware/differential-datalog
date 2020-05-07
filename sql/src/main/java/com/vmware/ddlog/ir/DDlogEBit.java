@@ -11,6 +11,9 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.math.BigInteger;
 
 public class DDlogEBit extends DDlogExpression {
@@ -20,8 +23,8 @@ public class DDlogEBit extends DDlogExpression {
     private final int width;
     private final BigInteger ival;
 
-    public DDlogEBit(int width, BigInteger ival) {
-        super(new DDlogTBit(width, false));
+    public DDlogEBit(@Nullable Node node, int width, BigInteger ival) {
+        super(node, new DDlogTBit(node, width, false));
         this.width = width;
         this.ival = ival;
     }

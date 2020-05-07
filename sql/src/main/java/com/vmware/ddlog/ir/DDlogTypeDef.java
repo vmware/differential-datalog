@@ -11,26 +11,28 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DDlogTypeDef implements DDlogIRNode {
+public class DDlogTypeDef extends DDlogNode {
     private final String name;
     private final List<String> args;
     @Nullable
     private final DDlogType type;
 
-    private DDlogTypeDef(String name, List<String> args, @Nullable DDlogType type) {
+    private DDlogTypeDef(@Nullable Node node, String name, List<String> args, @Nullable DDlogType type) {
+        super(node);
         this.name = name;
         this.args = args;
         this.type = type;
     }
 
-    public DDlogTypeDef(String name, @Nullable DDlogType type) {
-        this(name, new ArrayList<String>(), type);
+    public DDlogTypeDef(@Nullable Node node, String name, @Nullable DDlogType type) {
+        this(node, name, new ArrayList<String>(), type);
     }
 
     public String getName() { return this.name; }

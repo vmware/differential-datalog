@@ -11,16 +11,19 @@
 
 package com.vmware.ddlog.translator;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.ir.*;
 
 import javax.annotation.Nullable;
 
 public class Scope {
+    public final Node node;
     final String scopeName;
     public final String rowVariable;
     public final DDlogType type;
 
-    Scope(String scopeName, String rowVariable, DDlogType type) {
+    Scope(Node node, String scopeName, String rowVariable, DDlogType type) {
+        this.node = node;
         this.scopeName = scopeName;
         this.rowVariable = rowVariable;
         this.type = type;
@@ -35,7 +38,7 @@ public class Scope {
      *                    A DDlogField expression of the row variable if the field is present.
      */
     @Nullable
-    DDlogExpression lookupColumn(String identifier, TranslationContext context) {
+    DDlogExpression lookupColumn(Node node, String identifier, TranslationContext context) {
         DDlogType type = this.type;
         while (type instanceof DDlogTUser) {
             type = context.resolveTypeDef((DDlogTUser)type);
@@ -45,8 +48,8 @@ public class Scope {
         DDlogTStruct ts = (DDlogTStruct)type;
         for (DDlogField f: ts.getFields()) {
             if (identifier.equals(f.getName())) {
-                DDlogEVar var = new DDlogEVar(this.rowVariable, type);
-                return new DDlogEField(var, identifier, f.getType());
+                DDlogEVar var = new DDlogEVar(node, this.rowVariable, type);
+                return new DDlogEField(node, var, identifier, f.getType());
             }
         }
         return null;

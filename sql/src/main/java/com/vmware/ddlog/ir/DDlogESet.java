@@ -11,19 +11,23 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogESet extends DDlogExpression {
     final DDlogExpression lval;
     final DDlogExpression rval;
 
-    public DDlogESet(DDlogExpression lval, DDlogExpression rval) {
-        this(lval, rval, false);
+    public DDlogESet(@Nullable Node node, DDlogExpression lval, DDlogExpression rval) {
+        this(node, lval, rval, false);
     }
 
-    public DDlogESet(DDlogExpression lval, DDlogExpression rval, boolean typed) {
-        super(DDlogTTuple.emptyTupleType);
+    public DDlogESet(@Nullable Node node, DDlogExpression lval, DDlogExpression rval, boolean typed) {
+        super(node, DDlogTTuple.emptyTupleType);
         this.lval = lval;
         if (typed)
-            rval = new DDlogETyped(rval, rval.getType());
+            rval = new DDlogETyped(node, rval, rval.getType());
         this.rval = rval;
     }
 

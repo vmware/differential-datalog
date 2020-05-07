@@ -11,8 +11,12 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogTFloat extends DDlogType implements IsNumericType {
-    private DDlogTFloat(boolean mayBeNull) { super(mayBeNull); }
+    private DDlogTFloat(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override
     public String toString() { return this.wrapOption("float"); }
@@ -21,7 +25,7 @@ public class DDlogTFloat extends DDlogType implements IsNumericType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTFloat(mayBeNull);
+        return new DDlogTFloat(this.getNode(), mayBeNull);
     }
 
     @Override
@@ -30,16 +34,16 @@ public class DDlogTFloat extends DDlogType implements IsNumericType {
         return o != null && getClass() == o.getClass();
     }
 
-    public static DDlogTFloat instance = new DDlogTFloat(false);
+    public static DDlogTFloat instance = new DDlogTFloat(null,false);
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogEFloat(0);
+        return new DDlogEFloat(this.getNode(), 0);
     }
 
     @Override
     public DDlogExpression one() {
-        return new DDlogEFloat(0);
+        return new DDlogEFloat(this.getNode(),0);
     }
 
     @Override

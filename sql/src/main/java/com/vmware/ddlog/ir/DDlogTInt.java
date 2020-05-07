@@ -11,10 +11,14 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogTInt extends DDlogType implements IsNumericType {
-    private DDlogTInt(boolean mayBeNull) { super(mayBeNull); }
+import com.facebook.presto.sql.tree.Node;
 
-    public static DDlogTInt instance = new DDlogTInt(false);
+import javax.annotation.Nullable;
+
+public class DDlogTInt extends DDlogType implements IsNumericType {
+    private DDlogTInt(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
+
+    public static DDlogTInt instance = new DDlogTInt(null,false);
 
     @Override
     public String toString() { return this.wrapOption("bigint"); }
@@ -23,7 +27,7 @@ public class DDlogTInt extends DDlogType implements IsNumericType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTInt(mayBeNull);
+        return new DDlogTInt(this.getNode(), mayBeNull);
     }
 
     @Override
@@ -34,12 +38,12 @@ public class DDlogTInt extends DDlogType implements IsNumericType {
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogEInt(0);
+        return new DDlogEInt(this.getNode(), 0);
     }
 
     @Override
     public DDlogExpression one() {
-        return new DDlogEInt(1);
+        return new DDlogEInt(this.getNode(), 1);
     }
 
     @Override

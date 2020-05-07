@@ -11,11 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEVarDecl extends DDlogExpression {
     private final String vName;
 
-    public DDlogEVarDecl(String vName, DDlogType type) {
-        super(type);
+    public DDlogEVarDecl(@Nullable Node node, String vName, DDlogType type) {
+        super(node, type);
         this.vName = vName;
     }
 

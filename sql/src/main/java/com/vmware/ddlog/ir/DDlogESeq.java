@@ -11,20 +11,22 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
 import javax.annotation.Nullable;
 
 public class DDlogESeq extends DDlogExpression {
     private final DDlogExpression left;
     private final DDlogExpression right;
 
-    public DDlogESeq(DDlogExpression left, DDlogExpression right) {
-        super(right.getType());
+    public DDlogESeq(@Nullable Node node, DDlogExpression left, DDlogExpression right) {
+        super(node, right.getType());
         this.left = left;
         this.right = right;
     }
 
     @Nullable
-    public static DDlogExpression seq(DDlogExpression... seq) {
+    public static DDlogExpression seq(@Nullable Node node, DDlogExpression... seq) {
         if (seq.length == 0)
             return null;
         DDlogExpression result = null;
@@ -32,7 +34,7 @@ public class DDlogESeq extends DDlogExpression {
             if (result == null)
                 result = e;
             else if (e != null)
-                result = new DDlogESeq(result, e);
+                result = new DDlogESeq(node, result, e);
         }
         return result;
     }

@@ -12,12 +12,16 @@
 package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
+import com.facebook.presto.sql.tree.Node;
 
-public class DDlogAtom implements DDlogIRNode {
+import javax.annotation.Nullable;
+
+public class DDlogAtom extends DDlogNode {
     private final String relation;
     private final DDlogExpression val;
 
-    public DDlogAtom(String relation, DDlogExpression val) {
+    public DDlogAtom(@Nullable Node node, String relation, DDlogExpression val) {
+        super(node);
         this.relation = relation;
         this.val = val;
     }

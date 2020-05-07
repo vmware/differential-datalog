@@ -11,14 +11,17 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.math.BigInteger;
 import java.util.Objects;
 
 public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumericType {
     private final int width;
 
-    DDlogTBit(int width, boolean mayBeNull) {
-        super(mayBeNull);
+    DDlogTBit(@Nullable Node node, int width, boolean mayBeNull) {
+        super(node, mayBeNull);
         this.width = width;
     }
 
@@ -29,7 +32,7 @@ public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumer
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
-        return new DDlogTBit(this.width, mayBeNull);
+        return new DDlogTBit(this.getNode(), this.width, mayBeNull);
     }
 
     @Override
@@ -47,12 +50,12 @@ public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumer
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogEBit(this.width, BigInteger.valueOf(0));
+        return new DDlogEBit(this.getNode(), this.width, BigInteger.valueOf(0));
     }
 
     @Override
     public DDlogExpression one() {
-        return new DDlogEBit(this.width, BigInteger.valueOf(1));
+        return new DDlogEBit(this.getNode(), this.width, BigInteger.valueOf(1));
     }
 
     @Override
@@ -67,6 +70,6 @@ public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumer
 
     @Override
     public IBoundedNumericType getWithWidth(int width) {
-        return new DDlogTBit(width, this.mayBeNull);
+        return new DDlogTBit(this.getNode(), width, this.mayBeNull);
     }
 }

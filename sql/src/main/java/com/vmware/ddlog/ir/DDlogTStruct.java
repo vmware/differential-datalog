@@ -11,8 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -22,14 +24,14 @@ public class DDlogTStruct extends DDlogType {
     private final String name;
     private final List<DDlogField> args;
 
-    public DDlogTStruct(String name, List<DDlogField> args) {
-        super(false);
+    public DDlogTStruct(@Nullable Node node, String name, List<DDlogField> args) {
+        super(node,false);
         this.name = name;
         this.args = args;
         HashSet<String> fields = new HashSet<String>();
         for (DDlogField f: args) {
             if (fields.contains(f.getName()))
-                throw new RuntimeException("Field name " + f + " is duplicated");
+                this.error("Field name " + f + " is duplicated");
             fields.add(f.getName());
         }
     }
@@ -45,7 +47,7 @@ public class DDlogTStruct extends DDlogType {
         if (this.mayBeNull == mayBeNull)
             return this;
         if (mayBeNull)
-            throw new RuntimeException("Nullable structs not supported");
+            this.error("Nullable structs not supported");
         return this;
     }
 
@@ -72,6 +74,7 @@ public class DDlogTStruct extends DDlogType {
             if (f.getName().equals(col))
                 return f.getType();
         }
-        throw new RuntimeException("Field " + col + " not present in struct " + this.name);
+        this.error("Field " + col + " not present in struct " + this.name);
+        return null;  // unreachable
     }
 }

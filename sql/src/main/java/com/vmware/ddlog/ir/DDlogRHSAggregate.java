@@ -11,13 +11,18 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogRHSAggregate extends DDlogRuleRHS {
     final String var;
     final String[] groupBy;
     final String aggFunc;
     final DDlogExpression aggExpr;
 
-    public DDlogRHSAggregate(String var, String aggFunc, DDlogExpression aggExpr, String... groupBy) {
+    public DDlogRHSAggregate(@Nullable Node node, String var, String aggFunc, DDlogExpression aggExpr, String... groupBy) {
+        super(node);
         this.var = var;
         this.groupBy = groupBy;
         this.aggFunc = aggFunc;

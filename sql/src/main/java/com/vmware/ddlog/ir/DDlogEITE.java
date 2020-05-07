@@ -11,6 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
 import javax.annotation.Nullable;
 
 public class DDlogEITE extends DDlogExpression {
@@ -19,8 +21,9 @@ public class DDlogEITE extends DDlogExpression {
     @Nullable
     private final DDlogExpression eelse;
 
-    public DDlogEITE(DDlogExpression cond, DDlogExpression then, @Nullable DDlogExpression eelse) {
-        super(eelse == null ? then.getType() :
+    public DDlogEITE(@Nullable Node node, DDlogExpression cond,
+                     DDlogExpression then, @Nullable DDlogExpression eelse) {
+        super(node, eelse == null ? then.getType() :
                 (then.getType().mayBeNull ? eelse.getType() : then.getType()));
         if (eelse != null)
             DDlogType.checkCompatible(then.getType(), eelse.getType(), true);
@@ -28,7 +31,7 @@ public class DDlogEITE extends DDlogExpression {
         this.then = this.checkNull(then);
         this.eelse = eelse;
         if (!(this.cond.type instanceof DDlogTBool))
-            throw new RuntimeException("Condition is not Boolean");
+            this.error("Condition is not Boolean");
     }
 
     @Override

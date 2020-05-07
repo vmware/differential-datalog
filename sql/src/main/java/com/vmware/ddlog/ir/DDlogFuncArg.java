@@ -11,12 +11,17 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogFuncArg implements DDlogIRNode {
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
+public class DDlogFuncArg extends DDlogNode {
     private final String name;
     private final boolean mut;
     private final DDlogType type;
 
-    public DDlogFuncArg(String name, boolean mut, DDlogType type) {
+    public DDlogFuncArg(@Nullable Node node, String name, boolean mut, DDlogType type) {
+        super(node);
         this.name = name;
         this.mut = mut;
         this.type = type;

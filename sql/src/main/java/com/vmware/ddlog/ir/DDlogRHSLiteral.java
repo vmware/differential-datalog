@@ -11,11 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogRHSLiteral extends DDlogRuleRHS {
     final boolean polarity;
     final DDlogAtom atom;
 
-    public DDlogRHSLiteral(boolean polarity, DDlogAtom atom) {
+    public DDlogRHSLiteral(@Nullable Node node, boolean polarity, DDlogAtom atom) {
+        super(node);
         this.polarity = polarity;
         this.atom = atom;
     }

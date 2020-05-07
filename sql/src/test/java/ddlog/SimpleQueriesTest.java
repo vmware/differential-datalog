@@ -16,6 +16,20 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testSelectStar() {
+        String query = "create view v0 as select DISTINCT *, column1 as C1 from t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{" +
+                "column1:signed<64>, column2:string, column3:bool, column4:double, c1:signed<64>}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{" +
+                ".column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.c1 = v.column1},var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testSelectWNull() {
         String query = "create view v0 as select distinct column1, column2 from t1";
         String program = this.header(true) +

@@ -11,22 +11,25 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class DDlogEMatch extends DDlogExpression {
-    public DDlogEMatch(DDlogExpression matchExpr, List<Case> cases) {
-        super(DDlogType.reduceType(Linq.map(cases, c -> c.second.getType())));
+    public DDlogEMatch(@Nullable Node node, DDlogExpression matchExpr, List<Case> cases) {
+        super(node, DDlogType.reduceType(Linq.map(cases, c -> c.second.getType())));
         this.matchExpr = matchExpr;
         this.cases = cases;
     }
 
-    public static final class Case implements DDlogIRNode {
+    public static final class Case extends DDlogNode {
         final DDlogExpression first;
         final DDlogExpression second;
 
-        public Case(DDlogExpression first, DDlogExpression second) {
+        public Case(@Nullable Node node, DDlogExpression first, DDlogExpression second) {
+            super(node);
             this.first = first;
             this.second = second;
         }

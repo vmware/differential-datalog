@@ -11,16 +11,20 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEBool extends DDlogExpression {
     private final boolean bval;
 
-    public DDlogEBool(boolean bval) {
-        super(DDlogTBool.instance);
+    public DDlogEBool(@Nullable Node node, boolean bval) {
+        super(node, DDlogTBool.instance);
         this.bval = bval;
     }
 
-    public DDlogEBool(boolean bval, boolean mayBeNull) {
-        super(DDlogTBool.instance.setMayBeNull(mayBeNull));
+    public DDlogEBool(@Nullable Node node, boolean bval, boolean mayBeNull) {
+        super(node, DDlogTBool.instance.setMayBeNull(mayBeNull));
         this.bval = bval;
     }
 

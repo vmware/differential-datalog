@@ -42,7 +42,6 @@ public class Translator {
     private final TranslationVisitor visitor;
     private final ParsingOptions options = ParsingOptions.builder().build();
 
-
     public Translator(@Nullable final DSLContext dynamicContext) {
         this.parser = new SqlParser();
         this.dynamicContext = dynamicContext;
