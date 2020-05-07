@@ -164,3 +164,27 @@ typedef JsonNum = // Integer number.  The value must be in the range between the
                 | // NaN and infinity are not valid JSON values.
                   // When serializing to JSON, such values will be replaced with 0.
                   JsonFloat{d: double}
+
+/* Wrapper type that serializes its inner object into binary formats via JSON string.
+ *
+ * This is a workaround for a `serde` limitation that prevents certain data types from
+ * being serialized or deserialized from non-self-describing data formats like bincode.
+ * In particular, this is the case for data types annotated with JSON-related serde
+ * attributes like `tag` and `flatten`.  In practice this means that types annotated for
+ * serialization to JSON cannot be serialized to other formats.
+ *
+ * The workaround is to use different serialization logic when serializing to binary and
+ * non-binary formats.  In the binary case, we want to serialize such types into a string
+ * and then serialize the string as a field in binary data.  In the non-binary case, we
+ * stick to normal serde behavior.  `JsonWrapper` implements this choice by checking the
+ * `is_human_readable` property of the serializer.
+ *
+ * The current implementation has an important flaw: serde currently does not provide a
+ * reliable way to determine if a serializer supports self-describing data.  We use
+ * `is_human_readable` attribute as an approximation, which is not always correct: binary
+ * formats can be self-describing (BSON, Pickle), conversely not all human-readable formats
+ * are self-describing.  Nevertheless, the current design enables useful scenarios, like
+ * transcoding JSON to bincode.
+ */
+#[custom_serde]
+typedef JsonWrapper<'T> = JsonWrapper{x: 'T}

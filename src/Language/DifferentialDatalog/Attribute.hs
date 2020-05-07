@@ -50,6 +50,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     uniqNames (Just d) ("Multiple definitions of attribute " ++) tdefAttrs
     mapM_ (typedefValidateAttr d tdef) tdefAttrs
     _ <- tdefCheckSizeAttr d tdef
+    _ <- tdefCheckCustomSerdeAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
     maybe (return ()) (typeValidateAttrs d) tdefType
     return ()
@@ -59,10 +60,16 @@ typedefValidateAttr d TypeDef{..} attr = do
     case name attr of
          "size" -> do
             check d (isNothing tdefType) (pos attr)
-                $ "Only extern types can have a \"size\" attribute"
+                $ "Only extern types can have a 'size' attribute."
          "rust" -> do
             check d (isJust tdefType) (pos attr)
-                $ "Extern types cannot have a \"rust\" attribute"
+                $ "Extern types cannot have a 'rust' attribute."
+         "custom_serde" -> do
+            check d (isJust tdefType) (pos attr)
+                $ "Extern types cannot have a 'custom_serde' attribute."
+            let t = fromJust tdefType
+            check d (isStruct d t) (pos attr)
+                $ "'custom_serde' attribute cannot be applied to type aliases."
          n -> err d (pos attr) $ "Unknown attribute " ++ n
 
 typeValidateAttrs :: (MonadError String me) => DatalogProgram -> Type -> me ()
@@ -126,6 +133,23 @@ tdefCheckSizeAttr d TypeDef{..} =
                               -> return $ Just $ fromInteger nbytes
          [Attribute{..}] -> err d attrPos $ "Invalid 'size' attribute: size must be an integer between 0 and " ++ show (maxBound::Int)
          _                    -> err d tdefPos $ "Multiple 'size' attributes are not allowed"
+
+{- 'custom_serde' attribute: Tells DDlog not to generate `Serialize` and
+ - `Deserialize` implementations for a type.  The user must write their own
+ - implementations in Rust. -}
+tdefCheckCustomSerdeAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
+tdefCheckCustomSerdeAttr d TypeDef{..} =
+    case find ((== "custom_serde") . name) tdefAttrs of
+         Nothing   -> return False
+         Just attr -> do check d (attrVal attr == eTrue) (pos attr)
+                               "The value of 'custom_serde' attribute must be 'true' or empty"
+                         return True
+
+tdefGetCustomSerdeAttr :: DatalogProgram -> TypeDef -> Bool
+tdefGetCustomSerdeAttr d tdef = 
+    case tdefCheckCustomSerdeAttr d tdef of
+         Left e  -> error e
+         Right b -> b
 
 {- 'rust' attribute is transferred directly to the generated Rust code. -}
 

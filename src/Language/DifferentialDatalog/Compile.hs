@@ -638,8 +638,9 @@ mkTypedef d tdef@TypeDef{..} =
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     rustAttrs = getRustAttrs d tdefAttrs
-    derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Default)]"
-    derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize)]"
+    derive_serialize = if tdefGetCustomSerdeAttr d tdef then empty else ", Serialize, Deserialize"
+    derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default" <> derive_serialize <> ")]"
+    derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd" <> derive_serialize <> ")]"
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
