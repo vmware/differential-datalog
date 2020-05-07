@@ -11,6 +11,7 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
@@ -21,19 +22,20 @@ import java.util.List;
  * The Haskell rule allows multiple values on the LHS,
  * but when translating SQL we never need more than 1.
  */
-public class DDlogRule implements DDlogIRNode {
+public class DDlogRule extends DDlogNode {
     private final DDlogAtom lhs;
     private final List<DDlogRuleRHS> rhs;
     @Nullable
     public DDlogType type;
 
-    public DDlogRule(DDlogAtom lhs, List<DDlogRuleRHS> rhs) {
+    public DDlogRule(@Nullable Node node, DDlogAtom lhs, List<DDlogRuleRHS> rhs) {
+        super(node);
         this.lhs = this.checkNull(lhs);
         this.rhs = this.checkNull(rhs);
     }
 
-    public DDlogRule(DDlogAtom lhs, DDlogRuleRHS rhs) {
-        this(lhs, new ArrayList<DDlogRuleRHS>());
+    public DDlogRule(@Nullable Node node, DDlogAtom lhs, DDlogRuleRHS rhs) {
+        this(node, lhs, new ArrayList<DDlogRuleRHS>());
         this.rhs.add(this.checkNull(rhs));
     }
 

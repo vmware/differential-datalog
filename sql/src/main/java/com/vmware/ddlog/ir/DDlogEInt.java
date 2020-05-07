@@ -11,22 +11,25 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.math.BigInteger;
 
 public class DDlogEInt extends DDlogExpression {
     private final BigInteger ival;
 
-    public DDlogEInt(BigInteger ival) {
-        super(DDlogTInt.instance);
+    public DDlogEInt(@Nullable Node node, BigInteger ival) {
+        super(node, DDlogTInt.instance);
         this.ival = ival;
     }
 
-    public DDlogEInt(int v) {
-        this(BigInteger.valueOf(v));
+    public DDlogEInt(@Nullable Node node, int v) {
+        this(node, BigInteger.valueOf(v));
     }
 
-    public DDlogEInt(long v) {
-        this(BigInteger.valueOf(v));
+    public DDlogEInt(@Nullable Node node, long v) {
+        this(node, BigInteger.valueOf(v));
     }
 
     @Override

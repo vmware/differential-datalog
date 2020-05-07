@@ -11,5 +11,12 @@
 
 package com.vmware.ddlog.ir;
 
-public abstract class DDlogRuleRHS implements DDlogIRNode {
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
+public abstract class DDlogRuleRHS extends DDlogNode {
+    protected DDlogRuleRHS(@Nullable Node node) {
+        super(node);
+    }
 }

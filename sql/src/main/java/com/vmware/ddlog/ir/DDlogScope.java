@@ -11,7 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.translator.Scope;
+
+import javax.annotation.Nullable;
 
 /**
  * This is not a real DDlog expression; it stands for a SQL expression that
@@ -21,6 +24,7 @@ public class DDlogScope extends DDlogExpression {
     private final Scope scope;
 
     public DDlogScope(Scope scope) {
+        super(scope.node);
         this.scope = scope;
     }
 

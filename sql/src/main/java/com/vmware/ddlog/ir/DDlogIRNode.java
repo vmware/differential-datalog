@@ -26,7 +26,7 @@ public interface DDlogIRNode {
 
     default <T> T checkNull(@Nullable T value) {
         if (value == null)
-            throw new NullPointerException();
+            this.error("Null pointer");
         return value;
     }
 
@@ -44,22 +44,28 @@ public interface DDlogIRNode {
         if (result == null) {
             if (failureMessage == null)
                 failureMessage = this.getClass().getName() + " is not an instance of " + clazz.toString();
-            throw new RuntimeException(failureMessage);
+            this.error(failureMessage);
         }
+        assert result != null;
         return result;
     }
 
-    default <T> T as(Class<T> clazz, @Nullable String failureMessage, Node errorPosition) {
-        T result = this.as(clazz);
-        if (result == null) {
-            if (failureMessage == null)
-                failureMessage = this.getClass().getName() + " is not an instance of " + clazz.toString();
-            throw new TranslationException(failureMessage, errorPosition);
-        }
-        return result;
+    default <T> T to(Class<T> clazz) {
+        return this.as(clazz, null);
+    }
+
+    default void error(String message) {
+        throw new TranslationException(message, this.getNode());
     }
 
     default <T> boolean is(Class<T> clazz) {
         return this.as(clazz) != null;
     }
+
+    /**
+     * This is the SQL IR node that was compiled to produce
+     * this DDlogIR node.
+     */
+    @Nullable
+    public Node getNode();
 }

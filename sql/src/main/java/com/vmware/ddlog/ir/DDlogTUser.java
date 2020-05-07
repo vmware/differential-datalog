@@ -11,8 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -20,8 +22,8 @@ public class DDlogTUser extends DDlogType {
     private final String name;
     private final DDlogType[] typeArgs;
 
-    public DDlogTUser(String name, boolean mayBeNull, DDlogType... typeArgs) {
-        super(mayBeNull);
+    public DDlogTUser(@Nullable Node node, String name, boolean mayBeNull, DDlogType... typeArgs) {
+        super(node, mayBeNull);
         this.name = name;
         this.typeArgs = typeArgs;
     }
@@ -47,7 +49,7 @@ public class DDlogTUser extends DDlogType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTUser(this.name, mayBeNull, this.typeArgs);
+        return new DDlogTUser(this.getNode(), this.name, mayBeNull, this.typeArgs);
     }
 
     @Override

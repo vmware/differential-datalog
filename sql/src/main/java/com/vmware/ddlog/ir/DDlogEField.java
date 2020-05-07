@@ -11,12 +11,16 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEField extends DDlogExpression {
     private final DDlogExpression struct;
     private final String field;
 
-    public DDlogEField(DDlogExpression struct, String field, DDlogType type) {
-        super(type);
+    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
+        super(node, type);
         this.struct = struct;
         this.field = field;
     }

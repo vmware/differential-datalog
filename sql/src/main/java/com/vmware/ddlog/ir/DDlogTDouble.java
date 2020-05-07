@@ -11,8 +11,12 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogTDouble extends DDlogType implements IsNumericType {
-    private DDlogTDouble(boolean mayBeNull) { super(mayBeNull); }
+    private DDlogTDouble(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override
     public String toString() { return this.wrapOption("double"); }
@@ -21,7 +25,7 @@ public class DDlogTDouble extends DDlogType implements IsNumericType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTDouble(mayBeNull);
+        return new DDlogTDouble(this.getNode(), mayBeNull);
     }
 
     @Override
@@ -30,16 +34,16 @@ public class DDlogTDouble extends DDlogType implements IsNumericType {
         return o != null && getClass() == o.getClass();
     }
 
-    public static DDlogTDouble instance = new DDlogTDouble(false);
+    public static DDlogTDouble instance = new DDlogTDouble(null,false);
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogEDouble(0);
+        return new DDlogEDouble(this.getNode(),0);
     }
 
     @Override
     public DDlogExpression one() {
-        return new DDlogEDouble(1);
+        return new DDlogEDouble(this.getNode(), 1);
     }
 
     @Override

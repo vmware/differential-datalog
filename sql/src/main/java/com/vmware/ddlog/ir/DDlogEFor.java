@@ -1,12 +1,16 @@
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEFor extends DDlogExpression {
     private final String loopIter;
     private final DDlogExpression iter;
     private final DDlogExpression body;
 
-    public DDlogEFor(String loopIter, DDlogExpression iter, DDlogExpression body) {
-        super(body.getType());
+    public DDlogEFor(@Nullable Node node, String loopIter, DDlogExpression iter, DDlogExpression body) {
+        super(node, body.getType());
         this.loopIter = loopIter;
         this.iter = iter;
         this.body = body;

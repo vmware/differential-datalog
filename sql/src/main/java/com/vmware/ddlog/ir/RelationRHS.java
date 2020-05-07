@@ -11,8 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,26 +22,27 @@ import java.util.List;
  * A partially-constructed relation; contains part of the RHS of a relation,
  * and the type produced by the RHS.
  */
-public class RelationRHS implements DDlogIRNode {
+public class RelationRHS extends DDlogNode {
     private final String rowVariable;
     private final DDlogType type;
     private final List<DDlogRuleRHS> definitions;
 
-    public RelationRHS(String rowVariable, DDlogType type) {
+    public RelationRHS(@Nullable Node node, String rowVariable, DDlogType type) {
+        super(node);
         this.rowVariable = rowVariable;
         this.type = this.checkNull(type);
         this.definitions = new ArrayList<DDlogRuleRHS>();
     }
 
     public RelationRHS addDefinition(DDlogExpression expression) {
-        this.definitions.add(new DDlogRHSCondition(expression));
+        this.definitions.add(new DDlogRHSCondition(expression.getNode(), expression));
         return this;
     }
 
     public void addAssignment(String from) {
-        DDlogExpression expr = new DDlogESet(
-                new DDlogEVarDecl(this.rowVariable, this.type),
-                new DDlogEVar(from, this.type));
+        DDlogExpression expr = new DDlogESet(this.node,
+                new DDlogEVarDecl(this.node, this.rowVariable, this.type),
+                new DDlogEVar(this.node, from, this.type));
         this.addDefinition(expr);
     }
 
@@ -60,8 +63,8 @@ public class RelationRHS implements DDlogIRNode {
 
     public DDlogExpression getRowVariable(boolean declare) {
         if (declare)
-            return new DDlogEVarDecl(this.rowVariable, this.type);
-        return new DDlogEVar(this.rowVariable, this.type);
+            return new DDlogEVarDecl(this.node, this.rowVariable, this.type);
+        return new DDlogEVar(this.node, this.rowVariable, this.type);
     }
 
     public String getVarName() {

@@ -11,10 +11,15 @@
 
 package com.vmware.ddlog.ir;
 
-public class DDlogComment implements DDlogIRNode {
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
+public class DDlogComment extends DDlogNode {
     private final String comment;
 
-    public DDlogComment(String comment) {
+    public DDlogComment(@Nullable Node node, String comment) {
+        super(node);
         this.comment = comment;
     }
 

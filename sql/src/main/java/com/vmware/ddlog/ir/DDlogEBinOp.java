@@ -11,6 +11,11 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.TranslationException;
+
+import javax.annotation.Nullable;
+
 public class DDlogEBinOp extends DDlogExpression {
     public enum BOp {
         Eq, Neq, Lt, Gt, Lte, Gte, And, Or, Impl, Plus,
@@ -93,7 +98,8 @@ public class DDlogEBinOp extends DDlogExpression {
     private final DDlogExpression left;
     private final DDlogExpression right;
 
-    public DDlogEBinOp(BOp bop, DDlogExpression left, DDlogExpression right) {
+    public DDlogEBinOp(@Nullable Node node, BOp bop, DDlogExpression left, DDlogExpression right) {
+        super(node);
         this.bop = bop;
         this.left = this.checkNull(left);
         this.right = this.checkNull(right);
@@ -109,11 +115,9 @@ public class DDlogEBinOp extends DDlogExpression {
             case Lte:
             case Gte:
                 if (!DDlogType.isNumeric(left.getType()))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to numeric type: " + left.getType());
+                    this.error(this.bop + " is not applied to numeric type: " + left.getType());
                 if (!DDlogType.isNumeric(right.getType()))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to numeric type: " + right.getType());
+                    this.error(this.bop + " is not applied to numeric type: " + right.getType());
                 this.type = DDlogTBool.instance.setMayBeNull(mayBeNull);
                 DDlogType.checkCompatible(left.getType(), right.getType(), false);
                 break;
@@ -121,11 +125,9 @@ public class DDlogEBinOp extends DDlogExpression {
             case Or:
             case Impl:
                 if (!(left.getType() instanceof DDlogTBool))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to Boolean type: " + left.getType());
+                    this.error(this.bop + " is not applied to Boolean type: " + left.getType());
                 if (!(right.getType() instanceof DDlogTBool))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to Boolean type: " + right.getType());
+                    this.error(this.bop + " is not applied to Boolean type: " + right.getType());
                 this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
             case Plus:
@@ -139,20 +141,16 @@ public class DDlogEBinOp extends DDlogExpression {
             case BOr:
             case BXor:
                 if (!DDlogType.isNumeric(left.getType()))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to numeric type: " + left.getType());
+                    this.error(this.bop + " is not applied to numeric type: " + left.getType());
                 if (!DDlogType.isNumeric(right.getType()))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to numeric type: " + right.getType());
+                    this.error(this.bop + " is not applied to numeric type: " + right.getType());
                 this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
             case Concat:
                 if (!(left.getType() instanceof DDlogTString))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to string type: " + left.getType());
+                    this.error(this.bop + " is not applied to string type: " + left.getType());
                 if (!(right.getType() instanceof DDlogTString))
-                    throw new RuntimeException(
-                            this.bop + " is not applied to string type: " + right.getType());
+                    this.error(this.bop + " is not applied to string type: " + right.getType());
                 this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
         }

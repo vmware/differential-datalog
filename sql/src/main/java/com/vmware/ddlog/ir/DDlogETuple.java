@@ -11,20 +11,22 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class DDlogETuple extends DDlogExpression {
     public final DDlogExpression[] tupFields;
 
-    public DDlogETuple(DDlogExpression... tupFields) {
-        super(new DDlogTTuple(Linq.map(tupFields, DDlogExpression::getType, DDlogType.class)));
+    public DDlogETuple(@Nullable Node node, DDlogExpression... tupFields) {
+        super(node, new DDlogTTuple(node, Linq.map(tupFields, DDlogExpression::getType, DDlogType.class)));
         this.tupFields = tupFields;
     }
 
-    public DDlogETuple(List<DDlogExpression> tupFields) {
-        this(tupFields.toArray(new DDlogExpression[0]));
+    public DDlogETuple(@Nullable Node node, List<DDlogExpression> tupFields) {
+        this(node, tupFields.toArray(new DDlogExpression[0]));
     }
 
     @Override

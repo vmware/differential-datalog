@@ -11,26 +11,29 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
+
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 
 public class DDlogTTuple extends DDlogType {
     final DDlogType[] tupArgs;
 
-    public static DDlogTTuple emptyTupleType = new DDlogTTuple();
+    public static DDlogTTuple emptyTupleType = new DDlogTTuple(null);
 
-    private DDlogTTuple(boolean mayBeNull, DDlogType... tupArgs) {
-        super(mayBeNull);
+    private DDlogTTuple(@Nullable Node node, boolean mayBeNull, DDlogType... tupArgs) {
+        super(node, mayBeNull);
         this.tupArgs = tupArgs;
     }
 
-    public DDlogTTuple(DDlogType... tupArgs) {
-        this(false, tupArgs);
+    public DDlogTTuple(@Nullable Node node, DDlogType... tupArgs) {
+        this(node, false, tupArgs);
     }
 
-    public DDlogTTuple(List<DDlogType> tupArgs) {
-        this(tupArgs.toArray(new DDlogType[0]));
+    public DDlogTTuple(@Nullable Node node, List<DDlogType> tupArgs) {
+        this(node, tupArgs.toArray(new DDlogType[0]));
     }
 
     public int size() {
@@ -49,7 +52,7 @@ public class DDlogTTuple extends DDlogType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (mayBeNull == this.mayBeNull)
             return this;
-        return new DDlogTTuple(mayBeNull, this.tupArgs);
+        return new DDlogTTuple(this.getNode(), mayBeNull, this.tupArgs);
     }
 
     @Override

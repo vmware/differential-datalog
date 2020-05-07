@@ -11,8 +11,12 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogTBool extends DDlogType {
-    private DDlogTBool(boolean mayBeNull) { super(mayBeNull); }
+    private DDlogTBool(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override
     public String toString() { return this.wrapOption("bool"); }
@@ -21,7 +25,7 @@ public class DDlogTBool extends DDlogType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTBool(mayBeNull);
+        return new DDlogTBool(this.getNode(), mayBeNull);
     }
 
     @Override
@@ -30,5 +34,5 @@ public class DDlogTBool extends DDlogType {
         return o != null && getClass() == o.getClass();
     }
 
-    public static DDlogTBool instance = new DDlogTBool(false);
+    public static DDlogTBool instance = new DDlogTBool(null, false);
 }

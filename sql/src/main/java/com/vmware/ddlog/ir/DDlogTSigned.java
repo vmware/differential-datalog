@@ -11,16 +11,19 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.math.BigInteger;
 import java.util.Objects;
 
 public class DDlogTSigned extends DDlogType implements IsNumericType, IBoundedNumericType {
     private final int width;
-    public static final DDlogTSigned signed32 = new DDlogTSigned(32, false);
-    public static final DDlogTSigned signed64 = new DDlogTSigned(64, false);
+    public static final DDlogTSigned signed32 = new DDlogTSigned(null, 32, false);
+    public static final DDlogTSigned signed64 = new DDlogTSigned(null, 64, false);
 
-    public DDlogTSigned(int width, boolean mayBeNull) {
-        super(mayBeNull);
+    public DDlogTSigned(@Nullable Node node, int width, boolean mayBeNull) {
+        super(node, mayBeNull);
         this.width = width;
     }
 
@@ -42,17 +45,17 @@ public class DDlogTSigned extends DDlogType implements IsNumericType, IBoundedNu
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
-        return new DDlogTSigned(this.width, mayBeNull);
+        return new DDlogTSigned(this.getNode(), this.width, mayBeNull);
     }
 
     @Override
     public DDlogExpression zero() {
-        return new DDlogESigned(this.width, BigInteger.valueOf(0));
+        return new DDlogESigned(this.getNode(), this.width, BigInteger.valueOf(0));
     }
 
     @Override
     public DDlogExpression one() {
-        return new DDlogESigned(this.width, BigInteger.valueOf(1));
+        return new DDlogESigned(this.getNode(), this.width, BigInteger.valueOf(1));
     }
 
     @Override
@@ -67,6 +70,6 @@ public class DDlogTSigned extends DDlogType implements IsNumericType, IBoundedNu
 
     @Override
     public IBoundedNumericType getWithWidth(int width) {
-        return new DDlogTSigned(width, this.mayBeNull);
+        return new DDlogTSigned(this.getNode(), width, this.mayBeNull);
     }
 }

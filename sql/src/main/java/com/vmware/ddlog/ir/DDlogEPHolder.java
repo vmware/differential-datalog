@@ -11,9 +11,13 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
+
 public class DDlogEPHolder extends DDlogExpression {
-    public DDlogEPHolder() {
-        super(DDlogTAny.instance);
+    public DDlogEPHolder(@Nullable Node node) {
+        super(node, DDlogTAny.instance);
     }
 
     @Override

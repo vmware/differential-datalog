@@ -11,13 +11,17 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
+import javax.annotation.Nullable;
 import java.util.Objects;
 
-public class DDlogField implements DDlogIRNode {
+public class DDlogField extends DDlogNode {
     private final String name;
     private final DDlogType type;
 
-    public DDlogField(String name, DDlogType type) {
+    public DDlogField(@Nullable Node node, String name, DDlogType type) {
+        super(node);
         this.name = name;
         this.type = type;
     }

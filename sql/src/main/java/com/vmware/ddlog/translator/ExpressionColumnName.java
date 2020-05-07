@@ -22,11 +22,11 @@ import com.facebook.presto.sql.tree.Identifier;
 public class ExpressionColumnName extends AstVisitor<String, Void> {
     @Override
     protected String visitIdentifier(Identifier id, Void context) {
-        return id.getValue();
+        return id.getValue().toLowerCase();
     }
 
     @Override
     protected String visitDereferenceExpression(DereferenceExpression expression, Void context) {
-        return expression.getField().getValue();
+        return expression.getField().getValue().toLowerCase();
     }
 }

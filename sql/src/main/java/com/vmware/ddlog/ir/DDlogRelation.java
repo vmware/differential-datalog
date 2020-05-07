@@ -11,9 +11,11 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
+
 import javax.annotation.Nullable;
 
-public class DDlogRelation implements DDlogIRNode {
+public class DDlogRelation extends DDlogNode {
     public enum RelationRole {
         RelInput,
         RelOutput,
@@ -39,17 +41,18 @@ public class DDlogRelation implements DDlogIRNode {
     @Nullable
     private final DDlogExpression primaryKey;
 
-    public DDlogRelation(RelationRole role, String name,
+    public DDlogRelation(@Nullable Node node, RelationRole role, String name,
                          DDlogType type, @Nullable DDlogExpression primaryKey) {
+        super(node);
         this.role = role;
         this.name = this.checkNull(name);
         this.type = this.checkNull(type);
         this.primaryKey = primaryKey;
     }
 
-    public DDlogRelation(RelationRole role, String name,
+    public DDlogRelation(@Nullable Node node, RelationRole role, String name,
                          DDlogType type) {
-        this(role, name, type, null);
+        this(node, role, name, type, null);
     }
 
     public String getName() {

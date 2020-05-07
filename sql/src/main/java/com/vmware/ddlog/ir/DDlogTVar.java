@@ -42,7 +42,7 @@ public class DDlogTVar extends DDlogType {
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (mayBeNull)
-            throw new RuntimeException("Nullable type variables not supported");
+            this.error("Nullable type variables not supported");
         return this;
     }
 

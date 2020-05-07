@@ -11,17 +11,25 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
-public abstract class DDlogType implements DDlogIRNode {
+public abstract class DDlogType extends DDlogNode {
     /**
      * True if this type may include null values.
      */
     public final boolean mayBeNull;
 
+    protected DDlogType(@Nullable Node node, boolean mayBeNull) {
+        super(node);
+        this.mayBeNull = mayBeNull;
+    }
+
     protected DDlogType(boolean mayBeNull) {
+        super(null);
         this.mayBeNull = mayBeNull;
     }
 
@@ -69,9 +77,9 @@ public abstract class DDlogType implements DDlogIRNode {
         if (!type0.is(DDlogTUnknown.class) &&
             !type1.is(DDlogTUnknown.class) &&
             type0.getClass() != type1.getClass())
-            throw new RuntimeException("Incompatible types " + type0 + " and " + type1);
+            type0.error("Incompatible types " + type0 + " and " + type1);
         if (checkNullability && type0.mayBeNull != type1.mayBeNull)
-            throw new RuntimeException("Types have different nullabilities: " + type0 + " and " + type1);
+            type0.error("Types have different nullabilities: " + type0 + " and " + type1);
     }
 
     public static String typeName(String name) {
@@ -79,6 +87,10 @@ public abstract class DDlogType implements DDlogIRNode {
     }
 
     public abstract String toString();
+
+    public IsNumericType toNumeric() {
+        return this.as(IsNumericType.class, "Expected as numeric type");
+    }
 
     /**
      * Return a copy of this type with the mayBeNull bit set to the specified value.
@@ -89,7 +101,7 @@ public abstract class DDlogType implements DDlogIRNode {
     /**
      * Get the None{} value of the option type corresponding to this type.
      */
-    public DDlogExpression getNone() {
-        return new DDlogENull(this.setMayBeNull(true));
+    public DDlogExpression getNone(Node node) {
+        return new DDlogENull(node, this.setMayBeNull(true));
     }
 }

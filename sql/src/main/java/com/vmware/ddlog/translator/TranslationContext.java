@@ -62,8 +62,8 @@ class TranslationContext {
         this.globalSymbols = new SymbolTable();
     }
 
-    public DDlogExpression operationCall(DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
-        return ExpressionTranslationVisitor.operationCall(op, left, right);
+    public DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
+        return ExpressionTranslationVisitor.operationCall(node, op, left, right);
     }
 
     static String location(Node node) {
@@ -108,16 +108,17 @@ class TranslationContext {
             DDlogTUser tu = (DDlogTUser)type;
             DDlogType result = this.resolveTypeDef(tu);
             if (result == null)
-                throw new RuntimeException("Cannot resolve type " + tu.getName());
+                tu.error("Cannot resolve type " + tu.getName());
+            assert result != null;
             return result;
         }
         return type;
     }
 
-    DDlogTUser createTypedef(DDlogTStruct type) {
-        DDlogTypeDef tdef = new DDlogTypeDef(type.getName(), type);
+    DDlogTUser createTypedef(@Nullable Node node, DDlogTStruct type) {
+        DDlogTypeDef tdef = new DDlogTypeDef(node, type.getName(), type);
         this.add(tdef);
-        return new DDlogTUser(tdef.getName(), type.mayBeNull);
+        return new DDlogTUser(node, tdef.getName(), type.mayBeNull);
     }
 
     @Nullable
@@ -130,7 +131,7 @@ class TranslationContext {
                     return new DDlogScope(scope);
             } else {
                 @Nullable
-                DDlogExpression expr = scope.lookupColumn(identifier, this);
+                DDlogExpression expr = scope.lookupColumn(scope.node, identifier, this);
                 if (expr != null) return expr;
             }
         }
@@ -170,6 +171,7 @@ class TranslationContext {
     }
 
     String freshLocalName(String prefix) {
+        assert this.localSymbols != null;
         return this.localSymbols.freshName(prefix);
     }
 

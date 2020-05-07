@@ -11,8 +11,10 @@
 
 package com.vmware.ddlog.ir;
 
+import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 public class DDlogEStruct extends DDlogExpression {
@@ -32,15 +34,15 @@ public class DDlogEStruct extends DDlogExpression {
     public final String constructor;
     public final FieldValue[] fields;
 
-    public DDlogEStruct(String constructor, DDlogType type, FieldValue... fields) {
-        super(type);
+    public DDlogEStruct(@Nullable Node node, String constructor, DDlogType type, FieldValue... fields) {
+        super(node, type);
         this.constructor = constructor;
         this.fields = fields;
         // We cannot check the type if it is just a typedef.
     }
 
-    public DDlogEStruct(String constructor, DDlogType type, List<FieldValue> fields) {
-        this(constructor, type, fields.toArray(new FieldValue[0]));
+    public DDlogEStruct(@Nullable Node node, String constructor, DDlogType type, List<FieldValue> fields) {
+        this(node, constructor, type, fields.toArray(new FieldValue[0]));
     }
 
     @Override
