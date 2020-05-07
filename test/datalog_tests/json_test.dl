@@ -183,3 +183,16 @@ JsonTest(s32FromString1(),
          to_json_string_or_default(from_json_string(s32FromString1()): Result<S32FromString, string>)).
 JsonTest(s32FromString2(),
          to_json_string_or_default(from_json_string(s32FromString2()): Result<S32FromString, string>)).
+
+typedef WrappedEnum = JsonWrapper<TaggedEnum>
+
+function wenum1(): string = [|{"@type": "t.V1", "b": true}|]
+function wenum2(): string = [|{"@type": "t.V2", "u": 100}|]
+function wenum3(): string = [|{"@type": "t.V2", "b": false}|]
+
+JsonTest("wrapped " ++ wenum1(),
+         to_json_string_or_default(from_json_string(wenum1()): Result<WrappedEnum, string>)).
+JsonTest("wrapped " ++ wenum2(),
+         to_json_string_or_default(from_json_string(wenum2()): Result<WrappedEnum, string>)).
+JsonTest("wrapped " ++ wenum3(),
+         to_json_string_or_default(from_json_string(wenum3()): Result<WrappedEnum, string>)).

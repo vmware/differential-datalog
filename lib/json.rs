@@ -13,43 +13,35 @@ pub struct ValueWrapper(serde_json::value::Value);
 impl serde::Serialize for ValueWrapper {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer
+        S: serde::Serializer,
     {
         if serializer.is_human_readable() {
             self.0.serialize(serializer)
         } else {
-            serde_json::to_string(&self.0).map_err(|e|serde::ser::Error::custom(e))?.serialize(serializer)
+            serde_json::to_string(&self.0)
+                .map_err(|e| serde::ser::Error::custom(e))?
+                .serialize(serializer)
         }
     }
 }
 
-impl <'de> Deserialize<'de> for ValueWrapper {
+impl<'de> Deserialize<'de> for ValueWrapper {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>
+        D: serde::Deserializer<'de>,
     {
         if deserializer.is_human_readable() {
             Ok(ValueWrapper(serde_json::Value::deserialize(deserializer)?))
         } else {
-            Ok(ValueWrapper(serde_json::from_str::<serde_json::Value>(String::deserialize(deserializer)?.as_ref())
-                            .map_err(|e| serde::de::Error::custom(e))?))
+            Ok(ValueWrapper(
+                serde_json::from_str::<serde_json::Value>(
+                    String::deserialize(deserializer)?.as_ref(),
+                )
+                .map_err(|e| serde::de::Error::custom(e))?,
+            ))
         }
     }
 }
-
-/*
-impl <T: DeserializeOwned> std::convert::TryFrom<ValueWrapper> for T {
-    fn try_from(x: ValueWrapper) -> Self {
-        serde_json::from_value::<Self>(x.0)
-    }
-}
-
-impl <T: Serialize> From<T> for ValueWrapper {
-    fn from(x: T) -> Self {
-        ValueWrapper(serde_json::to_value(x).unwrap())
-    }
-}
-*/
 
 impl From<ValueWrapper> for json_JsonValue {
     fn from(x: ValueWrapper) -> Self {
@@ -188,5 +180,38 @@ pub mod serde_string {
         <T as std::str::FromStr>::Err: std::fmt::Display,
     {
         T::from_str(&String::deserialize(deserializer)?).map_err(|e| de::Error::custom(e))
+    }
+}
+
+impl<T: Serialize> Serialize for json_JsonWrapper<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if serializer.is_human_readable() {
+            self.x.serialize(serializer)
+        } else {
+            serde_json::to_string(&self.x)
+                .map_err(|e| serde::ser::Error::custom(e))?
+                .serialize(serializer)
+        }
+    }
+}
+
+impl<'de, T: DeserializeOwned> Deserialize<'de> for json_JsonWrapper<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        if deserializer.is_human_readable() {
+            Ok(json_JsonWrapper {
+                x: T::deserialize(deserializer)?,
+            })
+        } else {
+            Ok(json_JsonWrapper {
+                x: serde_json::from_str::<T>(String::deserialize(deserializer)?.as_ref())
+                    .map_err(|e| serde::de::Error::custom(e))?,
+            })
+        }
     }
 }

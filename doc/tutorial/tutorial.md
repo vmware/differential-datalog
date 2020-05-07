@@ -1840,6 +1840,16 @@ to optimize data structures layout:
 extern type IObj<'A>
 ```
 
+### `#[custom_serde]`
+
+Tells DDlog not to generate `Serialize` and `Deserialize` implementations for a type.
+The user must write their own implementations in Rust.
+
+```
+#[custom_serde]
+typedef JsonWrapper<'T> = JsonWrapper{x: 'T}
+```
+
 ### `#[has_side_effects]`
 
 Labels functions that have side effects, e.g., perform I/O.  The compiler will

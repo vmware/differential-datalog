@@ -26,4 +26,5 @@ exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type
 unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
 isMap :: (WithType a) => DatalogProgram -> a -> Bool
 isGroup :: (WithType a) => DatalogProgram -> a -> Bool
+isStruct :: (WithType a) => DatalogProgram -> a -> Bool
 typ' :: (WithType a) => DatalogProgram -> a -> Type
