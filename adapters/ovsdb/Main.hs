@@ -43,6 +43,7 @@ import Language.DifferentialDatalog.Version
 data TOption = OVSFile     String
              | OutputTable String
              | ROColumn    String
+             | RWColumn    String
              | ConfigJsonI String
              | ConfigJsonO String
              | OutputFile  String
@@ -58,13 +59,14 @@ options = [ Option ['v'] ["version"]       (NoArg Version)                     "
           , Option ['c'] ["input-config"]  (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
           , Option ['O'] ["output-config"] (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
-          , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only."
+          , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
+          , Option []    ["rw"]            (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
           , Option []    ["output-file"]   (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
           ]
 
 data Config = Config { ovsSchemaFile:: FilePath
                      , outputFile   :: Maybe FilePath
-                     , outputTables :: [(String, [String])]
+                     , outputTables :: [OutputRelConfig]
                      }
               deriving (Eq, Show, Generic)
 
@@ -85,13 +87,33 @@ addOption (a, config) (OVSFile f) = do
 addOption (a, config) (OutputFile f) = do
     when (isJust $ outputFile config) $ errorWithoutStackTrace "Multiple output files specified"
     return (a, config {outputFile = Just f})
-addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t,[]) : outputTables config)})
+addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t, Left []) : outputTables config)})
 addOption (a, config) (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
             when (isNothing $ lookup table $ outputTables config)
                  $ errorWithoutStackTrace $ "Unknown output table name " ++ table
-            let outtabs = map (\(t,ro) -> if t == table then (t, nub $ col:ro) else (t,ro))
+            outtabs <- mapM (\(t, restrictions) ->
+                              if t == table
+                                 then case restrictions of
+                                           Left ro -> return (t, Left $ nub $ col:ro)
+                                           Right _ -> errorWithoutStackTrace $ "Options '--rw' and '--ro' are mutually exclusive and cannot be both applied to table '" ++ table ++ "'"
+                                 else return (t, restrictions))
+                            $ outputTables config
+            return $ (a, config{outputTables = outtabs})
+         _ -> errorWithoutStackTrace $ "Invalid column name " ++ c
+addOption (a, config) (RWColumn c) = do
+    case splitOn "." c of
+         [table, col] -> do
+            when (isNothing $ lookup table $ outputTables config)
+                 $ errorWithoutStackTrace $ "Unknown output table name " ++ table
+            outtabs <- mapM (\(t, restrictions) ->
+                              if t == table
+                                 then case restrictions of
+                                      Left (_:_) -> errorWithoutStackTrace $ "Options '--rw' and '--ro' are mutually exclusive and cannot be both applied to table '" ++ table ++ "'"
+                                      Left []    -> return (t, Right [col])
+                                      Right rw   -> return (t, Right $ nub $ col:rw)
+                                 else return (t, restrictions))
                               $ outputTables config
             return $ (a, config{outputTables = outtabs})
          _ -> errorWithoutStackTrace $ "Invalid column name " ++ c

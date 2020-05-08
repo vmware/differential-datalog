@@ -28,7 +28,10 @@ Module     : OVSDB.Compile
 Description: Compile 'OVSDB schema' to DDlog.
 -}
 
-module Language.DifferentialDatalog.OVSDB.Compile (compileSchema, compileSchemaFile) where
+module Language.DifferentialDatalog.OVSDB.Compile (
+    OutputRelConfig,
+    compileSchema,
+    compileSchemaFile) where
 
 import Prelude hiding((<>), readFile, writeFile)
 import Text.PrettyPrint
@@ -85,11 +88,15 @@ data TableKind = TableInput
                | TableDeltaUpdate
                deriving(Eq)
 
+-- | Output relation configuration:
+-- (name, Left <set_of_readonly_columns> or Right <Set of rw columns>)
+type OutputRelConfig = (String, Either [String] [String])
+
 builtins :: String
 builtins = [r|import ovsdb
 |]
 
-mkTableName :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => Table -> TableKind -> Doc
+mkTableName :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig]) => Table -> TableKind -> Doc
 mkTableName t tkind =
     case tkind of
          TableInput       -> pp $ name t
@@ -98,7 +105,7 @@ mkTableName t tkind =
          TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
          TableDeltaUpdate -> "Update_" <> (pp $ name t)
 
-compileSchemaFile :: FilePath -> [(String, [String])] -> IO Doc
+compileSchemaFile :: FilePath -> [OutputRelConfig] -> IO Doc
 compileSchemaFile fname outputs = do
     content <- readFile fname
     schema <- case parseSchema content fname of
@@ -108,7 +115,7 @@ compileSchemaFile fname outputs = do
          Left e    -> errorWithoutStackTrace e
          Right doc -> return doc
 
-compileSchema :: (MonadError String me) => OVSDBSchema -> [(String, [String])] -> me Doc
+compileSchema :: (MonadError String me) => OVSDBSchema -> [OutputRelConfig] -> me Doc
 compileSchema schema outputs = do
     let tables = schemaTables schema
     mapM_ (\(o, _) -> do let t = find ((==o) . name) tables
@@ -123,12 +130,15 @@ compileSchema schema outputs = do
             mapM (\t -> mkTable (isNothing $ lookup (name t) outputs) t) tables
     return $ pp builtins $+$ "" $+$ rels
 
-mkTable :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => Bool -> Table  -> me (Doc, Doc, Doc)
+mkTable :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) => Bool -> Table  -> me (Doc, Doc, Doc)
 mkTable isinput t@Table{..} = do
     ovscols <- tableCheckCols t
     maybe (return ())
-          (\rocols -> mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t))
-                                        $ throwError $ "Column " ++ c ++ " not found in table " ++ name t) rocols)
+          (\restrictions -> let rcols = case restrictions of
+                                             Left ro -> ro
+                                             Right rw -> rw in
+                            mapM_ (\c -> when (isNothing $ find ((== c) . name) (tableGetCols t))
+                                        $ throwError $ "Column " ++ c ++ " not found in table " ++ name t) rcols)
           $ lookup (name t) ?outputs
     uniqNames Nothing (\col -> "Multiple declarations of column " ++ col ++ " in table " ++ tableName) ovscols
     if isinput
@@ -151,7 +161,7 @@ mkTable isinput t@Table{..} = do
                          delta_update_rules  $+$
                          input)
 
-mkTable' :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> Table -> me Doc
+mkTable' :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) => TableKind -> Table -> me Doc
 mkTable' tkind t@Table{..} = do
     let ovscols = tableGetCols t
     let writable_cols = tableGetNonROCols t
@@ -177,7 +187,7 @@ mkTable' tkind t@Table{..} = do
              ")"                                           $$
              key
 
-mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => Table -> Doc
+mkDeltaPlusRules :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig]) => Table -> Doc
 mkDeltaPlusRules t@Table{..} =
     (mkTableName t TableDeltaPlus) <> "(" <> commaSep cols <> ") :-"        $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep cols <> "),")     $$
@@ -187,14 +197,14 @@ mkDeltaPlusRules t@Table{..} =
     cols = map (\c -> "." <> mkColName c <+> "=" <+> mkColName c) nonro_cols
 
 -- DeltaMinus(uuid) :- Input(uuid, key, _), not Output(_, key, _).
-mkDeltaMinusRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => Table ->  Doc
+mkDeltaMinusRules :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig]) => Table ->  Doc
 mkDeltaMinusRules t@Table{..} =
     (mkTableName t TableDeltaMinus) <> "(uuid) :-"                         $$
     (nest' $ mkTableName t TableInput <> "(._uuid = uuid),")   $$
     (nest' $ "not" <+> mkTableName t TableOutput <> "(._uuid = uuid).")
 
 -- DeltaUpdate(uuid, new) :- Output(uuid, new), Input(uuid, old), old != new.
-mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[(String, [String])]) => Table -> Doc
+mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig]) => Table -> Doc
 mkDeltaUpdateRules t@Table{..} =
     (mkTableName t TableDeltaUpdate) <> "(" <> commaSep outcols <> ") :-"               $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep outcols <> "),")              $$
@@ -215,7 +225,7 @@ mkDeltaUpdateRules t@Table{..} =
                           if n == "_uuid" then n else "__old_" <> n)
                   nonro_cols
 
-mkCol :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> String -> TableColumn -> me Doc
+mkCol :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) => TableKind -> String -> TableColumn -> me Doc
 mkCol tkind tname c@TableColumn{..} = do
     checkNoProg (not $ elem columnName __reservedNames) (pos c) $ "Illegal column name " ++ columnName ++ " in table " ++ tname
     t <- case columnType of
@@ -256,7 +266,7 @@ complexTypeBounds ComplexType{..} = (min_bound, max_bound)
                   Unlimited -> fromIntegral (maxBound::Word64))
                 maxComplexType
 
-mkComplexType :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) => TableKind -> ComplexType -> me Doc
+mkComplexType :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) => TableKind -> ComplexType -> me Doc
 mkComplexType tkind t@ComplexType{..} = do
     let (min_bound, max_bound) = complexTypeBounds t
     checkNoProg (max_bound >= min_bound) (pos t) $ "min bound exceeds max bound"
@@ -274,7 +284,7 @@ mkComplexType tkind t@ComplexType{..} = do
                   Just v  -> do vt <- mkBaseType tkind v
                                 return $ "Map<" <> key <> "," <> vt <> ">"
 
-mkBaseType :: (?schema::OVSDBSchema, ?outputs::[(String, [String])], MonadError String me) =>  TableKind -> BaseType -> me Doc
+mkBaseType :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) =>  TableKind -> BaseType -> me Doc
 mkBaseType _     (BaseTypeSimple at)   = mkAtomicType at
 mkBaseType _     (BaseTypeComplex cbt) | isJust (refTableBaseType cbt)
                                        = return "uuid"
@@ -306,10 +316,12 @@ uuidCol = TableColumn { columnPos       = nopos
                       , columnMutable   = Nothing
                       }
 
-tableGetNonROCols :: (?outputs::[(String, [String])]) => Table -> [TableColumn]
+tableGetNonROCols :: (?outputs::[OutputRelConfig]) => Table -> [TableColumn]
 tableGetNonROCols t =
     case lookup (name t) ?outputs of
-         Nothing -> ovscols
-         Just ro -> filter (\col -> notElem (name col) ro) ovscols
+         Nothing         -> ovscols
+         Just (Left ro)  -> filter (\col -> notElem (name col) ro) ovscols
+         Just (Right rw) -> filter (\col -> -- _uuid is always writable, as we use it as primary key.
+                                            elem (name col) rw || (name col == "_uuid")) ovscols
     where
     ovscols = tableGetCols t
