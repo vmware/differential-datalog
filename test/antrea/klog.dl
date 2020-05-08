@@ -11,7 +11,7 @@ function warningLog(): s32 = -1
 function errorLog(): s32 = -2
 function fatalLog(): s32 = -3
 
-function info(msg: string): bool    = log(0, infoLog(), msg)
-function warning(msg: string): bool = log(0, warningLog(), msg)
-function error(msg: string): bool   = log(0, errorLog(), msg)
-function fatal(msg: string): bool   = log(0, fatalLog(), msg)
+function info(msg: string): ()    = log(0, infoLog(), msg)
+function warning(msg: string): () = log(0, warningLog(), msg)
+function error(msg: string): ()   = log(0, errorLog(), msg)
+function fatal(msg: string): ()   = log(0, fatalLog(), msg)

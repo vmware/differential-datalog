@@ -37,12 +37,12 @@ relation Span(entity: uuid_t, tn: tnid_t)
 
 // base case
 Span(entity, tn) :- Binding(entity, tn),
-                    trace(mod_SPAN_UUID1(), "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
+                    Inspect trace(mod_SPAN_UUID1(), "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
 // recursive step: propagate bindings along the dependency graph
 Span(parent, tn) :- Dependency(parent, child),
-                    trace(mod_SPAN_UUID1(), "Span recursive step: Dependency(.parent=${deref(parent)},.child=${deref(child)}))"),
+                    Inspect trace(mod_SPAN_UUID1(), "Span recursive step: Dependency(.parent=${deref(parent)},.child=${deref(child)}))"),
                     Span(child, tn),
-                    trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})").
+                    Inspect trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})").
 
 /* RuleSpan: restriction of the Span relation to Rule nodes.
  */
@@ -66,7 +66,7 @@ output relation ContainerSpan(entity: uuid_t, tn: tnid_t /*, explanation: string
 ContainerSpan(entity, tn /*, explanation*/) :-
     SourceSpan(entity, tn /*, explanation*/),
     Container(entity),
-    debug(mod_SPAN_UUID2(), "ContainerSpan(.entity=${deref(entity)},.tn=${deref(tn)}))").
+    Inspect debug(mod_SPAN_UUID2(), "ContainerSpan(.entity=${deref(entity)},.tn=${deref(tn)}))").
 
 /* For container nodes, add span computed over the source graph to
    container's normal span.
