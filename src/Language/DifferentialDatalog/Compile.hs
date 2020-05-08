@@ -99,6 +99,13 @@ vALUE_VAR2 = "__v2"
 gROUP_VAR :: Doc
 gROUP_VAR = "__group__"
 
+-- Input argument to inspect function
+tIMESTAMP_VAR :: Doc
+tIMESTAMP_VAR = "__timestamp"
+
+wEIGHT_VAR :: Doc
+wEIGHT_VAR = "__weight"
+
 -- Extract static template header before the "/*- !!!!!!!!!!!!!!!!!!!! -*/"
 -- separator from file; substitute "datalog_example" with 'specname' in
 -- the header.
@@ -1463,14 +1470,10 @@ compileRule :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Ru
 compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- First relation in the body of the rule
     let fstatom = rhsAtom $ head ruleRHS
-    -- RHSConditions and RHSInspects between last_rhs_idx and the next operator that is not an RHSCondition or RHSInspect.
-    -- Since code generation for RHSInspect is not implemented yet, this skips over RHSInspect in the actual compile logic.
-    -- TODO: Remove this logic once mkInspect has been implemented.
-    let conds_and_inspects = takeWhile (rhsIsConditionOrInspect . (ruleRHS !!)) [last_rhs_idx + 1 .. length ruleRHS - 1]
     -- RHSConditions between last_rhs_idx and the next operator that is not an RHSCondition.
-    let conds = filter (rhsIsCondition . (ruleRHS !!)) conds_and_inspects
+    let conds = takeWhile (rhsIsCondition . (ruleRHS !!)) [last_rhs_idx + 1 .. length ruleRHS - 1]
     -- Index of the next operator
-    let rhs_idx = last_rhs_idx + length conds_and_inspects + 1
+    let rhs_idx = last_rhs_idx + length conds + 1
     -- Next RHS operator to process
     let rhs = ruleRHS !! rhs_idx
     -- Input arrangement expected by the next operator (if any)
@@ -1503,7 +1506,8 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                              | otherwise =
             case rhs of
                  RHSFlatMap v e -> mkFlatMap d prefix rl rhs_idx v e
-                 RHSInspect e -> mkInspect d prefix rl rhs_idx e
+                 RHSInspect e | not (null filters) || input_val -> mkFilterMap d prefix rl rhs_idx -- filter inputs before inspecting them
+                              | otherwise -> mkInspect d prefix rl rhs_idx e input_val -- pass input_val to be future-proof
                  _ -> error "compileRule: operator requires arranged input"
 
     -- If: input to the operator is an arranged collection
@@ -1540,7 +1544,12 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                      "}"
                         Nothing -> mkCollectionOperator
             return $
-                if last_rhs_idx == 0
+                -- input_val ensures that CollectionRule is only generated once.
+                -- There is a use-case where Inspect operator is converted into a FilterMap and then an Inspect in rust code.
+                -- In order to do that, mkFilterMap's 'next' is another call to compileRule with the previous rule index.
+                -- Since mkFilterMap already handled the case input_val and if it is the first rule, the recursive call to compileRule
+                -- to generate Inspect rust code does not need another CollectionRule.
+                if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
                         "Rule::CollectionRule {"                                        $$
                         "    description:" <+> pp (show $ show rl) <> ".to_string(),"   $$
@@ -1592,10 +1601,39 @@ mkFlatMap d prefix rl idx v e = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
--- TODO: Add actual implementation.
-mkInspect :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> CompilerMonad Doc
-mkInspect _ _ _ _ _  = do
-    return ""
+mkFilterMap :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> CompilerMonad Doc
+mkFilterMap d prefix rl idx = do
+    v <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    let fmfun = braces' $ prefix $$
+                          "Some" <> parens v
+    next <- compileRule d rl (idx - 1) False  -- Use the previous index to evaluate the rule again and call mkInspect
+    return $
+        "XFormCollection::FilterMap{"                                                                                       $$
+        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
+        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                      $$
+        "    next: Box::new(" <> next <> ")"                                                                                $$
+        "}"
+
+mkInspect :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
+mkInspect d prefix rl idx e input_val = do
+    -- Inspected
+    let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <> " as std_DDWeight);"
+    let timestamp = if ruleIsRecursive d rl
+        then "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as std_DDEpoch, " <> tIMESTAMP_VAR <> ".1.x as std_DDIteration);"
+        else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as std_DDEpoch);"
+    let inspected = mkExpr d (CtxRuleRInspect rl idx) e EVal <> ";"
+    let ifun = braces'
+                $ weight $$
+                  timestamp $$
+                  prefix $$
+                  inspected
+    next <- compileRule d rl idx input_val
+    return $
+        "XFormCollection::Inspect{"                                                                                         $$
+        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
+        (nest' $ "ifun: &{fn __f(" <> vALUE_VAR <> ": &DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": Weight) -> ()" $$ ifun $$ "__f},")$$
+        "    next: Box::new(" <> next <> ")"                                                                                $$
+        "}"
 
 mkAggregate :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
 mkAggregate d filters input_val rl@Rule{..} idx = do
@@ -2043,13 +2081,16 @@ mkHead d prefix rl = do
 -- and used after the term.
 rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter d rl i =
-    filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
-                  -- keep all variables to preserve multiset semantics
-                  if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
-                     then True
-                     else elem (name f) $ (map name $ ruleLHSVars d rl) `union`
-                                          (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
-           $ ruleRHSVars d rl (i+1)
+    case ruleRHS rl !! i of
+         -- Inspect operators cannot change the collection it inspects. No variables are dropped.
+         RHSInspect _ -> ruleRHSVars d rl i
+         _             -> filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
+                                       -- keep all variables to preserve multiset semantics
+                                       if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
+                                          then True
+                                          else elem (name f) $ (map name $ ruleLHSVars d rl) `union`
+                                                               (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
+                                $ ruleRHSVars d rl (i+1)
 
 mkProg :: [ProgNode] -> CompilerMonad Doc
 mkProg nodes = do
