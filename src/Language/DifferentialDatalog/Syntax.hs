@@ -65,7 +65,6 @@ module Language.DifferentialDatalog.Syntax (
         rhsIsPositiveLiteral,
         rhsIsNegativeLiteral,
         rhsIsCondition,
-        rhsIsConditionOrInspect,
         rhsIsFilterCondition,
         rhsIsAssignment,
         rhsIsAggregate,
@@ -563,11 +562,6 @@ rhsIsAggregate _              = False
 rhsIsCondition :: RuleRHS -> Bool
 rhsIsCondition RHSCondition{} = True
 rhsIsCondition _              = False
-
-rhsIsConditionOrInspect :: RuleRHS -> Bool
-rhsIsConditionOrInspect RHSCondition{} = True
-rhsIsConditionOrInspect RHSInspect{}   = True
-rhsIsConditionOrInspect _              = False
 
 rhsIsFilterCondition :: RuleRHS -> Bool
 rhsIsFilterCondition (RHSCondition (E ESet{..})) = False
